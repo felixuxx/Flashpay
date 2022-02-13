@@ -1,0 +1,317 @@
+\chapter{Discussion}
+\label{chap:disc}
+This chapter analyses the \acl{CS} implementation and compares it to the existing implementation with \gls{RSABS}.
+The comparison will include the schemes itself, performance comparisons and a discussion on the security assumptions.
+For the performance comparison CPU usage, latency, bandwidth and storage space are compared.
+
+\section{Cipher Agility}
+One of the benefits of having another blind signature scheme in Taler is \textit{cipher agility}.
+Cipher agility means that one scheme can substitute another, for example if one scheme gets compromised in the future.
+
+Cipher agility is considered harmful in certain situations.
+TLS 1.2 \cite{rfc5246} and IPSEC/IKEv2 \cite{rfc6071} are good examples on how dangerous cipher agility inside protocols can be.
+There are many ways these protocols can be set up insecure.
+\\\\
+Taler's protocols are built around blind signature schemes.
+Therefore it is crucial to have an additional secure blind signature scheme that works with all Taler protocols.
+As described in section \ref{sec:blind-sign-schemes}, blind signature schemes can vary and may be complex to substitute.
+The \gls{CSBS} implementation provides such an alternative and thus \textit{cipher agility}.
+
+\section{Scheme Comparison}
+\label{chap:disc-scheme-comp}
+Both schemes are explained in the preliminaries chapter (\gls{RSABS} in section \ref{fig:rsa-fdh-blind-sign} and \gls{CSBS} in \ref{fig:clause-blind-schnorr-sign-scheme}).
+\\
+There are multiple differences worth mentioning.
+The first difference is that Schnorr signatures are inherently randomized.
+This is also where the additional step in Schnorr signatures comes from.
+A random number is chosen by the signer for every signature. \\
+In \gls{CSBS} two blinding secrets are used instead of one in \gls{RSABS}.
+On top of that, \gls{CSBS} needs to do most computations for signature creation twice, due to the \ac{ROS} problem (see \ref{par:ros-problem}).
+\\\\
+\textit{\Gls{abort-idempotency}} is a very important property for Taler.
+Ensuring \gls{abort-idempotency} with the \gls{CSBS} scheme is harder than it was with RSA, due to the many random elements in the scheme ($r_0, r_1, \alpha_0, \alpha_1, \beta_0, \beta_1, b$).
+The reason that these values are chosen randomly is the need for \textit{unpredictability}.\\
+In the protocols (see chapter \ref{chap:design}) \gls{hkdf} is extensively used to derive these values instead of randomly generating them.
+That way, the values are still \textit{unpredictable} (due to \gls{hkdf} properties), but now the protocols also ensure \textit{\gls{abort-idempotency}}.
+In comparison to the RSA Blind Signature scheme, this is a clever and elegant solution, but the protocol complexity is increased.
+\\\\
+One could now think that RSA would be much simpler to implement, since the scheme looks easier and more accessible for many.
+This can go horribly wrong and many developers still underestimate implementing RSA.
+There are a lot of attacks on RSA, some examples are listed on the famous tool RsaCtfTool \cite{ganapati:rsactftool}.
+Ben Perez made a popular talk and blog post, about why one should stop using RSA and should preferably use libsodium and \ac{ECC} \cite{perez:stoprsa}.
+Using \gls{RSABS} in Taler is still a reasonable and fine choice.
+Taler uses libgcrypt, a well-known and tested library.
+\\
+To conclude, the \gls{CSBS} protocols might be more complex to understand than the RSA Blind Signature protocols.
+One has to keep in mind that implementing RSA correctly is hard.
+\\
+Another difference worth mentioning is, that the \gls{CSBS} scheme does not need scheme specific configurations, whereas RSA needs a key size specified.
+This is because the implemented \gls{CSBS} version only supports \gls{25519}.
+\\\\
+Furthermore, both schemes provide \textit{perfect blindness}, see paragraph \ref{par:prop-blindness-rsa} for RSA and paragraph \ref{par:prop-blindness-cs} for \gls{CSBS}.
+
+
+\section{Performance Comparison}
+\label{sec:disc-perf-comp}
+This section compares how the two schemes perform regarding CPU usage, latency, bandwidth and space.
+Clause Schnorr has fixed key sizes with 256 bits (32 bytes), which we compare against different RSA key sizes (1024, 2048, 3072 and 4096 bits).
+In terms of security, \gls{CSBS} 256 bit keys could be compared to 3072 bit RSA keys (see \url{https://www.keylength.com/} for more information).
+
+\subsection{CPU Usage}  
+Various benchmarks were made on different CPU architectures.
+This section discusses the main results, detailed information about the performance comparison can be found in appendix \ref{chap:app-perf}.
+We thank the Taler team for providing measurements from additional systems and architectures.
+
+Table \ref{tab:comp-cs-vs-rsa-3072} shows how \gls{CSBS} compares to RSA 3072.
+RSA 3072 was chosen for comparison, since they both provide a comparable level of security.
+Both provide about 128 bits of security, which means that roughly $2^{128}$ attempts in average are needed for a successful brute-force attack.\\
+The table shows that \gls{CSBS} has better performance compared to RSA 3072 in all operations.
+The biggest difference can be seen in the key generation.
+In RSA, two random primes are needed, whereas \ac{DLP} algorithms like \gls{CSBS} only need to generate a random value.
+Since key generation is done rarely compared to the other operations, the time needed for key generation does not matter that much.\\
+Furthermore, the blinding in \gls{CSBS} is still faster than blinding in RSA, although in the \gls{CSBS} case the calculation is done twice. Also the derivation of $r_0,r_1$, the generation of $R_0,R_1$ and the derivation of $\alpha_0, \beta_0, \alpha_1, \beta_1$ is included in the measurement for the blinding operation of \gls{CSBS}.
+Signing and blinding operations are much faster in \gls{CSBS}, also \gls{CSBS} signature verification is faster than RSA 3072.
+
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: 8-core AMD Ryzen 7 PRO 5850U \\
+    OS: Ubuntu 21.10 Linux 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux \\
+    libsodium version: 1.0.18-1build1 \\ 
+    libgcrypt version: 1.8.7-5ubuntu2 \\\\
+    Benchmarks with other hardware setups can be found in appendix \ref{chap:app-perf}.
+\end{bfhBox}
+
+\begin{table}[h]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.204 ms \\\hline
+        RSA 3072 bit & 10x key generation & 2684 ms \\\hline
+        \hline
+        CS & 10x derive $R_0, R_1$ \& blinding  & 3.870 ms \\\hline
+        RSA 3072 bit & 10x blinding & 5 ms \\\hline
+        \hline
+        CS & 10x signing & 0.077 ms \\\hline
+        RSA 3072 bit & 10x signing & 86 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.001 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 24 ms \\\hline
+        \hline
+        CS & 10x verifying & 1.358 ms \\\hline
+        RSA 3072 bit & 10x verifying & 3.075 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on CS vs. RSA 3072}
+    \label{tab:comp-cs-vs-rsa-3072}
+\end{table}
+
+Table \ref{tab:comp-cs-vs-rsa-1024} shows a comparison between \gls{CSBS} and RSA 1024 bit.
+RSA 1024 is in some situations faster than the \gls{CSBS} implementation.
+Note that 1024 bit keys are not recommended for many use cases, but the highest currently known RSA factorization done is 829 bits \cite{enwiki:1055393696}.
+The following section \ref{sec:disc-risk} explains the risk running RSA 1024 or \gls{CSBS} denominations further.\\
+The blind and unblind operations are running in a wallet implementation, therefore the comparison with RSA 1024 is very interesting for devices with less CPU power.
+Comparison of such hardware can be found in appendix \ref{chap:app-perf}, these comparison results come to the same conlcusion.\\
+Although RSA 1024 bit is much faster in the blinding operation, \gls{CSBS} still perform better when calculating the blinding and unblinding operations together.
+\gls{CSBS} unblinding computes only an addition of two scalars $s + \alpha \mod p$, while RSA computes $s * r^{-1}$.
+To conclude, \gls{CSBS} are faster than RSA 1024 bit and provide a better level of security.
+This can be especially useful for wallets running on devices with less CPU power.
+The verification on RSA 1024 is faster than \gls{CSBS}.
+Therefore, it has to be further investigated which algorithm would overall perform better for the exchange or merchants.
+While RSA 1024 bit can compete in certain operations, \gls{CSBS} provide a better level of security and are still faster in most operations.
+
+\begin{table}[h]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.204 ms \\\hline
+        RSA 1024 bit & 10x key generation & 126 ms \\\hline
+        \hline
+        CS & 10x derive $R_0, R_1$ \& blinding  & 3.870 ms \\\hline
+        RSA 1024 bit & 10x blinding & 1.282 ms \\\hline
+        \hline
+        CS & 10x signing & 0.077 ms \\\hline
+        RSA 1024 bit & 10x signing & 7 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.001 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 2.991 ms \\\hline
+        \hline
+        CS & 10x verifying & 1.358 ms \\\hline
+        RSA 1024 bit & 10x verifying & 0.876 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on CS vs RSA 1024}
+    \label{tab:comp-cs-vs-rsa-1024}
+\end{table}
+\subsection{Disk Space}
+\begin{bfhWarnBox}
+    These are theoretical calculations, implementations may choose to persist additional values.
+  \end{bfhWarnBox}
+\gls{CSBS} save disk space due to the much smaller key sizes.
+Even more disk space is saved by deriving values with the \gls{hkdf}, these values do not have to be stored.
+\\
+Table \ref{tab:comp-sign-space} shows the disk space comparison of signatures, the private keys alone need even less space with 256 bits per key.
+\\
+The wallet saves a lot of disk space by deriving most of the values.
+In the \gls{CSBS} case a wallet must at least persist the private key $c_s$, $R_0, R_1, s', D_p$, each being 256 bits (32 bytes).
+A wallet needs to persist 150 bytes per coin in total.
+In the RSA Blind Signature case the wallet persists $c_s$, $b$, $\sigma_c$, $D_p$.
+\\Note: for refreshed coins an additional 32 byte value is persisted as seed.\\
+$c_s$ is still a 32 byte value in the RSA case, the other values depend on the RSA key size. (32 byte + 3 * \textit{rsa\_keysize}).
+The disk space comparison for a wallet can be found in \ref{tab:comp-wallet-space}.
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{lccr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Disk Space} & \textbf{Factor} & \textbf{Disk Space 1M signatures}\\\hline
+        CS & 512 bits & 1x & 64 MB\\\hline
+        RSA 1024 bit & 1024 bits & 2x & 128 MB \\\hline
+        RSA 2048 bit & 2048 bits & 4x & 256 MB\\\hline
+        RSA 3072 bit & 3072 bits & 6x & 384 MB\\\hline
+        RSA 4096 bit & 4096 bits & 8x & 512 MB\\\hline
+    \end{tabular}
+    \caption{Comparison disk space signatures}
+    \label{tab:comp-sign-space}
+\end{table}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{lccr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Disk Space} & \textbf{Factor} & \textbf{Disk Space 1M coins}\\\hline
+        CS 256 bits & 150 bytes & 1x & 150 MB\\\hline
+        RSA 1024 bit & 416 bytes & 2.7x & 416 MB \\\hline
+        RSA 2048 bit & 800 bits & 5.3x & 800 MB\\\hline
+        RSA 3072 bit & 1184 bits & 7.9x & 1184 MB\\\hline
+        RSA 4096 bit & 1568 bits & 10.4x & 1568 MB\\\hline
+    \end{tabular}
+    \caption{Comparison disk space wallet}
+    \label{tab:comp-wallet-space}
+\end{table}
+
+\subsection{Bandwidth}
+\begin{bfhWarnBox}
+    These are theoretical calculations, implementations may choose to persist additional values.
+\end{bfhWarnBox}
+The reasons that \gls{CSBS} use less bandwidth is mostly because the signature/key sizes are much smaller.
+The bandwith improvements for the \texttt{/keys} API is the same as specified in the table with disk space comparison \ref{tab:comp-sign-space}.
+For \gls{CSBS} many calculations are performed twice, therefore also two values are submitted.
+Table \ref{tab:comp-band-withd} compares the bandwidth used in a withdrawal.
+The 32 byte values $2 * n_w, 2 * D_p, R_0, R_1, s,W_p, c_0, c_1, \sigma_W$ as well as an integer $b$ are transmitted for \gls{CSBS}.\\
+For RSA, the values $D_p, m', \sigma'_c$ have the same size as the key size.
+Additionally, the 32 byte values $W_p, \sigma_W$ are transmitted.
+\\\\
+In the refresh protocol the only difference is an additional hash ($h_{C_0}, h_{C_1}$ instead of only $h_C$) sent in the commit phase.
+Depending on the hash size another 32 byte (or 64 byte) value is transmitted.
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{lccr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Bandwith used} & \textbf{Factor} & \textbf{1M coins}\\\hline
+        CS 256 bits & 356 bytes & 1x & 324 MB\\\hline
+        RSA 1024 bit & 448 bytes & 1.3x & 448 MB \\\hline
+        RSA 2048 bit & 832 bits & 2.5x & 832 MB\\\hline
+        RSA 3072 bit & 1216 bits & 3.75x & 1216 MB\\\hline
+        RSA 4096 bit & 1600 bits & 4.9x & 1600 MB\\\hline
+    \end{tabular}
+    \caption{Bandwith comparison withdrawal}
+    \label{tab:comp-band-withd}
+\end{table}
+
+\subsection{Latency}
+This section the notion of \acl{RTT} (see \cite{geeks:rtt}) is used.
+There are many factors that influence the measurement of a \acl{RTT}.
+Following factors can bring huge changes in the value of \ac{RTT}s.
+\begin{itemize}
+    \item Distance
+    \item Transmission medium
+    \item Network hops
+    \item Traffic levels
+    \item Server response time
+\end{itemize}
+All of these factors will vary in reality and are independent of the scheme.\\
+The important comparison here is the number of \ac{RT}s as in table \ref{tab:comp-rtt}.
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{lc}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Number of RTs} \\\hline
+        RSA Blind Signatures & 1\\\hline
+        Clause Blind Schnorr Signatures & 2\\\hline
+    \end{tabular}
+    \caption{Comparison of Round-Trips}
+    \label{tab:comp-rtt}
+\end{table}
+
+While creating \gls{RSABS} have one \ac{RT}, \gls{CSBS} need an additional \ac{RT} for requesting the public $R_0, R_1$.
+This means that the time spend for withdrawing is almost \textbf{doubled} (the $ R $ request doesn't have any persistence and therefore requires less time) in comparison to RSA.
+
+A coin should not be spent immediately after withdrawal or refresh.
+Otherwise, an adversary could deanonymize a customer by correlating the timestamps.
+The additional \ac{RT} is a drawback of \gls{CSBS} compared to RSA, but negligible due to the fact that a coin must not be spent immediately.
+
+\section{Security Assumptions}
+\label{sec:disc-sec-assumptions}
+This section discusses the differences regarding the security assumptions of the schemes.
+This section should not explain nor analyze the security assumptions, instead the section focuses on explaining what these assumptions mean and what should be kept in mind about them.
+Read section \ref{sec:sign-schemes} and it's references for more information on the assumptions.
+
+RSA's security assumptions are well known since quite a long time and a lot of research is done.
+Despite being a lot of attacks \cite{ganapati:rsactftool} \cite{perez:stoprsa}, RSA is still considered a secure scheme after decades.\\
+For Schnorr Signatures the \acl{DLP} (see \autoref{sec:dlp}) needs to be hard.
+Also the \ac{DLP} is well-known and is being researched since decades.\\
+However, with Blind Schorr Signatures an additional assumption needs to hold; the \ac{ROS} problem.
+Compared to the other assumptions, \ac{ROS} is relatively new and still a recent research topic.
+A recent paper from 2020 on the (in)security of ROS \cite{cryptoeprint:2020:945} broke many schemes relying on ROS being hard, including Schnorr Blind signatures.
+The paper on which we rely on (updated in 2021) with the Clause Blind Schnorr Signature Scheme \cite{cryptoeprint:2019:877} is considered secure at the time of writing.\\
+
+\section{Risk}
+\label{sec:disc-risk}
+As introduced in \autoref{sec:disc-sec-assumptions}, \gls{CSBS} rely on an additional assumption currently being researched.
+Compared to other schemes, the chosen \gls{CSBS} are very new (published in 2019, updated in 2021).
+While every scheme could potentially be broken, older ones already went through a lot of research and their assumptions are well-known.
+Therefore, the risk that a vulnerability in \gls{CSBS} will be discovered is probably higher than a newly discovered vulnerability breaking RSA.
+
+Unpredictability of $ r $ is a key aspect of the signature creation process of \gls{CSBS}.
+The redesigned Taler protocols solve this by persisting the nonce and denomination key (described in \autoref{sec:withdraw-protocol-impl}) and checking for reuse of this combination before signature creation.
+If this process is malfunctioning (broken implementation, faulty database) or can be circumvented in any way, recovery of a denomination private key is possible.
+
+An exchange operator can still consider using \gls{CSBS} as denomination scheme, as there are multiple benefits (see \autoref{sec:disc-perf-comp}).
+The financial loss in the worst case can be calculated and capped by the validity of a denomination key.
+If a vulnerability in the \gls{CSBS} would be detected, an exchange operator could revoke the corresponding denomination keys and change the scheme to \gls{RSABS}.
+The wallets can then follow the refund protocol to get the money back.
+
+\section{Comparison Conclusion}
+\label{sec:disc-comp-conclusion}
+A detailed comparison of the two blind signature schemes was made.
+This last section interprets the results and concludes the comparison.
+
+\gls{CSBS} on \gls{25519} provide the same security level as \gls{RSABS} with 3072 bit key sizes.
+The implementation of \gls{CSBS} is the clear winner in all performance comparisons with RSA 3072 bits.
+
+1024 bit RSA is faster than the \gls{CSBS} implementation in certain operations.
+The \gls{CSBS} implementation still offers better performance for wallets with less CPU power and provides a much higher level of security (comparable to RSA 3072).
+As further comparisons show, RSA scales very bad the larger the keys get and \gls{CSBS} performs much better overall.
+
+As discussed in the risk section \ref{sec:disc-risk}, \gls{CSBS} have an additional security assumption, which is still a recent research topic.
+\gls{CSBS} provide various benefits and the risk can be calculated and capped.
+An exchange operator who is aware of the discussed risk can use \gls{CSBS} safely.
+\gls{CSBS} are best suited for denominations with low value, where many coins are being withdrawn/refreshed.

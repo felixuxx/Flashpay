@@ -1,0 +1,458 @@
+\chapter{Protocol Design}
+\label{chap:design}
+This chapter describes the necessary changes on the protocol level to implement a Blind Schnorr Signature Scheme to Taler.
+
+
+\section{Analysis of Current Protocols}
+The blind RSA signature scheme is only used for coin signatures.
+Note that we omitted protocols (or parts of them) where the coin signature is transmitted, but no other actions using it is performed.
+\\\\
+\label{abort-idempotency}
+An important property to mention here is \textit{\gls{abort-idempotency}}.
+\Gls{idempotence} in the context of computer science is a property to ensure that the state of a system will not change, no matter how many times the same request was made.
+A more in-depth explanation is given within the cited source \cite{yuchen:idempotence}.\\
+\textit{\gls{abort-idempotency}} goes a bit further.
+When the protocol is aborted at any stage, for example due to power cuts or network issues, the protocol still needs to ensure that the same response is sent for the same request.
+This is especially challenging when dealing with random values as we will see in the redesigned protocols in the following sections.
+For \gls{RSABS} it is inherently easier to provide \textit{\gls{abort-idempotency}} since signature creation only needs one round-trip and requires less random values.
+
+The following protocols currently use \gls{RSABS}:
+\begin{itemize}
+    \item \textbf{Withdraw Protocol:}
+          The customer uses the blind signature scheme to blind the coins before transmitting them to the exchange, which blindly signs it (standard RSA signature) and the returns the signatures.
+          After the customer receives the signatures, he unblinds and stores them together with the coins.
+          \\ Components:
+          \begin{itemize}
+              \item Customer
+              \item Exchange
+          \end{itemize}
+    \item \textbf{Deposit Protocol:}
+          During the Deposit, the exchange verifies the coin signature derived using the blind RSA signature scheme.
+          \\ Components:
+          \begin{itemize}
+              \item Exchange
+          \end{itemize}
+    \item \textbf{Refresh Protocol:}
+          The refresh protocol is used to derive a new coin from an old one which was partially spent.
+          Parts of the protocol are similar to the withdraw protocol, but it is more complex due to the added DH lock and cut-and-choose.
+          \\ Components:
+          \begin{itemize}
+              \item Customer
+              \item Exchange
+          \end{itemize}
+    \item \textbf{Tipping:}
+          Tipping is a variation of the withdraw protocol where the message containing the blinded planchets is transmitted to the merchant, who signs them using his reserve private, key and returns the signatures back to the customer.
+          Here, the details from the withdraw protocol apply.
+          \\ Components:
+          \begin{itemize}
+              \item Customer
+              \item Exchange
+          \end{itemize}
+    \item \textbf{Payback Protocol:}
+          The payback protocol distinguishes three different cases, which either use the refresh protocol or disclose either the withdraw transcript or refresh protocol transcript to the exchange.
+          \\ Components:
+          \begin{itemize}
+              \item Customer
+              \item Exchange
+          \end{itemize}
+\end{itemize}
+
+
+\section{Protocol Changes}
+The goal of the thesis is to add support for the Clause Blind Schnorr Signature scheme to Taler, besides the existing \gls{RSABS} implementation (see section \ref{sec:blind-rsa-sign}).
+For the design of the \gls{CSBS} the existing protocols with \gls{RSABS} were redesigned.
+
+The goal of the blind signature is to keep the exchange from knowing which coin a user withdraws and thus preventing the exchange linking a coin to a user.
+The biggest impact is on the withdrawal and refresh protocols, but all protocols that include some operation around denomination signatures are affected.
+
+During the thesis the protocols will be redesigned, implemented and the differences to the current version will be outlined.
+These results will be delivered to the Taler team.
+Feedback is very important when (re)designing protocols.
+For that reason the redesigned protocols were discussed and reviewed with Christian Grothoff multiple times.
+
+As signature scheme the Clause Blind Schnorr Signature Scheme described in section \ref{sec:clause-blind-schnorr-sig} was chosen for multiple reasons.
+First of all it is currently considered to be secure (see \cite{cryptoeprint:2019:877}).
+Schnorr Signatures on \gls{25519} are much shorter than RSA signatures.
+This should provide notable performance improvements in speed and storage, and therefore scales better.
+The paper describes a security analysis of the Blind Schnorr Signature scheme and introduces a modification (the "clause" part in the name) that is resistant to Wagner's algorithm (which solves ROS problem).
+
+\Gls{25519} \cite{bern:curve25519} will be used for the implementation because it is a widely accepted curve (see \cite{bernlange:safecurves}, \cite{rfc7748}) and is already used by Taler (Taler uses Ed25519 which is built upon \gls{25519}).
+
+
+\subsection{Withdraw Protocol}
+\label{sec:withdraw-protocol-schnorr}
+The modified protocol using the Clause Blind Schnorr Signature Scheme is described in figures \ref{fig:withdrawal-process-schnorr-1} and \ref{fig:withdrawal-process-schnorr-2}.
+
+The proposed change introduces an additional round trip.
+It must be prevented that the exchange has to track sessions or persist values during the first stage \ref{fig:withdrawal-process-schnorr-1}, while still ensuring \gls{abort-idempotency}.
+In order to ensure \textit{\gls{abort-idempotency}}, the exchange has to generate the same $R_0,R_1$ for the same withdrawal request, while $r_0,r_1$ still needs to be unpredictable for the customer.
+For this reason a withdrawal-nonce combined with a \gls{hkdf} comes into play.
+The redesigned protocol makes extensive use of \gls{hkdf}'s functionality as \ac{PRNG} and one-way function, thus random becomes \textit{unpredictable}.
+
+In the beginning of the protocol, the customer generates a coin key pair.
+Its private key is used to generate the withdraw-nonce $n_w$ and the blinding factors $\alpha_0, \alpha_1, \beta_0, \beta_1$.
+The exchange uses the withdraw nonce together with the reserve key and a long-term secret to generate $r_0, r_1$.
+The coin and denomination private keys can be used as long-term secrets due to the one-way property of the \gls{hkdf}.
+
+Another question evolved around which key to use for the derivation of $ r_0, r_1 $.
+Obvious options are the denomination key or the exchange's online signing key.
+The denomination key was chosen because it has the payback protocol in place that would handle coin recovery in case of a key compromise and subsequent revocation.
+
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      % preliminaries
+      \text{Customer} &  & \text{Exchange}
+      \\ \text{knows:} & & \text{knows:}
+      \\ \text{reserve keys } w_s, W_p & & \text{reserve public key } W_p
+      \\ \text{denomination public key } D_p & & \text{denomination keys } d_s, D_p
+      \\ & &
+      \\\text{generate withdraw secret:}
+      \\ \omega := randombytes(32)
+      \\ \text{persist } \langle \omega, D_p \rangle
+      \\ n_w := \text{HKDF}(256, \omega,\text{"n"})
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{n_w, D_p} &
+      % generate R
+      \\ & & \text{verify if } D_p \text{ is valid}
+      \\ & & r_0 := \text{HKDF}(256,n_w || d_s, \text{"r0"})
+      \\ & & r_1 := \text{HKDF}(256,n_w || d_s, \text{"r1"})
+      \\ & & R_0 := r_0G
+      \\ & & R_1 := r_1G
+      \\ & \xleftarrow[\rule{2.5cm}{0pt}]{R_0, R_1} &
+      \\ \text{derive coin key pair}:
+      \\ c_s := \text{HKDF}(256, \omega || R_0 || R_1,\text{"cs"})
+      \\ C_p := \text{Ed25519.GetPub}(c_s)
+      % blinding
+      \\ \text{blind:} & &
+      \\ b_s := \text{HKDF}(256, \omega || R_0 || R_1,\text{"b-seed"})
+      \\ \alpha_0 := \text{HKDF}(256, b_s, \text{"a0"})
+      \\ \alpha_1 := \text{HKDF}(256, b_s, \text{"a1"})
+      \\ \beta_0 := \text{HKDF}(256, b_s, \text{"b0"})
+      \\ \beta_1 := \text{HKDF}(256, b_s, \text{"b1"})
+      \\ R'_0 := R_0 + \alpha_0 G + \beta_0 D_p & &
+      \\ R'_1 := R_1 + \alpha_1 G + \beta_1 D_p & &
+      \\ c'_0 := H(R'_0, C_p) & &
+      \\ c'_1 := H(R'_1, C_p) & &
+      \\ c_0 := c'_0 + \beta_0 \mod p & &
+      \\ c_1 := c'_1 + \beta_1 \mod p & &
+      \\
+      \\ & \textit{Continued in figure \ref{fig:withdrawal-process-schnorr-2}} &
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Withdrawal process using Clause Blind Schnorr Signatures part 1}
+  \label{fig:withdrawal-process-schnorr-1}
+\end{figure}
+
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      % preliminaries
+      \text{Customer} &  & \text{Exchange}
+      \\ \text{knows:} & & \text{knows:}
+      \\ \text{reserve keys } w_s, W_p & & \text{reserve public key } W_p
+      \\ \text{denomination public key } D_p & & \text{denomination keys } d_s, D_p
+      \\
+      \\ & \textit{Continuation of figure \ref{fig:withdrawal-process-schnorr-1}} &
+      \\
+      % sign with reserve sk
+      \\ \text{sign with reserve private key:} & &
+      \\ \rho_W := \langle n_w, D_p, c_0, c_1 \rangle & &
+      \\ \sigma_W := \text{Ed25519.Sign}(w_s, \rho_W) & &
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{W_p, \sigma_W, \rho_W} &
+      \\ & & \langle n_w, D_p, c_0, c_1 \rangle := \rho_W
+      % checks done by the exchange
+      \\ & & \text{verify if } D_p \text{ is valid}
+      \\ & & \text{check } \text{Ed25519.Verify}(W_p, \rho_W, \sigma_W)
+      \\ & & b := \text{HKDF}(1,n_w || d_s, \text{"b"})
+      \\ & & s \leftarrow \text{GetWithdraw}(n_w, D_p)
+      \\ & & \textbf{if } s = \bot
+      \\ & & r_b := \text{HKDF}(256,n_w || d_s, \text{"r}b\text{"})
+      % sign coin
+      \\ & & s := r_b + c_b d_s \mod p
+      % the following db operations are atomic
+      \\ & & \text{decrease balance if sufficient and}
+      \\ & & \text{persist } \langle n_w, D_p, s \rangle
+      \\ & & \textbf{endif}
+      \\ & \xleftarrow[\rule{2.5cm}{0pt}]{b,s} &
+      % verify signature
+      \\ \text{verify signature:}& &
+      \\ \textbf{check if } sG = R_b + c_b D_p & &
+      % unblind signature
+      \\ \text{unblind:}& &
+      \\ s' := s + \alpha_b \mod p & &
+      \\ \text{verify signature:}& &
+      \\ \textbf{check if } s'G = R'_b + c'_b D_p & &
+      \\ \sigma_C := \langle R'_b, s' \rangle & &
+      \\ \text{resulting coin: } c_s, C_p, \sigma_C, D_p & &
+      
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Withdrawal process using Clause Blind Schnorr Signatures part 2}
+  \label{fig:withdrawal-process-schnorr-2}
+\end{figure}
+
+
+\subsection{Deposit Protocol}
+The deposit protocol remains unchanged, except for the verification of the coin signature.
+To verify the signature, the exchange has to check if the following equation holds:
+\begin{align*}
+  s'G & = R' + c' D_p
+  \\ &= R' + H(R', C_p) D_p
+\end{align*}
+$ s', R' $ together form the signature, $ D_p $ is the denomination public key and $ C_p $ is the coin public key.
+
+Further details regarding the verification process can be found in section \ref{sec:blind-schnorr-sig}.
+
+
+\subsection{Refresh Protocol}
+The refresh protocol blindly signs the new derived coins.
+The replacement of \gls{RSABS} with the Clause Blind Schnorr Signature Scheme (see \ref{sec:clause-blind-schnorr-sig}) makes the refresh protocol a bit more complex.
+
+\subsubsection{RefreshDerive Schnorr}
+The RefreshDerive protocol is described in figure \ref{fig:refresh-derive-schnorr}.
+For this protocol, the main change is that more values need to be derived somehow.
+These blinding factors are also derived from $x$.
+Then the challenges $\overline{c_0}$ and $\overline{c_1}$ are generated as in the Clause Blind Schnorr Signature Scheme.
+
+\begin{figure}[htp]
+  \centering
+  \fbox{%
+    \procedure[codesize=\small]{$\text{RefreshDerive}(t, D_{p(t)}, C_p, R_0, R_1)$}{%
+      T := \text{Curve25519.GetPub}(t) \\
+      x := \textrm{ECDH-EC}(t, C_p)  \\
+      c'_s := \text{HKDF}(256, x, \text{"c"}) \\
+      C_p' := \text{Ed25519.GetPub}(c'_s)  \\
+      b_s := \text{HKDF}(256, x || R_0 || R_1,\text{"b-seed"}) \\
+      \alpha_0 := \text{HKDF}(256, b_s, \text{"a0"}) \\
+      \alpha_1 := \text{HKDF}(256, b_s, \text{"a1"}) \\
+      \beta_0 := \text{HKDF}(256, b_s, \text{"b0"}) \\
+      \beta_1 := \text{HKDF}(256, b_s, \text{"b1"}) \\
+      R'_0 = R_0 + \alpha_0 G + \beta_0 D_p \\
+      R'_1 = R_1 + \alpha_1 G + \beta_1 D_p \\
+      c'_0 = H(R'_0, C_p') \\
+      c'_1 = H(R'_1, C_p') \\
+      \overline{c_0} = c'_0 + \beta_0 \mod p \\
+      \overline{c_1} = c'_1 + \beta_1 \mod p \\
+      \pcreturn \langle T, c'_s, C_p', \overline{c_0}, \overline{c_1} \rangle
+    }
+  }
+  \caption[RefreshDerive algorithm]{The RefreshDerive replaced with Schnorr blind signature details. As before the uses the seed $s$ on the dirty coin for generating the new coin.
+    The new coin needs to be signed later on with the denomination key.}
+  \label{fig:refresh-derive-schnorr}
+\end{figure}
+
+\subsubsection{Refresh Protocol}
+\label{sec:refresh-protocol}
+In the commit phase (see figure \ref{fig:refresh-commit-part1}) there needs to be requested an $R_0$ and $R_1$ before deriving the new coins.
+There now needs to be calculated two different commit hashes, one for $\overline{c_0}$ and one for $\overline{c_1}$.
+The exchange needs to additionally generate a random $b \leftarrow \{0,1\}$ to choose a $\overline{c_b}$.
+The reveal phase (see figure \ref{fig:refresh-commit-part2}) now is continued only with the chosen $\overline{c_b}$.
+In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's blind signature counterparts.
+
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      % preliminaries
+      \text{Customer} &  & \text{Exchange}
+      \\ \text{knows:} & & \text{knows:}
+      \\ \text{denomination public key } D_p & & \text{old denomination keys } d_{s(0)} D_{p(0)}
+      \\ \text{coin}_0 = \langle D_{p(0)}, c_s^{(0)}, C_p^{(0)}, \sigma_c^{(0)} \rangle  &&  \text{new denomination keys } d_s, D_P
+      % request r
+      \\ & &
+      \\ \omega := randombytes(32)
+      \\ \text{persist } \langle \omega, D_p \rangle
+      %\\ s_w := \text{HKDF}(256,  c_s^{(0)},\text{"n"})
+      \\ n_r := \text{HKDF}(256, \omega,\text{"n"})
+      % sign with reserve sk
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{n_r, D_p} &
+      % generate R
+      \\ & & \text{verify if } D_p \text{ is valid}
+      \\ & & r_0 := \text{HKDF}(256,n_r || d_s, \text{"r0"})
+      \\ & & r_1 := \text{HKDF}(256,n_r || d_s, \text{"r1"})
+      \\ & & R_0 := r_0G
+      \\ & & R_1 := r_1G
+      \\ & \xleftarrow[\rule{2cm}{0pt}]{R_0, R_1} &
+      % refresh request
+      \\ \textbf{for } i = 1, \dots, \kappa: % generate k derives
+      %\\ s_i \leftarrow \{0,1\}^{256} % seed generation
+      \\ t_i := \text{HKDF}(256, \omega || R_0 || R_1,\text{"t} i \text{"} )  % seed generation
+      \\ X_i := \text{RefreshDerive}(t_i, D_p, C_p^{(0)}, R_0, R_1)
+      \\ (T_i, c_s^{(i)}, C_p^{(i)}, \overline{c_0}, \overline{c_1}):= X_i
+      \\ \textbf{endfor}
+      \\ h_T := H(T_1, \dots, T_k)
+      \\ h_{\overline{c_0}} := H(\overline{c_{0_1}},\dots, \overline{c}_{0_k})
+      \\ h_{\overline{c_1}} := H(\overline{c_{1_1}},\dots, \overline{c}_{1_k})
+      \\ h_{\overline{c}} := H(h_{\overline{c_0}}, h_{\overline{c_1}})
+      \\ h_C := H(h_T, h_{\overline{c}})
+      \\ \rho_{RC} := \langle h_C, D_p, \text{ } D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)}  \rangle
+      \\ \sigma_{RC} := \text{Ed25519.Sign}(c_s^{(0)}, \rho_{RC})
+      \\ \text{Persist refresh-request}
+      \\ \langle \omega, R_0, R_1, \rho_{RC}, \sigma_{RC} \rangle
+      \\
+      \\ & \textit{Continued in figure \ref{fig:refresh-commit-part2}} &
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Refresh protocol (commit phase part 1) using Clause Blind Schnorr Signatures}
+  \label{fig:refresh-commit-part1}
+\end{figure}
+
+
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      \text{Customer} &  & \text{Exchange}
+      \\ & \textit{Continuation of}
+      \\ & \textit{figure \ref{fig:refresh-commit-part1}}
+      \\
+      \\ & \xrightarrow[\rule{2cm}{0pt}]{\rho_{RC}, \sigma_{RC}} &
+      % Exchange checks refresh request
+      \\ & & \langle h_C, D_p, D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)} \rangle := \rho_{RC}
+      \\ & & \textbf{check} \text{ Ed25519.Verify}(C_p^{(0)}, \sigma_{RC}, \rho_{RC})
+      \\
+      \\ & & \gamma \leftarrow \text{GetOldRefresh}(\rho_{RC})
+      \\ & & \textbf{Comment: }\text{GetOldRefresh}(\rho_{RC} \mapsto
+      \\ & & \{\bot, \gamma \})
+      \\ & & \pcif \gamma = \bot
+      \\ & & v := \text{Denomination}(D_p)
+      \\ & & \textbf{check } \text{IsOverspending}(C_p^{(0)}, D_ {p(0)}, v)
+      \\ & & \text{verify if } D_p \text{ is valid}
+      \\ & & \textbf{check } \text{Schnorr.Verify}(D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)})
+      \\ & & \text{MarkFractionalSpend}(C_p^{(0)}, v)
+      \\ & & \gamma \leftarrow \{1, \dots, \kappa\}
+      \\ & & \text{Persist refresh-record } \langle \rho_{RC},\gamma \rangle
+      \\ & \xleftarrow[\rule{2cm}{0pt}]{\gamma} &
+      % Check challenge and send challenge response (reveal not selected msgs)
+      \\ \textbf{check } \text{IsConsistentChallenge}(\rho_{RC}, \gamma)
+      \\ \textbf{Comment: } \text{IsConsistentChallenge}\\(\rho_{RC}, \gamma) \mapsto \{ \bot,\top \}
+      \\
+      \\ \text{Persist refresh-challenge} \langle \rho_{RC}, \gamma \rangle
+      \\ S := \langle t_1, \dots, t_{\gamma-1}, t_{\gamma+1}, \dots,t_\kappa \rangle % all seeds without the gamma seed
+      \\ \rho_L := \langle C_p^{(0)}, D_p, T_{\gamma}, \overline{c_0}_\gamma, \overline{c_1}_\gamma, n_r \rangle
+      \\ \rho_{RR} := \langle \rho_L, S \rangle
+      \\ \sigma_{L} := \text{Ed25519.Sign}(c_s^{(0)}, \rho_{L})
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{\rho_{RR},\rho_L, \sigma_{L}} &
+      \\
+      \\ & \textit{Continued in} &
+      \\ & \textit{figure \ref{fig:refresh-reveal-part1}} &
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Refresh protocol (commit phase part 2) using Clause Blind Schnorr Signatures}
+  \label{fig:refresh-commit-part2}
+\end{figure}
+
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      % preliminaries
+      \text{Customer} &  & \text{Exchange}
+      \\ & \textit{Continuation of}
+      \\ & \textit{figure \ref{fig:refresh-commit-part2}}
+      \\
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{\rho_{RR},\rho_L, \sigma_{L}} &
+      % check revealed msgs and sign coin
+      \\ & & \langle C_p^{(0)}, D_p, T_{\gamma}, \overline{c_0}_\gamma, \overline{c_1}_\gamma, n_r \rangle := \rho_L
+      \\ & & \langle T'_\gamma, \overline{c_0}_\gamma, \overline{c_1}_\gamma, S \rangle := \rho_{RR}
+      \\ & & \langle t_1,\dots,t_{\gamma-1},t_{\gamma+1},\dots,t_\kappa \rangle := S
+      \\ & & \textbf{check } \text{Ed25519.Verify}(C_p^{(0)}, \sigma_L, \rho_L)
+      \\ & & b := \text{HKDF}(1,n_r || d_{s(i)}, \text{"b"})
+      \\ & & \textbf{for } i = 1,\dots, \gamma-1, \gamma+1,\dots, \kappa
+      \\ & & X_i := \text{RefreshDerive}(t_i, D_p, C_p^{(0)} \\ &&, R_0, R_1)
+      \\ & & \langle T_i, c_s^{(i)}, C_p^{(i)}, \overline{c_1}_i, \overline{c_2}_i \rangle := X_i
+      \\ & & \textbf{endfor}
+      \\ & & h_T' = H(T_1,\dots,T_{\gamma-1},T'_{\gamma},T_{\gamma+1},\dots,T_\kappa)
+      \\ & & h_{\overline{c_0}}' := H(\overline{c_{0_1}},\dots, \overline{c}_{0_k})
+      \\ & & h_{\overline{c_1}}' := H(\overline{c_{1_1}},\dots, \overline{c}_{1_k})
+      \\ & & h_{\overline{c}}' := H(h_{\overline{c_0}}, h_{\overline{c_1}})
+      \\ & & h_C' = H(h_T', h_{\overline{c}}')
+      \\ & & \textbf{check } h_C = h_C'
+      \\ & & r_b := \text{HKDF}(256,n_r || d_s, \text{"r}b\text{"})
+      \\ & & \overline{s}_{C_p}^{(\gamma)} = r_b + \overline{c_{b_\gamma}} d_s \mod p
+      \\ & & \text{persist } \langle \rho_L, \sigma_L \rangle
+      \\ & \xleftarrow[\rule{2.5cm}{0pt}]{b, \overline{s}_C^{(\gamma)}} &
+      % Check coin signature and persist coin
+      % unblind signature
+      \\ \text{unblind:}& &
+      \\ s_C'^{(\gamma)} := \overline{s}_C^{(\gamma)} + \alpha_b \mod p & &
+      \\ \text{verify signature:}& &
+      \\ \textbf{check if } \overline{s'}_C^{(\gamma)}G \equiv R'_b + \overline{c'_0}_\gamma D_p & &
+      \\ \sigma_C^{(\gamma)} := \langle s_{C}'^{(\gamma)},R_b' \rangle
+      \\ \text{Persist coin} \langle D_p, c_s^{(\gamma)}, C_p^{(\gamma)}, \sigma_C^{(\gamma)} \rangle
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Refresh protocol (reveal phase) using Clause Blind Schnorr Signatures}
+  \label{fig:refresh-reveal-part1}
+\end{figure}
+\newpage
+\subsubsection{Linking Protocol}
+\label{sec:refresh-link}
+The beginning of the linking protocol (see figure \ref{fig:refresh-link}) is the same as in the current protocol.
+After the customer received the answer $L$ the only difference is in obtaining the coin.
+To re-obtain the derived coin, the same calculations as in \ref{fig:refresh-derive-schnorr} are made.
+\begin{figure}[htp]
+  \begin{equation*}
+    \resizebox{1.0\textwidth}{!}{$\displaystyle
+    \begin{array}{ l c l }
+      % preliminaries
+      \text{Customer} &  & \text{Exchange}
+      \\ \text{knows:} & & \text{knows:}
+      \\ \text{coin}_0 = \langle D_{p(0)}, c_s^{(0)}, C_p^{(0)}, \sigma_{C}^{(0)} \rangle
+      \\ & \xrightarrow[\rule{2.5cm}{0pt}]{C_{p(0)}} &
+      \\ & &  L := \text{LookupLink}(C_{p(0)})
+      \\ & &  \textbf{Comment: } \text{LookupLink}(C_p^{(0)}) \mapsto 
+      \\ & & \{\langle \rho_L^{(i)}, \sigma_L^{(i)}, \overline{\sigma}_C^{(i)}, b \rangle\}
+      %\\ & & \{\langle C_{p(0)}, D_{p(t)},\overline{\sigma}_C^{(i)}, b^{(i)}, R_b^{(i)}\rangle\}
+      \\ & \xleftarrow[\rule{2.5cm}{0pt}]{L} &
+      \\ \textbf{for } \langle \rho_L^{(i)}, \overline{\sigma}_L^{(i)}, \overline{\sigma}_C^{(i)}, b \rangle\ \in L
+      
+      %\\ & & \langle C_p^{(0)}, D_{p(t)}, T_{\gamma}, \overline{c_0}_\gamma, \overline{c_1}_\gamma, n_r \rangle := \rho_L
+      \\ \langle \hat{C}_p^{(i)}, D_p^{(i)}, T_\gamma^{(i)}, \overline{c_0}_\gamma^{(i)}, \overline{c_1}_\gamma^{(i)}, n_r \rangle := \rho_L^{(i)}
+      \\ \langle \overline{s}_C^{(i)}, R_b^{(i)} \rangle := \overline{\sigma}_C^{(i)}
+      \\ \textbf{check } \hat{C}_p^{(i)} \equiv  C_p^{(0)}
+      \\ \textbf{check } \text{Ed25519.Verify}(C_p^{(0)}, \rho_{L}^{(i)}, \sigma_L^{(i)})
+      \\ \langle \overline{s}_C^{(i)}, R_b^{(i)} \rangle := \sigma_C^{(i)}
+      \\ x_i := \text{ECDH}(c_s^{(0)}, T_{\gamma}^{(i)})
+      \\ c_s^{(i)} := \text{HKDF}(256, x, \text{"c"})
+      \\ C_p^{(i)} := \text{Ed25519.GetPub}(c_s^{(i)})
+      \\ b_s^{(i)} := \text{HKDF}(256, x_i || R_0^{(i)} || R_1^{(i)},\text{"b-seed"})
+      \\ \alpha_b := \text{HKDF}(256, b_s^{(i)}, \text{"a}b\text{"})
+      \\ \beta_b := \text{HKDF}(256, b_s^{(i)}, \text{"b}b\text{"})
+      \\ {R'}_b^{(i)} = R_b^{(i)} + \alpha_b G + \beta_b D_p^{(i)}
+      \\ c'_b = H(R'_b, C_p^{(i)})
+      \\ c_b = c'_b + \beta_b \mod p
+      \\ s_C'^{(i)} := \overline{s}_C^{(i)} + \alpha_b \mod p
+      \\ \sigma_C^{(i)} := \langle s_C'^{(i)}, R_b' \rangle
+      \\ \textbf{check } s'{_C^{(i)}}G \equiv {R'}_b^{(i)} + c'_b D_p^{(i)}
+      \\ \text{(Re-)obtain coin} \langle D_p^{(i)},c_s^{(i)}, C_p^{(i)}, \sigma_C^{(i)} \rangle
+    \end{array}$
+    }
+  \end{equation*}
+  \caption{Linking protocol using Clause Blind Schnorr Signatures}
+  \label{fig:refresh-link}
+\end{figure}
+
+
+\subsection{Tipping}
+Tipping remains unchanged, except for the content of the message $ \rho_W = D_p, c_0, c_1 $ signed by the merchant using its reserve private key.
+
+\subsection{Payback Protocol}
+The payback protocol distinguishes three different cases, which all depend on the state of a coin whose denomination key has been revoked.
+The following listing outlines the necessary changes on the protocol, please refer to Dold's documentation section 2.2.1 \cite{dold:the-gnu-taler-system} for details regarding the different cases.
+\begin{itemize}
+  \item \textbf{The revoked coin has never been seen by the exchange}:
+        \\The withdraw transcript (and verification) must be adjusted in order for the exchange to be able to retrace the blinding.
+  \item \textbf{The coin has been partially spent}:
+        \\In this case the refresh protocol will be invoked on the coin.
+        The necessary changes are outlined in \ref{sec:refresh-protocol}.
+  \item \textbf{The revoked coin has never been seen by the exchange and resulted from a refresh operation}:
+        \\The refresh protocol transcript and its blinding factors must be adjusted to consider the changes in the blind signature scheme.
+\end{itemize}

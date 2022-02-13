@@ -1,0 +1,26 @@
+\chapter*{Abstract}
+GNU Taler is an intuitive, fast and socially responsible digital payment system implemented as free software.
+While preserving the customers privacy, GNU Taler is still compliant to regulations.
+\\\\
+The goal of this thesis is to improve Taler's performance and provide cipher agility by adding support for Schnorr's blind signatures.
+To achieve this goal, the current state in research for Schnorr signatures needs to be analyzed.
+After choosing a signature scheme, it has to be integrated into the Taler protocols.
+Besides implementing the redesigned protocols in Taler, an implementation of the cryptographic routines is needed.
+\\\\
+The paper "Blind Schnorr
+Signatures and Signed ElGamal Encryption in the Algebraic Group Model" \cite{cryptoeprint:2019:877} from 2019 (updated in 2021) introducing \gls{CSBS} is used as theoretical basis for our improvements.
+The paper explains why simple Blind Schnorr Signatures are broken and how the Clause Schnorr Blind Signature scheme is secured against this attack.\\
+Compared to the currently used \gls{RSABS}, the new scheme has an additional request, two blinding factors instead of one and many calculations are done twice to prevent attacks.
+\\\\
+The Taler protocols were redesigned to support the Clause Blind Schnorr Signature scheme, including slight alterations to ensure \textit{abort-idempotency}, and then further specified.
+Before starting with the implementation of the redesigned protocols, the cryptographic routines for \gls{CSBS} were implemented as part of the thesis. \\
+All of the implemented code is tested and benchmarks are added for the cryptographic routines.
+\\\\
+Multiple results were achieved during this thesis:
+The redesigned protocols Taler protocols with support for \gls{CSBS}, the implementation of the cryptographic routines, the implementation of Talers core protocols and a detailed comparison between \gls{RSABS} and \gls{CSBS}.
+Overall, the \gls{CSBS} are significantly faster, require less disk space, and bandwidth and provide \textit{cipher agility} for Taler.
+
+\section*{Acknowledgement}
+We would like to kindly thank Christian Grothoff (Bern University of Applied Sciences) for his extensive advice, support and very helpful feedback during our whole thesis.\\
+We also kindly thank Jeffrey Burdges (Web 3, Switzerland) for reviewing the proposal containing the redesigned protocols and giving feedback.\\
+Further, we kindly thank Jacob Appelbaum (Bern University of Applied Sciences, Eindhoven University of Technology) for further results for the performance measurements of our cryptographic routines and the insightful conversations.

@@ -1,0 +1,72 @@
+\chapter{Introduction}
+
+\section{Motivation}
+Public key cryptography based on elliptic curves allows smaller key sizes compared to other cryptographic systems.
+While still providing equivalent security, the smaller key size leads to huge performance benefits.
+\\
+Blind Signatures are one of the key components upon which Taler's privacy is built upon.
+Our thesis adds support for a modern cryptographic scheme called the Clause Blind Schnorr Signature scheme \cite{cryptoeprint:2019:877}.\\
+Additionally to the benefits of ellicptic curve cryptography, adding a second blind signature scheme makes Taler independent of a single cryptographic scheme and thus provides \textit{cipher agility}.
+
+
+\section{Goals}
+\label{sec:goals}
+The project definition is as follows \cite{project-definition}:
+
+The students will implement the blind Schnorr signature inside Taler.
+Taler is a system for the management of virtual money.
+Taler is based on coins that need to be signed by an exchange (for instance a bank).
+In the actual version of the system, coins are signed by the exchange using Schaum's bind-signature protocol.
+This allows users to have signed coins, without the exchange knowing what it signed.
+This step is fundamental for the privacy protection of the system.
+\\The students have to insert the Schnorr blind signature algorithm inside the protocol for the creation of coins.
+But they also need to change the Taler subsystems where the verification of the signature is done.
+\\The actual Taler system allows people to let an exchange sign a coin for which they do not have the private key.
+This is a security issue (for misuse of coins on the dark-net for instance).
+An optional task for the project is to prevent a user to let an exchange sign a public key when the client does not have access to the corresponding private key.
+\\Here is a list of the tasks that the students must do:
+\begin{itemize}
+    \item Design a protocol integrating Schnorr blind signature in the creation of Taler coins.
+    \item Implement the protocol inside the exchange application and the wallet app.
+    \item Analyze the different Taler subsystems to find where the blind signature is verified.
+    \item Replace verification of the blind signature everywhere it occurs.
+    \item Compare both blind signature systems (Schaum's and Schnorr's), from the point of view of security, privacy protection, speed, \dots
+    \item Write tests for the written software.
+    \item Conduct tests for the written software.
+    \item Transfer the new software the Taler developers team
+\end{itemize}
+Here is a list of optional features:
+\begin{itemize}
+    \item Design a protocol, such that the exchange can verify that the user knows the private key corresponding to the coin that is to be signed.
+    \item Implement that protocol.
+\end{itemize}
+
+\section{Scope}
+\label{sec:scope}
+In scope are all necessary changes on the protocol(s) and components for the following tasks:
+\begin{itemize}
+    \item Research the current state of Blind Schnorr Signature schemes
+    \item Redesign the Taler protocols to support Blind Schnorr signatures
+    \item Add support for a Blind Schnorr Signature Scheme in the exchange, merchant, wallet-core, wallet web-extension and optionally on the android mobile wallet
+    \item design and implement a protocol where the user proves to the exchange the knowledge of the coin that is to be signed (optional)
+\end{itemize}
+
+Out of scope is production readyness of the implementation.
+This is because changes in the protocos and code need to be thoroughly vetted to ensure that no weaknesses or security vulnerabilities were introduced.
+Such an audit is out of scope for the thesis and is recommended to be performed in the future.
+The iOS wallet will not be considered in this work.
+\\
+It is not unusual that a scope changes when a project develops.
+Due to different reasons, the scope needed to be shifted.
+Since there are no libraries supporting \gls{CSBS}, the signature scheme has to be implemented and tested before integrating it into Taler.
+While this is still reasonable to do in this project, it will affect the scope quite a bit.
+The analysis of the optional goal showed, that a good solution that aligns with Taler's goals and properties needs more research and is a whole project by itself.
+
+Scope changes during the project:
+\begin{itemize}
+    \item \textbf{Added:} Implement the cryptographic routines in GNUnet
+    \item \textbf{Removed: } design and implement a protocol where the user proves to the exchange the knowledge of the coin that is to be signed (optional)
+    \item \textbf{Adjusted: } Focus is on the implementation of the exchange protocols (Withdraw, Spend, Refresh and cryptographic utilities)
+    \item \textbf{Adjusted: } Implementation of the refresh protocol and wallet-core are nice-to-have goals
+    \item \textbf{Removed: } The Merchant and the android wallet implementations are out of scope
+\end{itemize}

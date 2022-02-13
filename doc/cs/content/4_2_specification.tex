@@ -1,0 +1,790 @@
+\chapter{Protocol Specification}
+\label{chap:spec}
+The proposed Taler protocols using the Clause Blind Schnorr Signature Scheme will be implemented as an additional option besides the existing \gls{RSABS} variant of the protocol as suggested by Christian Grothoff.
+A Taler Exchange operator should be able to configure whether he wants to use \gls{RSABS} or \gls{CSBS}.
+\\This variant allows to choose the signature scheme globally or per denomination.
+Furthermore, it allows a change of signature scheme in a non-breaking way by revoking (or letting expire) a denomination and offering new denominations with the other scheme.
+\\
+The following key points are specified in this chapter:
+\begin{itemize}
+  \item Architecture of the different components
+  \item Explain and specify needed changes
+  \item Data strucutures
+  \item Public \acp{API}
+  \item Persistence
+  \item Used libraries
+\end{itemize}
+
+\section{Architecture}
+Before specifying the implementation of the different protocols, a deeper understanding of the technical architecture of Talers components is needed.
+this section introduces the architecture of the exchange and wallet components and explains where the needed changes need to be implemented on a high-level.
+
+\subsection{Exchange}
+An introduction to the exchange can be found in section \ref{sec:exchange}.
+An exchange operator needs to run and maintain some additional services besides Taler's exchange.
+Although this is not directly relevant for the implementation, it helps to better understand the environment in which the exchange runs.
+The perspective of an exchange operator can be seen in figure \ref{fig:taler:exchange-operator-architecture}.
+
+\begin{figure}[h!]
+  \begin{adjustbox}{max totalsize={.9\textwidth}{.7\textheight},center}
+    \begin{tikzpicture}
+      \tikzstyle{def} = [node distance= 5em and 6.5em, inner sep=1em, outer sep=.3em];
+      \node (origin) at (0,0) {};
+      \node (exchange) [def,above=of origin,draw]{Exchange};
+      \node (nexus) [def, draw, below right=of exchange] {Nexus};
+      \node (corebanking) [def, draw, below left=of nexus] {Core Banking};
+      \node (nginx) [def, draw, above=of exchange]{Nginx};
+      \node (postgres) [def, draw, below left=of exchange]{Postgres};
+      \node (postgres-nexus) [def, draw, below right=of nexus]{Postgres};
+
+      \tikzstyle{C} = [color=black, line width=1pt]
+
+      \draw [<-, C] (exchange) -- (nginx) node [midway, above, sloped] (TextNode) {REST API};
+      \draw [<-, C] (postgres) -- (exchange) node [midway, above, sloped] (TextNode) {SQL};
+      \draw [<-, C] (postgres-nexus) -- (nexus) node [midway, above, sloped] (TextNode) {SQL};
+      \draw [<-, C] (nexus) -- (exchange) node [midway, above, sloped] (TextNode) {Internal REST API};
+      \draw [<-, C] (corebanking) -- (nexus) node [midway, above, sloped] (TextNode) {EBICS/FinTS};
+
+    \end{tikzpicture}
+  \end{adjustbox}
+  \caption{Taler exchange operator architecture (source: \cite{taler-presentation})}
+  \label{fig:taler:exchange-operator-architecture}
+\end{figure}
+
+The software architecture of the exchange can be seen in figure \ref{fig:taler:exchange-architecture}.
+The API runs under the httpd service, where the API endpoints need to be adjusted/added to incorporate the changes of this thesis.
+The httpd server has no access to the private keys of the denomination and  online signing keys.
+Only the corresponding security module can perform operations requiring the private key.
+Further the keys are also managed by these security modules.
+To support \gls{CSBS} a new security module, which performs signature operations, is added.
+To persist the new data structures, the postgres helpers need to be adjusted to serialize/deserialize the new \gls{CSBS} data structures.
+More details on what changes are needed in these places is discussed in the following sections.
+
+\begin{figure}[h!]
+  \begin{center}
+    \begin{tikzpicture}
+      \tikzstyle{def} = [node distance=2em and 2.5em, inner sep=1em, outer sep=.3em];
+      \node (origin) at (0,0) {};
+      \node [blue] (httpd) [def,above=of origin,draw]{httpd};
+      \node (secmod-rsa) [def, draw, right=of httpd] {secmod-rsa};
+      \node (secmod-eddsa) [def, draw, left=of httpd] {secmod-eddsa};
+      \node [blue](postgres) [def, draw, below=of httpd]{Postgres};
+      \node [mGreen] (secmod-cs) [def, draw, left=of postgres]{secmod-cs};
+      \node (aggregator) [def, draw, right=of postgres]{aggregator};
+      \node (transfer) [def, draw, below left=of postgres]{transfer};
+      \node (wirewatch) [def, draw, below right=of postgres]{wirewatch};
+      \node (nexus) [def, draw, below=of postgres]{Nexus};
+
+      \tikzstyle{C} = [color=black, line width=1pt]
+
+      \draw [<->, C] (httpd) -- (postgres) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (httpd) -- (secmod-rsa) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (httpd) -- (secmod-eddsa) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (httpd) -- (secmod-cs) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (aggregator) -- (postgres) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (wirewatch) -- (postgres) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (transfer) -- (postgres) node [midway, above, sloped] (TextNode) {};
+      \draw [->, C] (transfer) -- (nexus) node [midway, above, sloped] (TextNode) {};
+      \draw [<-, C] (wirewatch) -- (nexus) node [midway, above, sloped] (TextNode) {};
+    \end{tikzpicture}
+  \end{center}
+  \caption{Taler exchange architecture (source: \cite{taler-presentation})}
+  \label{fig:taler:exchange-architecture}
+\end{figure}
+
+\subsection{Wallet}
+The architecture of the wallet implementation (as seen in figure \ref{fig:taler:wallet-architecture}) is quite straightforward.
+To add support for \gls{CSBS} in the wallet, the cryptographic routines need to be reimplemented in Typescript.
+Taler uses tweetnacl \cite{bern:tweetnacl} which provides functionality for the group operations.
+There are existing \gls{hkdf} and \gls{fdh} implementations, that can be reused.\\
+Furthermore, the Taler protocols need to be adjusted to support \gls{CSBS} in the wallet-core.
+
+\begin{figure}[h!]
+  \begin{center}
+    \begin{tikzpicture}
+      \tikzstyle{def} = [node distance= 5em and 4.5em, inner sep=1em, outer sep=.3em];
+      \node (origin) at (0,0) {};
+      \node (gui) [def,above=of origin,draw]{wallet-gui};
+      \node [blue](core) [def,below=of gui,draw]{wallet-core};
+      \node (sync) [def, draw, below left=of core] {Sync};
+      \node (taler) [def, draw, below right=of core] {Taler};
+      \node (anastasis) [def, draw, below=of core] {Anastasis};
+
+      \tikzstyle{C} = [color=black, line width=1pt]
+      \draw [<->, C] (gui) -- (core) node [midway, above, sloped] (TextNode) {};
+      \draw [<->, C] (core) -- (sync) node [midway, above, sloped] (TextNode) {Backup};
+      \draw [<->, C] (core) -- (taler) node [midway, above, sloped] (TextNode) {Payment};
+      \draw [<->, C] (core) -- (anastasis) node [midway, above, sloped] (TextNode) {Key Escrow};
+    \end{tikzpicture}
+  \end{center}
+  \caption{Taler wallet architecture (source: \cite{taler-presentation})}
+  \label{fig:taler:wallet-architecture}
+\end{figure}
+
+\section{Persistence}
+The Clause Blind Schnorr Signature scheme is quite different to \gls{RSABS}.
+Despite the differences, the database model does not need to be changed.
+The only change needed an additional type field, specifying whether RSA or CS is used as signature algorithm.
+To persist the new structs introduced with the support for \gls{CSBS}, only the postgres helpers need to support serialization and deserialization of the new structs.
+
+\section{Testing}
+We will partially use test-driven development, meaning that we will write tests (at least for the known good case) before implementing functions, and extend them during and after development.
+This allows us to check the functionality (code section, function(s)) during development, while being able to extend testing whenever we identify new test cases during development.
+
+Test cases can be used to verify different aspects of a functionality.
+These are the ones we will focus on.
+\begin{itemize}
+  \item \textbf{Known good}:
+        Known good cases test whether a functionality works as expected.
+        They are the most useful during development, because they indicate whether the code is working as expected.
+  \item \textbf{Known Bad}:
+        Known bad cases test whether functionality that is known not to work behaves as expected.
+  \item \textbf{Determinism}:
+        This case type checks whether the same input leads to the same output.
+        It is important for code that must work deterministic (same output), non-deterministic (e.g. random output) or based on a state that impacts the functionality.
+  \item \textbf{Performance testing}:
+        Performance testing is used to gather timing information that can be used to identify functionality with long duration, or to  compare performance between different implementations or major changes.
+        We will restrict performance testing to the comparison of the Blind RSA Signature Scheme and the Clause Blind Schnorr Signature Scheme.
+\end{itemize}
+
+
+\section{Signature Scheme Operations in GNUnet}
+\label{sec:specification-signature-scheme}
+
+The signature scheme operations implemented are needed in all other parts of the implementation.
+Taler's cryptographic primitives (e.g. \gls{RSABS}, \gls{hkdf}, hash functions) are mostly implemented in GNUnet utils, therefore the Clause Blind Schnorr Signature routines will be implemented in GNUnet too.
+It is important to provide a clear API for the cryptographic routines and to test them thoroughly.
+Libsodium will be used for finite field arithmetic (\cite{libsodium:finite-field-arithmetic}) and for other functionality when available (e.g. for key generation).
+Thus, a widely used and well tested cryptographic library is used for group operations.
+
+For \acl{FDH} and \gls{hkdf} existing implementations provided by GNUnet are used.
+The \gls{hkdf} is used with SHA-512 for the extraction phase and SHA-256 for the expansion phase.
+
+\subsection{Data Structures}
+Libsodium represents Ed25519 points and scalars as 32-byte char arrays.
+To provide a more user-friendly \ac{API}, structs were created to represent each type.
+For example \texttt{struct GNUNET\_CRYPTO\_CsPrivateKey} or  \texttt{struct GNUNET\_CRYPTO\_RSecret}
+The main reason is to increase readability and to prevent misusage of the \ac{API}.
+Unlike RSA, our \gls{CSBS} on Ed25519 data structures have a fixed sizes.
+The different data structures can be found in table \ref{tab:datastruct-crypto}.
+
+\begin{table}[ht]
+  \centering
+  \resizebox{0.95\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Values} & \textbf{Data Structure} & \textbf{Data Type} \\\hline
+      Curve25519 Scalar & {\small GNUNET\_CRYPTO\_Cs25519Scalar} & 32 byte char array\\\hline
+      Curve25519 Point & {\small GNUNET\_CRYPTO\_Cs25519Point} & 32 byte char array\\\hline
+      Private Key & {\small GNUNET\_CRYPTO\_CsPrivateKey} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      Public Key & {\small GNUNET\_CRYPTO\_CsPublicKey} & {\small GNUNET\_CRYPTO\_Cs25519Point}\\\hline
+      $\alpha, \beta$ & {\small GNUNET\_CRYPTO\_CsBlindingSecret} & {\footnotesize 2x GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      $r$ & {\small GNUNET\_CRYPTO\_CsRSecret} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      $R$ & {\small GNUNET\_CRYPTO\_CsRPublic} & {\small GNUNET\_CRYPTO\_Cs25519Point}\\\hline
+      $c$ & {\small GNUNET\_CRYPTO\_CsC} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      $s$ & {\small GNUNET\_CRYPTO\_CsBlindS} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      $s'$ & {\small GNUNET\_CRYPTO\_CsS} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\\hline
+      $\sigma := \langle s',R' \rangle$ & {\small GNUNET\_CRYPTO\_CsSignature} & {\small GNUNET\_CRYPTO\_Cs25519Scalar}\\
+      & & {\small GNUNET\_CRYPTO\_Cs25519Point}\\\hline
+      Nonce & {\small GNUNET\_CRYPTO\_CsNonce} & 32 byte char array\\\hline
+  \end{tabular}
+  \caption{Data structures for cryptographic routines}
+  \label{tab:datastruct-crypto}
+\end{minipage}}
+\end{table}
+
+
+
+\subsection{Library API}
+The public \ac{API} and related data structures are specified in the C header file \url{src/include/gnunet_crypto_lib.h} in the GNUnet repository \cite{gnunet-git}.
+It was developed in multiple iterations based on feedback from Christian Grothoff.
+The complete C header \ac{API} can be found in the repository.
+This section provides an overview of the implemented crypto API.
+
+Some design decisions need to be explained further:
+\begin{itemize}
+  \item In order to prevent misusage of our implementation and increase readability, the functions that represent different stages in the signature scheme takes different data types as in- and output.
+        Internally most variables are either scalars or curve points (except for nonces, secrets and messages).
+  \item Operations that are performed twice in the Clause Blind Schnorr Signature Scheme (e.g. derivation of $ r $) do not have to be called twice.
+        Instead, the API returns an array of two instead of a single value.\\
+        For these functions, we also optimized the \gls{hkdf} (as proposed by Christian Grothoff).
+        Instead of calling \gls{hkdf} twice (with different salts, e.g. "r0" and "r1"), we call it one time (e.g. with salt "r") and double the output length.
+  \item The cryptographic hash function used to derive $ c' $ (hash of $ R' $ and message) must map the results into the main subgroup for scalars, meaning that it has to be a \gls{fdh} (see \ref{sec:rsa-fdh}).
+\end{itemize}
+
+The following API examples should provide an overview on how the API works and how to use it.
+
+First of all the API must provide functionality to create a \gls{25519} keypair as in listing \ref{lst:crypto-keypair-api}
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet create keypair API}, label={lst:crypto-keypair-api}]
+/**
+ * Create a new random private key.
+ *
+ * @param[out] priv where to write the fresh private key
+ */
+void
+GNUNET_CRYPTO_cs_private_key_generate (
+    struct GNUNET_CRYPTO_CsPrivateKey *priv);
+
+
+/**
+ * Extract the public key of the given private key.
+ *
+ * @param priv the private key
+ * @param[out] pub where to write the public key
+ */
+void
+GNUNET_CRYPTO_cs_private_key_get_public (
+    const struct GNUNET_CRYPTO_CsPrivateKey *priv,
+    struct GNUNET_CRYPTO_CsPublicKey *pub);
+\end{lstlisting}
+
+The signer needs an API to generate his secret $r$ and calculate his public point $R$.
+As specified in the redesign of the protocols, the r must not be chosen randomly because we need to provide \textit{\gls{abort-idempotency}}. However, the secret $r$ still needs to be \textit{unpredictable} and look random to the client.
+The r\_derive API derives such a secret $r$ from a nonce and a long-term secret with \gls{hkdf}.
+Further, the API ensures that a caller must generate two secret $r$ as in the Clause Blind Schnorr Signature scheme. This should discourage people from using the unsecure Blind Schnorr Signature scheme. See \ref{lst:crypto-rderive-api}.
+
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet r derive API}, label={lst:crypto-rderive-api}]
+ /**
+  * Derive a new secret r pair r0 and r1.
+  * In original papers r is generated randomly
+  * To provide abort-idempotency, r needs to be derived but still needs to be UNPREDICTABLE
+  * To ensure unpredictability a new nonce should be used when a new r needs to be derived.
+  * Uses HKDF internally.
+  * Comment: Can be done in one HKDF shot and split output.
+  * 
+  * @param nonce is a random nonce
+  * @param lts is a long-term-secret in form of a private key
+  * @param[out] r array containing derived secrets r0 and r1
+  */
+ void
+ GNUNET_CRYPTO_cs_r_derive (const struct GNUNET_CRYPTO_CsNonce *nonce,
+                            const struct GNUNET_CRYPTO_CsPrivateKey *lts,
+                            struct GNUNET_CRYPTO_CsRSecret r[2]);
+ 
+ 
+/**
+  * Extract the public R of the given secret r.
+  *
+  * @param r_priv the private key
+  * @param[out] r_pub where to write the public key
+  */
+ void
+ GNUNET_CRYPTO_cs_r_get_public (const struct GNUNET_CRYPTO_CsRSecret *r_priv,
+                                struct GNUNET_CRYPTO_CsRPublic *r_pub);
+\end{lstlisting}
+
+
+Same as the r\_derive, the blinding secrets are also derived and not generated randomly.
+The blinding secrets are generated by a client who provides a secret as seed to derive the secrets from as in listing \ref{lst:crypto-blinding-secrets-api}.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet blinding secrets derive API}, label={lst:crypto-blinding-secrets-api}]
+/**
+ * Derives new random blinding factors.
+ * In original papers blinding factors are generated randomly
+ * To provide abort-idempotency, blinding factors need to be derived but still need to be UNPREDICTABLE
+ * To ensure unpredictability a new nonce has to be used.
+ * Uses HKDF internally
+ * 
+ * @param secret is secret to derive blinding factors
+ * @param secret_len secret length
+ * @param[out] bs array containing the two derivedGNUNET_CRYPTO_CsBlindingSecret
+ */
+void
+GNUNET_CRYPTO_cs_blinding_secrets_derive (
+    const struct GNUNET_CRYPTO_CsNonce *blind_seed,
+    struct GNUNET_CRYPTO_CsBlindingSecret bs[2]);
+\end{lstlisting}
+
+Further the Clause Blind Schnorr API provides an API to calculate the two blinded c of the message with the two public $R$, the blinding factors and the public key as in listing \ref{lst:crypto-calc-c-api}.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet calculate blinded c API}, label={lst:crypto-calc-c-api}]
+/**
+ * Calculate two blinded c's
+ * Comment: One would be insecure due to Wagner's algorithm solving ROS
+ * 
+ * @param bs array of the two blinding factor structs each containing alpha and beta
+ * @param r_pub array of the two signer's nonce R
+ * @param pub the public key of the signer
+ * @param msg the message to blind in preparation for signing
+ * @param msg_len length of message msg
+ * @param[out] blinded_c array of the two blinded c's
+ */
+void
+GNUNET_CRYPTO_cs_calc_blinded_c (
+    const struct GNUNET_CRYPTO_CsBlindingSecret bs[2],
+    const struct GNUNET_CRYPTO_CsRPublic r_pub[2],
+    const struct GNUNET_CRYPTO_CsPublicKey *pub,
+    const void *msg,
+    size_t msg_len,
+    struct GNUNET_CRYPTO_CsC blinded_c[2]);
+\end{lstlisting}
+
+The sign function in our API is called sign\_derive, since we derive $b \in \{0,1\}$ from the long-term secret and then calculate the signature scalar of $c_b$.
+See listing \ref{lst:crypto-sign-api}.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet sign API}, label={lst:crypto-sign-api}]
+/**
+ * Sign a blinded c
+ * This function derives b from a nonce and a longterm secret
+ * In original papers b is generated randomly
+ * To provide abort-idempotency, b needs to be derived but still need to be UNPREDICTABLE.
+ * To ensure unpredictability a new nonce has to be used for every signature
+ * HKDF is used internally for derivation
+ * r0 and r1 can be derived prior by using GNUNET_CRYPTO_cs_r_derive
+ * 
+ * @param priv private key to use for the signing and as LTS in HKDF
+ * @param r array of the two secret nonce from the signer
+ * @param c array of the two blinded c to sign c_b
+ * @param nonce is a random nonce
+ * @param[out] blinded_signature_scalar where to write the signature
+ * @return 0 or 1 for b (see Clause Blind Signature Scheme)
+ */
+int
+GNUNET_CRYPTO_cs_sign_derive(
+    const struct GNUNET_CRYPTO_CsPrivateKey *priv,
+    const struct GNUNET_CRYPTO_CsRSecret r[2],
+    const struct GNUNET_CRYPTO_CsC c[2],
+    const struct GNUNET_CRYPTO_CsNonce *nonce,
+    struct GNUNET_CRYPTO_CsBlindS *blinded_signature_scalar);
+\end{lstlisting}
+
+The API for the unblind operation can be called with the blinding secrets and the signature scalar received from the signer as in listing \ref{lst:crypto-unblind-api}.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={GNUnet unblind API}, label={lst:crypto-unblind-api}]
+  /**
+ * Unblind a blind-signed signature using a c that was blinded
+ *
+ * @param blinded_signature_scalar the signature made on the blinded c
+ * @param bs the blinding factors used in the blinding
+ * @param[out] signature_scalar where to write the unblinded signature
+ */
+void
+GNUNET_CRYPTO_cs_unblind (
+    const struct GNUNET_CRYPTO_CsBlindS *blinded_signature_scalar,
+    const struct GNUNET_CRYPTO_CsBlindingSecret *bs,
+    struct GNUNET_CRYPTO_CsS *signature_scalar);
+\end{lstlisting}
+
+The verify API takes the message and its signature with the public key and returns GNUNET\_OK for a valid signature and GNUNET\_SYSERR otherwhise.
+See listing \ref{lst:crypto-verify-api}.
+
+\begin{lstlisting}[style=bfh-c,language=C,, caption={GNUnet verify API}, label={lst:crypto-verify-api}]
+  /**
+  * Verify whether the given message corresponds to the given signature and the
+  * signature is valid with respect to the given public key.
+  *
+  * @param sig signature that is being validated
+  * @param pub public key of the signer
+  * @param msg is the message that should be signed by @a sig  (message is used to calculate c)
+  * @param msg_len is the message length
+  * @returns #GNUNET_YES on success, #GNUNET_SYSERR if signature invalid
+  */
+ enum GNUNET_GenericReturnValue
+ GNUNET_CRYPTO_cs_verify (const struct GNUNET_CRYPTO_CsSignature *sig,
+                          const struct GNUNET_CRYPTO_CsPublicKey *pub,
+                          const void *msg,
+                          size_t msg_len);
+\end{lstlisting}
+
+\subsection{Testing}
+For digital signature schemes, the most important test case is the \textit{known good} case where a signature is created and successfully validated.
+This test case already tests very much in a digital signature scheme.
+When the signature creation or verification has a bug, a test will not succeed, because the mathematic operations need to be correct to be validated correctly.
+
+The cryptographic operations are further tested for deterministicy (where it applies), meaning that multiple function calls with the same input must lead to the same output.
+
+Since libsodium is used for the finite field arithmetic operations and is a well tested library, many cryptographic tests are already done in libsodium.
+
+The performance is measured in a benchmark to see how performant \gls{CSBS} are in comparison to the RSA Blind Signature Scheme.
+
+\section{Taler Cryptographic Utilities}
+Taler provides utility functions to support cryptographic operations.\\
+This chapter provides an overview of these utility functions and about the functionality they provide.
+
+\subsection{Planchet Creation}
+In crypto.c many utility functions are provided to create planchets (for planchet details see \ref{fig:coin:states}), blinding secrets and much more.
+One difference between \gls{RSABS} and \gls{CSBS} is, that the coin private key and RSA blinding secret can be created at the same point in time, since the RSA blinding secret is created randomly.
+However, for Clause Blind Schnorr secrets an additional step is needed, the public $R_0$ and $R_1$ are required to calculate the blinding seed to derive the secrets.
+
+A planchet in the Clause Blind Schnorr Signature Scheme can be created as followed (implementation details ommited).
+
+\begin{enumerate}
+  \item Create planchet with new \ac{EdDSA} private key
+  \item Derive withdraw nonce
+  \item Request public $R_0, R_1$ from signer
+  \item Derive blinding seed
+  \item Prepare (blind) the planchet
+\end{enumerate}
+
+After the planchet is created, it is sent to the exchange to be signed.
+
+\subsection{Taler CS Security Module}
+The exchange segregates access to the private keys with separate security module processes.
+The security module has sole access to the private keys of the online signing keys and thus, only a security module can create signatures.
+The different \textit{taler-exchange-secmod} processes (separated by signature scheme) are managing the exchanges online signing keys. The RSA denomination keys for example are managed with \textit{taler-exchange-secmod-rsa}.
+
+Now a new \textit{taler-exchange-secmod-cs} needs to be created for managing the \gls{CSBS} denomination keys.
+These security modules run on the same machine as the httpd process and they use UNIX Domain Sockets as method for \acl{IPC}.
+A short introduction about UNIX Domain Sockets can be found in the blog post \cite{matt:unix-domain-sockets}.
+Furthermore, the security modules are used to protect the online signing keys by performing the actual signing operations in the dedicated taler-secmod-cs process.
+This abstraction makes it harder for an attacker who has already compromised the http daemon to gain access to the private keys.
+However, such an attacker would still be able to sign arbitrary messages (see \cite{taler-documentation:exchange-operator-manual}).
+A crypto helper exists for each security module, these functions can be called inside the exchange for operations requiring the private online signing keys.
+The new Clause Schnorr security module and corresponding crypto helper provides the following functionality:
+\begin{itemize}
+  \item Private Key Management and creation
+  \item Request public $R_0, R_1$
+  \item Request a signature of a $c_0,c_1$ pair
+  \item Revoke an online signing key
+\end{itemize}
+
+\subsection{Testing}
+All of the operations have tests and are included in unit tests.
+As a template for testing, the existing RSA tests were used and adjusted for \gls{CSBS}.
+
+
+\section{Denomination Key Management}
+Since we introduce a type of denomination keys, related operations like connection to the \gls{CSBS} security module, making the denominations available for customers, persisting them in the database and offline signing using the exchange's offline signature key have to be extended to incorporate the \acl{CS}.
+
+The exchange offline signer requests the future, not yet signed keys by calling GET \url{/management/keys} as described in table \ref{tab:management-keys-get}. \\\\
+\framebox[1.1\width]{\color{blue}\texttt{GET /management/keys}}
+\begin{table}[ht]
+  \centering
+  \resizebox{0.9\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{ll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Value} \\
+      future\_denoms & Information about denomination keys \\
+      future\_signkeys & Information about exchange online signing keys \\
+      master\_pub & Exchange's master public key \\
+      denom\_secmod\_public\_key & RSA security module public key \\
+      denom\_secmod\_cs\_public\_key & \gls{CSBS} security module public key \\
+      signkey\_secmod\_public\_key & Online singing security module public key \\
+  \end{tabular}
+  \caption{GET \url{/management/keys} response data}
+  \label{tab:management-keys-get}
+\end{minipage}}
+\end{table}
+
+It then signs the keys and returns them using POST on the same \ac{URL} with the data described in table  \ref{tab:management-keys-post}. \\\\
+\framebox[1.1\width]{\color{blue}\texttt{POST /management/keys}}
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{ll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Value} \\
+      denom\_sigs & Denomination key signatures \\
+      signkey\_sigs & Online signing key signatures \\
+  \end{tabular}
+  \caption{POST \url{/management/keys} response data}
+  \label{tab:management-keys-post}
+\end{table}
+
+Wallets can then call GET \url{/keys} to obtain the current denominations and other information, the response is described in table \ref{tab:keys-get}. \\\\
+\framebox[1.1\width]{\color{blue}\texttt{GET /keys}}
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{ll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Value} \\
+      version & Exchange's protocol version \\
+      currency & Currency \\
+      master\_public\_key & Exchange's master public key \\
+      reserve\_closing\_delay & Delay before reserves are closed \\
+      signkeys & Exchange's online signing public keys \\
+      recoup & Revoked keys \\
+      denoms & List of denominations \\
+      auditors & Auditors for this exchange \\
+      list\_issue\_date & Timestamp \\
+      eddsa\_pub & Exchange's online signing public key \\
+      eddsa\_sig & Signature (use "eddsa\_pub" for verification) \\
+  \end{tabular}
+  \caption{GET \url{/keys} response data}
+  \label{tab:keys-get}
+\end{table}
+
+
+\section{New Endpoint for $R$}
+The withdraw and refresh protocols using the  Claude Blind Schnorr Signature Scheme introduce an additional round trip.
+In this round trip, the customer requests two $ R $ from the exchange.
+The exchange uses a secret $ r $ to calculate $ R := rG $.
+\\
+In contrast to the plain Clause Blind Schnorr Signature Scheme (see \ref{sec:clause-blind-schnorr-sig}), $ r $ isn't generated randomly but instead derived using a \gls{hkdf} with a nonce from the customer and a denomination private key (secret only known by the exchange).
+This still ensures that the private $ r $ can't be anticipated, but has multiple advantages regarding \gls{abort-idempotency}.
+\Gls{abort-idempotency} means that a withdraw or refresh operation can be aborted in any step and later tried again (using the same values) without yielding a different result.
+The challenge for $ r, R $ regarding \gls{abort-idempotency} is to ensure that the same $ r $ is used during the complete signature creation process.
+
+The only drawback of this process is that we have to ensure that the same nonce and secret aren't used for different withdraw- or refresh-operations.
+This is done during signature creation and will be described in the withdraw protocol section \ref{sec:specification-withdraw}.
+
+
+\subsection{Public APIs and Data Structures}
+This is a new functionality, meaning a new endpoint accessible to customers has to be introduced.
+It will be made available in the exchange HTTP server under \framebox[1.1\width]{\color{blue}\texttt{POST /csr}} and will take the input parameters described in table \ref{tab:csr-request-data} (as \ac{JSON}).
+\begin{table}[ht]
+  \centering
+  \resizebox{0.9\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      nonce & String & 32 Bytes encoded in Crockford base32 Hex \\
+      denom\_pub\_hash & String & Denomination Public Key encoded in Crockford base32 Hex \\
+  \end{tabular}
+  \caption{POST \url{/csr} request data}
+  \label{tab:csr-request-data}
+\end{minipage}}
+\end{table}
+
+The exchange will then check the denomination and return one of these HTTP status codes:
+\begin{itemize}
+  \item \textbf{200 (HTTP\_OK)}: Request Successful
+  \item \textbf{400 (BAD\_REQUEST)}: Invalid input parameters
+  \item \textbf{404 (NOT\_FOUND)}: Denomination unknown or not Clause Schnorr
+  \item \textbf{410 (GONE)}: Denomination revoked/expired
+  \item \textbf{412 (PRECONDITION\_FAILED)}: Denomination not yet valid
+\end{itemize}
+
+When the request was successful, the exchange returns the data described in table \ref{tab:csr-response-data} (as \ac{JSON}).
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      r\_pub\_0 & String & 32 Bytes encoded in Crockford base32 Hex \\
+      r\_pub\_1 & String & 32 Bytes encoded in Crockford base32 Hex \\
+  \end{tabular}
+  \caption{POST \url{/csr} response data}
+  \label{tab:csr-response-data}
+\end{table}
+
+
+\subsection{Persistence}
+This API does not persist anything.
+This is because the resulting $R_0, R_1$ are derived and can be derived in a later step.
+
+
+\section{Withdraw Protocol}
+\label{sec:specification-withdraw}
+The withdraw protocol has been introduced in section \ref{sec:withdrawal}.
+For the \acl{CS} necessary adjustments are described in section \ref{sec:withdraw-protocol-schnorr}.
+
+
+\subsection{Public APIs and Data Structures}
+\label{sec:specification-withdraw-public-api}
+The existing endpoint is available under \texttt{POST /reserves/[reserve]/withdraw} where "reserve" is the reserve public key encoded as Crockford base32.
+It takes the following input parameters described in table \ref{tab:withdraw-request-data} as JSON.\\\\
+\framebox[1.1\width]{\color{blue}\texttt{POST /reserves/[reserve]/withdraw}}
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{ll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Value} \\
+      denom\_pub\_hash & Denomination Public Key \\
+      coin\_ev & RSA blinded coin public key \\
+      reserve\_sig & Signature over the request using the reserve's private key \\
+  \end{tabular}
+  \caption{Withdraw request data}
+  \label{tab:withdraw-request-data}
+\end{table}
+
+In order to facilitate parsing, Christian Grothoff suggested to include the cipher type in the "coin\_ev" field, thus creating a nested \ac{JSON} (as described in table \ref{tab:withdraw-coin-ev-rsa}).
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      cipher & Integer & Denomination cipher: 1 stands for RSA \\
+      rsa\_blinded\_planchet & String & RSA blinded coin public key \\
+  \end{tabular}
+  \caption{Withdraw "coin\_ev" field (RSA)}
+  \label{tab:withdraw-coin-ev-rsa}
+\end{table}
+
+For the Clause Schnorr implementation, the field "rsa\_blinded\_planchet" will be replaced with the necessary values as described in table \ref{tab:withdraw-coin-ev-cs}.
+\begin{table}[ht]
+  \centering
+  \resizebox{0.85\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+    \rowcolor{BFH-tablehead}
+    \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+    cipher & Integer & Denomination cipher: 2 stands for \gls{CSBS} \\
+    cs\_nonce & String & 32 Bytes encoded in Crockford base32 Hex \\
+    cs\_blinded\_c0 & String & 32 Bytes encoded in Crockford base32 Hex \\
+    cs\_blinded\_c1 & String & 32 Bytes encoded in Crockford base32 Hex \\
+  \end{tabular}
+  \caption{Withdraw "coin\_ev" field (\gls{CSBS})}
+  \label{tab:withdraw-coin-ev-cs}
+\end{minipage}}
+\end{table}
+
+The exchange will then process the withdraw request and return one of these HTTP status codes:
+\begin{itemize}
+  \item \textbf{200 (HTTP\_OK)}: Request Successful
+  \item \textbf{400 (BAD\_REQUEST)}: Invalid input parameters (can also happen if denomination cipher doesn't match with cipher in "coin\_ev")
+  \item \textbf{403 (FORBIDDEN)}: Signature contained in "reserve\_sig" invalid
+  \item \textbf{404 (NOT\_FOUND)}: Denomination unknown
+  \item \textbf{410 (GONE)}: Denomination revoked/expired
+  \item \textbf{412 (PRECONDITION\_FAILED)}: Denomination not yet valid
+\end{itemize}
+
+When the request was successful, the exchange returns the RSA signature as JSON (described in table \ref{tab:withdraw-response-rsa}).
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      cipher & Integer & Denomination cipher: 1 stands for RSA \\
+      blinded\_rsa\_signature & String & RSA signature \\
+  \end{tabular}
+  \caption{Withdraw response (RSA)}
+  \label{tab:withdraw-response-rsa}
+\end{table}
+
+Table \ref{tab:withdraw-response-cs} describes the response for \gls{CSBS}.
+\begin{table}[ht]
+  \centering
+  \resizebox{0.85\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      cipher & Integer & Denomination cipher: 2 stands for \gls{CSBS} \\
+      b & Integer & \gls{CSBS} signature session identifier (either 0 or 1) \\
+      s & String & signature scalar (32 Bytes encoded in Crockford base32 Hex) \\
+  \end{tabular}
+  \caption{Withdraw response (\gls{CSBS})}
+  \label{tab:withdraw-response-cs}
+\end{minipage}}
+\end{table}
+
+
+\subsection{Persistence}
+Persistence for withdrawing is implemented in the function \texttt{postgres\_do\_withdraw} in \texttt{src/exchangedb/plugin\_exchangedb\_postgres.c}
+For \gls{CSBS}, persisting the blinded signature must be implemented.
+
+
+\section{Deposit Protocol}
+For the deposit protocol (described in section \ref{sec:deposit-protocol}) only the handling and verification of \gls{CSBS} signatures has to be added.
+
+\subsection{Public APIs and Data Structures}
+Deposit is an existing endpoint available under \texttt{POST /coins/[coin public key]/deposit} where "coin public key" is encoded as Crockford base32.
+Additional parameters are passed as JSON (as described in table \ref{tab:spend-request}).\\\\
+\framebox[1.1\width]{\color{blue}\texttt{POST /coins/[coin public key]/deposit}}
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{ll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Value} \\
+      % cipher & Denomination cipher: 2 stands for \gls{CSBS} \\
+      % b & \gls{CSBS} signature session identifier (either 0 or 1) \\
+      % s & signature scalar (32 Bytes encoded in Crockford base32 Hex) \\
+      merchant\_payto\_uri & Account that is credited  \\
+      wire\_salt & Salt used by the merchant \\
+      contribution & Amount to use for payment (for one specific coin) \\
+      denom\_pub\_hash & Denomination public key hash \\
+      ub\_sig & (unblinded) denomination signature of coin \\
+      merchant\_pub & Merchant public key \\
+      h\_contract\_terms & Contract terms hash \\
+      coin\_sig & Deposit permission signature \\
+      timestamp & Timestamp of generation \\
+      refund\_deadline (optional) & Refund deadline \\
+      wire\_transfer\_deadline (optional) & Wire transfer deadline \\
+  \end{tabular}
+  \caption{Spend request}
+  \label{tab:spend-request}
+\end{table}
+
+Relevant field for the \gls{CSBS} implementation is the field "ub\_sig" containing the unblinded denomination signature of the coin.
+For RSA, the (nested) \ac{JSON} is described in table \ref{tab:spend-request-ubsig-rsa}.
+\begin{table}[ht]
+  \centering
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      cipher & Integer & Denomination cipher: 1 stands for RSA \\
+      rsa\_signature & String & Unblinded RSA signature \\
+  \end{tabular}
+  \caption{ub\_sig (RSA)}
+  \label{tab:spend-request-ubsig-rsa}
+\end{table}
+
+Table \ref{tab:spend-request-ubsig-cs} describes the values in "ub\_sig" required for \gls{CSBS}.
+\begin{table}[ht]
+  \centering
+  \resizebox{0.85\textwidth}{!}{\begin{minipage}{\textwidth}
+  \colorlet{BFH-table}{BFH-MediumBlue!10}
+  \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+  \setupBfhTabular
+  \begin{tabular}{lll}
+      \rowcolor{BFH-tablehead}
+      \textbf{Field} & \textbf{Type} & \textbf{Value} \\
+      cipher & Integer & Denomination cipher: 2 stands for \gls{CSBS} \\
+      cs\_signature\_r & String & Curve point $ R' $ (32 Bytes encoded in Crockford base32 Hex) \\
+      cs\_signature\_s & String & Signature scalar (32 Bytes encoded in Crockford base32 Hex) \\
+  \end{tabular}
+  \caption{ub\_sig (\gls{CSBS})}
+  \label{tab:spend-request-ubsig-cs}
+\end{minipage}}
+\end{table}
+
+
+\subsection{Persistence}
+Persistence is handled in the functions \texttt{postgres\_insert\_deposit} and\\ \texttt{postgres\_have\_deposit} located in \url{src/exchangedb/plugin_exchangedb_postgres.c}.
+However, these functions are not containing \gls{CSBS}-specific persistence.
+\\What needs to be adjusted however, is the function \texttt{postgres\_ensure\_coin\_known} called by the function \texttt{TEH\_make\_coin\_known} (located in \url{src/exchange/taler-exchange-httpd_db.c}).
+
+
+% \section{Tipping}
+% \subsection{Public APIs and Data Structures}
+% \subsection{Code Location}
+% \subsection{Persistence}
+% \subsection{Used Libraries}
+
+% \section{Payback Protocol}
+% \subsection{Public APIs and Data Structures}
+% \subsection{Code Location}
+% \subsection{Persistence}
+% \subsection{Used Libraries}
+
+
+% sollte ein Product Backlog das Ziel dieser Phase sein?

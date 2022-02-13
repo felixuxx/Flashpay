@@ -1,0 +1,93 @@
+%============================ MAIN DOCUMENT ================================
+% define document class
+\documentclass[
+	a4paper               % paper format
+%	,10.5pt               % fontsize
+%	,BCOR=18mm            % Binding correction
+%	,twoside
+%	,headings=openright
+	,bibliography=totoc   % If enabled add bibliography to TOC
+	,class=scrreprt		  % If removed, makes book format (1 side left, 1 right)
+	,listof=totoc         % If enabled add lists to TOC
+%	,bilingual
+	,monolingual
+%	,invert-title		  % Invert the BFH colors
+]{bfhthesis}              % KOMA-script report
+
+\input{ads/header.tex}
+
+\begin{document}
+ 
+\frontmatter
+
+
+\input{variable.sty}
+
+%----------------  BFH tile page   -----------------------------------------
+\maketitle
+
+% Abstract
+\input{ads/abstract}
+
+%------------ TABLEOFCONTENTS ----------------
+\tableofcontents
+
+%------------ START MAIN PART ----------------
+\mainmatter
+
+%------------ Introduction
+\input{content/1_introduction.tex}
+
+%------------ Project management
+% \input{content/2_project_management.tex}
+
+%------------ Preliminaries
+\input{content/3_preliminaries.tex}
+
+%------------ Execution
+\input{content/4_execution.tex}
+
+%------------ Discussion
+\input{content/5_discussion.tex}
+
+%------------ Conclusion
+\input{content/6_conclusion.tex}
+
+
+
+%------------ Eidesstattliche Erklärung
+\includepdf[pages=1]{ads/Erklaerung}
+%------------ History
+% \input{ads/history}
+
+%------------ Abbildungsverzeichnis
+%\cleardoublepage
+\listoffigures
+
+%------------ Tabellenverzeichnis
+%\cleardoublepage
+\listoftables
+
+% TODO
+%------------ Quellcodeverzeichnis
+% \cleardoublepage
+ \phantomsection \label{listoflist}
+ \addcontentsline{toc}{chapter}{List of listings}
+ \lstlistoflistings
+
+%------------ Literaturverzeichnis
+%\cleardoublepage
+\printbibliography
+
+%------------ Abkürzungsverzeichnis
+%\cleardoublepage
+\phantomsection \label{listofacs}
+\addcontentsline{toc}{chapter}{Abbreviations}
+\input{ads/abbreviation}
+
+%------------ Glossar
+\printglossary[style=altlist,title=Glossary]
+
+%------------ Anhang
+\input{content/appendix.tex}
+\end{document}

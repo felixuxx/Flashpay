@@ -1,0 +1,677 @@
+\appendix
+
+\chapter{Installation}
+These installation instructions are meant to run the code developed within this thesis for development- and review-purposes.
+For a comprehensive installation instruction follow the Taler documentation
+\cite{taler-documentation}.
+
+\begin{bfhNoteBox}
+    These instructions are used and tested on Ubuntu 21.10.
+\end{bfhNoteBox}
+
+\section{Dependencies and Setup}
+The following dependencies need to be installed for GNUnet and Taler Exchange:
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+sudo apt update
+sudo apt install git curl build-essential gcc automake make \ texinfo autoconf uncrustify libtool pkgconf gettext gnutls-bin \ libcurl4-gnutls-dev libgcrypt20-dev libidn2-dev libjansson-dev \ libnss3-dev sqlite pipenv libltdl-dev libsodium-dev libpq-dev \ autopoint libunistring-dev libextractor-dev libpng-dev \ libpulse-dev libsqlite3-dev recutils python3-jinja2 sqlite yapf3 \ postgresql libpq-dev wget libmicrohttpd-dev
+export LD\_LIBRARY\_PATH=/usr/local/lib
+\end{ubuntu}
+
+\begin{bfhBox}[BFH-MediumBlue]{Install in a container}
+The installation can also be done in a docker or podman container with the ubuntu:21.10 image:
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+podman run -it --name talertest ubuntu:21.10
+\end{ubuntu}
+\end{bfhBox}
+
+\section{Install GNUnet Core}
+GNUnet core is both a dependency of the Taler exchange and where we implemented the Clause Blind Schnorr Signature Scheme.
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+git clone https://git.gnunet.org/gnunet.git
+cd gnunet
+./bootstrap
+./configure --enable-benchmarks --prefix=/usr/local
+make
+make install
+make check # Run optionally to verify installation and run tests
+\end{ubuntu}
+
+To run benchmarks run:
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+./src/util/perf_crypto_cs
+./src/util/perf_crypto_rsa
+\end{ubuntu}
+
+\section{Install Taler Exchange}
+\begin{bfhWarnBox}
+Ensure that the current user has privileges in postgresql.
+One possible way to do this is:\\
+(where [user] has to be replaced with the name of the system user running the tests)
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+service postgresql start
+sudo su
+su - postgres
+psql
+CREATE ROLE [user] LOGIN SUPERUSER;
+CREATE DATABASE [user] OWNER [user];
+exit
+\end{ubuntu}
+\end{bfhWarnBox}
+
+The Taler exchange can be installed as followed:
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+service postgresql start
+createdb talercheck
+git clone https://git.taler.net/exchange.git
+cd exchange
+./bootstrap
+./configure --with-gnunet=/usr/local --prefix=/usr/local
+./make
+./make install
+./make check # Run optionally to verify installation and run tests
+\end{ubuntu}
+
+To execute the security module benchmarks run:
+\setupLinuxPrompt{student}
+\begin{ubuntu}
+cd src/util
+./test_helper_cs
+./test_helper_rsa
+\end{ubuntu}
+
+\chapter{Performance Measurements}
+\label{chap:app-perf}
+
+\section{AMD Ryzen 7 PRO 5850U (Notebook)}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-amd-ryzen-7}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: 8-core AMD Ryzen 7 PRO 5850U \\
+    Architecture: amd64 \\
+    OS: Ubuntu 21.10 Linux 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux \\
+    libsodium:amd64 version: 1.0.18-1build1 \\ 
+    libgcrypt:amd64 version: 1.8.7-5ubuntu2 
+\end{bfhBox}
+
+\begin{table}[h]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.204 ms \\\hline
+        RSA 1024 bit & 10x key generation & 126 ms \\\hline
+        RSA 2048 bit & 10x key generation & 903 ms \\\hline
+        RSA 3072 bit & 10x key generation & 2684 ms \\\hline
+        RSA 4096 bit & 10x key generation & 10 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 0.444 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.094 ms \\\hline
+        CS & 10x blinding & 3.332 ms \\\hline
+        RSA 1024 bit & 10x blinding & 1.282 ms \\\hline
+        RSA 2048 bit & 10x blinding & 3.012 ms \\\hline
+        RSA 3072 bit & 10x blinding & 5 ms \\\hline
+        RSA 4096 bit & 10x blinding & 9 ms \\\hline
+        \hline
+        CS & 10x signing & 0.077 ms \\\hline
+        RSA 1024 bit & 10x signing & 7 ms \\\hline
+        RSA 2048 bit & 10x signing & 34 ms \\\hline
+        RSA 3072 bit & 10x signing & 86 ms \\\hline
+        RSA 4096 bit & 10x signing & 183 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.001 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 2.991 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 10 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 24 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 44 ms \\\hline
+        \hline
+        CS & 10x verifying & 1.358 ms \\\hline
+        RSA 1024 bit & 10x verifying & 0.876 ms \\\hline
+        RSA 2048 bit & 10x verifying & 1.836 ms \\\hline
+        RSA 3072 bit & 10x verifying & 3.075 ms \\\hline
+        RSA 4096 bit & 10x verifying & 5 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on AMD Ryzen 7}
+    \label{tab:comp-sign-amd-ryzen-7}
+\end{table}
+
+\section{Intel(R) Core(TM) i7-8565U}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-intel-i7}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: 8-core  Intel(R) Core(TM) i7-8565U CPU @ 1.80GHz \\
+    Architecture: amd64 \\
+    OS: Ubuntu 21.10 Linux 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux \\
+    libsodium:amd64 version: 1.0.18-1build1 \\ 
+    libgcrypt:amd64 version: 1.8.7-5ubuntu2 
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 1.05 ms \\\hline
+        RSA 1024 bit & 10x key generation & 189 ms \\\hline
+        RSA 2048 bit & 10x key generation & 1555 ms \\\hline
+        RSA 3072 bit & 10x key generation & 5000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 11 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 2.261 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.521 ms \\\hline
+        CS & 10x blinding & 13 ms \\\hline
+        RSA 1024 bit & 10x blinding & 2.6 ms \\\hline
+        RSA 2048 bit & 10x blinding & 4.12 ms \\\hline
+        RSA 3072 bit & 10x blinding & 7 ms \\\hline
+        RSA 4096 bit & 10x blinding & 11 ms \\\hline
+        \hline
+        CS & 10x signing & 0.405 ms \\\hline
+        RSA 1024 bit & 10x signing & 9 ms \\\hline
+        RSA 2048 bit & 10x signing & 44 ms \\\hline
+        RSA 3072 bit & 10x signing & 108 ms \\\hline
+        RSA 4096 bit & 10x signing & 216 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.005 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 3.353 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 12 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 27 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 47 ms \\\hline
+        \hline
+        CS & 10x verifying & 4.413 ms \\\hline
+        RSA 1024 bit & 10x verifying & 1.202 ms \\\hline
+        RSA 2048 bit & 10x verifying & 2.304 ms \\\hline
+        RSA 3072 bit & 10x verifying & 4.094 ms \\\hline
+        RSA 4096 bit & 10x verifying & 6 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on Intel(R) Core(TM) i7-8565U}
+    \label{tab:comp-sign-intel-i7}
+\end{table}
+
+\section{AMD Ryzen Threadripper 1950X 16-Core Processor}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-amd-threadripper}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: AMD Ryzen Threadripper 1950X 16-Core Processor \\
+    Architecture: amd64 \\
+    OS: Linux 5.13.0-trunk-amd64 \#1 SMP Debian 5.13.12-1~exp1
+    (2021-08-20) x86\_64 GNU/Linux \\
+    libsodium:amd64 version: 1.9.4-5 \\ 
+    libgcrypt:amd64 version: 1.0.18-1 
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.442 ms \\\hline
+        RSA 1024 bit & 10x key generation & 145 ms \\\hline
+        RSA 2048 bit & 10x key generation & 1167 ms \\\hline
+        RSA 3072 bit & 10x key generation & 6000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 11 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation &  1.043 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.242 ms \\\hline
+        CS & 10x blinding & 7 ms \\\hline
+        RSA 1024 bit & 10x blinding &  2.258 ms \\\hline
+        RSA 2048 bit & 10x blinding &  4.744 ms \\\hline
+        RSA 3072 bit & 10x blinding &  9 ms \\\hline
+        RSA 4096 bit & 10x blinding &  14 ms \\\hline
+        \hline
+        CS & 10x signing &  0.270 ms \\\hline
+        RSA 1024 bit & 10x signing &  10 ms \\\hline
+        RSA 2048 bit & 10x signing &  47 ms \\\hline
+        RSA 3072 bit & 10x signing &  119 ms \\\hline
+        RSA 4096 bit & 10x signing &  248 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.003 ms \\\hline
+        RSA 1024 bit & 10x unblinding &  4.086 ms \\\hline
+        RSA 2048 bit & 10x unblinding &  14 ms \\\hline
+        RSA 3072 bit & 10x unblinding &  34 ms \\\hline
+        RSA 4096 bit & 10x unblinding &  60 ms \\\hline
+        \hline
+        CS & 10x verifying & 2.392 ms \\\hline
+        RSA 1024 bit & 10x verifying &  1.137 ms \\\hline
+        RSA 2048 bit & 10x verifying &  2.797 ms \\\hline
+        RSA 3072 bit & 10x verifying &  5 ms \\\hline
+        RSA 4096 bit & 10x verifying &  7 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on AMD Ryzen Threadripper 1950X}
+    \label{tab:comp-sign-amd-threadripper}
+\end{table}
+
+\section{Intel(R) Xeon(R) CPU E5-2630}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-intel-xeon}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: Intel(R) Xeon(R) CPU E5-2630 0 @ 2.30GHz \\
+    Architecture: amd64 \\
+    OS:  Linux 5.10.0-8-amd64 \#1 SMP Debian 5.10.46-4 (2021-08-03) x86\_64\\
+    libsodium:amd64 version:  1.0.18-1\\ 
+    libgcrypt:amd64 version:  1.8.7-6
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.606 ms \\\hline
+        RSA 1024 bit & 10x key generation & 329 ms \\\hline
+        RSA 2048 bit & 10x key generation & 3210 ms \\\hline
+        RSA 3072 bit & 10x key generation & 12 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 40 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation &  1.527 ms \\\hline
+        CS & 10x derivation of blinding secrets &  0.329 ms \\\hline
+        CS & 10x blinding & 9 ms \\\hline
+        RSA 1024 bit & 10x blinding &  4.026 ms \\\hline
+        RSA 2048 bit & 10x blinding &  9 ms \\\hline
+        RSA 3072 bit & 10x blinding &  18 ms \\\hline
+        RSA 4096 bit & 10x blinding &  27 ms \\\hline
+        \hline
+        CS & 10x signing &  0.274 ms \\\hline
+        RSA 1024 bit & 10x signing &  21 ms \\\hline
+        RSA 2048 bit & 10x signing &  96 ms \\\hline
+        RSA 3072 bit & 10x signing &  237 ms \\\hline
+        RSA 4096 bit & 10x signing &  482 ms \\\hline
+        \hline
+        CS & 10x unblinding &  0.004 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 7 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 25 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 58 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 99 ms \\\hline
+        \hline
+        CS & 10x verifying & 4.334 ms \\\hline
+        RSA 1024 bit & 10x verifying & 2.190 ms \\\hline
+        RSA 2048 bit & 10x verifying & 5 ms \\\hline
+        RSA 3072 bit & 10x verifying & 11 ms \\\hline
+        RSA 4096 bit & 10x verifying & 14 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on Intel(R) Xeon(R) CPU E5-2630}
+    \label{tab:comp-sign-intel-xeon}
+\end{table}
+
+\section{Intel(R) Pentium(R) 3558U}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-intel-pentium}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: Intel(R) Pentium(R) 3558U @ 1.70GHz \\
+    Architecture: amd64 \\
+    OS: Linux 5.10.0-8-amd64 \#1 SMP Debian 5.10.46-3 (2021-07-28) x86\_64\\
+    libsodium:amd64 version:  1.0.18-1\\ 
+    libgcrypt:amd64 version:  1.8.7-6
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.53 ms \\\hline
+        RSA 1024 bit & 10x key generation & 524 ms \\\hline
+        RSA 2048 bit & 10x key generation & 3357 ms \\\hline
+        RSA 3072 bit & 10x key generation & 15 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 37 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 1.375 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.349 ms \\\hline
+        CS & 10x blinding & 8 ms \\\hline
+        RSA 1024 bit & 10x blinding & 4.86 ms \\\hline
+        RSA 2048 bit & 10x blinding & 11 ms \\\hline
+        RSA 3072 bit & 10x blinding & 19 ms \\\hline
+        RSA 4096 bit & 10x blinding & 31 ms \\\hline
+        \hline
+        CS & 10x signing &  0.283 ms \\\hline
+        RSA 1024 bit & 10x signing & 26 ms \\\hline
+        RSA 2048 bit & 10x signing & 117 ms \\\hline
+        RSA 3072 bit & 10x signing & 292 ms \\\hline
+        RSA 4096 bit & 10x signing & 571 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.003 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 8 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 30 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 67 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 111 ms \\\hline
+        \hline
+        CS & 10x verifying & 3.769 ms \\\hline
+        RSA 1024 bit & 10x verifying & 2.616 ms \\\hline
+        RSA 2048 bit & 10x verifying & 6 ms \\\hline
+        RSA 3072 bit & 10x verifying & 11 ms \\\hline
+        RSA 4096 bit & 10x verifying & 17 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on Intel(R) Pentium(R) 3558U}
+    \label{tab:comp-sign-intel-pentium}
+\end{table}
+
+
+\section{arm64}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-arm64}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU:  8-core arm64\\
+    Architecture: ARM64 \\
+    OS: Linux ten64 5.11.0-31-generic \#33+testsfp1 SMP Mon Aug 23 16:07:41 UTC 2021 aarch64 aarch64 aarch64 GNU/Linux \\
+    libsodium:arm64 version: 1.8.7-2ubuntu2.1  \\ 
+    libgcrypt:arm64 version: 1.0.18-1
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 2.896 ms \\\hline
+        RSA 1024 bit & 10x key generation & 839 ms \\\hline
+        RSA 2048 bit & 10x key generation & 8000 ms \\\hline
+        RSA 3072 bit & 10x key generation & 17 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 82 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 6 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.713 ms \\\hline
+        CS & 10x blinding & 23 ms \\\hline
+        RSA 1024 bit & 10x blinding & 11 ms \\\hline
+        RSA 2048 bit & 10x blinding & 28 ms \\\hline
+        RSA 3072 bit & 10x blinding & 51 ms \\\hline
+        RSA 4096 bit & 10x blinding & 81 ms \\\hline
+        \hline
+        CS & 10x signing & 0.321 ms \\\hline
+        RSA 1024 bit & 10x signing &  57 ms \\\hline
+        RSA 2048 bit & 10x signing & 263 ms \\\hline
+        RSA 3072 bit & 10x signing & 685 ms \\\hline
+        RSA 4096 bit & 10x signing & 1385 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.006 ms \\\hline
+        RSA 1024 bit & 10x unblinding &  23 ms \\\hline
+        RSA 2048 bit & 10x unblinding &  79 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 171 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 296 ms \\\hline
+        \hline
+        CS & 10x verifying & 11ms \\\hline
+        RSA 1024 bit & 10x verifying &  5 ms \\\hline
+        RSA 2048 bit & 10x verifying & 15 ms \\\hline
+        RSA 3072 bit & 10x verifying & 27 ms \\\hline
+        RSA 4096 bit & 10x verifying & 45 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on arm64}
+    \label{tab:comp-sign-arm64}
+\end{table}
+
+\section{AMD Ryzen Embedded R1606G}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-amd-embedded}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: 4-core AMD Ryzen Embedded R1606G with Radeon Vega Gfx\\
+    Architecture: amd64 \\
+    OS: Linux computer 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux\\
+    libsodium:amd64 version: 1.8.7-5ubuntu2  \\ 
+    libgcrypt:amd64 version: 1.0.18-1build1
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 2.373 ms \\\hline
+        RSA 1024 bit & 10x key generation & 184 ms \\\hline
+        RSA 2048 bit & 10x key generation & 2132 ms \\\hline
+        RSA 3072 bit & 10x key generation & 8000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 21 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 1.09 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.43 ms \\\hline
+        CS & 10x blinding & 6 ms \\\hline
+        RSA 1024 bit & 10x blinding & 3.886 ms \\\hline
+        RSA 2048 bit & 10x blinding & 7 ms \\\hline
+        RSA 3072 bit & 10x blinding & 14 ms \\\hline
+        RSA 4096 bit & 10x blinding & 23 ms \\\hline
+        \hline
+        CS & 10x signing & 0.379 ms \\\hline
+        RSA 1024 bit & 10x signing & 15 ms \\\hline
+        RSA 2048 bit & 10x signing & 71 ms \\\hline
+        RSA 3072 bit & 10x signing & 177 ms \\\hline
+        RSA 4096 bit & 10x signing & 357 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.001 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 6 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 24 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 53 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 93 ms \\\hline
+        \hline
+        CS & 10x verifying & 2.610 ms \\\hline
+        RSA 1024 bit & 10x verifying & 2.303 ms \\\hline
+        RSA 2048 bit & 10x verifying & 4.386 ms \\\hline
+        RSA 3072 bit & 10x verifying & 7 ms \\\hline
+        RSA 4096 bit & 10x verifying & 11 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on AMD Ryzen Embedded R1606G}
+    \label{tab:comp-sign-amd-embedded}
+\end{table}
+
+\section{risc64}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-risc64}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU:  4-core risc64 processor\\
+    OS: Linux risc-v-unleashed-000 5.11.0-1022-generic \#23~20.04.1-Ubuntu SMP Thu Oct 21 10:16:27 UTC 2021 riscv64 riscv64 riscv64 GNU/Linux\\
+    libsodium:riscv64 version: 1.8.7-5ubuntu2  \\ 
+    libgcrypt:riscv64 version: 1.0.18-1build1
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 4.144 ms \\\hline
+        RSA 1024 bit & 10x key generation & 2923 ms \\\hline
+        RSA 2048 bit & 10x key generation & 28 000 ms \\\hline
+        RSA 3072 bit & 10x key generation & 174 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 600 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 10 ms \\\hline
+        CS & 10x derivation of blinding secrets & 2.514 ms \\\hline
+        CS & 10x blinding & 72 ms \\\hline
+        RSA 1024 bit & 10x blinding & 37 ms \\\hline
+        RSA 2048 bit & 10x blinding & 93 ms \\\hline
+        RSA 3072 bit & 10x blinding & 170 ms \\\hline
+        RSA 4096 bit & 10x blinding & 277 ms \\\hline
+        \hline
+        CS & 10x signing & 1.697 ms \\\hline
+        RSA 1024 bit & 10x signing & 215 ms \\\hline
+        RSA 2048 bit & 10x signing & 1040 ms \\\hline
+        RSA 3072 bit & 10x signing & 2883 ms \\\hline
+        RSA 4096 bit & 10x signing & 5000 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.022 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 62 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 150 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 275 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 431 ms \\\hline
+        \hline
+        CS & 10x verifying & 29 ms \\\hline
+        RSA 1024 bit & 10x verifying & 22 ms \\\hline
+        RSA 2048 bit & 10x verifying & 54 ms \\\hline
+        RSA 3072 bit & 10x verifying & 99 ms \\\hline
+        RSA 4096 bit & 10x verifying & 166 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on risc64}
+    \label{tab:comp-sign-risc64}
+\end{table}
+
+\section{POWER9}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-POWER9}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU:  176-core power9\\
+    architecture: pp64le \\
+    OS: Linux power9 5.11.0-34-generic \#36-Ubuntu SMP Thu Aug 26 19:19:54 UTC 2021 ppc64le ppc64le ppc64le GNU/Linux \\
+    libsodium:a::ppc64el version: 1.8.7-2ubuntu2.1  \\ 
+    libgcrypt::ppc64el version: 1.0.18-1
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 0.275 ms \\\hline
+        RSA 1024 bit & 10x key generation & 290 ms \\\hline
+        RSA 2048 bit & 10x key generation & 3743 ms \\\hline
+        RSA 3072 bit & 10x key generation & 15 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 45 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 0.749 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.267 ms \\\hline
+        CS & 10x blinding & 4.996 ms \\\hline
+        RSA 1024 bit & 10x blinding & 3.952 ms \\\hline
+        RSA 2048 bit & 10x blinding & 10 ms \\\hline
+        RSA 3072 bit & 10x blinding & 17 ms \\\hline
+        RSA 4096 bit & 10x blinding & 27 ms \\\hline
+        \hline
+        CS & 10x signing & 0.221 ms \\\hline
+        RSA 1024 bit & 10x signing & 25 ms \\\hline
+        RSA 2048 bit & 10x signing & 135 ms \\\hline
+        RSA 3072 bit & 10x signing & 381 ms \\\hline
+        RSA 4096 bit & 10x signing & 762 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.002 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 9 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 34 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 80 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 141 ms \\\hline
+        \hline
+        CS & 10x verifying & 2.458 ms \\\hline
+        RSA 1024 bit & 10x verifying & 2.365 ms \\\hline
+        RSA 2048 bit & 10x verifying & 6 ms \\\hline
+        RSA 3072 bit & 10x verifying & 10 ms \\\hline
+        RSA 4096 bit & 10x verifying & 16 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on POWER9}
+    \label{tab:comp-sign-POWER9}
+\end{table}
+
+\section{ARMv7 Processor}
+Detailed comparison of each operation can be found in table \ref{tab:comp-sign-armv7}.
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU:  8-core ARMv7 Processor rev 3 (v7l)
+    Architecture: armv7 \\
+    OS: Linux odroidxu4 4.14.150-odroidxu4 \#2 SMP PREEMPT Mon Oct 28 08:07:45 CET 2019 armv7l GNU/Linux\\
+    libsodium:armhf version: 1.9.4-5   \\ 
+    libgcrypt:armhf version: 1.0.18-1
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{llr}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Operation} & \textbf{Speed} \\\hline
+        CS & 10x key generation & 1.719 ms \\\hline
+        RSA 1024 bit & 10x key generation & 1050 ms \\\hline
+        RSA 2048 bit & 10x key generation & 8000 ms \\\hline
+        RSA 3072 bit & 10x key generation & 53 000 ms \\\hline
+        RSA 4096 bit & 10x key generation & 159 000 ms \\\hline
+        \hline
+        CS & 10x r0, r1 derive and R1,R2 calculation & 3.621 ms \\\hline
+        CS & 10x derivation of blinding secrets & 0.514 ms \\\hline
+        CS & 10x blinding & 24 ms \\\hline
+        RSA 1024 bit & 10x blinding & 10 ms \\\hline
+        RSA 2048 bit & 10x blinding & 26 ms \\\hline
+        RSA 3072 bit & 10x blinding & 45 ms \\\hline
+        RSA 4096 bit & 10x blinding & 78 ms \\\hline
+        \hline
+        CS & 10x signing & 0.481 ms \\\hline
+        RSA 1024 bit & 10x signing & 87 ms \\\hline
+        RSA 2048 bit & 10x signing & 385 ms \\\hline
+        RSA 3072 bit & 10x signing & 1038 ms \\\hline
+        RSA 4096 bit & 10x signing & 2073 ms \\\hline
+        \hline
+        CS & 10x unblinding & 0.008 ms \\\hline
+        RSA 1024 bit & 10x unblinding & 26 ms \\\hline
+        RSA 2048 bit & 10x unblinding & 90 ms \\\hline
+        RSA 3072 bit & 10x unblinding & 195 ms \\\hline
+        RSA 4096 bit & 10x unblinding & 344 ms \\\hline
+        \hline
+        CS & 10x verifying & 11 ms \\\hline
+        RSA 1024 bit & 10x verifying & 5 ms \\\hline
+        RSA 2048 bit & 10x verifying & 15 ms \\\hline
+        RSA 3072 bit & 10x verifying & 28 ms \\\hline
+        RSA 4096 bit & 10x verifying & 42 ms \\\hline
+    \end{tabular}
+    \caption{Comparison on ARMv7}
+    \label{tab:comp-sign-armv7}
+\end{table}
+
+
+\section{Performance of the Security Module}
+These performance measurements are only done on one hardware setup.
+The performance tests of the cryptographic routines are more meaningful, the architecture of the Taler exchange could change a lot.
+Furthermore, there could be made performance improvements at costs of security by doing the operations requiring the private keys directly in the httpd process.
+Because of security reasons, the current design with the security module makes a lot of sense. 
+It has to be kept in mind that the following performance benchmarks are interesting to see, but could vary a lot with changes inside the codebase.
+The performance of the signatures with the security module can be found in table \ref{tab:comp-sign-full}
+\begin{bfhBox}[BFH-MediumBlue]{Setup}
+	CPU: 8-core AMD Ryzen 7 PRO 5850U \\
+    OS: Ubuntu 21.10 Linux 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux \\
+    libsodium version: 1.0.18-1build1 \\ 
+    libgcrypt version: 1.8.7-5ubuntu2 
+\end{bfhBox}
+
+\begin{table}[ht]
+    \centering
+    \colorlet{BFH-table}{BFH-MediumBlue!10}
+    \colorlet{BFH-tablehead}{BFH-MediumBlue!50}
+    \setupBfhTabular
+    \begin{tabular}{lll}
+        \rowcolor{BFH-tablehead}
+        \textbf{Signature Scheme} & \textbf{Test} & \textbf{Speed} \\\hline
+        CS & 100 sequential signature operations & 2.591 ms \\\hline
+        RSA 1024 bit & 100 sequential signature operations & 79 ms \\\hline
+        RSA 2048 bit & 100 sequential signature operations & 350 ms \\\hline
+        RSA 3072 bit & 100 sequential signature operations & 893 ms \\\hline
+        RSA 4092 & 100 sequential signature operations & 1811 ms \\\hline
+        \hline
+        CS & 100 parallel signature operations & 14 ms \\\hline
+        RSA 1024 bit & 100 parallel signature operations & 125 ms \\\hline
+        RSA 2048 bit & 100 parallel signature operations & 573ms \\\hline
+        RSA 3072 bit & 100 parallel signature operations & 1420 ms \\\hline
+        RSA 4092 & 100 parallel signature operations & 3279 ms \\\hline
+        \hline
+        CS & 800 parallel signature operations & 19 ms \\\hline
+        RSA 1024 bit & 800 parallel signature operations & 137 ms \\\hline
+        RSA 2048 bit & 800 parallel signature operations & 653 ms \\\hline
+        RSA 3072 bit & 800 parallel signature operations & 1451 ms \\\hline
+        RSA 4092 & 800 parallel signature operations & 3388 ms \\\hline
+    \end{tabular}
+    \caption{Performance comparison of the security module}
+    \label{tab:comp-sign-full}
+\end{table}
+
+\input{content/appendix/rsa-redesign.tex}

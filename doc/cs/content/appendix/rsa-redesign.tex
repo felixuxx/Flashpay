@@ -1,0 +1,209 @@
+\chapter{Redesigned RSA Protocols}
+In order to bring the RSA and \gls{CSBS} protocols closer, this chapter describes a variant of the RSA protocols with the same changes as in the \gls{CSBS} versions (where they can be applied).
+
+
+\section{Withdraw Protocol}
+\begin{figure}[htp]
+    \begin{equation*}
+        \resizebox{1.0\textwidth}{!}{$\displaystyle
+                \begin{array}{ l c l }
+                    \text{Customer} &  & \text{Exchange}
+                    \\ \text{knows:} & & \text{knows:}
+                    \\ \text{reserve keys } w_s, W_p & & \text{reserve public key } W_p
+                    \\ \text{denomination public key } D_p = e, N & & \text{denomination keys } d_s, D_p
+                    \\ & &
+                    \\\text{generate withdraw secret:}
+                    \\ \omega := randombytes(32)
+                    \\ \text{persist } \langle \omega, D_p \rangle
+                    \\\text{derive coin key pair:} & &
+                    \\ c_s := \text{HKDF}(256, \omega, \text{"cs"})
+                    \\ C_p := \text{Ed25519.GetPub}(c_s)
+                    \\ \text{blind:} & &
+                    \\ b_s := \text{HKDF}(256, \omega, \text{"b-seed"})
+                    \\ r := \text{FDH}(b_s)
+                    \\ m' := \text{FDH}(N, C_p)*r^{e} \mod N & &
+                    \\ \text{sign with reserve private key:} & &
+                    \\ \rho_W := \langle D_p, m' \rangle & &
+                    \\ \sigma_W := \text{Ed25519.Sign}(w_s, \rho_W) & &
+                    \\ & \xrightarrow[\rule{2.5cm}{0pt}]{\rho = W_p, \sigma_W, \rho_W} &
+                    \\ & & \langle D_p, m' \rangle := \rho_W
+                    \\ & & \text{verify if } D_p \text{ is valid}
+                    \\ & & \text{check } \text{Ed25519.Verify}(W_p, \rho_W, \sigma_W)
+                    \\ & & \sigma'_c = (m')^{d_s} \mod N
+                    \\ & & \text{decrease balance if sufficient and}
+                    \\ & & \text{persist } \langle D_p, s \rangle
+                    \\ & \xleftarrow[\rule{2.5cm}{0pt}]{\sigma'_c} &
+                    \\ \text{unblind:}& &
+                    \\ \sigma_c = \sigma'_c*r^{-1} & &
+                    \\ \text{verify signature:}& &
+                    \\ \textbf{check if } \sigma_c^{e} = \text{FDH}(N, C_p) & &
+                    \\ & &
+                    \\ \text{resulting coin: } c_s, C_p, \sigma_c, D_p & &
+                    \\ & &
+                    \\ \text{implementation note: minimum of}
+                    \\ \text{persisted values is } \langle \omega, \sigma_c \rangle
+                \end{array}$
+        }
+    \end{equation*}
+    \caption{Redesigned RSA withdrawal process}
+    \label{fig:withdrawal-process-rsa-redesign}
+\end{figure}
+
+The changes to the RSA witdhdraw protocol (see \autoref{fig:withdrawal-process-rsa-redesign}) are limited to the derivation of the coin and blinding factor.
+
+
+\section{Refresh Protocol}
+The changes to the refresh protocol are related to the derivation of transfer secrets and subsequent operations, see \autoref{fig:refresh-derive-rsa-redesign}, \autoref{fig:refresh-part1-rsa-redesign} and \autoref{fig:refresh-part2-rsa-redesign}.
+\begin{figure}[htp]
+    \centering
+    \fbox{%
+        \procedure[codesize=\small]{$\text{RefreshDerive}(t, \langle e, N \rangle, C_p)$}{%
+            T := \text{Curve25519.GetPub}(t) \\
+            x := \textrm{ECDH-EC}(t, C_p) \\
+            b_s := \text{HKDF}(256, x, \text{"b-seed"}) \\
+            r := \text{FDH}(b_s) \\
+            c'_s := \text{HKDF}(256,x,"c") \\
+            C'_p := \text{Ed25519.GetPub}(c'_s) \\
+            \overline{m} := r^e * C'_p \mod N \\
+            \pcreturn \langle T, c_s', C_p', \overline{m} \rangle
+        }
+    }
+    \caption{Redesigned RSA RefreshDerive algorithm}
+    \label{fig:refresh-derive-rsa-redesign}
+\end{figure}
+
+\begin{figure}[htp]
+    \begin{equation*}
+        \resizebox{1.0\textwidth}{!}{$\displaystyle
+                \begin{array}{ l c l }
+                    % preliminaries
+                    \text{Customer} &  & \text{Exchange}
+                    \\ \text{knows:} & & \text{knows:}
+                    \\ \text{denomination public key } D_{p(i)} & & \text{denomination keys } d_{s(i)}, D_{p(i)}
+                    \\ \text{coin}_0 = \langle D_{p(0)}, c_s^{(0)}, C_p^{(0)}, \sigma_c^{(0)} \rangle & &
+                    % refresh request
+                    \\ \text{Select} \langle N_t, e_t\rangle := D_{p(t)} \in D_{p(i)}
+                    \\ \omega := randombytes(32)
+                    \\ \text{persist } \langle \omega, D_{p(t)} \rangle
+                    \\ \textbf{for } i = 1, \dots, \kappa: % generate k derives
+                    \\ t_i := \text{HKDF}(256, \omega,\text{"t} i \text{"} )  % seed generation
+                    \\ X_i := \text{RefreshDerive}(t_i, D_{p(t)}, C_p^{(0)})
+                    \\ (T_i, c_s^{(i)}, C_p^{(i)}, \overline{m}_i) := X_i
+                    \\ \textbf{endfor}
+                    \\ h_T := H(T_1, \dots, T_k)
+                    \\ h_{\overline{m}} := H(\overline{m}_1, \dots, \overline{m}_k)
+                    \\ h_C := H(h_t, h_{\overline{m}})
+                    \\ \rho_{RC} := \langle h_C, D_{p(t)}, D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)}  \rangle
+                    \\ \sigma_{RC} := \text{Ed25519.Sign}(c_s^{(0)}, \rho_{RC})
+                    \\ \text{Persist refresh-request} \langle \omega, \rho_{RC}, \sigma_{RC} \rangle
+                    \\ & \xrightarrow[\rule{2.5cm}{0pt}]{\rho_{RC}, \sigma_{RC}} &
+                    % Exchange checks refresh request
+                    \\ & & (h_C, D_{p(t)}, D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)} = \rho_{RC})
+                    \\ & & \textbf{check} \text{Ed25519.Verify}(C_p^{(0)}, \sigma_{RC}, \rho_{RC})
+                    \\ & & x \rightarrow \text{GetOldRefresh}(\rho_{RC})
+                    \\ & & \textbf{Comment: }\text{GetOldRefresh} (\rho_{RC} \mapsto \{\bot,\gamma\})
+                    \\ & & \pcif x = \bot
+                    \\ & & v := \text{Denomination}(D_{p(t)})
+                    \\ & & \langle e_0, N_0 \rangle := D_{p(0)}
+                    \\ & & \textbf{check } \text{IsOverspending}(C_p^{(0)}, D_ {p(0)}, v)
+                    \\ & & \textbf{check } D_{p(t)} \in \{D_{p(i)}\}
+                    \\ & & \textbf{check } \text{FDH}(N_0, C_p^{(0)}) \equiv_{N_0} (\sigma_0^{(0)})^{e_0}
+                    \\ & & \text{MarkFractionalSpend}(C_p^{(0)}, v)
+                    \\ & & \gamma \leftarrow \{1, \dots, \kappa\}
+                    \\ & & \text{Persist refresh-record } \langle \rho_{RC},\gamma \rangle
+                    \\ & & \pcelse
+                    \\ & & \gamma := x
+                    \\ & & \textbf{endif}
+                    \\ & \xleftarrow[\rule{2.5cm}{0pt}]{\gamma} &
+                    \\
+                    \\
+                    \\ & \textit{Continued in figure \ref{fig:refresh-part2}} &
+                    %\\ \pcintertext[dotted]{(Continued in Figure)}
+                \end{array}$
+        }
+    \end{equation*}
+    \caption{Redesigned RSA refresh protocol (commit phase)}
+    \label{fig:refresh-part1-rsa-redesign}
+\end{figure}
+
+\begin{figure}[htp]
+    \begin{equation*}
+        \resizebox{1.0\textwidth}{!}{$\displaystyle
+                \begin{array}{ l c l }
+                    % preliminaries
+                    \text{Customer} &  & \text{Exchange}
+                    \\ & \textit{Continuation of figure \ref{fig:refresh-part1}} &
+                    \\
+                    \\
+                    % Check challenge and send challenge response (reveal not selected msgs)
+                    \\ & \xleftarrow[\rule{2.5cm}{0pt}]{\gamma} &
+                    \\ \textbf{check } \text{IsConsistentChallenge}(\rho_{RC}, \gamma)
+                    \\ \textbf{Comment: } \text{IsConsistentChallenge}\\(\rho_{RC}, \gamma) \mapsto \{ \bot,\top \}
+                    \\
+                    \\ \text{Persist refresh-challenge} \langle \rho_{RC}, \gamma \rangle
+                    \\ S := \langle t_1, \dots, t_{\gamma-1}, t_{\gamma+1}, \dots, t_\kappa \rangle % all seeds without the gamma seed
+                    \\ \rho_L = \langle C_p^{(0)}, D_{p(t)}, T_{\gamma},\overline{m}_\gamma \rangle
+                    \\ \rho_{RR} = \langle T_\gamma, \overline{m}_\gamma, S \rangle
+                    \\ \sigma_{L} = \text{Ed25519.Sign}(c_s^{(0)}, \rho_{L})
+                    \\ & \xrightarrow[\rule{2.5cm}{0pt}]{\rho_{RR},\rho_L, \sigma_{L}} &
+                    % check revealed msgs and sign coin
+                    \\ & & \langle T'_\gamma, \overline{m}'_\gamma, S \rangle := \rho_{RR}
+                    \\ & & \langle t_1, \dots, t_{\gamma-1}, t_{\gamma+1}, \dots, t_\kappa \rangle ) := S
+                    \\ & & \textbf{check } \text{Ed25519.Verify}(C_p^{(0)}, \sigma_L, \rho_L)
+                    \\ & & \textbf{for} i = 1,\dots, \gamma-1, \gamma+1,\dots, \kappa
+                    \\ & & X_i := \text{RefreshDerive}(t_i, D_{p(t)}, C_p^{(0)})
+                    \\ & & \langle T_i, c_s^{(i)}, C_p^{(i)}, \overline{m}_i \rangle := X_i
+                    \\ & & \textbf{endfor}
+                    \\ & & h_T' = H(T_1,\dots,T_{\gamma-1},T'_{\gamma},T_{\gamma+1},\dots,T_\kappa)
+                    \\ & & h_{\overline{m}}' = H(\overline{m}_1,\dots,\overline{m}_{\gamma-1},\overline{m}'_{\gamma},\overline{m}_{\gamma+1},\dots,\overline{m}_\kappa)
+                    \\ & & h_C' = H(h_T', h_{\overline{m}}')
+                    \\ & & \textbf{check } h_C = h_C'
+                    \\ & & \overline{\sigma}_C^{(\gamma)} := \overline{m}^{d_{s(t)}}
+                    \\ & & \text{persist } \langle \rho_L, \sigma_L \rangle
+                    \\ & \xleftarrow[\rule{2.5cm}{0pt}]{\overline{\sigma}_C^{(\gamma)}} &
+                    % Check coin signature and persist coin
+                    \\ \sigma_C^{(\gamma)} := r^{-1}\overline{\sigma}_C^{(\gamma)}
+                    \\ \textbf{check if } (\sigma_C^{(\gamma)})^{e_t} \equiv_{N_t} C_p^{(\gamma)}
+                    \\ \text{Persist coin} \langle D_{p(t)}, c_s^{(\gamma)}, C_p^{(\gamma)}, \sigma_C^{(\gamma)} \rangle
+                \end{array}$
+        }
+    \end{equation*}
+    \caption{Redesigned RSA refresh protocol (reveal phase)}
+    \label{fig:refresh-part2-rsa-redesign}
+\end{figure}
+
+
+\section{Linking Protocol}
+The changes are described in \autoref{fig:refresh-link-rsa-redesign}.
+\begin{figure}[htp]
+    \begin{equation*}
+        \resizebox{1.0\textwidth}{!}{$\displaystyle
+                \begin{array}{ l c l }
+                    % preliminaries
+                    \text{Customer} &  & \text{Exchange}
+                    \\ \text{knows:} & & \text{knows:}
+                    \\ \text{coin}_0 = \langle D_{p(0)}, c_s^{(0)}, C_p^{(0)}, \sigma_{C}^{(0)} \rangle
+                    \\ & \xrightarrow[\rule{2.5cm}{0pt}]{C_{p(0)}} &
+                    \\ & &  L := \text{LookupLink}(C_{p(0)})
+                    \\ & &  \textbf{Comment: } \text{LookupLink}(C_p) \mapsto \{\langle \rho_L^{(i)},
+                    \\ & & \sigma_L^{(i)}, \overline{\sigma}_C^{(i)} \rangle\}
+                    \\ & \xleftarrow[\rule{2.5cm}{0pt}]{L} &
+                    \\ \pcfor \langle \rho_{L}^{(i)}, \overline{\sigma}_L^{(i)}, \sigma_C^{(i)} \rangle \in L
+                    \\ \langle \hat{C}_p^{(i)}, D_{p(t)}^{(i)}, T_\gamma^{(i)}, \overline{m}_\gamma^{(i)} \rangle := \rho_L^{(i)}
+                    \\ \langle e_t^{(i)}, N_t^{(i)} \rangle := D_{p(t)}^{(i)}
+                    \\ \textbf{check } \hat{C}_p^{(i)} \equiv  C_p^{(0)}
+                    \\ \textbf{check } \text{Ed25519.Verify}(C_p^{(0)}, \rho_{L}^{(i)}, \sigma_L^{(i)})
+                    \\ x_i := \text{ECDH}(c_s^{(0)}, T_{\gamma}^{(i)})
+                    \\ c_s^{(i)} := \text{HKDF}(256,x_i,"c")
+                    \\ C_p^{(i)} := \text{Ed25519.GetPub}(c_s^{(i)})
+                    \\ b_s^{(i)} := \text{HKDF}(256, x_i, \text{"b-seed"})
+                    \\ r_i := \text{FDH}(b_s^{(i)})
+                    \\ \sigma_C^{(i)} := (r_i)^{-1} \cdot \overline{m}_\gamma^{(i)}
+                    \\ \textbf{check } (\sigma_C^{(i)})^{e_t^{(i)}} \equiv_{N_t^{(i)}} C_p^{(i)}
+                    \\ \text{(Re-)obtain coin} \langle D_{p(t)}^{(i)},c_s^{(i)}, C_p^{(i)}, \sigma_C^{(i)} \rangle
+                \end{array}$
+        }
+    \end{equation*}
+    \caption{Redesigned RSA linking protocol}
+    \label{fig:refresh-link-rsa-redesign}
+\end{figure}

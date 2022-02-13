@@ -1,0 +1,70 @@
+\chapter{Conclusion}
+This section provides a summary of this work, presents the results and gives an outlook on future work.
+
+\section{Summary}
+In the beginning of the project good knowledge on the current state in research about Blind Schnorr signatures was needed.
+Therefore, various papers were read and then the paper "Blind Schnorr Signatures and Signed ElGamal Encryption in the Algebraic Group Model" \cite{cryptoeprint:2019:877} was chosen as basis for the redesign of the Taler protocols.\\
+The next step was to analyze the current Taler protocols and understand the required properties including \textit{\gls{abort-idempotency}}.\\
+With the gathered knowledge (see chapter \ref{chap:preliminaries}) the Taler protocols were redesigned to support \gls{CSBS} (see chapter \ref{chap:design}).
+These redesigned protocols were then further specified (chapter \ref{chap:spec}) and then implemented (chapter \ref{chap:implement}).
+The implementation includes the main protocols, key management, cryptographic utilities in Taler and the \gls{CSBS} cryptographic routines.\\
+The \gls{CSBS} scheme was analyzed and compared in detail to the RSA Blind Signature scheme (see \ref{chap:disc}).
+
+
+\section{Results}
+The thesis provides several results to add support for Schnorr's blind signature in Taler, including:
+\begin{itemize}
+    \item Redesigned Taler protocols to support \gls{CSBS}
+    \item Implementation of cryptographic routines
+    \item Implementation of Taler protocols in Exchange
+    \begin{itemize}
+        \item Key Management and security module
+        \item Cryptographic utilities
+        \item Withdraw protocol
+        \item Deposit protocol
+    \end{itemize}
+    \item Comparison and Analysis
+    \begin{itemize}
+        \item Performance (speed, space, latency \& bandwith)
+        \item Security 
+        \item Scheme Comparison
+    \end{itemize}
+    \item Fixing a minor security issue in Taler's current protocols
+\end{itemize}
+The code is tested, and those tests are integrated in the existing testing framework.
+Benchmarks are added for the cryptographic routines and the security module.
+
+\section{Future Work}
+Like in any other project, there is always more that could be done.
+This section provides an outlook on what can be done in future work.
+
+\begin{itemize}
+    \item Implement wallet
+    \item Implementing remaining \gls{CSBS} protocols (refresh, tipping protocol, refund etc.)
+    \item Implementing merchant
+    \item Security audit of CS implementation
+    \item Find a solution for withdraw loophole
+    \item Evaluating \& implementing \gls{CSBS} on other curves
+\end{itemize}
+
+There are some remaining protocols to implement, which were out of scope for this thesis. 
+To run \gls{CSBS} in production, these protocols have to be implemented too.
+Further, the merchant needs to support \gls{CSBS} too.
+The merchant implementation can be done fast, as the merchant only verifies denomination signatures in most cases. \\
+Currently, the exchange runs both security modules, the \gls{CSBS} and the RSA security modules.
+To reduce unnecessary overhead, this should be changed so that only one security has to be running.
+To run \gls{CSBS} in production a security audit from an external company is recommended (as done for other parts in the exchange, see \cite{codeblau:taler-audit}).
+A security audit should always be made when implementing big changes like these.\\
+As mentioned in the scope section, the optional goal to find and implement a good solution for the withdraw loophole was dropped.
+This was due to the scope shift and because the analysis of the problem showed that finding a good solution needs more research and is a whole project in itself (see \ref{sec:scope} for more information).\\
+Furthermore, \gls{CSBS} could be implemented on other curves.
+For example Curve448 \cite{cryptoeprint:2015:625} could be used, as it provides 224 bits of security, wheras \gls{25519} \cite{bern:curve25519} provides about 128 bits of security.
+Curve secp256k1 could further improve \gls{CSBS} performance.
+While providing support for Curve448 should not be problematic, a potential implementation for secp256k1 needs further analysis (see \cite{bernlange:safecurves} and \cite{bip:schnorr-bitc} for more information).
+
+\section{Personal Conclusion}
+This thesis includes understanding, analyzing, integrating and implementing a recent academic paper \cite{cryptoeprint:2019:877} containing a modern cryptographic scheme.
+Furthermore, the implementation is done in Taler, an intuitive and modern solution for a social responsible payment system with high ethical standards.
+Although there was a lot of work, we enjoyed working on such a modern and very interesting topic.
+Especially the first successful signature verification and the signature scheme performance benchmarks motivated us to push the implementation and integration into Taler forward.\\
+We are happy to provide an implementation of a modern scheme and making it available as free software.

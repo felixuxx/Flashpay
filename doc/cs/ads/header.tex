@@ -1,0 +1,71 @@
+% Hyperlinks
+\usepackage[
+	hidelinks,
+	pdfusetitle,
+]{hyperref}
+
+% Grafiken
+\usepackage{graphicx}
+%Bildpfad
+\graphicspath{{images/}}
+
+% Micro sign
+\usepackage{siunitx}
+
+% Farben
+\usepackage{color}
+\definecolor{LinkColor}{rgb}{0,0,0.2}
+
+% Glossar
+\usepackage[
+	nonumberlist, %keine Seitenzahlen anzeigen
+	%acronym,      %ein Abkürzungsverzeichnis erstellen
+	%section,     %im Inhaltsverzeichnis auf section-Ebene erscheinen
+	toc,          %Einträge im Inhaltsverzeichnis
+]{glossaries}
+\makeglossaries
+\input{ads/glossary}
+
+%Nomenklatur
+\usepackage{nomencl}
+\makenomenclature
+
+%PDF pages
+\usepackage{pdfpages}
+
+%Adjustbox (tikz figures of Taler)
+\usepackage{adjustbox}
+
+%BFH Boxes
+% see BFH example for usage, looks nice!<<
+\LoadBFHModule{listings,terminal,boxes}
+
+%Akronyme
+\usepackage[printonlyused,footnote]{acronym}
+
+% Literaturverweise
+\usepackage[
+	backend=biber,
+	style=alphabetic,
+	%citestyle=authoryear
+]{biblatex}
+\addbibresource{bibliography.bib}
+\addbibresource{bibliography_projekt2.bib}
+
+% TODOs in text
+% documentation: http://tug.ctan.org/macros/latex/contrib/todonotes/todonotes.pdf
+\usepackage{todonotes}
+
+%Crypto Grafiken
+\usepackage{cryptocode}
+%\usepackage{amsmath}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+\definecolor{ApiColor}{HTML}{307FCB}
+\definecolor{whyite}{HTML}{A1C66C} % Needs to be here due to some typo in BFH-CI stuff. Thanks BFH.

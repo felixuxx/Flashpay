@@ -1,0 +1,333 @@
+\chapter{Implementation}
+\label{chap:implement}
+This chapter gives an overview on the implementation challenges and discusses special parts in the implementation.
+
+
+\section{Signature Scheme Operations}
+The signature scheme operations are implemented in the GNUnet core repository \cite{gnunet-git} (and have been merged into the master branch).
+This would allow other GNUnet projects to use our implementation of the Clause Blind Schnorr Signature Scheme.
+
+The implementation is done in multiple locations:
+\begin{itemize}
+  \item \texttt{src/include/gnunet\_crypto\_lib.h}:
+        This header file is included when using GNUnet's cryptography implementation.
+  \item \texttt{src/util/crypto\_cs.c}:
+        The functions specified in \texttt{gnunet\_crypto\_lib.h} will be implemented here.
+  \item \texttt{src/util/test\_crypto\_cs.c}:
+        The test cases for the signature scheme will be implemented here.
+  \item \texttt{src/util/perf\_crypto\_cs.c}:
+        This file houses the implementation of a small program that will be used to compare the performance against the blind RSA Signature Scheme.
+\end{itemize}
+
+The specification explaining the \ac{API} can be found in section \ref{sec:specification-signature-scheme}. There are two internal functions that have to be explained further in this section.
+
+The \texttt{map\_to\_scalar\_subgroup} function clamps scalars, which is necessary for values that are derived using a \gls{hkdf}.
+It sets the three least significant bits to zero (making the scalar a multiple of 8), sets the most significant bit to zero and the second-most significant bit to one.
+This process is further described in \cite{rfc7748} and \cite{madden:curve25519-clamping}.
+
+\begin{lstlisting}[style=bfh-c, language=C, caption={Function map\_to\_scalar\_subgroup - Crypto API}, label={lst:map-to-scalar}]
+static void
+map_to_scalar_subgroup (struct GNUNET_CRYPTO_Cs25519Scalar *scalar)
+{
+    scalar->d[0] &= 248;
+    scalar->d[31] &= 127;
+    scalar->d[31] |= 64;
+}
+\end{lstlisting}
+
+Another important function is the \gls{fdh} (see \ref{sec:schnorr-sig}) used to map the message to a scalar.
+GNUnet provides a \gls{fdh} function, which expects libgcrypt's multi precision format.
+A conversion function is provided by GNUnet, which requires the data to be in big endian format.
+Since libsodium uses a little endian representation, the conversion process must include endianness conversion.
+The complete \gls{fdh} including the required conversions is implemented in the function described in listing \ref{lst:cs-fdh}.
+\begin{lstlisting}[style=bfh-c, language=C, caption={Function cs\_full\_domain\_hash - Crypto API}, label={lst:cs-fdh}]
+static void
+cs_full_domain_hash (const struct GNUNET_CRYPTO_CsRPublic *r_dash,
+                     const void *msg,
+                     size_t msg_len,
+                     const struct GNUNET_CRYPTO_CsPublicKey *pub,
+                     struct GNUNET_CRYPTO_CsC *c)
+{
+    ...
+\end{lstlisting}
+
+Last but not least, the implementation has one notable performance improvement not mentioned in the redesigned protocols.
+In various steps \gls{hkdf} is used multiple times in a row.
+For example to derive the four blinding secrets $\alpha_0, \alpha_1, \beta_0, \beta_1$.
+The derivation can be done in one \gls{hkdf} call with bigger output size, 128 bit in this case.
+The output then can be split in four parts and then mapped to the ed25519 subgroup.
+This can be done secure, because as explained in \autoref{sec:kdf} a \gls{hkdf} output is truly random.
+
+
+\section{Taler Cryptographic Utilities}
+\begin{bfhNoteBox}
+    Implementation is done in Taler's exchange.
+    From here on the implementation can be found in the exchange git repository \cite{taler-git:exchange}.
+\end{bfhNoteBox}
+The cryptographic utilities of Taler can be found in \texttt{src/util}.
+
+
+The implementation is done in various locations:
+\begin{itemize}
+    \item \texttt{src/include/taler\_crypto\_lib.h}: This header file is included when using Taler's cryptography implementation.
+    The different data structures and functionality are defined here.
+    \item \texttt{src/util/denom.c}: Implement denomination utility functions for \gls{CSBS} cases
+    \item \texttt{src/util/crypto.c}: Adjust all utility functions to support \gls{CSBS}.
+    crypto.c contains many cryptographic utility functions, for example to create planchets or blinding factors.
+    \item \texttt{src/util/test\_crypto.c}: Functionality tests for crypto.c and denom.c
+    \item \texttt{src/include/taler\_signatures.h}: In this header file message formats and signature constants are defined (not modified)
+    \item \texttt{src/util/secmod\_signatures.c}: Utility functions for Taler security module signatures
+\end{itemize}
+
+The security module \texttt{taler-secmod-cs} is implemented here:
+\begin{itemize}
+    \item \texttt{src/util/taler-exchange-secmod-cs.c}: Standalone process to perform private key Clause Blind Schnorr signature operations.
+    \item \texttt{src/util/taler-exchange-secmod-cs.h}: Specification of \ac{IPC} messages for the CS secmod process
+    \item \texttt{src/util/taler-exchange-secmod-cs.conf}: Configuration file for the secmod process
+    \item \texttt{src/util/secmod\_common.c} and \texttt{src/util/secmod\_common.h}: Common functions for the exchange's security modules (not modified)
+\end{itemize}
+
+The corresponding crypto helper, that talks with the security module, and its tests \& benchmarks are implemented here:
+\begin{itemize}
+    \item \texttt{src/util/crypto\_helper\_cs.c}: Utility functions to communicate with the security module
+    \item \texttt{src/util/crypto\_helper\_common.c}: and \texttt{crypto\_helper\_common.h}: Common functions for the exchange security modules (not modified)
+    \item \texttt{src/util/test\_helper\_cs.c}: Tests and benchmarks for the \gls{CSBS} crypto helper
+\end{itemize}
+% Crypto API offene Punkte:
+%Input-Validierung von Punkten und Skalar
+% Clamping beschreiben: https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/
+% Testing: inverse operations, blinded signature test
+
+
+\section{Denomination Key Management}
+For the implementation, the \gls{CSBS} security module had to be connected to the key handling and the \gls{CSBS} denominations had to be integrated:
+\begin{itemize}
+    \item \url{src/exchange/taler-exchange-httpd_keys.h} and \\
+    \url{src/exchange/taler-exchange-httpd_keys.c}: Integrate \gls{CSBS} secmod and denomination key management
+    \item \url{src/exchange-tools/taler-exchange-offline.c}: Implement \gls{CSBS} case for offline signing of denomination keys
+    \item \url{src/include/taler_exchange_service.h}: \\
+    Add \gls{CSBS} secmod public key to struct\\TALER\_EXCHANGE\_FutureKeys
+    \item \url{src/json/json_helper.c}: Implement CS case in function parse\_denom\_pub (used in taler-exchange-offline.c)
+    \item \url{src/json/json_pack.c}: Implement \gls{CSBS} case in function TALER\_JSON\_pack\_denom\_pub (used in taler-exchange-httpd\_keys.c)
+    \item \url{src/pq/pq_query_helper.c}: Implement \gls{CSBS} case in function qconv\_denom\_pub
+    \item \url{src/pq/pq_result_helper.c}: Implement \gls{CSBS} case in function extract\_denom\_pub
+\end{itemize}
+
+In order for the tests to pass, the following changes had to be implemented:
+\begin{itemize}
+    \item \url{src/lib/exchange_api_management_get_keys.c}: Add denom\_secmod\_cs\_public\_key JSON parsing, implement \gls{CSBS} case \\in function TALER\_EXCHANGE\_ManagementGetKeysHandle
+    \item \url{src/testing/.gitignore}: Add paths where \gls{CSBS} keys are stored (secmod-helper)
+    \item \url{src/testing/test_auditor_api.conf}: Add section taler-exchange-secmod-cs
+    \item \url{src/testing/test_exchange_api_keys_cherry_picking.conf}: Add section taler-exchange-secmod-cs
+    \item \url{src/testing/testing_api_helpers_exchange.c}: Add \gls{CSBS} secmod start and stop logic
+\end{itemize}
+
+
+\section{New Endpoint for $R$}
+The new endpoint is available in the exchange's HTTP server under \url{/csr}.
+It parses and checks the input, passes the request for derivation of the two $ R $'s down to the \gls{CSBS} security module and returns them to the requestor.
+The implementation can be found in:
+\begin{itemize}
+    \item \url{src/exchange/taler-exchange-httpd.c}:
+    Definition for the new endpoint, calls the function that handles \url{/csr} requests
+    \item \url{src/exchange/taler-exchange-httpd_responses.h} and \\
+    \url{src/exchange/taler-exchange-httpd_responses.c}: \\
+    Added function TEH\_RESPONSE\_reply\_invalid\_denom\_cipher\_for\_operation that indicates a failure when the endpoint is called for a non-\gls{CSBS} denomination
+    \item \url{src/exchange/taler-exchange-httpd_csr.h} and \\
+    \url{src/exchange/taler-exchange-httpd_csr.c}: \\
+    Implementation of the request handler for the new endpoint
+    \item \url{src/exchange/taler-exchange-httpd_keys.h} and \\
+    \url{src/exchange/taler-exchange-httpd_keys.c}: \\
+    Additional function TEH\_keys\_denomination\_cs\_r\_pub that passes down the request to derive the $ R $ to the taler-exchange-secmod-cs helper
+\end{itemize}
+
+The tests that check the functionality of the procotols are defined in \url{src/testing/} and use code that calls the \ac{API} (located in \url{src/lib/}).
+Since the new endpoint is used during withdrawing coins, testing for the \url{/csr} endpoint is integrated in these protocol tests.
+Therefore, a call to the endpoint was implemented and later integrated into the calls to the withdraw-\ac{API}.
+Code for calling the endpoint is located in these files:
+\begin{itemize}
+    \item \url{src/include/taler_exchange_service.h}: \\
+    Header describing functions and data structures used in withdraw and refresh testing:
+    \begin{itemize}
+        \item struct TALER\_EXCHANGE\_CsRHandle: Handle containing request information
+        \item struct TALER\_EXCHANGE\_CsRResponse: Response details
+        \item function TALER\_EXCHANGE\_CsRCallback: Callback function to deliver the results (used in withdraw and refresh)
+        \item function TALER\_EXCHANGE\_csr: Used to call endpoint
+        \item function TALER\_EXCHANGE\_csr\_cancel: Used to free dynamically allocated resources
+    \end{itemize}
+    \item \url{src/lib/exchange_api_csr.c}: Implementation of \url{/csr} request
+\end{itemize}
+
+
+\section{Withdraw Protocol}
+\label{sec:withdraw-protocol-impl}
+Since this is an existing endpoint, it was adjusted to support \gls{CSBS}.
+Mainly, the in- and output-handling had to be adjusted as described in section \ref{sec:specification-withdraw-public-api}, additional cipher checks for the denomination were added and the \gls{CSBS} for persisting the request in the database was implemented.
+\\\\
+An interesting part of the implementation is the check whether a nonce was already used for this denomination or not (step: $s \leftarrow \text{GetWithdraw}(n_w, D_p)$).
+This step ensures that the same signature will always be returned for a certain nonce.
+Using the same nonce for the same denomination twice without this check would lead to the same random value $r$.
+This is due to derivation of $r := \text{HKDF}(256,n_w || d_s, \text{"r"})$.
+An attacker could then immediately recover the secret key by the following equation: $(h' - h) * x \mod q = s -s' \mod q$ \cite{tibouchi:attacks-schnorr-nonce}.
+There are popular examples of this vulnerability in Sony Playstation 3's or Bitcoins ECDSA implementation \cite{buchanan:ps3-ecdsa-vuln} \cite{wang:bitcoin-ecdsa-vuln}.
+More details on how such a vulnerability can be exploited can be found in one of the author's blog posts \cite{gian:nonce-sense}.\\
+The designed Taler protocols using \gls{CSBS} are preventing this attack by checking the nonce and return the previously generated signature.
+Additionally the denomination's public key is included in this check to prevent another issue explained in section \ref{sec:taler-vuln}.\\
+The check is implemented by persisting a hash value over $n_w$ and $D_p$.
+On every withdrawal \texttt{check\_request\_idempotent()} is called, which checks whether the persisted hash matches with the current $n_w, D_p$ pair.
+
+
+\begin{itemize}
+    \item \url{src/exchange/taler-exchange-httpd_withdraw.c}: Implementation of \gls{CSBS} case for withdraw endpoint
+    \item \url{src/exchange/taler-exchange-httpd_keys.c}: Implement \gls{CSBS} case in function \\
+    TEH\_keys\_denomination\_sign (passes the signature creation down to the crypto helpers)
+    \item \url{src/include/taler_json_lib.h} and \url{src/json/json_helper.c}: \\
+    Add function TALER\_JSON\_spec\_blinded\_planchet
+    \item \url{src/json/json_pack.c}: \\
+    Implement \gls{CSBS} case in function\\ TALER\_JSON\_pack\_blinded\_denom\_sig
+    \item \url{src/pq/pq_query_helper.c}: implement \gls{CSBS} case in functions qconv\_denom\_sig and qconv\_blinded\_denom\_sig
+    \item \url{src/pq/pq_result_helper.c}: Implement \gls{CSBS} case in function extract\_blinded\_denom\_sig
+\end{itemize}
+
+For testing, the \gls{CSBS}-related data structures and procedures as well as the request to the additional endpoint \url{/csr} (before performing the actual withdrawal) were integrated:
+\begin{itemize}
+    \item \url{src/testing/test_exchange_api.c}: Add additional tests for \gls{CSBS} withdraw
+    \item \url{src/include/taler_testing_lib.h}: Specification for functions \\
+    TALER\_TESTING\_cmd\_withdraw\_cs\_amount and \\
+    TALER\_TESTING\_cmd\_withdraw\_cs\_amount\_reuse\_key, add denomination cipher parameter to function TALER\_TESTING\_find\_pk
+    \item \url{src/testing/testing_api_cmd_withdraw.c}: add functions \\
+    TALER\_TESTING\_cmd\_withdraw\_cs\_amount and \\
+    TALER\_TESTING\_cmd\_withdraw\_cs\_amount\_reuse\_key, implement \gls{CSBS}-specific logic for withdraw
+    \item \url{src/testing/testing_api_helpers_exchange.c}:
+    add cipher parameter to function TALER\_TESTING\_find\_pk
+    \item \url{src/lib/exchange_api_withdraw.c}: Implement \gls{CSBS}-specific withdraw logic, integrate \url{/csr} request
+    \item \url{src/lib/exchange_api_withdraw2.c}: implement \gls{CSBS} case
+    \item \url{src/include/taler_json_lib.h} and \url{src/json/json_pack.c}: \\
+    Add function TALER\_JSON\_pack\_blinded\_planchet
+    \item \url{src/json/json_helper.c} implement \gls{CSBS} case in function parse\_blinded\_denom\_sig
+\end{itemize}
+
+\section{Deposit Protocol}
+For deposit, only few changes were necessary because some of the required functionality has already been added for the previously implemented protocols, and only the coin signature verification is \gls{CSBS}-specific in this protocol.
+\begin{itemize}
+    \item \url{/src/exchange/taler-exchange-httpd_deposit.c}: Add check whether denomination cipher and denomination signature cipher are equal
+    \item \url{/src/json/json_helper.c}: Implement \gls{CSBS} case in function parse\_denom\_sig
+    \item \url{/src/pq/pq_result_helper.c}: Implement \gls{CSBS} case in function extract\_denom\_sig
+\end{itemize}
+
+Tests for deposit are implemented here:
+\begin{itemize}
+    \item \url{/src/testing/test_exchange_api.c}: Add tests (see "struct TALER\_TESTING\_Command\ spend\_cs[]") that spend \gls{CSBS} coins withdrawn in tests added for withdrawal
+    \item \url{/src/json/json_pack.c}: Implement \gls{CSBS} case in function TALER\_JSON\_pack\_denom\_sig
+\end{itemize} 
+
+\section{Fixing a Minor Security Issue in Taler's RSA Blind Signature Protocols}
+\label{sec:taler-vuln}
+While implementing the nonce check in the \gls{CSBS} protocol (see section \ref{sec:withdraw-protocol-impl}), a minor security issue in Taler's current RSA Blind Signature implementation was detected and fixed.
+The issue was only in the implementation of the current RSA Blind Signature protocols, the fix for this scenario was already implemented in \gls{CSBS} since the beginning.
+
+\subsection{Security Issue}
+\label{sec:taler-vuln-desc}
+
+The redesigned \gls{CSBS} protocols already include the denomination key in the nonce check, which fixes this issue (see \ref{sec:withdraw-protocol-schnorr}).
+In the case of \gls{RSABS}, the current protocol includes an \gls{idempotence} check by persisting the hash value of the blinded coin $m'$. 
+On a withdrawal/refresh the \gls{idempotence} check compares if the hash value of $m'$ was seen in the past and returns the 'old' signature on a match.
+This could lead to the following scenario:
+
+\begin{enumerate}
+    \item A broken wallet withdraws a coin with denomination $D_{p_{(1)}}$.
+    \item The wallet sends a request to withdraw the same coin for denomination $D_{p_{(2)}}$.
+    \item The exchange returns the signature for the denomination $D_{p_{(1)}}$ due to the \gls{idempotence} check.
+    \item Since the exchange returned an invalid signature, the customer can file a complaint at the auditor.
+    \item The auditor then has to investigate why the exchange returned invalid signatures.
+    \item The auditor can disprove the complaint by querying the persisted hash used for the \gls{idempotence} check.
+    With the associated denomination public key that is also persisted, the auditor can successfully verify the signature and thus prove that the exchange operated honestly.
+\end{enumerate}
+
+Including the denomination public key into the persisted hash for the \gls{idempotence} check solves this issue.
+If a broken wallet now sends the same coin for more than one denomination, the exchange returns valid signatures in both cases.\\
+While this is still an issue, this case is already handled nicely in Taler since this situation could also occur if a broken value tries to withdraw the same coin with two different blinding factors.
+
+\subsection{Impact}
+The impact of this security vulnerability is considered as very low.
+An auditor investigating such an issue can simply retrace what happened by checking the persisted hash and associated denomination.
+The impact of the issue is, that an auditor needs to investigate an issue, which can be prevented inside the protocol.
+\\
+In the previous section the client was considered a broken wallet.
+While this could be done on purpose by malicious a customer, there is no real motivation for abusing this issue due the easy detection of an auditor.
+
+
+\subsection{Fix}
+Listing \ref{lst:rsa-idempotence} shows the code of calculating the hash for the idempotency check in the RSA case before it was fixed.
+By trying to implement the \gls{CSBS} case, the question came up why the RSA case has not included the denomination key into the check.
+After discussing this issue with Christian Grothoff, the conclusion was to include the denomination public key to prevent the discussed issue.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={Idempotency check on RSA}, label={lst:rsa-idempotence}]
+    enum GNUNET_GenericReturnValue
+    TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
+                        struct TALER_BlindedCoinHash *bch)
+    {
+      switch (blinded_planchet->cipher)
+      {
+      case TALER_DENOMINATION_RSA:
+        GNUNET_CRYPTO_hash (
+          blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+          blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size,
+          &bch->hash);
+        return GNUNET_OK;
+      case TALER_DENOMINATION_CS:
+      ...
+    
+\end{lstlisting}
+
+The issue is fixed by adding a hash of the current denomination key into the calculation of the hash used in the \gls{idempotence} check.
+The applied fix can be seen in listing \ref{lst:fixed-idempotence}.
+
+\begin{lstlisting}[style=bfh-c,language=C, caption={Fixed idempotency check}, label={lst:fixed-idempotence}]
+    enum GNUNET_GenericReturnValue
+    TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
+                        const struct TALER_DenominationHash *denom_hash,
+                        struct TALER_BlindedCoinHash *bch)
+    {
+      switch (blinded_planchet->cipher)
+      {
+      case TALER_DENOMINATION_RSA:
+        {
+          struct GNUNET_HashContext *hash_context;
+          hash_context = GNUNET_CRYPTO_hash_context_start ();
+    
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &denom_hash->hash,
+                                           sizeof(denom_hash->hash));
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           blinded_planchet->details.
+                                           rsa_blinded_planchet.blinded_msg,
+                                           blinded_planchet->details.
+                                           rsa_blinded_planchet.blinded_msg_size);
+          GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                             &bch->hash);
+          return GNUNET_OK;
+        }
+      case TALER_DENOMINATION_CS:
+        {
+          struct GNUNET_HashContext *hash_context;
+          hash_context = GNUNET_CRYPTO_hash_context_start ();
+    
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &denom_hash->hash,
+                                           sizeof(denom_hash->hash));
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &blinded_planchet->details.
+                                           cs_blinded_planchet.nonce,
+                                           sizeof (blinded_planchet->details.
+                                                   cs_blinded_planchet.nonce));
+          GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                             &bch->hash);
+          return GNUNET_OK;
+        }
+      default:
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+    }
+\end{lstlisting}
