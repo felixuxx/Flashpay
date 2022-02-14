@@ -810,6 +810,14 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
       hash_context,
       &blinded_planchet->details.cs_blinded_planchet.c[0],
       sizeof (struct GNUNET_CRYPTO_CsC) * 2);
+#if FIXME
+    /* Must include this for refresh check, but
+       must EXCLUDE this in link signature (see TALER_LinkDataPS!) */
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      &blinded_planchet->details.cs_blinded_planchet.nonce,
+      sizeof (struct TALER_CsNonce));
+#endif
     break;
   default:
     GNUNET_break (0);
