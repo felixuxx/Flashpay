@@ -1218,6 +1218,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",rrc.ewv"
       ",rrc.link_sig"
       ",rrc.freshcoin_index"
+      ",rrc.coin_ev"
       " FROM refresh_commitments"
       "     JOIN refresh_revealed_coins rrc"
       "       USING (melt_serial_id)"
@@ -6385,6 +6386,7 @@ add_ldl (void *cls,
 
     pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
     {
+      struct TALER_BlindedPlanchet bp;
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
                                               &transfer_pub),
@@ -6398,6 +6400,8 @@ add_ldl (void *cls,
                                                        &pos->alg_values),
         TALER_PQ_result_spec_denom_pub ("denom_pub",
                                         &pos->denom_pub),
+        TALER_PQ_result_spec_blinded_planchet ("coin_ev",
+                                               &bp),
         GNUNET_PQ_result_spec_end
       };
 
@@ -6411,6 +6415,12 @@ add_ldl (void *cls,
         ldctx->status = GNUNET_SYSERR;
         return;
       }
+      if (TALER_DENOMINATION_CS == bp.cipher)
+      {
+        pos->nonce = bp.details.cs_blinded_planchet.nonce;
+        pos->have_nonce = true;
+      }
+      TALER_blinded_planchet_free (&bp);
     }
     if ( (NULL != ldctx->last) &&
          (0 == GNUNET_memcmp (&transfer_pub,

@@ -91,7 +91,13 @@ handle_link_data (void *cls,
       TALER_JSON_pack_exchange_withdraw_values ("ewv",
                                                 &pos->alg_values),
       GNUNET_JSON_pack_data_auto ("link_sig",
-                                  &pos->orig_coin_link_sig));
+                                  &pos->orig_coin_link_sig),
+      GNUNET_JSON_pack_allow_null (
+        pos->have_nonce
+        ? GNUNET_JSON_pack_data_auto ("cs_nonce",
+                                      &pos->nonce)
+        : GNUNET_JSON_pack_string ("cs_nonce",
+                                   NULL)));
     if ( (NULL == obj) ||
          (0 !=
           json_array_append_new (list,

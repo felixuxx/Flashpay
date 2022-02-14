@@ -1381,11 +1381,20 @@ struct TALER_EXCHANGEDB_LinkList
   struct TALER_CoinSpendSignatureP orig_coin_link_sig;
 
   /**
+   * CS nonce, if cipher is CS.
+   */
+  struct TALER_CsNonce nonce;
+
+  /**
    * Offset that generated this coin in the refresh
    * operation.
    */
   uint32_t coin_refresh_offset;
 
+  /**
+   * Set to true if @e nonce was initialized.
+   */
+  bool have_nonce;
 };
 
 

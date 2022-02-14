@@ -92,6 +92,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_CoinSpendSignatureP link_sig;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_ExchangeWithdrawValues alg_values;
+  struct TALER_CsNonce nonce;
   uint32_t coin_idx;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denom_pub ("denom_pub",
@@ -104,6 +105,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                  &link_sig),
     GNUNET_JSON_spec_uint32 ("coin_idx",
                              &coin_idx),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("cs_nonce",
+                                   &nonce)),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
@@ -111,6 +115,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_CoinPubHash c_hash;
 
   /* parse reply */
+  memset (&nonce,
+          0,
+          sizeof (nonce));
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
                          spec,
@@ -142,6 +149,16 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
+  }
+  if (TALER_DENOMINATION_CS == alg_values.cipher)
+  {
+    if (GNUNET_is_zero (&nonce))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+    pd.blinded_planchet.details.cs_blinded_planchet.nonce = nonce;
   }
   /* extract coin and signature */
   if (GNUNET_OK !=

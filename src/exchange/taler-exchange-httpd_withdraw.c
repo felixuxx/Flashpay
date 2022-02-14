@@ -535,6 +535,10 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   /* Clean up and send back final response */
   GNUNET_JSON_parse_free (spec);
 
+  // FIXME: in CS-case, we MUST re-transmit any _existing_ signature
+  // (if database had a record matching the nonce)
+  // instead of sending a 'fresh' one back (as c0/c1 may differ in
+  // a client attack!
   {
     MHD_RESULT ret;
 
