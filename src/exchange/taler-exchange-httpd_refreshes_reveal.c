@@ -634,13 +634,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 
       rrc->blinded_planchet = rcds[i].blinded_planchet;
     }
-    // FIXME: in CS-case, we MUST check if signatures
-    // already exist under the given nonce
-    // (TODO: check: refresh session hash OK?), and if so,
-    // we MUST return the existing signatures (c0/c1 may have changed!)
-    // and MUST NOT return the fresh signatures!
-    // => change this to a 'do_refresh_reveal' and
-    // change SQL to return existing signatures (if any)!
     qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
                                             melt_serial_id,
                                             num_fresh_coins,

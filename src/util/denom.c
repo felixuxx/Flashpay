@@ -806,8 +806,8 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
       blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
     break;
   case TALER_DENOMINATION_CS:
-    // FIMXE: c-values MUST NOT be included in idempotency check
-    // during withdraw/refresh, but right now they are!!!
+    // FIXME: c-values MUST NOT be included in idempotency check
+    // during withdraw (or recoup), but right now they are!!!
     GNUNET_CRYPTO_hash_context_read (
       hash_context,
       &blinded_planchet->details.cs_blinded_planchet.c[0],
