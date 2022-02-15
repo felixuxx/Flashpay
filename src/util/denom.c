@@ -828,4 +828,41 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_withdraw_request_hash (
+  const struct TALER_BlindedPlanchet *blinded_planchet,
+  const struct TALER_DenominationHash *denom_hash,
+  struct TALER_WithdrawIdentificationHash *wih)
+{
+  struct GNUNET_HashContext *hash_context;
+
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hash_context,
+                                   denom_hash,
+                                   sizeof(*denom_hash));
+  switch (blinded_planchet->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
+    break;
+  case TALER_DENOMINATION_CS:
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      &blinded_planchet->details.cs_blinded_planchet.nonce,
+      sizeof (struct TALER_CsNonce));
+    break;
+  default:
+    GNUNET_break (0);
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &wih->hash);
+  return GNUNET_OK;
+}
+
+
 /* end of denom.c */

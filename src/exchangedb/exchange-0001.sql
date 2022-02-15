@@ -196,7 +196,8 @@ CREATE INDEX IF NOT EXISTS reserves_close_by_reserve_pub_index
 
 CREATE TABLE IF NOT EXISTS reserves_out
   (reserve_out_serial_id BIGSERIAL -- UNIQUE
-  ,h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)
+  ,wih BYTEA PRIMARY KEY CHECK (LENGTH(wih)=64)
+  ,h_blind_ev BYTEA CHECK (LENGTH(h_blind_ev)=64) -- UNIQUE
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial)
   ,denom_sig BYTEA NOT NULL
   ,reserve_uuid INT8 NOT NULL -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
@@ -205,9 +206,11 @@ CREATE TABLE IF NOT EXISTS reserves_out
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
   )
-  PARTITION BY HASH (h_blind_ev);
+  PARTITION BY HASH (wih);
 COMMENT ON TABLE reserves_out
   IS 'Withdraw operations performed on reserves.';
+COMMENT ON COLUMN reserves_out.wih
+  IS 'Hash that uniquely identifies the withdraw request. Used to detect request replays (crucial for CS) and to check the withdraw existed during recoup.';
 COMMENT ON COLUMN reserves_out.h_blind_ev
   IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 COMMENT ON COLUMN reserves_out.denominations_serial
@@ -637,7 +640,7 @@ COMMENT ON TABLE recoup
 COMMENT ON COLUMN recoup.known_coin_id
   IS 'Coin that is being debited in the recoup. Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup.reserve_out_serial_id
-  IS 'Identifies the h_blind_ev of the recouped coin and provides the link to the credited reserve.';
+  IS 'Identifies the wih of the recouped coin and provides the link to the credited reserve.';
 COMMENT ON COLUMN recoup.coin_sig
   IS 'Signature by the coin affirming the recoup, of type TALER_SIGNATURE_WALLET_COIN_RECOUP';
 COMMENT ON COLUMN recoup.coin_blind
@@ -812,6 +815,7 @@ CREATE INDEX IF NOT EXISTS revolving_work_shards_by_job_name_active_last_attempt
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
+  IN in_wih BYTEA,
   IN amount_val INT8,
   IN amount_frac INT4,
   IN h_denom_pub BYTEA,
@@ -825,7 +829,8 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   OUT balance_ok BOOLEAN,
   OUT kycok BOOLEAN,
   OUT account_uuid INT8,
-  OUT ruuid INT8)
+  OUT ruuid INT8,
+  OUT out_denom_sig BYTEA)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -838,7 +843,7 @@ DECLARE
   reserve_frac INT4;
 BEGIN
 -- Shards: reserves by reserve_pub (SELECT)
---         reserves_out (INSERT, with CONFLICT detection) by h_blind_ev
+--         reserves_out (INSERT, with CONFLICT detection) by wih
 --         reserves by reserve_pub (UPDATE)
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_serial_id
@@ -887,6 +892,7 @@ END IF;
 -- the query successful due to idempotency.
 INSERT INTO reserves_out
   (h_blind_ev
+  ,wih
   ,denominations_serial
   ,denom_sig
   ,reserve_uuid
@@ -896,6 +902,7 @@ INSERT INTO reserves_out
   ,amount_with_fee_frac)
 VALUES
   (h_coin_envelope
+  ,in_wih
   ,denom_serial
   ,denom_sig
   ,ruuid
@@ -908,6 +915,25 @@ ON CONFLICT DO NOTHING;
 IF NOT FOUND
 THEN
   -- idempotent query, all constraints must be satisfied
+
+  SELECT
+     denom_sig
+  INTO
+     out_denom_sig
+  FROM reserves_in
+    WHERE wih=in_wih
+    LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+
+  IF NOT FOUND
+  THEN
+    reserve_found=FALSE;
+    balance_ok=FALSE;
+    kycok=FALSE;
+    account_uuid=0;
+    ruuid=0;
+    ASSERT false, 'internal logic error';
+  END IF;
+
   reserve_found=TRUE;
   balance_ok=TRUE;
   kycok=TRUE;
@@ -967,9 +993,13 @@ SELECT
  WHERE reserve_pub=rpub
  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
+-- Return denomination signature as result that
+-- was given as the argument.
+out_denom_sig=denom_sig;
+
 END $$;
 
-COMMENT ON FUNCTION exchange_do_withdraw(INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
+COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
 
 

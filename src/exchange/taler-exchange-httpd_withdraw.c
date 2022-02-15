@@ -92,6 +92,11 @@ struct WithdrawContext
 {
 
   /**
+   * Hash that uniquely identifies the withdraw request.
+   */
+  struct TALER_WithdrawIdentificationHash wih;
+
+  /**
    * Hash of the (blinded) message to be signed by the Exchange.
    */
   struct TALER_BlindedCoinHash h_coin_envelope;
@@ -155,6 +160,7 @@ withdraw_transaction (void *cls,
 
   now = GNUNET_TIME_timestamp_get ();
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
+                                &wc->wih,
                                 &wc->collectable,
                                 now,
                                 &found,
@@ -294,7 +300,7 @@ check_request_idempotent (struct TEH_RequestContext *rc,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      &wc->collectable.h_coin_envelope,
+                                      &wc->wih,
                                       &wc->collectable);
   if (0 > qs)
   {
@@ -496,7 +502,18 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
-  // TODO: if CS: check nonce for reuse
+  if (GNUNET_OK !=
+      TALER_withdraw_request_hash (&wc.blinded_planchet,
+                                   &wc.collectable.denom_pub_hash,
+                                   &wc.wih))
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                       NULL);
+  }
 
   /* Sign before transaction! */
   ec = TEH_keys_denomination_sign (
@@ -535,10 +552,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   /* Clean up and send back final response */
   GNUNET_JSON_parse_free (spec);
 
-  // FIXME: in CS-case, we MUST re-transmit any _existing_ signature
-  // (if database had a record matching the nonce)
-  // instead of sending a 'fresh' one back (as c0/c1 may differ in
-  // a client attack!
   {
     MHD_RESULT ret;
 

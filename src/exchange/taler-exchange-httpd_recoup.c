@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2021 Taler Systems SA
+  Copyright (C) 2017-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -40,9 +40,9 @@
 struct RecoupContext
 {
   /**
-   * Hash of the blinded coin.
+   * Hash identifying the withdraw request.
    */
-  struct TALER_BlindedCoinHash h_blind;
+  struct TALER_WithdrawIdentificationHash wih;
 
   /**
    * Set by #recoup_transaction() to the reserve that will
@@ -273,9 +273,9 @@ verify_and_execute_recoup (
       blinded_planchet.details.cs_blinded_planchet.nonce
         = *nonce;
     if (GNUNET_OK !=
-        TALER_coin_ev_hash (&blinded_planchet,
-                            &coin->denom_pub_hash,
-                            &pc.h_blind))
+        TALER_withdraw_request_hash (&blinded_planchet,
+                                     &coin->denom_pub_hash,
+                                     &pc.wih))
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (connection,
@@ -308,10 +308,10 @@ verify_and_execute_recoup (
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-                                             &pc.h_blind,
-                                             &pc.reserve_pub,
-                                             &pc.reserve_out_serial_id);
+    qs = TEH_plugin->get_reserve_by_wih (TEH_plugin->cls,
+                                         &pc.wih,
+                                         &pc.reserve_pub,
+                                         &pc.reserve_out_serial_id);
     if (0 > qs)
     {
       GNUNET_break (0);
@@ -319,13 +319,13 @@ verify_and_execute_recoup (
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
-        "get_reserve_by_h_blind");
+        "get_reserve_by_wih");
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Recoup requested for unknown envelope %s\n",
-                  GNUNET_h2s (&pc.h_blind.hash));
+                  GNUNET_h2s (&pc.wih.hash));
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_NOT_FOUND,

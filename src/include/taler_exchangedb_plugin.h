@@ -2476,20 +2476,19 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Locate the response for a withdraw request under the
-   * key of the hash of the blinded message.  Used to ensure
-   * idempotency of the request.
+   * Locate the response for a withdraw request under a hash that uniquely
+   * identifies the withdraw operation.  Used to ensure idempotency of the
+   * request.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param h_blind hash of the blinded coin to be signed (will match
-   *                `h_coin_envelope` in the @a collectable to be returned)
-   * @param collectable corresponding collectable coin (blind signature)
+   * @param wih hash that uniquely identifies the withdraw operation
+   * @param[out] collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return statement execution status
    */
   enum GNUNET_DB_QueryStatus
   (*get_withdraw_info)(void *cls,
-                       const struct TALER_BlindedCoinHash *h_blind,
+                       const struct TALER_WithdrawIdentificationHash *wih,
                        struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
@@ -2498,7 +2497,8 @@ struct TALER_EXCHANGEDB_Plugin
    * and possibly persisting the withdrawal details.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param collectable corresponding collectable coin (blind signature)
+   * @param wih hash that uniquely identifies the withdraw operation
+   * @param[in,out] collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @param now current time (rounded)
    * @param[out] found set to true if the reserve was found
@@ -2510,7 +2510,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_withdraw)(
     void *cls,
-    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+    const struct TALER_WithdrawIdentificationHash *wih,
+    struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
@@ -3517,16 +3518,16 @@ struct TALER_EXCHANGEDB_Plugin
    * from given the hash of the blinded coin.
    *
    * @param cls closure
-   * @param h_blind_ev hash of the blinded coin
+   * @param wih hash identifying the withdraw operation
    * @param[out] reserve_pub set to information about the reserve (on success only)
    * @param[out] reserve_out_serial_id set to row of the @a h_blind_ev in reserves_out
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_reserve_by_h_blind)(void *cls,
-                            const struct TALER_BlindedCoinHash *h_blind_ev,
-                            struct TALER_ReservePublicKeyP *reserve_pub,
-                            uint64_t *reserve_out_serial_id);
+  (*get_reserve_by_wih)(void *cls,
+                        const struct TALER_WithdrawIdentificationHash *wih,
+                        struct TALER_ReservePublicKeyP *reserve_pub,
+                        uint64_t *reserve_out_serial_id);
 
 
   /**

@@ -1346,6 +1346,7 @@ run (void *cls)
   struct GNUNET_TIME_Timestamp now;
   struct TALER_WireSaltP salt;
   struct TALER_CoinPubHash c_hash;
+  struct TALER_WithdrawIdentificationHash wih;
   uint64_t known_coin_id;
   uint64_t rrc_serial;
   struct TALER_EXCHANGEDB_Refresh refresh;
@@ -1383,7 +1384,7 @@ run (void *cls)
       plugin->create_tables (plugin->cls))
   {
     result = 77;
-    goto drop;
+    goto cleanup;
   }
   plugin->preflight (plugin->cls);
   FAILIF (GNUNET_OK !=
@@ -1499,9 +1500,14 @@ run (void *cls)
                                          &cbc.denom_pub_hash,
                                          &cbc.h_coin_envelope));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_denom_sign_blinded (&cbc.sig,
-                                               &dkp->priv,
-                                               &pd.blinded_planchet));
+                     TALER_withdraw_request_hash (&pd.blinded_planchet,
+                                                  &cbc.denom_pub_hash,
+                                                  &wih));      GNUNET_assert (
+        GNUNET_OK ==
+        TALER_denom_sign_blinded (
+          &cbc.sig,
+          &dkp->priv,
+          &pd.blinded_planchet));
       TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
   }
@@ -1511,6 +1517,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (CURRENCY,
                                         &cbc.withdraw_fee));
+
   {
     bool found;
     bool balance_ok;
@@ -1519,6 +1526,7 @@ run (void *cls)
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_withdraw (plugin->cls,
+                                 &wih,
                                  &cbc,
                                  now,
                                  &found,
@@ -1540,16 +1548,16 @@ run (void *cls)
                          value.fraction,
                          value.currency));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_reserve_by_h_blind (plugin->cls,
-                                          &cbc.h_coin_envelope,
-                                          &reserve_pub3,
-                                          &reserve_out_serial_id));
+          plugin->get_reserve_by_wih (plugin->cls,
+                                      &wih,
+                                      &reserve_pub3,
+                                      &reserve_out_serial_id));
   FAILIF (0 != GNUNET_memcmp (&reserve_pub,
                               &reserve_pub3));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_withdraw_info (plugin->cls,
-                                     &cbc.h_coin_envelope,
+                                     &wih,
                                      &cbc2));
   FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_sig,
                               &cbc.reserve_sig));
@@ -2400,6 +2408,7 @@ drop:
   rh = NULL;
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
+cleanup:
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
   if (NULL != revealed_coins)

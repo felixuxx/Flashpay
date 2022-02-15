@@ -560,13 +560,6 @@ prepare_statements (struct PostgresClosure *pg)
       "   ON (wire_source_serial_id = wire_target_serial_id)"
       " WHERE reserve_pub=$1;",
       1),
-    /* Lock withdraw table; NOTE: we may want to eventually shard the
-       deposit table to avoid this lock being the main point of
-       contention limiting transaction performance. */
-    GNUNET_PQ_make_prepare (
-      "lock_withdraw",
-      "LOCK TABLE reserves_out;",
-      0),
     /* Used in #postgres_do_withdraw() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -582,9 +575,10 @@ prepare_statements (struct PostgresClosure *pg)
       ",kycok AS kyc_ok"
       ",account_uuid AS payment_target_uuid"
       ",ruuid"
+      ",out_denom_sig"
       " FROM exchange_do_withdraw"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
+      10),
     /* Used in #postgres_do_withdraw_limit_check() to check
        if the withdrawals remain below the limit under which
        KYC is not required. */
@@ -659,6 +653,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_sig"
       ",reserves.reserve_pub"
       ",execution_date"
+      ",h_blind_ev"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",denom.fee_withdraw_val"
@@ -668,7 +663,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (reserve_uuid)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
-      " WHERE h_blind_ev=$1;",
+      " WHERE wih=$1;",
       1),
     /* Used during #postgres_get_reserve_history() to
        obtain all of the /reserve/withdraw operations that
@@ -1671,16 +1666,16 @@ prepare_statements (struct PostgresClosure *pg)
       "      ON (denoms.denominations_serial = coins.denominations_serial)"
       " WHERE coins.coin_pub=$1;",
       1),
-    /* Used in #postgres_get_reserve_by_h_blind() */
+    /* Used in #postgres_get_reserve_by_wih() */
     GNUNET_PQ_make_prepare (
-      "reserve_by_h_blind",
+      "reserve_by_wih",
       "SELECT"
       " reserves.reserve_pub"
       ",reserve_out_serial_id"
       " FROM reserves_out"
       " JOIN reserves"
       "   USING (reserve_uuid)"
-      " WHERE h_blind_ev=$1"
+      " WHERE wih=$1"
       " LIMIT 1;",
       1),
     /* Used in #postgres_get_old_coin_by_h_blind() */
@@ -4304,8 +4299,7 @@ postgres_reserves_in_insert (void *cls,
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param h_blind hash of the blinded coin to be signed (will match
- *                `h_coin_envelope` in the @a collectable to be returned)
+ * @param wih hash that uniquely identifies the withdraw operation
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return statement execution status
@@ -4313,12 +4307,12 @@ postgres_reserves_in_insert (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_withdraw_info (
   void *cls,
-  const struct TALER_BlindedCoinHash *h_blind,
+  const struct TALER_WithdrawIdentificationHash *wih,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_blind),
+    GNUNET_PQ_query_param_auto_from_type (wih),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4330,24 +4324,15 @@ postgres_get_withdraw_info (
                                           &collectable->reserve_sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                           &collectable->reserve_pub),
+    GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
+                                          &collectable->h_coin_envelope),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &collectable->amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
                                  &collectable->withdraw_fee),
     GNUNET_PQ_result_spec_end
   };
-#if EXPLICIT_LOCKS
-  struct GNUNET_PQ_QueryParam no_params[] = {
-    GNUNET_PQ_query_param_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                    "lock_withdraw",
-                                                    no_params)))
-    return qs;
-#endif
-  collectable->h_coin_envelope = *h_blind;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_withdraw_info",
                                                    params,
@@ -4360,8 +4345,8 @@ postgres_get_withdraw_info (
  * and possibly persisting the withdrawal details.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param collectable corresponding collectable coin (blind signature)
- *                    if a coin is found
+ * @param wih hash that uniquely identifies the withdraw operation
+ * @param[in,out] collectable corresponding collectable coin (blind signature) if a coin is found; possibly updated if a (different) signature exists already
  * @param now current time (rounded)
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
@@ -4372,7 +4357,8 @@ postgres_get_withdraw_info (
 static enum GNUNET_DB_QueryStatus
 postgres_do_withdraw (
   void *cls,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+  const struct TALER_WithdrawIdentificationHash *wih,
+  struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
   struct GNUNET_TIME_Timestamp now,
   bool *found,
   bool *balance_ok,
@@ -4382,6 +4368,7 @@ postgres_do_withdraw (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wih),
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
@@ -4392,6 +4379,9 @@ postgres_do_withdraw (
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_end
   };
+  enum GNUNET_DB_QueryStatus qs;
+  bool no_out_sig;
+  struct TALER_BlindedDenominationSignature out_sig;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("reserve_found",
                                 found),
@@ -4403,18 +4393,33 @@ postgres_do_withdraw (
                                   &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
                                   ruuid),
+    GNUNET_PQ_result_spec_allow_null (
+      TALER_PQ_result_spec_blinded_denom_sig ("out_denom_sig",
+                                              &out_sig),
+      &no_out_sig),
     GNUNET_PQ_result_spec_end
   };
 
+#if 0
+  memset (&out_sig,
+          0,
+          sizeof (out_sig));
+#endif
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
   kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_withdraw",
-                                                   params,
-                                                   rs);
-
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "call_withdraw",
+                                                 params,
+                                                 rs);
+  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
+       (! no_out_sig) )
+  {
+    TALER_blinded_denom_sig_free (&collectable->sig);
+    collectable->sig = out_sig;
+  }
+  return qs;
 }
 
 
@@ -9373,20 +9378,21 @@ postgres_select_reserve_closed_above_serial_id (
  * from given the hash of the blinded coin.
  *
  * @param cls closure
- * @param h_blind_ev hash of the blinded coin
+ * @param wih hash that uniquely identifies the withdraw request
  * @param[out] reserve_pub set to information about the reserve (on success only)
  * @param[out] reserve_out_serial_id set to row of the @a h_blind_ev in reserves_out
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_reserve_by_h_blind (void *cls,
-                                 const struct TALER_BlindedCoinHash *h_blind_ev,
-                                 struct TALER_ReservePublicKeyP *reserve_pub,
-                                 uint64_t *reserve_out_serial_id)
+postgres_get_reserve_by_wih (
+  void *cls,
+  const struct TALER_WithdrawIdentificationHash *wih,
+  struct TALER_ReservePublicKeyP *reserve_pub,
+  uint64_t *reserve_out_serial_id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
+    GNUNET_PQ_query_param_auto_from_type (wih),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -9398,7 +9404,7 @@ postgres_get_reserve_by_h_blind (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "reserve_by_h_blind",
+                                                   "reserve_by_wih",
                                                    params,
                                                    rs);
 }
@@ -11663,8 +11669,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_recoup_refresh_above_serial_id;
   plugin->select_reserve_closed_above_serial_id
     = &postgres_select_reserve_closed_above_serial_id;
-  plugin->get_reserve_by_h_blind
-    = &postgres_get_reserve_by_h_blind;
+  plugin->get_reserve_by_wih
+    = &postgres_get_reserve_by_wih;
   plugin->get_old_coin_by_h_blind
     = &postgres_get_old_coin_by_h_blind;
   plugin->insert_denomination_revocation

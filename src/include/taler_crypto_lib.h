@@ -572,6 +572,22 @@ struct TALER_BlindedCoinHash
 
 
 /**
+ * Hash used to uniquely represent a withdraw process so as to perform
+ * idempotency checks (and prevent clients from harmfully replaying withdraw
+ * operations with problematic variations on the inputs).  In the CS case,
+ * this is a hash over the DK and nonce, while in the RSA case, it is simply a
+ * hash over the DK and the blinded coin.
+ */
+struct TALER_WithdrawIdentificationHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
  * Hash used to represent the hash of the public
  * key of a coin (without blinding).
  */
@@ -1306,6 +1322,22 @@ enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     const struct TALER_DenominationHash *denom_hash,
                     struct TALER_BlindedCoinHash *bch);
+
+
+/**
+ * Compute the hash to uniquely identify a withdraw
+ * request.
+ *
+ * @param blinded_planchet blinded planchet
+ * @param denom_hash hash of the denomination publick key
+ * @param[out] wih where to write the hash
+ * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
+ */
+enum GNUNET_GenericReturnValue
+TALER_withdraw_request_hash (
+  const struct TALER_BlindedPlanchet *blinded_planchet,
+  const struct TALER_DenominationHash *denom_hash,
+  struct TALER_WithdrawIdentificationHash *wih);
 
 
 /**
