@@ -48,8 +48,8 @@ The following protocols currently use \gls{RSABS}:
               \item Customer
               \item Exchange
           \end{itemize}
-    \item \textbf{Payback Protocol:}
-          The payback protocol distinguishes three different cases, which either use the refresh protocol or disclose either the withdraw transcript or refresh protocol transcript to the exchange.
+    \item \textbf{Recoup Protocol:}
+          The recoup protocol distinguishes three different cases, which either use the refresh protocol or disclose either the withdraw transcript or refresh protocol transcript to the exchange.
           \\ Components:
           \begin{itemize}
               \item Customer
@@ -96,7 +96,7 @@ The coin and denomination private keys can be used as long-term secrets due to t
 
 Another question evolved around which key to use for the derivation of $ r_0, r_1 $.
 Obvious options are the denomination key or the exchange's online signing key.
-The denomination key was chosen because it has the payback protocol in place that would handle coin recovery in case of a key compromise and subsequent revocation.
+The denomination key was chosen because it has the recopu protocol in place that would handle coin recovery in case of a key compromise and subsequent revocation.
 
 \begin{figure}[htp]
   \begin{equation*}
@@ -376,7 +376,7 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ & & \textbf{check } h_C = h_C'
       \\ & & r_b := \text{HKDF}(256,n_r || d_s, \text{"r}b\text{"})
       \\ & & \overline{s}_{C_p}^{(\gamma)} = r_b + \overline{c_{b_\gamma}} d_s \mod p
-      \\ & & \text{persist } \langle \rho_L, \sigma_L \rangle
+      \\ & & \text{persist } \langle \rho_L, \sigma_L, S \rangle
       \\ & \xleftarrow[\rule{2.5cm}{0pt}]{b, \overline{s}_C^{(\gamma)}} &
       % Check coin signature and persist coin
       % unblind signature
@@ -444,8 +444,8 @@ To re-obtain the derived coin, the same calculations as in \ref{fig:refresh-deri
 \subsection{Tipping}
 Tipping remains unchanged, except for the content of the message $ \rho_W = D_p, c_0, c_1 $ signed by the merchant using its reserve private key.
 
-\subsection{Payback Protocol}
-The payback protocol distinguishes three different cases, which all depend on the state of a coin whose denomination key has been revoked.
+\subsection{Recoup Protocol}
+The recoup protocol distinguishes three different cases, which all depend on the state of a coin whose denomination key has been revoked.
 The following listing outlines the necessary changes on the protocol, please refer to Dold's documentation section 2.2.1 \cite{dold:the-gnu-taler-system} for details regarding the different cases.
 \begin{itemize}
   \item \textbf{The revoked coin has never been seen by the exchange}:
