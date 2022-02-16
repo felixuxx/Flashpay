@@ -186,6 +186,12 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
  */
 extern char *TEH_currency;
 
+/*
+ * Age restriction extension state
+ */
+extern bool TEH_age_restriction_enabled;
+extern struct TALER_AgeMask TEH_age_mask;
+
 /**
  * Our (externally visible) base URL.
  */

@@ -231,10 +231,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
+      ",age_mask"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17);",
-      17),
+      " $11, $12, $13, $14, $15, $16, $17, $18);",
+      18),
     /* Used in #postgres_iterate_denomination_info() */
     GNUNET_PQ_make_prepare (
       "denomination_iterate",
@@ -255,6 +256,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refund_val"
       ",fee_refund_frac"
       ",denom_pub"
+      ",age_mask"
       " FROM denominations;",
       0),
     /* Used in #postgres_iterate_denominations() */
@@ -278,6 +280,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refund_val"
       ",fee_refund_frac"
       ",denom_pub"
+      ",age_mask"
       " FROM denominations"
       " LEFT JOIN "
       "   denomination_revocations USING (denominations_serial);",
@@ -341,6 +344,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
+      ",age_mask"
       " FROM denominations"
       " WHERE denom_pub_hash=$1;",
       1),
@@ -825,6 +829,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.fee_refresh_frac"
       ",old_coin_pub"
       ",old_coin_sig"
+      ",h_age_commitment"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",noreveal_index"
@@ -843,6 +848,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " denom.denom_pub"
       ",kc.coin_pub AS old_coin_pub"
+      ",h_age_commitment"
       ",old_coin_sig"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
@@ -1842,6 +1848,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
+      ",age_mask"
       " FROM denominations"
       " WHERE denom_pub_hash=$1;",
       1),
@@ -2069,7 +2076,6 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " denominations_serial AS serial"
       ",denom_type"
-      ",age_restrictions"
       ",denom_pub"
       ",master_sig"
       ",valid_from"
@@ -2086,6 +2092,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
+      ",age_mask"
       " FROM denominations"
       " WHERE denominations_serial > $1"
       " ORDER BY denominations_serial ASC;",
@@ -2389,10 +2396,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
+      ",age_mask"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18);",
-      18),
+      " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
+      19),
     GNUNET_PQ_make_prepare (
       "insert_into_table_denomination_revocations",
       "INSERT INTO denomination_revocations"
@@ -3096,8 +3104,11 @@ postgres_insert_denomination_info (
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refresh),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refund),
+    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.mask),
     GNUNET_PQ_query_param_end
   };
+
+  GNUNET_assert (denom_pub->age_mask.mask == issue->age_mask.mask);
 
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
                    GNUNET_TIME_timestamp_ntoh (
@@ -3172,6 +3183,8 @@ postgres_get_denomination_info (
                                      &issue->properties.fee_refresh),
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
                                      &issue->properties.fee_refund),
+    GNUNET_PQ_result_spec_uint32 ("age_mask",
+                                  &issue->age_mask.mask),
     GNUNET_PQ_result_spec_end
   };
 
@@ -3258,12 +3271,15 @@ domination_cb_helper (void *cls,
                                        &issue.properties.fee_refund),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
+      GNUNET_PQ_result_spec_uint32 ("age_mask",
+                                    &issue.age_mask.mask),
       GNUNET_PQ_result_spec_end
     };
 
     memset (&issue.properties.master,
             0,
             sizeof (issue.properties.master));
+
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -3272,6 +3288,13 @@ domination_cb_helper (void *cls,
       GNUNET_break (0);
       return;
     }
+
+    /* Unfortunately we have to carry the age mask in both, the
+     * TALER_DenominationPublicKey and
+     * TALER_EXCHANGEDB_DenominationKeyInformationP at different times.
+     * Here we use _both_ so let's make sure the values are the same. */
+    denom_pub.age_mask = issue.age_mask;
+
     issue.properties.purpose.size
       = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
     issue.properties.purpose.purpose
@@ -3357,10 +3380,10 @@ dominations_cb_helper (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
-    struct TALER_DenominationPublicKey denom_pub;
-    struct TALER_MasterSignatureP master_sig;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_EXCHANGEDB_DenominationKeyMetaData meta = {0};
+    struct TALER_DenominationPublicKey denom_pub = {0};
+    struct TALER_MasterSignatureP master_sig = {0};
+    struct TALER_DenominationHash h_denom_pub = {0};
     bool revoked;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
@@ -3387,6 +3410,8 @@ dominations_cb_helper (void *cls,
                                    &meta.fee_refund),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
+      GNUNET_PQ_result_spec_uint32 ("age_mask",
+                                    &meta.age_mask.mask),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3398,6 +3423,10 @@ dominations_cb_helper (void *cls,
       GNUNET_break (0);
       return;
     }
+
+    /* make sure the mask information is the same */
+    denom_pub.age_mask = meta.age_mask;
+
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     dic->cb (dic->cb_cls,
@@ -5741,11 +5770,13 @@ postgres_ensure_coin_known (void *cls,
                             const struct TALER_CoinPublicInfo *coin,
                             uint64_t *known_coin_id,
                             struct TALER_DenominationHash *denom_hash,
-                            struct TALER_AgeHash *age_hash)
+                            struct TALER_AgeCommitmentHash *age_hash)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
   bool existed;
+  bool is_denom_pub_hash_null = false;
+  bool is_age_hash_null = false;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin->denom_pub_hash),
@@ -5753,24 +5784,22 @@ postgres_ensure_coin_known (void *cls,
     TALER_PQ_query_param_denom_sig (&coin->denom_sig),
     GNUNET_PQ_query_param_end
   };
-  bool is_null = false;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("existed",
                                 &existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                   known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_auto_from_type ("age_hash",
-                                            age_hash),
-      &is_null),
-    GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             denom_hash),
-      &is_null),
+      &is_denom_pub_hash_null),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("age_hash",
+                                            age_hash),
+      &is_age_hash_null),
     GNUNET_PQ_result_spec_end
   };
 
-  GNUNET_break (GNUNET_is_zero (&coin->age_commitment_hash)); // FIXME-OEC
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "insert_known_coin",
                                                  params,
@@ -5790,21 +5819,24 @@ postgres_ensure_coin_known (void *cls,
       return TALER_EXCHANGEDB_CKS_ADDED;
     break; /* continued below */
   }
-  if ( (! is_null) &&
-       (0 != GNUNET_memcmp (age_hash,
-                            &coin->age_commitment_hash)) )
-  {
-    GNUNET_break (GNUNET_is_zero (age_hash)); // FIXME-OEC
-    GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
-  }
-  if ( (! is_null) &&
-       (0 != GNUNET_memcmp (denom_hash,
-                            &coin->denom_pub_hash)) )
+
+  if ( (! is_denom_pub_hash_null) &&
+       (0 != GNUNET_memcmp (&denom_hash->hash,
+                            &coin->denom_pub_hash.hash)) )
   {
     GNUNET_break_op (0);
     return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
   }
+
+  if ( (! is_age_hash_null) &&
+       (0 != GNUNET_memcmp (age_hash,
+                            &coin->age_commitment_hash)) )
+  {
+    GNUNET_break (GNUNET_is_zero (age_hash));
+    GNUNET_break_op (0);
+    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+  }
+
   return TALER_EXCHANGEDB_CKS_PRESENT;
 }
 
@@ -6030,6 +6062,7 @@ postgres_get_melt (void *cls,
                    uint64_t *melt_serial_id)
 {
   struct PostgresClosure *pg = cls;
+  bool h_age_commitment_is_null;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (rc),
     GNUNET_PQ_query_param_end
@@ -6046,6 +6079,10 @@ postgres_get_melt (void *cls,
                                           &melt->session.coin.coin_pub),
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
                                           &melt->session.coin_sig),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+                                            &melt->session.h_age_commitment),
+      &h_age_commitment_is_null),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &melt->session.amount_with_fee),
     GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
@@ -6061,6 +6098,11 @@ postgres_get_melt (void *cls,
                                                  "get_melt",
                                                  params,
                                                  rs);
+  if (h_age_commitment_is_null)
+    memset (&melt->session.h_age_commitment,
+            0,
+            sizeof(melt->session.h_age_commitment));
+
   melt->session.rc = *rc;
   return qs;
 }
@@ -8225,6 +8267,8 @@ refreshs_serial_helper_cb (void *cls,
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_CoinSpendSignatureP coin_sig;
+    struct TALER_AgeCommitmentHash h_age_commitment;
+    bool ac_isnull;
     struct TALER_Amount amount_with_fee;
     uint32_t noreveal_index;
     uint64_t rowid;
@@ -8232,6 +8276,10 @@ refreshs_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+                                              &h_age_commitment),
+        &ac_isnull),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
                                             &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
@@ -8257,9 +8305,11 @@ refreshs_serial_helper_cb (void *cls,
       rsc->status = GNUNET_SYSERR;
       return;
     }
+
     ret = rsc->cb (rsc->cb_cls,
                    rowid,
                    &denom_pub,
+                   ac_isnull ? NULL : &h_age_commitment,
                    &coin_pub,
                    &coin_sig,
                    &amount_with_fee,
@@ -10198,6 +10248,8 @@ postgres_lookup_denomination_key (
                                  &meta->fee_refresh),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
                                  &meta->fee_refund),
+    GNUNET_PQ_result_spec_uint32 ("age_mask",
+                                  &meta->age_mask.mask),
     GNUNET_PQ_result_spec_end
   };
 
@@ -10241,6 +10293,7 @@ postgres_add_denomination_key (
     TALER_PQ_query_param_amount (&meta->fee_deposit),
     TALER_PQ_query_param_amount (&meta->fee_refresh),
     TALER_PQ_query_param_amount (&meta->fee_refund),
+    GNUNET_PQ_query_param_uint32 (&meta->age_mask.mask),
     GNUNET_PQ_query_param_end
   };
 

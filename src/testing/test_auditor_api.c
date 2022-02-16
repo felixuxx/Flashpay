@@ -128,6 +128,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
@@ -168,6 +169,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin-1",
                                        "refresh-create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in
@@ -315,6 +317,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
                                        "create-reserve-unaggregated",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-unaggregated",
                                "withdraw-coin-unaggregated",
@@ -347,6 +350,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
                                        "create-reserve-r1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * Spend 5 EUR of the 5 EUR coin (in full). Merchant would
@@ -402,6 +406,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-1",
                                        "recoup-create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_revoke ("revoke-1",
                               MHD_HTTP_OK,
@@ -417,6 +422,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2",
                                        "recoup-create-reserve-1",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * These commands should close the reserve because the aggregator
@@ -447,6 +453,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2a",
                                        "recoup-create-reserve-2",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * Withdraw a 1 EUR coin, at fee of 1 ct
@@ -454,6 +461,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2b",
                                        "recoup-create-reserve-2",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("recoup-deposit-partial",
                                "recoup-withdraw-coin-2a",
@@ -491,42 +499,52 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-1",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-2",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-3",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-4",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-5",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-6",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-7",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-8",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-9",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_withdraw_amount ("massive-withdraw-10",
                                        "massive-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit (
       "massive-deposit-1",
@@ -719,7 +737,7 @@ main (int argc,
     GNUNET_break (0);
     return 1;
   case GNUNET_NO:
-    return 77;
+    return 78;
   case GNUNET_OK:
     if (GNUNET_OK !=
         /* Set up event loop and reschedule context, plus
@@ -729,11 +747,11 @@ main (int argc,
         TALER_TESTING_auditor_setup (&run,
                                      NULL,
                                      config_file))
-      return 1;
+      return 2;
     break;
   default:
     GNUNET_break (0);
-    return 1;
+    return 3;
   }
   return 0;
 }

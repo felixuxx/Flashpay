@@ -127,6 +127,16 @@ extension_update_event_cb (void *cls,
       GNUNET_break (0);
     }
   }
+
+  /* Special case age restriction: Update global flag and mask  */
+  if (TALER_Extension_AgeRestriction == type)
+  {
+    TEH_age_mask.mask = 0;
+    TEH_age_restriction_enabled =
+      TALER_extensions_age_restriction_is_enabled ();
+    if (TEH_age_restriction_enabled)
+      TEH_age_mask = TALER_extensions_age_restriction_ageMask ();
+  }
 }
 
 
@@ -150,6 +160,12 @@ TEH_extensions_init ()
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+
+  /* FIXME: shall we load the extensions from the config right away?
+   * We do have to for now, as otherwise denominations with age restriction
+   * will not have the age mask set right upon initial generation.
+   */
+  TALER_extensions_load_taler_config (TEH_cfg);
 
   /* Trigger the initial load of configuration from the db */
   for (const struct TALER_Extension *it = TALER_extensions_get_head ();

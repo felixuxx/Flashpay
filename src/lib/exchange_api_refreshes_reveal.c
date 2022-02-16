@@ -142,6 +142,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
       &rcis[i];
     const struct FreshCoinData *fcd = &rrh->md.fcds[i];
     const struct TALER_DenominationPublicKey *pk;
+    struct TALER_AgeCommitmentHash *ach = NULL;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -159,6 +160,12 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     pk = &fcd->fresh_pk;
     jsonai = json_array_get (jsona, i);
     GNUNET_assert (NULL != jsonai);
+
+    if (! TALER_AgeCommitmentHash_isNullOrZero (
+          &rrh->md.melted_coin.h_age_commitment))
+    {
+      /* FIXME-oec:  need to pull fresh_ach from somewhere */
+    }
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (jsonai,
@@ -180,15 +187,15 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
        hence recomputing it here... */
     GNUNET_CRYPTO_eddsa_key_get_public (&rci->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    /* FIXME-Oec: Age commitment hash. */
     TALER_coin_pub_hash (&coin_pub,
-                         NULL, /* FIXME-Oec */
+                         ach,
                          &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,
                                 &blind_sig,
                                 &bks,
                                 &rci->coin_priv,
+                                ach,
                                 &coin_hash,
                                 &rrh->alg_values[i],
                                 &coin))

@@ -66,11 +66,13 @@ TALER_TESTING_make_wire_details (const char *payto);
  *
  * @param keys array of keys to search
  * @param amount coin value to look for
+ * @param age_restricted must the denomination be age restricted?
  * @return NULL if no matching key was found
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount);
+                       const struct TALER_Amount *amount,
+                       bool age_restricted);
 
 
 /**
@@ -1278,6 +1280,7 @@ TALER_TESTING_cmd_exec_transfer (const char *label,
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
+ * @param age if > 0, age restriction applies
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
  * @return the withdraw command to be executed by the interpreter.
@@ -1286,6 +1289,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    const char *reserve_reference,
                                    const char *amount,
+                                   uint8_t age,
                                    unsigned int expected_response_code);
 
 
@@ -1298,6 +1302,7 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
+ * @param age if > 0, age restriction applies.
  * @param coin_ref reference to (withdraw/reveal) command of a coin
  *        from which we should re-use the private key
  * @param expected_response_code which HTTP response code
@@ -1309,6 +1314,7 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
   const char *label,
   const char *reserve_reference,
   const char *amount,
+  uint8_t age,
   const char *coin_ref,
   unsigned int expected_response_code);
 
@@ -2138,6 +2144,19 @@ TALER_TESTING_cmd_wire_del (const char *label,
                             unsigned int expected_http_status,
                             bool bad_sig);
 
+/**
+ * Sign all extensions that the exchange has to offer, f. e. the extension for
+ * age restriction.  This has to be run before any withdrawal of age restricted
+ * can be performed.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_offline_sign_extensions (const char *label,
+                                                const char *config_filename);
+
 
 /**
  * Sign all exchange denomination and online signing keys
@@ -2422,10 +2441,10 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
   op (bank_row, const uint64_t)                                    \
-  op (reserve_priv, const struct TALER_ReservePrivateKeyP) \
-  op (planchet_secret, const struct TALER_PlanchetMasterSecretP) \
-  op (refresh_secret, const struct TALER_RefreshMasterSecretP) \
-  op (reserve_pub, const struct TALER_ReservePublicKeyP)         \
+  op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
+  op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
+  op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
+  op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
   op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
   op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
   op (merchant_sig, const struct TALER_MerchantSignatureP)         \
@@ -2438,8 +2457,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (exchange_bank_account_url, const char *)                     \
   op (taler_uri, const char *)                                     \
   op (payto_uri, const char *)                                     \
-  op (kyc_url, const char *)                                     \
-  op (web_url, const char *)                                     \
+  op (kyc_url, const char *)                                       \
+  op (web_url, const char *)                                       \
   op (row, const uint64_t)                                         \
   op (payment_target_uuid, const uint64_t)                         \
   op (array_length, const unsigned int)                            \
@@ -2464,7 +2483,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_INDEXED_TRAITS(op)                               \
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
-  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)           \
+  op (age_commitment, struct TALER_AgeCommitment)                      \
+  op (h_age_commitment, struct TALER_AgeCommitmentHash)                \
+  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)      \
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \

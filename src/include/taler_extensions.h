@@ -86,6 +86,31 @@ TALER_extensions_load_taler_config (
   const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 /*
+ * Check the given obj to be a valid extension object and fill the fields
+ * accordingly.
+ */
+enum GNUNET_GenericReturnValue
+TALER_extensions_is_json_config (
+  json_t *obj,
+  int *critical,
+  const char **version,
+  json_t **config);
+
+/*
+ * Sets the configuration of the extensions from a given JSON object.
+ *
+ * he JSON object must be of type ExchangeKeysResponse as described in
+ * https://docs.taler.net/design-documents/006-extensions.html#exchange
+ *
+ * @param cfg JSON object containting the configuration for all extensions
+ * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
+ *         or any particular configuration couldn't be parsed.
+ */
+enum GNUNET_GenericReturnValue
+TALER_extensions_load_json_config (
+  json_t *cfg);
+
+/*
  * Returns the head of the linked list of extensions
  */
 const struct TALER_Extension *
@@ -156,20 +181,6 @@ TALER_extensions_verify_json_config_signature (
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub);
 
-/*
- * Sets the configuration of the extensions from a given JSON object.
- *
- * The JSON object must be of type ExchangeKeysResponse as described in
- * https://docs.taler.net/design-documents/006-extensions.html#exchange
- *
- * @param cfg Handle to the TALER configuration
- * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
- *         or any particular configuration couldn't be parsed.
- */
-enum GNUNET_GenericReturnValue
-TALER_extensions_load_json_config (
-  json_t *extensions);
-
 
 /*
  * TALER Age Restriction Extension
@@ -220,6 +231,45 @@ TALER_parse_age_group_string (
 char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask);
+
+/**
+ * Returns true when age restriction is configured and enabled.
+ */
+bool
+TALER_extensions_age_restriction_is_enabled ();
+
+/**
+ * Returns true when age restriction is configured (might not be _enabled_,
+ * though).
+ */
+bool
+TALER_extensions_age_restriction_is_configured ();
+
+/**
+ * Returns the currently set age mask.  Note that even if age restriction is
+ * not enabled, the age mask might be have a non-zero value.
+ */
+struct TALER_AgeMask
+TALER_extensions_age_restriction_ageMask ();
+
+
+/**
+ * Returns the amount of age groups defined.  0 means no age restriction
+ * enabled.
+ */
+size_t
+TALER_extensions_age_restriction_num_groups ();
+
+/**
+ * Parses a JSON object { "age_groups": "a:b:...y:z" }.
+ *
+ * @param root is the json object
+ * @param[out] mask on succes, will contain the age mask
+ * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
+ */
+enum GNUNET_GenericReturnValue
+TALER_JSON_parse_age_groups (const json_t *root,
+                             struct TALER_AgeMask *mask);
 
 
 /*

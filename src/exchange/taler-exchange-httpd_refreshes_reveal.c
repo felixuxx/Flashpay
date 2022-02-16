@@ -281,6 +281,7 @@ check_commitment (struct RevealContext *rctx,
                                                  alg_value,
                                                  &bks,
                                                  &coin_priv,
+                                                 NULL, /* FIXME-Oec, struct TALER_AgeCommitmentHash * */
                                                  &c_hash,
                                                  &pd));
           if (TALER_DENOMINATION_CS == dk->cipher)
@@ -380,6 +381,7 @@ check_commitment (struct RevealContext *rctx,
  * @param rctx context for the operation, partially built at this time
  * @param link_sigs_json link signatures in JSON format
  * @param new_denoms_h_json requests for fresh coins to be created
+ * @param old_age_commitment_json age commitment that went into the withdrawal, maybe NULL
  * @param coin_evs envelopes of gamma-selected coins to be signed
  * @return MHD result code
  */
@@ -388,6 +390,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                         struct RevealContext *rctx,
                                         const json_t *link_sigs_json,
                                         const json_t *new_denoms_h_json,
+                                        const json_t *old_age_commitment_json,
                                         const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
@@ -412,6 +415,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                        NULL);
   }
+
   /* Parse denomination key hashes */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
@@ -537,6 +541,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       goto cleanup;
     }
   }
+
   /* Parse link signatures array */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
@@ -554,6 +559,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                       -1);
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+
     /* Check signature */
     if (GNUNET_OK !=
         TALER_wallet_link_verify (
@@ -561,6 +567,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
           &rctx->gamma_tp,
           &rrcs[i].coin_envelope_hash,
           &rctx->melt.session.coin.coin_pub,
+          NULL, // TODO-oec: calculate the correct h_age_commitment
           &rrcs[i].orig_coin_link_sig))
     {
       GNUNET_break_op (0);
@@ -592,6 +599,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       goto cleanup;
     }
   }
+
   rctx->dks = dks;
   rctx->rcds = rcds;
   rctx->rrcs = rrcs;
@@ -604,6 +612,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating %u signatures\n",
               (unsigned int) rctx->num_fresh_coins);
+
   /* create fresh coin signatures */
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
@@ -622,8 +631,10 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       goto cleanup;
     }
   }
+
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
+
   /* Persist operation result in DB */
   {
     enum GNUNET_DB_QueryStatus qs;
@@ -678,11 +689,18 @@ cleanup:
  * revealed information is valid then returns the signed refreshed
  * coins.
  *
+ * If the denomination has age restriction support, the array of EDDSA public
+ * keys, one for each age group that was activated during the withdrawal
+ * by the parent/ward, must be provided in old_age_commitment.  The hash of
+ * this array must be the same as the h_age_commitment of the persisted reveal
+ * request.
+ *
  * @param connection the MHD connection to handle
  * @param rctx context for the operation, partially built at this time
  * @param tp_json private transfer keys in JSON format
  * @param link_sigs_json link signatures in JSON format
  * @param new_denoms_h_json requests for fresh coins to be created
+ * @param old_age_commitment_json array of EDDSA public keys in JSON, used for age restriction, maybe NULL
  * @param coin_evs envelopes of gamma-selected coins to be signed
  * @return MHD result code
  */
@@ -692,6 +710,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
                               const json_t *tp_json,
                               const json_t *link_sigs_json,
                               const json_t *new_denoms_h_json,
+                              const json_t *old_age_commitment_json,
                               const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
@@ -727,6 +746,19 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
                                        "new_denoms/link_sigs");
   }
 
+  /* Sanity check of age commitment: If it was provided, it _must_ be an array
+   * of the size the # of age groups */
+  if (NULL != old_age_commitment_json
+      && TALER_extensions_age_restriction_num_groups () !=
+      json_array_size (old_age_commitment_json))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_REFRESHES_REVEAL_AGE_RESTRICTION_COMMITMENT_INVALID,
+                                       "old_age_commitment");
+  }
+
   /* Parse transfer private keys array */
   for (unsigned int i = 0; i<num_tprivs; i++)
   {
@@ -750,6 +782,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
                                                  rctx,
                                                  link_sigs_json,
                                                  new_denoms_h_json,
+                                                 old_age_commitment_json,
                                                  coin_evs);
 }
 
@@ -763,6 +796,7 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
   json_t *transfer_privs;
   json_t *link_sigs;
   json_t *new_denoms_h;
+  json_t *old_age_commitment = NULL;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("transfer_pub",
@@ -775,6 +809,9 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
                            &coin_evs),
     GNUNET_JSON_spec_json ("new_denoms_h",
                            &new_denoms_h),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_json ("old_age_commitment",
+                             &old_age_commitment)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -836,6 +873,7 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
                                         transfer_privs,
                                         link_sigs,
                                         new_denoms_h,
+                                        old_age_commitment,
                                         coin_evs);
     GNUNET_JSON_parse_free (spec);
     return res;

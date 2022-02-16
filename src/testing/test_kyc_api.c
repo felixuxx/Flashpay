@@ -105,10 +105,12 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-no-kyc",
                                        "create-reserve-1",
                                        "EUR:10",
+                                       0, /* age restriction off */
                                        MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
@@ -120,6 +122,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-lacking-kyc",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_proof_kyc ("proof-kyc",
                                  "withdraw-coin-1-lacking-kyc",
@@ -129,6 +132,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-with-kyc",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };

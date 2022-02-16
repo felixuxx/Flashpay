@@ -20,11 +20,16 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_util.h"
 #include <gcrypt.h>
 
+/**
+ * Used in TALER_AgeCommitmentHash_isNullOrZero for comparison
+ */
+const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash = {0};
 
 /**
  * Function called by libgcrypt on serious errors.
@@ -83,12 +88,11 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                  GNUNET_memcmp (&d_hash,
                                 &coin_public_info->denom_pub_hash));
 #endif
-  // FIXME-Oec: replace with function that
-  // also hashes the age vector if we have
-  // one!
-  GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash.hash);
+
+  TALER_coin_pub_hash (&coin_public_info->coin_pub,
+                       &coin_public_info->age_commitment_hash,
+                       &c_hash);
+
   if (GNUNET_OK !=
       TALER_denom_pub_verify (denom_pub,
                               &coin_public_info->denom_sig,
@@ -251,6 +255,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_ExchangeWithdrawValues *alg_values,
                         const union TALER_DenominationBlindingKeyP *bks,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                        const struct TALER_AgeCommitmentHash *ach,
                         struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd
                         )
@@ -263,7 +268,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   if (GNUNET_OK !=
       TALER_denom_blind (dk,
                          bks,
-                         NULL, /* FIXME-Oec */
+                         ach,
                          &coin_pub,
                          alg_values,
                          c_hash,
@@ -291,6 +296,7 @@ TALER_planchet_to_coin (
   const struct TALER_BlindedDenominationSignature *blind_sig,
   const union TALER_DenominationBlindingKeyP *bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinPubHash *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin)
@@ -321,7 +327,9 @@ TALER_planchet_to_coin (
     TALER_denom_sig_free (&coin->sig);
     return GNUNET_SYSERR;
   }
+
   coin->coin_priv = *coin_priv;
+  coin->h_age_commitment = ach;
   return GNUNET_OK;
 }
 
@@ -396,10 +404,10 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 
 void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                     const struct TALER_AgeHash *age_commitment_hash,
+                     const struct TALER_AgeCommitmentHash *ach,
                      struct TALER_CoinPubHash *coin_h)
 {
-  if (NULL == age_commitment_hash)
+  if (TALER_AgeCommitmentHash_isNullOrZero (ach))
   {
     /* No age commitment was set */
     GNUNET_CRYPTO_hash (&coin_pub->eddsa_pub,
@@ -411,19 +419,291 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     /* Coin comes with age commitment.  Take the hash of the age commitment
      * into account */
     const size_t key_s = sizeof(struct GNUNET_CRYPTO_EcdsaPublicKey);
-    const size_t age_s = sizeof(struct TALER_AgeHash);
+    const size_t age_s = sizeof(struct TALER_AgeCommitmentHash);
     char data[key_s + age_s];
 
     GNUNET_memcpy (&data[0],
                    &coin_pub->eddsa_pub,
                    key_s);
     GNUNET_memcpy (&data[key_s],
-                   age_commitment_hash,
+                   ach,
                    age_s);
     GNUNET_CRYPTO_hash (&data,
                         key_s + age_s,
                         &coin_h->hash);
   }
+}
+
+
+void
+TALER_age_commitment_hash (
+  const struct TALER_AgeCommitment *commitment,
+  struct TALER_AgeCommitmentHash *ahash)
+{
+  struct GNUNET_HashContext *hash_context;
+  struct GNUNET_HashCode hash;
+
+  GNUNET_assert (NULL != ahash);
+  if (NULL == commitment)
+  {
+    memset (ahash, 0, sizeof(struct TALER_AgeCommitmentHash));
+    return;
+  }
+
+  GNUNET_assert (__builtin_popcount (commitment->mask.mask) - 1 ==
+                 commitment->num_pub);
+
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+  for (size_t i = 0; i < commitment->num_pub; i++)
+  {
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &commitment->pub[i],
+                                     sizeof(struct
+                                            GNUNET_CRYPTO_EddsaPublicKey));
+  }
+
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &hash);
+  GNUNET_memcpy (&ahash->shash.bits,
+                 &hash.bits,
+                 sizeof(ahash->shash.bits));
+}
+
+
+/* To a given age value between 0 and 31, returns the index of the age group
+ * defined by the given mask.
+ */
+static uint8_t
+get_age_group (
+  const struct TALER_AgeMask *mask,
+  uint8_t age)
+{
+  uint32_t m = mask->mask;
+  uint8_t i = 0;
+
+  while (m > 0)
+  {
+    if (0 >= age)
+      break;
+    m = m >> 1;
+    i += m & 1;
+    age--;
+  }
+  return i;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_age_restriction_commit (
+  const struct TALER_AgeMask *mask,
+  const uint8_t age,
+  const uint32_t seed,
+  struct TALER_AgeCommitment *new)
+{
+  uint8_t num_pub = __builtin_popcount (mask->mask) - 1;
+  uint8_t num_priv = get_age_group (mask, age) - 1;
+  size_t i;
+
+  GNUNET_assert (NULL != new);
+  GNUNET_assert (mask->mask & 1); /* fist bit must have been set */
+  GNUNET_assert (0 <= num_priv);
+  GNUNET_assert (31 > num_priv);
+
+  new->mask.mask = mask->mask;
+  new->num_pub = num_pub;
+  new->num_priv = num_priv;
+
+  new->pub = GNUNET_new_array (
+    num_pub,
+    struct TALER_AgeCommitmentPublicKeyP);
+  new->priv = GNUNET_new_array (
+    num_priv,
+    struct TALER_AgeCommitmentPrivateKeyP);
+
+  /* Create as many private keys as we need */
+  for (i = 0; i < num_priv; i++)
+  {
+    uint32_t seedBE = htonl (seed + i);
+
+    if  (GNUNET_OK !=
+         GNUNET_CRYPTO_kdf (&new->priv[i],
+                            sizeof (new->priv[i]),
+                            &seedBE,
+                            sizeof (seedBE),
+                            "taler-age-commitment-derivation",
+                            strlen (
+                              "taler-age-commitment-derivation"),
+                            NULL, 0))
+      goto FAIL;
+
+    GNUNET_CRYPTO_eddsa_key_get_public (&new->priv[i].eddsa_priv,
+                                        &new->pub[i].eddsa_pub);
+  }
+
+  /* Fill the rest of the public keys with random values */
+  for (; i<num_pub; i++)
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &new->pub[i],
+                                sizeof(new->pub[i]));
+
+  return GNUNET_OK;
+
+FAIL:
+  GNUNET_free (new->pub);
+  GNUNET_free (new->priv);
+  return GNUNET_SYSERR;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_age_commitment_derive (
+  const struct TALER_AgeCommitment *orig,
+  const uint32_t seed,
+  struct TALER_AgeCommitment *new)
+{
+  struct GNUNET_CRYPTO_EccScalar val;
+
+  /*
+  * age commitment consists of GNUNET_CRYPTO_Eddsa{Private,Public}Key
+  *
+  * GNUNET_CRYPTO_EddsaPrivateKey is a
+  *   unsigned char d[256 / 8];
+  *
+  * GNUNET_CRYPTO_EddsaPublicKey is a
+  *   unsigned char q_y[256 / 8];
+  *
+  * We want to multiply, both, the Private Key by an integer factor and the
+  * public key (point on curve) with the equivalent scalar.
+  *
+  * From the seed we will derive
+  *   1. a scalar to multiply the public keys with
+  *   2. a factor to multiply the private key with
+  *
+  * Invariants:
+  *   point*scalar == public(private*factor)
+  *
+  * A point on a curve is GNUNET_CRYPTO_EccPoint which is
+  *   unsigned char v[256 / 8];
+  *
+  * A ECC scaler for use in point multiplications is a
+  * GNUNET_CRYPTO_EccScalar which is a
+  *   unsigned car v[256 / 8];
+  * */
+
+  GNUNET_assert (NULL != new);
+  GNUNET_assert (orig->num_pub == __builtin_popcount (orig->mask.mask) - 1);
+  GNUNET_assert (orig->num_priv <= orig->num_pub);
+
+  new->mask = orig->mask;
+  new->num_pub = orig->num_pub;
+  new->num_priv = orig->num_priv;
+  new->pub = GNUNET_new_array (
+    new->num_pub,
+    struct TALER_AgeCommitmentPublicKeyP);
+  new->priv = GNUNET_new_array (
+    new->num_priv,
+    struct TALER_AgeCommitmentPrivateKeyP);
+
+
+  GNUNET_CRYPTO_ecc_scalar_from_int (seed, &val);
+
+  /* scalar multiply the public keys on the curve */
+  for (size_t i = 0; i < orig->num_pub; i++)
+  {
+    /* We shift all keys by the same scalar */
+    struct GNUNET_CRYPTO_EccPoint *p = (struct
+                                        GNUNET_CRYPTO_EccPoint *) &orig->pub[i];
+    struct GNUNET_CRYPTO_EccPoint *np = (struct
+                                         GNUNET_CRYPTO_EccPoint *) &new->pub[i];
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_ecc_pmul_mpi (
+          p,
+          &val,
+          np))
+      goto FAIL;
+
+  }
+
+  /* multiply the private keys */
+  /* we borough ideas from GNUNET_CRYPTO_ecdsa_private_key_derive */
+  {
+    uint32_t seedBE;
+    uint8_t dc[32];
+    gcry_mpi_t f, x, d, n;
+    gcry_ctx_t ctx;
+
+    GNUNET_assert (0==gcry_mpi_ec_new (&ctx,NULL, "Ed25519"));
+    n = gcry_mpi_ec_get_mpi ("n", ctx, 1);
+
+    /* make the seed big endian */
+    seedBE = GNUNET_htonll (seed);
+
+    GNUNET_CRYPTO_mpi_scan_unsigned (&f, &seedBE, sizeof(seedBE));
+
+    for (size_t i = 0; i < orig->num_priv; i++)
+    {
+
+      /* convert to big endian for libgrypt */
+      for (size_t j = 0; j < 32; j++)
+        dc[i] = orig->priv[i].eddsa_priv.d[31 - j];
+      GNUNET_CRYPTO_mpi_scan_unsigned (&x, dc, sizeof(dc));
+
+      d = gcry_mpi_new (256);
+      gcry_mpi_mulm (d, f, x, n);
+      gcry_mpi_release (x);
+      gcry_mpi_release (d);
+      gcry_mpi_release (n);
+      gcry_mpi_release (d);
+      GNUNET_CRYPTO_mpi_print_unsigned (dc, sizeof(dc), d);
+
+      for (size_t j = 0; j <32; j++)
+        new->priv[i].eddsa_priv.d[j] = dc[31 - 1];
+
+      sodium_memzero (dc, sizeof(dc));
+
+      /* TODO:
+       * make sure that the calculated private key generate the same public
+       * keys */
+    }
+
+    gcry_mpi_release (f);
+    gcry_ctx_release (ctx);
+  }
+
+  return GNUNET_OK;
+
+FAIL:
+  GNUNET_free (new->pub);
+  GNUNET_free (new->priv);
+  return GNUNET_SYSERR;
+}
+
+
+void
+TALER_age_restriction_commmitment_free_inside (
+  struct TALER_AgeCommitment *commitment)
+{
+  if (NULL == commitment)
+    return;
+
+  if (NULL != commitment->priv)
+  {
+    GNUNET_CRYPTO_zero_keys (
+      commitment->priv,
+      sizeof(*commitment->priv) * commitment->num_priv);
+
+    GNUNET_free (commitment->priv);
+    commitment->priv = NULL;
+  }
+
+  if (NULL != commitment->pub)
+  {
+    GNUNET_free (commitment->pub);
+    commitment->priv = NULL;
+  }
+
+  /* Caller is responsible for commitment itself */
 }
 
 

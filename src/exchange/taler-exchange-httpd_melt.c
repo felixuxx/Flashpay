@@ -279,6 +279,7 @@ check_melt_valid (struct MHD_Connection *connection,
     &mret);
   if (NULL == dk)
     return mret;
+
   if (GNUNET_TIME_absolute_is_past (dk->meta.expire_legal.abs_time))
   {
     /* Way too late now, even zombies have expired */
@@ -288,6 +289,7 @@ check_melt_valid (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
       "MELT");
   }
+
   if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
   {
     /* This denomination is not yet valid */
@@ -300,9 +302,11 @@ check_melt_valid (struct MHD_Connection *connection,
 
   rmc->coin_refresh_fee = dk->meta.fee_refresh;
   rmc->coin_value = dk->meta.value;
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Melted coin's denomination is worth %s\n",
               TALER_amount2s (&dk->meta.value));
+
   /* sanity-check that "total melt amount > melt fee" */
   if (0 <
       TALER_amount_cmp (&rmc->coin_refresh_fee,
@@ -332,6 +336,7 @@ check_melt_valid (struct MHD_Connection *connection,
                                 &rmc->coin_refresh_fee,
                                 &rmc->refresh_session.rc,
                                 &rmc->refresh_session.coin.denom_pub_hash,
+                                &rmc->refresh_session.coin.age_commitment_hash,
                                 &rmc->refresh_session.coin.coin_pub,
                                 &rmc->refresh_session.coin_sig))
   {
@@ -407,6 +412,9 @@ TEH_handler_melt (struct MHD_Connection *connection,
                                &rmc.refresh_session.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &rmc.refresh_session.coin.denom_pub_hash),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("age_commitment_hash",
+                                   &rmc.refresh_session.coin.age_commitment_hash)),
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",
                                  &rmc.refresh_session.coin_sig),
     TALER_JSON_spec_amount ("value_with_fee",

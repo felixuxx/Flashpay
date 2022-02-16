@@ -667,7 +667,9 @@ decode_keys_json (const json_t *resp_obj,
                   enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
   struct TALER_ExchangeSignatureP sig;
-  struct GNUNET_HashContext *hash_context;
+  struct GNUNET_HashContext *hash_context = NULL;
+  struct GNUNET_HashContext *hash_context_restricted = NULL;
+  bool have_age_restricted_denom = false;
   struct TALER_ExchangePublicKeyP pub;
   const char *currency;
   struct GNUNET_JSON_Specification mspec[] = {
@@ -746,7 +748,6 @@ decode_keys_json (const json_t *resp_obj,
     key_data->version = GNUNET_strdup (ver);
   }
 
-  hash_context = NULL;
   EXITIF (GNUNET_OK !=
           GNUNET_JSON_parse (resp_obj,
                              (check_sig) ? mspec : &mspec[2],
@@ -766,7 +767,10 @@ decode_keys_json (const json_t *resp_obj,
 
   /* parse the master public key and issue date of the response */
   if (check_sig)
+  {
     hash_context = GNUNET_CRYPTO_hash_context_start ();
+    hash_context_restricted = GNUNET_CRYPTO_hash_context_start ();
+  }
 
   /* parse the signing keys */
   {
@@ -829,6 +833,9 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (GNUNET_OK !=
               TALER_extensions_load_json_config (extensions));
     }
+
+    /* 4. assuming we might have now a new value for age_mask, set it in key_data */
+    key_data->age_mask = TALER_extensions_age_restriction_ageMask ();
   }
 
   /* parse the denomination keys, merging with the
@@ -839,9 +846,15 @@ decode_keys_json (const json_t *resp_obj,
      */
     struct
     { char *name;
-      bool is_optional_age_restriction;} hive[2] = {
-      { "denoms",                false },
-      { "age_restricted_denoms", true  },
+      struct GNUNET_HashContext *hc;
+      bool is_optional_age_restriction;}
+    hive[2] = {
+      { "denoms",
+        hash_context,
+        false },
+      { "age_restricted_denoms",
+        hash_context_restricted,
+        true  }
     };
 
     for (size_t s = 0; s < sizeof(hive) / sizeof(hive[0]); s++)
@@ -853,24 +866,18 @@ decode_keys_json (const json_t *resp_obj,
       denom_keys_array = json_object_get (resp_obj,
                                           hive[s].name);
 
-      EXITIF (NULL == denom_keys_array &&
-              ! hive[s].is_optional_age_restriction);
-
-      if (NULL == denom_keys_array &&
-          hive[s].is_optional_age_restriction)
+      if (NULL == denom_keys_array)
         continue;
-
-      /* if "age_restricted_denoms" exists, age-restriction better be enabled
-       * (that is: mask non-zero) */
-      EXITIF (NULL != denom_keys_array &&
-              hive[s].is_optional_age_restriction &&
-              0 == key_data->age_mask.mask);
 
       EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
 
       json_array_foreach (denom_keys_array, index, denom_key_obj) {
         struct TALER_EXCHANGE_DenomPublicKey dk;
         bool found = false;
+
+        /* mark that we have at least one age restricted denomination, needed
+         * for the hash calculation and signature verification below. */
+        have_age_restricted_denom |= hive[s].is_optional_age_restriction;
 
         memset (&dk,
                 0,
@@ -880,12 +887,7 @@ decode_keys_json (const json_t *resp_obj,
                                      check_sig,
                                      denom_key_obj,
                                      &key_data->master_pub,
-                                     hash_context));
-
-        /* Mark age restriction according where we got this denomination from,
-         * "denoms" or "age_restricted_denoms" */
-        if (hive[s].is_optional_age_restriction)
-          dk.age_restricted = true;
+                                     hive[s].hc));
 
         for (unsigned int j = 0;
              j<key_data->num_denom_keys;
@@ -1043,6 +1045,18 @@ decode_keys_json (const json_t *resp_obj,
       .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
       .list_issue_date = GNUNET_TIME_timestamp_hton (key_data->list_issue_date)
     };
+
+    /* If we had any age restricted denominations, add their hash to the end of
+     * the normal denominations. */
+    if (have_age_restricted_denom)
+    {
+      struct GNUNET_HashCode hcr;
+      GNUNET_CRYPTO_hash_context_finish (hash_context_restricted,
+                                         &hcr);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &hcr,
+                                       sizeof(struct GNUNET_HashCode));
+    }
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &ks.hc);

@@ -419,6 +419,11 @@ struct TALER_LinkDataPS
   struct TALER_TransferPublicKeyP transfer_pub;
 
   /**
+   * Hash of the age commitment, if applicable.  Can be all zero
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
    * Hash of the blinded new coin.
    */
   struct TALER_BlindedCoinHash coin_envelope_hash;
@@ -475,6 +480,12 @@ struct TALER_DepositRequestPS
    * Hash over the contract for which this deposit is made.
    */
   struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
+
+  /**
+   * Hash over the age commitment that went into the coin. Maybe all zero, if
+   * age commitment isn't applicable to the denomination.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
 
   /**
    * Hash over extension attributes shared with the exchange.
@@ -708,6 +719,13 @@ struct TALER_RefreshMeltCoinAffirmationPS
    * Hash over the denomination public key used to sign the coin.
    */
   struct TALER_DenominationHash h_denom_pub GNUNET_PACKED;
+
+  /**
+   * If age commitment was provided during the withdrawal of the coin, this is
+   * the hash of the age commitment vector.  It must be all zeroes if no age
+   * commitment was provided.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount

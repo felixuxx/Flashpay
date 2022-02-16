@@ -244,7 +244,7 @@ insert_deposit_run (void *cls,
   {
     uint64_t known_coin_id;
     struct TALER_DenominationHash dph;
-    struct TALER_AgeHash agh;
+    struct TALER_AgeCommitmentHash agh;
 
     if ( (GNUNET_OK !=
           ids->dbc->plugin->start (ids->dbc->plugin->cls,

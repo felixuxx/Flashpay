@@ -159,11 +159,6 @@ struct TALER_EXCHANGE_DenomPublicKey
    * revoked by the exchange.
    */
   bool revoked;
-
-  /**
-   * Is the denomination age-restricted?
-   */
-  bool age_restricted;
 };
 
 
@@ -785,6 +780,7 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
  * @param h_extensions hash over the extensions
  * @param h_denom_pub hash of the coin denomination's public key
  * @param coin_priv coin’s private key
+ * @param age_commitment age commitment that went into the making of the coin, might be NULL
  * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
@@ -799,6 +795,7 @@ TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitment *age_commitment,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -924,6 +921,7 @@ TALER_EXCHANGE_deposit (
   const char *merchant_payto_uri,
   const struct TALER_WireSaltP *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationSignature *denom_sig,
@@ -1496,6 +1494,7 @@ typedef void
  * @param reserve_priv private key of the reserve to withdraw from
  * @param ps secrets of the planchet
  *        caller must have committed this value to disk before the call (with @a pk)
+ * @param ach hash of the age commitment that should be bound to this coin. Maybe NULL.
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL
@@ -1508,6 +1507,7 @@ TALER_EXCHANGE_withdraw (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PlanchetMasterSecretP *ps,
+  const struct TALER_AgeCommitmentHash *ach,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls);
 

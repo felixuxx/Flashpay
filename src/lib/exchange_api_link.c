@@ -113,6 +113,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
+  struct TALER_AgeCommitmentHash h_age_commitment = {0}; // TODO, see below.
 
   /* parse reply */
   memset (&nonce,
@@ -143,6 +144,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                               &alg_values,
                               &bks,
                               &lci->coin_priv,
+                              NULL, /* FIXME-oec. struct TALER_AgeCommitmentHash */
                               &c_hash,
                               &pd))
   {
@@ -179,6 +181,15 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
+    /*
+     * TODO-oec: Derive the age commitment vector and hash it into
+     * h_age_commitment.
+     * Questions:
+     *   - Where do we get the information about the support for age
+     *     restriction of the denomination?
+     *   - Where do we get the information bout the previous coin's age groups?
+     */
+
     TALER_coin_ev_hash (&pd.blinded_planchet,
                         &pd.denom_pub_hash,
                         &coin_envelope_hash);
@@ -187,6 +198,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                   trans_pub,
                                   &coin_envelope_hash,
                                   &old_coin_pub,
+                                  &h_age_commitment,
                                   &link_sig))
     {
       GNUNET_break_op (0);

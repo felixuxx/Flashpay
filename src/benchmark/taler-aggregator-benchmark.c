@@ -300,7 +300,7 @@ add_deposit (const struct Merchant *m)
   struct TALER_EXCHANGEDB_Deposit deposit;
   uint64_t known_coin_id;
   struct TALER_DenominationHash dph;
-  struct TALER_AgeHash agh;
+  struct TALER_AgeCommitmentHash agh;
 
   RANDOMIZE (&d.coin.coin_pub);
   d.coin.denom_pub_hash = h_denom_pub;

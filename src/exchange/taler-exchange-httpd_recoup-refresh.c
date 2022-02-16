@@ -251,7 +251,7 @@ verify_and_execute_recoup_refresh (
     if (GNUNET_OK !=
         TALER_denom_blind (&dk->denom_pub,
                            coin_bks,
-                           NULL, /* FIXME-Oec: TALER_AgeHash * */
+                           NULL, /* FIXME-Oec: TALER_AgeCommitmentHash * */
                            &coin->coin_pub,
                            exchange_vals,
                            &c_hash,

@@ -247,27 +247,31 @@ TALER_extensions_load_taler_config (
 }
 
 
-static enum GNUNET_GenericReturnValue
-is_json_extension_config (
+enum GNUNET_GenericReturnValue
+TALER_extensions_is_json_config (
   json_t *obj,
   int *critical,
   const char **version,
   json_t **config)
 {
   enum GNUNET_GenericReturnValue ret;
+  json_t *cfg;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_boolean ("critical",
                               critical),
     GNUNET_JSON_spec_string ("version",
                              version),
     GNUNET_JSON_spec_json ("config",
-                           config),
+                           &cfg),
     GNUNET_JSON_spec_end ()
   };
 
   ret = GNUNET_JSON_parse (obj, spec, NULL, NULL);
   if (GNUNET_OK == ret)
+  {
+    *config = json_copy (cfg);
     GNUNET_JSON_parse_free (spec);
+  }
 
   return ret;
 }
@@ -300,7 +304,7 @@ TALER_extensions_load_json_config (
 
     /* load and verify criticality, version, etc. */
     if (GNUNET_OK !=
-        is_json_extension_config (
+        TALER_extensions_is_json_config (
           blob, &critical, &version, &config))
       return GNUNET_SYSERR;
 
@@ -327,6 +331,18 @@ TALER_extensions_load_json_config (
   }
 
   return GNUNET_OK;
+}
+
+
+bool
+TALER_extensions_age_restriction_is_enabled ()
+{
+  const struct TALER_Extension *age =
+    TALER_extensions_get_by_type (TALER_Extension_AgeRestriction);
+
+  return (NULL != age &&
+          NULL != age->config_json &&
+          TALER_extensions_age_restriction_is_configured ());
 }
 
 

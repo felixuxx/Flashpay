@@ -151,7 +151,7 @@ TALER_EXCHANGE_management_post_extensions (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_object_steal ("extensions",
                                    ped->extensions),
-    GNUNET_JSON_pack_data_auto ("extensions_sigs",
+    GNUNET_JSON_pack_data_auto ("extensions_sig",
                                 &ped->extensions_sig));
 
   eh = curl_easy_init ();
@@ -168,7 +168,7 @@ TALER_EXCHANGE_management_post_extensions (
     return NULL;
   }
   json_decref (body);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting URL '%s'\n",
               ph->url);
   GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,

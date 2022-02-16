@@ -297,14 +297,14 @@ enum GNUNET_GenericReturnValue
 TALER_denom_blind (
   const struct TALER_DenominationPublicKey *dk,
   const union TALER_DenominationBlindingKeyP *coin_bks,
-  const struct TALER_AgeHash *age_commitment_hash,
+  const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_CoinPubHash *c_hash,
   struct TALER_BlindedPlanchet *blinded_planchet)
 {
   TALER_coin_pub_hash (coin_pub,
-                       age_commitment_hash,
+                       ach,
                        c_hash);
   switch (dk->cipher)
   {

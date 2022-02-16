@@ -269,6 +269,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   bool success = false;
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_ExchangeWithdrawValues alg_values;
+  struct TALER_AgeCommitmentHash ach;
   struct TALER_CoinPubHash c_hash;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
@@ -280,6 +281,9 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   alg_values.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
   TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &ach,
+                              sizeof(ach));
 
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
@@ -296,6 +300,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
                                              &alg_values,
                                              &bks,
                                              &coin_priv,
+                                             &ach,
                                              &c_hash,
                                              &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -440,6 +445,7 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   struct GNUNET_TIME_Relative duration;
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
+  struct TALER_AgeCommitmentHash ach;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_ExchangeWithdrawValues alg_values;
 
@@ -447,7 +453,9 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   alg_values.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
   TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
-
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &ach,
+                              sizeof(ach));
   duration = GNUNET_TIME_UNIT_ZERO;
   TALER_CRYPTO_helper_rsa_poll (dh);
   for (unsigned int j = 0; j<NUM_SIGN_PERFS;)
@@ -477,6 +485,7 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                                                &alg_values,
                                                &bks,
                                                &coin_priv,
+                                               &ach,
                                                &c_hash,
                                                &pd));
         /* use this key as long as it works */

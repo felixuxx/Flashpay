@@ -152,6 +152,10 @@ static char *currency;
  */
 static char *CFG_exchange_url;
 
+/**
+ * If age restriction is enabled, the age mask to be used
+ */
+static struct TALER_AgeMask age_mask = {0};
 
 /**
  * A subcommand supported by this program.
@@ -1924,6 +1928,7 @@ trigger_upload (const char *exchange_url)
       if (0 == strcasecmp (key,
                            uhs[i].key))
       {
+
         found = true;
         uhs[i].cb (exchange_url,
                    index,
@@ -3092,6 +3097,7 @@ do_show (char *const *args)
   keys = parse_keys_input ("show");
   if (NULL == keys)
     return;
+
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
@@ -3254,6 +3260,43 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
 
 
 /**
+ * Looks up the AGE_RESTRICTED setting for a denomination in the config and
+ * returns the age restriction (mask) accordingly.
+ *
+ * @param section_name Section in the configuration for the particular
+ *    denomination.
+ */
+static struct TALER_AgeMask
+load_age_mask (const char*section_name)
+{
+  static const struct TALER_AgeMask null_mask = {0};
+  enum GNUNET_GenericReturnValue ret;
+
+  if (age_mask.mask == 0)
+    return null_mask;
+
+  if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (
+                      kcfg,
+                      section_name,
+                      "AGE_RESTRICTED")))
+    return null_mask;
+
+  ret = GNUNET_CONFIGURATION_get_value_yesno (kcfg,
+                                              section_name,
+                                              "AGE_RESTRICTED");
+  if (GNUNET_YES == ret)
+    return age_mask;
+
+  if (GNUNET_SYSERR == ret)
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section_name,
+                               "AGE_RESTRICTED",
+                               "Value must be YES or NO\n");
+  return null_mask;
+}
+
+
+/**
  * Sign @a denomkeys with offline key.
  *
  * @param secm_pub_rsa security module public key used to sign the RSA denominations
@@ -3343,7 +3386,10 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
     duration = GNUNET_TIME_absolute_get_difference (
       stamp_start.abs_time,
       stamp_expire_withdraw.abs_time);
-    // FIXME-Oec: setup age mask here?
+
+    /* Load the age mask, if applicable to this denomination */
+    denom_pub.age_mask = load_age_mask (section_name);
+
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     switch (denom_pub.cipher)
@@ -3604,14 +3650,6 @@ do_extensions_show (char *const *args)
   json_t *exts = json_object ();
   const struct TALER_Extension *it;
 
-  TALER_extensions_init ();
-  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "error while loading taler config for extensions\n");
-    return;
-  }
-
   for (it = TALER_extensions_get_head ();
        NULL != it;
        it = it->next)
@@ -3865,6 +3903,17 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
+
+  /* load age mask, if age restriction is enabled */
+  TALER_extensions_init ();
+  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "error while loading taler config for extensions\n");
+    return;
+  }
+  age_mask = TALER_extensions_age_restriction_ageMask ();
+
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);

@@ -73,6 +73,7 @@ TEH_RESPONSE_compile_transaction_history (
                                          &deposit->deposit_fee,
                                          &h_wire,
                                          &deposit->h_contract_terms,
+                                         NULL, /* h_age_commitment, FIXME-oec */
                                          NULL /* h_extensions! */,
                                          &deposit->h_denom_pub,
                                          deposit->timestamp,
@@ -122,6 +123,7 @@ TEH_RESPONSE_compile_transaction_history (
       {
         const struct TALER_EXCHANGEDB_MeltListEntry *melt =
           pos->details.melt;
+        const struct TALER_AgeCommitmentHash *phac = NULL;
 
 #if ENABLE_SANITY_CHECKS
         if (GNUNET_OK !=
@@ -129,6 +131,7 @@ TEH_RESPONSE_compile_transaction_history (
                                       &melt->melt_fee,
                                       &melt->rc,
                                       &melt->h_denom_pub,
+                                      &melt->h_age_commitment,
                                       coin_pub,
                                       &melt->coin_sig))
         {
@@ -137,6 +140,12 @@ TEH_RESPONSE_compile_transaction_history (
           return NULL;
         }
 #endif
+
+        /* Age restriction is optional.  We communicate a NULL value to
+         * JSON_PACK below */
+        if (! TALER_AgeCommitmentHash_isNullOrZero (&melt->h_age_commitment))
+          phac = &melt->h_age_commitment;
+
         if (0 !=
             json_array_append_new (
               history,
@@ -151,6 +160,9 @@ TEH_RESPONSE_compile_transaction_history (
                                             &melt->rc),
                 GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                             &melt->h_denom_pub),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              phac)),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
                                             &melt->coin_sig))))
         {

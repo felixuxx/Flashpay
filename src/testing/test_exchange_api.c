@@ -34,6 +34,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
+#include "taler_extensions.h"
 
 /**
  * Configuration file we use.  One (big) configuration is used
@@ -149,6 +150,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * Withdraw EUR:1 using the SAME private coin key as for the previous coin
@@ -162,6 +164,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount_reuse_key ("withdraw-coin-1x",
                                                  "create-reserve-1",
                                                  "EUR:1",
+                                                 0, /* age restriction off */
                                                  "withdraw-coin-1",
                                                  MHD_HTTP_OK),
     /**
@@ -177,6 +180,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
   };
@@ -282,6 +286,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin-1",
                                        "refresh-create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
@@ -358,6 +363,61 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  /**
+   * Test withdrawal with age restriction.  Success is expected, so it MUST be
+   * called _after_ TALER_TESTING_cmd_exec_offline_sign_extensions is called,
+   * i. e. age restriction is activated in the exchange!
+   *
+   * TODO: create a test that tries to withdraw coins with age restriction but
+   * (expectedly) fails because the exchange doesn't support age restriction
+   * yet.
+   */
+  struct TALER_TESTING_Command withdraw_age[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-age",
+                              "EUR:5.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-age",
+                                                 "EUR:5.01",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-age"),
+    /**
+     * Make a reserve exist, according to the previous
+     * transfer.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-age"),
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-age-1",
+                                       "create-reserve-age",
+                                       "EUR:5",
+                                       13,
+                                       MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command spend_age[] = {
+    /**
+     * Spend the coin.
+     */
+    TALER_TESTING_cmd_deposit ("deposit-simple-age",
+                               "withdraw-coin-age-1",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:4.99",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit_replay ("deposit-simple-replay-age",
+                                      "deposit-simple-age",
+                                      MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command track[] = {
     /* Try resolving a deposit's WTID, as we never triggered
      * execution of transactions, the answer should be that
@@ -398,6 +458,11 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-499c",
                                            ec.exchange_url,
                                            "EUR:4.98",
+                                           bc.exchange_payto,
+                                           bc.user42_payto),
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-499c2",
+                                           ec.exchange_url,
+                                           "EUR:4.97",
                                            bc.exchange_payto,
                                            bc.user42_payto),
     TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-99c1",
@@ -463,6 +528,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-unaggregated",
                                        "create-reserve-unaggregated",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-unaggregated",
                                "withdraw-coin-unaggregated",
@@ -501,6 +567,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-aggtest",
                                        "create-reserve-aggtest",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-aggtest-1",
                                "withdraw-coin-aggtest",
@@ -549,6 +616,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
                                        "create-reserve-r1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * Spend 5 EUR of the 5 EUR coin (in full) (merchant would
@@ -649,6 +717,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-rb",
                                        "create-reserve-rb",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-refund-1b",
                                "withdraw-coin-rb",
@@ -698,11 +767,13 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-1",
                                        "recoup-create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* Withdraw a 10 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-1b",
                                        "recoup-create-reserve-1",
                                        "EUR:10",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* melt 10 EUR coin to get 5 EUR refreshed coin */
     TALER_TESTING_cmd_melt ("recoup-melt-coin-1b",
@@ -793,6 +864,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2",
                                        "recoup-create-reserve-1",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /**
      * This withdrawal will test the logic to create a "recoup"
@@ -801,6 +873,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2-over",
                                        "recoup-create-reserve-1",
                                        "EUR:10",
+                                       0, /* age restriction off */
                                        MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_status ("recoup-reserve-status-2",
                               "recoup-create-reserve-1",
@@ -833,6 +906,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("expired-withdraw",
                                        "short-lived-reserve",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_check_bank_transfer ("check_bank_short-lived_reimburse",
                                            ec.exchange_url,
@@ -857,11 +931,13 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2a",
                                        "recoup-create-reserve-2",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* Withdraw a 1 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2b",
                                        "recoup-create-reserve-2",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("recoup-deposit-partial",
                                "recoup-withdraw-coin-2a",
@@ -924,6 +1000,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-3-revoked",
                                        "recoup-create-reserve-3",
                                        "EUR:1",
+                                       0, /* age restriction off */
                                        MHD_HTTP_GONE),
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_empty ("check-empty-again"),
@@ -970,6 +1047,8 @@ run (void *cls,
       TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
                                      MHD_HTTP_NO_CONTENT,
                                      false),
+      TALER_TESTING_cmd_exec_offline_sign_extensions ("offline-sign-extensions",
+                                                      config_file),
       TALER_TESTING_cmd_wire_add ("add-wire-account",
                                   "payto://x-taler-bank/localhost/2",
                                   MHD_HTTP_NO_CONTENT,
@@ -990,6 +1069,10 @@ run (void *cls,
                                spend),
       TALER_TESTING_cmd_batch ("refresh",
                                refresh),
+      TALER_TESTING_cmd_batch ("withdraw-age",
+                               withdraw_age),
+      TALER_TESTING_cmd_batch ("spend-age",
+                               spend_age),
       TALER_TESTING_cmd_batch ("track",
                                track),
       TALER_TESTING_cmd_batch ("unaggregation",
@@ -1026,6 +1109,9 @@ main (int argc,
   GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+
+  TALER_extensions_init ();
+
   cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
   GNUNET_assert (NULL != cipher);
   uses_cs = (0 == strcmp (cipher, "cs"));
@@ -1036,6 +1122,7 @@ main (int argc,
                    "test_exchange_api_expire_reserve_now-%s.conf",
                    cipher);
   GNUNET_free (cipher);
+
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (config_file,
@@ -1054,7 +1141,7 @@ main (int argc,
     GNUNET_break (0);
     return 1;
   case GNUNET_NO:
-    return 77;
+    return 78;
   case GNUNET_OK:
     if (GNUNET_OK !=
         /* Set up event loop and reschedule context, plus
@@ -1064,11 +1151,11 @@ main (int argc,
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
                                            config_file))
-      return 1;
+      return 2;
     break;
   default:
     GNUNET_break (0);
-    return 1;
+    return 3;
   }
   return 0;
 }

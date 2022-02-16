@@ -128,6 +128,12 @@ char *TEH_currency;
 char *TEH_base_url;
 
 /**
+ * Age restriction flags and mask
+ */
+bool TEH_age_restriction_enabled = false;
+struct TALER_AgeMask TEH_age_mask = {0};
+
+/**
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
@@ -736,6 +742,12 @@ handle_post_management (struct TEH_RequestContext *rc,
     }
     return TEH_handler_management_post_wire_fees (rc->connection,
                                                   root);
+  }
+  if (0 == strcmp (args[0],
+                   "extensions"))
+  {
+    return TEH_handler_management_post_extensions (rc->connection,
+                                                   root);
   }
   GNUNET_break_op (0);
   return r404 (rc->connection,

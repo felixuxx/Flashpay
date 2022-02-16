@@ -70,6 +70,12 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
    * Signed properties of the denomination key.
    */
   struct TALER_DenominationKeyValidityPS properties;
+
+  /**
+   * If denomination was setup for age restriction, non-zero age mask.
+   * Note that the mask is not part of the signature.
+   */
+  struct TALER_AgeMask age_mask;
 };
 
 
@@ -295,7 +301,7 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct TALER_AgeHash age_hash;
+      struct TALER_AgeCommitmentHash age_hash;
       uint64_t denominations_serial;
       struct TALER_DenominationSignature denom_sig;
     } known_coins;
@@ -644,7 +650,7 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
    * A value of 0 means that the denomination does not support the extension for
    * age-restriction.
    */
-  struct TALER_AgeMask age_restrictions;
+  struct TALER_AgeMask age_mask;
 };
 
 
@@ -1262,6 +1268,13 @@ struct TALER_EXCHANGEDB_Refresh
   struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
+   * Hash of the age commitment used to sign the coin, if age restriction was
+   * applicable to the denomination.  May be all zeroes if no age restriction
+   * applies.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
    * Refresh commitment this coin is melted into.
    */
   struct TALER_RefreshCommitmentP rc;
@@ -1305,6 +1318,13 @@ struct TALER_EXCHANGEDB_MeltListEntry
    * Hash of the public denomination key used to sign the coin.
    */
   struct TALER_DenominationHash h_denom_pub;
+
+  /**
+   * Hash of the age commitment used to sign the coin, if age restriction was
+   * applicable to the denomination.  May be all zeroes if no age restriction
+   * applies.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * How much value is being melted?  This amount includes the fees,
@@ -1606,6 +1626,7 @@ typedef enum GNUNET_GenericReturnValue
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
  * @param denom_pub denomination public key of @a coin_pub
+ * @param h_age_commitment age commitment that went into the signing of the coin, may be NULL
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -1618,6 +1639,7 @@ typedef enum GNUNET_GenericReturnValue
   void *cls,
   uint64_t rowid,
   const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *amount_with_fee,
@@ -2758,7 +2780,7 @@ struct TALER_EXCHANGEDB_Plugin
                        const struct TALER_CoinPublicInfo *coin,
                        uint64_t *known_coin_id,
                        struct TALER_DenominationHash *denom_pub_hash,
-                       struct TALER_AgeHash *age_hash);
+                       struct TALER_AgeCommitmentHash *age_hash);
 
 
   /**

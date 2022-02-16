@@ -287,6 +287,8 @@ deposit_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
+  struct TALER_AgeCommitment *age_commitment = NULL;
+  struct TALER_AgeCommitmentHash h_age_commitment = {0};
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
@@ -383,6 +385,10 @@ deposit_run (void *cls,
                                            ds->coin_index,
                                            &coin_priv)) ||
        (GNUNET_OK !=
+        TALER_TESTING_get_trait_age_commitment (coin_cmd,
+                                                ds->coin_index,
+                                                &age_commitment)) ||
+       (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_pub (coin_cmd,
                                            ds->coin_index,
                                            &denom_pub)) ||
@@ -398,6 +404,12 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
+  if (NULL != age_commitment)
+  {
+    TALER_age_commitment_hash (age_commitment, &h_age_commitment);
+  }
+
   ds->deposit_fee = denom_pub->fee_deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
@@ -431,7 +443,8 @@ deposit_run (void *cls,
                                &denom_pub->fee_deposit,
                                &h_wire,
                                &h_contract_terms,
-                               NULL, /* FIXME: extension hash! */
+                               &h_age_commitment,
+                               NULL, /* FIXME: add hash of extensions */
                                &denom_pub->h_key,
                                ds->wallet_timestamp,
                                &merchant_pub,
@@ -445,7 +458,8 @@ deposit_run (void *cls,
                                    payto_uri,
                                    &wire_salt,
                                    &h_contract_terms,
-                                   NULL, /* FIXME: extension object */
+                                   &h_age_commitment,
+                                   NULL, /* FIXME: add hash of extensions */
                                    &coin_pub,
                                    denom_pub_sig,
                                    &denom_pub->key,
@@ -520,6 +534,7 @@ deposit_traits (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
+  struct TALER_AgeCommitment *age_commitment;
 
   if (GNUNET_YES != ds->command_initialized)
   {
@@ -540,7 +555,11 @@ deposit_traits (void *cls,
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          ds->coin_index,
-                                         &coin_spent_priv))
+                                         &coin_spent_priv) ||
+      (GNUNET_OK !=
+       TALER_TESTING_get_trait_age_commitment (coin_cmd,
+                                               ds->coin_index,
+                                               &age_commitment)))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
@@ -555,6 +574,8 @@ deposit_traits (void *cls,
       /* These traits are always available */
       TALER_TESTING_make_trait_coin_priv (0,
                                           coin_spent_priv),
+      TALER_TESTING_make_trait_age_commitment (0,
+                                               age_commitment),
       TALER_TESTING_make_trait_wire_details (ds->wire_details),
       TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),

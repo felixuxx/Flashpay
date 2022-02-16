@@ -32,7 +32,7 @@
 /**
  * Set to 1 for extra debug logging.
  */
-#define DEBUG 0
+#define DEBUG 1  /* FIXME-oec */
 
 
 /**

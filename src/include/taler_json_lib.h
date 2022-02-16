@@ -608,17 +608,6 @@ TALER_JSON_extensions_config_hash (const json_t *config,
                                    struct TALER_ExtensionConfigHash *eh);
 
 /**
- * Parses a JSON object `{ "extension": "age_restriction", "mask": uint32 }`.
- *
- * @param root is the json object
- * @param[out] mask on succes, will contain the age mask
- * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
- */
-enum GNUNET_GenericReturnValue
-TALER_JSON_parse_agemask (const json_t *root,
-                          struct TALER_AgeMask *mask);
-
-/**
  * Canonicalize a JSON input to a string according to RFC 8785.
  */
 char *

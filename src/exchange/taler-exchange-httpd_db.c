@@ -50,7 +50,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 {
   enum TALER_EXCHANGEDB_CoinKnownStatus cks;
   struct TALER_DenominationHash h_denom_pub;
-  struct TALER_AgeHash age_hash;
+  struct TALER_AgeCommitmentHash age_hash;
 
   /* make sure coin is 'known' in database */
   cks = TEH_plugin->ensure_coin_known (TEH_plugin->cls,

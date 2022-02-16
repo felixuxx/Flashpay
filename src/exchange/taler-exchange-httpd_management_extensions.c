@@ -31,7 +31,6 @@
 #include "taler_extensions.h"
 #include "taler_dbevents.h"
 
-
 /**
  * Extension carries the necessary data for a particular extension.
  *
@@ -91,6 +90,8 @@ set_extensions (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
 
+    GNUNET_assert (NULL != ext->config);
+
     config = json_dumps (ext->config, JSON_COMPACT | JSON_SORT_KEYS);
     if (NULL == config)
     {
@@ -137,6 +138,57 @@ set_extensions (void *cls,
   TEH_extensions_sig = sec->extensions_sig;
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */
+}
+
+
+static enum GNUNET_GenericReturnValue
+verify_extensions_from_json (
+  json_t *extensions,
+  struct SetExtensionsContext *sec)
+{
+  const char*name;
+  const struct TALER_Extension *extension;
+  size_t i = 0;
+  json_t *blob;
+
+  GNUNET_assert (NULL != extensions);
+  GNUNET_assert (json_is_object (extensions));
+
+  sec->num_extensions = json_object_size (extensions);
+  sec->extensions = GNUNET_new_array (sec->num_extensions,
+                                      struct Extension);
+
+  json_object_foreach (extensions, name, blob)
+  {
+    int critical = 0;
+    json_t *config;
+    const char *version = NULL;
+
+    /* load and verify criticality, version, etc. */
+    extension = TALER_extensions_get_by_name (name);
+    if (NULL == extension)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "no such extension: %s\n", name);
+      return GNUNET_SYSERR;
+    }
+
+    if (GNUNET_OK !=
+        TALER_extensions_is_json_config (
+          blob, &critical, &version, &config))
+      return GNUNET_SYSERR;
+
+    if (critical != extension->critical
+        || 0 != strcmp (version, extension->version) // TODO: libtool compare?
+        || NULL == config
+        || GNUNET_OK != extension->test_json_config (config))
+      return GNUNET_SYSERR;
+
+    sec->extensions[i].type = extension->type;
+    sec->extensions[i].config = config;
+  }
+
+  return GNUNET_OK;
 }
 
 
@@ -204,56 +256,17 @@ TEH_handler_management_post_extensions (
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/extensions\n");
 
-  sec.num_extensions = json_object_size (extensions);
-  sec.extensions = GNUNET_new_array (sec.num_extensions,
-                                     struct Extension);
-
   /* Now parse individual extensions and signatures from those objects. */
+  if (GNUNET_OK !=
+      verify_extensions_from_json (extensions, &sec))
   {
-    const struct TALER_Extension *extension = NULL;
-    const char *name;
-    json_t *config;
-    int idx = 0;
-
-    json_object_foreach (extensions, name, config){
-
-      /* 1. Make sure name refers to a supported extension */
-      extension = TALER_extensions_get_by_name (name);
-      if (NULL == extension)
-      {
-        ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "invalid extension type");
-        goto CLEANUP;
-      }
-
-      sec.extensions[idx].config = config;
-      sec.extensions[idx].type = extension->type;
-
-      /* 2. Make sure the config is sound */
-      if (GNUNET_OK !=
-          extension->test_json_config (
-            sec.extensions[idx].config))
-      {
-        ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_BAD_REQUEST,
-          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-          "invalid configuration for extension");
-        goto CLEANUP;
-      }
-
-      /* We have a validly signed JSON object for the extension.  Increment its
-       * refcount.
-       */
-      json_incref (sec.extensions[idx].config);
-      idx++;
-
-    } /* json_object_foreach */
+    GNUNET_JSON_parse_free (top_spec);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      "invalid object");
   }
-
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received %u extensions\n",
@@ -280,6 +293,7 @@ TEH_handler_management_post_extensions (
     NULL,
     NULL,
     0);
+
 
 CLEANUP:
   for (unsigned int i = 0; i < sec.num_extensions; i++)

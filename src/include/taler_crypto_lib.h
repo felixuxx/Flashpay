@@ -306,37 +306,6 @@ struct TALER_MasterSignatureP
   struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
 
-/*
- * @brief Type of a list of age groups, represented as bit mask.
- *
- * The bits set in the mask mark the edges at the beginning of a next age
- * group.  F.e. for the age groups
- *     0-7, 8-9, 10-11, 12-14, 14-15, 16-17, 18-21, 21-*
- * the following bits are set:
- *
- *   31     24        16        8         0
- *   |      |         |         |         |
- *   oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
- *
- * A value of 0 means that the exchange does not support the extension for
- * age-restriction.
- */
-struct TALER_AgeMask
-{
-  uint32_t mask;
-};
-
-/**
- * @brief Age restriction commitment of a coin.
- */
-struct TALER_AgeHash
-{
-  /**
-   * The commitment is a SHA-256 hash code.
-   */
-  struct GNUNET_ShortHashCode shash;
-};
-
 
 /**
  * @brief Type of public keys for Taler coins.  The same key material is used
@@ -362,6 +331,29 @@ struct TALER_CoinSpendPrivateKeyP
    * Taler uses EdDSA for coins when signing deposit requests.
    */
   struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+/**
+ * @brief Type of private keys for age commitment in coins.
+ */
+struct TALER_AgeCommitmentPrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for coins when signing age verification attestation.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * @brief Type of public keys for age commitment in coins.
+ */
+struct TALER_AgeCommitmentPublicKeyP
+{
+  /**
+   * Taler uses EdDSA for coins when signing age verification attestation.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 };
 
 
@@ -765,6 +757,46 @@ struct TALER_BlindedDenominationSignature
 
 };
 
+/* *************** Age Restriction *********************************** */
+
+/*
+ * @brief Type of a list of age groups, represented as bit mask.
+ *
+ * The bits set in the mask mark the edges at the beginning of a next age
+ * group.  F.e. for the age groups
+ *     0-7, 8-9, 10-11, 12-14, 14-15, 16-17, 18-21, 21-*
+ * the following bits are set:
+ *
+ *   31     24        16        8         0
+ *   |      |         |         |         |
+ *   oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
+ *
+ * A value of 0 means that the exchange does not support the extension for
+ * age-restriction.
+ */
+struct TALER_AgeMask
+{
+  uint32_t mask;
+};
+
+/**
+ * @brief Age commitment of a coin.
+ */
+struct TALER_AgeCommitmentHash
+{
+  /**
+   * The commitment is a SHA-256 hash code.
+   */
+  struct GNUNET_ShortHashCode shash;
+};
+
+extern const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash;
+#define TALER_AgeCommitmentHash_isNullOrZero(ph) ((NULL == ph) || \
+                                                  (0 == memcmp (ph, \
+                                                                & \
+                                                                TALER_ZeroAgeCommitmentHash, \
+                                                                sizeof(struct \
+                                                                       TALER_AgeCommitmentHash))))
 
 /**
  * @brief Type of public signing keys for verifying blindly signed coins.
@@ -944,9 +976,10 @@ struct TALER_CoinPublicInfo
   struct TALER_DenominationHash denom_pub_hash;
 
   /**
-   * Hash of the age commitment.
+   * Hash of the age commitment.  If no age commitment was provided, it must be
+   * set to all zeroes.
    */
-  struct TALER_AgeHash age_commitment_hash;
+  struct TALER_AgeCommitmentHash age_commitment_hash;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
@@ -1117,7 +1150,7 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 enum GNUNET_GenericReturnValue
 TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const union TALER_DenominationBlindingKeyP *coin_bks,
-                   const struct TALER_AgeHash *age_commitment_hash,
+                   const struct TALER_AgeCommitmentHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_ExchangeWithdrawValues *alg_values,
                    struct TALER_CoinPubHash *c_hash,
@@ -1349,7 +1382,7 @@ TALER_withdraw_request_hash (
  */
 void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                     const struct TALER_AgeHash *age_commitment_hash,
+                     const struct TALER_AgeCommitmentHash *age_commitment_hash,
                      struct TALER_CoinPubHash *coin_h);
 
 
@@ -1402,8 +1435,9 @@ struct TALER_FreshCoin
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * FIXME-Oec: Age-verification vector, as pointer: Dyn alloc!
+   * Optional hash of an age commitment bound to this coin, maybe NULL.
    */
+  const struct TALER_AgeCommitmentHash *h_age_commitment;
 };
 
 
@@ -1571,6 +1605,7 @@ TALER_planchet_blinding_secret_create (
  * @param alg_values algorithm specific values
  * @param bks blinding secrets
  * @param coin_priv coin private key
+ * @param ach hash of age commitment to bind to this coin, maybe NULL
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations, `pd->blinded_planchet.cipher` will be set
@@ -1582,6 +1617,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_ExchangeWithdrawValues *alg_values,
                         const union TALER_DenominationBlindingKeyP *bks,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                        const struct TALER_AgeCommitmentHash *ach,
                         struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd);
 
@@ -1613,6 +1649,7 @@ TALER_planchet_detail_free (struct TALER_PlanchetDetail *pd);
  * @param blind_sig blind signature from the exchange
  * @param bks blinding key secret
  * @param coin_priv private key of the coin
+ * @param ach hash of age commitment that is bound to this coin, maybe NULL
  * @param c_hash hash of the coin's public key for verification of the signature
  * @param alg_values values obtained from the exchange for the withdrawal
  * @param[out] coin set to the details of the fresh coin
@@ -1624,6 +1661,7 @@ TALER_planchet_to_coin (
   const struct TALER_BlindedDenominationSignature *blind_sig,
   const union TALER_DenominationBlindingKeyP *bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinPubHash *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin);
@@ -2202,6 +2240,7 @@ TALER_wallet_account_setup_sign (
  * @param deposit_fee the deposit fee we expect to pay
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_age_commitment hash over the age commitment, if applicable to the denomination (maybe NULL)
  * @param h_extensions hash over the extensions
  * @param h_denom_pub hash of the coin denomination's public key
  * @param coin_priv coin’s private key
@@ -2216,6 +2255,7 @@ TALER_wallet_deposit_sign (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
@@ -2232,6 +2272,7 @@ TALER_wallet_deposit_sign (
  * @param deposit_fee the deposit fee we expect to pay
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_age_commitment hash over the age commitment (maybe all zeroes, if not applicable to the denomination)
  * @param h_extensions hash over the extensions
  * @param h_denom_pub hash of the coin denomination's public key
  * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
@@ -2247,6 +2288,7 @@ TALER_wallet_deposit_verify (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_commitment_hash,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
@@ -2283,6 +2325,7 @@ TALER_wallet_melt_sign (
  * @param melt_fee the melt fee we expect to pay
  * @param rc refresh session we are committed to
  * @param h_denom_pub hash of the coin denomination's public key
+ * @param h_age_commitment hash of the age commitment (may be NULL)
  * @param coin_pub coin’s public key
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_MELT
  * @return #GNUNET_OK if the signature is valid
@@ -2293,6 +2336,7 @@ TALER_wallet_melt_verify (
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
   const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -2321,6 +2365,7 @@ TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
  * @param transfer_pub transfer public key
  * @param h_coin_ev hash of the coin envelope
  * @param old_coin_pub old coin key that the link signature is for
+ * @param h_age_commitment hash of age commitment. Maybe NULL, if not applicable.
  * @param coin_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
  */
@@ -2330,6 +2375,7 @@ TALER_wallet_link_verify (
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
 
@@ -3149,5 +3195,100 @@ TALER_exchange_offline_extension_config_hash_verify (
   const struct TALER_MasterSignatureP *master_sig
   );
 
+/*
+ * @brief Representation of an age commitment:  one public key per age group.
+ *
+ * The number of keys must be be the same as the number of bits set in the
+ * corresponding age mask.
+ */
+struct TALER_AgeCommitment
+{
+
+  /* The age mask defines the age groups that were a parameter during the
+   * generation of this age commitment */
+  struct TALER_AgeMask mask;
+
+  /* The number of public keys, which must be the same as the number of
+   * groups in the mask.
+   */
+  size_t num_pub;
+
+  /* The list of #num_pub public keys.  In must have same size as the number of
+   * age groups defined in the mask.
+   *
+   * A hash of this list is the hashed commitment that goes into FDC
+   * calculation during the withdraw and refresh operations for new coins. That
+   * way, the particular age commitment becomes mandatory and bound to a coin.
+   *
+   * The list has been allocated via GNUNET_malloc.
+   */
+  struct TALER_AgeCommitmentPublicKeyP *pub;
+
+  /* The number of private keys, which must be at most num_pub_keys.  One minus
+   * this number corresponds to the largest age group that is supported with
+   * this age commitment.
+   */
+  size_t num_priv;
+
+  /* List of #num_priv private keys.
+   *
+   * Note that the list can be _smaller_ than the corresponding list of public
+   * keys. In that case, the wallet can sign off only for a subset of the age
+   * groups.
+   *
+   * The list has been allocated via GNUNET_malloc.
+   */
+  struct TALER_AgeCommitmentPrivateKeyP *priv;
+};
+
+/*
+ * @brief Generates a hash of the public keys in the age commitment.
+ *
+ * @param commitment the age commitment - one public key per age group
+ * @param[out] hash resulting hash
+ */
+void
+TALER_age_commitment_hash (
+  const struct TALER_AgeCommitment *commitment,
+  struct TALER_AgeCommitmentHash *hash);
+
+/*
+ * @brief Generates an age commitent for the given age.
+ *
+ * @param mask The age mask the defines the age groups
+ * @param age The actual age for which an age commitment is generated
+ * @param seed The seed that goes into the key generation.  MUST be choosen uniformly random.
+ * @param commitment[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+enum GNUNET_GenericReturnValue
+TALER_age_restriction_commit (
+  const struct TALER_AgeMask *mask,
+  const uint8_t age,
+  const uint32_t seed,
+  struct TALER_AgeCommitment *commitment);
+
+/*
+ * @brief Derives another, equivalent age commitment for a given one.
+ *
+ * @param orig Original age commitment
+ * @param seed Used to move the points on the elliptic curve in order to generate another, equivalent commitment.
+ * @param derived[out] The resulting age commitment, ->priv and ->pub allocated via GNUNET_malloc on success.
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+enum GNUNET_GenericReturnValue
+TALER_age_commitment_derive (
+  const struct TALER_AgeCommitment *orig,
+  const uint32_t seed,
+  struct TALER_AgeCommitment *derived);
+
+/*
+ * @brief helper function to free memory inside a struct TALER_AgeCommitment
+ * @param cmt the commitment from which internal memory should be freed.  Note
+ * that cmt itself is NOT freed!
+ */
+void
+TALER_age_restriction_commitment_free_inside (
+  struct TALER_AgeCommitment *cmt);
 
 #endif

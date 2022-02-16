@@ -458,6 +458,7 @@ static unsigned int auditor_row_cnt;
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
  * @param denom_pub denomination of the @a coin_pub
+ * @param h_age_commitment hash of age commitment that went into the minting, may be NULL
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -470,6 +471,8 @@ static enum GNUNET_GenericReturnValue
 audit_refresh_session_cb (void *cls,
                           uint64_t rowid,
                           const struct TALER_DenominationPublicKey *denom_pub,
+                          const struct
+                          TALER_AgeCommitmentHash *h_age_commitment,
                           const struct TALER_CoinSpendPublicKeyP *coin_pub,
                           const struct TALER_CoinSpendSignatureP *coin_sig,
                           const struct TALER_Amount *amount_with_fee,
@@ -1475,8 +1478,8 @@ run (void *cls)
   {
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct TALER_AgeHash age_hash;
-    struct TALER_AgeHash *p_ah[2] = {
+    struct TALER_AgeCommitmentHash age_hash;
+    struct TALER_AgeCommitmentHash *p_ah[2] = {
       NULL,
       &age_hash
     };
@@ -1597,7 +1600,7 @@ run (void *cls)
   deadline = GNUNET_TIME_timestamp_get ();
   {
     struct TALER_DenominationHash dph;
-    struct TALER_AgeHash agh;
+    struct TALER_AgeCommitmentHash agh;
 
     FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
             plugin->ensure_coin_known (plugin->cls,
@@ -1847,7 +1850,7 @@ run (void *cls)
     uint64_t new_known_coin_id;
     struct TALER_CoinPublicInfo new_coin;
     struct TALER_DenominationHash dph;
-    struct TALER_AgeHash agh;
+    struct TALER_AgeCommitmentHash agh;
     bool recoup_ok;
     bool internal_failure;
 
@@ -2201,7 +2204,7 @@ run (void *cls)
   {
     uint64_t known_coin_id;
     struct TALER_DenominationHash dph;
-    struct TALER_AgeHash agh;
+    struct TALER_AgeCommitmentHash agh;
 
     FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
             plugin->ensure_coin_known (plugin->cls,

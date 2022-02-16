@@ -795,27 +795,17 @@ static struct TALER_AgeMask
 load_age_mask (const char*section_name)
 {
   static const struct TALER_AgeMask null_mask = {0};
-  struct TALER_AgeMask age_mask = {0};
-  /* TODO: optimize by putting this into global? */
-  const struct TALER_Extension *age_ext =
-    TALER_extensions_get_by_type (TALER_Extension_AgeRestriction);
+  struct TALER_AgeMask age_mask = TALER_extensions_age_restriction_ageMask ();
 
-  // Get the age mask from the extension, if configured
-  /* TODO: optimize by putting this into global? */
-  if (TALER_extensions_is_enabled (age_ext))
-    age_mask = *(struct TALER_AgeMask *) age_ext->config;
-  if (0 == age_mask.mask)
-  {
-    /* Age restriction support is not enabled.  Ignore the AGE_RESTRICTED field
-     * for the particular denomination and simply return the null_mask
-     */
+  if (age_mask.mask == 0)
     return null_mask;
-  }
 
-  if (GNUNET_OK == (GNUNET_CONFIGURATION_have_value (
+  if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (
                       TEH_cfg,
                       section_name,
                       "AGE_RESTRICTED")))
+    return null_mask;
+
   {
     enum GNUNET_GenericReturnValue ret;
 
@@ -1331,6 +1321,8 @@ denomination_info_cb (
   dk->meta = *meta;
   dk->master_sig = *master_sig;
   dk->recoup_possible = recoup_possible;
+  dk->denom_pub.age_mask = meta->age_mask;
+
   GNUNET_assert (
     GNUNET_OK ==
     GNUNET_CONTAINER_multihashmap_put (ksh->denomkey_map,
@@ -1745,7 +1737,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
  * @a recoup and @a denoms.
  *
  * @param[in,out] ksh key state handle we build @a krd for
- * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms
+ * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms and age_restricted_denoms
  * @param last_cpd timestamp to use
  * @param signkeys list of sign keys to return
  * @param recoup list of revoked keys to return
@@ -1863,7 +1855,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       int r;
 
       /* skip if not configured == disabled */
-      if (NULL == extension->config)
+      if (NULL == extension->config ||
+          NULL == extension->config_json)
         continue;
 
       /* flag our findings so far */
@@ -1899,7 +1892,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       json_t *sig;
       int r;
 
-      r = json_object_set_new (
+      r = json_object_set (
         keys,
         "extensions",
         extensions);
@@ -1919,14 +1912,14 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       json_decref (extensions);
     }
 
-    // Special case for age restrictions: if enabled, provide the lits of
+    // Special case for age restrictions: if enabled, provide the list of
     // age-restricted denominations.
     if (age_restriction_enabled &&
         NULL != age_restricted_denoms)
     {
       GNUNET_assert (
         0 ==
-        json_object_set_new (
+        json_object_set (
           keys,
           "age_restricted_denoms",
           age_restricted_denoms));
@@ -2005,7 +1998,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   json_t *age_restricted_denoms = NULL;
   struct GNUNET_TIME_Timestamp last_cpd;
   struct GNUNET_CONTAINER_Heap *heap;
-  struct GNUNET_HashContext *hash_context;
+  struct GNUNET_HashContext *hash_context = NULL;
+  struct GNUNET_HashContext *hash_context_restricted = NULL;
+  bool have_age_restricted_denoms = false;
 
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
@@ -2030,19 +2025,23 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       = GNUNET_TIME_relative_min (dkc.min_dk_frequency,
                                   sctx.min_sk_frequency);
   }
+
   denoms = json_array ();
   GNUNET_assert (NULL != denoms);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
 
-  // If age restriction is enabled, initialize the array of age restricted denoms.
-  /* TODO: optimize by putting this into global? */
-  if (TALER_extensions_is_enabled_type (TALER_Extension_AgeRestriction))
+  /* If age restriction is enabled, initialize the array of age restricted
+   denoms  and prepare a hash for them, separate from the others.  We will join
+   those hashes afterwards.*/
+  if (TEH_age_restriction_enabled)
   {
     age_restricted_denoms = json_array ();
     GNUNET_assert (NULL != age_restricted_denoms);
+    hash_context_restricted = GNUNET_CRYPTO_hash_context_start ();
   }
 
   last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
+
   {
     struct TEH_DenominationKey *dk;
 
@@ -2055,6 +2054,11 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time)) )
       {
         struct GNUNET_HashCode hc;
+
+        /* FIXME-oec: Do we need to take hash_context_restricted into account
+         * in this if-branch!?  Current tests suggests: no, (they don't fail).
+         * But something seems to be odd about only finishing hash_context.
+         */
 
         GNUNET_CRYPTO_hash_context_finish (
           GNUNET_CRYPTO_hash_context_copy (hash_context),
@@ -2084,14 +2088,14 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           return GNUNET_SYSERR;
         }
       }
+
       last_cpd = dk->meta.start;
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &dk->h_denom_pub,
-                                       sizeof (struct GNUNET_HashCode));
 
       {
         json_t *denom;
         json_t *array;
+        struct GNUNET_HashContext *hc;
+
 
         denom =
           GNUNET_JSON_PACK (
@@ -2118,17 +2122,25 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             TALER_JSON_pack_amount ("fee_refund",
                                     &dk->meta.fee_refund));
 
-        /* Put the denom into the correct array - denoms or age_restricted_denoms -
-         * depending on the settings and the properties of the denomination */
-        if (NULL != age_restricted_denoms &&
-            0 != dk->meta.age_restrictions.mask)
+        /* Put the denom into the correct array depending on the settings and
+         * the properties of the denomination.  Also, we build up the right
+         * hash for the corresponding array. */
+        if (TEH_age_restriction_enabled &&
+            (0 != dk->denom_pub.age_mask.mask))
         {
+          have_age_restricted_denoms = true;
           array = age_restricted_denoms;
+          hc = hash_context_restricted;
         }
         else
         {
           array = denoms;
+          hc = hash_context;
         }
+
+        GNUNET_CRYPTO_hash_context_read (hc,
+                                         &dk->h_denom_pub,
+                                         sizeof (struct GNUNET_HashCode));
 
         GNUNET_assert (
           0 ==
@@ -2138,13 +2150,27 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       }
     }
   }
+
   GNUNET_CONTAINER_heap_destroy (heap);
   if (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time))
   {
     struct GNUNET_HashCode hc;
 
+    /* If age restriction is active and we had at least one denomination of
+     * that sort, we simply add the hash of all age restricted denominations at
+     * the end of the others. */
+    if (TEH_age_restriction_enabled && have_age_restricted_denoms)
+    {
+      struct GNUNET_HashCode hcr;
+      GNUNET_CRYPTO_hash_context_finish (hash_context_restricted, &hcr);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &hcr,
+                                       sizeof (struct GNUNET_HashCode));
+    }
+
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &hc);
+
     if (GNUNET_OK !=
         create_krd (ksh,
                     &hc,
@@ -2158,7 +2184,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                   "Failed to generate key response data for %s\n",
                   GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
-      if (NULL != age_restricted_denoms)
+      if (TEH_age_restriction_enabled && NULL != age_restricted_denoms)
         json_decref (age_restricted_denoms);
       json_decref (sctx.signkeys);
       json_decref (recoup);
@@ -2849,7 +2875,9 @@ load_extension_data (const char *section_name,
                 TEH_currency);
     return GNUNET_SYSERR;
   }
-  meta->age_restrictions = load_age_mask (section_name);
+
+  meta->age_mask = load_age_mask (section_name);
+
   return GNUNET_OK;
 }
 
@@ -2976,7 +3004,7 @@ add_future_denomkey_cb (void *cls,
   struct FutureBuilderContext *fbc = cls;
   struct HelperDenomination *hd = value;
   struct TEH_DenominationKey *dk;
-  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta = {0};
 
   dk = GNUNET_CONTAINER_multihashmap_get (fbc->ksh->denomkey_map,
                                           h_denom_pub);

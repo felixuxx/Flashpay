@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS denominations
   (denominations_serial BIGSERIAL UNIQUE
   ,denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_type INT4 NOT NULL DEFAULT (1) -- 1 == RSA (for now, remove default later!)
-  ,age_restrictions INT4 NOT NULL DEFAULT (0)
+  ,age_mask INT4 NOT NULL DEFAULT (0)
   ,denom_pub BYTEA NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,valid_from INT8 NOT NULL
@@ -47,7 +47,7 @@ COMMENT ON TABLE denominations
   IS 'Main denominations table. All the valid denominations the exchange knows about.';
 COMMENT ON COLUMN denominations.denom_type
   IS 'determines cipher type for blind signatures used with this denomination; 0 is for RSA';
-COMMENT ON COLUMN denominations.age_restrictions
+COMMENT ON COLUMN denominations.age_mask
   IS 'bitmask with the age restrictions that are being used for this denomination; 0 if denomination does not support the use of age restrictions';
 COMMENT ON COLUMN denominations.denominations_serial
   IS 'needed for exchange-auditor replication logic';
@@ -345,6 +345,7 @@ CREATE TABLE IF NOT EXISTS refresh_commitments
   (melt_serial_id BIGSERIAL -- UNIQUE
   ,rc BYTEA PRIMARY KEY CHECK (LENGTH(rc)=64)
   ,old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
+  ,h_age_commitment BYTEA CHECK(LENGTH(h_age_commitment)=32)
   ,old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
@@ -359,6 +360,8 @@ COMMENT ON COLUMN refresh_commitments.rc
   IS 'Commitment made by the client, hash over the various client inputs in the cut-and-choose protocol';
 COMMENT ON COLUMN refresh_commitments.old_coin_pub
   IS 'Coin being melted in the refresh process.';
+COMMENT ON COLUMN refresh_commitments.h_age_commitment
+  IS '(optional) age commitment that was involved in the minting process of the coin, may be NULL.';
 CREATE TABLE IF NOT EXISTS refresh_commitments_default
   PARTITION OF refresh_commitments
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);

@@ -175,6 +175,7 @@ TALER_EXCHANGE_get_melt_data_ (
                                   &alg_values[j],
                                   bks,
                                   coin_priv,
+                                  NULL, /* FIXME-oec: This needs to be setup !*/
                                   &c_hash,
                                   &pd))
       {

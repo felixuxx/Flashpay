@@ -29,6 +29,7 @@ TALER_wallet_deposit_sign (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
@@ -48,8 +49,12 @@ TALER_wallet_deposit_sign (
     .merchant = *merchant_pub
   };
 
+  if (NULL != h_age_commitment)
+    dr.h_age_commitment = *h_age_commitment;
+
   if (NULL != h_extensions)
     dr.h_extensions = *h_extensions;
+
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -66,6 +71,7 @@ TALER_wallet_deposit_verify (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
@@ -82,11 +88,17 @@ TALER_wallet_deposit_verify (
     .h_denom_pub = *h_denom_pub,
     .wallet_timestamp = GNUNET_TIME_timestamp_hton (wallet_timestamp),
     .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
-    .merchant = *merchant_pub
+    .merchant = *merchant_pub,
+    .h_age_commitment = {{{0}}},
+    .h_extensions = {{{0}}}
   };
+
+  if (NULL != h_age_commitment)
+    dr.h_age_commitment = *h_age_commitment;
 
   if (NULL != h_extensions)
     dr.h_extensions = *h_extensions;
+
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -131,6 +143,7 @@ TALER_wallet_link_verify (
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct TALER_LinkDataPS ldp = {
@@ -138,8 +151,12 @@ TALER_wallet_link_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
     .h_denom_pub = *h_denom_pub,
     .transfer_pub = *transfer_pub,
-    .coin_envelope_hash = *h_coin_ev
+    .coin_envelope_hash = *h_coin_ev,
+    .h_age_commitment = {{{0}}}
   };
+
+  if (NULL != h_age_commitment)
+    ldp.h_age_commitment = *h_age_commitment;
 
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
@@ -263,6 +280,7 @@ TALER_wallet_melt_verify (
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
   const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -270,8 +288,12 @@ TALER_wallet_melt_verify (
     .purpose.size = htonl (sizeof (melt)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
     .rc = *rc,
-    .h_denom_pub = *h_denom_pub
+    .h_denom_pub = *h_denom_pub,
+    .h_age_commitment = {{{0}}},
   };
+
+  if (NULL != h_age_commitment)
+    melt.h_age_commitment = *h_age_commitment;
 
   TALER_amount_hton (&melt.amount_with_fee,
                      amount_with_fee);

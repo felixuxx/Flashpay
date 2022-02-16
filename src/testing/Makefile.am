@@ -68,6 +68,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_oauth.c \
   testing_api_cmd_offline_sign_fees.c \
   testing_api_cmd_offline_sign_keys.c \
+  testing_api_cmd_offline_sign_extensions.c \
   testing_api_cmd_set_wire_fee.c \
   testing_api_cmd_recoup.c \
   testing_api_cmd_recoup_refresh.c \
@@ -249,6 +250,7 @@ test_exchange_api_cs_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
+  -ltalerextensions \
   $(XLIB)
 
 test_exchange_api_rsa_SOURCES = \
@@ -265,6 +267,7 @@ test_exchange_api_rsa_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
+  -ltalerextensions \
   $(XLIB)
 
 test_exchange_api_keys_cherry_picking_cs_SOURCES = \

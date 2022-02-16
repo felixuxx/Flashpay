@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_signatures.h"
+#include "taler_extensions.h"
 #include "taler_testing_lib.h"
 
 /**
@@ -312,6 +313,9 @@ sign_keys_for_exchange (void *cls,
   char *exchange_master_pub;
   int ret;
 
+  /* Load the age restriction mask from the configuration */
+  TALER_extensions_load_taler_config (cfg);
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -402,7 +406,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount)
+                       const struct TALER_Amount *amount,
+                       bool age_restricted)
 {
   struct GNUNET_TIME_Timestamp now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
@@ -419,7 +424,8 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
                                      pk->valid_from)) &&
          (GNUNET_TIME_timestamp_cmp (now,
                                      <,
-                                     pk->withdraw_valid_until)) )
+                                     pk->withdraw_valid_until)) &&
+         (age_restricted == (0 != pk->key.age_mask.mask)) )
       return pk;
   }
   /* do 2nd pass to check if expiration times are to blame for
@@ -435,7 +441,8 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
                                      pk->valid_from) ||
           GNUNET_TIME_timestamp_cmp (now,
                                      >,
-                                     pk->withdraw_valid_until) ) )
+                                     pk->withdraw_valid_until) ) &&
+         (age_restricted == (0 != pk->key.age_mask.mask)) )
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,

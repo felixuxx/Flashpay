@@ -477,6 +477,7 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline = {0};
       struct TALER_CoinSpendSignatureP sig;
+      struct TALER_AgeCommitmentHash *hac = NULL;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
@@ -511,6 +512,7 @@ TALER_EXCHANGE_verify_coin_history (
                                        &fee,
                                        &h_wire,
                                        &h_contract_terms,
+                                       hac,
                                        NULL /* h_extensions! */,
                                        h_denom_pub,
                                        wallet_timestamp,
@@ -543,6 +545,7 @@ TALER_EXCHANGE_verify_coin_history (
     {
       struct TALER_CoinSpendSignatureP sig;
       struct TALER_RefreshCommitmentP rc;
+      struct TALER_AgeCommitmentHash h_age_commitment = {0};
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
@@ -550,6 +553,9 @@ TALER_EXCHANGE_verify_coin_history (
                                      &rc),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      h_denom_pub),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                       &h_age_commitment)),
         TALER_JSON_spec_amount_any ("melt_fee",
                                     &fee),
         GNUNET_JSON_spec_end ()
@@ -563,6 +569,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+
       if (NULL != dk)
       {
         /* check that melt fee matches our expectations from /keys! */
@@ -577,16 +584,25 @@ TALER_EXCHANGE_verify_coin_history (
           return GNUNET_SYSERR;
         }
       }
-      if (GNUNET_OK !=
-          TALER_wallet_melt_verify (&amount,
-                                    &fee,
-                                    &rc,
-                                    h_denom_pub,
-                                    coin_pub,
-                                    &sig))
+
       {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        const struct TALER_AgeCommitmentHash *ahc = &h_age_commitment;
+
+        if (TALER_AgeCommitmentHash_isNullOrZero (ahc))
+          ahc = NULL;
+
+        if (GNUNET_OK !=
+            TALER_wallet_melt_verify (&amount,
+                                      &fee,
+                                      &rc,
+                                      h_denom_pub,
+                                      ahc,
+                                      coin_pub,
+                                      &sig))
+        {
+          GNUNET_break_op (0);
+          return GNUNET_SYSERR;
+        }
       }
       add = GNUNET_YES;
     }

@@ -23,6 +23,19 @@
 #include "taler_extensions.h"
 #include "stdint.h"
 
+/**
+ * Carries all the information we need for age restriction
+ */
+struct age_restriction_config
+{
+  struct TALER_AgeMask mask;
+  size_t num_groups;
+};
+
+/**
+ * Global config for this extension
+ */
+static struct age_restriction_config _config = {0};
 
 /**
  * @param groups String representation of the age groups. Must be of the form
@@ -146,6 +159,9 @@ age_restriction_disable (
     json_decref (this->config_json);
     this->config_json = NULL;
   }
+
+  _config.mask.mask = 0;
+  _config.num_groups = 0;
 }
 
 
@@ -197,7 +213,6 @@ age_restriction_load_taler_config (
 
 
   mask.mask = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
-
   ret = GNUNET_OK;
 
   if (groups != NULL)
@@ -208,7 +223,19 @@ age_restriction_load_taler_config (
   }
 
   if (GNUNET_OK == ret)
-    this->config = (void *) (size_t) mask.mask;
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "setting age mask to %x with #groups: %d\n", mask.mask,
+                __builtin_popcount (mask.mask) - 1);
+    _config.mask.mask = mask.mask;
+    _config.num_groups = __builtin_popcount (mask.mask) - 1; /* no underflow, first bit always set */
+    this->config = &_config;
+
+    /* Note: we do now have _config set, however this->config_json is NOT set,
+     * i.e. the extension is not yet active! For age restriction to become
+     * active, load_json_config must have been called. */
+  }
+
 
   GNUNET_free (groups);
   return ret;
@@ -223,12 +250,12 @@ age_restriction_load_taler_config (
 static enum GNUNET_GenericReturnValue
 age_restriction_load_json_config (
   struct TALER_Extension *this,
-  json_t *config)
+  json_t *jconfig)
 {
   struct TALER_AgeMask mask = {0};
   enum GNUNET_GenericReturnValue ret;
 
-  ret = TALER_JSON_parse_agemask (config, &mask);
+  ret = TALER_JSON_parse_age_groups (jconfig, &mask);
   if (GNUNET_OK != ret)
     return ret;
 
@@ -239,16 +266,28 @@ age_restriction_load_json_config (
   if (TALER_Extension_AgeRestriction != this->type)
     return GNUNET_SYSERR;
 
-  if (NULL != this->config)
-    GNUNET_free (this->config);
+  _config.mask.mask = mask.mask;
+  _config.num_groups = 0;
 
-  this->config = GNUNET_malloc (sizeof(struct TALER_AgeMask));
-  GNUNET_memcpy (this->config, &mask, sizeof(struct TALER_AgeMask));
+  if (mask.mask > 0)
+  {
+    /* if the mask is not zero, the first bit MUST be set */
+    if (0 == (mask.mask & 1))
+      return GNUNET_SYSERR;
+
+    _config.num_groups = __builtin_popcount (mask.mask) - 1;
+  }
+
+  this->config = &_config;
 
   if (NULL != this->config_json)
     json_decref (this->config_json);
 
-  this->config_json = config;
+  this->config_json = jconfig;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "loaded new age restriction config with age groups: %s\n",
+              TALER_age_mask_to_string (&mask));
 
   return GNUNET_OK;
 }
@@ -263,7 +302,6 @@ json_t *
 age_restriction_config_to_json (
   const struct TALER_Extension *this)
 {
-  struct TALER_AgeMask mask;
   char *mask_str;
   json_t *conf;
 
@@ -275,8 +313,7 @@ age_restriction_config_to_json (
     return json_copy (this->config_json);
   }
 
-  mask.mask = (uint32_t) (size_t) this->config;
-  mask_str = TALER_age_mask_to_string (&mask);
+  mask_str = TALER_age_mask_to_string (&_config.mask);
   conf = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("age_groups", mask_str)
     );
@@ -298,7 +335,7 @@ age_restriction_test_json_config (
 {
   struct TALER_AgeMask mask = {0};
 
-  return TALER_JSON_parse_agemask (config, &mask);
+  return TALER_JSON_parse_age_groups (config, &mask);
 }
 
 
@@ -317,5 +354,51 @@ struct TALER_Extension _extension_age_restriction = {
   .config_to_json = &age_restriction_config_to_json,
   .load_taler_config = &age_restriction_load_taler_config,
 };
+
+bool
+TALER_extensions_age_restriction_is_configured ()
+{
+  return (0 != _config.mask.mask);
+}
+
+
+struct TALER_AgeMask
+TALER_extensions_age_restriction_ageMask ()
+{
+  return _config.mask;
+}
+
+
+size_t
+TALER_extensions_age_restriction_num_groups ()
+{
+  return _config.num_groups;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_JSON_parse_age_groups (const json_t *root,
+                             struct TALER_AgeMask *mask)
+{
+  enum GNUNET_GenericReturnValue ret;
+  const char *str;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("age_groups",
+                             &str),
+    GNUNET_JSON_spec_end ()
+  };
+
+  ret = GNUNET_JSON_parse (root,
+                           spec,
+                           NULL,
+                           NULL);
+  if (GNUNET_OK == ret)
+    TALER_parse_age_group_string (str, mask);
+
+  GNUNET_JSON_parse_free (spec);
+
+  return ret;
+}
+
 
 /* end of extension_age_restriction.c */

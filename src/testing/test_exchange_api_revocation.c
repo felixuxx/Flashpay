@@ -96,11 +96,13 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* Withdraw another 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-2",
                                        "create-reserve-1",
                                        "EUR:5",
+                                       0, /* age restriction off */
                                        MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
      * (merchant would receive EUR:0.99 due to 1 ct deposit fee) *///

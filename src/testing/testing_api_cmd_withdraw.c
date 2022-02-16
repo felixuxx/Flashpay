@@ -27,6 +27,7 @@
 #include <microhttpd.h>
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_signatures.h"
+#include "taler_extensions.h"
 #include "taler_testing_lib.h"
 #include "backoff.h"
 
@@ -130,6 +131,18 @@ struct WithdrawState
    * Private key material of the coin, set by the interpreter.
    */
   struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * An age > 0 signifies age restriction is required
+   */
+  uint8_t age;
+
+  /**
+   * If age > 0, put here the corresponding age commitment and its hash,
+   * respectivelly, NULL otherwise.
+   */
+  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
    * Reserve history entry that corresponds to this operation.
@@ -382,12 +395,14 @@ withdraw_run (void *cls,
     = TALER_TESTING_interpreter_lookup_command (
         is,
         ws->reserve_reference);
+
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
                                             &rp))
@@ -396,6 +411,7 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+
   if (NULL == ws->exchange_url)
     ws->exchange_url
       = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));
@@ -405,6 +421,7 @@ withdraw_run (void *cls,
   ws->reserve_payto_uri
     = TALER_payto_from_reserve (ws->exchange_url,
                                 &ws->reserve_pub);
+
   if (NULL == ws->reuse_coin_key_ref)
   {
     TALER_planchet_master_setup_random (&ws->ps);
@@ -429,10 +446,12 @@ withdraw_run (void *cls,
                                                             &ps));
     ws->ps = *ps;
   }
+
   if (NULL == ws->pk)
   {
     dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
-                                 &ws->amount);
+                                 &ws->amount,
+                                 ws->age > 0);
     if (NULL == dpk)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -450,18 +469,24 @@ withdraw_run (void *cls,
   {
     ws->amount = ws->pk->value;
   }
+
   ws->reserve_history.type = TALER_EXCHANGE_RTT_WITHDRAWAL;
   GNUNET_assert (0 <=
                  TALER_amount_add (&ws->reserve_history.amount,
                                    &ws->amount,
                                    &ws->pk->fee_withdraw));
   ws->reserve_history.details.withdraw.fee = ws->pk->fee_withdraw;
-  ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
-                                     ws->pk,
-                                     rp,
-                                     &ws->ps,
-                                     &reserve_withdraw_cb,
-                                     ws);
+
+  {
+
+    ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
+                                       ws->pk,
+                                       rp,
+                                       &ws->ps,
+                                       ws->h_age_commitment,
+                                       &reserve_withdraw_cb,
+                                       ws);
+  }
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);
@@ -503,6 +528,16 @@ withdraw_cleanup (void *cls,
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);
     ws->pk = NULL;
   }
+  if (NULL != ws->age_commitment)
+  {
+    GNUNET_free (ws->age_commitment);
+    ws->age_commitment = NULL;
+  }
+  if (NULL != ws->h_age_commitment)
+  {
+    GNUNET_free (ws->h_age_commitment);
+    ws->h_age_commitment = NULL;
+  }
   GNUNET_free (ws->exchange_url);
   GNUNET_free (ws->reserve_payto_uri);
   GNUNET_free (ws);
@@ -538,7 +573,7 @@ withdraw_traits (void *cls,
                                                 &ws->exchange_vals),
     TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
                                         ws->pk),
-    TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
+    TALER_TESTING_make_trait_denom_sig (index /* only one coin */,
                                         &ws->sig),
     TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
@@ -548,6 +583,8 @@ withdraw_traits (void *cls,
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (
       (const char **) &ws->exchange_url),
+    TALER_TESTING_make_trait_age_commitment (index, ws->age_commitment),
+    TALER_TESTING_make_trait_h_age_commitment (index, ws->h_age_commitment),
     TALER_TESTING_trait_end ()
   };
 
@@ -567,6 +604,7 @@ withdraw_traits (void *cls,
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
+ * @param age if > 0, age restriction is activated
  * @param expected_response_code which HTTP response code
  *        we expect from the exchange.
  * @return the withdraw command to be executed by the interpreter.
@@ -575,11 +613,45 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    const char *reserve_reference,
                                    const char *amount,
+                                   const uint8_t age,
                                    unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 
   ws = GNUNET_new (struct WithdrawState);
+
+  ws->age = age;
+  if (0 < age)
+  {
+    struct TALER_AgeCommitment *ac;
+    struct TALER_AgeCommitmentHash *hac;
+    uint32_t seed;
+    struct TALER_AgeMask mask;
+
+    ac = GNUNET_new (struct TALER_AgeCommitment);
+    hac = GNUNET_new (struct TALER_AgeCommitmentHash);
+    seed = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
+    mask = TALER_extensions_age_restriction_ageMask ();
+
+    if (GNUNET_OK !=
+        TALER_age_restriction_commit (
+          &mask,
+          age,
+          seed,
+          ac))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to generate age commitment for age %d at %s\n",
+                  age,
+                  label);
+      GNUNET_assert (0);
+    }
+
+    TALER_age_commitment_hash (ac,hac);
+    ws->age_commitment = ac;
+    ws->h_age_commitment = hac;
+  }
+
   ws->reserve_reference = reserve_reference;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
@@ -615,6 +687,7 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  * @param label command label.
  * @param reserve_reference command providing us with a reserve to withdraw from
  * @param amount how much we withdraw.
+ * @param age if > 0, age restriction is activated
  * @param coin_ref reference to (withdraw/reveal) command of a coin
  *        from which we should re-use the private key
  * @param expected_response_code which HTTP response code
@@ -626,6 +699,7 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
   const char *label,
   const char *reserve_reference,
   const char *amount,
+  uint8_t age,
   const char *coin_ref,
   unsigned int expected_response_code)
 {
@@ -634,6 +708,7 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
   cmd = TALER_TESTING_cmd_withdraw_amount (label,
                                            reserve_reference,
                                            amount,
+                                           age,
                                            expected_response_code);
   {
     struct WithdrawState *ws = cmd.cls;

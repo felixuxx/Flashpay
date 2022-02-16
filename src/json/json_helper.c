@@ -950,35 +950,4 @@ TALER_JSON_spec_i18n_str (const char *name,
 }
 
 
-enum GNUNET_GenericReturnValue
-TALER_JSON_parse_agemask (const json_t *root,
-                          struct TALER_AgeMask *mask)
-{
-  const char *name;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("extension",
-                             &name),
-    GNUNET_JSON_spec_uint32 ("mask",
-                             &mask->mask),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK != GNUNET_JSON_parse (root,
-                                      spec,
-                                      NULL,
-                                      NULL))
-  {
-    return GNUNET_SYSERR;
-  }
-
-  if (! strncmp (name,
-                 "age_restriction",
-                 sizeof("age_restriction")))
-  {
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
 /* end of json/json_helper.c */

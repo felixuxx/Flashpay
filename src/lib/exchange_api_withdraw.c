@@ -89,6 +89,11 @@ struct TALER_EXCHANGE_WithdrawHandle
   struct TALER_ExchangeWithdrawValues alg_values;
 
   /**
+   * Hash of the age commitment for this coin, if applicable. Maybe NULL
+   */
+  const struct TALER_AgeCommitmentHash *ach;
+
+  /**
    * Denomination key we are withdrawing.
    */
   struct TALER_EXCHANGE_DenomPublicKey pk;
@@ -137,6 +142,7 @@ handle_reserve_withdraw_finished (
                                   blind_sig,
                                   &wh->bks,
                                   &wh->priv,
+                                  wh->ach,
                                   &wh->c_hash,
                                   &wh->alg_values,
                                   &fc))
@@ -222,6 +228,7 @@ withdraw_cs_stage_two_callback (void *cls,
                                 &wh->alg_values,
                                 &wh->bks,
                                 &wh->priv,
+                                wh->ach,
                                 &wh->c_hash,
                                 &wh->pd))
     {
@@ -249,6 +256,7 @@ TALER_EXCHANGE_withdraw (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PlanchetMasterSecretP *ps,
+  const struct TALER_AgeCommitmentHash *ach,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls)
 {
@@ -260,6 +268,7 @@ TALER_EXCHANGE_withdraw (
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
   wh->ps = *ps;
+  wh->ach = ach;
   wh->pk = *pk;
   TALER_denom_pub_deep_copy (&wh->pk.key,
                              &pk->key);
@@ -280,6 +289,7 @@ TALER_EXCHANGE_withdraw (
                                   &wh->alg_values,
                                   &wh->bks,
                                   &wh->priv,
+                                  wh->ach,
                                   &wh->c_hash,
                                   &wh->pd))
       {

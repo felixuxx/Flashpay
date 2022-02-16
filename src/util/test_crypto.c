@@ -152,6 +152,7 @@ test_planchets_rsa (void)
                                          &alg_values,
                                          &bks,
                                          &coin_priv,
+                                         NULL, /* no age commitment */
                                          &c_hash,
                                          &pd));
   GNUNET_assert (GNUNET_OK ==
@@ -164,6 +165,7 @@ test_planchets_rsa (void)
                                          &blind_sig,
                                          &bks,
                                          &coin_priv,
+                                         NULL, /* no age commitment */
                                          &c_hash,
                                          &alg_values,
                                          &coin));
@@ -174,6 +176,8 @@ test_planchets_rsa (void)
   return 0;
 }
 
+
+/** FIXME-oec: Add test for planchets with age commitment hash */
 
 /**
  * @brief Function for CS signatures to derive public R_0 and R_1
@@ -392,10 +396,12 @@ main (int argc,
     return 1;
   if (0 != test_planchets ())
     return 2;
-  if (0 != test_exchange_sigs ())
+  if (0 != test_planchets_with_age_commitment ())
     return 3;
-  if (0 != test_merchant_sigs ())
+  if (0 != test_exchange_sigs ())
     return 4;
+  if (0 != test_merchant_sigs ())
+    return 5;
   return 0;
 }
 

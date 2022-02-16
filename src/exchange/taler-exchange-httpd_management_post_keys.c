@@ -204,6 +204,7 @@ add_keys (void *cls,
         TALER_denom_pub_free (&denom_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+
     if (is_active)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -211,6 +212,7 @@ add_keys (void *cls,
                   GNUNET_h2s (&d->h_denom_pub.hash));
       continue; /* skip, already known */
     }
+
     qs = TEH_plugin->add_denomination_key (
       TEH_plugin->cls,
       &d->h_denom_pub,

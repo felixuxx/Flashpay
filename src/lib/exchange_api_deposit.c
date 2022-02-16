@@ -463,6 +463,7 @@ handle_deposit_finished (void *cls,
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param ech hash over contract extensions
  * @param coin_pub coin’s public key
+ * @param h_age_commitment coin’s hash of age commitment, might be NULL
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_pub_hash hash of @a denom_pub
@@ -479,6 +480,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_PrivateContractHash *h_contract_terms,
                    const struct TALER_ExtensionContractHash *ech,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_AgeCommitmentHash *h_age_commitment,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct TALER_DenominationHash *denom_pub_hash,
@@ -492,6 +494,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                                    &dki->fee_deposit,
                                    h_wire,
                                    h_contract_terms,
+                                   h_age_commitment,
                                    ech,
                                    denom_pub_hash,
                                    timestamp,
@@ -515,8 +518,12 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
       .denom_sig = *denom_sig,
-      .age_commitment_hash = {{{0}}} /* FIXME-Oec */
+      .age_commitment_hash = {{{0}}}
     };
+    if (NULL != h_age_commitment)
+    {
+      coin_info.age_commitment_hash = *h_age_commitment;
+    }
 
     if (GNUNET_YES !=
         TALER_test_coin_valid (&coin_info,
@@ -548,6 +555,7 @@ TALER_EXCHANGE_deposit (
   const char *merchant_payto_uri,
   const struct TALER_WireSaltP *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationSignature *denom_sig,
@@ -600,11 +608,14 @@ TALER_EXCHANGE_deposit (
   }
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
+
   /* initialize h_wire */
   TALER_merchant_wire_signature_hash (merchant_payto_uri,
                                       wire_salt,
                                       &h_wire);
+
   key_state = TALER_EXCHANGE_get_keys (exchange);
+
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              denom_pub);
   if (NULL == dki)
@@ -613,6 +624,7 @@ TALER_EXCHANGE_deposit (
     GNUNET_break_op (0);
     return NULL;
   }
+
   if (0 >
       TALER_amount_subtract (&amount_without_fee,
                              amount,
@@ -622,17 +634,18 @@ TALER_EXCHANGE_deposit (
     GNUNET_break_op (0);
     return NULL;
   }
+
   TALER_denom_pub_hash (denom_pub,
                         &denom_pub_hash);
+
   if (GNUNET_OK !=
       verify_signatures (dki,
                          amount,
                          &h_wire,
                          h_contract_terms,
-                         (NULL != extension_details)
-                         ? &ech
-                         : NULL,
+                         (NULL != extension_details) ? &ech : NULL,
                          coin_pub,
+                         h_age_commitment,
                          denom_sig,
                          denom_pub,
                          &denom_pub_hash,
@@ -655,6 +668,9 @@ TALER_EXCHANGE_deposit (
                                 wire_salt),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 h_contract_terms),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                  h_age_commitment)),
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &denom_pub_hash),
     TALER_JSON_pack_denom_sig ("ub_sig",
