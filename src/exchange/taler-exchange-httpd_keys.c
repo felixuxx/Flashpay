@@ -2819,7 +2819,7 @@ load_extension_data (const char *section_name,
                                    section_name,
                                    &meta->fees))
     return GNUNET_SYSERR;
-  meta->age_restrictions = load_age_mask (section_name);
+  meta->age_mask = load_age_mask (section_name);
   return GNUNET_OK;
 }
 
