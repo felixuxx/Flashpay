@@ -124,6 +124,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin",
                                        "refresh-create-reserve",
                                        "EUR:5",
+                                       0, /* age */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
                                "refresh-withdraw-coin",
@@ -164,6 +165,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
                                        "create-reserve-r1",
                                        "EUR:5",
+                                       0, /* age */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_deposit ("deposit-refund-1",
                                "withdraw-coin-r1",
@@ -233,6 +235,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r2",
                                        "create-reserve-r2",
                                        "EUR:5",
+                                       0, /* age */
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
