@@ -471,7 +471,7 @@ check_transaction_history_for_deposit (
 
         /* Fee according to denomination data of auditor */
         TALER_amount_ntoh (&fee_expected,
-                           &issue->fee_deposit);
+                           &issue->fees.deposit);
         if (0 !=
             TALER_amount_cmp (&fee_expected,
                               fee_claimed))
@@ -496,7 +496,7 @@ check_transaction_history_for_deposit (
         struct TALER_Amount fee_expected;
 
         TALER_amount_ntoh (&fee_expected,
-                           &issue->fee_refresh);
+                           &issue->fees.refresh);
         if (0 !=
             TALER_amount_cmp (&fee_expected,
                               fee_claimed))
@@ -540,7 +540,7 @@ check_transaction_history_for_deposit (
         struct TALER_Amount fee_expected;
 
         TALER_amount_ntoh (&fee_expected,
-                           &issue->fee_refund);
+                           &issue->fees.refund);
         if (0 !=
             TALER_amount_cmp (&fee_expected,
                               fee_claimed))

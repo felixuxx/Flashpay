@@ -141,7 +141,7 @@ add_denomination (
                 GNUNET_h2s (&issue->denom_hash.hash),
                 TALER_amount2s (&value));
     TALER_amount_ntoh (&value,
-                       &issue->fee_withdraw);
+                       &issue->fees.withdraw);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Withdraw fee is %s\n",
                 TALER_amount2s (&value));

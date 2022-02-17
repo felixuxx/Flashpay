@@ -340,6 +340,7 @@ TALER_EXCHANGE_refreshes_reveal (
   struct GNUNET_CURL_Context *ctx;
   struct MeltData md;
   char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
+  bool send_rms = false;
 
   GNUNET_assert (num_coins == rd->fresh_pks_len);
   if (noreveal_index >= TALER_CNC_KAPPA)
@@ -376,6 +377,8 @@ TALER_EXCHANGE_refreshes_reveal (
     const struct TALER_RefreshCoinData *rcd = &md.rcd[noreveal_index][i];
     struct TALER_DenominationHash denom_hash;
 
+    if (TALER_DENOMINATION_CS == md.fcds[i].fresh_pk.cipher)
+      send_rms = true;
     TALER_denom_pub_hash (&md.fcds[i].fresh_pk,
                           &denom_hash);
     GNUNET_assert (0 ==
@@ -428,6 +431,12 @@ TALER_EXCHANGE_refreshes_reveal (
   reveal_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("transfer_pub",
                                 &md.transfer_pub[noreveal_index]),
+    GNUNET_JSON_pack_allow_null (
+      send_rms
+      ? GNUNET_JSON_pack_data_auto ("rms",
+                                    rms)
+      : GNUNET_JSON_pack_string ("rms",
+                                 NULL)),
     GNUNET_JSON_pack_array_steal ("transfer_privs",
                                   transfer_privs),
     GNUNET_JSON_pack_array_steal ("link_sigs",

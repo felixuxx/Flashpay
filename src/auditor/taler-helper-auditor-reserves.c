@@ -594,7 +594,7 @@ handle_reserve_out (void *cls,
   }
 
   TALER_amount_ntoh (&withdraw_fee,
-                     &issue->fee_withdraw);
+                     &issue->fees.withdraw);
   TALER_amount_ntoh (&auditor_value,
                      &issue->value);
   TALER_ARL_amount_add (&auditor_amount_with_fee,

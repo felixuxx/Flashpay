@@ -2113,14 +2113,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                        &dk->denom_pub),
             TALER_JSON_pack_amount ("value",
                                     &dk->meta.value),
-            TALER_JSON_pack_amount ("fee_withdraw",
-                                    &dk->meta.fee_withdraw),
-            TALER_JSON_pack_amount ("fee_deposit",
-                                    &dk->meta.fee_deposit),
-            TALER_JSON_pack_amount ("fee_refresh",
-                                    &dk->meta.fee_refresh),
-            TALER_JSON_pack_amount ("fee_refund",
-                                    &dk->meta.fee_refund));
+            TALER_JSON_PACK_DENOM_FEES ("fee",
+                                        &dk->meta.fees));
 
         /* Put the denom into the correct array depending on the settings and
          * the properties of the denomination.  Also, we build up the right
@@ -2810,74 +2804,22 @@ load_extension_data (const char *section_name,
                                section_name);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               section_name,
-                               "FEE_WITHDRAW",
-                               &meta->fee_withdraw))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "Need amount for option `%s' in section `%s'\n",
-                               "FEE_WITHDRAW",
-                               section_name);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               section_name,
-                               "FEE_DEPOSIT",
-                               &meta->fee_deposit))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "Need amount for option `%s' in section `%s'\n",
-                               "FEE_DEPOSIT",
-                               section_name);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               section_name,
-                               "FEE_REFRESH",
-                               &meta->fee_refresh))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "Need amount for option `%s' in section `%s'\n",
-                               "FEE_REFRESH",
-                               section_name);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               section_name,
-                               "FEE_REFUND",
-                               &meta->fee_refund))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "Need amount for option `%s' in section `%s'\n",
-                               "FEE_REFUND",
-                               section_name);
-    return GNUNET_SYSERR;
-  }
-  if ( (0 != strcasecmp (TEH_currency,
-                         meta->value.currency)) ||
-       (0 != strcasecmp (TEH_currency,
-                         meta->fee_withdraw.currency)) ||
-       (0 != strcasecmp (TEH_currency,
-                         meta->fee_deposit.currency)) ||
-       (0 != strcasecmp (TEH_currency,
-                         meta->fee_refresh.currency)) ||
-       (0 != strcasecmp (TEH_currency,
-                         meta->fee_refund.currency)) )
+  if (0 != strcasecmp (TEH_currency,
+                       meta->value.currency))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amounts in section `%s' to use currency `%s'\n",
+                "Need denomination value in section `%s' to use currency `%s'\n",
                 section_name,
                 TEH_currency);
     return GNUNET_SYSERR;
   }
-
+  if (GNUNET_OK !=
+      TALER_config_get_denom_fees (TEH_cfg,
+                                   TEH_currency,
+                                   section_name,
+                                   &meta->fees))
+    return GNUNET_SYSERR;
   meta->age_mask = load_age_mask (section_name);
-
   return GNUNET_OK;
 }
 
@@ -3040,14 +2982,8 @@ add_future_denomkey_cb (void *cls,
                                     meta.expire_legal),
         TALER_JSON_pack_denom_pub ("denom_pub",
                                    &hd->denom_pub),
-        TALER_JSON_pack_amount ("fee_withdraw",
-                                &meta.fee_withdraw),
-        TALER_JSON_pack_amount ("fee_deposit",
-                                &meta.fee_deposit),
-        TALER_JSON_pack_amount ("fee_refresh",
-                                &meta.fee_refresh),
-        TALER_JSON_pack_amount ("fee_refund",
-                                &meta.fee_refund),
+        TALER_JSON_PACK_DENOM_FEES ("fee",
+                                    &meta.fees),
         GNUNET_JSON_pack_data_auto ("denom_secmod_sig",
                                     &hd->sm_sig),
         GNUNET_JSON_pack_string ("section_name",

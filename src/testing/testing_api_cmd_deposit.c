@@ -409,8 +409,7 @@ deposit_run (void *cls,
   {
     TALER_age_commitment_hash (age_commitment, &h_age_commitment);
   }
-
-  ds->deposit_fee = denom_pub->fee_deposit;
+  ds->deposit_fee = denom_pub->fees.deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -440,7 +439,7 @@ deposit_run (void *cls,
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
                                                             &h_wire));
     TALER_wallet_deposit_sign (&ds->amount,
-                               &denom_pub->fee_deposit,
+                               &denom_pub->fees.deposit,
                                &h_wire,
                                &h_contract_terms,
                                &h_age_commitment,

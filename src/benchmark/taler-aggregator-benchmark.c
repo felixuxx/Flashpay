@@ -505,10 +505,10 @@ run (void *cls,
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     make_amountN (2, 0, &issue.properties.value);
-    make_amountN (0, 5, &issue.properties.fee_withdraw);
-    make_amountN (0, 5, &issue.properties.fee_deposit);
-    make_amountN (0, 5, &issue.properties.fee_refresh);
-    make_amountN (0, 5, &issue.properties.fee_refund);
+    make_amountN (0, 5, &issue.properties.fees.withdraw);
+    make_amountN (0, 5, &issue.properties.fees.deposit);
+    make_amountN (0, 5, &issue.properties.fees.refresh);
+    make_amountN (0, 5, &issue.properties.fees.refund);
     issue.properties.denom_hash = h_denom_pub;
     if (0 >=
         plugin->insert_denomination_info (plugin->cls,

@@ -1102,7 +1102,7 @@ melt_run (void *cls,
 
     /* Melt amount starts with the melt fee of the old coin; we'll add the
        values and withdraw fees of the fresh coins next */
-    melt_amount = melt_denom_pub->fee_refresh;
+    melt_amount = melt_denom_pub->fees.refresh;
     age_restricted = melt_denom_pub->key.age_mask.mask != 0;
     for (unsigned int i = 0; i<num_fresh_coins; i++)
     {
@@ -1137,7 +1137,7 @@ melt_run (void *cls,
       GNUNET_assert (0 <=
                      TALER_amount_add (&melt_amount,
                                        &melt_amount,
-                                       &fresh_pk->fee_withdraw));
+                                       &fresh_pk->fees.withdraw));
       rms->fresh_pks[i] = *fresh_pk;
       /* Make a deep copy of the RSA key */
       TALER_denom_pub_deep_copy (&rms->fresh_pks[i].key,

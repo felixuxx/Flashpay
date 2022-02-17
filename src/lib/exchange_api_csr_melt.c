@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_csr.c
- * @brief Implementation of /csr requests (get R in exchange used for Clause Schnorr withdraw and refresh)
+ * @file lib/exchange_api_csr_melt.c
+ * @brief Implementation of /csr-melt requests (get R in exchange used for Clause Schnorr refresh)
  * @author Lucien Heuzeveldt
  * @author Gian Demarmels
  */
@@ -36,7 +36,7 @@
 /**
  * @brief A Clause Schnorr R Handle
  */
-struct TALER_EXCHANGE_CsRHandle
+struct TALER_EXCHANGE_CsRMeltHandle
 {
   /**
    * The connection to exchange this request handle will use
@@ -46,7 +46,7 @@ struct TALER_EXCHANGE_CsRHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_CsRCallback cb;
+  TALER_EXCHANGE_CsRMeltCallback cb;
 
   /**
    * Closure for @a cb.
@@ -86,13 +86,13 @@ struct TALER_EXCHANGE_CsRHandle
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
-csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
-        json_t *arr,
+csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
+        const json_t *arr,
         struct TALER_EXCHANGE_HttpResponse *hr)
 {
   unsigned int alen = json_array_size (arr);
   struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
-  struct TALER_EXCHANGE_CsRResponse csrr = {
+  struct TALER_EXCHANGE_CsRMeltResponse csrr = {
     .hr = *hr,
     .details.success.alg_values_len = alen,
     .details.success.alg_values = alg_values
@@ -127,7 +127,7 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
 /**
  * Function called when we're done processing the HTTP /csr request.
  *
- * @param cls the `struct TALER_EXCHANGE_CsRHandle`
+ * @param cls the `struct TALER_EXCHANGE_CsRMeltHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -136,13 +136,13 @@ handle_csr_finished (void *cls,
                      long response_code,
                      const void *response)
 {
-  struct TALER_EXCHANGE_CsRHandle *csrh = cls;
+  struct TALER_EXCHANGE_CsRMeltHandle *csrh = cls;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
     .http_status = (unsigned int) response_code
   };
-  struct TALER_EXCHANGE_CsRResponse csrr = {
+  struct TALER_EXCHANGE_CsRMeltResponse csrr = {
     .hr = hr
   };
 
@@ -171,7 +171,7 @@ handle_csr_finished (void *cls,
         break;
       }
     }
-    TALER_EXCHANGE_csr_cancel (csrh);
+    TALER_EXCHANGE_csr_melt_cancel (csrh);
     return;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -215,18 +215,19 @@ handle_csr_finished (void *cls,
   csrh->cb (csrh->cb_cls,
             &csrr);
   csrh->cb = NULL;
-  TALER_EXCHANGE_csr_cancel (csrh);
+  TALER_EXCHANGE_csr_melt_cancel (csrh);
 }
 
 
-struct TALER_EXCHANGE_CsRHandle *
-TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
-                    unsigned int nks_len,
-                    struct TALER_EXCHANGE_NonceKey *nks,
-                    TALER_EXCHANGE_CsRCallback res_cb,
-                    void *res_cb_cls)
+struct TALER_EXCHANGE_CsRMeltHandle *
+TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
+                         const struct TALER_RefreshMasterSecretP *rms,
+                         unsigned int nks_len,
+                         struct TALER_EXCHANGE_NonceKey *nks,
+                         TALER_EXCHANGE_CsRMeltCallback res_cb,
+                         void *res_cb_cls)
 {
-  struct TALER_EXCHANGE_CsRHandle *csrh;
+  struct TALER_EXCHANGE_CsRMeltHandle *csrh;
   json_t *csr_arr;
 
   if (0 == nks_len)
@@ -240,12 +241,10 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
       GNUNET_break (0);
       return NULL;
     }
-
-  csrh = GNUNET_new (struct TALER_EXCHANGE_CsRHandle);
+  csrh = GNUNET_new (struct TALER_EXCHANGE_CsRMeltHandle);
   csrh->exchange = exchange;
   csrh->cb = res_cb;
   csrh->cb_cls = res_cb_cls;
-
   csr_arr = json_array ();
   GNUNET_assert (NULL != csr_arr);
   for (unsigned int i = 0; i<nks_len; i++)
@@ -254,19 +253,17 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
     json_t *csr_obj;
 
     csr_obj = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_data_varsize ("nonce",
-                                     &nk->nonce,
-                                     sizeof(struct TALER_CsNonce)),
-      GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
-                                     &nk->pk->h_key,
-                                     sizeof(struct TALER_DenominationHash)));
+      GNUNET_JSON_pack_uint64 ("coin_offset",
+                               nk->cnc_num),
+      GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                  &nk->pk->h_key));
     GNUNET_assert (NULL != csr_obj);
     GNUNET_assert (0 ==
                    json_array_append_new (csr_arr,
                                           csr_obj));
   }
   csrh->url = TEAH_path_to_url (exchange,
-                                "/csr");
+                                "/csr-melt");
   if (NULL == csrh->url)
   {
     json_decref (csr_arr);
@@ -279,6 +276,8 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
     json_t *req;
 
     req = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto ("rms",
+                                  rms),
       GNUNET_JSON_pack_array_steal ("nks",
                                     csr_arr));
     ctx = TEAH_handle_to_context (exchange);
@@ -309,7 +308,7 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
 
 
 void
-TALER_EXCHANGE_csr_cancel (struct TALER_EXCHANGE_CsRHandle *csrh)
+TALER_EXCHANGE_csr_melt_cancel (struct TALER_EXCHANGE_CsRMeltHandle *csrh)
 {
   if (NULL != csrh->job)
   {

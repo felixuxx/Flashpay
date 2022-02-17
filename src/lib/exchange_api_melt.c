@@ -94,7 +94,7 @@ struct TALER_EXCHANGE_MeltHandle
   /**
    * Handle for the preflight request, or NULL.
    */
-  struct TALER_EXCHANGE_CsRHandle *csr;
+  struct TALER_EXCHANGE_CsRMeltHandle *csr;
 
   /**
    * Public key of the coin being melted.
@@ -111,6 +111,10 @@ struct TALER_EXCHANGE_MeltHandle
    */
   uint32_t noreveal_index;
 
+  /**
+   * True if we need to include @e rms in our melt request.
+   */
+  bool send_rms;
 };
 
 
@@ -488,7 +492,13 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
     TALER_JSON_pack_amount ("value_with_fee",
                             &mh->md.melted_coin.melt_amount_with_fee),
     GNUNET_JSON_pack_data_auto ("rc",
-                                &mh->md.rc));
+                                &mh->md.rc),
+    GNUNET_JSON_pack_allow_null (
+      mh->send_rms
+       ? GNUNET_JSON_pack_data_auto ("rms",
+                                     &mh->rms)
+       : GNUNET_JSON_pack_string ("rms",
+                                  NULL)));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
@@ -571,7 +581,7 @@ fail_mh (struct TALER_EXCHANGE_MeltHandle *mh,
  */
 static void
 csr_cb (void *cls,
-        const struct TALER_EXCHANGE_CsRResponse *csrr)
+        const struct TALER_EXCHANGE_CsRMeltResponse *csrr)
 {
   struct TALER_EXCHANGE_MeltHandle *mh = cls;
   unsigned int nks_off = 0;
@@ -583,7 +593,7 @@ csr_cb (void *cls,
       .hr = csrr->hr
     };
 
-    mr.hr.hint = "/csr failed";
+    mr.hr.hint = "/csr-melt failed";
     mh->melt_cb (mh->melt_cb_cls,
                  &mr);
     TALER_EXCHANGE_melt_cancel (mh);
@@ -612,6 +622,7 @@ csr_cb (void *cls,
       break;
     }
   }
+  mh->send_rms = true;
   if (GNUNET_OK !=
       start_melt (mh))
   {
@@ -668,20 +679,19 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     case TALER_DENOMINATION_CS:
       wv->cipher = TALER_DENOMINATION_CS;
       nks[nks_off].pk = fresh_pk;
-      TALER_cs_refresh_nonce_derive (rms,
-                                     i,
-                                     &nks[nks_off].nonce);
+      nks[nks_off].cnc_num = nks_off;
       nks_off++;
       break;
     }
   }
   if (0 != nks_off)
   {
-    mh->csr = TALER_EXCHANGE_csr (exchange,
-                                  nks_off,
-                                  nks,
-                                  &csr_cb,
-                                  mh);
+    mh->csr = TALER_EXCHANGE_csr_melt (exchange,
+                                       rms,
+                                       nks_off,
+                                       nks,
+                                       &csr_cb,
+                                       mh);
     if (NULL == mh->csr)
     {
       GNUNET_break (0);
@@ -711,7 +721,7 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
   }
   if (NULL != mh->csr)
   {
-    TALER_EXCHANGE_csr_cancel (mh->csr);
+    TALER_EXCHANGE_csr_melt_cancel (mh->csr);
     mh->csr = NULL;
   }
   TALER_EXCHANGE_free_melt_data_ (&mh->md); /* does not free 'md' itself */

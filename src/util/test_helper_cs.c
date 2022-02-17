@@ -330,6 +330,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                              &alg_values,
                                              &bks,
                                              &coin_priv,
+                                             NULL, /* no age commitment */
                                              &c_hash,
                                              &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -450,6 +451,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                              &alg_values,
                                              &bks,
                                              &coin_priv,
+                                             NULL, /* no age commitment */
                                              &c_hash,
                                              &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -484,11 +486,13 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       }
       {
         struct TALER_FreshCoin coin;
+
         if (GNUNET_OK !=
             TALER_planchet_to_coin (&keys[i].denom_pub,
                                     &ds,
                                     &bks,
                                     &coin_priv,
+                                    NULL, /* no age commitment */
                                     &c_hash,
                                     &alg_values,
                                     &coin))
@@ -548,6 +552,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                            &alg_values,
                                            &bks,
                                            &coin_priv,
+                                           NULL, /* no age commitment */
                                            &c_hash,
                                            &pd));
 
@@ -636,6 +641,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                                &alg_values,
                                                &bks,
                                                &coin_priv,
+                                               NULL, /* no age commitment */
                                                &c_hash,
                                                &pd));
         /* use this key as long as it works */

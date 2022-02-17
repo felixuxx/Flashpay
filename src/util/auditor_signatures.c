@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -33,10 +33,7 @@ TALER_auditor_denom_validity_sign (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_AuditorPrivateKeyP *auditor_priv,
   struct TALER_AuditorSignatureP *auditor_sig)
 {
@@ -53,14 +50,8 @@ TALER_auditor_denom_validity_sign (
 
   TALER_amount_hton (&kv.value,
                      coin_value);
-  TALER_amount_hton (&kv.fee_withdraw,
-                     fee_withdraw);
-  TALER_amount_hton (&kv.fee_deposit,
-                     fee_deposit);
-  TALER_amount_hton (&kv.fee_refresh,
-                     fee_refresh);
-  TALER_amount_hton (&kv.fee_refund,
-                     fee_refund);
+  TALER_denom_fee_set_hton (&kv.fees,
+                            fees);
   GNUNET_CRYPTO_hash (auditor_url,
                       strlen (auditor_url) + 1,
                       &kv.auditor_url_hash);
@@ -80,10 +71,7 @@ TALER_auditor_denom_validity_verify (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
@@ -100,14 +88,8 @@ TALER_auditor_denom_validity_verify (
 
   TALER_amount_hton (&kv.value,
                      coin_value);
-  TALER_amount_hton (&kv.fee_withdraw,
-                     fee_withdraw);
-  TALER_amount_hton (&kv.fee_deposit,
-                     fee_deposit);
-  TALER_amount_hton (&kv.fee_refresh,
-                     fee_refresh);
-  TALER_amount_hton (&kv.fee_refund,
-                     fee_refund);
+  TALER_denom_fee_set_hton (&kv.fees,
+                            fees);
   GNUNET_CRYPTO_hash (auditor_url,
                       strlen (auditor_url) + 1,
                       &kv.auditor_url_hash);

@@ -152,10 +152,7 @@ auditor_add_run (void *cls,
       dk->expire_deposit,
       dk->expire_legal,
       &dk->value,
-      &dk->fee_withdraw,
-      &dk->fee_deposit,
-      &dk->fee_refresh,
-      &dk->fee_refund,
+      &dk->fees,
       &is->auditor_priv,
       &auditor_sig);
   }

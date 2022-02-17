@@ -253,6 +253,20 @@ TALER_amount_is_zero (const struct TALER_Amount *amount)
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_amount_is_currency (const struct TALER_Amount *amount,
+                          const char *currency)
+{
+  if (GNUNET_OK !=
+      TALER_amount_is_valid (amount))
+    return GNUNET_SYSERR;
+  return (0 == strcasecmp (currency,
+                           amount->currency))
+    ? GNUNET_OK
+    : GNUNET_NO;
+}
+
+
 /**
  * Test if @a a is valid, NBO variant.
  *

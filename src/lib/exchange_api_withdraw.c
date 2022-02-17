@@ -106,7 +106,7 @@ struct TALER_EXCHANGE_WithdrawHandle
   /**
    * Handler for the CS R request (only used for TALER_DENOMINATION_CS denominations)
    */
-  struct TALER_EXCHANGE_CsRHandle *csrh;
+  struct TALER_EXCHANGE_CsRWithdrawHandle *csrh;
 
 };
 
@@ -192,11 +192,12 @@ handle_reserve_withdraw_finished (
  * Function called when stage 1 of CS withdraw is finished (request r_pub's)
  *
  * @param cls the `struct TALER_EXCHANGE_WithdrawHandle`
- * @param csrr replies from the /csr request
+ * @param csrr replies from the /csr-withdraw request
  */
 static void
-withdraw_cs_stage_two_callback (void *cls,
-                                const struct TALER_EXCHANGE_CsRResponse *csrr)
+withdraw_cs_stage_two_callback (
+  void *cls,
+  const struct TALER_EXCHANGE_CsRWithdrawResponse *csrr)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
   struct TALER_EXCHANGE_WithdrawResponse wr = {
@@ -208,13 +209,7 @@ withdraw_cs_stage_two_callback (void *cls,
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    if (1 != csrr->details.success.alg_values_len)
-    {
-      GNUNET_break (0);
-      wr.hr.http_status = 0;
-      break;
-    }
-    wh->alg_values = csrr->details.success.alg_values[0];
+    wh->alg_values = csrr->details.success.alg_values;
     TALER_planchet_setup_coin_priv (&wh->ps,
                                     &wh->alg_values,
                                     &wh->priv);
@@ -306,22 +301,19 @@ TALER_EXCHANGE_withdraw (
     }
   case TALER_DENOMINATION_CS:
     {
-      struct TALER_EXCHANGE_NonceKey nk = {
-        .pk = pk,
-      };
-
-      TALER_cs_withdraw_nonce_derive (ps,
-                                      &nk.nonce);
+      TALER_cs_withdraw_nonce_derive (
+        ps,
+        &wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce);
       /* Note that we only initialize the first half
          of the blinded_planchet here; the other part
-         will be done after the /csr request! */
+         will be done after the /csr-withdraw request! */
       wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
-      wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce = nk.nonce;
-      wh->csrh = TALER_EXCHANGE_csr (exchange,
-                                     1, /* "array" length */
-                                     &nk,
-                                     &withdraw_cs_stage_two_callback,
-                                     wh);
+      wh->csrh = TALER_EXCHANGE_csr_withdraw (
+        exchange,
+        pk,
+        &wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce,
+        &withdraw_cs_stage_two_callback,
+        wh);
       break;
     }
   default:
@@ -339,7 +331,7 @@ TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
   TALER_blinded_planchet_free (&wh->pd.blinded_planchet);
   if (NULL != wh->csrh)
   {
-    TALER_EXCHANGE_csr_cancel (wh->csrh);
+    TALER_EXCHANGE_csr_withdraw_cancel (wh->csrh);
     wh->csrh = NULL;
   }
   if (NULL != wh->wh2)

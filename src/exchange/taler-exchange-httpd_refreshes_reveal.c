@@ -122,10 +122,19 @@ struct RevealContext
   struct TALER_RefreshCoinData *rcds;
 
   /**
+   * Refresh master secret.
+   */
+  struct TALER_RefreshMasterSecretP rms;
+
+  /**
    * Size of the @e dks, @e rcds and @e ev_sigs arrays (if non-NULL).
    */
   unsigned int num_fresh_coins;
 
+  /**
+   * True if @e rms was provided.
+   */
+  bool have_rms;
 };
 
 
@@ -321,6 +330,9 @@ check_commitment (struct RevealContext *rctx,
     }
     TALER_refresh_get_commitment (&rc_expected,
                                   TALER_CNC_KAPPA,
+                                  rctx->have_rms
+                                  ? &rctx->rms
+                                  : NULL,
                                   rctx->num_fresh_coins,
                                   rcs,
                                   &rctx->melt.session.coin.coin_pub,
@@ -369,7 +381,7 @@ check_commitment (struct RevealContext *rctx,
 
       if ( (0 >
             TALER_amount_add (&total,
-                              &rctx->dks[i]->meta.fee_withdraw,
+                              &rctx->dks[i]->meta.fees.withdraw,
                               &rctx->dks[i]->meta.value)) ||
            (0 >
             TALER_amount_add (&refresh_cost,
@@ -464,7 +476,15 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                              &ret);
     if (NULL == dks[i])
       return ret;
-
+    if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&
+         (! rctx->have_rms) )
+    {
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MISSING,
+        "rms");
+    }
     if (GNUNET_TIME_absolute_is_past (dks[i]->meta.expire_withdraw.abs_time))
     {
       /* This denomination is past the expiration time for withdraws */
@@ -907,6 +927,9 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("old_age_commitment",
                              &old_age_commitment)),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("rms",
+                                   &rctx.rms)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -947,6 +970,8 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
     }
   }
+  rctx.have_rms = (NULL != json_object_get (root,
+                                            "rms"));
 
   /* Check we got enough transfer private keys */
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */

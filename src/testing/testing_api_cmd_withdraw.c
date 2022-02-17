@@ -474,19 +474,15 @@ withdraw_run (void *cls,
   GNUNET_assert (0 <=
                  TALER_amount_add (&ws->reserve_history.amount,
                                    &ws->amount,
-                                   &ws->pk->fee_withdraw));
-  ws->reserve_history.details.withdraw.fee = ws->pk->fee_withdraw;
-
-  {
-
-    ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
-                                       ws->pk,
-                                       rp,
-                                       &ws->ps,
-                                       ws->h_age_commitment,
-                                       &reserve_withdraw_cb,
-                                       ws);
-  }
+                                   &ws->pk->fees.withdraw));
+  ws->reserve_history.details.withdraw.fee = ws->pk->fees.withdraw;
+  ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
+                                     ws->pk,
+                                     rp,
+                                     &ws->ps,
+                                     ws->h_age_commitment,
+                                     &reserve_withdraw_cb,
+                                     ws);
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014--2021 Taler Systems SA
+   Copyright (C) 2014--2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -579,7 +579,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",kycok AS kyc_ok"
       ",account_uuid AS payment_target_uuid"
       ",ruuid"
-      ",out_denom_sig"
       " FROM exchange_do_withdraw"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
       10),
@@ -612,8 +611,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_zombie_bad AS zombie_required"
       ",out_noreveal_index AS noreveal_index"
       " FROM exchange_do_melt"
-      " ($1,$2,$3,$4,$5,$6,$7,$8);",
-      8),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      9),
     /* Used in #postgres_do_refund() to refund a deposit. */
     GNUNET_PQ_make_prepare (
       "call_refund",
@@ -667,7 +666,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (reserve_uuid)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
-      " WHERE wih=$1;",
+      " WHERE h_blind_ev=$1;",
       1),
     /* Used during #postgres_get_reserve_history() to
        obtain all of the /reserve/withdraw operations that
@@ -1672,16 +1671,16 @@ prepare_statements (struct PostgresClosure *pg)
       "      ON (denoms.denominations_serial = coins.denominations_serial)"
       " WHERE coins.coin_pub=$1;",
       1),
-    /* Used in #postgres_get_reserve_by_wih() */
+    /* Used in #postgres_get_reserve_by_h_blind() */
     GNUNET_PQ_make_prepare (
-      "reserve_by_wih",
+      "reserve_by_h_blind",
       "SELECT"
       " reserves.reserve_pub"
       ",reserve_out_serial_id"
       " FROM reserves_out"
       " JOIN reserves"
       "   USING (reserve_uuid)"
-      " WHERE wih=$1"
+      " WHERE h_blind_ev=$1"
       " LIMIT 1;",
       1),
     /* Used in #postgres_get_old_coin_by_h_blind() */
@@ -3091,6 +3090,7 @@ postgres_insert_denomination_info (
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
+  uint32_t age_mask = 0; /* FIXME-OEC */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     TALER_PQ_query_param_denom_pub (denom_pub),
@@ -3100,13 +3100,14 @@ postgres_insert_denomination_info (
     GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.expire_deposit),
     GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.expire_legal),
     TALER_PQ_query_param_amount_nbo (&issue->properties.value),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_withdraw),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_deposit),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refresh),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fee_refund),
-    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.mask),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.withdraw),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.deposit),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refresh),
+    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refund),
+    GNUNET_PQ_query_param_uint32 (&age_mask),
     GNUNET_PQ_query_param_end
   };
+  struct TALER_DenomFeeSet fees;
 
   GNUNET_assert (denom_pub->age_mask.mask == issue->age_mask.mask);
 
@@ -3122,20 +3123,13 @@ postgres_insert_denomination_info (
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
                    GNUNET_TIME_timestamp_ntoh (
                      issue->properties.expire_legal).abs_time));
-  /* check fees match coin currency */
+  /* check fees match denomination currency */
+  TALER_denom_fee_set_ntoh (&fees,
+                            &issue->properties.fees);
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
-                                                &issue->properties.fee_withdraw));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
-                                                &issue->properties.fee_deposit));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
-                                                &issue->properties.fee_refresh));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency_nbo (&issue->properties.value,
-                                                &issue->properties.fee_refund));
-
+                 TALER_denom_fee_check_currency (
+                   issue->properties.value.currency,
+                   &fees));
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              params);
@@ -3176,13 +3170,13 @@ postgres_get_denomination_info (
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin",
                                      &issue->properties.value),
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw",
-                                     &issue->properties.fee_withdraw),
+                                     &issue->properties.fees.withdraw),
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit",
-                                     &issue->properties.fee_deposit),
+                                     &issue->properties.fees.deposit),
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refresh",
-                                     &issue->properties.fee_refresh),
+                                     &issue->properties.fees.refresh),
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
-                                     &issue->properties.fee_refund),
+                                     &issue->properties.fees.refund),
     GNUNET_PQ_result_spec_uint32 ("age_mask",
                                   &issue->age_mask.mask),
     GNUNET_PQ_result_spec_end
@@ -3262,13 +3256,13 @@ domination_cb_helper (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin",
                                        &issue.properties.value),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw",
-                                       &issue.properties.fee_withdraw),
+                                       &issue.properties.fees.withdraw),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit",
-                                       &issue.properties.fee_deposit),
+                                       &issue.properties.fees.deposit),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refresh",
-                                       &issue.properties.fee_refresh),
+                                       &issue.properties.fees.refresh),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
-                                       &issue.properties.fee_refund),
+                                       &issue.properties.fees.refund),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_uint32 ("age_mask",
@@ -3401,13 +3395,13 @@ dominations_cb_helper (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
                                    &meta.value),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
-                                   &meta.fee_withdraw),
+                                   &meta.fees.withdraw),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                   &meta.fee_deposit),
+                                   &meta.fees.deposit),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                   &meta.fee_refresh),
+                                   &meta.fees.refresh),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                   &meta.fee_refund),
+                                   &meta.fees.refund),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_uint32 ("age_mask",
@@ -4328,7 +4322,7 @@ postgres_reserves_in_insert (void *cls,
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param wih hash that uniquely identifies the withdraw operation
+ * @param bch hash that uniquely identifies the withdraw operation
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return statement execution status
@@ -4336,12 +4330,12 @@ postgres_reserves_in_insert (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_withdraw_info (
   void *cls,
-  const struct TALER_WithdrawIdentificationHash *wih,
+  const struct TALER_BlindedCoinHash *bch,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wih),
+    GNUNET_PQ_query_param_auto_from_type (bch),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4374,7 +4368,7 @@ postgres_get_withdraw_info (
  * and possibly persisting the withdrawal details.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param wih hash that uniquely identifies the withdraw operation
+ * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
  * @param[in,out] collectable corresponding collectable coin (blind signature) if a coin is found; possibly updated if a (different) signature exists already
  * @param now current time (rounded)
  * @param[out] found set to true if the reserve was found
@@ -4386,8 +4380,8 @@ postgres_get_withdraw_info (
 static enum GNUNET_DB_QueryStatus
 postgres_do_withdraw (
   void *cls,
-  const struct TALER_WithdrawIdentificationHash *wih,
-  struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+  const struct TALER_CsNonce *nonce,
+  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
   struct GNUNET_TIME_Timestamp now,
   bool *found,
   bool *balance_ok,
@@ -4397,7 +4391,9 @@ postgres_do_withdraw (
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wih),
+    NULL == nonce
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (nonce),
     TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
@@ -4408,9 +4404,6 @@ postgres_do_withdraw (
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_end
   };
-  enum GNUNET_DB_QueryStatus qs;
-  bool no_out_sig;
-  struct TALER_BlindedDenominationSignature out_sig;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("reserve_found",
                                 found),
@@ -4422,33 +4415,17 @@ postgres_do_withdraw (
                                   &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
                                   ruuid),
-    GNUNET_PQ_result_spec_allow_null (
-      TALER_PQ_result_spec_blinded_denom_sig ("out_denom_sig",
-                                              &out_sig),
-      &no_out_sig),
     GNUNET_PQ_result_spec_end
   };
 
-#if 0
-  memset (&out_sig,
-          0,
-          sizeof (out_sig));
-#endif
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
   kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "call_withdraw",
-                                                 params,
-                                                 rs);
-  if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
-       (! no_out_sig) )
-  {
-    TALER_blinded_denom_sig_free (&collectable->sig);
-    collectable->sig = out_sig;
-  }
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_withdraw",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -4600,6 +4577,7 @@ postgres_do_deposit (
 static enum GNUNET_DB_QueryStatus
 postgres_do_melt (
   void *cls,
+  const struct TALER_RefreshMasterSecretP *rms,
   struct TALER_EXCHANGEDB_Refresh *refresh,
   uint64_t known_coin_id,
   bool *zombie_required,
@@ -4607,6 +4585,9 @@ postgres_do_melt (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
+    NULL == rms
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (rms),
     TALER_PQ_query_param_amount (&refresh->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&refresh->rc),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin.coin_pub),
@@ -9428,21 +9409,21 @@ postgres_select_reserve_closed_above_serial_id (
  * from given the hash of the blinded coin.
  *
  * @param cls closure
- * @param wih hash that uniquely identifies the withdraw request
+ * @param bch hash that uniquely identifies the withdraw request
  * @param[out] reserve_pub set to information about the reserve (on success only)
  * @param[out] reserve_out_serial_id set to row of the @a h_blind_ev in reserves_out
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_reserve_by_wih (
+postgres_get_reserve_by_h_blind (
   void *cls,
-  const struct TALER_WithdrawIdentificationHash *wih,
+  const struct TALER_BlindedCoinHash *bch,
   struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *reserve_out_serial_id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wih),
+    GNUNET_PQ_query_param_auto_from_type (bch),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -9454,7 +9435,7 @@ postgres_get_reserve_by_wih (
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "reserve_by_wih",
+                                                   "reserve_by_h_blind",
                                                    params,
                                                    rs);
 }
@@ -10241,13 +10222,13 @@ postgres_lookup_denomination_key (
     TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
                                  &meta->value),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
-                                 &meta->fee_withdraw),
+                                 &meta->fees.withdraw),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                 &meta->fee_deposit),
+                                 &meta->fees.deposit),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                 &meta->fee_refresh),
+                                 &meta->fees.refresh),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                 &meta->fee_refund),
+                                 &meta->fees.refund),
     GNUNET_PQ_result_spec_uint32 ("age_mask",
                                   &meta->age_mask.mask),
     GNUNET_PQ_result_spec_end
@@ -10289,27 +10270,18 @@ postgres_add_denomination_key (
     GNUNET_PQ_query_param_timestamp (&meta->expire_deposit),
     GNUNET_PQ_query_param_timestamp (&meta->expire_legal),
     TALER_PQ_query_param_amount (&meta->value),
-    TALER_PQ_query_param_amount (&meta->fee_withdraw),
-    TALER_PQ_query_param_amount (&meta->fee_deposit),
-    TALER_PQ_query_param_amount (&meta->fee_refresh),
-    TALER_PQ_query_param_amount (&meta->fee_refund),
+    TALER_PQ_query_param_amount (&meta->fees.withdraw),
+    TALER_PQ_query_param_amount (&meta->fees.deposit),
+    TALER_PQ_query_param_amount (&meta->fees.refresh),
+    TALER_PQ_query_param_amount (&meta->fees.refund),
     GNUNET_PQ_query_param_uint32 (&meta->age_mask.mask),
     GNUNET_PQ_query_param_end
   };
 
   /* Sanity check: ensure fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta->value,
-                                            &meta->fee_withdraw));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta->value,
-                                            &meta->fee_deposit));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta->value,
-                                            &meta->fee_refresh));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta->value,
-                                            &meta->fee_refund));
+                 TALER_denom_fee_check_currency (meta->value.currency,
+                                                 &meta->fees));
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              iparams);
@@ -11722,8 +11694,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_recoup_refresh_above_serial_id;
   plugin->select_reserve_closed_above_serial_id
     = &postgres_select_reserve_closed_above_serial_id;
-  plugin->get_reserve_by_wih
-    = &postgres_get_reserve_by_wih;
+  plugin->get_reserve_by_h_blind
+    = &postgres_get_reserve_by_h_blind;
   plugin->get_old_coin_by_h_blind
     = &postgres_get_old_coin_by_h_blind;
   plugin->insert_denomination_revocation

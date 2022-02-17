@@ -150,10 +150,7 @@ add_auditor_denom_sig (void *cls,
         meta.expire_deposit,
         meta.expire_legal,
         &meta.value,
-        &meta.fee_withdraw,
-        &meta.fee_deposit,
-        &meta.fee_refresh,
-        &meta.fee_refund,
+        &meta.fees,
         awc->auditor_pub,
         &awc->auditor_sig))
   {

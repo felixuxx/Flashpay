@@ -264,8 +264,8 @@ verify_and_execute_refund (struct MHD_Connection *connection,
       GNUNET_break (0);
       return mret;
     }
-    refund->details.refund_fee = dk->meta.fee_refund;
-    rctx.deposit_fee = dk->meta.fee_deposit;
+    refund->details.refund_fee = dk->meta.fees.refund;
+    rctx.deposit_fee = dk->meta.fees.deposit;
   }
 
   /* Finally run the actual transaction logic */

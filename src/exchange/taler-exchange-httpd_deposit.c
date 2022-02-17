@@ -370,7 +370,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          NULL);
     }
 
-    deposit.deposit_fee = dk->meta.fee_deposit;
+    deposit.deposit_fee = dk->meta.fees.deposit;
     /* check coin signature */
     if (GNUNET_YES !=
         TALER_test_coin_valid (&deposit.coin,

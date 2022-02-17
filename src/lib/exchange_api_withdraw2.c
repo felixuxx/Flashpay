@@ -403,7 +403,7 @@ TALER_EXCHANGE_withdraw2 (
   if (0 >
       TALER_amount_add (&wh->requested_amount,
                         &dk->value,
-                        &dk->fee_withdraw))
+                        &dk->fees.withdraw))
   {
     /* Overflow here? Very strange, our CPU must be fried... */
     GNUNET_break (0);

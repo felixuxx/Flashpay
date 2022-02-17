@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020, 2021 Taler Systems SA
+   Copyright (C) 2020, 2021, 2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -2831,10 +2831,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
     struct GNUNET_TIME_Timestamp stamp_expire_deposit;
     struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
-    struct TALER_Amount fee_withdraw;
-    struct TALER_Amount fee_deposit;
-    struct TALER_Amount fee_refresh;
-    struct TALER_Amount fee_refund;
+    struct TALER_DenomFeeSet fees;
     struct TALER_SecurityModuleSignatureP secm_sig;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("section_name",
@@ -2844,18 +2841,9 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
-      TALER_JSON_spec_amount ("fee_withdraw",
-                              currency,
-                              &fee_withdraw),
-      TALER_JSON_spec_amount ("fee_deposit",
-                              currency,
-                              &fee_deposit),
-      TALER_JSON_spec_amount ("fee_refresh",
-                              currency,
-                              &fee_refresh),
-      TALER_JSON_spec_amount ("fee_refund",
-                              currency,
-                              &fee_refund),
+      TALER_JSON_SPEC_DENOM_FEES ("fee",
+                                  currency,
+                                  &fees),
       GNUNET_JSON_spec_timestamp ("stamp_start",
                                   &stamp_start),
       GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
@@ -2949,10 +2937,10 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       char *deposit_s;
       char *legal_s;
 
-      withdraw_fee_s = TALER_amount_to_string (&fee_withdraw);
-      deposit_fee_s = TALER_amount_to_string (&fee_deposit);
-      refresh_fee_s = TALER_amount_to_string (&fee_refresh);
-      refund_fee_s = TALER_amount_to_string (&fee_refund);
+      withdraw_fee_s = TALER_amount_to_string (&fees.withdraw);
+      deposit_fee_s = TALER_amount_to_string (&fees.deposit);
+      refresh_fee_s = TALER_amount_to_string (&fees.refresh);
+      refund_fee_s = TALER_amount_to_string (&fees.refund);
       deposit_s = GNUNET_strdup (
         GNUNET_TIME_timestamp2s (stamp_expire_deposit));
       legal_s = GNUNET_strdup (
@@ -3324,10 +3312,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
     struct GNUNET_TIME_Timestamp stamp_expire_deposit;
     struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
-    struct TALER_Amount fee_withdraw;
-    struct TALER_Amount fee_deposit;
-    struct TALER_Amount fee_refresh;
-    struct TALER_Amount fee_refund;
+    struct TALER_DenomFeeSet fees;
     struct TALER_SecurityModuleSignatureP secm_sig;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("section_name",
@@ -3337,18 +3322,9 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
-      TALER_JSON_spec_amount ("fee_withdraw",
-                              currency,
-                              &fee_withdraw),
-      TALER_JSON_spec_amount ("fee_deposit",
-                              currency,
-                              &fee_deposit),
-      TALER_JSON_spec_amount ("fee_refresh",
-                              currency,
-                              &fee_refresh),
-      TALER_JSON_spec_amount ("fee_refund",
-                              currency,
-                              &fee_refund),
+      TALER_JSON_SPEC_DENOM_FEES ("fee",
+                                  currency,
+                                  &fees),
       GNUNET_JSON_spec_timestamp ("stamp_start",
                                   &stamp_start),
       GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
@@ -3458,10 +3434,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                                                   stamp_expire_deposit,
                                                   stamp_expire_legal,
                                                   &coin_value,
-                                                  &fee_withdraw,
-                                                  &fee_deposit,
-                                                  &fee_refresh,
-                                                  &fee_refund,
+                                                  &fees,
                                                   &master_priv,
                                                   &master_sig);
       GNUNET_assert (0 ==

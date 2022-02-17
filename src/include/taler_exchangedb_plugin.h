@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -208,10 +208,7 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp expire_deposit;
       struct GNUNET_TIME_Timestamp expire_legal;
       struct TALER_Amount coin;
-      struct TALER_Amount fee_withdraw;
-      struct TALER_Amount fee_deposit;
-      struct TALER_Amount fee_refresh;
-      struct TALER_Amount fee_refund;
+      struct TALER_DenomFeeSet fees;
     } denominations;
 
     struct
@@ -612,29 +609,10 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
   struct TALER_Amount value;
 
   /**
-   * The fee the exchange charges when a coin of this type is withdrawn.
-   * (can be zero).
+   * The fees the exchange charges for operations with
+   * coins of this denomination.
    */
-  struct TALER_Amount fee_withdraw;
-
-  /**
-   * The fee the exchange charges when a coin of this type is deposited.
-   * (can be zero).
-   */
-  struct TALER_Amount fee_deposit;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refreshed.
-   * (can be zero).
-   */
-  struct TALER_Amount fee_refresh;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refunded.
-   * (can be zero).  Note that refund fees are charged to the customer;
-   * if a refund is given, the deposit fee is also refunded.
-   */
-  struct TALER_Amount fee_refund;
+  struct TALER_DenomFeeSet fees;
 
   /**
    * Age restriction for the denomination. (can be zero). If not zero, the bits
@@ -824,6 +802,23 @@ struct TALER_EXCHANGEDB_Recoup
    */
   struct GNUNET_TIME_Timestamp timestamp;
 
+};
+
+
+/**
+ * Public key to which a nonce is locked.
+ */
+union TALER_EXCHANGEDB_NonceLockTargetP
+{
+  /**
+   * Nonce is locked to this coin key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin;
+
+  /**
+   * Nonce is locked to this reserve key.
+   */
+  struct TALER_ReservePublicKeyP reserve;
 };
 
 
@@ -1703,6 +1698,33 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
 
 
 /**
+ * Information per Clause-Schnorr (CS) fresh coin to
+ * be persisted for idempotency during refreshes-reveal.
+ */
+struct TALER_EXCHANGEDB_CsRevealFreshCoinData
+{
+  /**
+   * Denomination of the fresh coin.
+   */
+  struct TALER_DenominationHash new_denom_pub_hash;
+
+  /**
+   * Blind signature of the fresh coin (possibly updated
+   * in case if a replay!).
+   */
+  struct TALER_BlindedDenominationSignature bsig;
+
+  /**
+   * Offset of the fresh coin in the reveal operation.
+   * (May not match the array offset as we may have
+   * a mixture of RSA and CS coins being created, and
+   * this request is only made for the CS subset).
+   */
+  uint32_t coin_off;
+};
+
+
+/**
  * Types of operations that require KYC checks.
  */
 enum TALER_EXCHANGEDB_KycType
@@ -2498,19 +2520,35 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Locate a nonce for use with a particular public key.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param nonce the nonce to be locked
+   * @param denom_pub_hash hash of the public key of the denomination
+   * @param target public key the nonce is to be locked to
+   * @return statement execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lock_nonce)(void *cls,
+                const struct TALER_CsNonce *nonce,
+                const struct TALER_DenominationHash *denom_pub_hash,
+                const union TALER_EXCHANGEDB_NonceLockTargetP *target);
+
+
+  /**
    * Locate the response for a withdraw request under a hash that uniquely
    * identifies the withdraw operation.  Used to ensure idempotency of the
    * request.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param wih hash that uniquely identifies the withdraw operation
+   * @param bch hash that uniquely identifies the withdraw operation
    * @param[out] collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return statement execution status
    */
   enum GNUNET_DB_QueryStatus
   (*get_withdraw_info)(void *cls,
-                       const struct TALER_WithdrawIdentificationHash *wih,
+                       const struct TALER_BlindedCoinHash *bch,
                        struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
@@ -2519,9 +2557,8 @@ struct TALER_EXCHANGEDB_Plugin
    * and possibly persisting the withdrawal details.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param wih hash that uniquely identifies the withdraw operation
-   * @param[in,out] collectable corresponding collectable coin (blind signature)
-   *                    if a coin is found
+   * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
+   * @param collectable corresponding collectable coin (blind signature)
    * @param now current time (rounded)
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
@@ -2532,8 +2569,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_withdraw)(
     void *cls,
-    const struct TALER_WithdrawIdentificationHash *wih,
-    struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+    const struct TALER_CsNonce *nonce,
+    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
@@ -2591,7 +2628,8 @@ struct TALER_EXCHANGEDB_Plugin
    * Perform melt operation, checking for sufficient balance
    * of the coin and possibly persisting the melt details.
    *
-   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param cls the plugin-specific state
+   * @param rms client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
    * @param[in,out] refresh refresh operation details; the noreveal_index
    *                is set in case the coin was already melted before
    * @param known_coin_id row of the coin in the known_coins table
@@ -2602,10 +2640,33 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_melt)(
     void *cls,
+    const struct TALER_RefreshMasterSecretP *rms,
     struct TALER_EXCHANGEDB_Refresh *refresh,
     uint64_t known_coin_id,
     bool *zombie_required,
     bool *balance_ok);
+
+
+  /**
+   * Check if the given @a nonce was properly locked to the given @a old_coin_pub. If so, check if we already
+   * created CS signatures for the given @a nonce and @a new_denom_pub_hashes,
+   * and if so, return them in @a s_scalars.  Otherwise, persist the
+   * signatures from @a s_scalars in the database.
+   *
+   * @param cls the plugin-specific state
+   * @param nonce the client-provided nonce where we must prevent reuse
+   * @param old_coin_pub public key the nonce was locked to
+   * @param num_fresh_coins array length, number of fresh coins revealed
+   * @param[in,out] crfcds array of data about the fresh coins, of length @a num_fresh_coins
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*cs_refreshes_reveal)(
+    void *cls,
+    const struct TALER_CsNonce *nonce,
+    const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+    unsigned int num_fresh_coins,
+    struct TALER_EXCHANGEDB_CsRevealFreshCoinData *crfcds);
 
 
   /**
@@ -3540,16 +3601,16 @@ struct TALER_EXCHANGEDB_Plugin
    * from given the hash of the blinded coin.
    *
    * @param cls closure
-   * @param wih hash identifying the withdraw operation
+   * @param bch hash identifying the withdraw operation
    * @param[out] reserve_pub set to information about the reserve (on success only)
    * @param[out] reserve_out_serial_id set to row of the @a h_blind_ev in reserves_out
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_reserve_by_wih)(void *cls,
-                        const struct TALER_WithdrawIdentificationHash *wih,
-                        struct TALER_ReservePublicKeyP *reserve_pub,
-                        uint64_t *reserve_out_serial_id);
+  (*get_reserve_by_h_blind)(void *cls,
+                            const struct TALER_BlindedCoinHash *bch,
+                            struct TALER_ReservePublicKeyP *reserve_pub,
+                            uint64_t *reserve_out_serial_id);
 
 
   /**

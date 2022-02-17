@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -394,6 +394,7 @@ struct TALER_SigningKeyAnnouncementPS
   struct GNUNET_TIME_RelativeNBO duration;
 
 };
+
 
 /**
  * @brief Format used for to allow the wallet to authenticate
@@ -999,6 +1000,7 @@ struct TALER_MasterExtensionConfigurationPS
   struct TALER_ExtensionConfigHash h_config GNUNET_PACKED;
 };
 
+
 /**
  * @brief Information about a denomination key. Denomination keys
  * are used to sign coins of a certain value into existence.
@@ -1063,29 +1065,9 @@ struct TALER_DenominationKeyValidityPS
   struct TALER_AmountNBO value;
 
   /**
-   * The fee the exchange charges when a coin of this type is withdrawn.
-   * (can be zero).
+   * Fees for the coin.
    */
-  struct TALER_AmountNBO fee_withdraw;
-
-  /**
-   * The fee the exchange charges when a coin of this type is deposited.
-   * (can be zero).
-   */
-  struct TALER_AmountNBO fee_deposit;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refreshed.
-   * (can be zero).
-   */
-  struct TALER_AmountNBO fee_refresh;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refunded.
-   * (can be zero).  Note that refund fees are charged to the customer;
-   * if a refund is given, the deposit fee is also refunded.
-   */
-  struct TALER_AmountNBO fee_refund;
+  struct TALER_DenomFeeSetNBOP fees;
 
   /**
    * Hash code of the denomination public key. (Used to avoid having
@@ -1166,28 +1148,9 @@ struct TALER_ExchangeKeyValidityPS
   struct TALER_AmountNBO value;
 
   /**
-   * The fee the exchange charges when a coin of this type is withdrawn.
-   * (can be zero).
+   * Fees for the coin.
    */
-  struct TALER_AmountNBO fee_withdraw;
-
-  /**
-   * The fee the exchange charges when a coin of this type is deposited.
-   * (can be zero).
-   */
-  struct TALER_AmountNBO fee_deposit;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refreshed.
-   * (can be zero).
-   */
-  struct TALER_AmountNBO fee_refresh;
-
-  /**
-   * The fee the exchange charges when a coin of this type is refreshed.
-   * (can be zero).
-   */
-  struct TALER_AmountNBO fee_refund;
+  struct TALER_DenomFeeSetNBOP fees;
 
   /**
    * Hash code of the denomination public key. (Used to avoid having

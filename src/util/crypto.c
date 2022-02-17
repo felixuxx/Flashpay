@@ -193,6 +193,7 @@ TALER_transfer_secret_to_planchet_secret (
 void
 TALER_planchet_secret_to_transfer_priv (
   const struct TALER_RefreshMasterSecretP *rms,
+  const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
   uint32_t cnc_num,
   struct TALER_TransferPrivateKeyP *tpriv)
 {
@@ -203,6 +204,8 @@ TALER_planchet_secret_to_transfer_priv (
                                     sizeof (*tpriv),
                                     &be_salt,
                                     sizeof (be_salt),
+                                    old_coin_priv,
+                                    sizeof (*old_coin_priv),
                                     rms,
                                     sizeof (*rms),
                                     "taler-transfer-priv-derivation",
@@ -337,6 +340,7 @@ TALER_planchet_to_coin (
 void
 TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               uint32_t kappa,
+                              const struct TALER_RefreshMasterSecretP *rms,
                               uint32_t num_new_coins,
                               const struct TALER_RefreshCommitmentEntry *rcs,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -345,6 +349,10 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
   struct GNUNET_HashContext *hash_context;
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
+  if (NULL != rms)
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     rms,
+                                     sizeof (*rms));
   /* first, iterate over transfer public keys for hash_context */
   for (unsigned int i = 0; i<kappa; i++)
   {
@@ -391,8 +399,8 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
     {
       const struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
 
-      TALER_blinded_planchet_hash (&rcd->blinded_planchet,
-                                   hash_context);
+      TALER_blinded_planchet_hash_ (&rcd->blinded_planchet,
+                                    hash_context);
     }
   }
 
@@ -704,6 +712,25 @@ TALER_age_commitment_free (
   }
 
   GNUNET_free (commitment);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
+                    const struct TALER_DenominationHash *denom_hash,
+                    struct TALER_BlindedCoinHash *bch)
+{
+  struct GNUNET_HashContext *hash_context;
+
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hash_context,
+                                   denom_hash,
+                                   sizeof(*denom_hash));
+  TALER_blinded_planchet_hash_ (blinded_planchet,
+                                hash_context);
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &bch->hash);
+  return GNUNET_OK;
 }
 
 

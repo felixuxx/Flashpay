@@ -185,6 +185,18 @@ TALER_amount_is_valid (const struct TALER_Amount *amount);
 
 
 /**
+ * Test if the given amount is in the given currency
+ *
+ * @param amount amount to check
+ * @param currency currency to check for
+ * @return #GNUNET_OK if @a amount is in @a currency
+ */
+enum GNUNET_GenericReturnValue
+TALER_amount_is_currency (const struct TALER_Amount *amount,
+                          const char *currency);
+
+
+/**
  * Convert amount from host to network representation.
  *
  * @param[out] res where to store amount in network representation

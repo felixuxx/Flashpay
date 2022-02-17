@@ -59,6 +59,74 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 enum GNUNET_GenericReturnValue
+TALER_config_get_denom_fees (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                             const char *currency,
+                             const char *section,
+                             struct TALER_DenomFeeSet *fees)
+{
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               section,
+                               "FEE_WITHDRAW",
+                               &fees->withdraw))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_WITHDRAW",
+                               section);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               section,
+                               "FEE_DEPOSIT",
+                               &fees->deposit))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_DEPOSIT",
+                               section);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               section,
+                               "FEE_REFRESH",
+                               &fees->refresh))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_REFRESH",
+                               section);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               section,
+                               "FEE_REFUND",
+                               &fees->refund))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_REFUND",
+                               section);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_denom_fee_check_currency (currency,
+                                      fees))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need fee amounts in section `%s' to use currency `%s'\n",
+                section,
+                currency);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            char **currency)
 {

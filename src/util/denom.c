@@ -652,8 +652,8 @@ TALER_blinded_denom_sig_cmp (
 
 
 void
-TALER_blinded_planchet_hash (const struct TALER_BlindedPlanchet *bp,
-                             struct GNUNET_HashContext *hash_context)
+TALER_blinded_planchet_hash_ (const struct TALER_BlindedPlanchet *bp,
+                              struct GNUNET_HashContext *hash_context)
 {
   uint32_t cipher = htonl (bp->cipher);
 
@@ -771,97 +771,20 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
 {
   switch (blinded_planchet->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return;
   case TALER_DENOMINATION_RSA:
     GNUNET_free (blinded_planchet->details.rsa_blinded_planchet.blinded_msg);
-    break;
+    return;
   case TALER_DENOMINATION_CS:
     memset (blinded_planchet,
             0,
             sizeof (*blinded_planchet));
     /* nothing to do for CS */
-    break;
-  default:
-    GNUNET_break (0);
+    return;
   }
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
-                    const struct TALER_DenominationHash *denom_hash,
-                    struct TALER_BlindedCoinHash *bch)
-{
-  struct GNUNET_HashContext *hash_context;
-
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
-  GNUNET_CRYPTO_hash_context_read (hash_context,
-                                   denom_hash,
-                                   sizeof(*denom_hash));
-  switch (blinded_planchet->cipher)
-  {
-  case TALER_DENOMINATION_RSA:
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
-      blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
-    break;
-  case TALER_DENOMINATION_CS:
-    // FIXME: c-values MUST NOT be included in idempotency check
-    // during withdraw (or recoup), but right now they are!!!
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      &blinded_planchet->details.cs_blinded_planchet.c[0],
-      sizeof (struct GNUNET_CRYPTO_CsC) * 2);
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      &blinded_planchet->details.cs_blinded_planchet.nonce,
-      sizeof (struct TALER_CsNonce));
-    break;
-  default:
-    GNUNET_break (0);
-    GNUNET_CRYPTO_hash_context_abort (hash_context);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                     &bch->hash);
-  return GNUNET_OK;
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_withdraw_request_hash (
-  const struct TALER_BlindedPlanchet *blinded_planchet,
-  const struct TALER_DenominationHash *denom_hash,
-  struct TALER_WithdrawIdentificationHash *wih)
-{
-  struct GNUNET_HashContext *hash_context;
-
-  hash_context = GNUNET_CRYPTO_hash_context_start ();
-  GNUNET_CRYPTO_hash_context_read (hash_context,
-                                   denom_hash,
-                                   sizeof(*denom_hash));
-  switch (blinded_planchet->cipher)
-  {
-  case TALER_DENOMINATION_RSA:
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
-      blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
-    break;
-  case TALER_DENOMINATION_CS:
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      &blinded_planchet->details.cs_blinded_planchet.nonce,
-      sizeof (struct TALER_CsNonce));
-    break;
-  default:
-    GNUNET_break (0);
-    GNUNET_CRYPTO_hash_context_abort (hash_context);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                     &wih->hash);
-  return GNUNET_OK;
+  GNUNET_assert (0);
 }
 
 

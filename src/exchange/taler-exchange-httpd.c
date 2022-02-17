@@ -925,9 +925,15 @@ handle_mhd_request (void *cls,
     },
     /* request R, used in clause schnorr withdraw and refresh */
     {
-      .url = "csr",
+      .url = "csr-melt",
       .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEH_handler_csr,
+      .handler.post = &TEH_handler_csr_melt,
+      .nargs = 0
+    },
+    {
+      .url = "csr-withdraw",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_csr_withdraw,
       .nargs = 0
     },
     /* Withdrawing coins / interaction with reserves */

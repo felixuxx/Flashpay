@@ -251,6 +251,35 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
 
 
 /**
+ * Generate specification to parse all fees for
+ * a denomination under a prefix @a pfx.
+ *
+ * @param pfx string prefix to use
+ * @param currency which currency to expect
+ * @param[out] dfs a `struct TALER_DenomFeeSet` to initialize
+ */
+#define TALER_JSON_SPEC_DENOM_FEES(pfx,currency,dfs) \
+  TALER_JSON_spec_amount (pfx "_withdraw", (currency), &(dfs)->withdraw), \
+  TALER_JSON_spec_amount (pfx "_deposit", (currency), &(dfs)->deposit),   \
+  TALER_JSON_spec_amount (pfx "_refresh", (currency), &(dfs)->refresh),   \
+  TALER_JSON_spec_amount (pfx "_refund", (currency), &(dfs)->refund)
+
+
+/**
+ * Macro to pack all of a denominations' fees under
+ * a given @a pfx.
+ *
+ * @param pfx string prefix to use
+ * @param dfs a `struct TALER_DenomFeeSet` to pack
+ */
+#define TALER_JSON_PACK_DENOM_FEES(pfx, dfs) \
+  TALER_JSON_pack_amount (pfx "_withdraw", &(dfs)->withdraw),   \
+  TALER_JSON_pack_amount (pfx "_deposit", &(dfs)->deposit),     \
+  TALER_JSON_pack_amount (pfx "_refresh", &(dfs)->refresh),     \
+  TALER_JSON_pack_amount (pfx "_refund", &(dfs)->refund)
+
+
+/**
  * Generate line in parser specification for denomination public key.
  *
  * @param field name of the field

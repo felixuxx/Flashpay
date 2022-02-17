@@ -64,6 +64,7 @@ TALER_EXCHANGE_get_melt_data_ (
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_CsNonce nonces[rd->fresh_pks_len];
+  bool uses_cs = false;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&rd->melt_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
@@ -74,7 +75,7 @@ TALER_EXCHANGE_get_melt_data_ (
   md->num_fresh_coins = rd->fresh_pks_len;
   md->melted_coin.coin_priv = rd->melt_priv;
   md->melted_coin.melt_amount_with_fee = rd->melt_amount;
-  md->melted_coin.fee_melt = rd->melt_pk.fee_refresh;
+  md->melted_coin.fee_melt = rd->melt_pk.fees.refresh;
   md->melted_coin.original_value = rd->melt_pk.value;
   md->melted_coin.expire_deposit = rd->melt_pk.expire_deposit;
   md->melted_coin.age_commitment = rd->age_commitment;
@@ -100,6 +101,7 @@ TALER_EXCHANGE_get_melt_data_ (
     }
     if (TALER_DENOMINATION_CS == alg_values[j].cipher)
     {
+      uses_cs = true;
       TALER_cs_refresh_nonce_derive (
         rms,
         j,
@@ -114,7 +116,7 @@ TALER_EXCHANGE_get_melt_data_ (
          (0 >
           TALER_amount_add (&total,
                             &total,
-                            &rd->fresh_pks[j].fee_withdraw)) )
+                            &rd->fresh_pks[j].fees.withdraw)) )
     {
       GNUNET_break (0);
       TALER_EXCHANGE_free_melt_data_ (md);
@@ -141,6 +143,7 @@ TALER_EXCHANGE_get_melt_data_ (
 
     TALER_planchet_secret_to_transfer_priv (
       rms,
+      &rd->melt_priv,
       i,
       &md->transfer_priv[i]);
 
@@ -239,6 +242,9 @@ TALER_EXCHANGE_get_melt_data_ (
     }
     TALER_refresh_get_commitment (&md->rc,
                                   TALER_CNC_KAPPA,
+                                  uses_cs
+                                  ? rms
+                                  : NULL,
                                   rd->fresh_pks_len,
                                   rce,
                                   &coin_pub,

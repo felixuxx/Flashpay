@@ -103,16 +103,16 @@ fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
                                              &issue->properties.value));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fee_withdraw));
+                                             &issue->properties.fees.withdraw));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fee_deposit));
+                                             &issue->properties.fees.deposit));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fee_refresh));
+                                             &issue->properties.fees.refresh));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fee_refund));
+                                             &issue->properties.fees.refund));
 }
 
 
