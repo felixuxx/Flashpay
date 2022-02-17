@@ -5664,7 +5664,7 @@ postgres_get_known_coin (void *cls,
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &coin_info->denom_pub_hash),
     GNUNET_PQ_result_spec_auto_from_type ("age_hash",
-                                          &coin_info->age_commitment_hash),
+                                          &coin_info->h_age_commitment),
     TALER_PQ_result_spec_denom_sig ("denom_sig",
                                     &coin_info->denom_sig),
     GNUNET_PQ_result_spec_end
@@ -5780,7 +5780,7 @@ postgres_ensure_coin_known (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin->denom_pub_hash),
-    GNUNET_PQ_query_param_auto_from_type (&coin->age_commitment_hash),
+    GNUNET_PQ_query_param_auto_from_type (&coin->h_age_commitment),
     TALER_PQ_query_param_denom_sig (&coin->denom_sig),
     GNUNET_PQ_query_param_end
   };
@@ -5830,7 +5830,7 @@ postgres_ensure_coin_known (void *cls,
 
   if ( (! is_age_hash_null) &&
        (0 != GNUNET_memcmp (age_hash,
-                            &coin->age_commitment_hash)) )
+                            &coin->h_age_commitment)) )
   {
     GNUNET_break (GNUNET_is_zero (age_hash));
     GNUNET_break_op (0);

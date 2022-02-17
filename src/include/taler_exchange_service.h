@@ -1599,6 +1599,11 @@ struct TALER_EXCHANGE_RefreshData
    */
   struct TALER_CoinSpendPrivateKeyP melt_priv;
 
+  /*
+   * age commitment that went into the original coin, might be NULL
+   */
+  struct TALER_AgeCommitment *age_commitment;
+
   /**
    * amount specifying how much the coin will contribute to the melt
    * (including fee)
@@ -1765,6 +1770,12 @@ struct TALER_EXCHANGE_RevealedCoinInfo
    * Master secret of this coin.
    */
   struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * Age commitment and its hash of the coin, might be NULL.
+   */
+  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
    * Blinding keys used to blind the fresh coin.
@@ -1982,6 +1993,7 @@ typedef void
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param coin_priv private key to request link data for
+ * @param age_commitment age commitment to the corresponding coin, might be NULL
  * @param link_cb the callback to call with the useful result of the
  *        refresh operation the @a coin_priv was involved in (if any)
  * @param link_cb_cls closure for @a link_cb
@@ -1990,6 +2002,7 @@ typedef void
 struct TALER_EXCHANGE_LinkHandle *
 TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
                      const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                     const struct TALER_AgeCommitment *age_commitment,
                      TALER_EXCHANGE_LinkCallback link_cb,
                      void *link_cb_cls);
 

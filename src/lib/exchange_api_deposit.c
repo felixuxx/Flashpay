@@ -518,11 +518,11 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
       .denom_sig = *denom_sig,
-      .age_commitment_hash = {{{0}}}
+      .h_age_commitment = {{{0}}}
     };
     if (NULL != h_age_commitment)
     {
-      coin_info.age_commitment_hash = *h_age_commitment;
+      coin_info.h_age_commitment = *h_age_commitment;
     }
 
     if (GNUNET_YES !=

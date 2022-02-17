@@ -77,6 +77,8 @@ TALER_EXCHANGE_get_melt_data_ (
   md->melted_coin.fee_melt = rd->melt_pk.fee_refresh;
   md->melted_coin.original_value = rd->melt_pk.value;
   md->melted_coin.expire_deposit = rd->melt_pk.expire_deposit;
+  md->melted_coin.age_commitment = rd->age_commitment;
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (rd->melt_amount.currency,
                                         &total));
@@ -141,14 +143,18 @@ TALER_EXCHANGE_get_melt_data_ (
       rms,
       i,
       &md->transfer_priv[i]);
+
     GNUNET_CRYPTO_ecdhe_key_get_public (
       &md->transfer_priv[i].ecdhe_priv,
       &md->transfer_pub[i].ecdhe_pub);
+
     TALER_link_derive_transfer_secret (&rd->melt_priv,
                                        &md->transfer_priv[i],
                                        &trans_sec);
+
     md->rcd[i] = GNUNET_new_array (rd->fresh_pks_len,
                                    struct TALER_RefreshCoinData);
+
     for (unsigned int j = 0; j<rd->fresh_pks_len; j++)
     {
       struct FreshCoinData *fcd = &md->fcds[j];
@@ -158,24 +164,57 @@ TALER_EXCHANGE_get_melt_data_ (
       union TALER_DenominationBlindingKeyP *bks = &fcd->bks[i];
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHash c_hash;
+      struct TALER_AgeCommitmentHash *ach = NULL;
 
       TALER_transfer_secret_to_planchet_secret (&trans_sec,
                                                 j,
                                                 ps);
+
       TALER_planchet_setup_coin_priv (ps,
                                       &alg_values[j],
                                       coin_priv);
+
       TALER_planchet_blinding_secret_create (ps,
                                              &alg_values[j],
                                              bks);
+
+      /* Handle age commitment, if present */
+      if (NULL != md->melted_coin.age_commitment)
+      {
+        struct TALER_AgeCommitment new_ac;
+        struct TALER_AgeCommitmentHash hac;
+
+        /* We use the first 4 bytes of the trans_sec to generate a new age
+         * commitment */
+        uint32_t age_seed = trans_sec.key.bits[0];
+
+        if (GNUNET_OK !=
+            TALER_age_commitment_derive (
+              md->melted_coin.age_commitment,
+              age_seed + j,
+              &new_ac))
+        {
+          GNUNET_break_op (0);
+          TALER_EXCHANGE_free_melt_data_ (md);
+          return GNUNET_SYSERR;
+        }
+
+        TALER_age_commitment_hash (
+          &new_ac,
+          &hac);
+
+        ach = &hac;
+      }
+
       if (TALER_DENOMINATION_CS == alg_values[j].cipher)
         pd.blinded_planchet.details.cs_blinded_planchet.nonce = nonces[j];
+
       if (GNUNET_OK !=
           TALER_planchet_prepare (&fcd->fresh_pk,
                                   &alg_values[j],
                                   bks,
                                   coin_priv,
-                                  NULL, /* FIXME-oec: This needs to be setup !*/
+                                  ach,
                                   &c_hash,
                                   &pd))
       {
@@ -183,6 +222,7 @@ TALER_EXCHANGE_get_melt_data_ (
         TALER_EXCHANGE_free_melt_data_ (md);
         return GNUNET_SYSERR;
       }
+
       rcd->blinded_planchet = pd.blinded_planchet;
       rcd->dk = &fcd->fresh_pk;
     }

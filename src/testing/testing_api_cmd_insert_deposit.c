@@ -212,7 +212,7 @@ insert_deposit_run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dpk,
                                       &bks,
-                                      NULL, /* FIXME-Oec */
+                                      NULL, /* no age restriction active */
                                       &deposit.coin.coin_pub,
                                       &alg_values,
                                       &c_hash,

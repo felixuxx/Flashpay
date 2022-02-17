@@ -90,7 +90,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
 #endif
 
   TALER_coin_pub_hash (&coin_public_info->coin_pub,
-                       &coin_public_info->age_commitment_hash,
+                       &coin_public_info->h_age_commitment,
                        &c_hash);
 
   if (GNUNET_OK !=
@@ -681,7 +681,7 @@ FAIL:
 
 
 void
-TALER_age_restriction_commmitment_free_inside (
+TALER_age_commitment_free (
   struct TALER_AgeCommitment *commitment)
 {
   if (NULL == commitment)
@@ -703,7 +703,7 @@ TALER_age_restriction_commmitment_free_inside (
     commitment->priv = NULL;
   }
 
-  /* Caller is responsible for commitment itself */
+  GNUNET_free (commitment);
 }
 
 

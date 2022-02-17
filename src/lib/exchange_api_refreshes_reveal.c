@@ -142,7 +142,6 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
       &rcis[i];
     const struct FreshCoinData *fcd = &rrh->md.fcds[i];
     const struct TALER_DenominationPublicKey *pk;
-    struct TALER_AgeCommitmentHash *ach = NULL;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -157,14 +156,22 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
 
     rci->ps = fcd->ps[rrh->noreveal_index];
     rci->bks = fcd->bks[rrh->noreveal_index];
+    rci->age_commitment = fcd->age_commitment[rrh->noreveal_index];
+    rci->h_age_commitment = NULL;
     pk = &fcd->fresh_pk;
     jsonai = json_array_get (jsona, i);
-    GNUNET_assert (NULL != jsonai);
 
-    if (! TALER_AgeCommitmentHash_isNullOrZero (
-          &rrh->md.melted_coin.h_age_commitment))
+    GNUNET_assert (NULL != jsonai);
+    GNUNET_assert (
+      (NULL != rrh->md.melted_coin.age_commitment) ==
+      (NULL != rci->age_commitment));
+
+    if (NULL != rci->age_commitment)
     {
-      /* FIXME-oec:  need to pull fresh_ach from somewhere */
+      rci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
+      TALER_age_commitment_hash (
+        rci->age_commitment,
+        rci->h_age_commitment);
     }
 
     if (GNUNET_OK !=
@@ -188,14 +195,14 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     GNUNET_CRYPTO_eddsa_key_get_public (&rci->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     TALER_coin_pub_hash (&coin_pub,
-                         ach,
+                         rci->h_age_commitment,
                          &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,
                                 &blind_sig,
                                 &bks,
                                 &rci->coin_priv,
-                                ach,
+                                rci->h_age_commitment,
                                 &coin_hash,
                                 &rrh->alg_values[i],
                                 &coin))

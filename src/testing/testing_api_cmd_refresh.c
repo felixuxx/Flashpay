@@ -836,6 +836,7 @@ refresh_link_run (void *cls,
   /* finally, use private key from withdraw sign command */
   rls->rlh = TALER_EXCHANGE_link (is->exchange,
                                   coin_priv,
+                                  rms->age_commitment,
                                   &link_cb,
                                   rls);
 
@@ -1149,28 +1150,29 @@ melt_run (void *cls,
     rms->refresh_data.melt_pk = *melt_denom_pub;
     rms->refresh_data.fresh_pks = rms->fresh_pks;
     rms->refresh_data.fresh_pks_len = num_fresh_coins;
-/* FIXME-oec:  is this needed _here_?
+    rms->refresh_data.age_commitment = NULL;
+
+    GNUNET_assert (age_restricted ==
+                   (NULL != rms->age_commitment));
+
+    if (NULL != rms->age_commitment)
     {
-      struct TALER_AgeCommitment *ac = NULL;
+      struct TALER_AgeCommitment *ac;
+      uint32_t seed;
 
-      GNUNET_assert (age_restricted == (NULL != rms->age_commitment));
+      ac = GNUNET_new (struct TALER_AgeCommitment);
+      seed  = GNUNET_CRYPTO_random_u32 (
+        GNUNET_CRYPTO_QUALITY_WEAK,
+        UINT32_MAX);
 
-      if (NULL != rms->age_commitment)
-      {
-        uint32_t seed = GNUNET_CRYPTO_random_u32 (
-          GNUNET_CRYPTO_QUALITY_WEAK,
-          UINT32_MAX);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_age_commitment_derive (
+                       rms->age_commitment,
+                       seed,
+                       ac));
 
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_age_commitment_derive (
-                         rms->age_commitment,
-                         seed,
-                         ac));
-      }
-
-      rms->refresh_data.age_commitment = ac
+      rms->refresh_data.age_commitment = ac;
     }
-*/
 
     rms->rmh = TALER_EXCHANGE_melt (is->exchange,
                                     &rms->rms,

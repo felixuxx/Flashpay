@@ -979,7 +979,7 @@ struct TALER_CoinPublicInfo
    * Hash of the age commitment.  If no age commitment was provided, it must be
    * set to all zeroes.
    */
-  struct TALER_AgeCommitmentHash age_commitment_hash;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
@@ -2351,11 +2351,12 @@ TALER_wallet_melt_verify (
  * @param[out] coin_sig resulting signature
  */
 void
-TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
-                        const struct TALER_TransferPublicKeyP *transfer_pub,
-                        const struct TALER_BlindedCoinHash *bch,
-                        const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
-                        struct TALER_CoinSpendSignatureP *coin_sig);
+TALER_wallet_link_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_TransferPublicKeyP *transfer_pub,
+  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
 
 
 /**
@@ -2365,7 +2366,6 @@ TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
  * @param transfer_pub transfer public key
  * @param h_coin_ev hash of the coin envelope
  * @param old_coin_pub old coin key that the link signature is for
- * @param h_age_commitment hash of age commitment. Maybe NULL, if not applicable.
  * @param coin_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
  */
@@ -2375,7 +2375,6 @@ TALER_wallet_link_verify (
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
 
@@ -3283,12 +3282,11 @@ TALER_age_commitment_derive (
   struct TALER_AgeCommitment *derived);
 
 /*
- * @brief helper function to free memory inside a struct TALER_AgeCommitment
- * @param cmt the commitment from which internal memory should be freed.  Note
- * that cmt itself is NOT freed!
+ * @brief helper function to free memory of a struct TALER_AgeCommitment
+ * @param cmt the commitment from which all memory should be freed.
  */
 void
-TALER_age_restriction_commitment_free_inside (
+TALER_age_commitment_free (
   struct TALER_AgeCommitment *cmt);
 
 #endif

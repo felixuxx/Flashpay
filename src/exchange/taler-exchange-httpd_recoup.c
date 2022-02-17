@@ -256,7 +256,7 @@ verify_and_execute_recoup (
     if (GNUNET_OK !=
         TALER_denom_blind (&dk->denom_pub,
                            coin_bks,
-                           NULL, /* FIXME-Oec: TALER_AgeCommitmentHash * */
+                           &coin->h_age_commitment,
                            &coin->coin_pub,
                            exchange_vals,
                            &c_hash,
@@ -389,6 +389,9 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                   &coin.h_age_commitment)),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("cs_nonce",
                                    &nonce)),

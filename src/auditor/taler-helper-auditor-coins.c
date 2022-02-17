@@ -1614,7 +1614,6 @@ deposit_cb (void *cls,
     struct TALER_MerchantWireHash h_wire;
     struct TALER_DenominationHash h_denom_pub;
     struct TALER_Amount deposit_fee;
-    struct TALER_AgeCommitmentHash *h_age_commitment = NULL; /* FIXME-oec */
 
     TALER_denom_pub_hash (denom_pub,
                           &h_denom_pub);
@@ -1631,8 +1630,8 @@ deposit_cb (void *cls,
                                      &deposit_fee,
                                      &h_wire,
                                      &deposit->h_contract_terms,
-                                     h_age_commitment, /* FIXME-oec */
-                                     NULL /* h_extensions! */,
+                                     &deposit->coin.h_age_commitment,
+                                     NULL /* FIXME: h_extensions! */,
                                      &h_denom_pub,
                                      deposit->timestamp,
                                      &deposit->merchant_pub,

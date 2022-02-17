@@ -143,7 +143,6 @@ TALER_wallet_link_verify (
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct TALER_LinkDataPS ldp = {
@@ -152,11 +151,7 @@ TALER_wallet_link_verify (
     .h_denom_pub = *h_denom_pub,
     .transfer_pub = *transfer_pub,
     .coin_envelope_hash = *h_coin_ev,
-    .h_age_commitment = {{{0}}}
   };
-
-  if (NULL != h_age_commitment)
-    ldp.h_age_commitment = *h_age_commitment;
 
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,

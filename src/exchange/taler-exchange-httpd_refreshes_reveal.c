@@ -103,6 +103,12 @@ struct RevealContext
   const struct TEH_DenominationKey **dks;
 
   /**
+   * Age commitment that was used for the original coin.  If not NULL, its hash
+   * should be the same as melt.session.h_age_commitment.
+   */
+  struct TALER_AgeCommitment *old_age_commitment;
+
+  /**
    * Array of information about fresh coins being revealed.
    */
   /* FIXME: const would be nicer here, but we initalize
@@ -263,6 +269,7 @@ check_commitment (struct RevealContext *rctx,
           const struct TALER_ExchangeWithdrawValues *alg_value
             = &rctx->rrcs[j].exchange_vals;
           struct TALER_PlanchetDetail pd;
+          struct TALER_AgeCommitmentHash *hac = NULL;
           struct TALER_CoinPubHash c_hash;
           struct TALER_PlanchetMasterSecretP ps;
 
@@ -276,12 +283,30 @@ check_commitment (struct RevealContext *rctx,
           TALER_planchet_blinding_secret_create (&ps,
                                                  alg_value,
                                                  &bks);
+          /* Calculate, if applicable, the age commitment and its hash, from
+           * the transfer_secret and the old age commitment. */
+          if (NULL != rctx->old_age_commitment)
+          {
+            struct TALER_AgeCommitment ac = {0};
+            struct TALER_AgeCommitmentHash h = {0};
+
+            GNUNET_assert (GNUNET_OK ==
+                           TALER_age_commitment_derive (
+                             rctx->old_age_commitment,
+                             ts.key.bits[0],
+                             &ac));
+
+            TALER_age_commitment_hash (&ac, &h);
+
+            hac = &h;
+          }
+
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
                                                  alg_value,
                                                  &bks,
                                                  &coin_priv,
-                                                 NULL, /* FIXME-Oec, struct TALER_AgeCommitmentHash * */
+                                                 hac,
                                                  &c_hash,
                                                  &pd));
           if (TALER_DENOMINATION_CS == dk->cipher)
@@ -542,6 +567,77 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     }
   }
 
+  if (TEH_age_restriction_enabled &&
+      ((NULL == old_age_commitment_json) !=
+       TALER_AgeCommitmentHash_isNullOrZero (
+         &rctx->melt.session.h_age_commitment)))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
+
+  /* Reconstruct the old age commitment and verify its hash matches the one
+   * from the melt request */
+  if (TEH_age_restriction_enabled &&
+      (NULL != old_age_commitment_json))
+  {
+    enum GNUNET_GenericReturnValue res;
+    struct TALER_AgeCommitment *oac = rctx->old_age_commitment;
+    size_t ng = json_array_size (old_age_commitment_json);
+    bool failed = true;
+
+    /* Has been checked in handle_refreshes_reveal_json() */
+    GNUNET_assert (ng ==
+                   TALER_extensions_age_restriction_num_groups ());
+
+    oac = GNUNET_new (struct TALER_AgeCommitment);
+    oac->mask  =  TEH_age_mask;
+    oac->num_pub = ng;
+    oac->num_priv = 0; /* no private keys are needed for the reveal phase */
+    oac->pub = GNUNET_new_array (ng, struct TALER_AgeCommitmentPublicKeyP);
+
+    /* Extract old age commitment */
+    for (unsigned int i = 0; i< ng; i++)
+    {
+      struct GNUNET_JSON_Specification ac_spec[] = {
+        GNUNET_JSON_spec_fixed_auto (NULL,
+                                     &oac->pub[i]),
+        GNUNET_JSON_spec_end ()
+      };
+
+      res = TALER_MHD_parse_json_array (connection,
+                                        old_age_commitment_json,
+                                        ac_spec,
+                                        i,
+                                        -1);
+      GNUNET_break (GNUNET_OK != res);
+      if (GNUNET_OK != res)
+        goto clean_age;
+    }
+
+    /* Sanity check: Compare hash from melting with hash of this age commitment */
+    {
+      struct TALER_AgeCommitmentHash hac = {0};
+      TALER_age_commitment_hash (oac, &hac);
+      if (0 != memcmp (&hac,
+                       &rctx->melt.session.h_age_commitment,
+                       sizeof(struct TALER_AgeCommitmentHash)))
+      {
+        GNUNET_break (0);
+        goto clean_age;
+      }
+    }
+
+    failed = false;
+
+clean_age:
+    if (failed)
+    {
+      TALER_age_commitment_free (oac);
+      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
+  }
+
   /* Parse link signatures array */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
@@ -567,7 +663,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
           &rctx->gamma_tp,
           &rrcs[i].coin_envelope_hash,
           &rctx->melt.session.coin.coin_pub,
-          NULL, // TODO-oec: calculate the correct h_age_commitment
           &rrcs[i].orig_coin_link_sig))
     {
       GNUNET_break_op (0);
