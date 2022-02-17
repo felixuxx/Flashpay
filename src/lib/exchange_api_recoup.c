@@ -178,7 +178,7 @@ handle_recoup_finished (void *cls,
                                  "history");
       if (GNUNET_OK !=
           TALER_EXCHANGE_verify_coin_history (dki,
-                                              dki->fee_deposit.currency,
+                                              dki->fees.deposit.currency,
                                               &ph->coin_pub,
                                               history,
                                               &h_denom_pub,

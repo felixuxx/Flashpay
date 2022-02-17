@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_csr.h
- * @brief Handle /csr requests
+ * @brief Handle /csr-* requests
  * @author Lucien Heuzeveldt
  * @author Gian Demarmles
  */
@@ -27,8 +27,7 @@
 
 
 /**
- * Handle a "/csr" request.  Parses the "nonce"  and
- * the "denom_pub_hash" (identifying a denomination) used to derive the r_pub.
+ * Handle a "/csr-melt" request.
  *
  * @param rc request context
  * @param root uploaded JSON data
@@ -36,8 +35,22 @@
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_csr (struct TEH_RequestContext *rc,
-                 const json_t *root,
-                 const char *const args[]);
+TEH_handler_csr_melt (struct TEH_RequestContext *rc,
+                      const json_t *root,
+                      const char *const args[]);
+
+
+/**
+ * Handle a "/csr-withdraw" request.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args empty array
+ * @return MHD result code
+  */
+MHD_RESULT
+TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
+                          const json_t *root,
+                          const char *const args[]);
 
 #endif

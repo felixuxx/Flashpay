@@ -171,10 +171,10 @@ TALER_EXCHANGE_parse_reserve_history (
                                                            &h_denom_pub);
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&withdraw_fee,
-                                         &dki->fee_withdraw)) ||
+                                         &dki->fees.withdraw)) ||
              (0 !=
               TALER_amount_cmp (&withdraw_fee,
-                                &dki->fee_withdraw)) )
+                                &dki->fees.withdraw)) )
         {
           GNUNET_break_op (0);
           GNUNET_JSON_parse_free (withdraw_spec);
@@ -529,10 +529,10 @@ TALER_EXCHANGE_verify_coin_history (
         /* check that deposit fee matches our expectations from /keys! */
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&fee,
-                                         &dk->fee_deposit)) ||
+                                         &dk->fees.deposit)) ||
              (0 !=
               TALER_amount_cmp (&fee,
-                                &dk->fee_deposit)) )
+                                &dk->fees.deposit)) )
         {
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
@@ -575,10 +575,10 @@ TALER_EXCHANGE_verify_coin_history (
         /* check that melt fee matches our expectations from /keys! */
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&fee,
-                                         &dk->fee_refresh)) ||
+                                         &dk->fees.refresh)) ||
              (0 !=
               TALER_amount_cmp (&fee,
-                                &dk->fee_refresh)) )
+                                &dk->fees.refresh)) )
         {
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
@@ -669,10 +669,10 @@ TALER_EXCHANGE_verify_coin_history (
       {
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&refund_fee,
-                                         &dk->fee_refund)) ||
+                                         &dk->fees.refund)) ||
              (0 !=
               TALER_amount_cmp (&refund_fee,
-                                &dk->fee_refund)) )
+                                &dk->fees.refund)) )
         {
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
@@ -862,6 +862,11 @@ TALER_EXCHANGE_verify_coin_history (
         return GNUNET_SYSERR;
       }
       add = GNUNET_NO;
+    }
+    else if (0 == strcasecmp (type,
+                              "LOCK_NONCE"))
+    {
+      GNUNET_break (0); // FIXME: implement!
     }
     else
     {

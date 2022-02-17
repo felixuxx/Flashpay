@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -33,15 +33,16 @@
 
 
 MHD_RESULT
-TEH_handler_csr (struct TEH_RequestContext *rc,
-                 const json_t *root,
-                 const char *const args[])
+TEH_handler_csr_melt (struct TEH_RequestContext *rc,
+                      const json_t *root,
+                      const char *const args[])
 {
+  struct TALER_RefreshMasterSecretP rms;
   unsigned int csr_requests_num;
   json_t *csr_requests;
-  json_t *csr_response_ewvs;
-  json_t *csr_response;
   struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("rms",
+                                 &rms),
     GNUNET_JSON_spec_json ("nks",
                            &csr_requests),
     GNUNET_JSON_spec_end ()
@@ -50,8 +51,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   struct TEH_DenominationKey *dk;
 
   (void) args;
-
-  // parse input
+  /* parse input */
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -62,7 +62,8 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   csr_requests_num = json_array_size (csr_requests);
-  if (TALER_MAX_FRESH_COINS <= csr_requests_num)
+  if ( (TALER_MAX_FRESH_COINS <= csr_requests_num) ||
+       (0 == csr_requests_num) )
   {
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
@@ -71,109 +72,253 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       TALER_EC_EXCHANGE_GENERIC_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
       NULL);
   }
-  struct TALER_CsNonce nonces[GNUNET_NZL (csr_requests_num)];
-  struct TALER_DenominationHash denom_pub_hashes[GNUNET_NZL (csr_requests_num)];
-  for (unsigned int i = 0; i < csr_requests_num; i++)
-  {
-    struct TALER_CsNonce *nonce = &nonces[i];
-    struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
-    struct GNUNET_JSON_Specification csr_spec[] = {
-      GNUNET_JSON_spec_fixed ("nonce",
-                              nonce,
-                              sizeof (struct TALER_CsNonce)),
-      GNUNET_JSON_spec_fixed ("denom_pub_hash",
-                              denom_pub_hash,
-                              sizeof (struct TALER_DenominationHash)),
-      GNUNET_JSON_spec_end ()
-    };
-    enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_json_array (rc->connection,
-                                      csr_requests,
-                                      csr_spec,
-                                      i,
-                                      -1);
-    if (GNUNET_OK != res)
+  {
+    struct TALER_ExchangeWithdrawValues ewvs[csr_requests_num];
+
     {
+      struct TALER_CsNonce nonces[csr_requests_num];
+      struct TALER_DenominationHash denom_pub_hashes[csr_requests_num];
+
+      for (unsigned int i = 0; i < csr_requests_num; i++)
+      {
+        uint32_t coin_off;
+        struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
+        struct GNUNET_JSON_Specification csr_spec[] = {
+          GNUNET_JSON_spec_uint32 ("coin_offset",
+                                   &coin_off),
+          GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                       denom_pub_hash),
+          GNUNET_JSON_spec_end ()
+        };
+        enum GNUNET_GenericReturnValue res;
+
+        res = TALER_MHD_parse_json_array (rc->connection,
+                                          csr_requests,
+                                          csr_spec,
+                                          i,
+                                          -1);
+        if (GNUNET_OK != res)
+        {
+          GNUNET_JSON_parse_free (spec);
+          return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+        }
+        TALER_cs_refresh_nonce_derive (&rms,
+                                       coin_off,
+                                       &nonces[i]);
+      }
       GNUNET_JSON_parse_free (spec);
-      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+
+      for (unsigned int i = 0; i < csr_requests_num; i++)
+      {
+        const struct TALER_CsNonce *nonce = &nonces[i];
+        const struct TALER_DenominationHash *denom_pub_hash =
+          &denom_pub_hashes[i];
+        struct TALER_DenominationCSPublicRPairP *r_pub
+          = &ewvs[i].details.cs_values;
+
+        ewvs[i].cipher = TALER_DENOMINATION_CS;
+        /* check denomination referenced by denom_pub_hash */
+        {
+          struct TEH_KeyStateHandle *ksh;
+
+          ksh = TEH_keys_get_state ();
+          if (NULL == ksh)
+          {
+            return TALER_MHD_reply_with_error (rc->connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                               NULL);
+          }
+          dk = TEH_keys_denomination_by_hash2 (ksh,
+                                               denom_pub_hash,
+                                               NULL,
+                                               NULL);
+          if (NULL == dk)
+          {
+            return TEH_RESPONSE_reply_unknown_denom_pub_hash (
+              rc->connection,
+              &denom_pub_hash[i]);
+          }
+          if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
+          {
+            /* This denomination is past the expiration time for withdraws/refreshes*/
+            return TEH_RESPONSE_reply_expired_denom_pub_hash (
+              rc->connection,
+              denom_pub_hash,
+              TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+              "csr-melt");
+          }
+          if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
+          {
+            /* This denomination is not yet valid, no need to check
+               for idempotency! */
+            return TEH_RESPONSE_reply_expired_denom_pub_hash (
+              rc->connection,
+              denom_pub_hash,
+              TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+              "csr-melt");
+          }
+          if (dk->recoup_possible)
+          {
+            /* This denomination has been revoked */
+            return TEH_RESPONSE_reply_expired_denom_pub_hash (
+              rc->connection,
+              denom_pub_hash,
+              TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+              "csr-melt");
+          }
+          if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
+          {
+            /* denomination is valid but not for CS */
+            return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
+              rc->connection,
+              denom_pub_hash);
+          }
+        }
+
+        /* derive r_pub */
+        // FIXME: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
+        ec = TEH_keys_denomination_cs_r_pub (denom_pub_hash,
+                                             nonce,
+                                             r_pub);
+        if (TALER_EC_NONE != ec)
+        {
+          GNUNET_break (0);
+          return TALER_MHD_reply_with_ec (rc->connection,
+                                          ec,
+                                          NULL);
+        }
+      }
+    }
+
+    /* send response */
+    {
+      json_t *csr_response_ewvs;
+      json_t *csr_response;
+
+      csr_response_ewvs = json_array ();
+      for (unsigned int i = 0; i < csr_requests_num; i++)
+      {
+        json_t *csr_obj;
+
+        csr_obj = GNUNET_JSON_PACK (
+          TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                                    &ewvs[i]));
+        GNUNET_assert (NULL != csr_obj);
+        GNUNET_assert (0 ==
+                       json_array_append_new (csr_response_ewvs,
+                                              csr_obj));
+      }
+      csr_response = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_array_steal ("ewvs",
+                                      csr_response_ewvs));
+      GNUNET_assert (NULL != csr_response);
+      return TALER_MHD_reply_json_steal (rc->connection,
+                                         csr_response,
+                                         MHD_HTTP_OK);
     }
   }
-  GNUNET_JSON_parse_free (spec);
+}
 
-  struct TALER_ExchangeWithdrawValues ewvs[GNUNET_NZL (csr_requests_num)];
-  for (unsigned int i = 0; i < csr_requests_num; i++)
+
+MHD_RESULT
+TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
+                          const json_t *root,
+                          const char *const args[])
+{
+  struct TALER_CsNonce nonce;
+  struct TALER_DenominationHash denom_pub_hash;
+  struct TALER_ExchangeWithdrawValues ewv = {
+    .cipher = TALER_DENOMINATION_CS
+  };
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed ("nonce",
+                            &nonce,
+                            sizeof (struct TALER_CsNonce)),
+    GNUNET_JSON_spec_fixed ("denom_pub_hash",
+                            &denom_pub_hash,
+                            sizeof (struct TALER_DenominationHash)),
+    GNUNET_JSON_spec_end ()
+  };
+  struct TEH_DenominationKey *dk;
+
+  (void) args;
   {
-    const struct TALER_CsNonce *nonce = &nonces[i];
-    const struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
-    struct TALER_DenominationCSPublicRPairP *r_pub
-      = &ewvs[i].details.cs_values;
+    enum GNUNET_GenericReturnValue res;
 
-    ewvs[i].cipher = TALER_DENOMINATION_CS;
-    // check denomination referenced by denom_pub_hash
+    res = TALER_MHD_parse_json_data (rc->connection,
+                                     root,
+                                     spec);
+    if (GNUNET_OK != res)
+      return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  }
+
+  {
+    struct TEH_KeyStateHandle *ksh;
+
+    ksh = TEH_keys_get_state ();
+    if (NULL == ksh)
     {
-      struct TEH_KeyStateHandle *ksh;
-
-      ksh = TEH_keys_get_state ();
-      if (NULL == ksh)
-      {
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                           NULL);
-      }
-      dk = TEH_keys_denomination_by_hash2 (ksh,
-                                           denom_pub_hash,
-                                           NULL,
-                                           NULL);
-      if (NULL == dk)
-      {
-        return TEH_RESPONSE_reply_unknown_denom_pub_hash (
-          rc->connection,
-          &denom_pub_hash[i]);
-      }
-      if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
-      {
-        /* This denomination is past the expiration time for withdraws/refreshes*/
-        return TEH_RESPONSE_reply_expired_denom_pub_hash (
-          rc->connection,
-          denom_pub_hash,
-          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-          "CSR");
-      }
-      if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
-      {
-        /* This denomination is not yet valid, no need to check
-           for idempotency! */
-        return TEH_RESPONSE_reply_expired_denom_pub_hash (
-          rc->connection,
-          denom_pub_hash,
-          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-          "CSR");
-      }
-      if (dk->recoup_possible)
-      {
-        /* This denomination has been revoked */
-        return TEH_RESPONSE_reply_expired_denom_pub_hash (
-          rc->connection,
-          denom_pub_hash,
-          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-          "CSR");
-      }
-      if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
-      {
-        // denomination is valid but not CS
-        return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
-          rc->connection,
-          denom_pub_hash);
-      }
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                         NULL);
     }
+    dk = TEH_keys_denomination_by_hash2 (ksh,
+                                         &denom_pub_hash,
+                                         NULL,
+                                         NULL);
+    if (NULL == dk)
+    {
+      return TEH_RESPONSE_reply_unknown_denom_pub_hash (
+        rc->connection,
+        &denom_pub_hash);
+    }
+    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
+    {
+      /* This denomination is past the expiration time for withdraws/refreshes*/
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
+        rc->connection,
+        &denom_pub_hash,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        "csr-withdraw");
+    }
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
+    {
+      /* This denomination is not yet valid, no need to check
+         for idempotency! */
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
+        rc->connection,
+        &denom_pub_hash,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        "csr-withdraw");
+    }
+    if (dk->recoup_possible)
+    {
+      /* This denomination has been revoked */
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
+        rc->connection,
+        &denom_pub_hash,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+        "csr-withdraw");
+    }
+    if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
+    {
+      /* denomination is valid but not for CS */
+      return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
+        rc->connection,
+        &denom_pub_hash);
+    }
+  }
 
-    // derive r_pub
-    // FIXME: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
-    ec = TEH_keys_denomination_cs_r_pub (denom_pub_hash,
-                                         nonce,
-                                         r_pub);
+  /* derive r_pub */
+  {
+    enum TALER_ErrorCode ec;
+
+    ec = TEH_keys_denomination_cs_r_pub (&denom_pub_hash,
+                                         &nonce,
+                                         &ewv.details.cs_values);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
@@ -183,27 +328,17 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     }
   }
 
-  // send response
-  csr_response_ewvs = json_array ();
-  for (unsigned int i = 0; i < csr_requests_num; i++)
   {
     json_t *csr_obj;
 
     csr_obj = GNUNET_JSON_PACK (
       TALER_JSON_pack_exchange_withdraw_values ("ewv",
-                                                &ewvs[i]));
+                                                &ewv));
     GNUNET_assert (NULL != csr_obj);
-    GNUNET_assert (0 ==
-                   json_array_append_new (csr_response_ewvs,
-                                          csr_obj));
+    return TALER_MHD_reply_json_steal (rc->connection,
+                                       csr_obj,
+                                       MHD_HTTP_OK);
   }
-  csr_response = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_steal ("ewvs",
-                                  csr_response_ewvs));
-  GNUNET_assert (NULL != csr_response);
-  return TALER_MHD_reply_json_steal (rc->connection,
-                                     csr_response,
-                                     MHD_HTTP_OK);
 }
 
 

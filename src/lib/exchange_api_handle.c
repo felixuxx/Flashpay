@@ -305,6 +305,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 /**
  * Parse a exchange's denomination key encoded in JSON.
  *
+ * @param currency expected currency of all fees
  * @param[out] denom_key where to return the result
  * @param check_sigs should we check signatures?
  * @param[in] denom_key_obj json to parse
@@ -314,7 +315,8 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  *        invalid or the json malformed.
  */
 static enum GNUNET_GenericReturnValue
-parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
+parse_json_denomkey (const char *currency,
+                     struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                      int check_sigs,
                      json_t *denom_key_obj,
                      struct TALER_MasterPublicKeyP *master_key,
@@ -331,16 +333,12 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                 &denom_key->valid_from),
     GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
                                 &denom_key->expire_legal),
-    TALER_JSON_spec_amount_any ("value",
-                                &denom_key->value),
-    TALER_JSON_spec_amount_any ("fee_withdraw",
-                                &denom_key->fee_withdraw),
-    TALER_JSON_spec_amount_any ("fee_deposit",
-                                &denom_key->fee_deposit),
-    TALER_JSON_spec_amount_any ("fee_refresh",
-                                &denom_key->fee_refresh),
-    TALER_JSON_spec_amount_any ("fee_refund",
-                                &denom_key->fee_refund),
+    TALER_JSON_spec_amount ("value",
+                            currency,
+                            &denom_key->value),
+    TALER_JSON_SPEC_DENOM_FEES ("fee",
+                                currency,
+                                &denom_key->fees),
     TALER_JSON_spec_denom_pub ("denom_pub",
                                &denom_key->key),
     GNUNET_JSON_spec_end ()
@@ -372,10 +370,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
             denom_key->expire_deposit,
             denom_key->expire_legal,
             &denom_key->value,
-            &denom_key->fee_withdraw,
-            &denom_key->fee_deposit,
-            &denom_key->fee_refresh,
-            &denom_key->fee_refund,
+            &denom_key->fees,
             master_key,
             &denom_key->master_sig));
   return GNUNET_OK;
@@ -492,10 +487,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
             dk->expire_deposit,
             dk->expire_legal,
             &dk->value,
-            &dk->fee_withdraw,
-            &dk->fee_deposit,
-            &dk->fee_refresh,
-            &dk->fee_refund,
+            &dk->fees,
             &auditor->auditor_pub,
             &auditor_sig))
       {
@@ -883,7 +875,8 @@ decode_keys_json (const json_t *resp_obj,
                 0,
                 sizeof (dk));
         EXITIF (GNUNET_SYSERR ==
-                parse_json_denomkey (&dk,
+                parse_json_denomkey (key_data->currency,
+                                     &dk,
                                      check_sig,
                                      denom_key_obj,
                                      &key_data->master_pub,
@@ -1728,14 +1721,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
                                   dk->expire_legal),
       TALER_JSON_pack_amount ("value",
                               &dk->value),
-      TALER_JSON_pack_amount ("fee_withdraw",
-                              &dk->fee_withdraw),
-      TALER_JSON_pack_amount ("fee_deposit",
-                              &dk->fee_deposit),
-      TALER_JSON_pack_amount ("fee_refresh",
-                              &dk->fee_refresh),
-      TALER_JSON_pack_amount ("fee_refund",
-                              &dk->fee_refund),
+      TALER_JSON_PACK_DENOM_FEES ("fee",
+                                  &dk->fees),
       GNUNET_JSON_pack_data_auto ("master_sig",
                                   &dk->master_sig),
       TALER_JSON_pack_denom_pub ("denom_pub",

@@ -135,24 +135,9 @@ struct TALER_EXCHANGE_DenomPublicKey
   struct TALER_Amount value;
 
   /**
-   * The applicable fee for withdrawing a coin of this denomination
+   * The applicable fees for this denomination
    */
-  struct TALER_Amount fee_withdraw;
-
-  /**
-   * The applicable fee to spend a coin of this denomination
-   */
-  struct TALER_Amount fee_deposit;
-
-  /**
-   * The applicable fee to melt/refresh a coin of this denomination
-   */
-  struct TALER_Amount fee_refresh;
-
-  /**
-   * The applicable fee to refund a coin of this denomination
-   */
-  struct TALER_Amount fee_refund;
+  struct TALER_DenomFeeSet fees;
 
   /**
    * Set to true if this denomination key has been
@@ -1031,19 +1016,19 @@ void
 TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund);
 
 
-/* ********************* POST /csr *********************** */
+/* ********************* POST /csr-melt *********************** */
 
 
 /**
- * @brief A /csr Handle
+ * @brief A /csr-melt Handle
  */
-struct TALER_EXCHANGE_CsRHandle;
+struct TALER_EXCHANGE_CsRMeltHandle;
 
 
 /**
  * Details about a response for a CS R request.
  */
-struct TALER_EXCHANGE_CsRResponse
+struct TALER_EXCHANGE_CsRMeltResponse
 {
   /**
    * HTTP response data.
@@ -1092,29 +1077,31 @@ struct TALER_EXCHANGE_CsRResponse
  * @param csrr response details
  */
 typedef void
-(*TALER_EXCHANGE_CsRCallback) (void *cls,
-                               const struct TALER_EXCHANGE_CsRResponse *csrr);
+(*TALER_EXCHANGE_CsRMeltCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_CsRMeltResponse *csrr);
 
 
 /**
- * Information we pass per coin to a /csr request.
+ * Information we pass per coin to a /csr-melt request.
  */
 struct TALER_EXCHANGE_NonceKey
 {
   /**
-   * Which denomination key is the /csr request for?
+   * Which denomination key is the /csr-melt request for?
    */
   const struct TALER_EXCHANGE_DenomPublicKey *pk;
 
   /**
-   * What is the client nonce for the request?
+   * What is number to derive the client nonce for the
+   * fresh coin?
    */
-  struct TALER_CsNonce nonce;
+  uint32_t cnc_num;
 };
 
 
 /**
- * Get a CS R using a /csr request.
+ * Get a set of CS R values using a /csr-melt request.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param nks_len length of the @a nks array
@@ -1125,23 +1112,117 @@ struct TALER_EXCHANGE_NonceKey
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_CsRHandle *
-TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
-                    unsigned int nks_len,
-                    struct TALER_EXCHANGE_NonceKey *nks,
-                    TALER_EXCHANGE_CsRCallback res_cb,
-                    void *res_cb_cls);
+struct TALER_EXCHANGE_CsRMeltHandle *
+TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
+                         const struct TALER_RefreshMasterSecretP *rms,
+                         unsigned int nks_len,
+                         struct TALER_EXCHANGE_NonceKey *nks,
+                         TALER_EXCHANGE_CsRMeltCallback res_cb,
+                         void *res_cb_cls);
 
 
 /**
  *
- * Cancel a CS R request.  This function cannot be used
+ * Cancel a CS R melt request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
  * @param csrh the withdraw handle
  */
 void
-TALER_EXCHANGE_csr_cancel (struct TALER_EXCHANGE_CsRHandle *csrh);
+TALER_EXCHANGE_csr_melt_cancel (struct TALER_EXCHANGE_CsRMeltHandle *csrh);
+
+
+/* ********************* POST /csr-withdraw *********************** */
+
+
+/**
+ * @brief A /csr-withdraw Handle
+ */
+struct TALER_EXCHANGE_CsRWithdrawHandle;
+
+
+/**
+ * Details about a response for a CS R request.
+ */
+struct TALER_EXCHANGE_CsRWithdrawResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response.
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Values contributed by the exchange for the
+       * respective coin's withdraw operation.
+       */
+      struct TALER_ExchangeWithdrawValues alg_values;
+    } success;
+
+    /**
+     * Details if the status is #MHD_HTTP_GONE.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } gone;
+
+  } details;
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * CS R withdraw request to a exchange.
+ *
+ * @param cls closure
+ * @param csrr response details
+ */
+typedef void
+(*TALER_EXCHANGE_CsRWithdrawCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_CsRWithdrawResponse *csrr);
+
+
+/**
+ * Get a CS R using a /csr-withdraw request.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param dk Which denomination key is the /csr request for
+ * @param nonce client nonce for the request
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return handle for the operation on success, NULL on error, i.e.
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_CsRWithdrawHandle *
+TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
+                             const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                             const struct TALER_CsNonce *nonce,
+                             TALER_EXCHANGE_CsRWithdrawCallback res_cb,
+                             void *res_cb_cls);
+
+
+/**
+ *
+ * Cancel a CS R withdraw request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param csrh the withdraw handle
+ */
+void
+TALER_EXCHANGE_csr_withdraw_cancel (
+  struct TALER_EXCHANGE_CsRWithdrawHandle *csrh);
 
 
 /* ********************* GET /reserves/$RESERVE_PUB *********************** */

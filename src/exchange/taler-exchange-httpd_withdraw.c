@@ -92,11 +92,6 @@ struct WithdrawContext
 {
 
   /**
-   * Hash that uniquely identifies the withdraw request.
-   */
-  struct TALER_WithdrawIdentificationHash wih;
-
-  /**
    * Hash of the (blinded) message to be signed by the Exchange.
    */
   struct TALER_BlindedCoinHash h_coin_envelope;
@@ -157,10 +152,17 @@ withdraw_transaction (void *cls,
   bool balance_ok = false;
   struct GNUNET_TIME_Timestamp now;
   uint64_t ruuid;
+  const struct TALER_CsNonce *nonce;
+  const struct TALER_BlindedPlanchet *bp;
 
   now = GNUNET_TIME_timestamp_get ();
+  bp = &wc->blinded_planchet;
+  nonce =
+    (TALER_DENOMINATION_CS == bp->cipher)
+    ? &bp->details.cs_blinded_planchet.nonce
+    : NULL;
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
-                                &wc->wih,
+                                nonce,
                                 &wc->collectable,
                                 now,
                                 &found,
@@ -300,7 +302,7 @@ check_request_idempotent (struct TEH_RequestContext *rc,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      &wc->wih,
+                                      &wc->h_coin_envelope,
                                       &wc->collectable);
   if (0 > qs)
   {
@@ -465,7 +467,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   if (0 >
       TALER_amount_add (&wc.collectable.amount_with_fee,
                         &dk->meta.value,
-                        &dk->meta.fee_withdraw))
+                        &dk->meta.fees.withdraw))
   {
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (rc->connection,
@@ -499,19 +501,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                                       NULL);
-  }
-
-  if (GNUNET_OK !=
-      TALER_withdraw_request_hash (&wc.blinded_planchet,
-                                   &wc.collectable.denom_pub_hash,
-                                   &wc.wih))
-  {
-    GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
                                        NULL);
   }
 

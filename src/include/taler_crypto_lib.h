@@ -564,22 +564,6 @@ struct TALER_BlindedCoinHash
 
 
 /**
- * Hash used to uniquely represent a withdraw process so as to perform
- * idempotency checks (and prevent clients from harmfully replaying withdraw
- * operations with problematic variations on the inputs).  In the CS case,
- * this is a hash over the DK and nonce, while in the RSA case, it is simply a
- * hash over the DK and the blinded coin.
- */
-struct TALER_WithdrawIdentificationHash
-{
-  /**
-   * Actual hash value.
-   */
-  struct GNUNET_HashCode hash;
-};
-
-
-/**
  * Hash used to represent the hash of the public
  * key of a coin (without blinding).
  */
@@ -629,7 +613,97 @@ struct TALER_ExtensionConfigHash
 };
 
 
+/**
+ * Set of the fees applying to a denomination.
+ */
+struct TALER_DenomFeeSetNBOP
+{
+
+  /**
+   * The fee the exchange charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO withdraw;
+
+  /**
+   * The fee the exchange charges when a coin of this type is deposited.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO deposit;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_AmountNBO refresh;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refunded.
+   * (can be zero).  Note that refund fees are charged to the customer;
+   * if a refund is given, the deposit fee is also refunded.
+   */
+  struct TALER_AmountNBO refund;
+
+};
+
+
 GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * Set of the fees applying to a denomination.
+ */
+struct TALER_DenomFeeSet
+{
+
+  /**
+   * The fee the exchange charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
+  struct TALER_Amount withdraw;
+
+  /**
+   * The fee the exchange charges when a coin of this type is deposited.
+   * (can be zero).
+   */
+  struct TALER_Amount deposit;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_Amount refresh;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refunded.
+   * (can be zero).  Note that refund fees are charged to the customer;
+   * if a refund is given, the deposit fee is also refunded.
+   */
+  struct TALER_Amount refund;
+
+};
+
+
+/**
+ * Convert fee set from host to network byte order.
+ *
+ * @param[out] nbo where to write the result
+ * @param fees fee set to convert
+ */
+void
+TALER_denom_fee_set_hton (struct TALER_DenomFeeSetNBOP *nbo,
+                          const struct TALER_DenomFeeSet *fees);
+
+
+/**
+ * Convert fee set from network to host network byte order.
+ *
+ * @param[out] fees where to write the result
+ * @param nbo fee set to convert
+ */
+void
+TALER_denom_fee_set_ntoh (struct TALER_DenomFeeSet *fees,
+                          const struct TALER_DenomFeeSetNBOP *nbo);
 
 
 /**
@@ -1358,22 +1432,6 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
 
 
 /**
- * Compute the hash to uniquely identify a withdraw
- * request.
- *
- * @param blinded_planchet blinded planchet
- * @param denom_hash hash of the denomination publick key
- * @param[out] wih where to write the hash
- * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
- */
-enum GNUNET_GenericReturnValue
-TALER_withdraw_request_hash (
-  const struct TALER_BlindedPlanchet *blinded_planchet,
-  const struct TALER_DenominationHash *denom_hash,
-  struct TALER_WithdrawIdentificationHash *wih);
-
-
-/**
  * Compute the hash of a coin.
  *
  * @param coin_pub public key of the coin
@@ -1548,16 +1606,19 @@ TALER_transfer_secret_to_planchet_secret (
 
 /**
  * Derive the @a coin_num transfer private key @a tpriv from a refresh from
- * the @a rms seed of the refresh operation.  The transfer private key
- * derivation is based on the @a ps with a KDF salted by the @a coin_num.
+ * the @a rms seed and the @a old_coin_pub of the refresh operation.  The
+ * transfer private key derivation is based on the @a ps with a KDF salted by
+ * the @a coin_num.
  *
  * @param rms seed to use for KDF to derive transfer keys
+ * @param old_coin_priv private key of the old coin
  * @param cnc_num cut and choose number to include in KDF
  * @param[out] tpriv value to initialize
  */
 void
 TALER_planchet_secret_to_transfer_priv (
   const struct TALER_RefreshMasterSecretP *rms,
+  const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
   uint32_t cnc_num,
   struct TALER_TransferPrivateKeyP *tpriv);
 
@@ -1675,8 +1736,8 @@ TALER_planchet_to_coin (
  * @param[in,out] hash_context hash context to use
  */
 void
-TALER_blinded_planchet_hash (const struct TALER_BlindedPlanchet *bp,
-                             struct GNUNET_HashContext *hash_context);
+TALER_blinded_planchet_hash_ (const struct TALER_BlindedPlanchet *bp,
+                              struct GNUNET_HashContext *hash_context);
 
 
 /**
@@ -1769,6 +1830,7 @@ struct TALER_RefreshCommitmentEntry
  *
  * @param[out] rc set to the value the wallet must commit to
  * @param kappa number of transfer public keys involved (must be #TALER_CNC_KAPPA)
+ * @param rms refresh master secret to include, can be NULL!
  * @param num_new_coins number of new coins to be created
  * @param rcs array of @a kappa commitments
  * @param coin_pub public key of the coin to be melted
@@ -1777,6 +1839,7 @@ struct TALER_RefreshCommitmentEntry
 void
 TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               uint32_t kappa,
+                              const struct TALER_RefreshMasterSecretP *rms,
                               uint32_t num_new_coins,
                               const struct TALER_RefreshCommitmentEntry *rcs,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -2724,10 +2787,7 @@ TALER_exchange_offline_signkey_validity_verify (
  * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
  * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
  * @param coin_value what is the value of coins signed with this key
- * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
- * @param fee_deposit what deposit fee does the exchange charge for this denomination
- * @param fee_refresh what refresh fee does the exchange charge for this denomination
- * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param fees fees for this denomination
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
@@ -2739,10 +2799,7 @@ TALER_exchange_offline_denom_validity_sign (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -2756,10 +2813,7 @@ TALER_exchange_offline_denom_validity_sign (
  * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
  * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
  * @param coin_value what is the value of coins signed with this key
- * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
- * @param fee_deposit what deposit fee does the exchange charge for this denomination
- * @param fee_refresh what refresh fee does the exchange charge for this denomination
- * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param fees fees for this denomination
  * @param master_pub public key to verify against
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
@@ -2772,10 +2826,7 @@ TALER_exchange_offline_denom_validity_verify (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -2910,10 +2961,7 @@ TALER_exchange_secmod_cs_verify (
  * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
  * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
  * @param coin_value what is the value of coins signed with this key
- * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
- * @param fee_deposit what deposit fee does the exchange charge for this denomination
- * @param fee_refresh what refresh fee does the exchange charge for this denomination
- * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param fees fees the exchange charges for this denomination
  * @param auditor_priv private key to sign with
  * @param[out] auditor_sig where to write the signature
  */
@@ -2927,10 +2975,7 @@ TALER_auditor_denom_validity_sign (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_AuditorPrivateKeyP *auditor_priv,
   struct TALER_AuditorSignatureP *auditor_sig);
 
@@ -2946,10 +2991,7 @@ TALER_auditor_denom_validity_sign (
  * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
  * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
  * @param coin_value what is the value of coins signed with this key
- * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
- * @param fee_deposit what deposit fee does the exchange charge for this denomination
- * @param fee_refresh what refresh fee does the exchange charge for this denomination
- * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param fees fees the exchange charges for this denomination
  * @param auditor_pub public key to verify against
  * @param auditor_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
@@ -2964,10 +3006,7 @@ TALER_auditor_denom_validity_verify (
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
-  const struct TALER_Amount *fee_withdraw,
-  const struct TALER_Amount *fee_deposit,
-  const struct TALER_Amount *fee_refresh,
-  const struct TALER_Amount *fee_refund,
+  const struct TALER_DenomFeeSet *fees,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig);
 

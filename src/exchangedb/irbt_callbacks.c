@@ -53,13 +53,13 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
       &td->details.denominations.expire_legal),
     TALER_PQ_query_param_amount (&td->details.denominations.coin),
     TALER_PQ_query_param_amount (
-      &td->details.denominations.fee_withdraw),
+      &td->details.denominations.fees.withdraw),
     TALER_PQ_query_param_amount (
-      &td->details.denominations.fee_deposit),
+      &td->details.denominations.fees.deposit),
     TALER_PQ_query_param_amount (
-      &td->details.denominations.fee_refresh),
+      &td->details.denominations.fees.refresh),
     TALER_PQ_query_param_amount (
-      &td->details.denominations.fee_refund),
+      &td->details.denominations.fees.refund),
     GNUNET_PQ_query_param_end
   };
 

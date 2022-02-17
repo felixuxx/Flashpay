@@ -491,7 +491,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 {
   if (GNUNET_OK !=
       TALER_wallet_deposit_verify (amount,
-                                   &dki->fee_deposit,
+                                   &dki->fees.deposit,
                                    h_wire,
                                    h_contract_terms,
                                    h_age_commitment,
@@ -508,7 +508,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
     TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
                      TALER_amount2s (amount));
     TALER_LOG_DEBUG ("... deposit_fee was %s\n",
-                     TALER_amount2s (&dki->fee_deposit));
+                     TALER_amount2s (&dki->fees.deposit));
     return GNUNET_SYSERR;
   }
 
@@ -536,7 +536,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
   }
 
   /* Check coin does make a contribution */
-  if (0 < TALER_amount_cmp (&dki->fee_deposit,
+  if (0 < TALER_amount_cmp (&dki->fees.deposit,
                             amount))
   {
     GNUNET_break_op (0);
@@ -628,7 +628,7 @@ TALER_EXCHANGE_deposit (
   if (0 >
       TALER_amount_subtract (&amount_without_fee,
                              amount,
-                             &dki->fee_deposit))
+                             &dki->fees.deposit))
   {
     *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
     GNUNET_break_op (0);

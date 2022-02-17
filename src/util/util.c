@@ -46,6 +46,73 @@ TALER_b2s (const void *buf,
 }
 
 
+void
+TALER_denom_fee_set_hton (struct TALER_DenomFeeSetNBOP *nbo,
+                          const struct TALER_DenomFeeSet *fees)
+{
+  TALER_amount_hton (&nbo->withdraw,
+                     &fees->withdraw);
+  TALER_amount_hton (&nbo->deposit,
+                     &fees->deposit);
+  TALER_amount_hton (&nbo->refresh,
+                     &fees->refresh);
+  TALER_amount_hton (&nbo->refund,
+                     &fees->refund);
+}
+
+
+void
+TALER_denom_fee_set_ntoh (struct TALER_DenomFeeSet *fees,
+                          const struct TALER_DenomFeeSetNBOP *nbo)
+{
+  TALER_amount_ntoh (&fees->withdraw,
+                     &nbo->withdraw);
+  TALER_amount_ntoh (&fees->deposit,
+                     &nbo->deposit);
+  TALER_amount_ntoh (&fees->refresh,
+                     &nbo->refresh);
+  TALER_amount_ntoh (&fees->refund,
+                     &nbo->refund);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_denom_fee_check_currency (
+  const char *currency,
+  const struct TALER_DenomFeeSet *fees)
+{
+  if (GNUNET_YES !=
+      TALER_amount_is_currency (&fees->withdraw,
+                                currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  if (GNUNET_YES !=
+      TALER_amount_is_currency (&fees->deposit,
+                                currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  if (GNUNET_YES !=
+      TALER_amount_is_currency (&fees->refresh,
+                                currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  if (GNUNET_YES !=
+      TALER_amount_is_currency (&fees->refund,
+                                currency))
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  return GNUNET_OK;
+}
+
+
 #ifdef __APPLE__
 char *
 strchrnul (const char *s,

@@ -145,6 +145,39 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Obtain denomination fee structure of a
+ * denomination from configuration file.  All
+ * fee options must start with "fee_" and have
+ * names typical for the respective fees.
+ *
+ * @param cfg configuration to extract data from
+ * @param currency expected currency
+ * @param section section of the configuration to access
+ * @param[out] fees set to the denomination fees
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+enum GNUNET_GenericReturnValue
+TALER_config_get_denom_fees (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                             const char *currency,
+                             const char *section,
+                             struct TALER_DenomFeeSet *fees);
+
+
+/**
+ * Check that all denominations in @a fees use
+ * @a currency
+ *
+ * @param currency desired currency
+ * @param fees fee set to check
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_fee_check_currency (
+  const char *currency,
+  const struct TALER_DenomFeeSet *fees);
+
+
+/**
  * Load our currency from the @a cfg (in section [taler]
  * the option "CURRENCY").
  *

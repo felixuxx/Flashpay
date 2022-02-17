@@ -105,6 +105,11 @@ struct MeltContext
   struct TALER_Amount coin_refresh_fee;
 
   /**
+   * Refresh master secret, if any of the fresh denominations use CS.
+   */
+  struct TALER_RefreshMasterSecretP rms;
+
+  /**
    * Set to true if this coin's denomination was revoked and the operation
    * is thus only allowed for zombie coins where the transaction
    * history includes a #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP.
@@ -117,6 +122,10 @@ struct MeltContext
    */
   bool coin_is_dirty;
 
+  /**
+   * True if @e rms is set.
+   */
+  bool have_rms;
 };
 
 
@@ -155,6 +164,9 @@ melt_transaction (void *cls,
 
   if (0 >
       (qs = TEH_plugin->do_melt (TEH_plugin->cls,
+                                 rmc->have_rms
+                                 ? &rmc->rms
+                                 : NULL,
                                  &rmc->refresh_session,
                                  rmc->known_coin_id,
                                  &rmc->zombie_required,
@@ -300,7 +312,7 @@ check_melt_valid (struct MHD_Connection *connection,
       "MELT");
   }
 
-  rmc->coin_refresh_fee = dk->meta.fee_refresh;
+  rmc->coin_refresh_fee = dk->meta.fees.refresh;
   rmc->coin_value = dk->meta.value;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -422,6 +434,9 @@ TEH_handler_melt (struct MHD_Connection *connection,
                             &rmc.refresh_session.amount_with_fee),
     GNUNET_JSON_spec_fixed_auto ("rc",
                                  &rmc.refresh_session.rc),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("rms",
+                                   &rmc.rms)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -429,7 +444,6 @@ TEH_handler_melt (struct MHD_Connection *connection,
           0,
           sizeof (rmc));
   rmc.refresh_session.coin.coin_pub = *coin_pub;
-
   {
     enum GNUNET_GenericReturnValue ret;
     ret = TALER_MHD_parse_json_data (connection,
@@ -438,7 +452,8 @@ TEH_handler_melt (struct MHD_Connection *connection,
     if (GNUNET_OK != ret)
       return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
   }
-
+  rmc.have_rms = (NULL != json_object_get (root,
+                                           "rms"));
   {
     MHD_RESULT res;
 

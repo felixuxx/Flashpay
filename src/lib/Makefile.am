@@ -24,7 +24,8 @@ libtalerexchange_la_SOURCES = \
   exchange_api_auditor_add_denomination.c \
   exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
   exchange_api_common.c \
-  exchange_api_csr.c \
+  exchange_api_csr_melt.c \
+  exchange_api_csr_withdraw.c \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_deposit.c \
   exchange_api_deposits_get.c \

@@ -187,10 +187,7 @@ add_keys (void *cls,
           meta.expire_deposit,
           meta.expire_legal,
           &meta.value,
-          &meta.fee_withdraw,
-          &meta.fee_deposit,
-          &meta.fee_refresh,
-          &meta.fee_refund,
+          &meta.fees,
           &TEH_master_public_key,
           &d->master_sig))
     {

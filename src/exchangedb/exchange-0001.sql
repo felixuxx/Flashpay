@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2021 Taler Systems SA
+-- Copyright (C) 2014--2022 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS denominations
   (denominations_serial BIGSERIAL UNIQUE
   ,denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_type INT4 NOT NULL DEFAULT (1) -- 1 == RSA (for now, remove default later!)
-  ,age_mask INT4 NOT NULL DEFAULT (0)
+  ,age_restrictions INT4 NOT NULL DEFAULT (0)
   ,denom_pub BYTEA NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,valid_from INT8 NOT NULL
@@ -196,7 +196,6 @@ CREATE INDEX IF NOT EXISTS reserves_close_by_reserve_pub_index
 
 CREATE TABLE IF NOT EXISTS reserves_out
   (reserve_out_serial_id BIGSERIAL -- UNIQUE
-  ,wih BYTEA PRIMARY KEY CHECK (LENGTH(wih)=64)
   ,h_blind_ev BYTEA CHECK (LENGTH(h_blind_ev)=64) -- UNIQUE
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial)
   ,denom_sig BYTEA NOT NULL
@@ -206,11 +205,9 @@ CREATE TABLE IF NOT EXISTS reserves_out
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
   )
-  PARTITION BY HASH (wih);
+  PARTITION BY HASH (h_blind_ev);
 COMMENT ON TABLE reserves_out
   IS 'Withdraw operations performed on reserves.';
-COMMENT ON COLUMN reserves_out.wih
-  IS 'Hash that uniquely identifies the withdraw request. Used to detect request replays (crucial for CS) and to check the withdraw existed during recoup.';
 COMMENT ON COLUMN reserves_out.h_blind_ev
   IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 COMMENT ON COLUMN reserves_out.denominations_serial
@@ -643,7 +640,7 @@ COMMENT ON TABLE recoup
 COMMENT ON COLUMN recoup.known_coin_id
   IS 'Coin that is being debited in the recoup. Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup.reserve_out_serial_id
-  IS 'Identifies the wih of the recouped coin and provides the link to the credited reserve.';
+  IS 'Identifies the h_blind_ev of the recouped coin and provides the link to the credited reserve.';
 COMMENT ON COLUMN recoup.coin_sig
   IS 'Signature by the coin affirming the recoup, of type TALER_SIGNATURE_WALLET_COIN_RECOUP';
 COMMENT ON COLUMN recoup.coin_blind
@@ -750,6 +747,23 @@ COMMENT ON COLUMN wire_accounts.last_change
 --            and is of no concern to the auditor
 
 
+CREATE TABLE IF NOT EXISTS cs_nonce_locks
+  (cs_nonce_lock_serial_id BIGSERIAL -- UNIQUE
+  ,nonce BYTEA PRIMARY KEY CHECK (LENGTH(nonce)=32)
+  ,op_hash BYTEA NOT NULL CHECK (LENGTH(op_hash)=64)
+  ,max_denomination_serial INT8 NOT NULL
+  )
+  PARTITION BY HASH (nonce);
+COMMENT ON TABLE cs_nonce_locks
+  IS 'ensures a Clause Schnorr client nonce is locked for use with an operation identified by a hash';
+COMMENT ON COLUMN cs_nonce_locks.nonce
+  IS 'actual nonce submitted by the client';
+COMMENT ON COLUMN cs_nonce_locks.op_hash
+  IS 'hash (RC for refresh, blind coin hash for withdraw) the nonce may be used with';
+COMMENT ON COLUMN cs_nonce_locks.max_denomination_serial
+  IS 'Maximum number of a CS denomination serial the nonce could be used with, for GC';
+
+
 CREATE TABLE IF NOT EXISTS work_shards
   (shard_serial_id BIGSERIAL UNIQUE
   ,last_attempt INT8 NOT NULL
@@ -818,7 +832,7 @@ CREATE INDEX IF NOT EXISTS revolving_work_shards_by_job_name_active_last_attempt
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
-  IN in_wih BYTEA,
+  IN cs_nonce BYTEA,
   IN amount_val INT8,
   IN amount_frac INT4,
   IN h_denom_pub BYTEA,
@@ -832,8 +846,7 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   OUT balance_ok BOOLEAN,
   OUT kycok BOOLEAN,
   OUT account_uuid INT8,
-  OUT ruuid INT8,
-  OUT out_denom_sig BYTEA)
+  OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -851,7 +864,8 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_serial_id
 
-SELECT denominations_serial INTO denom_serial
+SELECT denominations_serial
+  INTO denom_serial
   FROM denominations
  WHERE denom_pub_hash=h_denom_pub;
 
@@ -866,6 +880,7 @@ THEN
   ASSERT false, 'denomination unknown';
   RETURN;
 END IF;
+
 
 SELECT
    current_balance_val
@@ -887,7 +902,7 @@ THEN
   balance_ok=FALSE;
   kycok=FALSE;
   account_uuid=0;
-  ruuid=0;
+  ruuid=2;
   RETURN;
 END IF;
 
@@ -895,7 +910,6 @@ END IF;
 -- the query successful due to idempotency.
 INSERT INTO reserves_out
   (h_blind_ev
-  ,wih
   ,denominations_serial
   ,denom_sig
   ,reserve_uuid
@@ -905,7 +919,6 @@ INSERT INTO reserves_out
   ,amount_with_fee_frac)
 VALUES
   (h_coin_envelope
-  ,in_wih
   ,denom_serial
   ,denom_sig
   ,ruuid
@@ -918,25 +931,6 @@ ON CONFLICT DO NOTHING;
 IF NOT FOUND
 THEN
   -- idempotent query, all constraints must be satisfied
-
-  SELECT
-     denom_sig
-  INTO
-     out_denom_sig
-  FROM reserves_in
-    WHERE wih=in_wih
-    LIMIT 1; -- limit 1 should not be required (without p2p transfers)
-
-  IF NOT FOUND
-  THEN
-    reserve_found=FALSE;
-    balance_ok=FALSE;
-    kycok=FALSE;
-    account_uuid=0;
-    ruuid=0;
-    ASSERT false, 'internal logic error';
-  END IF;
-
   reserve_found=TRUE;
   balance_ok=TRUE;
   kycok=TRUE;
@@ -983,6 +977,44 @@ WHERE
 reserve_found=TRUE;
 balance_ok=TRUE;
 
+
+
+-- Special actions needed for a CS withdraw?
+IF NOT NULL cs_nonce
+THEN
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_nonce
+    ,denom_serial
+    ,h_coin_envelope)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- See if the existing entry is identical.
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_nonce
+       AND op_hash=h_coin_envelope;
+    IF NOT FOUND
+    THEN
+      reserve_found=FALSE;
+      balance_ok=FALSE;
+      kycok=FALSE;
+      account_uuid=0;
+      ruuid=1; -- FIXME: return error message more nicely!
+      ASSERT false, 'nonce reuse attempted by client';
+    END IF;
+  END IF;
+END IF;
+
+
+
 -- Obtain KYC status based on the last wire transfer into
 -- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
 SELECT
@@ -996,9 +1028,6 @@ SELECT
  WHERE reserve_pub=rpub
  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
--- Return denomination signature as result that
--- was given as the argument.
-out_denom_sig=denom_sig;
 
 END $$;
 
@@ -1223,6 +1252,7 @@ END $$;
 
 
 CREATE OR REPLACE FUNCTION exchange_do_melt(
+  IN in_cs_rms BYTEA,
   IN in_amount_with_fee_val INT8,
   IN in_amount_with_fee_frac INT4,
   IN in_rc BYTEA,
@@ -1236,6 +1266,8 @@ CREATE OR REPLACE FUNCTION exchange_do_melt(
   OUT out_noreveal_index INT4)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  denom_max INT8;
 BEGIN
 -- Shards: INSERT refresh_commitments (by rc)
 -- (rare:) SELECT refresh_commitments (by old_coin_pub) -- crosses shards!
@@ -1332,6 +1364,56 @@ THEN
   out_balance_ok=FALSE;
   RETURN;
 END IF;
+
+
+
+-- Special actions needed for a CS melt?
+IF NOT NULL in_cs_rms
+THEN
+  -- Get maximum denominations serial value in
+  -- existence, this will determine how long the
+  -- nonce will be locked.
+  SELECT
+      denominations_serial
+    INTO
+      denom_max
+    FROM denominations
+      ORDER BY denominations_serial DESC
+      LIMIT 1;
+
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_rms
+    ,denom_serial
+    ,in_rc)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- Record exists, make sure it is the same
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_rms
+       AND op_hash=in_rc;
+
+    IF NOT FOUND
+    THEN
+       -- Nonce reuse detected
+       out_balance_ok=FALSE;
+       out_zombie_bad=FALSE;
+       out_noreveal_index=42; -- FIXME: return error message more nicely!
+       ASSERT false, 'nonce reuse attempted by client';
+    END IF;
+  END IF;
+END IF;
+
+
+
 
 -- Everything fine, return success!
 out_balance_ok=TRUE;
@@ -1806,6 +1888,8 @@ DECLARE
   deposit_min INT8; -- minimum deposit still alive
 DECLARE
   reserve_out_min INT8; -- minimum reserve_out still alive
+DECLARE
+  denom_min INT8; -- minimum denomination still alive
 BEGIN
 
 DELETE FROM prewire
@@ -1901,6 +1985,16 @@ DELETE FROM refunds
 DELETE FROM aggregation_tracking
   WHERE deposit_serial_id < deposit_min;
 
+SELECT
+     denominations_serial
+  INTO
+     denom_min
+  FROM denominations
+  ORDER BY denominations_serial ASC
+  LIMIT 1;
+
+DELETE FROM cs_nonce_locks
+  WHERE max_denomination_serial <= denom_min;
 
 END $$;
 

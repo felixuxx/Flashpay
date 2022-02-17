@@ -1281,7 +1281,7 @@ refresh_session_cb (void *cls,
     TALER_denom_pub_hash (denom_pub,
                           &h_denom_pub);
     TALER_amount_ntoh (&fee_refresh,
-                       &issue->fee_refresh);
+                       &issue->fees.refresh);
     if (GNUNET_OK !=
         TALER_wallet_melt_verify (amount_with_fee,
                                   &fee_refresh,
@@ -1375,7 +1375,7 @@ refresh_session_cb (void *cls,
       struct TALER_Amount value;
 
       TALER_amount_ntoh (&fee,
-                         &reveal_ctx.new_issues[i]->fee_withdraw);
+                         &reveal_ctx.new_issues[i]->fees.withdraw);
       TALER_amount_ntoh (&value,
                          &reveal_ctx.new_issues[i]->value);
       TALER_ARL_amount_add (&refresh_cost,
@@ -1391,7 +1391,7 @@ refresh_session_cb (void *cls,
       struct TALER_Amount melt_fee;
 
       TALER_amount_ntoh (&melt_fee,
-                         &issue->fee_refresh);
+                         &issue->fees.refresh);
       if (TALER_ARL_SR_POSITIVE !=
           TALER_ARL_amount_subtract_neg (&amount_without_fee,
                                          amount_with_fee,
@@ -1528,7 +1528,7 @@ refresh_session_cb (void *cls,
     struct TALER_Amount rfee;
 
     TALER_amount_ntoh (&rfee,
-                       &issue->fee_refresh);
+                       &issue->fees.refresh);
     TALER_ARL_amount_add (&total_melt_fee_income,
                           &total_melt_fee_income,
                           &rfee);
@@ -1622,7 +1622,7 @@ deposit_cb (void *cls,
                                         &deposit->wire_salt,
                                         &h_wire);
     TALER_amount_ntoh (&deposit_fee,
-                       &issue->fee_deposit);
+                       &issue->fees.deposit);
     /* NOTE: This is one of the operations we might eventually
        want to do in parallel in the background to improve
        auditor performance! */
@@ -1727,7 +1727,7 @@ deposit_cb (void *cls,
     struct TALER_Amount dfee;
 
     TALER_amount_ntoh (&dfee,
-                       &issue->fee_deposit);
+                       &issue->fees.deposit);
     TALER_ARL_amount_add (&total_deposit_fee_income,
                           &total_deposit_fee_income,
                           &dfee);
@@ -1822,7 +1822,7 @@ refund_cb (void *cls,
   }
 
   TALER_amount_ntoh (&refund_fee,
-                     &issue->fee_refund);
+                     &issue->fees.refund);
   if (TALER_ARL_SR_INVALID_NEGATIVE ==
       TALER_ARL_amount_subtract_neg (&amount_without_fee,
                                      amount_with_fee,
@@ -2179,10 +2179,7 @@ check_denomination (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AuditorSignatureP auditor_sig;
   struct TALER_Amount coin_value;
-  struct TALER_Amount fee_withdraw;
-  struct TALER_Amount fee_deposit;
-  struct TALER_Amount fee_refresh;
-  struct TALER_Amount fee_refund;
+  struct TALER_DenomFeeSet fees;
   struct GNUNET_TIME_Timestamp start;
   struct GNUNET_TIME_Timestamp end;
 
@@ -2190,14 +2187,8 @@ check_denomination (
   (void) denom_pub;
   TALER_amount_ntoh (&coin_value,
                      &issue->value);
-  TALER_amount_ntoh (&fee_withdraw,
-                     &issue->fee_withdraw);
-  TALER_amount_ntoh (&fee_deposit,
-                     &issue->fee_deposit);
-  TALER_amount_ntoh (&fee_refresh,
-                     &issue->fee_refresh);
-  TALER_amount_ntoh (&fee_refund,
-                     &issue->fee_refund);
+  TALER_denom_fee_set_ntoh (&fees,
+                            &issue->fees);
   start = GNUNET_TIME_timestamp_ntoh (issue->start);
   end = GNUNET_TIME_timestamp_ntoh (issue->expire_legal);
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
@@ -2225,10 +2216,7 @@ check_denomination (
         GNUNET_TIME_timestamp_ntoh (issue->expire_deposit),
         end,
         &coin_value,
-        &fee_withdraw,
-        &fee_deposit,
-        &fee_refresh,
-        &fee_refund,
+        &fees,
         &TALER_ARL_auditor_pub,
         &auditor_sig))
   {

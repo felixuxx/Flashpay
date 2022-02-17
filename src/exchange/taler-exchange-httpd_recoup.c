@@ -42,7 +42,7 @@ struct RecoupContext
   /**
    * Hash identifying the withdraw request.
    */
-  struct TALER_WithdrawIdentificationHash wih;
+  struct TALER_BlindedCoinHash h_coin_ev;
 
   /**
    * Set by #recoup_transaction() to the reserve that will
@@ -273,9 +273,9 @@ verify_and_execute_recoup (
       blinded_planchet.details.cs_blinded_planchet.nonce
         = *nonce;
     if (GNUNET_OK !=
-        TALER_withdraw_request_hash (&blinded_planchet,
-                                     &coin->denom_pub_hash,
-                                     &pc.wih))
+        TALER_coin_ev_hash (&blinded_planchet,
+                            &coin->denom_pub_hash,
+                            &pc.h_coin_ev))
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (connection,
@@ -308,10 +308,10 @@ verify_and_execute_recoup (
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TEH_plugin->get_reserve_by_wih (TEH_plugin->cls,
-                                         &pc.wih,
-                                         &pc.reserve_pub,
-                                         &pc.reserve_out_serial_id);
+    qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
+                                             &pc.h_coin_ev,
+                                             &pc.reserve_pub,
+                                             &pc.reserve_out_serial_id);
     if (0 > qs)
     {
       GNUNET_break (0);
@@ -319,13 +319,13 @@ verify_and_execute_recoup (
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
-        "get_reserve_by_wih");
+        "get_reserve_by_h_blind");
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Recoup requested for unknown envelope %s\n",
-                  GNUNET_h2s (&pc.wih.hash));
+                  GNUNET_h2s (&pc.h_coin_ev.hash));
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_NOT_FOUND,
@@ -409,9 +409,6 @@ TEH_handler_recoup (struct MHD_Connection *connection,
     return MHD_NO; /* hard failure */
   if (GNUNET_NO == ret)
     return MHD_YES; /* failure */
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Recoup coin with BKS=%s\n",
-              TALER_B2S (&coin_bks));
   {
     MHD_RESULT res;
 
