@@ -3090,6 +3090,7 @@ postgres_insert_denomination_info (
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
+  uint32_t age_mask = 0; /* FIXME-OEC */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     TALER_PQ_query_param_denom_pub (denom_pub),
@@ -3103,6 +3104,7 @@ postgres_insert_denomination_info (
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refresh),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refund),
+    GNUNET_PQ_query_param_uint32 (&age_mask),
     GNUNET_PQ_query_param_end
   };
   struct TALER_DenomFeeSet fees;
