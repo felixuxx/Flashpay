@@ -73,7 +73,7 @@ TEH_RESPONSE_compile_transaction_history (
                                          &deposit->deposit_fee,
                                          &h_wire,
                                          &deposit->h_contract_terms,
-                                         NULL, /* h_age_commitment, FIXME-oec */
+                                         &deposit->h_age_commitment,
                                          NULL /* h_extensions! */,
                                          &deposit->h_denom_pub,
                                          deposit->timestamp,
@@ -110,6 +110,9 @@ TEH_RESPONSE_compile_transaction_history (
                                             &h_wire),
                 GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                             &deposit->h_denom_pub),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              &deposit->h_age_commitment)),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
                                             &deposit->csig))))
         {

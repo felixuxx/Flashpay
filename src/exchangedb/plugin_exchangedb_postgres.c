@@ -1188,6 +1188,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.fee_deposit_val"
       ",denoms.fee_deposit_frac"
       ",denoms.denom_pub_hash"
+      ",kc.age_hash"
       ",wallet_timestamp"
       ",refund_deadline"
       ",wire_deadline"
@@ -3090,7 +3091,6 @@ postgres_insert_denomination_info (
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
-  uint32_t age_mask = 0; /* FIXME-OEC */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     TALER_PQ_query_param_denom_pub (denom_pub),
@@ -3104,7 +3104,7 @@ postgres_insert_denomination_info (
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refresh),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refund),
-    GNUNET_PQ_query_param_uint32 (&age_mask),
+    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.mask),
     GNUNET_PQ_query_param_end
   };
   struct TALER_DenomFeeSet fees;
@@ -5641,11 +5641,14 @@ postgres_get_known_coin (void *cls,
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
   };
+  bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &coin_info->denom_pub_hash),
-    GNUNET_PQ_result_spec_auto_from_type ("age_hash",
-                                          &coin_info->h_age_commitment),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("age_hash",
+                                            &coin_info->h_age_commitment),
+      &is_null),
     TALER_PQ_result_spec_denom_sig ("denom_sig",
                                     &coin_info->denom_sig),
     GNUNET_PQ_result_spec_end
@@ -6583,6 +6586,7 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_DepositListEntry *deposit;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
+    bool is_null;
 
     chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
@@ -6592,14 +6596,18 @@ add_coin_deposit (void *cls,
                                      &deposit->amount_with_fee),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                      &deposit->deposit_fee),
+        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                              &deposit->h_denom_pub),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_auto_from_type ("age_hash",
+                                                &deposit->h_age_commitment),
+          &is_null),
         GNUNET_PQ_result_spec_timestamp ("wallet_timestamp",
                                          &deposit->timestamp),
         GNUNET_PQ_result_spec_timestamp ("refund_deadline",
                                          &deposit->refund_deadline),
         GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                          &deposit->wire_deadline),
-        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                              &deposit->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                               &deposit->merchant_pub),
         GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",

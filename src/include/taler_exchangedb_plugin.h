@@ -1120,6 +1120,12 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct TALER_DenominationHash h_denom_pub;
 
   /**
+   * Age commitment hash, if applicable ot the denomination.  Should be all
+   * zeroes if age commitment is not applicable to the denonimation.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
    * Detailed information about the receiver for executing the transaction.
    * URL in payto://-format.
    */

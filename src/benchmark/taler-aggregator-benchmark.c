@@ -493,6 +493,7 @@ run (void *cls,
     struct TALER_PlanchetMasterSecretP ps;
     struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_AgeCommitmentHash hac;
     union TALER_DenominationBlindingKeyP bks;
 
     RANDOMIZE (&coin_pub);
@@ -525,10 +526,31 @@ run (void *cls,
     TALER_planchet_blinding_secret_create (&ps,
                                            &alg_values,
                                            &bks);
+
+    {
+      uint32_t seed;
+      struct TALER_AgeMask mask = {
+        .mask = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
+      };
+      struct TALER_AgeCommitment ac = {0};
+
+      seed = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                       UINT32_MAX);
+
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_age_restriction_commit (
+                       &mask,
+                       13,
+                       seed,
+                       &ac));
+
+      TALER_age_commitment_hash (&ac, &hac);
+    }
+
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&denom_pub,
                                       &bks,
-                                      NULL, /* FIXME-oec */
+                                      &hac,
                                       &coin_pub,
                                       &alg_values,
                                       &c_hash,
