@@ -307,6 +307,15 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                        NULL);
   }
+  if (GNUNET_TIME_absolute_is_never (deposit.wire_deadline.abs_time))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_DEPOSIT_WIRE_DEADLINE_IS_NEVER,
+                                       NULL);
+  }
   deposit.receiver_wire_account = (char *) payto_uri;
   TALER_payto_hash (payto_uri,
                     &dc.h_payto);
