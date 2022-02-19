@@ -24,7 +24,7 @@ works fine.  that does not work yet.  This package also only includes
 the Taler exchange, not the other components of the system.
 
 Documentation about Taler can be found at https://taler.net/.
-Our bug tracker is at https://gnunet.org/bugs/.
+Our bug tracker is at https://bugs.taler.net/.
 
 
 Joining GNU
@@ -43,9 +43,9 @@ Dependencies:
 
 These are the direct dependencies for running a Taler exchange:
 
-- GNUnet            >= 0.15.4
+- GNUnet            >= 0.16.0
 - GNU libmicrohttpd >= 0.9.71
-- Postgres          >= 9.5
+- Postgres          >= 13.0
 
 
 
