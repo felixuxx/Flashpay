@@ -23,11 +23,11 @@
 #include "bank_api_common.h"
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_BANK_setup_auth_ (CURL *easy,
                         const struct TALER_BANK_AuthenticationData *auth)
 {
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
 
   ret = GNUNET_OK;
   switch (auth->method)

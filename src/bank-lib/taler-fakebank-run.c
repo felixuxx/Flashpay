@@ -101,7 +101,7 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   unsigned long long port = 8082;
-  unsigned long long ram = 1024 * 1024 * 128; /* 128 M entries */
+  unsigned long long ram = 1024 * 128; /* 128 k entries */
   char *currency_string;
 
   (void) cls;
