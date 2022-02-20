@@ -335,7 +335,7 @@ AS_IF([test $jansson = 0],
 
 
 # test for postgres
-AX_LIB_POSTGRESQL([9.3])
+AX_LIB_POSTGRESQL([13.0])
 AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
 
 TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
