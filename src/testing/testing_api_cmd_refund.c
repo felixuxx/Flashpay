@@ -127,7 +127,7 @@ refund_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin;
   const json_t *contract_terms;
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
   struct TALER_Amount refund_amount;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;

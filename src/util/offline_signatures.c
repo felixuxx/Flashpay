@@ -117,7 +117,7 @@ TALER_exchange_offline_auditor_del_verify (
 
 void
 TALER_exchange_offline_denomination_revoke_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -135,7 +135,7 @@ TALER_exchange_offline_denomination_revoke_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denomination_revoke_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -249,7 +249,7 @@ TALER_exchange_offline_signkey_validity_verify (
 
 void
 TALER_exchange_offline_denom_validity_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp stamp_start,
   struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
@@ -285,7 +285,7 @@ TALER_exchange_offline_denom_validity_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp stamp_start,
   struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
   struct GNUNET_TIME_Timestamp stamp_expire_deposit,
@@ -474,7 +474,7 @@ TALER_exchange_offline_wire_fee_verify (
 
 void
 TALER_exchange_offline_extension_config_hash_sign (
-  const struct TALER_ExtensionConfigHash *h_config,
+  const struct TALER_ExtensionConfigHashP *h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -491,7 +491,7 @@ TALER_exchange_offline_extension_config_hash_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_extension_config_hash_verify (
-  const struct TALER_ExtensionConfigHash *h_config,
+  const struct TALER_ExtensionConfigHashP *h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   )

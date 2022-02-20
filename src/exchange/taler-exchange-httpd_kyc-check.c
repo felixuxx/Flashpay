@@ -73,12 +73,12 @@ struct KycPoller
    * Hash of the payto:// URI we are confirming to
    * have finished the KYC for.
    */
-  struct TALER_PaytoHash h_payto;
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * Hash of the payto:// URI that was given to us for auth.
    */
-  struct TALER_PaytoHash auth_h_payto;
+  struct TALER_PaytoHashP auth_h_payto;
 
   /**
    * When will this request time out?

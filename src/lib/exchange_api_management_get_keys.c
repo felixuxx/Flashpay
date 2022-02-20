@@ -215,7 +215,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     }
 
     {
-      struct TALER_DenominationHash h_denom_pub;
+      struct TALER_DenominationHashP h_denom_pub;
       struct GNUNET_TIME_Relative duration
         = GNUNET_TIME_absolute_get_difference (
             denom_key->valid_from.abs_time,

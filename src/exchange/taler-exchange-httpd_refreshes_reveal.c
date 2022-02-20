@@ -279,7 +279,7 @@ check_commitment (struct RevealContext *rctx,
             = &rctx->rrcs[j].exchange_vals;
           struct TALER_PlanchetDetail pd;
           struct TALER_AgeCommitmentHash *hac = NULL;
-          struct TALER_CoinPubHash c_hash;
+          struct TALER_CoinPubHashP c_hash;
           struct TALER_PlanchetMasterSecretP ps;
 
           rcd->dk = &rctx->dks[j]->denom_pub;

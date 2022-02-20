@@ -169,7 +169,7 @@ handle_recoup_finished (void *cls,
       /* Insufficient funds, proof attached */
       json_t *history;
       struct TALER_Amount total;
-      struct TALER_DenominationHash h_denom_pub;
+      struct TALER_DenominationHashP h_denom_pub;
       const struct TALER_EXCHANGE_DenomPublicKey *dki;
       enum TALER_ErrorCode ec;
 
@@ -293,7 +293,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];

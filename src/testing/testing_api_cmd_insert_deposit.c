@@ -198,7 +198,7 @@ insert_deposit_run (void *cls,
                               &deposit.coin.coin_pub,
                               sizeof (deposit.coin.coin_pub));
   {
-    struct TALER_CoinPubHash c_hash;
+    struct TALER_CoinPubHashP c_hash;
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetMasterSecretP ps;
@@ -244,7 +244,7 @@ insert_deposit_run (void *cls,
   /* finally, actually perform the DB operation */
   {
     uint64_t known_coin_id;
-    struct TALER_DenominationHash dph;
+    struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
 
     if ( (GNUNET_OK !=

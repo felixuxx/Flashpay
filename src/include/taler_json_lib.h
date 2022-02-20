@@ -400,7 +400,7 @@ TALER_JSON_spec_i18n_str (const char *name,
  */
 enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
-                          struct TALER_PrivateContractHash *hc);
+                          struct TALER_PrivateContractHashP *hc);
 
 
 /**
@@ -522,7 +522,7 @@ TALER_JSON_get_error_code2 (const void *data,
  */
 enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
-                                         struct TALER_MerchantWireHash *hc);
+                                         struct TALER_MerchantWireHashP *hc);
 
 
 /**
@@ -623,7 +623,7 @@ TALER_JSON_wire_to_payto (const json_t *wire_s);
  */
 void
 TALER_deposit_extension_hash (const json_t *extensions,
-                              struct TALER_ExtensionContractHash *ech);
+                              struct TALER_ExtensionContractHashP *ech);
 
 /**
  * Hash the @a config of an extension, given as JSON
@@ -634,7 +634,7 @@ TALER_deposit_extension_hash (const json_t *extensions,
  */
 enum GNUNET_GenericReturnValue
 TALER_JSON_extensions_config_hash (const json_t *config,
-                                   struct TALER_ExtensionConfigHash *eh);
+                                   struct TALER_ExtensionConfigHashP *eh);
 
 /**
  * Canonicalize a JSON input to a string according to RFC 8785.

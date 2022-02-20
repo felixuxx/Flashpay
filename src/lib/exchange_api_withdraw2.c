@@ -380,7 +380,7 @@ TALER_EXCHANGE_withdraw2 (
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
   struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
-  struct TALER_BlindedCoinHash bch;
+  struct TALER_BlindedCoinHashP bch;
 
   keys = TALER_EXCHANGE_get_keys (exchange);
   if (NULL == keys)

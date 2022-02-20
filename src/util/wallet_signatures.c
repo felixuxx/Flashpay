@@ -27,11 +27,11 @@ void
 TALER_wallet_deposit_sign (
   const struct TALER_Amount *amount,
   const struct TALER_Amount *deposit_fee,
-  const struct TALER_MerchantWireHash *h_wire,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHash *h_extensions,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -69,11 +69,11 @@ enum GNUNET_GenericReturnValue
 TALER_wallet_deposit_verify (
   const struct TALER_Amount *amount,
   const struct TALER_Amount *deposit_fee,
-  const struct TALER_MerchantWireHash *h_wire,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHash *h_extensions,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -117,9 +117,9 @@ TALER_wallet_deposit_verify (
 
 
 void
-TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
+TALER_wallet_link_sign (const struct TALER_DenominationHashP *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                        const struct TALER_BlindedCoinHash *bch,
+                        const struct TALER_BlindedCoinHashP *bch,
                         const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
                         struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -139,9 +139,9 @@ TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_link_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_TransferPublicKeyP *transfer_pub,
-  const struct TALER_BlindedCoinHash *h_coin_ev,
+  const struct TALER_BlindedCoinHashP *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -163,7 +163,7 @@ TALER_wallet_link_verify (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
@@ -184,7 +184,7 @@ TALER_wallet_recoup_verify (
 
 void
 TALER_wallet_recoup_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
@@ -204,7 +204,7 @@ TALER_wallet_recoup_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_recoup_refresh_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
@@ -225,7 +225,7 @@ TALER_wallet_recoup_refresh_verify (
 
 void
 TALER_wallet_recoup_refresh_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
@@ -248,7 +248,7 @@ TALER_wallet_melt_sign (
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -274,7 +274,7 @@ TALER_wallet_melt_verify (
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
@@ -304,9 +304,9 @@ TALER_wallet_melt_verify (
 
 void
 TALER_wallet_withdraw_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_Amount *amount_with_fee,
-  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_BlindedCoinHashP *bch,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -327,9 +327,9 @@ TALER_wallet_withdraw_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_withdraw_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_Amount *amount_with_fee,
-  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_BlindedCoinHashP *bch,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {

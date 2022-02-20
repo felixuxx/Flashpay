@@ -40,7 +40,7 @@ struct DenomSig
   /**
    * Hash of a denomination public key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Master signature for the @e h_denom_pub.

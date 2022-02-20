@@ -101,7 +101,7 @@ struct TALER_EXCHANGE_WithdrawHandle
   /**
    * Hash of the public key of the coin we are signing.
    */
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
 
   /**
    * Handler for the CS R request (only used for TALER_DENOMINATION_CS denominations)

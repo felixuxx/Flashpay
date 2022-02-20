@@ -139,7 +139,7 @@ TALER_extensions_get_by_name (
 
 enum GNUNET_GenericReturnValue
 config_hash_verify (
-  const struct TALER_ExtensionConfigHash *h_config,
+  const struct TALER_ExtensionConfigHashP *h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   )
@@ -164,7 +164,7 @@ TALER_extensions_verify_json_config_signature (
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub)
 {
-  struct TALER_ExtensionConfigHash h_config;
+  struct TALER_ExtensionConfigHashP h_config;
 
   if (GNUNET_OK !=
       TALER_JSON_extensions_config_hash (extensions, &h_config))

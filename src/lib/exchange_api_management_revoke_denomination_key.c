@@ -126,7 +126,7 @@ struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *
 TALER_EXCHANGE_management_revoke_denomination_key (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementRevokeDenominationKeyCallback cb,
   void *cb_cls)

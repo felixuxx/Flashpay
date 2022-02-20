@@ -269,7 +269,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   struct TALER_ExchangeWithdrawValues alg_values;
 
   TALER_planchet_master_setup_random (&ps);
@@ -413,7 +413,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   struct TALER_ExchangeWithdrawValues alg_values;
 
   TALER_planchet_master_setup_random (&ps);
@@ -616,7 +616,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                     keys[i].validity_duration))
         continue;
       {
-        struct TALER_CoinPubHash c_hash;
+        struct TALER_CoinPubHashP c_hash;
         struct TALER_PlanchetDetail pd;
 
         pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;

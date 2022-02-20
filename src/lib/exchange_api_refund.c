@@ -201,11 +201,11 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                          "DEPOSIT"))
     {
       struct TALER_Amount deposit_fee;
-      struct TALER_MerchantWireHash h_wire;
-      struct TALER_PrivateContractHash h_contract_terms;
+      struct TALER_MerchantWireHashP h_wire;
+      struct TALER_PrivateContractHashP h_contract_terms;
       struct TALER_AgeCommitmentHash h_age_commitment = {{{0}}};
-      // struct TALER_ExtensionContractHash h_extensions; // FIXME!
-      struct TALER_DenominationHash h_denom_pub;
+      // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
+      struct TALER_DenominationHashP h_denom_pub;
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline;
@@ -298,7 +298,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       struct TALER_MerchantSignatureP sig;
       struct TALER_Amount refund_fee;
       struct TALER_Amount sig_amount;
-      struct TALER_PrivateContractHash h_contract_terms;
+      struct TALER_PrivateContractHashP h_contract_terms;
       uint64_t rtransaction_id;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_JSON_Specification ispec[] = {
@@ -476,7 +476,7 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     const char *type;
     struct TALER_MerchantSignatureP sig;
     struct TALER_Amount refund_fee;
-    struct TALER_PrivateContractHash h_contract_terms;
+    struct TALER_PrivateContractHashP h_contract_terms;
     uint64_t rtransaction_id;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct GNUNET_JSON_Specification ispec[] = {
@@ -671,7 +671,8 @@ handle_refund_finished (void *cls,
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_Amount *amount,
-                       const struct TALER_PrivateContractHash *h_contract_terms,
+                       const struct
+                       TALER_PrivateContractHashP *h_contract_terms,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rtransaction_id,
                        const struct TALER_MerchantPrivateKeyP *merchant_priv,

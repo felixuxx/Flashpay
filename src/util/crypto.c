@@ -78,9 +78,9 @@ enum GNUNET_GenericReturnValue
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub)
 {
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
 #if ENABLE_SANITY_CHECKS
-  struct TALER_DenominationHash d_hash;
+  struct TALER_DenominationHashP d_hash;
 
   TALER_denom_pub_hash (denom_pub,
                         &d_hash);
@@ -259,7 +259,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const union TALER_DenominationBlindingKeyP *bks,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                         const struct TALER_AgeCommitmentHash *ach,
-                        struct TALER_CoinPubHash *c_hash,
+                        struct TALER_CoinPubHashP *c_hash,
                         struct TALER_PlanchetDetail *pd
                         )
 {
@@ -300,7 +300,7 @@ TALER_planchet_to_coin (
   const union TALER_DenominationBlindingKeyP *bks,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   const struct TALER_AgeCommitmentHash *ach,
-  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_CoinPubHashP *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin)
 {
@@ -364,7 +364,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
      hash_context */
   for (unsigned int i = 0; i<num_new_coins; i++)
   {
-    struct TALER_DenominationHash denom_hash;
+    struct TALER_DenominationHashP denom_hash;
 
     /* The denomination keys should / must all be identical regardless
        of what offset we use, so we use [0]. */
@@ -413,7 +413,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_AgeCommitmentHash *ach,
-                     struct TALER_CoinPubHash *coin_h)
+                     struct TALER_CoinPubHashP *coin_h)
 {
   if (TALER_AgeCommitmentHash_isNullOrZero (ach))
   {
@@ -717,8 +717,8 @@ TALER_age_commitment_free (
 
 enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
-                    const struct TALER_DenominationHash *denom_hash,
-                    struct TALER_BlindedCoinHash *bch)
+                    const struct TALER_DenominationHashP *denom_hash,
+                    struct TALER_BlindedCoinHashP *bch)
 {
   struct GNUNET_HashContext *hash_context;
 

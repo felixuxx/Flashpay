@@ -647,7 +647,7 @@ handle_post_management (struct TEH_RequestContext *rc,
   if (0 == strcmp (args[0],
                    "denominations"))
   {
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
 
     if ( (NULL == args[0]) ||
          (NULL == args[1]) ||
@@ -794,7 +794,7 @@ handle_post_auditors (struct TEH_RequestContext *rc,
                       const char *const args[])
 {
   struct TALER_AuditorPublicKeyP auditor_pub;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   if ( (NULL == args[0]) ||
        (NULL == args[1]) ||

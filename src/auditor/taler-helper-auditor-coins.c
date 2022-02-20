@@ -673,7 +673,7 @@ struct CoinContext
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-init_denomination (const struct TALER_DenominationHash *denom_hash,
+init_denomination (const struct TALER_DenominationHashP *denom_hash,
                    struct DenominationSummary *ds)
 {
   enum GNUNET_DB_QueryStatus qs;
@@ -760,7 +760,7 @@ init_denomination (const struct TALER_DenominationHash *denom_hash,
 static struct DenominationSummary *
 get_denomination_summary (struct CoinContext *cc,
                           const struct TALER_DenominationKeyValidityPS *issue,
-                          const struct TALER_DenominationHash *dh)
+                          const struct TALER_DenominationHashP *dh)
 {
   struct DenominationSummary *ds;
 
@@ -802,7 +802,7 @@ sync_denomination (void *cls,
                    void *value)
 {
   struct CoinContext *cc = cls;
-  struct TALER_DenominationHash denom_h = {
+  struct TALER_DenominationHashP denom_h = {
     .hash = *denom_hash
   };
   struct DenominationSummary *ds = value;
@@ -963,7 +963,7 @@ sync_denomination (void *cls,
 static enum GNUNET_GenericReturnValue
 withdraw_cb (void *cls,
              uint64_t rowid,
-             const struct TALER_BlindedCoinHash *h_blind_ev,
+             const struct TALER_BlindedCoinHashP *h_blind_ev,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_ReservePublicKeyP *reserve_pub,
              const struct TALER_ReserveSignatureP *reserve_sig,
@@ -972,7 +972,7 @@ withdraw_cb (void *cls,
 {
   struct CoinContext *cc = cls;
   struct DenominationSummary *ds;
-  struct TALER_DenominationHash dh;
+  struct TALER_DenominationHashP dh;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct TALER_Amount value;
   enum GNUNET_DB_QueryStatus qs;
@@ -1275,7 +1275,7 @@ refresh_session_cb (void *cls,
 
   /* verify melt signature */
   {
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
     struct TALER_Amount fee_refresh;
 
     TALER_denom_pub_hash (denom_pub,
@@ -1611,8 +1611,8 @@ deposit_cb (void *cls,
 
   /* Verify deposit signature */
   {
-    struct TALER_MerchantWireHash h_wire;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_MerchantWireHashP h_wire;
+    struct TALER_DenominationHashP h_denom_pub;
     struct TALER_Amount deposit_fee;
 
     TALER_denom_pub_hash (denom_pub,
@@ -1761,7 +1761,7 @@ refund_cb (void *cls,
            const struct TALER_CoinSpendPublicKeyP *coin_pub,
            const struct TALER_MerchantPublicKeyP *merchant_pub,
            const struct TALER_MerchantSignatureP *merchant_sig,
-           const struct TALER_PrivateContractHash *h_contract_terms,
+           const struct TALER_PrivateContractHashP *h_contract_terms,
            uint64_t rtransaction_id,
            const struct TALER_Amount *amount_with_fee)
 {
@@ -2089,7 +2089,7 @@ recoup_refresh_cb (void *cls,
                    struct GNUNET_TIME_Timestamp timestamp,
                    const struct TALER_Amount *amount,
                    const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-                   const struct TALER_DenominationHash *old_denom_pub_hash,
+                   const struct TALER_DenominationHashP *old_denom_pub_hash,
                    const struct TALER_CoinPublicInfo *coin,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct TALER_CoinSpendSignatureP *coin_sig,

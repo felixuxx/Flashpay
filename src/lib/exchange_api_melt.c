@@ -199,7 +199,7 @@ verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
 {
   json_t *history;
   struct TALER_Amount total;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   memset (&h_denom_pub,
           0,
@@ -246,7 +246,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   };
   const struct MeltedCoin *mc;
   enum TALER_ErrorCode ec;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /* parse JSON reply */
   if (GNUNET_OK !=
@@ -458,7 +458,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   struct TALER_ExchangeWithdrawValues alg_values[mh->rd->fresh_pks_len];
 
   for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)

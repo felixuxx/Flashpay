@@ -270,7 +270,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_ExchangeWithdrawValues alg_values;
   struct TALER_AgeCommitmentHash ach;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
 
@@ -477,7 +477,7 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                                     keys[i].validity_duration))
         continue;
       {
-        struct TALER_CoinPubHash c_hash;
+        struct TALER_CoinPubHashP c_hash;
         struct TALER_PlanchetDetail pd;
 
         GNUNET_assert (GNUNET_YES ==

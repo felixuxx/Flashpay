@@ -199,11 +199,11 @@ deposit_confirmation_run (void *cls,
                           const struct TALER_TESTING_Command *cmd,
                           struct TALER_TESTING_Interpreter *is)
 {
-  static struct TALER_ExtensionContractHash no_h_extensions;
+  static struct TALER_ExtensionContractHashP no_h_extensions;
   struct DepositConfirmationState *dcs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
-  struct TALER_MerchantWireHash h_wire;
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_MerchantWireHashP h_wire;
+  struct TALER_PrivateContractHashP h_contract_terms;
   const struct GNUNET_TIME_Timestamp *exchange_timestamp = NULL;
   struct GNUNET_TIME_Timestamp timestamp;
   const struct GNUNET_TIME_Timestamp *wire_deadline;

@@ -26,7 +26,7 @@
 void
 TALER_merchant_refund_sign (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   uint64_t rtransaction_id,
   const struct TALER_Amount *amount,
   const struct TALER_MerchantPrivateKeyP *merchant_priv,
@@ -51,7 +51,7 @@ TALER_merchant_refund_sign (
 enum GNUNET_GenericReturnValue
 TALER_merchant_refund_verify (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   uint64_t rtransaction_id,
   const struct TALER_Amount *amount,
   const struct TALER_MerchantPublicKeyP *merchant_pub,

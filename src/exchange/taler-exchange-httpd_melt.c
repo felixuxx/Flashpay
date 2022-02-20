@@ -362,7 +362,7 @@ check_melt_valid (struct MHD_Connection *connection,
   if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
   {
     /* We are past deposit expiration time, but maybe this is a zombie? */
-    struct TALER_DenominationHash denom_hash;
+    struct TALER_DenominationHashP denom_hash;
     enum GNUNET_DB_QueryStatus qs;
 
     /* Check that the coin is dirty (we have seen it before), as we will

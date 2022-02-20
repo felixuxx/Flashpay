@@ -180,7 +180,7 @@ verify_and_execute_recoup_refresh (
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
   MHD_RESULT mret;
-  struct TALER_BlindedCoinHash h_blind;
+  struct TALER_BlindedCoinHashP h_blind;
 
   /* check denomination exists and is in recoup mode */
   dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
@@ -245,7 +245,7 @@ verify_and_execute_recoup_refresh (
   }
 
   {
-    struct TALER_CoinPubHash c_hash;
+    struct TALER_CoinPubHashP c_hash;
     struct TALER_BlindedPlanchet blinded_planchet;
 
     if (GNUNET_OK !=

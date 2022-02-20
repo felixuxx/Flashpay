@@ -49,7 +49,7 @@ struct TEH_DenominationKey
   /**
    * Hash code of the denomination public key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Meta data about the type of the denomination, such as fees and validity
@@ -141,7 +141,8 @@ TEH_keys_update_states (void);
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
+TEH_keys_denomination_by_hash (const struct
+                               TALER_DenominationHashP *h_denom_pub,
                                struct MHD_Connection *conn,
                                MHD_RESULT *mret);
 
@@ -162,7 +163,7 @@ TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (
   struct TEH_KeyStateHandle *ksh,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct MHD_Connection *conn,
   MHD_RESULT *mret);
 
@@ -179,7 +180,7 @@ TEH_keys_denomination_by_hash2 (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_withdraw (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_BlindedPlanchet *bp,
   struct TALER_BlindedDenominationSignature *bs);
 
@@ -196,7 +197,7 @@ TEH_keys_denomination_sign_withdraw (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_melt (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_BlindedPlanchet *bp,
   struct TALER_BlindedDenominationSignature *bs);
 
@@ -212,7 +213,7 @@ TEH_keys_denomination_sign_melt (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub_withdraw (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CsNonce *nonce,
   struct TALER_DenominationCSPublicRPairP *r_pub);
 
@@ -228,7 +229,7 @@ TEH_keys_denomination_cs_r_pub_withdraw (
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub_melt (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CsNonce *nonce,
   struct TALER_DenominationCSPublicRPairP *r_pub);
 
@@ -245,7 +246,8 @@ TEH_keys_denomination_cs_r_pub_melt (
  * @param h_denom_pub hash of the public key to revoke
  */
 void
-TEH_keys_denomination_revoke (const struct TALER_DenominationHash *h_denom_pub);
+TEH_keys_denomination_revoke (const struct
+                              TALER_DenominationHashP *h_denom_pub);
 
 
 /**
@@ -422,7 +424,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
  *         #GNUNET_SYSERR on hard errors
  */
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
+TEH_keys_load_fees (const struct TALER_DenominationHashP *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 

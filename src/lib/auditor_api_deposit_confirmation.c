@@ -170,9 +170,9 @@ handle_deposit_confirmation_finished (void *cls,
  * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
  */
 static enum GNUNET_GenericReturnValue
-verify_signatures (const struct TALER_MerchantWireHash *h_wire,
-                   const struct TALER_ExtensionContractHash *h_extensions,
-                   const struct TALER_PrivateContractHash *h_contract_terms,
+verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
+                   const struct TALER_ExtensionContractHashP *h_extensions,
+                   const struct TALER_PrivateContractHashP *h_contract_terms,
                    struct GNUNET_TIME_Timestamp exchange_timestamp,
                    struct GNUNET_TIME_Timestamp wire_deadline,
                    struct GNUNET_TIME_Timestamp refund_deadline,
@@ -236,9 +236,9 @@ verify_signatures (const struct TALER_MerchantWireHash *h_wire,
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_Handle *auditor,
-  const struct TALER_MerchantWireHash *h_wire,
-  const struct TALER_ExtensionContractHash *h_extensions,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,

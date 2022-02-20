@@ -293,7 +293,7 @@ deposit_run (void *cls,
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_MerchantPublicKeyP merchant_pub;
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
   enum TALER_ErrorCode ec;
   struct TALER_WireSaltP wire_salt;
   const char *payto_uri;
@@ -433,7 +433,7 @@ deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
   {
-    struct TALER_MerchantWireHash h_wire;
+    struct TALER_MerchantWireHashP h_wire;
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,

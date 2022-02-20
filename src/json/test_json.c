@@ -91,8 +91,8 @@ path_cb (void *cls,
 static int
 test_contract (void)
 {
-  struct TALER_PrivateContractHash h1;
-  struct TALER_PrivateContractHash h2;
+  struct TALER_PrivateContractHashP h1;
+  struct TALER_PrivateContractHashP h2;
   json_t *c1;
   json_t *c2;
   json_t *c3;
@@ -384,7 +384,7 @@ test_json_canon (void)
 static int
 test_rfc8785 (void)
 {
-  struct TALER_PrivateContractHash h1;
+  struct TALER_PrivateContractHashP h1;
   json_t *c1;
 
   c1 = json_pack ("{s:s}",

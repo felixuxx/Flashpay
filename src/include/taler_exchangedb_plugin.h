@@ -109,7 +109,7 @@ struct TALER_KycCompletedEventP
   /**
    * Public key of the reserve the event is about.
    */
-  struct TALER_PaytoHash h_payto;
+  struct TALER_PaytoHashP h_payto;
 };
 
 
@@ -257,7 +257,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_BlindedCoinHash h_blind_ev;
+      struct TALER_BlindedCoinHashP h_blind_ev;
       uint64_t denominations_serial;
       struct TALER_BlindedDenominationSignature denom_sig;
       uint64_t reserve_uuid;
@@ -342,7 +342,7 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp refund_deadline;
       struct GNUNET_TIME_Timestamp wire_deadline;
       struct TALER_MerchantPublicKeyP merchant_pub;
-      struct TALER_PrivateContractHash h_contract_terms;
+      struct TALER_PrivateContractHashP h_contract_terms;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_WireSaltP wire_salt;
       uint64_t wire_target_serial_id;
@@ -648,7 +648,7 @@ typedef void
 (*TALER_EXCHANGEDB_DenominationsCallback)(
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig,
   bool recoup_possible);
@@ -700,7 +700,7 @@ typedef void
 (*TALER_EXCHANGEDB_AuditorDenominationsCallback)(
   void *cls,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_AuditorSignatureP *auditor_sig);
 
 
@@ -720,7 +720,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
   /**
    * Hash of the denomination key (which coin was generated).
    */
-  struct TALER_DenominationHash denom_pub_hash;
+  struct TALER_DenominationHashP denom_pub_hash;
 
   /**
    * Value of the coin being exchangeed (matching the denomination key)
@@ -753,7 +753,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
    * Hash over the blinded message, needed to verify
    * the @e reserve_sig.
    */
-  struct TALER_BlindedCoinHash h_coin_envelope;
+  struct TALER_BlindedCoinHashP h_coin_envelope;
 
   /**
    * Signature confirming the withdrawal, matching @e reserve_pub,
@@ -844,7 +844,7 @@ struct TALER_EXCHANGEDB_RecoupListEntry
   /**
    * Hash of the public denomination key used to sign the coin.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Public key of the reserve the coin was paid back into.
@@ -1024,7 +1024,7 @@ struct TALER_EXCHANGEDB_Deposit
    * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
    * Salt used by the merchant to compute "h_wire".
@@ -1112,12 +1112,12 @@ struct TALER_EXCHANGEDB_DepositListEntry
    * Hash over the proposa data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
    * Hash of the public denomination key used to sign the coin.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Age commitment hash, if applicable ot the denomination.  Should be all
@@ -1205,7 +1205,7 @@ struct TALER_EXCHANGEDB_RefundListEntry
    * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
    * Merchant-generated REFUND transaction ID to detect duplicate
@@ -1318,7 +1318,7 @@ struct TALER_EXCHANGEDB_MeltListEntry
   /**
    * Hash of the public denomination key used to sign the coin.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Hash of the age commitment used to sign the coin, if age restriction was
@@ -1549,7 +1549,7 @@ typedef enum GNUNET_DB_QueryStatus
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *deposit_fee,
-  const struct TALER_PrivateContractHash *h_contract_terms);
+  const struct TALER_PrivateContractHashP *h_contract_terms);
 
 
 /**
@@ -1576,7 +1576,7 @@ typedef enum GNUNET_DB_QueryStatus
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *deposit_fee,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   uint64_t wire_target,
   const char *payto_uri);
 
@@ -1671,7 +1671,7 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
   /**
    * Hash of the public denomination key of the coin.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Signature of the original coin being refreshed over the
@@ -1682,7 +1682,7 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
   /**
    * Hash of the blinded new coin, that is @e coin_ev.
    */
-  struct TALER_BlindedCoinHash coin_envelope_hash;
+  struct TALER_BlindedCoinHashP coin_envelope_hash;
 
   /**
    * Signature generated by the exchange over the coin (in blinded format).
@@ -1712,7 +1712,7 @@ struct TALER_EXCHANGEDB_CsRevealFreshCoinData
   /**
    * Denomination of the fresh coin.
    */
-  struct TALER_DenominationHash new_denom_pub_hash;
+  struct TALER_DenominationHashP new_denom_pub_hash;
 
   /**
    * Blind signature of the fresh coin (possibly updated
@@ -1834,7 +1834,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_MerchantSignatureP *merchant_sig,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   uint64_t rtransaction_id,
   const struct TALER_Amount *amount_with_fee);
 
@@ -1915,7 +1915,7 @@ typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_WithdrawCallback)(
   void *cls,
   uint64_t rowid,
-  const struct TALER_BlindedCoinHash *h_blind_ev,
+  const struct TALER_BlindedCoinHashP *h_blind_ev,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig,
@@ -1960,7 +1960,7 @@ typedef void
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *account_payto_uri,
   struct GNUNET_TIME_Timestamp exec_time,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *coin_value,
@@ -2059,7 +2059,7 @@ typedef enum GNUNET_GenericReturnValue
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-  const struct TALER_DenominationHash *old_denom_pub_hash,
+  const struct TALER_DenominationHashP *old_denom_pub_hash,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -2142,7 +2142,7 @@ typedef void
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const union TALER_DenominationBlindingKeyP *coin_blind,
-  const struct TALER_BlindedCoinHash *h_blinded_ev,
+  const struct TALER_BlindedCoinHashP *h_blinded_ev,
   const struct TALER_Amount *amount);
 
 
@@ -2357,7 +2357,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_denomination_info)(
     void *cls,
-    const struct TALER_DenominationHash *denom_pub_hash,
+    const struct TALER_DenominationHashP *denom_pub_hash,
     struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 
@@ -2483,7 +2483,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_kyc_status)(void *cls,
                        uint64_t payment_target_uuid,
-                       struct TALER_PaytoHash *h_payto,
+                       struct TALER_PaytoHashP *h_payto,
                        struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
@@ -2537,7 +2537,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lock_nonce)(void *cls,
                 const struct TALER_CsNonce *nonce,
-                const struct TALER_DenominationHash *denom_pub_hash,
+                const struct TALER_DenominationHashP *denom_pub_hash,
                 const union TALER_EXCHANGEDB_NonceLockTargetP *target);
 
 
@@ -2554,7 +2554,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_withdraw_info)(void *cls,
-                       const struct TALER_BlindedCoinHash *bch,
+                       const struct TALER_BlindedCoinHashP *bch,
                        struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
@@ -2623,7 +2623,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_EXCHANGEDB_Deposit *deposit,
     uint64_t known_coin_id,
-    const struct TALER_PaytoHash *h_payto,
+    const struct TALER_PaytoHashP *h_payto,
     bool extension_blocked,
     struct GNUNET_TIME_Timestamp *exchange_timestamp,
     bool *balance_ok,
@@ -2798,7 +2798,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   long long
   (*count_known_coins) (void *cls,
-                        const struct TALER_DenominationHash *denom_pub_hash);
+                        const struct TALER_DenominationHashP *denom_pub_hash);
 
 
   /**
@@ -2846,7 +2846,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*ensure_coin_known)(void *cls,
                        const struct TALER_CoinPublicInfo *coin,
                        uint64_t *known_coin_id,
-                       struct TALER_DenominationHash *denom_pub_hash,
+                       struct TALER_DenominationHashP *denom_pub_hash,
                        struct TALER_AgeCommitmentHash *age_hash);
 
 
@@ -2876,7 +2876,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_coin_denomination)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            uint64_t *known_coin_id,
-                           struct TALER_DenominationHash *denom_hash);
+                           struct TALER_DenominationHashP *denom_hash);
 
 
   /**
@@ -2898,8 +2898,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*have_deposit2)(
     void *cls,
-    const struct TALER_PrivateContractHash *h_contract_terms,
-    const struct TALER_MerchantWireHash *h_wire,
+    const struct TALER_PrivateContractHashP *h_contract_terms,
+    const struct TALER_MerchantWireHashP *h_wire,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     const struct TALER_MerchantPublicKeyP *merchant,
     struct GNUNET_TIME_Timestamp refund_deadline,
@@ -2950,7 +2950,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_refunds_by_coin)(void *cls,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             const struct TALER_MerchantPublicKeyP *merchant_pub,
-                            const struct TALER_PrivateContractHash *h_contract,
+                            const struct TALER_PrivateContractHashP *h_contract,
                             TALER_EXCHANGEDB_RefundCoinCallback cb,
                             void *cb_cls);
 
@@ -3189,8 +3189,8 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_transfer_by_deposit)(
     void *cls,
-    const struct TALER_PrivateContractHash *h_contract_terms,
-    const struct TALER_MerchantWireHash *h_wire,
+    const struct TALER_PrivateContractHashP *h_contract_terms,
+    const struct TALER_MerchantWireHashP *h_wire,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     bool *pending,
@@ -3614,7 +3614,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_by_h_blind)(void *cls,
-                            const struct TALER_BlindedCoinHash *bch,
+                            const struct TALER_BlindedCoinHashP *bch,
                             struct TALER_ReservePublicKeyP *reserve_pub,
                             uint64_t *reserve_out_serial_id);
 
@@ -3631,7 +3631,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_old_coin_by_h_blind)(void *cls,
-                             const struct TALER_BlindedCoinHash *h_blind_ev,
+                             const struct TALER_BlindedCoinHashP *h_blind_ev,
                              struct TALER_CoinSpendPublicKeyP *old_coin_pub,
                              uint64_t *rrc_serial);
 
@@ -3648,7 +3648,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_denomination_revocation)(
     void *cls,
-    const struct TALER_DenominationHash *denom_pub_hash,
+    const struct TALER_DenominationHashP *denom_pub_hash,
     const struct TALER_MasterSignatureP *master_sig);
 
 
@@ -3663,11 +3663,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_denomination_revocation)(void *cls,
-                                 const struct
-                                 TALER_DenominationHash *denom_pub_hash,
-                                 struct TALER_MasterSignatureP *master_sig,
-                                 uint64_t *rowid);
+  (*get_denomination_revocation)(
+    void *cls,
+    const struct TALER_DenominationHashP *denom_pub_hash,
+    struct TALER_MasterSignatureP *master_sig,
+    uint64_t *rowid);
 
 
   /**
@@ -3882,7 +3882,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_denomination_key)(
     void *cls,
-    const struct TALER_DenominationHash *h_denom_pub,
+    const struct TALER_DenominationHashP *h_denom_pub,
     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
 
@@ -3899,7 +3899,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*add_denomination_key)(
     void *cls,
-    const struct TALER_DenominationHash *h_denom_pub,
+    const struct TALER_DenominationHashP *h_denom_pub,
     const struct TALER_DenominationPublicKey *denom_pub,
     const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
     const struct TALER_MasterSignatureP *master_sig);
@@ -3950,7 +3950,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_auditor_denom_sig)(
     void *cls,
-    const struct TALER_DenominationHash *h_denom_pub,
+    const struct TALER_DenominationHashP *h_denom_pub,
     const struct TALER_AuditorPublicKeyP *auditor_pub,
     const struct TALER_AuditorSignatureP *auditor_sig);
 
@@ -3967,7 +3967,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_auditor_denom_sig)(
     void *cls,
-    const struct TALER_DenominationHash *h_denom_pub,
+    const struct TALER_DenominationHashP *h_denom_pub,
     const struct TALER_AuditorPublicKeyP *auditor_pub,
     struct TALER_AuditorSignatureP *auditor_sig);
 

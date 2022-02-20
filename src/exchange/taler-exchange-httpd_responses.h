@@ -58,7 +58,7 @@ TEH_RESPONSE_compile_reserve_history (
 MHD_RESULT
 TEH_RESPONSE_reply_unknown_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph);
+  const struct TALER_DenominationHashP *dph);
 
 
 /**
@@ -74,7 +74,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph,
+  const struct TALER_DenominationHashP *dph,
   enum TALER_ErrorCode ec,
   const char *oper);
 
@@ -89,7 +89,7 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph);
+  const struct TALER_DenominationHashP *dph);
 
 
 /**

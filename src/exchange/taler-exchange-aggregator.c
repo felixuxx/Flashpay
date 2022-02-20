@@ -370,7 +370,7 @@ deposit_cb (void *cls,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
-            const struct TALER_PrivateContractHash *h_contract_terms,
+            const struct TALER_PrivateContractHashP *h_contract_terms,
             uint64_t wire_target,
             const char *payto_uri)
 {
@@ -516,7 +516,7 @@ aggregate_cb (void *cls,
               const struct TALER_CoinSpendPublicKeyP *coin_pub,
               const struct TALER_Amount *amount_with_fee,
               const struct TALER_Amount *deposit_fee,
-              const struct TALER_PrivateContractHash *h_contract_terms)
+              const struct TALER_PrivateContractHashP *h_contract_terms)
 {
   struct AggregationUnit *au = cls;
   struct TALER_Amount old;

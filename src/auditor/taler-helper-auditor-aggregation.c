@@ -393,7 +393,7 @@ struct WireCheckContext
 static int
 check_transaction_history_for_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_DenominationKeyValidityPS *issue,
   const struct TALER_EXCHANGEDB_TransactionList *tl_head,
@@ -699,7 +699,7 @@ wire_transfer_information_cb (
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *account_pay_uri,
   struct GNUNET_TIME_Timestamp exec_time,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *coin_value,

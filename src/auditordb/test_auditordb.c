@@ -130,10 +130,10 @@ run (void *cls)
 
   struct TALER_MasterPublicKeyP master_pub;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_DenominationHash rnd_hash;
+  struct TALER_DenominationHashP rnd_hash;
   struct TALER_DenominationPrivateKey denom_priv;
   struct TALER_DenominationPublicKey denom_pub;
-  struct TALER_DenominationHash denom_pub_hash;
+  struct TALER_DenominationHashP denom_pub_hash;
   struct GNUNET_TIME_Timestamp now;
   struct GNUNET_TIME_Timestamp past;
   struct GNUNET_TIME_Timestamp future;
@@ -488,7 +488,7 @@ run (void *cls)
   int
   select_historic_denom_revenue_result (
     void *cls,
-    const struct TALER_DenominationHash *denom_pub_hash2,
+    const struct TALER_DenominationHashP *denom_pub_hash2,
     struct GNUNET_TIME_Timestamp revenue_timestamp2,
     const struct TALER_Amount *revenue_balance2,
     const struct TALER_Amount *loss2)

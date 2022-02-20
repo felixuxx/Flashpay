@@ -35,7 +35,7 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_denominations (struct PostgresClosure *pg,
                              const struct TALER_EXCHANGEDB_TableData *td)
 {
-  struct TALER_DenominationHash denom_hash;
+  struct TALER_DenominationHashP denom_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&denom_hash),
@@ -109,7 +109,7 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_wire_targets (struct PostgresClosure *pg,
                             const struct TALER_EXCHANGEDB_TableData *td)
 {
-  struct TALER_PaytoHash payto_hash;
+  struct TALER_PaytoHashP payto_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&payto_hash),
     GNUNET_PQ_query_param_string (

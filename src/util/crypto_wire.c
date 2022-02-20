@@ -65,7 +65,7 @@ TALER_exchange_wire_signature_make (
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
                                     const struct TALER_WireSaltP *salt,
-                                    struct TALER_MerchantWireHash *hc)
+                                    struct TALER_MerchantWireHashP *hc)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (hc,

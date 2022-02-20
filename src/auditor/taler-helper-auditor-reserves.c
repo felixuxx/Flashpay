@@ -491,7 +491,7 @@ handle_reserve_in (void *cls,
 static enum GNUNET_GenericReturnValue
 handle_reserve_out (void *cls,
                     uint64_t rowid,
-                    const struct TALER_BlindedCoinHash *h_blind_ev,
+                    const struct TALER_BlindedCoinHashP *h_blind_ev,
                     const struct TALER_DenominationPublicKey *denom_pub,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_ReserveSignatureP *reserve_sig,
@@ -508,7 +508,7 @@ handle_reserve_out (void *cls,
   struct GNUNET_TIME_Timestamp valid_start;
   struct GNUNET_TIME_Timestamp expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);

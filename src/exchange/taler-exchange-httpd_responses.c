@@ -61,7 +61,7 @@ TEH_RESPONSE_compile_transaction_history (
       {
         const struct TALER_EXCHANGEDB_DepositListEntry *deposit =
           pos->details.deposit;
-        struct TALER_MerchantWireHash h_wire;
+        struct TALER_MerchantWireHashP h_wire;
 
         TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
                                             &deposit->wire_salt,
@@ -410,7 +410,7 @@ TEH_RESPONSE_compile_transaction_history (
 MHD_RESULT
 TEH_RESPONSE_reply_unknown_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph)
+  const struct TALER_DenominationHashP *dph)
 {
   struct TALER_ExchangePublicKeyP epub;
   struct TALER_ExchangeSignatureP esig;
@@ -456,7 +456,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph,
+  const struct TALER_DenominationHashP *dph,
   enum TALER_ErrorCode ec,
   const char *oper)
 {
@@ -509,7 +509,7 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
   struct MHD_Connection *connection,
-  const struct TALER_DenominationHash *dph)
+  const struct TALER_DenominationHashP *dph)
 {
   struct TALER_ExchangePublicKeyP epub;
   struct TALER_ExchangeSignatureP esig;

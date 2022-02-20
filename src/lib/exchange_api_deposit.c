@@ -83,18 +83,18 @@ struct TALER_EXCHANGE_DepositHandle
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
 
   /**
    * Hash over the extension options of the deposit, 0 if there
    * were not extension options.
    */
-  struct TALER_ExtensionContractHash h_extensions GNUNET_PACKED;
+  struct TALER_ExtensionContractHashP h_extensions GNUNET_PACKED;
 
   /**
    * Time when this confirmation was generated / when the exchange received
@@ -242,7 +242,7 @@ verify_deposit_signature_conflict (
   json_t *history;
   struct TALER_Amount total;
   enum TALER_ErrorCode ec;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   memset (&h_denom_pub,
           0,
@@ -476,14 +476,14 @@ handle_deposit_finished (void *cls,
 static enum GNUNET_GenericReturnValue
 verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
-                   const struct TALER_MerchantWireHash *h_wire,
-                   const struct TALER_PrivateContractHash *h_contract_terms,
-                   const struct TALER_ExtensionContractHash *ech,
+                   const struct TALER_MerchantWireHashP *h_wire,
+                   const struct TALER_PrivateContractHashP *h_contract_terms,
+                   const struct TALER_ExtensionContractHashP *ech,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_AgeCommitmentHash *h_age_commitment,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
-                   const struct TALER_DenominationHash *denom_pub_hash,
+                   const struct TALER_DenominationHashP *denom_pub_hash,
                    struct GNUNET_TIME_Timestamp timestamp,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    struct GNUNET_TIME_Timestamp refund_deadline,
@@ -554,7 +554,7 @@ TALER_EXCHANGE_deposit (
   struct GNUNET_TIME_Timestamp wire_deadline,
   const char *merchant_payto_uri,
   const struct TALER_WireSaltP *wire_salt,
-  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -574,10 +574,10 @@ TALER_EXCHANGE_deposit (
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
-  struct TALER_MerchantWireHash h_wire;
-  struct TALER_DenominationHash denom_pub_hash;
+  struct TALER_MerchantWireHashP h_wire;
+  struct TALER_DenominationHashP denom_pub_hash;
   struct TALER_Amount amount_without_fee;
-  struct TALER_ExtensionContractHash ech;
+  struct TALER_ExtensionContractHashP ech;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
   if (NULL != extension_details)

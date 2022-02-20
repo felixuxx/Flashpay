@@ -234,7 +234,7 @@ TEH_handler_management_post_extensions (
 
   /* Verify the signature */
   {
-    struct TALER_ExtensionConfigHash h_config;
+    struct TALER_ExtensionConfigHashP h_config;
 
     if (GNUNET_OK !=
         TALER_JSON_extensions_config_hash (extensions, &h_config) ||

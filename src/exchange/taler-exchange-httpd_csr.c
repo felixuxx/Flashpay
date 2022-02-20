@@ -78,12 +78,12 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
 
     {
       struct TALER_CsNonce nonces[csr_requests_num];
-      struct TALER_DenominationHash denom_pub_hashes[csr_requests_num];
+      struct TALER_DenominationHashP denom_pub_hashes[csr_requests_num];
 
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
         uint32_t coin_off;
-        struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
+        struct TALER_DenominationHashP *denom_pub_hash = &denom_pub_hashes[i];
         struct GNUNET_JSON_Specification csr_spec[] = {
           GNUNET_JSON_spec_uint32 ("coin_offset",
                                    &coin_off),
@@ -112,7 +112,7 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
         const struct TALER_CsNonce *nonce = &nonces[i];
-        const struct TALER_DenominationHash *denom_pub_hash =
+        const struct TALER_DenominationHashP *denom_pub_hash =
           &denom_pub_hashes[i];
         struct TALER_DenominationCSPublicRPairP *r_pub
           = &ewvs[i].details.cs_values;
@@ -228,7 +228,7 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
                           const char *const args[])
 {
   struct TALER_CsNonce nonce;
-  struct TALER_DenominationHash denom_pub_hash;
+  struct TALER_DenominationHashP denom_pub_hash;
   struct TALER_ExchangeWithdrawValues ewv = {
     .cipher = TALER_DENOMINATION_CS
   };
@@ -238,7 +238,7 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
                             sizeof (struct TALER_CsNonce)),
     GNUNET_JSON_spec_fixed ("denom_pub_hash",
                             &denom_pub_hash,
-                            sizeof (struct TALER_DenominationHash)),
+                            sizeof (struct TALER_DenominationHashP)),
     GNUNET_JSON_spec_end ()
   };
   struct TEH_DenominationKey *dk;

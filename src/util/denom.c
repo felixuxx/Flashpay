@@ -147,7 +147,7 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
-  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_CoinPubHashP *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   const struct TALER_DenominationPublicKey *denom_pub)
 {
@@ -227,7 +227,7 @@ TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
 
 void
 TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
-                      struct TALER_DenominationHash *denom_hash)
+                      struct TALER_DenominationHashP *denom_hash)
 {
   uint32_t opt[2] = {
     htonl (denom_pub->age_mask.mask),
@@ -302,7 +302,7 @@ TALER_denom_blind (
   const struct TALER_AgeCommitmentHash *ach,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_ExchangeWithdrawValues *alg_values,
-  struct TALER_CoinPubHash *c_hash,
+  struct TALER_CoinPubHashP *c_hash,
   struct TALER_BlindedPlanchet *blinded_planchet)
 {
   TALER_coin_pub_hash (coin_pub,
@@ -352,7 +352,7 @@ TALER_denom_blind (
 enum GNUNET_GenericReturnValue
 TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
                         const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_CoinPubHash *c_hash)
+                        const struct TALER_CoinPubHashP *c_hash)
 {
   if (denom_pub->cipher != denom_sig->cipher)
   {

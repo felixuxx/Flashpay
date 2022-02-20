@@ -76,7 +76,7 @@ static struct GNUNET_SCHEDULER_Task *task;
 /**
  * Hash of the denomination.
  */
-static struct TALER_DenominationHash h_denom_pub;
+static struct TALER_DenominationHashP h_denom_pub;
 
 /**
  * "signature" to use for the coin(s).
@@ -223,7 +223,7 @@ struct Merchant
    * the exchange from the detailed wire data provided by the
    * merchant.
    */
-  struct TALER_MerchantWireHash h_wire;
+  struct TALER_MerchantWireHashP h_wire;
 
   /**
    * Salt used when computing @e h_wire.
@@ -249,7 +249,7 @@ struct Deposit
    * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
 };
 
@@ -299,7 +299,7 @@ add_deposit (const struct Merchant *m)
   struct Deposit d;
   struct TALER_EXCHANGEDB_Deposit deposit;
   uint64_t known_coin_id;
-  struct TALER_DenominationHash dph;
+  struct TALER_DenominationHashP dph;
   struct TALER_AgeCommitmentHash agh;
 
   RANDOMIZE (&d.coin.coin_pub);
@@ -487,7 +487,7 @@ run (void *cls,
   {
     struct TALER_DenominationPrivateKey pk;
     struct TALER_DenominationPublicKey denom_pub;
-    struct TALER_CoinPubHash c_hash;
+    struct TALER_CoinPubHashP c_hash;
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetMasterSecretP ps;

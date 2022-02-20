@@ -219,7 +219,7 @@ track_transfer_cb (void *cls,
     {
       const struct TALER_TESTING_Command *wire_details_cmd;
       const char **payto_uri;
-      struct TALER_PaytoHash h_payto;
+      struct TALER_PaytoHashP h_payto;
 
       wire_details_cmd
         = TALER_TESTING_interpreter_lookup_command (is,

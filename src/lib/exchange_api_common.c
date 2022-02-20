@@ -124,8 +124,8 @@ TALER_EXCHANGE_parse_reserve_history (
                               "WITHDRAW"))
     {
       struct TALER_ReserveSignatureP sig;
-      struct TALER_DenominationHash h_denom_pub;
-      struct TALER_BlindedCoinHash bch;
+      struct TALER_DenominationHashP h_denom_pub;
+      struct TALER_BlindedCoinHashP bch;
       struct TALER_Amount withdraw_fee;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
@@ -411,7 +411,7 @@ TALER_EXCHANGE_verify_coin_history (
   const char *currency,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   json_t *history,
-  struct TALER_DenominationHash *h_denom_pub,
+  struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_Amount *total)
 {
   size_t len;
@@ -470,9 +470,9 @@ TALER_EXCHANGE_verify_coin_history (
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      struct TALER_MerchantWireHash h_wire;
-      struct TALER_PrivateContractHash h_contract_terms;
-      // struct TALER_ExtensionContractHash h_extensions; // FIXME!
+      struct TALER_MerchantWireHashP h_wire;
+      struct TALER_PrivateContractHashP h_contract_terms;
+      // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline = {0};
@@ -609,7 +609,7 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "REFUND"))
     {
-      struct TALER_PrivateContractHash h_contract_terms;
+      struct TALER_PrivateContractHashP h_contract_terms;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct TALER_MerchantSignatureP sig;
       struct TALER_Amount refund_fee;

@@ -80,7 +80,7 @@ struct HelperDenomination
   /**
    * Hash of the full denomination key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /**
    * Signature over this key from the security module's key.
@@ -1295,7 +1295,7 @@ static void
 denomination_info_cb (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig,
   bool recoup_possible)
@@ -1472,7 +1472,7 @@ static void
 auditor_denom_cb (
   void *cls,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
   struct TEH_KeyStateHandle *ksh = cls;
@@ -2386,7 +2386,8 @@ TEH_keys_get_state (void)
 
 
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
+TEH_keys_denomination_by_hash (const struct
+                               TALER_DenominationHashP *h_denom_pub,
                                struct MHD_Connection *conn,
                                MHD_RESULT *mret)
 {
@@ -2411,7 +2412,7 @@ TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (
   struct TEH_KeyStateHandle *ksh,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   struct MHD_Connection *conn,
   MHD_RESULT *mret)
 {
@@ -2433,7 +2434,7 @@ TEH_keys_denomination_by_hash2 (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_withdraw (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_BlindedPlanchet *bp,
   struct TALER_BlindedDenominationSignature *bs)
 {
@@ -2472,7 +2473,7 @@ TEH_keys_denomination_sign_withdraw (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_melt (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_BlindedPlanchet *bp,
   struct TALER_BlindedDenominationSignature *bs)
 {
@@ -2511,7 +2512,7 @@ TEH_keys_denomination_sign_melt (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub_melt (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CsNonce *nonce,
   struct TALER_DenominationCSPublicRPairP *r_pub)
 {
@@ -2543,7 +2544,7 @@ TEH_keys_denomination_cs_r_pub_melt (
 
 enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub_withdraw (
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CsNonce *nonce,
   struct TALER_DenominationCSPublicRPairP *r_pub)
 {
@@ -2574,7 +2575,7 @@ TEH_keys_denomination_cs_r_pub_withdraw (
 
 
 void
-TEH_keys_denomination_revoke (const struct TALER_DenominationHash *h_denom_pub)
+TEH_keys_denomination_revoke (const struct TALER_DenominationHashP *h_denom_pub)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -2897,7 +2898,7 @@ load_extension_data (const char *section_name,
 
 
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
+TEH_keys_load_fees (const struct TALER_DenominationHashP *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {

@@ -25,9 +25,9 @@
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_deposit_confirm_verify (
-  const struct TALER_PrivateContractHash *h_contract_terms,
-  const struct TALER_MerchantWireHash *h_wire,
-  const struct TALER_ExtensionContractHash *h_extensions,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionContractHashP *h_extensions,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,

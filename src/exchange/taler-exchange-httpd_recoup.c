@@ -42,7 +42,7 @@ struct RecoupContext
   /**
    * Hash identifying the withdraw request.
    */
-  struct TALER_BlindedCoinHash h_coin_ev;
+  struct TALER_BlindedCoinHashP h_coin_ev;
 
   /**
    * Set by #recoup_transaction() to the reserve that will
@@ -250,7 +250,7 @@ verify_and_execute_recoup (
      (a bit later) check that this coin was indeed
      signed by us. */
   {
-    struct TALER_CoinPubHash c_hash;
+    struct TALER_CoinPubHashP c_hash;
     struct TALER_BlindedPlanchet blinded_planchet;
 
     if (GNUNET_OK !=

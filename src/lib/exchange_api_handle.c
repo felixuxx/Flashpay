@@ -437,7 +437,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   off = 0;
   json_array_foreach (keys, i, key) {
     struct TALER_AuditorSignatureP auditor_sig;
-    struct TALER_DenominationHash denom_h;
+    struct TALER_DenominationHashP denom_h;
     const struct TALER_EXCHANGE_DenomPublicKey *dk;
     unsigned int dk_off;
     struct GNUNET_JSON_Specification kspec[] = {
@@ -1005,7 +1005,7 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (JSON_ARRAY != json_typeof (recoup_array));
 
       json_array_foreach (recoup_array, index, recoup_info) {
-        struct TALER_DenominationHash h_denom_pub;
+        struct TALER_DenominationHashP h_denom_pub;
         struct GNUNET_JSON_Specification spec[] = {
           GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                        &h_denom_pub),
@@ -2099,7 +2099,7 @@ TALER_EXCHANGE_destroy_denomination_key (
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key_by_hash (
   const struct TALER_EXCHANGE_Keys *keys,
-  const struct TALER_DenominationHash *hc)
+  const struct TALER_DenominationHashP *hc)
 {
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_memcmp (hc,

@@ -204,7 +204,7 @@ static MHD_RESULT
 verify_and_execute_refund (struct MHD_Connection *connection,
                            struct TALER_EXCHANGEDB_Refund *refund)
 {
-  struct TALER_DenominationHash denom_hash;
+  struct TALER_DenominationHashP denom_hash;
   struct RefundContext rctx = {
     .refund = refund
   };

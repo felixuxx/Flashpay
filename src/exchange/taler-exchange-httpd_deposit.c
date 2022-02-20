@@ -59,9 +59,10 @@
 static MHD_RESULT
 reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_MerchantWireHash *h_wire,
-                       const struct TALER_ExtensionContractHash *h_extensions,
-                       const struct TALER_PrivateContractHash *h_contract_terms,
+                       const struct TALER_MerchantWireHashP *h_wire,
+                       const struct TALER_ExtensionContractHashP *h_extensions,
+                       const struct
+                       TALER_PrivateContractHashP *h_contract_terms,
                        struct GNUNET_TIME_Timestamp exchange_timestamp,
                        struct GNUNET_TIME_Timestamp refund_deadline,
                        struct GNUNET_TIME_Timestamp wire_deadline,
@@ -128,7 +129,7 @@ struct DepositContext
   /**
    * Hash of the payto URI.
    */
-  struct TALER_PaytoHash h_payto;
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * Row of of the coin in the known_coins table.
@@ -254,7 +255,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                 &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
-  struct TALER_MerchantWireHash h_wire;
+  struct TALER_MerchantWireHashP h_wire;
 
   memset (&deposit,
           0,

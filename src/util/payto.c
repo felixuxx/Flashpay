@@ -226,7 +226,7 @@ TALER_payto_validate (const char *payto_uri)
 
 void
 TALER_payto_hash (const char *payto,
-                  struct TALER_PaytoHash *h_payto)
+                  struct TALER_PaytoHashP *h_payto)
 {
   GNUNET_CRYPTO_hash (payto,
                       strlen (payto) + 1,

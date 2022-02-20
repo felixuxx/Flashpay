@@ -914,7 +914,7 @@ upload_denom_revocation (const char *exchange_url,
                          const json_t *value)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   struct DenomRevocationRequest *drr;
   const char *err_name;
   unsigned int err_line;
@@ -1800,7 +1800,7 @@ upload_extensions (const char *exchange_url,
 
   /* 2. Verify the signature */
   {
-    struct TALER_ExtensionConfigHash h_config;
+    struct TALER_ExtensionConfigHashP h_config;
 
     if (GNUNET_OK !=
         TALER_JSON_extensions_config_hash (extensions, &h_config))
@@ -2023,7 +2023,7 @@ do_upload (char *const *args)
 static void
 do_revoke_denomination_key (char *const *args)
 {
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   struct TALER_MasterSignatureP master_sig;
 
   if (NULL != in)
@@ -2857,7 +2857,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
     enum GNUNET_GenericReturnValue ok;
 
     if (GNUNET_OK !=
@@ -3338,7 +3338,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -3645,7 +3645,7 @@ do_extensions_sign (char *const *args)
 {
   json_t *obj = json_object ();
   json_t *extensions = json_object ();
-  struct TALER_ExtensionConfigHash h_config;
+  struct TALER_ExtensionConfigHashP h_config;
   struct TALER_MasterSignatureP sig;
   const struct TALER_Extension *it;
 

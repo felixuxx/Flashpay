@@ -117,7 +117,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   };
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetDetail pd;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   struct TALER_AgeCommitmentHash *hac = NULL;
 
   /* parse reply */
@@ -207,7 +207,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   /* verify link_sig */
   {
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
-    struct TALER_BlindedCoinHash coin_envelope_hash;
+    struct TALER_BlindedCoinHashP coin_envelope_hash;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);

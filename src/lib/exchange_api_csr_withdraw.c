@@ -240,7 +240,7 @@ TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                      sizeof(struct TALER_CsNonce)),
       GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
                                      &pk->h_key,
-                                     sizeof(struct TALER_DenominationHash)));
+                                     sizeof(struct TALER_DenominationHashP)));
     GNUNET_assert (NULL != req);
     ctx = TEAH_handle_to_context (exchange);
     eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);

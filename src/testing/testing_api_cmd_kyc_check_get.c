@@ -121,7 +121,7 @@ check_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const char **payto_uri;
   const uint64_t *payment_target;
-  struct TALER_PaytoHash h_payto;
+  struct TALER_PaytoHashP h_payto;
 
   (void) cmd;
   kcg->is = is;

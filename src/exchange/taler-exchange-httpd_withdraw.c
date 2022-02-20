@@ -94,7 +94,7 @@ struct WithdrawContext
   /**
    * Hash of the (blinded) message to be signed by the Exchange.
    */
-  struct TALER_BlindedCoinHash h_coin_envelope;
+  struct TALER_BlindedCoinHashP h_coin_envelope;
 
   /**
    * Value of the coin being exchanged (matching the denomination key)

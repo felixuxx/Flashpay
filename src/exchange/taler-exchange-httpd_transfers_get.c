@@ -51,7 +51,7 @@ struct AggregatedDepositDetail
   /**
    * Hash of the contract terms.
    */
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
    * Coin's public key of the deposited coin.
@@ -273,7 +273,7 @@ handle_deposit_data (void *cls,
                      const struct TALER_MerchantPublicKeyP *merchant_pub,
                      const char *account_payto_uri,
                      struct GNUNET_TIME_Timestamp exec_time,
-                     const struct TALER_PrivateContractHash *h_contract_terms,
+                     const struct TALER_PrivateContractHashP *h_contract_terms,
                      const struct TALER_DenominationPublicKey *denom_pub,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_Amount *deposit_value,

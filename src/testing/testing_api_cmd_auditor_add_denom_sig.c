@@ -108,7 +108,7 @@ auditor_add_run (void *cls,
 {
   struct AuditorAddDenomSigState *ds = cls;
   struct TALER_AuditorSignatureP auditor_sig;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
 
   (void) cmd;

@@ -26,7 +26,7 @@
 void
 TALER_auditor_denom_validity_sign (
   const char *auditor_url,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Timestamp stamp_start,
   struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
@@ -64,7 +64,7 @@ TALER_auditor_denom_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_auditor_denom_validity_verify (
   const char *auditor_url,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Timestamp stamp_start,
   struct GNUNET_TIME_Timestamp stamp_expire_withdraw,

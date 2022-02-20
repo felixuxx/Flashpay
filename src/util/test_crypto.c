@@ -119,7 +119,7 @@ test_planchets_rsa (void)
   struct TALER_PlanchetDetail pd;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
@@ -228,7 +228,7 @@ test_planchets_cs (void)
   struct TALER_DenominationPrivateKey dk_priv;
   struct TALER_DenominationPublicKey dk_pub;
   struct TALER_PlanchetDetail pd;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
   struct TALER_ExchangeWithdrawValues alg_values;

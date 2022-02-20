@@ -537,7 +537,7 @@ cb_wt_never (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *account_payto_uri,
              struct GNUNET_TIME_Timestamp exec_time,
-             const struct TALER_PrivateContractHash *h_contract_terms,
+             const struct TALER_PrivateContractHashP *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -558,8 +558,8 @@ cb_wt_never (void *cls,
 
 
 static struct TALER_MerchantPublicKeyP merchant_pub_wt;
-static struct TALER_MerchantWireHash h_wire_wt;
-static struct TALER_PrivateContractHash h_contract_terms_wt;
+static struct TALER_MerchantWireHashP h_wire_wt;
+static struct TALER_PrivateContractHashP h_contract_terms_wt;
 static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
 static struct TALER_Amount coin_value_wt;
 static struct TALER_Amount coin_fee_wt;
@@ -577,7 +577,7 @@ cb_wt_check (void *cls,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *account_payto_uri,
              struct GNUNET_TIME_Timestamp exec_time,
-             const struct TALER_PrivateContractHash *h_contract_terms,
+             const struct TALER_PrivateContractHashP *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -639,7 +639,7 @@ deposit_cb (void *cls,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
-            const struct TALER_PrivateContractHash *h_contract_terms,
+            const struct TALER_PrivateContractHashP *h_contract_terms,
             uint64_t wire_target,
             const char *payto_uri)
 {
@@ -686,7 +686,7 @@ matching_deposit_cb (void *cls,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_Amount *amount_with_fee,
                      const struct TALER_Amount *deposit_fee,
-                     const struct TALER_PrivateContractHash *h_contract_terms)
+                     const struct TALER_PrivateContractHashP *h_contract_terms)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
 
@@ -761,7 +761,7 @@ audit_refund_cb (void *cls,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                  const struct TALER_MerchantSignatureP *merchant_sig,
-                 const struct TALER_PrivateContractHash *h_contract_terms,
+                 const struct TALER_PrivateContractHashP *h_contract_terms,
                  uint64_t rtransaction_id,
                  const struct TALER_Amount *amount_with_fee)
 {
@@ -828,7 +828,7 @@ audit_reserve_in_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 audit_reserve_out_cb (void *cls,
                       uint64_t rowid,
-                      const struct TALER_BlindedCoinHash *h_blind_ev,
+                      const struct TALER_BlindedCoinHashP *h_blind_ev,
                       const struct TALER_DenominationPublicKey *denom_pub,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
                       const struct TALER_ReserveSignatureP *reserve_sig,
@@ -860,7 +860,7 @@ test_gc (void)
   struct GNUNET_TIME_Timestamp now;
   struct GNUNET_TIME_Timestamp past;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
-  struct TALER_DenominationHash denom_hash;
+  struct TALER_DenominationHashP denom_hash;
 
   now = GNUNET_TIME_timestamp_get ();
   past = GNUNET_TIME_absolute_to_timestamp (
@@ -1079,7 +1079,8 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                         NULL));
 
   {
-    struct TALER_PrivateContractHash h_contract_terms_wt2 = h_contract_terms_wt;
+    struct TALER_PrivateContractHashP h_contract_terms_wt2 =
+      h_contract_terms_wt;
     bool pending;
     struct TALER_WireTransferIdentifierRawP wtid2;
     struct TALER_Amount coin_contribution2;
@@ -1335,7 +1336,7 @@ run (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp now;
   struct TALER_WireSaltP salt;
-  struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinPubHashP c_hash;
   uint64_t known_coin_id;
   uint64_t rrc_serial;
   struct TALER_EXCHANGEDB_Refresh refresh;
@@ -1580,7 +1581,7 @@ run (void *cls)
                                           &dkp->pub));
   deadline = GNUNET_TIME_timestamp_get ();
   {
-    struct TALER_DenominationHash dph;
+    struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
 
     FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
@@ -1597,7 +1598,7 @@ run (void *cls)
       = GNUNET_TIME_timestamp_get ();
     bool balance_ok;
     bool in_conflict;
-    struct TALER_PaytoHash h_payto;
+    struct TALER_PaytoHashP h_payto;
 
     RND_BLK (&h_payto);
     deposit.refund_deadline
@@ -1779,9 +1780,9 @@ run (void *cls)
                                            tprivs,
                                            &tpub));
     {
-      struct TALER_BlindedCoinHash h_coin_ev;
+      struct TALER_BlindedCoinHashP h_coin_ev;
       struct TALER_CoinSpendPublicKeyP ocp;
-      struct TALER_DenominationHash denom_hash;
+      struct TALER_DenominationHashP denom_hash;
 
       TALER_denom_pub_hash (&new_denom_pubs[0],
                             &denom_hash);
@@ -1829,7 +1830,7 @@ run (void *cls)
     union TALER_DenominationBlindingKeyP coin_bks;
     uint64_t new_known_coin_id;
     struct TALER_CoinPublicInfo new_coin;
-    struct TALER_DenominationHash dph;
+    struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
     bool recoup_ok;
     bool internal_failure;
@@ -2183,7 +2184,7 @@ run (void *cls)
   result = 8;
   {
     uint64_t known_coin_id;
-    struct TALER_DenominationHash dph;
+    struct TALER_DenominationHashP dph;
     struct TALER_AgeCommitmentHash agh;
 
     FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
@@ -2197,7 +2198,7 @@ run (void *cls)
     struct GNUNET_TIME_Timestamp now;
     struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
-    struct TALER_MerchantWireHash h_wire;
+    struct TALER_MerchantWireHashP h_wire;
 
     now = GNUNET_TIME_timestamp_get ();
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -2301,7 +2302,7 @@ run (void *cls)
                          "test-2"));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
   {
-    struct TALER_MerchantWireHash h_wire;
+    struct TALER_MerchantWireHashP h_wire;
     struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
 

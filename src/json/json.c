@@ -490,7 +490,7 @@ forget (const json_t *in,
 
 enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
-                          struct TALER_PrivateContractHash *hc)
+                          struct TALER_PrivateContractHashP *hc)
 {
   enum GNUNET_GenericReturnValue ret;
   json_t *cjson;
@@ -1009,7 +1009,7 @@ TALER_JSON_get_error_code2 (const void *data,
 
 void
 TALER_deposit_extension_hash (const json_t *extensions,
-                              struct TALER_ExtensionContractHash *ech)
+                              struct TALER_ExtensionContractHashP *ech)
 {
   GNUNET_assert (GNUNET_OK ==
                  dump_and_hash (extensions,
@@ -1038,7 +1038,7 @@ TALER_JSON_canonicalize (const json_t *input)
 
 enum GNUNET_GenericReturnValue
 TALER_JSON_extensions_config_hash (const json_t *config,
-                                   struct TALER_ExtensionConfigHash *ech)
+                                   struct TALER_ExtensionConfigHashP *ech)
 {
   return dump_and_hash (config,
                         "taler-extension-configuration",

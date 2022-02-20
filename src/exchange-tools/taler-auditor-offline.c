@@ -430,7 +430,7 @@ upload_denomination_add (const char *exchange_url,
                          const json_t *value)
 {
   struct TALER_AuditorSignatureP auditor_sig;
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_DenominationHashP h_denom_pub;
   struct DenominationAddRequest *dar;
   const char *err_name;
   unsigned int err_line;
@@ -781,7 +781,7 @@ show_denomkeys (const json_t *denomkeys)
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -1066,7 +1066,7 @@ sign_denomkeys (const json_t *denomkeys)
                                    &master_sig),
       GNUNET_JSON_spec_end ()
     };
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHashP h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,

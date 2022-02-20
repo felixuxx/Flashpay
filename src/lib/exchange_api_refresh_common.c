@@ -166,7 +166,7 @@ TALER_EXCHANGE_get_melt_data_ (
       struct TALER_RefreshCoinData *rcd = &md->rcd[i][j];
       union TALER_DenominationBlindingKeyP *bks = &fcd->bks[i];
       struct TALER_PlanchetDetail pd;
-      struct TALER_CoinPubHash c_hash;
+      struct TALER_CoinPubHashP c_hash;
       struct TALER_AgeCommitmentHash *ach = NULL;
 
       TALER_transfer_secret_to_planchet_secret (&trans_sec,

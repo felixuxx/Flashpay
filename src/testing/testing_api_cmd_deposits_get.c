@@ -189,8 +189,8 @@ track_transaction_run (void *cls,
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const json_t *contract_terms;
   const json_t *wire_details;
-  struct TALER_MerchantWireHash h_wire_details;
-  struct TALER_PrivateContractHash h_contract_terms;
+  struct TALER_MerchantWireHashP h_wire_details;
+  struct TALER_PrivateContractHashP h_contract_terms;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
 
   (void) cmd;

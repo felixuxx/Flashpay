@@ -145,7 +145,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct TALER_CoinPubHash coin_hash;
+    struct TALER_CoinPubHashP coin_hash;
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_blinded_denom_sig ("ev_sig",
                                          &blind_sig),
@@ -375,7 +375,7 @@ TALER_EXCHANGE_refreshes_reveal (
   for (unsigned int i = 0; i<md.num_fresh_coins; i++)
   {
     const struct TALER_RefreshCoinData *rcd = &md.rcd[noreveal_index][i];
-    struct TALER_DenominationHash denom_hash;
+    struct TALER_DenominationHashP denom_hash;
 
     if (TALER_DENOMINATION_CS == md.fcds[i].fresh_pk.cipher)
       send_rms = true;
@@ -394,7 +394,7 @@ TALER_EXCHANGE_refreshes_reveal (
                          &rcd->blinded_planchet))));
     {
       struct TALER_CoinSpendSignatureP link_sig;
-      struct TALER_BlindedCoinHash bch;
+      struct TALER_BlindedCoinHashP bch;
 
       TALER_coin_ev_hash (&rcd->blinded_planchet,
                           &denom_hash,
