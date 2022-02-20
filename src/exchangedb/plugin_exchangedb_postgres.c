@@ -7942,7 +7942,7 @@ postgres_start_deferred_wire_out (void *cls)
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL READ COMMITTED"),
-    GNUNET_PQ_make_execute ("SET CONSTRAINTS wire_out_ref DEFERRED"),
+    GNUNET_PQ_make_try_execute ("SET CONSTRAINTS wire_out_ref DEFERRED"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
