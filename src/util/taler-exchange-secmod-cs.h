@@ -122,9 +122,9 @@ struct TALER_CRYPTO_CsSignRequest
   struct GNUNET_MessageHeader header;
 
   /**
-   * For now, always zero.
+   * 0 for withdraw, 1 for melt, in NBO.
    */
-  uint32_t reserved;
+  uint32_t for_melt;
 
   /**
    * Hash of the public key of the CS key to use for the signature.
@@ -150,9 +150,9 @@ struct TALER_CRYPTO_CsRDeriveRequest
   struct GNUNET_MessageHeader header;
 
   /**
-   * For now, always zero.
+   * 0 for withdraw, 1 for melt, in NBO.
    */
-  uint32_t reserved;
+  uint32_t for_melt;
 
   /**
    * Hash of the public key of the CS key to use for the derivation.

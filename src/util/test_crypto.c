@@ -158,6 +158,7 @@ test_planchets_rsa (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
+                                           false,
                                            &pd.blinded_planchet));
   TALER_planchet_detail_free (&pd);
   GNUNET_assert (GNUNET_OK ==
@@ -201,6 +202,7 @@ derive_r_public (
     return GNUNET_SYSERR;
   }
   GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+                             "rw",
                              &denom_priv->details.cs_private_key,
                              r);
   GNUNET_CRYPTO_cs_r_get_public (&r[0],
@@ -264,6 +266,7 @@ test_planchets_cs (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
+                                           false,
                                            &pd.blinded_planchet));
   TALER_planchet_detail_free (&pd);
   GNUNET_assert (GNUNET_OK ==

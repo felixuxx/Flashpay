@@ -169,22 +169,41 @@ TEH_keys_denomination_by_hash2 (
 
 /**
  * Request to sign @a msg using the public key corresponding to
- * @a h_denom_pub.
+ * @a h_denom_pub during a withdraw operation.
  *
  * @param h_denom_pub hash of the public key to use to sign
  * @param bp blinded planchet to sign
+ * @param is_melt should we use the KDF for melting?
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
-                            const struct TALER_BlindedPlanchet *bp,
-                            struct TALER_BlindedDenominationSignature *bs);
+TEH_keys_denomination_sign_withdraw (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_BlindedPlanchet *bp,
+  struct TALER_BlindedDenominationSignature *bs);
+
+
+/**
+ * Request to sign @a msg using the public key corresponding to
+ * @a h_denom_pub during a refresh operation.
+ *
+ * @param h_denom_pub hash of the public key to use to sign
+ * @param bp blinded planchet to sign
+ * @param is_melt should we use the KDF for melting?
+ * @param[out] bs set to the blind signature on success
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_denomination_sign_melt (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_BlindedPlanchet *bp,
+  struct TALER_BlindedDenominationSignature *bs);
 
 
 /**
  * Request to derive CS @a r_pub using the denomination corresponding to @a h_denom_pub
- * and @a nonce.
+ * and @a nonce for withdrawing.
  *
  * @param h_denom_pub hash of the public key to use to derive r_pub
  * @param nonce withdraw/refresh nonce
@@ -192,7 +211,23 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub (
+TEH_keys_denomination_cs_r_pub_withdraw (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *r_pub);
+
+
+/**
+ * Request to derive CS @a r_pub using the denomination corresponding to @a h_denom_pub
+ * and @a nonce for melting.
+ *
+ * @param h_denom_pub hash of the public key to use to derive r_pub
+ * @param nonce withdraw/refresh nonce
+ * @param[out] r_pub where to write the result
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_denomination_cs_r_pub_melt (
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_CsNonce *nonce,
   struct TALER_DenominationCSPublicRPairP *r_pub);

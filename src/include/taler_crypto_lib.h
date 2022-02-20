@@ -1236,12 +1236,14 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
  *
  * @param[out] denom_sig where to write the signature
  * @param denom_priv private key to use for signing
+ * @param for_melt true to use the HKDF for melt
  * @param blinded_planchet the planchet already blinded
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
+                          bool for_melt,
                           const struct TALER_BlindedPlanchet *blinded_planchet);
 
 
@@ -2048,7 +2050,31 @@ TALER_CRYPTO_helper_cs_poll (struct TALER_CRYPTO_CsDenominationHelper *dh);
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_sign (
+TALER_CRYPTO_helper_cs_sign_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  struct TALER_BlindedDenominationSignature *bs);
+
+
+/**
+ * Request helper @a dh to sign @a msg using the public key corresponding to
+ * @a h_denom_pub.
+ *
+ * This operation will block until the signature has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper process connection
+ * @param h_cs hash of the CS public key to use to sign
+ * @param blinded_planchet blinded planchet containing c and nonce
+ * @param[out] bs set to the blind signature
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_sign_withdraw (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs,
   const struct TALER_BlindedCsPlanchet *blinded_planchet,
@@ -2093,10 +2119,35 @@ TALER_CRYPTO_helper_cs_revoke (
  * @return set to the error code (or #TALER_EC_NONE on success)
  */
 enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
-                                 const struct TALER_CsPubHashP *h_cs,
-                                 const struct TALER_CsNonce *nonce,
-                                 struct TALER_DenominationCSPublicRPairP *crp);
+TALER_CRYPTO_helper_cs_r_derive_withdraw (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *crp);
+
+
+/**
+ * Ask the helper to derive R using the @a nonce and denomination key
+ * associated with @a h_cs.
+ *
+ * This operation will block until the R has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper to process connection
+ * @param h_cs hash of the CS public key to revoke
+ * @param nonce witdhraw nonce
+ * @param[out] crp set to the pair of R values
+ * @return set to the error code (or #TALER_EC_NONE on success)
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_derive_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *crp);
 
 
 /**

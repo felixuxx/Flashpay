@@ -558,6 +558,7 @@ run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&bds,
                                              &pk,
+                                             false,
                                              &pd.blinded_planchet));
     TALER_blinded_planchet_free (&pd.blinded_planchet);
     GNUNET_assert (GNUNET_OK ==

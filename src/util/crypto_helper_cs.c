@@ -378,11 +378,29 @@ more:
 }
 
 
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_sign (
+/**
+ * Request helper @a dh to sign @a msg using the public key corresponding to
+ * @a h_denom_pub.
+ *
+ * This operation will block until the signature has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper process connection
+ * @param h_cs hash of the CS public key to use to sign
+ * @param blinded_planchet blinded planchet containing c and nonce
+ * @param for_melt true if the HKDF for melt should be used
+ * @param[out] bs set to the blind signature
+ * @return #TALER_EC_NONE on success
+ */
+static enum TALER_ErrorCode
+helper_cs_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs,
   const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  bool for_melt,
   struct TALER_BlindedDenominationSignature *bs)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
@@ -407,7 +425,7 @@ TALER_CRYPTO_helper_cs_sign (
 
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_CS_MT_REQ_SIGN);
-    sr->reserved = htonl (0);
+    sr->for_melt = htonl (for_melt ? 1 : 0);
     sr->h_cs = *h_cs;
     sr->planchet = *blinded_planchet;
     if (GNUNET_OK !=
@@ -573,6 +591,36 @@ end:
 }
 
 
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_sign_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  struct TALER_BlindedDenominationSignature *bs)
+{
+  return helper_cs_sign (dh,
+                         h_cs,
+                         blinded_planchet,
+                         true,
+                         bs);
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_sign_withdraw (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  struct TALER_BlindedDenominationSignature *bs)
+{
+  return helper_cs_sign (dh,
+                         h_cs,
+                         blinded_planchet,
+                         false,
+                         bs);
+}
+
+
 void
 TALER_CRYPTO_helper_cs_revoke (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
@@ -603,11 +651,29 @@ TALER_CRYPTO_helper_cs_revoke (
 }
 
 
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
-                                 const struct TALER_CsPubHashP *h_cs,
-                                 const struct TALER_CsNonce *nonce,
-                                 struct TALER_DenominationCSPublicRPairP *crp)
+/**
+ * Ask the helper to derive R using the @a nonce and denomination key
+ * associated with @a h_cs.
+ *
+ * This operation will block until the R has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper to process connection
+ * @param h_cs hash of the CS public key to revoke
+ * @param nonce witdhraw nonce
+ * @param for_melt true if the HKDF for melt should be used
+ * @param[out] crp set to the pair of R values
+ * @return set to the error code (or #TALER_EC_NONE on success)
+ */
+static enum TALER_ErrorCode
+helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
+                    const struct TALER_CsPubHashP *h_cs,
+                    const struct TALER_CsNonce *nonce,
+                    bool for_melt,
+                    struct TALER_DenominationCSPublicRPairP *crp)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
 
@@ -630,7 +696,7 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
     struct TALER_CRYPTO_CsRDeriveRequest rdr = {
       .header.size = htons (sizeof (rdr)),
       .header.type = htons (TALER_HELPER_CS_MT_REQ_RDERIVE),
-      .reserved = htonl (0),
+      .for_melt = htonl (for_melt ? 1 : 0),
       .h_cs = *h_cs,
       .nonce = *nonce
     };
@@ -783,6 +849,36 @@ more:
       goto more;
     } /* while(1) */
   }
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_derive_withdraw (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *crp)
+{
+  return helper_cs_r_derive (dh,
+                             h_cs,
+                             nonce,
+                             false,
+                             crp);
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_derive_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *crp)
+{
+  return helper_cs_r_derive (dh,
+                             h_cs,
+                             nonce,
+                             true,
+                             crp);
 }
 
 

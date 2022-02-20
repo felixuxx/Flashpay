@@ -505,7 +505,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   }
 
   /* Sign before transaction! */
-  ec = TEH_keys_denomination_sign (
+  ec = TEH_keys_denomination_sign_withdraw (
     &wc.collectable.denom_pub_hash,
     &wc.blinded_planchet,
     &wc.collectable.sig);

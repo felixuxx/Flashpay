@@ -1490,6 +1490,7 @@ run (void *cls)
         TALER_denom_sign_blinded (
           &cbc.sig,
           &dkp->priv,
+          false,
           &pd.blinded_planchet));
       TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
@@ -1759,6 +1760,7 @@ run (void *cls)
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_sign_blinded (&ccoin->coin_sig,
                                                &new_dkp[cnt]->priv,
+                                               true,
                                                bp));
     }
     RND_BLK (&tprivs);

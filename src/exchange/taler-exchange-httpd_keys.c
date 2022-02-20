@@ -2432,9 +2432,10 @@ TEH_keys_denomination_by_hash2 (
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
-                            const struct TALER_BlindedPlanchet *bp,
-                            struct TALER_BlindedDenominationSignature *bs)
+TEH_keys_denomination_sign_withdraw (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_BlindedPlanchet *bp,
+  struct TALER_BlindedDenominationSignature *bs)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -2458,7 +2459,7 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
       bp->details.rsa_blinded_planchet.blinded_msg_size,
       bs);
   case TALER_DENOMINATION_CS:
-    return TALER_CRYPTO_helper_cs_sign (
+    return TALER_CRYPTO_helper_cs_sign_withdraw (
       ksh->helpers->csdh,
       &hd->h_details.h_cs,
       &bp->details.cs_blinded_planchet,
@@ -2470,10 +2471,49 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub (const struct
-                                TALER_DenominationHash *h_denom_pub,
-                                const struct TALER_CsNonce *nonce,
-                                struct TALER_DenominationCSPublicRPairP *r_pub)
+TEH_keys_denomination_sign_melt (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_BlindedPlanchet *bp,
+  struct TALER_BlindedDenominationSignature *bs)
+{
+  struct TEH_KeyStateHandle *ksh;
+  struct HelperDenomination *hd;
+
+  ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+    return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
+  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                          &h_denom_pub->hash);
+  if (NULL == hd)
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+  if (bp->cipher != hd->denom_pub.cipher)
+    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+  switch (hd->denom_pub.cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    return TALER_CRYPTO_helper_rsa_sign (
+      ksh->helpers->rsadh,
+      &hd->h_details.h_rsa,
+      bp->details.rsa_blinded_planchet.blinded_msg,
+      bp->details.rsa_blinded_planchet.blinded_msg_size,
+      bs);
+  case TALER_DENOMINATION_CS:
+    return TALER_CRYPTO_helper_cs_sign_melt (
+      ksh->helpers->csdh,
+      &hd->h_details.h_cs,
+      &bp->details.cs_blinded_planchet,
+      bs);
+  default:
+    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+  }
+}
+
+
+enum TALER_ErrorCode
+TEH_keys_denomination_cs_r_pub_melt (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *r_pub)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
@@ -2494,10 +2534,42 @@ TEH_keys_denomination_cs_r_pub (const struct
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
 
-  return TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
-                                          &hd->h_details.h_cs,
-                                          nonce,
-                                          r_pub);
+  return TALER_CRYPTO_helper_cs_r_derive_melt (ksh->helpers->csdh,
+                                               &hd->h_details.h_cs,
+                                               nonce,
+                                               r_pub);
+}
+
+
+enum TALER_ErrorCode
+TEH_keys_denomination_cs_r_pub_withdraw (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *r_pub)
+{
+  struct TEH_KeyStateHandle *ksh;
+  struct HelperDenomination *hd;
+
+  ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+  {
+    return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
+  }
+  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                          &h_denom_pub->hash);
+  if (NULL == hd)
+  {
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+  }
+  if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+  {
+    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+  }
+
+  return TALER_CRYPTO_helper_cs_r_derive_withdraw (ksh->helpers->csdh,
+                                                   &hd->h_details.h_cs,
+                                                   nonce,
+                                                   r_pub);
 }
 
 

@@ -216,7 +216,7 @@ check_commitment (struct RevealContext *rctx,
       {
         enum TALER_ErrorCode ec;
 
-        ec = TEH_keys_denomination_cs_r_pub (
+        ec = TEH_keys_denomination_cs_r_pub_melt (
           &rctx->rrcs[j].h_denom_pub,
           &nonces[aoff],
           &alg_values->details.cs_values);
@@ -733,7 +733,9 @@ clean_age:
   {
     enum TALER_ErrorCode ec;
 
-    ec = TEH_keys_denomination_sign (
+    // FIXME: replace with a batch call that
+    // passes all coins in once go!
+    ec = TEH_keys_denomination_sign_melt (
       &rrcs[i].h_denom_pub,
       &rcds[i].blinded_planchet,
       &rrcs[i].coin_sig);

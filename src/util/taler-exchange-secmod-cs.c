@@ -283,6 +283,7 @@ handle_sign_request (struct TES_Client *client,
   struct GNUNET_CRYPTO_CsRSecret r[2];
   struct TALER_BlindedDenominationCsSignAnswer cs_answer;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  bool for_melt;
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
@@ -318,7 +319,7 @@ handle_sign_request (struct TES_Client *client,
     return TES_transmit (client->csock,
                          &sf.header);
   }
-
+  for_melt = (0 != ntohl (sr->for_melt));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to sign over bytes with key %s\n",
               GNUNET_h2s (&sr->h_cs.hash));
@@ -326,6 +327,7 @@ handle_sign_request (struct TES_Client *client,
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   GNUNET_CRYPTO_cs_r_derive (&sr->planchet.nonce.nonce,
+                             for_melt ? "rm" : "rw",
                              &dk->denom_priv,
                              r);
   cs_answer.b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
@@ -552,6 +554,7 @@ handle_r_derive_request (struct TES_Client *client,
   struct TALER_DenominationCSPrivateRPairP r_priv;
   struct TALER_DenominationCSPublicRPairP r_pub;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  bool for_melt;
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
@@ -587,7 +590,7 @@ handle_r_derive_request (struct TES_Client *client,
     return TES_transmit (client->csock,
                          &rdf.header);
   }
-
+  for_melt = (0 != ntohl (rdr->for_melt));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to derive R with key %s\n",
               GNUNET_h2s (&rdr->h_cs.hash));
@@ -595,10 +598,13 @@ handle_r_derive_request (struct TES_Client *client,
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   GNUNET_CRYPTO_cs_r_derive (&rdr->nonce.nonce,
+                             for_melt ? "rm" : "rw",
                              &dk->denom_priv,
                              r_priv.r);
-  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[0], &r_pub.r_pub[0]);
-  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[1], &r_pub.r_pub[1]);
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[0],
+                                 &r_pub.r_pub[0]);
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[1],
+                                 &r_pub.r_pub[1]);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   GNUNET_assert (dk->rc > 0);
   dk->rc--;
