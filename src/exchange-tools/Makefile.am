@@ -39,6 +39,7 @@ taler_auditor_offline_LDADD = \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunetjson \
   -lgnunetcurl \
   -ljansson \
