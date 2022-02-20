@@ -111,12 +111,12 @@ The denomination key was chosen because it has the recopu protocol in place that
       \\\text{generate withdraw secret:}
       \\ \omega := randombytes(32)
       \\ \text{persist } \langle \omega, D_p \rangle
-      \\ n_w := \text{HKDF}(256, \omega,\text{"n"})
+      \\ n_w := \text{HKDF}(256, \omega, \text{"n"})
       \\ & \xrightarrow[\rule{2.5cm}{0pt}]{n_w, D_p} &
       % generate R
       \\ & & \text{verify if } D_p \text{ is valid}
-      \\ & & r_0 := \text{HKDF}(256,n_w || d_s, \text{"r0"})
-      \\ & & r_1 := \text{HKDF}(256,n_w || d_s, \text{"r1"})
+      \\ & & r_0 := \text{HKDF}(256,n_w || d_s, \text{"wr0"})
+      \\ & & r_1 := \text{HKDF}(256,n_w || d_s, \text{"wr1"})
       \\ & & R_0 := r_0G
       \\ & & R_1 := r_1G
       \\ & \xleftarrow[\rule{2.5cm}{0pt}]{R_0, R_1} &
@@ -169,13 +169,13 @@ The denomination key was chosen because it has the recopu protocol in place that
       \\ & & b := \text{HKDF}(1,n_w || d_s, \text{"b"})
       \\ & & s \leftarrow \text{GetWithdraw}(n_w, D_p)
       \\ & & \textbf{if } s = \bot
-      \\ & & \textbf{check !} \text{NonceReuse} (n_w, D_p)
+      \\ & & \textbf{check !} \text{NonceReuse} (n_w, D_p, \rho_W)
       \\ & & r_b := \text{HKDF}(256,n_w || d_s, \text{"r}b\text{"})
       % sign coin
       \\ & & s := r_b + c_b d_s \mod p
       % the following db operations are atomic
       \\ & & \text{decrease balance if sufficient and}
-      \\ & & \text{persist NonceUse } \langle n_w, D_p, s \rangle
+      \\ & & \text{persist NonceUse } \langle n_w, D_p, \rho_W \rangle
       \\ & & \text{persist } \langle D_p, s \rangle
       \\ & & \textbf{endif}
       \\ & \xleftarrow[\rule{2.5cm}{0pt}]{b,s} &
@@ -265,23 +265,21 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ \text{coin}_0 = \langle D_{p(0)}, c_s^{(0)}, C_p^{(0)}, \sigma_c^{(0)} \rangle  &&  \text{new denomination keys } d_s, D_P
       % request r
       \\ & &
-      \\ \omega := randombytes(32)
-      \\ \text{persist } \langle \omega, D_p \rangle
-      %\\ s_w := \text{HKDF}(256,  c_s^{(0)},\text{"n"})
-      \\ n_r := \text{HKDF}(256, \omega,\text{"n"})
+      \\ n_r := randombytes(32)
+      \\ \text{persist } \langle n_r, D_p \rangle
       % sign with reserve sk
       \\ & \xrightarrow[\rule{2.5cm}{0pt}]{n_r, D_p} &
       % generate R
       \\ & & \text{verify if } D_p \text{ is valid}
-      \\ & & r_0 := \text{HKDF}(256,n_r || d_s, \text{"r0"})
-      \\ & & r_1 := \text{HKDF}(256,n_r || d_s, \text{"r1"})
+      \\ & & r_0 := \text{HKDF}(256, n_r || d_s, \text{"mr0"})
+      \\ & & r_1 := \text{HKDF}(256, n_r || d_s, \text{"mr1"})
       \\ & & R_0 := r_0G
       \\ & & R_1 := r_1G
       \\ & \xleftarrow[\rule{2cm}{0pt}]{R_0, R_1} &
       % refresh request
       \\ \textbf{for } i = 1, \dots, \kappa: % generate k derives
       %\\ s_i \leftarrow \{0,1\}^{256} % seed generation
-      \\ t_i := \text{HKDF}(256, \omega || R_0 || R_1,\text{"t} i \text{"} )  % seed generation
+      \\ t_i := \text{HKDF}(256, c_s^{(0)}, n_r || R_0 || R_1,\text{"t} i \text{"} )  % seed generation
       \\ X_i := \text{RefreshDerive}(t_i, D_p, C_p^{(0)}, R_0, R_1)
       \\ (T_i, c_s^{(i)}, C_p^{(i)}, \overline{c_0}, \overline{c_1}):= X_i
       \\ \textbf{endfor}
@@ -293,7 +291,7 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ \rho_{RC} := \langle h_C, D_p, \text{ } D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)} \rangle
       \\ \sigma_{RC} := \text{Ed25519.Sign}(c_s^{(0)}, \rho_{RC})
       \\ \text{Persist refresh-request}
-      \\ \langle \omega, R_0, R_1, \rho_{RC}, \sigma_{RC} \rangle
+      \\ \langle n_r, R_0, R_1, \rho_{RC}, \sigma_{RC} \rangle
       \\
       \\ & \textit{Continued in figure \ref{fig:refresh-commit-part2}} &
     \end{array}$
@@ -324,7 +322,7 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ & & v := \text{Denomination}(D_p)
       \\ & & \textbf{check } \text{IsOverspending}(C_p^{(0)}, D_ {p(0)}, v)
       \\ & & \text{verify if } D_p \text{ is valid}
-      \\ & & \textbf{check !} \text{NonceReuse} (n_r, D_p)
+      \\ & & \textbf{check !} \text{NonceReuse} (n_r, D_p, \rho_{RC})
       \\ & & \textbf{check } \text{Schnorr.Verify}(D_{p(0)}, C_p^{(0)}, \sigma_C^{(0)})
       \\ & & \text{MarkFractionalSpend}(C_p^{(0)}, v)
       \\ & & \gamma \leftarrow \{1, \dots, \kappa\}
@@ -366,7 +364,7 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ & & \langle T'_\gamma, \overline{c_0}_\gamma, \overline{c_1}_\gamma, S \rangle := \rho_{RR}
       \\ & & \langle t_1,\dots,t_{\gamma-1},t_{\gamma+1},\dots,t_\kappa \rangle := S
       \\ & & \textbf{check } \text{Ed25519.Verify}(C_p^{(0)}, \sigma_L, \rho_L)
-      \\ & & b := \text{HKDF}(1,n_r || d_{s(i)}, \text{"b"})
+      \\ & & b := \text{HKDF}(1, n_r || d_{s(i)}, \text{"b"})
       \\ & & \textbf{for } i = 1,\dots, \gamma-1, \gamma+1,\dots, \kappa
       \\ & & X_i := \text{RefreshDerive}(t_i, D_p, C_p^{(0)} \\ &&, R_0, R_1)
       \\ & & \langle T_i, c_s^{(i)}, C_p^{(i)}, \overline{c_1}_i, \overline{c_2}_i \rangle := X_i
@@ -377,7 +375,7 @@ In the reveal phase, the RSA signing and unblinding is exchanged with Schnorr's 
       \\ & & h_{\overline{c}}' := H(h_{\overline{c_0}}, h_{\overline{c_1}}, n_r)
       \\ & & h_C' = H(h_T', h_{\overline{c}}')
       \\ & & \textbf{check } h_C = h_C'
-      \\ & & r_b := \text{HKDF}(256,n_r || d_s, \text{"r}b\text{"})
+      \\ & & r_b := \text{HKDF}(256, n_r || d_s, \text{"mr}b\text{"})
       \\ & & \overline{s}_{C_p}^{(\gamma)} = r_b + \overline{c_{b_\gamma}} d_s \mod p
       \\ & & \text{persist } \langle \rho_L, \sigma_L, S \rangle
       \\ & \xleftarrow[\rule{2.5cm}{0pt}]{b, \overline{s}_C^{(\gamma)}} &
