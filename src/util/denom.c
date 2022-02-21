@@ -762,9 +762,6 @@ TALER_planchet_setup_coin_priv (
     GNUNET_break (0);
     return;
   }
-  coin_priv->eddsa_priv.d[0] &= 248;
-  coin_priv->eddsa_priv.d[31] &= 127;
-  coin_priv->eddsa_priv.d[31] |= 64;
 }
 
 
