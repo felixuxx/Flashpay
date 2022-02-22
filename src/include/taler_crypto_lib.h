@@ -2419,6 +2419,7 @@ TALER_wallet_deposit_verify (
  * @param melt_fee the melt fee we expect to pay
  * @param rc refresh session we are committed to
  * @param h_denom_pub hash of the coin denomination's public key
+ * @param h_age_commitment hash of the age commitment (may be NULL)
  * @param coin_priv coin’s private key
  * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_MELT
  */
@@ -2428,6 +2429,7 @@ TALER_wallet_melt_sign (
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
   const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -3346,7 +3348,7 @@ TALER_age_commitment_hash (
  *
  * @param mask The age mask the defines the age groups
  * @param age The actual age for which an age commitment is generated
- * @param seed The seed that goes into the key generation.  MUST be choosen uniformly random.
+ * @param salt The salt that goes into the key generation.  MUST be choosen uniformly random.
  * @param commitment[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
@@ -3354,21 +3356,21 @@ enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
-  const uint32_t seed,
+  const uint64_t salt,
   struct TALER_AgeCommitment *commitment);
 
 /*
  * @brief Derives another, equivalent age commitment for a given one.
  *
  * @param orig Original age commitment
- * @param seed Used to move the points on the elliptic curve in order to generate another, equivalent commitment.
+ * @param salt Salt to randomly move the points on the elliptic curve in order to generate another, equivalent commitment.
  * @param derived[out] The resulting age commitment, ->priv and ->pub allocated via GNUNET_malloc on success.
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
   const struct TALER_AgeCommitment *orig,
-  const uint32_t seed,
+  const uint64_t salt,
   struct TALER_AgeCommitment *derived);
 
 /*

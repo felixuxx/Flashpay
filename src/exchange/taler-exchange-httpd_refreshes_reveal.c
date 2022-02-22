@@ -277,7 +277,7 @@ check_commitment (struct RevealContext *rctx,
           union TALER_DenominationBlindingKeyP bks;
           const struct TALER_ExchangeWithdrawValues *alg_value
             = &rctx->rrcs[j].exchange_vals;
-          struct TALER_PlanchetDetail pd;
+          struct TALER_PlanchetDetail pd = {0};
           struct TALER_AgeCommitmentHash *hac = NULL;
           struct TALER_CoinPubHashP c_hash;
           struct TALER_PlanchetMasterSecretP ps;
@@ -298,15 +298,16 @@ check_commitment (struct RevealContext *rctx,
           {
             struct TALER_AgeCommitment ac = {0};
             struct TALER_AgeCommitmentHash h = {0};
+            uint64_t seed = (uint64_t) ts.key.bits[0]
+                            | (uint64_t) ts.key.bits[1] << 32;
 
             GNUNET_assert (GNUNET_OK ==
                            TALER_age_commitment_derive (
                              rctx->old_age_commitment,
-                             ts.key.bits[0],
+                             seed,
                              &ac));
 
             TALER_age_commitment_hash (&ac, &h);
-
             hac = &h;
           }
 
@@ -590,7 +591,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   if (TEH_age_restriction_enabled &&
       ((NULL == old_age_commitment_json) !=
        TALER_AgeCommitmentHash_isNullOrZero (
-         &rctx->melt.session.h_age_commitment)))
+         &rctx->melt.session.coin.h_age_commitment)))
   {
     GNUNET_break (0);
     return MHD_NO;
@@ -602,7 +603,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       (NULL != old_age_commitment_json))
   {
     enum GNUNET_GenericReturnValue res;
-    struct TALER_AgeCommitment *oac = rctx->old_age_commitment;
+    struct TALER_AgeCommitment *oac;
     size_t ng = json_array_size (old_age_commitment_json);
     bool failed = true;
 
@@ -610,7 +611,8 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     GNUNET_assert (ng ==
                    TALER_extensions_age_restriction_num_groups ());
 
-    oac = GNUNET_new (struct TALER_AgeCommitment);
+    rctx->old_age_commitment = GNUNET_new (struct TALER_AgeCommitment);
+    oac = rctx->old_age_commitment;
     oac->mask  =  TEH_age_mask;
     oac->num_pub = ng;
     oac->num_priv = 0; /* no private keys are needed for the reveal phase */
@@ -630,7 +632,8 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                         ac_spec,
                                         i,
                                         -1);
-      GNUNET_break (GNUNET_OK != res);
+
+      GNUNET_break_op (GNUNET_OK == res);
       if (GNUNET_OK != res)
         goto clean_age;
     }
@@ -640,12 +643,9 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       struct TALER_AgeCommitmentHash hac = {0};
       TALER_age_commitment_hash (oac, &hac);
       if (0 != memcmp (&hac,
-                       &rctx->melt.session.h_age_commitment,
+                       &rctx->melt.session.coin.h_age_commitment,
                        sizeof(struct TALER_AgeCommitmentHash)))
-      {
-        GNUNET_break (0);
         goto clean_age;
-      }
     }
 
     failed = false;
@@ -654,7 +654,10 @@ clean_age:
     if (failed)
     {
       TALER_age_commitment_free (oac);
-      return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_REFRESHES_REVEAL_AGE_RESTRICTION_COMMITMENT_INVALID,
+                                         "old_age_commitment");
     }
   }
 
@@ -913,7 +916,7 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
   json_t *transfer_privs;
   json_t *link_sigs;
   json_t *new_denoms_h;
-  json_t *old_age_commitment = NULL;
+  json_t *old_age_commitment;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("transfer_pub",

@@ -309,6 +309,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_CoinSpendPublicKeyP old_coin_pub;
       struct TALER_CoinSpendSignatureP old_coin_sig;
       struct TALER_Amount amount_with_fee;
+      struct TALER_AgeCommitmentHash h_age_commitment;
       uint32_t noreveal_index;
     } refresh_commitments;
 
@@ -1267,13 +1268,6 @@ struct TALER_EXCHANGEDB_Refresh
    * Signature over the melting operation.
    */
   struct TALER_CoinSpendSignatureP coin_sig;
-
-  /**
-   * Hash of the age commitment used to sign the coin, if age restriction was
-   * applicable to the denomination.  May be all zeroes if no age restriction
-   * applies.
-   */
-  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * Refresh commitment this coin is melted into.

@@ -528,14 +528,14 @@ run (void *cls,
                                            &bks);
 
     {
-      uint32_t seed;
+      uint64_t seed;
       struct TALER_AgeMask mask = {
         .mask = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
       };
       struct TALER_AgeCommitment ac = {0};
 
-      seed = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                       UINT32_MAX);
+      seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                       UINT64_MAX);
 
       GNUNET_assert (GNUNET_OK ==
                      TALER_age_restriction_commit (

@@ -585,24 +585,20 @@ TALER_EXCHANGE_verify_coin_history (
         }
       }
 
+
+      if (GNUNET_OK !=
+          TALER_wallet_melt_verify (
+            &amount,
+            &fee,
+            &rc,
+            h_denom_pub,
+            TALER_AgeCommitmentHash_isNullOrZero (&h_age_commitment) ?
+            NULL : &h_age_commitment,
+            coin_pub,
+            &sig))
       {
-        const struct TALER_AgeCommitmentHash *ahc = &h_age_commitment;
-
-        if (TALER_AgeCommitmentHash_isNullOrZero (ahc))
-          ahc = NULL;
-
-        if (GNUNET_OK !=
-            TALER_wallet_melt_verify (&amount,
-                                      &fee,
-                                      &rc,
-                                      h_denom_pub,
-                                      ahc,
-                                      coin_pub,
-                                      &sig))
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
       }
       add = GNUNET_YES;
     }

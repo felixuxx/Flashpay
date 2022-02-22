@@ -377,9 +377,9 @@ run (void *cls,
      * Move money to the exchange's bank account.
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-age",
-                              "EUR:5.01"),
+                              "EUR:6.01"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-age",
-                                                 "EUR:5.01",
+                                                 "EUR:6.01",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-age"),
@@ -475,7 +475,22 @@ run (void *cls,
                                            "EUR:0.98",
                                            bc.exchange_payto,
                                            bc.user42_payto),
-    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-99c",
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-99c3",
+                                           ec.exchange_url,
+                                           "EUR:0.98",
+                                           bc.exchange_payto,
+                                           bc.user42_payto),
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-99c4",
+                                           ec.exchange_url,
+                                           "EUR:0.98",
+                                           bc.exchange_payto,
+                                           bc.user42_payto),
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-08c",
+                                           ec.exchange_url,
+                                           "EUR:0.08",
+                                           bc.exchange_payto,
+                                           bc.user43_payto),
+    TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-08c2",
                                            ec.exchange_url,
                                            "EUR:0.08",
                                            bc.exchange_payto,
@@ -548,6 +563,104 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  struct TALER_TESTING_Command refresh_age[] = {
+    /* Fill reserve with EUR:5, 1ct is for fees. */
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-age-1",
+                              "EUR:6.01"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "ck-refresh-create-reserve-age-1",
+      "EUR:6.01",
+      bc.user42_payto,
+      bc.exchange_payto,
+      "refresh-create-reserve-age-1"),
+    /**
+     * Make previous command effective.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-age-2"),
+    /**
+     * Withdraw EUR:7 with age restriction for age 13.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin-age-1",
+                                       "refresh-create-reserve-age-1",
+                                       "EUR:5",
+                                       13,
+                                       MHD_HTTP_OK),
+    /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin
+     * (in full) (merchant would receive EUR:0.99 due to 1 ct
+     * deposit fee) *///
+    TALER_TESTING_cmd_deposit ("refresh-deposit-partial-age",
+                               "refresh-withdraw-coin-age-1",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_OK),
+    /**
+     * Melt the rest of the coin's value
+     * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
+    TALER_TESTING_cmd_melt_double ("refresh-melt-age-1",
+                                   "refresh-withdraw-coin-age-1",
+                                   MHD_HTTP_OK,
+                                   NULL),
+    /**
+     * Complete (successful) melt operation, and
+     * withdraw the coins
+     */
+    TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-age-1",
+                                      "refresh-melt-age-1",
+                                      MHD_HTTP_OK),
+    /**
+     * Do it again to check idempotency
+     */
+    TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-age-1-idempotency",
+                                      "refresh-melt-age-1",
+                                      MHD_HTTP_OK),
+    /**
+     * Test that /refresh/link works
+     */
+    TALER_TESTING_cmd_refresh_link ("refresh-link-age-1",
+                                    "refresh-reveal-age-1",
+                                    MHD_HTTP_OK),
+    /**
+     * Try to spend a refreshed EUR:1 coin
+     */
+    TALER_TESTING_cmd_deposit ("refresh-deposit-refreshed-age-1a",
+                               "refresh-reveal-age-1-idempotency",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":3}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_OK),
+    /**
+     * Try to spend a refreshed EUR:0.1 coin
+     */
+    TALER_TESTING_cmd_deposit ("refresh-deposit-refreshed-age-1b",
+                               "refresh-reveal-age-1",
+                               3,
+                               bc.user43_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":3}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:0.1",
+                               MHD_HTTP_OK),
+#if 0 /* FIXME oec */
+    /* Test running a failing melt operation (same operation
+     * again must fail) */
+    TALER_TESTING_cmd_melt ("refresh-melt-failing-age",
+                            "refresh-withdraw-coin-age-1",
+                            MHD_HTTP_CONFLICT,
+                            NULL),
+    /* Test running a failing melt operation (on a coin that
+       was itself revealed and subsequently deposited) */
+    TALER_TESTING_cmd_melt ("refresh-melt-failing-age-2",
+                            "refresh-reveal-age-1",
+                            MHD_HTTP_CONFLICT,
+                            NULL),
+
+#endif
+    TALER_TESTING_cmd_end ()
+  };
 
   /**
    * This block exercises the aggretation logic by making two payments
@@ -1073,6 +1186,8 @@ run (void *cls,
                                withdraw_age),
       TALER_TESTING_cmd_batch ("spend-age",
                                spend_age),
+      TALER_TESTING_cmd_batch ("refresh-age",
+                               refresh_age),
       TALER_TESTING_cmd_batch ("track",
                                track),
       TALER_TESTING_cmd_batch ("unaggregation",

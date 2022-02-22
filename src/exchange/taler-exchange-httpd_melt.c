@@ -425,7 +425,7 @@ TEH_handler_melt (struct MHD_Connection *connection,
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &rmc.refresh_session.coin.denom_pub_hash),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+      GNUNET_JSON_spec_fixed_auto ("age_commitment_hash",
                                    &rmc.refresh_session.coin.h_age_commitment)),
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",
                                  &rmc.refresh_session.coin_sig),
@@ -440,10 +440,9 @@ TEH_handler_melt (struct MHD_Connection *connection,
     GNUNET_JSON_spec_end ()
   };
 
-  memset (&rmc,
-          0,
-          sizeof (rmc));
+  memset (&rmc, 0, sizeof (rmc));
   rmc.refresh_session.coin.coin_pub = *coin_pub;
+
   {
     enum GNUNET_GenericReturnValue ret;
     ret = TALER_MHD_parse_json_data (connection,
@@ -452,8 +451,10 @@ TEH_handler_melt (struct MHD_Connection *connection,
     if (GNUNET_OK != ret)
       return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
   }
+
   rmc.have_rms = (NULL != json_object_get (root,
                                            "rms"));
+
   {
     MHD_RESULT res;
 

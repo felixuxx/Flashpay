@@ -249,6 +249,7 @@ TALER_wallet_melt_sign (
   const struct TALER_Amount *melt_fee,
   const struct TALER_RefreshCommitmentP *rc,
   const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -256,8 +257,13 @@ TALER_wallet_melt_sign (
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
     .purpose.size = htonl (sizeof (melt)),
     .rc = *rc,
-    .h_denom_pub = *h_denom_pub
+    .h_denom_pub = *h_denom_pub,
+    .h_age_commitment = {{{0}}},
   };
+
+  if (NULL != h_age_commitment)
+    melt.h_age_commitment = *h_age_commitment;
+
 
   TALER_amount_hton (&melt.amount_with_fee,
                      amount_with_fee);

@@ -71,9 +71,10 @@ struct TALER_TESTING_FreshCoinData
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /*
-   * Age commitment for the coin, NULL if not applicable.
+   * Fresh age commitment for the coin and its hash, NULL if not applicable.
    */
   struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
    * The blinding key (needed for recoup operations).
@@ -136,11 +137,6 @@ struct RefreshMeltState
    * Private key of the dirty coin being melted.
    */
   const struct TALER_CoinSpendPrivateKeyP *melt_priv;
-
-  /*
-   * Age commitment for the coin, NULL if not applicable.
-   */
-  struct TALER_AgeCommitment *age_commitment;
 
   /**
    * Task scheduled to try later.
@@ -445,6 +441,8 @@ reveal_cb (void *cls,
         return;
       }
       fc->coin_priv = coin->coin_priv;
+      fc->age_commitment = coin->age_commitment;
+      fc->h_age_commitment = coin->h_age_commitment;
 
       TALER_denom_sig_deep_copy (&fc->sig,
                                  &coin->sig);
@@ -836,7 +834,7 @@ refresh_link_run (void *cls,
   /* finally, use private key from withdraw sign command */
   rls->rlh = TALER_EXCHANGE_link (is->exchange,
                                   coin_priv,
-                                  rms->age_commitment,
+                                  rms->refresh_data.melt_age_commitment,
                                   &link_cb,
                                   rls);
 
@@ -1046,6 +1044,8 @@ melt_run (void *cls,
   {
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
+    struct TALER_AgeCommitment *age_commitment;
+    struct TALER_AgeCommitmentHash *h_age_commitment;
     const struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
     const struct TALER_TESTING_Command *coin_command;
@@ -1070,10 +1070,21 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
+
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_age_commitment (coin_command,
                                                 0,
-                                                &rms->age_commitment))
+                                                &age_commitment))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (rms->is);
+      return;
+    }
+
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_h_age_commitment (coin_command,
+                                                  0,
+                                                  &h_age_commitment))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -1148,31 +1159,13 @@ melt_run (void *cls,
     rms->refresh_data.melt_amount = melt_amount;
     rms->refresh_data.melt_sig = *melt_sig;
     rms->refresh_data.melt_pk = *melt_denom_pub;
+    rms->refresh_data.melt_age_commitment = age_commitment;
+    rms->refresh_data.melt_h_age_commitment = h_age_commitment;
     rms->refresh_data.fresh_pks = rms->fresh_pks;
     rms->refresh_data.fresh_pks_len = num_fresh_coins;
-    rms->refresh_data.age_commitment = NULL;
 
     GNUNET_assert (age_restricted ==
-                   (NULL != rms->age_commitment));
-
-    if (NULL != rms->age_commitment)
-    {
-      struct TALER_AgeCommitment *ac;
-      uint32_t seed;
-
-      ac = GNUNET_new (struct TALER_AgeCommitment);
-      seed  = GNUNET_CRYPTO_random_u32 (
-        GNUNET_CRYPTO_QUALITY_WEAK,
-        UINT32_MAX);
-
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_age_commitment_derive (
-                       rms->age_commitment,
-                       seed,
-                       ac));
-
-      rms->refresh_data.age_commitment = ac;
-    }
+                   (NULL != age_commitment));
 
     rms->rmh = TALER_EXCHANGE_melt (is->exchange,
                                     &rms->rms,
@@ -1256,10 +1249,14 @@ melt_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_denom_pub (index,
                                           &rms->fresh_pks[index]),
-      TALER_TESTING_make_trait_coin_priv (0,
+      TALER_TESTING_make_trait_coin_priv (index,
                                           rms->melt_priv),
-      TALER_TESTING_make_trait_age_commitment (index,
-                                               rms->age_commitment),
+      TALER_TESTING_make_trait_age_commitment (
+        index,
+        rms->refresh_data.melt_age_commitment),
+      TALER_TESTING_make_trait_h_age_commitment (
+        index,
+        rms->refresh_data.melt_h_age_commitment),
       TALER_TESTING_make_trait_exchange_wd_value (index,
                                                   &rms->mbds[index].alg_value),
       TALER_TESTING_make_trait_refresh_secret (&rms->rms),
@@ -1418,6 +1415,7 @@ refresh_reveal_traits (void *cls,
 
   if (index >= rrs->num_fresh_coins)
     return GNUNET_SYSERR;
+
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_coin_priv (
@@ -1426,6 +1424,9 @@ refresh_reveal_traits (void *cls,
       TALER_TESTING_make_trait_age_commitment (
         index,
         rrs->fresh_coins[index].age_commitment),
+      TALER_TESTING_make_trait_h_age_commitment (
+        index,
+        rrs->fresh_coins[index].h_age_commitment),
       TALER_TESTING_make_trait_denom_pub (
         index,
         rrs->fresh_coins[index].pk),
@@ -1443,7 +1444,6 @@ refresh_reveal_traits (void *cls,
                                                  &rrs->psa[index]),
       TALER_TESTING_trait_end ()
     };
-
     return TALER_TESTING_get_trait (traits,
                                     ret,
                                     trait,

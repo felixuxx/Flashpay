@@ -526,7 +526,7 @@ withdraw_cleanup (void *cls,
   }
   if (NULL != ws->age_commitment)
   {
-    GNUNET_free (ws->age_commitment);
+    TALER_age_commitment_free (ws->age_commitment);
     ws->age_commitment = NULL;
   }
   if (NULL != ws->h_age_commitment)
@@ -569,7 +569,7 @@ withdraw_traits (void *cls,
                                                 &ws->exchange_vals),
     TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
                                         ws->pk),
-    TALER_TESTING_make_trait_denom_sig (index /* only one coin */,
+    TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
                                         &ws->sig),
     TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
@@ -579,8 +579,8 @@ withdraw_traits (void *cls,
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (
       (const char **) &ws->exchange_url),
-    TALER_TESTING_make_trait_age_commitment (index, ws->age_commitment),
-    TALER_TESTING_make_trait_h_age_commitment (index, ws->h_age_commitment),
+    TALER_TESTING_make_trait_age_commitment (0, ws->age_commitment),
+    TALER_TESTING_make_trait_h_age_commitment (0, ws->h_age_commitment),
     TALER_TESTING_trait_end ()
   };
 
@@ -626,7 +626,7 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
     ac = GNUNET_new (struct TALER_AgeCommitment);
     hac = GNUNET_new (struct TALER_AgeCommitmentHash);
-    seed = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK, UINT32_MAX);
+    seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
     mask = TALER_extensions_age_restriction_ageMask ();
 
     if (GNUNET_OK !=

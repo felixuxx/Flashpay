@@ -506,7 +506,7 @@ enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
-  const uint32_t seed,
+  const uint64_t salt,
   struct TALER_AgeCommitment *new)
 {
   uint8_t num_pub = __builtin_popcount (mask->mask) - 1;
@@ -517,6 +517,7 @@ TALER_age_restriction_commit (
   GNUNET_assert (mask->mask & 1); /* fist bit must have been set */
   GNUNET_assert (0 <= num_priv);
   GNUNET_assert (31 > num_priv);
+  GNUNET_assert (num_priv <= num_pub);
 
   new->mask.mask = mask->mask;
   new->num_pub = num_pub;
@@ -529,31 +530,34 @@ TALER_age_restriction_commit (
     num_priv,
     struct TALER_AgeCommitmentPrivateKeyP);
 
-  /* Create as many private keys as we need */
-  for (i = 0; i < num_priv; i++)
+  /* Create as many private keys as we need and fill the rest of the
+   * public keys with valid curve points.
+   * We need to make sure that the public keys are proper points on the
+   * elliptic curve, so we can't simply fill the struct with random values. */
+  for (i = 0; i < num_pub; i++)
   {
-    uint32_t seedBE = htonl (seed + i);
+    uint64_t saltBE = htonl (salt + i);
+    struct TALER_AgeCommitmentPrivateKeyP key = {0};
+    struct TALER_AgeCommitmentPrivateKeyP *priv = &key;
+
+    /* Only save the private keys for age groups less than num_priv */
+    if (i < num_priv)
+      priv = &new->priv[i];
 
     if  (GNUNET_OK !=
-         GNUNET_CRYPTO_kdf (&new->priv[i],
-                            sizeof (new->priv[i]),
-                            &seedBE,
-                            sizeof (seedBE),
+         GNUNET_CRYPTO_kdf (priv,
+                            sizeof (*priv),
+                            &saltBE,
+                            sizeof (saltBE),
                             "taler-age-commitment-derivation",
                             strlen (
                               "taler-age-commitment-derivation"),
                             NULL, 0))
       goto FAIL;
 
-    GNUNET_CRYPTO_eddsa_key_get_public (&new->priv[i].eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&priv->eddsa_priv,
                                         &new->pub[i].eddsa_pub);
   }
-
-  /* Fill the rest of the public keys with random values */
-  for (; i<num_pub; i++)
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                &new->pub[i],
-                                sizeof(new->pub[i]));
 
   return GNUNET_OK;
 
@@ -567,10 +571,24 @@ FAIL:
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
   const struct TALER_AgeCommitment *orig,
-  const uint32_t seed,
+  const uint64_t salt,
   struct TALER_AgeCommitment *new)
 {
-  struct GNUNET_CRYPTO_EccScalar val;
+  struct GNUNET_CRYPTO_EccScalar scalar;
+  uint64_t saltBT = htonl (salt);
+  int64_t factor;
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_kdf (
+                   &factor,
+                   sizeof (factor),
+                   &saltBT,
+                   sizeof (saltBT),
+                   "taler-age-restriction-derivation",
+                   strlen ("taler-age-restriction-derivation"),
+                   NULL, 0));
+
+  GNUNET_CRYPTO_ecc_scalar_from_int (factor, &scalar);
 
   /*
   * age commitment consists of GNUNET_CRYPTO_Eddsa{Private,Public}Key
@@ -584,7 +602,7 @@ TALER_age_commitment_derive (
   * We want to multiply, both, the Private Key by an integer factor and the
   * public key (point on curve) with the equivalent scalar.
   *
-  * From the seed we will derive
+  * From the salt we will derive
   *   1. a scalar to multiply the public keys with
   *   2. a factor to multiply the private key with
   *
@@ -594,9 +612,9 @@ TALER_age_commitment_derive (
   * A point on a curve is GNUNET_CRYPTO_EccPoint which is
   *   unsigned char v[256 / 8];
   *
-  * A ECC scaler for use in point multiplications is a
+  * A ECC scalar for use in point multiplications is a
   * GNUNET_CRYPTO_EccScalar which is a
-  *   unsigned car v[256 / 8];
+  *   unsigned char v[256 / 8];
   * */
 
   GNUNET_assert (NULL != new);
@@ -613,9 +631,6 @@ TALER_age_commitment_derive (
     new->num_priv,
     struct TALER_AgeCommitmentPrivateKeyP);
 
-
-  GNUNET_CRYPTO_ecc_scalar_from_int (seed, &val);
-
   /* scalar multiply the public keys on the curve */
   for (size_t i = 0; i < orig->num_pub; i++)
   {
@@ -627,7 +642,7 @@ TALER_age_commitment_derive (
     if (GNUNET_OK !=
         GNUNET_CRYPTO_ecc_pmul_mpi (
           p,
-          &val,
+          &scalar,
           np))
       goto FAIL;
 
@@ -636,47 +651,40 @@ TALER_age_commitment_derive (
   /* multiply the private keys */
   /* we borough ideas from GNUNET_CRYPTO_ecdsa_private_key_derive */
   {
-    uint32_t seedBE;
-    uint8_t dc[32];
-    gcry_mpi_t f, x, d, n;
-    gcry_ctx_t ctx;
-
-    GNUNET_assert (0==gcry_mpi_ec_new (&ctx,NULL, "Ed25519"));
-    n = gcry_mpi_ec_get_mpi ("n", ctx, 1);
-
-    /* make the seed big endian */
-    seedBE = GNUNET_htonll (seed);
-
-    GNUNET_CRYPTO_mpi_scan_unsigned (&f, &seedBE, sizeof(seedBE));
-
     for (size_t i = 0; i < orig->num_priv; i++)
     {
+      uint8_t dc[32];
+      gcry_mpi_t f, x, d, n;
+      gcry_ctx_t ctx;
 
-      /* convert to big endian for libgrypt */
+      GNUNET_assert (0==gcry_mpi_ec_new (&ctx, NULL, "Ed25519"));
+      n = gcry_mpi_ec_get_mpi ("n", ctx, 1);
+
+      GNUNET_CRYPTO_mpi_scan_unsigned (&f, (unsigned char*) &factor,
+                                       sizeof(factor));
+
       for (size_t j = 0; j < 32; j++)
         dc[i] = orig->priv[i].eddsa_priv.d[31 - j];
       GNUNET_CRYPTO_mpi_scan_unsigned (&x, dc, sizeof(dc));
 
       d = gcry_mpi_new (256);
       gcry_mpi_mulm (d, f, x, n);
-      gcry_mpi_release (x);
-      gcry_mpi_release (d);
-      gcry_mpi_release (n);
-      gcry_mpi_release (d);
       GNUNET_CRYPTO_mpi_print_unsigned (dc, sizeof(dc), d);
 
       for (size_t j = 0; j <32; j++)
         new->priv[i].eddsa_priv.d[j] = dc[31 - 1];
 
       sodium_memzero (dc, sizeof(dc));
+      gcry_mpi_release (d);
+      gcry_mpi_release (x);
+      gcry_mpi_release (n);
+      gcry_mpi_release (f);
+      gcry_ctx_release (ctx);
 
-      /* TODO:
-       * make sure that the calculated private key generate the same public
-       * keys */
+      /* TODO: add test to make sure that the calculated private key generate
+       * the same public keys */
     }
 
-    gcry_mpi_release (f);
-    gcry_ctx_release (ctx);
   }
 
   return GNUNET_OK;

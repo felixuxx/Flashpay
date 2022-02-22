@@ -568,23 +568,23 @@ deposit_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       /* First two traits are only available if
          ds->traits is #GNUNET_YES */
-      TALER_TESTING_make_trait_exchange_pub (0, &ds->exchange_pub),
-      TALER_TESTING_make_trait_exchange_sig (0, &ds->exchange_sig),
+      TALER_TESTING_make_trait_exchange_pub (index, &ds->exchange_pub),
+      TALER_TESTING_make_trait_exchange_sig (index, &ds->exchange_sig),
       /* These traits are always available */
-      TALER_TESTING_make_trait_coin_priv (0,
+      TALER_TESTING_make_trait_coin_priv (index,
                                           coin_spent_priv),
-      TALER_TESTING_make_trait_age_commitment (0,
+      TALER_TESTING_make_trait_age_commitment (index,
                                                age_commitment),
       TALER_TESTING_make_trait_wire_details (ds->wire_details),
       TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
       TALER_TESTING_make_trait_deposit_amount (&ds->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (&ds->deposit_fee),
-      TALER_TESTING_make_trait_timestamp (0,
+      TALER_TESTING_make_trait_timestamp (index,
                                           &ds->exchange_timestamp),
-      TALER_TESTING_make_trait_wire_deadline (0,
+      TALER_TESTING_make_trait_wire_deadline (index,
                                               &ds->wire_deadline),
-      TALER_TESTING_make_trait_refund_deadline (0,
+      TALER_TESTING_make_trait_refund_deadline (index,
                                                 &ds->refund_deadline),
       TALER_TESTING_trait_end ()
     };

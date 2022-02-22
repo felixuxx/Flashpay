@@ -406,6 +406,8 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
       &td->details.refresh_commitments.noreveal_index),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.refresh_commitments.old_coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.refresh_commitments.h_age_commitment),
     GNUNET_PQ_query_param_end
   };
 

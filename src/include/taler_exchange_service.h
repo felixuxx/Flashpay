@@ -1682,9 +1682,11 @@ struct TALER_EXCHANGE_RefreshData
   struct TALER_CoinSpendPrivateKeyP melt_priv;
 
   /*
-   * age commitment that went into the original coin, might be NULL
+   * age commitment and its hash that went into the original coin, might be
+   * NULL
    */
-  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitment *melt_age_commitment;
+  struct TALER_AgeCommitmentHash *melt_h_age_commitment;
 
   /**
    * amount specifying how much the coin will contribute to the melt
@@ -1996,6 +1998,12 @@ struct TALER_EXCHANGE_LinkedCoinInfo
    * Private key of the coin.
    */
   struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Age commitment and its hash, if applicable.  Might be NULL.
+   */
+  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
    * Master secret of this coin.

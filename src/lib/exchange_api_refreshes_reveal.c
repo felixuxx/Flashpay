@@ -336,6 +336,7 @@ TALER_EXCHANGE_refreshes_reveal (
   json_t *coin_evs;
   json_t *reveal_obj;
   json_t *link_sigs;
+  json_t *old_age_commitment = NULL;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct MeltData md;
@@ -427,6 +428,22 @@ TALER_EXCHANGE_refreshes_reveal (
                                             &md.transfer_priv[j])));
   }
 
+  /* build array of old age commitment, if applicable */
+  GNUNET_assert ((NULL == rd->melt_age_commitment) ==
+                 (NULL == rd->melt_h_age_commitment));
+  if (NULL != rd->melt_age_commitment)
+  {
+    GNUNET_assert (NULL != (old_age_commitment = json_array ()));
+
+    for (size_t i = 0; i < rd->melt_age_commitment->num_pub; i++)
+    {
+      GNUNET_assert (0 ==
+                     json_array_append_new (old_age_commitment,
+                                            GNUNET_JSON_from_data_auto (
+                                              &rd->melt_age_commitment->pub[i])));
+    }
+  }
+
   /* build main JSON request */
   reveal_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("transfer_pub",
@@ -437,6 +454,9 @@ TALER_EXCHANGE_refreshes_reveal (
                                     rms)
       : GNUNET_JSON_pack_string ("rms",
                                  NULL)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_array_steal ("old_age_commitment",
+                                    old_age_commitment)),
     GNUNET_JSON_pack_array_steal ("transfer_privs",
                                   transfer_privs),
     GNUNET_JSON_pack_array_steal ("link_sigs",
@@ -480,6 +500,7 @@ TALER_EXCHANGE_refreshes_reveal (
     GNUNET_free (rrh);
     return NULL;
   }
+
   eh = TALER_EXCHANGE_curl_easy_get_ (rrh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

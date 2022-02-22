@@ -478,6 +478,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
                           &mh->md.melted_coin.fee_melt,
                           &mh->md.rc,
                           &h_denom_pub,
+                          mh->md.melted_coin.h_age_commitment,
                           &mh->md.melted_coin.coin_priv,
                           &confirm_sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&mh->md.melted_coin.coin_priv.eddsa_priv,
@@ -493,6 +494,12 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
                             &mh->md.melted_coin.melt_amount_with_fee),
     GNUNET_JSON_pack_data_auto ("rc",
                                 &mh->md.rc),
+    GNUNET_JSON_pack_allow_null (
+      mh->md.melted_coin.h_age_commitment
+       ? GNUNET_JSON_pack_data_auto ("age_commitment_hash",
+                                     mh->md.melted_coin.h_age_commitment)
+       : GNUNET_JSON_pack_string ("age_commitment_hash",
+                                  NULL)),
     GNUNET_JSON_pack_allow_null (
       mh->send_rms
        ? GNUNET_JSON_pack_data_auto ("rms",

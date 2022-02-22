@@ -78,7 +78,8 @@ TALER_EXCHANGE_get_melt_data_ (
   md->melted_coin.fee_melt = rd->melt_pk.fees.refresh;
   md->melted_coin.original_value = rd->melt_pk.value;
   md->melted_coin.expire_deposit = rd->melt_pk.expire_deposit;
-  md->melted_coin.age_commitment = rd->age_commitment;
+  md->melted_coin.age_commitment = rd->melt_age_commitment;
+  md->melted_coin.h_age_commitment = rd->melt_h_age_commitment;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (rd->melt_amount.currency,
@@ -184,29 +185,23 @@ TALER_EXCHANGE_get_melt_data_ (
       /* Handle age commitment, if present */
       if (NULL != md->melted_coin.age_commitment)
       {
-        struct TALER_AgeCommitment new_ac;
-        struct TALER_AgeCommitmentHash hac;
-
-        /* We use the first 4 bytes of the trans_sec to generate a new age
+        /* We use the first 8 bytes of the trans_sec to generate a new age
          * commitment */
-        uint32_t age_seed = trans_sec.key.bits[0];
+        uint64_t age_seed = (uint64_t) trans_sec.key.bits[0]
+                            | (uint64_t) trans_sec.key.bits[1] << 32;
 
-        if (GNUNET_OK !=
-            TALER_age_commitment_derive (
-              md->melted_coin.age_commitment,
-              age_seed + j,
-              &new_ac))
-        {
-          GNUNET_break_op (0);
-          TALER_EXCHANGE_free_melt_data_ (md);
-          return GNUNET_SYSERR;
-        }
+        fcd->age_commitment[i] = GNUNET_new (struct TALER_AgeCommitment);
+        ach = GNUNET_new (struct TALER_AgeCommitmentHash);
+
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_age_commitment_derive (
+                         md->melted_coin.age_commitment,
+                         age_seed,
+                         fcd->age_commitment[i]));
 
         TALER_age_commitment_hash (
-          &new_ac,
-          &hac);
-
-        ach = &hac;
+          fcd->age_commitment[i],
+          ach);
       }
 
       if (TALER_DENOMINATION_CS == alg_values[j].cipher)
@@ -225,7 +220,6 @@ TALER_EXCHANGE_get_melt_data_ (
         TALER_EXCHANGE_free_melt_data_ (md);
         return GNUNET_SYSERR;
       }
-
       rcd->blinded_planchet = pd.blinded_planchet;
       rcd->dk = &fcd->fresh_pk;
     }

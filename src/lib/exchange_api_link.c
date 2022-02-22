@@ -67,7 +67,8 @@ struct TALER_EXCHANGE_LinkHandle
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Age commitment of the coin, might be NULL, required to re-generate age commitments
+   * Age commitment of the original coin, might be NULL.
+   * Required to derive the new age commitment
    */
   const struct TALER_AgeCommitment *age_commitment;
 
@@ -118,7 +119,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHashP c_hash;
-  struct TALER_AgeCommitmentHash *hac = NULL;
 
   /* parse reply */
   memset (&nonce,
@@ -145,28 +145,26 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                          &alg_values,
                                          &bks);
 
+  lci->age_commitment = NULL;
+  lci->h_age_commitment = NULL;
+
   /* Derive the age commitment and calculate the hash */
   if (NULL != lh->age_commitment)
   {
-    struct TALER_AgeCommitment nac = {0};
-    struct TALER_AgeCommitmentHash h = {0};
-    uint32_t seed  = secret.key.bits[0];
+    uint64_t seed  = (uint64_t) secret.key.bits[0]
+                     | (uint64_t) secret.key.bits[1] << 32;
+    lci->age_commitment = GNUNET_new (struct TALER_AgeCommitment);
+    lci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
 
-    if (GNUNET_OK !=
-        TALER_age_commitment_derive (
-          lh->age_commitment,
-          seed,
-          &nac))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_age_commitment_derive (
+                     lh->age_commitment,
+                     seed,
+                     lci->age_commitment));
 
     TALER_age_commitment_hash (
-      &nac,
-      &h);
-
-    hac = &h;
+      lci->age_commitment,
+      lci->h_age_commitment);
   }
 
   if (GNUNET_OK !=
@@ -174,7 +172,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                               &alg_values,
                               &bks,
                               &lci->coin_priv,
-                              hac,
+                              lci->h_age_commitment,
                               &c_hash,
                               &pd))
   {

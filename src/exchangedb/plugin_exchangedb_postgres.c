@@ -611,7 +611,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_zombie_bad AS zombie_required"
       ",out_noreveal_index AS noreveal_index"
       " FROM exchange_do_melt"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
       9),
     /* Used in #postgres_do_refund() to refund a deposit. */
     GNUNET_PQ_make_prepare (
@@ -730,7 +730,7 @@ prepare_statements (struct PostgresClosure *pg)
       "get_known_coin",
       "SELECT"
       " denominations.denom_pub_hash"
-      ",age_hash"
+      ",age_commitment_hash"
       ",denom_sig"
       " FROM known_coins"
       " JOIN denominations USING (denominations_serial)"
@@ -784,7 +784,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  INSERT INTO known_coins "
       "  (coin_pub"
       "  ,denominations_serial"
-      "  ,age_hash"
+      "  ,age_commitment_hash"
       "  ,denom_sig"
       "  ,remaining_val"
       "  ,remaining_frac"
@@ -804,14 +804,14 @@ prepare_statements (struct PostgresClosure *pg)
       "   FALSE AS existed"
       "  ,known_coin_id"
       "  ,NULL AS denom_pub_hash"
-      "  ,NULL AS age_hash"
+      "  ,NULL AS age_commitment_hash"
       "  FROM ins "
       "UNION ALL "
       "SELECT "
       "   TRUE AS existed"
       "  ,known_coin_id"
       "  ,denom_pub_hash"
-      "  ,kc.age_hash"
+      "  ,kc.age_commitment_hash"
       "  FROM input_rows"
       "  JOIN known_coins kc USING (coin_pub)"
       "  JOIN denominations USING (denominations_serial)"
@@ -873,6 +873,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.denom_pub_hash"
       ",denoms.fee_refresh_val"
       ",denoms.fee_refresh_frac"
+      ",h_age_commitment"
       ",melt_serial_id"
       " FROM refresh_commitments"
       " JOIN known_coins kc"
@@ -1188,7 +1189,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.fee_deposit_val"
       ",denoms.fee_deposit_frac"
       ",denoms.denom_pub_hash"
-      ",kc.age_hash"
+      ",kc.age_commitment_hash"
       ",wallet_timestamp"
       ",refund_deadline"
       ",wire_deadline"
@@ -2529,8 +2530,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_with_fee_frac"
       ",noreveal_index"
       ",old_coin_pub"
+      ",h_age_commitment"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7);",
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
       7),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refresh_revealed_coins",
@@ -4593,6 +4595,7 @@ postgres_do_melt (
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin_sig),
     GNUNET_PQ_query_param_uint64 (&known_coin_id),
+    GNUNET_PQ_query_param_auto_from_type (&refresh->coin.h_age_commitment),
     GNUNET_PQ_query_param_uint32 (&refresh->noreveal_index),
     GNUNET_PQ_query_param_bool (*zombie_required),
     GNUNET_PQ_query_param_end
@@ -5646,7 +5649,7 @@ postgres_get_known_coin (void *cls,
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &coin_info->denom_pub_hash),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_auto_from_type ("age_hash",
+      GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                             &coin_info->h_age_commitment),
       &is_null),
     TALER_PQ_result_spec_denom_sig ("denom_sig",
@@ -5747,7 +5750,7 @@ postgres_count_known_coins (void *cls,
  * @param[out] known_coin_id set to the unique row of the coin
  * @param[out] denom_hash set to the denomination hash of the existing
  *             coin (for conflict error reporting)
- * @param[out] age_hash set to the conflicting age hash on conflict
+ * @param[out] h_age_commitment  set to the conflicting age commitment hash on conflict
  * @return database transaction status, non-negative on success
  */
 static enum TALER_EXCHANGEDB_CoinKnownStatus
@@ -5755,7 +5758,7 @@ postgres_ensure_coin_known (void *cls,
                             const struct TALER_CoinPublicInfo *coin,
                             uint64_t *known_coin_id,
                             struct TALER_DenominationHashP *denom_hash,
-                            struct TALER_AgeCommitmentHash *age_hash)
+                            struct TALER_AgeCommitmentHash *h_age_commitment)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -5779,8 +5782,8 @@ postgres_ensure_coin_known (void *cls,
                                             denom_hash),
       &is_denom_pub_hash_null),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_auto_from_type ("age_hash",
-                                            age_hash),
+      GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                            h_age_commitment),
       &is_age_hash_null),
     GNUNET_PQ_result_spec_end
   };
@@ -5814,10 +5817,10 @@ postgres_ensure_coin_known (void *cls,
   }
 
   if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (age_hash,
+       (0 != GNUNET_memcmp (h_age_commitment,
                             &coin->h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (age_hash));
+    GNUNET_break (GNUNET_is_zero (h_age_commitment));
     GNUNET_break_op (0);
     return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
   }
@@ -6066,7 +6069,7 @@ postgres_get_melt (void *cls,
                                           &melt->session.coin_sig),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
-                                            &melt->session.h_age_commitment),
+                                            &melt->session.coin.h_age_commitment),
       &h_age_commitment_is_null),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &melt->session.amount_with_fee),
@@ -6084,9 +6087,9 @@ postgres_get_melt (void *cls,
                                                  params,
                                                  rs);
   if (h_age_commitment_is_null)
-    memset (&melt->session.h_age_commitment,
+    memset (&melt->session.coin.h_age_commitment,
             0,
-            sizeof(melt->session.h_age_commitment));
+            sizeof(melt->session.coin.h_age_commitment));
 
   melt->session.rc = *rc;
   return qs;
@@ -6600,7 +6603,7 @@ add_coin_deposit (void *cls,
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &deposit->h_denom_pub),
         GNUNET_PQ_result_spec_allow_null (
-          GNUNET_PQ_result_spec_auto_from_type ("age_hash",
+          GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                                 &deposit->h_age_commitment),
           &is_null),
         GNUNET_PQ_result_spec_timestamp ("wallet_timestamp",
@@ -6668,6 +6671,7 @@ add_coin_melt (void *cls,
     struct TALER_EXCHANGEDB_MeltListEntry *melt;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
+    bool hac_isnull;
 
     chc->have_deposit_or_melt = true;
     melt = GNUNET_new (struct TALER_EXCHANGEDB_MeltListEntry);
@@ -6684,6 +6688,10 @@ add_coin_melt (void *cls,
                                      &melt->amount_with_fee),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
                                      &melt->melt_fee),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+                                                &melt->h_age_commitment),
+          &hac_isnull),
         GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
@@ -6699,6 +6707,10 @@ add_coin_melt (void *cls,
         chc->failed = true;
         return;
       }
+
+      if (hac_isnull)
+        memset (&melt->h_age_commitment, 0, sizeof(melt->h_age_commitment));
+
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;

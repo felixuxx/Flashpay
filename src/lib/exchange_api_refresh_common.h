@@ -56,8 +56,8 @@ struct MeltedCoin
    * The original age commitment and its hash.  MUST be NULL if no age
    * commitment was set.
    */
-  struct TALER_AgeCommitment *age_commitment;
-  struct TALER_AgeCommitmentHash *h_age_commitment;
+  const struct TALER_AgeCommitment *age_commitment;
+  const struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
    * Timestamp indicating when coins of this denomination become invalid.
