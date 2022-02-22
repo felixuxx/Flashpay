@@ -9,6 +9,7 @@ _GROUPNAME=taler-exchange-secmod
 _DBGROUPNAME=taler-exchange-db
 _EUSERNAME=taler-exchange-httpd
 _CLOSERUSERNAME=taler-exchange-closer
+_CSECUSERNAME=taler-exchange-secmod-cs
 _RSECUSERNAME=taler-exchange-secmod-rsa
 _ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
@@ -32,6 +33,9 @@ configure)
   fi
   if ! getent passwd ${_RSECUSERNAME} >/dev/null; then
     adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_RSECUSERNAME}
+  fi
+  if ! getent passwd ${_CSECUSERNAME} >/dev/null; then
+    adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_CSECUSERNAME}
   fi
   if ! getent passwd ${_ESECUSERNAME} >/dev/null; then
     adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_ESECUSERNAME}

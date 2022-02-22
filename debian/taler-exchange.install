@@ -2,6 +2,7 @@ usr/bin/taler-exchange-aggregator
 usr/bin/taler-exchange-closer
 usr/bin/taler-exchange-dbinit
 usr/bin/taler-exchange-httpd
+usr/bin/taler-exchange-secmod-cs
 usr/bin/taler-exchange-secmod-eddsa
 usr/bin/taler-exchange-secmod-rsa
 usr/bin/taler-exchange-transfer
@@ -13,6 +14,7 @@ usr/share/man/man1/taler-exchange-dbinit*
 usr/share/man/man1/taler-exchange-httpd*
 usr/share/man/man1/taler-exchange-secmod-eddsa*
 usr/share/man/man1/taler-exchange-secmod-rsa*
+usr/share/man/man1/taler-exchange-secmod-cs*
 usr/share/man/man1/taler-exchange-transfer*
 usr/share/man/man1/taler-exchange-wirewatch*
 usr/share/man/man1/taler-bank*
