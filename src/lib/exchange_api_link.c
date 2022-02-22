@@ -136,7 +136,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                       &lh->coin_priv,
                                       &secret);
   TALER_transfer_secret_to_planchet_secret (&secret,
-                                            coin_num,
+                                            coin_idx,
                                             &lci->ps);
   TALER_planchet_setup_coin_priv (&lci->ps,
                                   &alg_values,
