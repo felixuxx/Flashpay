@@ -81,7 +81,6 @@ struct TALER_EXCHANGE_LinkHandle
  *
  * @param lh link handle
  * @param json json reply with the data for one coin
- * @param coin_num number of the coin
  * @param trans_pub our transfer public key
  * @param[out] lci where to return coin details
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -89,7 +88,6 @@ struct TALER_EXCHANGE_LinkHandle
 static enum GNUNET_GenericReturnValue
 parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                  const json_t *json,
-                 uint32_t coin_num,
                  const struct TALER_TransferPublicKeyP *trans_pub,
                  struct TALER_EXCHANGE_LinkedCoinInfo *lci)
 {
@@ -349,7 +347,6 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
             parse_link_coin (lh,
                              json_array_get (jsona,
                                              i),
-                             i,
                              &trans_pub,
                              lci))
         {
