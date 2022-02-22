@@ -111,6 +111,9 @@ TEH_RESPONSE_compile_transaction_history (
                 GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                             &deposit->h_denom_pub),
                 GNUNET_JSON_pack_allow_null (
+                  deposit->no_age_commitment ?
+                  GNUNET_JSON_pack_string (
+                    "h_age_commitment", NULL) :
                   GNUNET_JSON_pack_data_auto ("h_age_commitment",
                                               &deposit->h_age_commitment)),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
@@ -146,7 +149,7 @@ TEH_RESPONSE_compile_transaction_history (
 
         /* Age restriction is optional.  We communicate a NULL value to
          * JSON_PACK below */
-        if (! TALER_AgeCommitmentHash_isNullOrZero (&melt->h_age_commitment))
+        if (! melt->no_age_commitment)
           phac = &melt->h_age_commitment;
 
         if (0 !=

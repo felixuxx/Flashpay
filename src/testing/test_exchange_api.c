@@ -644,7 +644,6 @@ run (void *cls,
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:0.1",
                                MHD_HTTP_OK),
-#if 0 /* FIXME oec */
     /* Test running a failing melt operation (same operation
      * again must fail) */
     TALER_TESTING_cmd_melt ("refresh-melt-failing-age",
@@ -658,7 +657,6 @@ run (void *cls,
                             MHD_HTTP_CONFLICT,
                             NULL),
 
-#endif
     TALER_TESTING_cmd_end ()
   };
 

@@ -1056,6 +1056,11 @@ struct TALER_CoinPublicInfo
   struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
+   * True, if age commitment is not applicable.
+   */
+  bool no_age_commitment;
+
+  /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
    * which demonstrates that the coin is valid.
    */

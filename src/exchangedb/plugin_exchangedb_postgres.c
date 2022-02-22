@@ -5644,14 +5644,13 @@ postgres_get_known_coin (void *cls,
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
   };
-  bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &coin_info->denom_pub_hash),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                             &coin_info->h_age_commitment),
-      &is_null),
+      &coin_info->no_age_commitment),
     TALER_PQ_result_spec_denom_sig ("denom_sig",
                                     &coin_info->denom_sig),
     GNUNET_PQ_result_spec_end
@@ -6590,7 +6589,6 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_DepositListEntry *deposit;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
-    bool is_null;
 
     chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
@@ -6605,7 +6603,7 @@ add_coin_deposit (void *cls,
         GNUNET_PQ_result_spec_allow_null (
           GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                                 &deposit->h_age_commitment),
-          &is_null),
+          &deposit->no_age_commitment),
         GNUNET_PQ_result_spec_timestamp ("wallet_timestamp",
                                          &deposit->timestamp),
         GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -6671,7 +6669,6 @@ add_coin_melt (void *cls,
     struct TALER_EXCHANGEDB_MeltListEntry *melt;
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
-    bool hac_isnull;
 
     chc->have_deposit_or_melt = true;
     melt = GNUNET_new (struct TALER_EXCHANGEDB_MeltListEntry);
@@ -6691,7 +6688,7 @@ add_coin_melt (void *cls,
         GNUNET_PQ_result_spec_allow_null (
           GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
                                                 &melt->h_age_commitment),
-          &hac_isnull),
+          &melt->no_age_commitment),
         GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
@@ -6707,9 +6704,6 @@ add_coin_melt (void *cls,
         chc->failed = true;
         return;
       }
-
-      if (hac_isnull)
-        memset (&melt->h_age_commitment, 0, sizeof(melt->h_age_commitment));
 
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);

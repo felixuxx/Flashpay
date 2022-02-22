@@ -477,7 +477,7 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline = {0};
       struct TALER_CoinSpendSignatureP sig;
-      struct TALER_AgeCommitmentHash *hac = NULL;
+      struct TALER_AgeCommitmentHash hac = {0};
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
@@ -487,6 +487,9 @@ TALER_EXCHANGE_verify_coin_history (
                                      &h_wire),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      h_denom_pub),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                       &hac)),
         GNUNET_JSON_spec_timestamp ("timestamp",
                                     &wallet_timestamp),
         GNUNET_JSON_spec_mark_optional (
@@ -508,18 +511,19 @@ TALER_EXCHANGE_verify_coin_history (
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          TALER_wallet_deposit_verify (&amount,
-                                       &fee,
-                                       &h_wire,
-                                       &h_contract_terms,
-                                       hac,
-                                       NULL /* h_extensions! */,
-                                       h_denom_pub,
-                                       wallet_timestamp,
-                                       &merchant_pub,
-                                       refund_deadline,
-                                       coin_pub,
-                                       &sig))
+          TALER_wallet_deposit_verify (
+            &amount,
+            &fee,
+            &h_wire,
+            &h_contract_terms,
+            TALER_AgeCommitmentHash_isNullOrZero (&hac) ?  NULL : &hac,
+            NULL /* h_extensions! */,
+            h_denom_pub,
+            wallet_timestamp,
+            &merchant_pub,
+            refund_deadline,
+            coin_pub,
+            &sig))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;

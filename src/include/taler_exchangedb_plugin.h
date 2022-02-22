@@ -1127,6 +1127,11 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
+   * true, if age commitment is not applicable
+   */
+  bool no_age_commitment;
+
+  /**
    * Detailed information about the receiver for executing the transaction.
    * URL in payto://-format.
    */
@@ -1320,6 +1325,11 @@ struct TALER_EXCHANGEDB_MeltListEntry
    * applies.
    */
   struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
+   * true, if no h_age_commitment is applicable
+   */
+  bool no_age_commitment;
 
   /**
    * How much value is being melted?  This amount includes the fees,
