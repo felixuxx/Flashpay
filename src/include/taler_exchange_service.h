@@ -1685,8 +1685,8 @@ struct TALER_EXCHANGE_RefreshData
    * age commitment and its hash that went into the original coin, might be
    * NULL
    */
-  struct TALER_AgeCommitment *melt_age_commitment;
-  struct TALER_AgeCommitmentHash *melt_h_age_commitment;
+  const struct TALER_AgeCommitment *melt_age_commitment;
+  const struct TALER_AgeCommitmentHash *melt_h_age_commitment;
 
   /**
    * amount specifying how much the coin will contribute to the melt

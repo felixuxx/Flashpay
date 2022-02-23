@@ -287,7 +287,7 @@ deposit_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_AgeCommitment *age_commitment = NULL;
+  const struct TALER_AgeCommitment *age_commitment = NULL;
   struct TALER_AgeCommitmentHash h_age_commitment = {0};
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
@@ -533,7 +533,7 @@ deposit_traits (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
-  struct TALER_AgeCommitment *age_commitment;
+  const struct TALER_AgeCommitment *age_commitment;
 
   if (GNUNET_YES != ds->command_initialized)
   {

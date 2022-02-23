@@ -1044,8 +1044,8 @@ melt_run (void *cls,
   {
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
-    struct TALER_AgeCommitment *age_commitment;
-    struct TALER_AgeCommitmentHash *h_age_commitment;
+    const struct TALER_AgeCommitment *age_commitment;
+    const struct TALER_AgeCommitmentHash *h_age_commitment;
     const struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
     const struct TALER_TESTING_Command *coin_command;
