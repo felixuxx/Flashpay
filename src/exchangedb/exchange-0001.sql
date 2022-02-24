@@ -634,7 +634,7 @@ CREATE TABLE IF NOT EXISTS recoup
   ,recoup_timestamp INT8 NOT NULL
   ,reserve_out_serial_id INT8 NOT NULL -- REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE
   )
-  PARTITION BY RANGE (known_coin_id);
+  PARTITION BY HASH (known_coin_id);
 COMMENT ON TABLE recoup
   IS 'Information about recoups that were executed between a coin and a reserve. In this type of recoup, the amount is credited back to the reserve from which the coin originated.';
 COMMENT ON COLUMN recoup.known_coin_id
@@ -647,7 +647,7 @@ COMMENT ON COLUMN recoup.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the withdraw operation.';
 CREATE TABLE IF NOT EXISTS recoup_default
   PARTITION OF recoup
-  DEFAULT;
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE INDEX IF NOT EXISTS recoup_by_recoup_uuid_index
   ON recoup
@@ -670,7 +670,7 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
   ,recoup_timestamp INT8 NOT NULL
   ,rrc_serial INT8 NOT NULL -- REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE -- UNIQUE
   )
-  PARTITION BY RANGE (known_coin_id);
+  PARTITION BY HASH (known_coin_id);
 COMMENT ON TABLE recoup_refresh
   IS 'Table of coins that originated from a refresh operation and that were recouped. Links the (fresh) coin to the melted operation (and thus the old coin). A recoup on a refreshed coin credits the old coin and debits the fresh coin.';
 COMMENT ON COLUMN recoup_refresh.known_coin_id
@@ -681,7 +681,7 @@ COMMENT ON COLUMN recoup_refresh.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.';
 CREATE TABLE IF NOT EXISTS recoup_refresh_default
   PARTITION OF recoup_refresh
-  DEFAULT;
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE INDEX IF NOT EXISTS recoup_refresh_by_recoup_refresh_uuid_index
   ON recoup_refresh
@@ -701,7 +701,7 @@ CREATE TABLE IF NOT EXISTS prewire
   ,failed BOOLEAN NOT NULL DEFAULT false
   ,buf BYTEA NOT NULL
   )
-  PARTITION BY RANGE (prewire_uuid);
+  PARTITION BY HASH (prewire_uuid);
 COMMENT ON TABLE prewire
   IS 'pre-commit data for wire transfers we are about to execute';
 COMMENT ON COLUMN prewire.failed
@@ -712,7 +712,7 @@ COMMENT ON COLUMN prewire.buf
   IS 'serialized data to send to the bank to execute the wire transfer';
 CREATE TABLE IF NOT EXISTS prewire_default
   PARTITION OF prewire
-  DEFAULT;
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE INDEX IF NOT EXISTS prewire_by_finished_index
   ON prewire

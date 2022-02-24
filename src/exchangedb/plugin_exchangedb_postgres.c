@@ -796,7 +796,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    ,coin_val"
       "    ,coin_frac"
       "  FROM dd"
-      "  ON CONFLICT (coin_pub) DO NOTHING"
+      "  ON CONFLICT DO NOTHING" /* CONFLICT on (coin_pub) */
       "  RETURNING "
       "     known_coin_id"
       "  ) "
