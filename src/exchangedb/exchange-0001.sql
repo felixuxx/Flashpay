@@ -1148,7 +1148,7 @@ INSERT INTO wire_targets
   VALUES
   (in_h_payto
   ,in_receiver_wire_account)
-ON CONFLICT (h_payto) DO NOTHING
+ON CONFLICT DO NOTHING -- for CONFLICT ON (h_payto)
   RETURNING wire_target_serial_id INTO wtsi;
 
 IF NOT FOUND
