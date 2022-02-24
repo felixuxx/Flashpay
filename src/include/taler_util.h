@@ -125,7 +125,7 @@ TALER_b2s (const void *buf,
  * @param obj address of object to convert
  * @return string representing the binary obj buffer
  */
-#define TALER_B2S(obj) TALER_b2s (obj, sizeof (*obj))
+#define TALER_B2S(obj) TALER_b2s ((obj), sizeof (*(obj)))
 
 
 /**
