@@ -28,6 +28,19 @@
 
 
 /**
+ * How often should we retry a transaction before giving up
+ * (for transactions resulting in serialization/dead locks only).
+ *
+ * The current value is likely too high for production. We might want to
+ * benchmark good values once we have a good database setup.  The code is
+ * expected to work correctly with any positive value, albeit inefficiently if
+ * we too aggressively force clients to retry the HTTP request merely because
+ * we have database serialization issues.
+ */
+#define MAX_TRANSACTION_COMMIT_RETRIES 100
+
+
+/**
  * Ensure coin is known in the database, and handle conflicts and errors.
  *
  * @param coin the coin to make known
