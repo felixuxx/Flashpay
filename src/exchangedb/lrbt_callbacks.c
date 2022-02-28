@@ -658,6 +658,7 @@ lrbt_cb_table_known_coins (void *cls,
                            unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_KNOWN_COINS
   };
@@ -677,6 +678,9 @@ lrbt_cb_table_known_coins (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
         &td.details.known_coins.denominations_serial),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "remaining",
+        &td.details.known_coins.remaining),
       GNUNET_PQ_result_spec_end
     };
 

@@ -2227,6 +2227,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_pub"
       ",denom_sig"
       ",denominations_serial"
+      ",remaining_val"
+      ",remaining_frac"
       " FROM known_coins"
       " WHERE known_coin_id > $1"
       " ORDER BY known_coin_id ASC;",
@@ -2522,9 +2524,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_pub"
       ",denom_sig"
       ",denominations_serial"
+      ",remaining_val"
+      ",remaining_frac"
       ") VALUES "
-      "($1, $2, $3, $4);",
-      4),
+      "($1, $2, $3, $4, $5, $6);",
+      6),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refresh_commitments",
       "INSERT INTO refresh_commitments"

@@ -301,6 +301,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_AgeCommitmentHash age_hash;
       uint64_t denominations_serial;
       struct TALER_DenominationSignature denom_sig;
+      struct TALER_Amount remaining;
     } known_coins;
 
     struct

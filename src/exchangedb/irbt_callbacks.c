@@ -264,13 +264,12 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_auditors (struct PostgresClosure *pg,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
-  uint8_t is_active = td->details.auditors.is_active ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.auditors.auditor_pub),
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_name),
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_url),
-    GNUNET_PQ_query_param_auto_from_type (&is_active),
+    GNUNET_PQ_query_param_bool (&td->details.auditors.is_active),
     GNUNET_PQ_query_param_timestamp (&td->details.auditors.last_change),
     GNUNET_PQ_query_param_end
   };
@@ -380,6 +379,8 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
       &td->details.known_coins.denom_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.known_coins.denominations_serial),
+    TALER_PQ_query_param_amount (
+      &td->details.known_coins.remaining),
     GNUNET_PQ_query_param_end
   };
 
@@ -504,9 +505,6 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_deposits (struct PostgresClosure *pg,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
-  uint8_t tiny = td->details.deposits.tiny ? 1 : 0;
-  uint8_t done = td->details.deposits.done ? 1 : 0;
-  uint8_t extension_blocked = td->details.deposits.extension_blocked ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.shard),
@@ -523,9 +521,9 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.wire_target_serial_id),
-    GNUNET_PQ_query_param_auto_from_type (&tiny),
-    GNUNET_PQ_query_param_auto_from_type (&done),
-    GNUNET_PQ_query_param_auto_from_type (&extension_blocked),
+    GNUNET_PQ_query_param_bool (td->details.deposits.tiny),
+    GNUNET_PQ_query_param_bool (td->details.deposits.done),
+    GNUNET_PQ_query_param_bool (td->details.deposits.extension_blocked),
     GNUNET_PQ_query_param_uint64 (
       &td->details.deposits.extension_details_serial_id),
     GNUNET_PQ_query_param_end
