@@ -458,7 +458,6 @@ lrbt_cb_table_auditors (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    uint8_t is_active8 = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
@@ -468,8 +467,8 @@ lrbt_cb_table_auditors (void *cls,
                                     &td.details.auditors.auditor_url),
       GNUNET_PQ_result_spec_string ("auditor_name",
                                     &td.details.auditors.auditor_name),
-      GNUNET_PQ_result_spec_auto_from_type ("is_active",
-                                            &is_active8),
+      GNUNET_PQ_result_spec_bool ("is_active",
+                                  &td.details.auditors.is_active),
       GNUNET_PQ_result_spec_timestamp ("last_change",
                                        &td.details.auditors.last_change),
       GNUNET_PQ_result_spec_end
@@ -484,7 +483,6 @@ lrbt_cb_table_auditors (void *cls,
       ctx->error = true;
       return;
     }
-    td.details.auditors.is_active = (0 != is_active8);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
@@ -908,8 +906,7 @@ lrbt_cb_table_deposits (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    uint8_t tiny = 0; /* initialized to make compiler happy */
-    uint8_t done = 0; /* initialized to make compiler happy */
+    bool no_extension;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
         "serial",
@@ -950,18 +947,20 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "wire_target_serial_id",
         &td.details.deposits.wire_target_serial_id),
-      GNUNET_PQ_result_spec_auto_from_type (
+      GNUNET_PQ_result_spec_bool (
         "tiny",
         &td.details.deposits.tiny),
-      GNUNET_PQ_result_spec_auto_from_type (
+      GNUNET_PQ_result_spec_bool (
         "done",
         &td.details.deposits.done),
       GNUNET_PQ_result_spec_auto_from_type (
         "extension_blocked",
         &td.details.deposits.extension_blocked),
-      GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
-        &td.details.deposits.extension_details_serial_id),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint64 (
+          "extension_details_serial_id",
+          &td.details.deposits.extension_details_serial_id),
+        &no_extension),
       GNUNET_PQ_result_spec_end
     };
 
@@ -974,8 +973,6 @@ lrbt_cb_table_deposits (void *cls,
       ctx->error = true;
       return;
     }
-    td.details.deposits.tiny = (0 != tiny);
-    td.details.deposits.done = (0 != done);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
