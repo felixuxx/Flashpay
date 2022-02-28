@@ -120,6 +120,7 @@ TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
 taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
 taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &

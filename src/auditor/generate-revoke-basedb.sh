@@ -109,7 +109,9 @@ TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
 taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
 taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
-DENOM_HELPER_PID=$!
+RSA_DENOM_HELPER_PID=$!
+taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
+CS_DENOM_HELPER_PID=$!
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 EXCHANGE_PID=$!
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
@@ -277,12 +279,15 @@ export TIMETRAVEL="--timetravel=604800000000"
 
 echo "Launching exchange 1 week in the future"
 kill -TERM $EXCHANGE_PID
-kill -TERM $DENOM_HELPER_PID
+kill -TERM $RSA_DENOM_HELPER_PID
+kill -TERM $CS_DENOM_HELPER_PID
 kill -TERM $SIGNKEY_HELPER_PID
 taler-exchange-secmod-eddsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
 taler-exchange-secmod-rsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-rsa.log &
-DENOM_HELPER_PID=$!
+RSA_DENOM_HELPER_PID=$!
+taler-exchange-secmod-cs $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-cs.log &
+CS_DENOM_HELPER_PID=$!
 taler-exchange-httpd $TIMETRAVEL -c $CONF 2> taler-exchange-httpd.log &
 export EXCHANGE_PID=$!
 
