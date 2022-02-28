@@ -1924,6 +1924,14 @@ prepare_statements (struct PostgresClosure *pg)
       " LIMIT 1;",
       0),
     GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wire_targets",
+      "SELECT"
+      " wire_target_serial_id AS serial"
+      " FROM wire_targets"
+      " ORDER BY wire_target_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
       "select_serial_by_table_reserves",
       "SELECT"
       " reserve_uuid AS serial"
@@ -2111,6 +2119,17 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM denomination_revocations"
       " WHERE denom_revocations_serial_id > $1"
       " ORDER BY denom_revocations_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wire_targets",
+      "SELECT"
+      " wire_target_serial_id AS serial"
+      ",payto_uri"
+      ",kyc_ok"
+      ",external_id"
+      " FROM wire_targets"
+      " WHERE wire_target_serial_id > $1"
+      " ORDER BY wire_target_serial_id ASC;",
       1),
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_reserves",
@@ -2418,6 +2437,17 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3);",
       3),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wire_targets",
+      "INSERT INTO wire_targets"
+      "(wire_target_serial_id"
+      ",h_payto"
+      ",payto_uri"
+      ",kyc_ok"
+      ",external_id"
+      ") VALUES "
+      "($1, $2, $3, $4, $5);",
+      5),
     GNUNET_PQ_make_prepare (
       "insert_into_table_reserves",
       "INSERT INTO reserves"
@@ -10673,6 +10703,9 @@ postgres_lookup_serial_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
     statement = "select_serial_by_table_denomination_revocations";
     break;
+  case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
+    statement = "select_serial_by_table_wire_targets";
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     statement = "select_serial_by_table_reserves";
     break;
@@ -10906,9 +10939,17 @@ postgres_lookup_records_by_table (void *cls,
                                              rh,
                                              &ctx);
   if (qs < 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to run `%s'\n",
+                statement);
     return qs;
+  }
   if (ctx.error)
+  {
+    GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   return qs;
 }
 

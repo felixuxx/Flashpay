@@ -91,6 +91,7 @@ struct Table
 static struct Table tables[] = {
   { .rt = TALER_EXCHANGEDB_RT_DENOMINATIONS},
   { .rt = TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS},
+  { .rt = TALER_EXCHANGEDB_RT_WIRE_TARGETS},
   { .rt = TALER_EXCHANGEDB_RT_RESERVES},
   { .rt = TALER_EXCHANGEDB_RT_RESERVES_IN},
   { .rt = TALER_EXCHANGEDB_RT_RESERVES_CLOSE},
@@ -202,20 +203,16 @@ transact (void)
     src->lookup_serial_by_table (src->cls,
                                  tables[i].rt,
                                  &tables[i].end_serial);
-  if (0 >
-      src->commit (src->cls))
-    return GNUNET_SYSERR;
+  src->rollback (src->cls);
   if (GNUNET_OK !=
-      dst->start (src->cls,
+      dst->start (dst->cls,
                   "lookup dst serials"))
     return GNUNET_SYSERR;
   for (unsigned int i = 0; ! tables[i].end; i++)
     dst->lookup_serial_by_table (dst->cls,
                                  tables[i].rt,
                                  &tables[i].start_serial);
-  if (0 >
-      dst->commit (dst->cls))
-    return GNUNET_SYSERR;
+  dst->rollback (dst->cls);
   for (unsigned int i = 0; ! tables[i].end; i++)
   {
     struct Table *table = &tables[i];

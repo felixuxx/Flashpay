@@ -115,12 +115,15 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
 {
   struct TALER_PaytoHashP payto_hash;
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&payto_hash),
     GNUNET_PQ_query_param_string (
       td->details.wire_targets.payto_uri),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.wire_targets.kyc_ok),
-    GNUNET_PQ_query_param_string (
+    NULL == td->details.wire_targets.external_id
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (
       td->details.wire_targets.external_id),
     GNUNET_PQ_query_param_end
   };

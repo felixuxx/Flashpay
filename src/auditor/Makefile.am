@@ -193,8 +193,11 @@ check_SCRIPTS = \
   test-sync.sh
 
 .NOTPARALLEL:
-# Disabled for now: need working wallet first!
+# revocation test disabled for now: need working wallet first!
 # TESTS = $(check_SCRIPTS)
+TESTS = \
+  test-auditor.sh \
+  test-sync.sh
 
 EXTRA_DIST = \
   taler-auditor.in \
