@@ -39,6 +39,10 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&denom_hash),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.denominations.denom_type),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.denominations.age_mask),
     TALER_PQ_query_param_denom_pub (
       &td->details.denominations.denom_pub),
     GNUNET_PQ_query_param_auto_from_type (

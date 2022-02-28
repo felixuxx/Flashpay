@@ -53,8 +53,8 @@ lrbt_cb_table_denominations (void *cls,
         "denom_type",
         &td.details.denominations.denom_type),
       GNUNET_PQ_result_spec_uint32 (
-        "age_restrictions",
-        &td.details.denominations.age_restrictions),
+        "age_mask",
+        &td.details.denominations.age_mask),
       TALER_PQ_result_spec_denom_pub (
         "denom_pub",
         &td.details.denominations.denom_pub),

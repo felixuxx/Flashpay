@@ -18,7 +18,8 @@ psql talercheck-in < auditor-basedb.sql >/dev/null 2> /dev/null
 echo -n "."
 taler-auditor-sync -s test-sync-in.conf -d test-sync-out.conf -t
 
-for table in denominations denomination_revocations reserves reserves_in reserves_close reserves_out auditors auditor_denom_sigs exchange_sign_keys signkey_revocations known_coins refresh_commitments refresh_revealed_coins refresh_transfer_keys deposits refunds wire_out aggregation_tracking wire_fee recoup recoup_refresh
+# cs_nonce_locks excluded: no point
+for table in denominations denomination_revocations wire_targets reserves reserves_in reserves_close reserves_out auditors auditor_denom_sigs exchange_sign_keys signkey_revocations extensions extension_details known_coins refresh_commitments refresh_revealed_coins refresh_transfer_keys deposits refunds wire_out aggregation_tracking wire_fee recoup recoup_refresh
 do
     echo -n "."
     CIN=`echo "SELECT COUNT(*) FROM $table" | psql talercheck-in -Aqt`

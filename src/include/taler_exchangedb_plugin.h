@@ -200,7 +200,7 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       uint32_t denom_type;
-      uint32_t age_restrictions;
+      uint32_t age_mask;
       struct TALER_DenominationPublicKey denom_pub;
       struct TALER_MasterSignatureP master_sig;
       struct GNUNET_TIME_Timestamp valid_from;

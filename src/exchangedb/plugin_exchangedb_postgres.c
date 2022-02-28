@@ -280,8 +280,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
-      ",denom_pub"
+      ",denom_type"
       ",age_mask"
+      ",denom_pub"
       " FROM denominations"
       " LEFT JOIN "
       "   denomination_revocations USING (denominations_serial);",
@@ -2162,7 +2163,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_blind_ev"
       ",denominations_serial"
       ",denom_sig"
-      ",reserve_pub"
+      ",reserve_uuid"
       ",reserve_sig"
       ",execution_date"
       ",amount_with_fee_val"
@@ -2384,6 +2385,8 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO denominations"
       "(denominations_serial"
       ",denom_pub_hash"
+      ",denom_type"
+      ",age_mask"
       ",denom_pub"
       ",master_sig"
       ",valid_from"
@@ -2400,11 +2403,10 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refresh_frac"
       ",fee_refund_val"
       ",fee_refund_frac"
-      ",age_mask"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
-      19),
+      " $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);",
+      20),
     GNUNET_PQ_make_prepare (
       "insert_into_table_denomination_revocations",
       "INSERT INTO denomination_revocations"

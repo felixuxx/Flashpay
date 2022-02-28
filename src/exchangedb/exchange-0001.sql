@@ -2079,6 +2079,7 @@ UPDATE known_coins
   WHERE coin_pub=in_coin_pub;
 
 
+
 -- Credit the reserve and update reserve timers.
 UPDATE reserves
   SET
