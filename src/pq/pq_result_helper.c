@@ -97,6 +97,20 @@ extract_amount_nbo_helper (PGresult *result,
   r_amount_nbo->fraction = *(uint32_t *) PQgetvalue (result,
                                                      row,
                                                      frac_num);
+  if (GNUNET_ntohll (r_amount_nbo->value) >= TALER_AMOUNT_MAX_VALUE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Field `%s' exceeds legal range\n",
+                val_name);
+    return GNUNET_SYSERR;
+  }
+  if (ntohl (r_amount_nbo->fraction) >= TALER_AMOUNT_FRAC_BASE)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Field `%s' exceeds legal range\n",
+                frac_name);
+    return GNUNET_SYSERR;
+  }
   len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
                     strlen (currency));
   memcpy (r_amount_nbo->currency,

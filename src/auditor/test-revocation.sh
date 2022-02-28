@@ -482,11 +482,11 @@ check_with_database()
 # *************** Main logic starts here **************
 
 # ####### Setup globals ######
-# Postgres database to use (must match test-auditor.conf)
+# Postgres database to use (must match revoke-basedb.conf)
 DB=taler-auditor-test
 
 # Configuration file to use
-CONF=test-auditor.conf
+CONF=revoke-basedb.conf
 
 # test required commands exist
 echo "Testing for jq"

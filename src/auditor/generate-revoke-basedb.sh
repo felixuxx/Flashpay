@@ -32,7 +32,7 @@ export BASEDB=${1:-"revoke-basedb"}
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
-export TARGET_DB=taler-auditor-revokedb
+export TARGET_DB=${BASEDB}
 TMP_DIR=`mktemp -d revocation-tmp-XXXXXX`
 export WALLET_DB=wallet-revocation.json
 rm -f $WALLET_DB

@@ -866,10 +866,10 @@ function test_13() {
 
 echo "===========13: wrong melt signature ==========="
 # Modify denom_sig, so it is wrong
-COIN_ID=`echo "SELECT old_known_coin_id FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_known_coin_id='$COIN_ID';" | psql $DB -Aqt`
+COIN_PUB=`echo "SELECT old_coin_pub FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_known_pub='$COIN_PUB';" | psql $DB -Aqt`
 NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
-echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_known_coin_id='$COIN_ID'" | psql -Aqt $DB
+echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 run_audit
 
@@ -943,42 +943,27 @@ fi
 }
 
 
-
-# Test where h_wire in the deposit table is wrong
+# Test where salt in the deposit table is wrong
 function test_15() {
-echo "===========15: deposit wire hash wrong================="
+echo "===========15: deposit wire salt wrong================="
 
-# Check wire transfer lag reported (no aggregator!)
+# Modify wire_salt hash, so it is inconsistent
+SALT=`echo "SELECT wire_salt FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
+echo "UPDATE deposits SET wire_salt='\x1197cd7f7b0e13ab1905fedb36c536a2' WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
+run_audit
+
+echo -n "Testing inconsistency detection... "
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+if test "x$OP" != "xdeposit"
 then
-
-    # Modify h_wire hash, so it is inconsistent with 'wire'
-    echo "UPDATE deposits SET h_wire='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE deposit_serial_id=1" | psql -Aqt $DB
-
-    # The auditor checks h_wire consistency only for
-    # coins where the wire transfer has happened, hence
-    # run aggregator first to get this test to work.
-    run_audit aggregator
-
-    echo -n "Testing inconsistency detection... "
-    TABLE=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
-    if test "x$TABLE" != "xaggregation" -a "x$TABLE" != "xdeposits"
-    then
-        exit_fail "Reported table wrong: $TABLE"
-    fi
-    echo PASS
-
-    # cannot easily undo aggregator, hence full reload
-    full_reload
-
-else
-    echo "Test skipped (database too new)"
+    exit_fail "Reported operation wrong: $OP"
 fi
+echo PASS
+
+# Restore DB
+echo "UPDATE deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt $DB
+
 }
 
 
@@ -1181,14 +1166,14 @@ then
 
     OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_uuid='${RES_UUID}';" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
+    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
     # Need to run with the aggregator so the reserve closure happens
     run_audit aggregator
@@ -1219,11 +1204,11 @@ echo "===========20: reserve closure missing ================="
 
 OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
 NEW_CREDIT=`expr $OLD_VAL + 100 || true`
 echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
 # This time, run without the aggregator so the reserve closure is skipped!
 run_audit
@@ -1240,7 +1225,7 @@ fi
 
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
 }
 
@@ -1259,18 +1244,17 @@ then
 
     OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_uuid='${RES_UUID}';" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
+    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
-
 
     # remove transaction from bank DB
     echo "DELETE FROM app_banktransaction WHERE debit_account_id=2 AND amount='TESTKUDOS:${VAL_DELTA}';" | psql -Aqt $DB
@@ -1312,7 +1296,7 @@ S_DENOM=`echo 'SELECT denominations_serial FROM reserves_out LIMIT 1;' | psql $D
 OLD_START=`echo "SELECT valid_from FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
 OLD_WEXP=`echo "SELECT expire_withdraw FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
 # Basically expires 'immediately', so that the withdraw must have been 'invalid'
-NEW_WEXP=`expr $OLD_START + 1 || true`
+NEW_WEXP=$OLD_START
 
 echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
@@ -1320,7 +1304,7 @@ echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_s
 run_audit
 
 echo -n "Testing inconsistency detection... "
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency not detected"
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
 
 echo PASS
 
@@ -1793,6 +1777,50 @@ fi
 
 
 
+# Test where h_payto in the wire_targets table is wrong
+function test_33() {
+echo "===========33: h_payto wrong================="
+
+# Check wire transfer lag reported (no aggregator!)
+# NOTE: this test is BRAND NEW and expected
+# to fail until we implement the check in the auditor!
+
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-helper-auditor-wire.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    # Modify h_payto hash, so it is inconsistent with 'wire'
+    WTSID=`echo "SELECT wire_target_serial_id FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
+    echo "UPDATE wire_targets SET h_payto='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE wire_target_serial_id=$WTSID" | psql -Aqt $DB
+
+    # The auditor checks h_wire consistency only for
+    # coins where the wire transfer has happened, hence
+    # run aggregator first to get this test to work.
+    run_audit aggregator
+
+    echo -n "Testing inconsistency detection... "
+    TABLE=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
+    if test "x$TABLE" != "xwire_targets"
+    then
+        exit_fail "Reported table wrong: $TABLE"
+    fi
+    echo PASS
+
+    # cannot easily undo aggregator, hence full reload
+    full_reload
+
+else
+    echo "Test skipped (database too new)"
+fi
+}
+
+
+
+
+
 # *************** Main test loop starts here **************
 
 
@@ -1840,10 +1868,10 @@ check_with_database()
 
 # ####### Setup globals ######
 # Postgres database to use
-DB=taler-auditor-test
+DB=auditor-basedb
 
 # Configuration file to use
-CONF=test-auditor.conf
+CONF=${DB}.conf
 
 # test required commands exist
 echo "Testing for jq"

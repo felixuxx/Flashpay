@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS wire_targets_default
   PARTITION OF wire_targets
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
--- FIXME partition by serial_id rather than h_payto, 
+-- FIXME partition by serial_id rather than h_payto,
 -- it is used more in join conditions - crucial for sharding to select this.
 -- Author: (Boss Marco)
 CREATE INDEX IF NOT EXISTS wire_targets_serial_id_index
@@ -108,19 +108,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'reserves'
-  ELSE 
+  ELSE
     'reserves_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (reserve_pub);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -189,19 +189,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'reserves_in'
-  ELSE 
+  ELSE
     'reserves_in_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (reserve_pub);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -267,19 +267,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'reserves_close'
-  ELSE 
+  ELSE
     'reserves_close_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (reserve_pub);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -335,19 +335,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'reserves_out'
-  ELSE 
+  ELSE
     'reserves_out_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (h_blind_ev);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -488,19 +488,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'known_coins'
-  ELSE 
+  ELSE
     'known_coins_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (coin_pub);' -- FIXME: or include denominations_serial? or multi-level partitioning?
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -559,19 +559,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'refresh_commitments'
-  ELSE 
+  ELSE
     'refresh_commitments_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (rc);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -632,19 +632,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'refresh_revealed_coins'
-  ELSE 
+  ELSE
     'refresh_revealed_coins_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (melt_serial_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -715,19 +715,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'refresh_transfer_keys'
-  ELSE 
+  ELSE
     'refresh_transfer_keys_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (melt_serial_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -790,19 +790,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'deposits'
-  ELSE 
+  ELSE
     'deposits_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (shard);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -902,19 +902,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'refunds'
-  ELSE 
+  ELSE
     'refunds_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (deposit_serial_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -969,19 +969,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'wire_out'
-  ELSE 
+  ELSE
     'wire_out_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (wtid_raw);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -1037,19 +1037,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'aggregation_tracking'
-  ELSE 
+  ELSE
     'aggregation_tracking_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (deposit_serial_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -1123,19 +1123,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'recoup'
-  ELSE 
+  ELSE
     'recoup_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (known_coin_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -1199,19 +1199,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'recoup_refresh'
-  ELSE 
+  ELSE
     'recoup_refresh_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (known_coin_id);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -1273,19 +1273,19 @@ DECLARE
   partition_str VARCHAR;
 BEGIN
 
-  table_name = CASE 
+  table_name = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'prewire'
-  ELSE 
+  ELSE
     'prewire_' || shard_suffix
   END;
 
-  partition_str = CASE 
+  partition_str = CASE
   shard_suffix
-  WHEN '' THEN 
+  WHEN '' THEN
     'PARTITION BY HASH (prewire_uuid);'
-  ELSE 
+  ELSE
     ';'
   END;
 
@@ -1697,8 +1697,8 @@ IF EXISTS (
   SELECT 1
     FROM information_Schema.constraint_column_usage
    WHERE table_name='wire_out'
-     AND constraint_name='wire_out_ref') 
-THEN 
+     AND constraint_name='wire_out_ref')
+THEN
   SET CONSTRAINTS wire_out_ref DEFERRED;
 END IF;
 

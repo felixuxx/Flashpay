@@ -200,7 +200,6 @@ EXTRA_DIST = \
   taler-auditor.in \
   taler-helper-auditor-render.py \
   auditor.conf \
-  test-auditor.conf \
   test-sync-in.conf \
   test-sync-out.conf \
   generate-auditor-basedb.sh \
@@ -209,8 +208,10 @@ EXTRA_DIST = \
   generate-auditor-basedb-template.conf \
   $(check_SCRIPTS) \
   auditor-basedb.age \
+  auditor-basedb.conf \
   auditor-basedb.sql \
   auditor-basedb.mpub \
   revoke-basedb.age \
+  revoke-basedb.conf \
   revoke-basedb.sql \
   revoke-basedb.mpub

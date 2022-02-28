@@ -1950,6 +1950,7 @@ typedef void
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param account_payto_uri which account did the transfer go to?
+ * @param h_payto hash over @a account_payto_uri as it is in the DB
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination of @a coin_pub
@@ -1963,6 +1964,7 @@ typedef void
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *account_payto_uri,
+  const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,

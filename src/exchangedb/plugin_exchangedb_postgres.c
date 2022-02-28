@@ -1240,6 +1240,7 @@ prepare_statements (struct PostgresClosure *pg)
       " aggregation_serial_id"
       ",deposits.h_contract_terms"
       ",payto_uri"
+      ",h_payto"
       ",kc.coin_pub"
       ",deposits.merchant_pub"
       ",wire_out.execution_date"
@@ -7160,6 +7161,7 @@ handle_wt_result (void *cls,
     uint64_t rowid;
     struct TALER_PrivateContractHashP h_contract_terms;
     struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_PaytoHashP h_payto;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct GNUNET_TIME_Timestamp exec_time;
     struct TALER_Amount amount_with_fee;
@@ -7172,6 +7174,8 @@ handle_wt_result (void *cls,
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
+      GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                            &h_payto),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -7200,6 +7204,7 @@ handle_wt_result (void *cls,
              rowid,
              &merchant_pub,
              payto_uri,
+             &h_payto,
              exec_time,
              &h_contract_terms,
              &denom_pub,

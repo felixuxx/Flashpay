@@ -186,6 +186,7 @@ TALER_ARL_get_denomination_info_by_hash (
                                                    NULL);
     if (0 > qs)
     {
+      GNUNET_break (0);
       *issue = NULL;
       return qs;
     }
@@ -211,6 +212,7 @@ TALER_ARL_get_denomination_info_by_hash (
                                                &issue);
     if (qs <= 0)
     {
+      GNUNET_break (qs >= 0);
       if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Denomination %s not found\n",
@@ -598,38 +600,34 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 
   if (GNUNET_is_zero (&TALER_ARL_auditor_pub))
   {
-    /* private key not available, try configuration for public key */
     char *auditor_public_key_str;
 
-    if (GNUNET_OK !=
+    if (GNUNET_OK ==
         GNUNET_CONFIGURATION_get_value_string (c,
                                                "auditor",
                                                "PUBLIC_KEY",
                                                &auditor_public_key_str))
     {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "auditor",
-                                 "PUBLIC_KEY");
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_public_key_from_string (
-          auditor_public_key_str,
-          strlen (auditor_public_key_str),
-          &TALER_ARL_auditor_pub.eddsa_pub))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "auditor",
-                                 "PUBLIC_KEY",
-                                 "invalid key");
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_public_key_from_string (
+            auditor_public_key_str,
+            strlen (auditor_public_key_str),
+            &TALER_ARL_auditor_pub.eddsa_pub))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "auditor",
+                                   "PUBLIC_KEY",
+                                   "invalid key");
+        GNUNET_free (auditor_public_key_str);
+        return GNUNET_SYSERR;
+      }
       GNUNET_free (auditor_public_key_str);
-      return GNUNET_SYSERR;
     }
-    GNUNET_free (auditor_public_key_str);
   }
 
   if (GNUNET_is_zero (&TALER_ARL_auditor_pub))
   {
+    /* public key not configured */
     /* try loading private key and deriving public key */
     char *fn;
 
@@ -654,6 +652,14 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
       }
       GNUNET_free (fn);
     }
+  }
+
+  if (GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_INFO,
+                               "auditor",
+                               "PUBLIC_KEY/AUDITOR_PRIV_FILE");
+    return GNUNET_SYSERR;
   }
 
   if (GNUNET_OK !=

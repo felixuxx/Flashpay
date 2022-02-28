@@ -41,9 +41,9 @@ BASEDB=${1:-"auditor-basedb"}
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
-TARGET_DB=taler-auditor-basedb
+export TARGET_DB=${BASEDB}
 
-WALLET_DB=${BASEDB:-"wallet"}.wdb
+export WALLET_DB=${BASEDB:-"wallet"}.wdb
 
 # delete existing wallet database
 rm -f $WALLET_DB

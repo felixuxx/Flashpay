@@ -390,7 +390,7 @@ struct WireCheckContext
  * @param[out] deposit_gain amount the coin contributes excluding refunds
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if the transaction must fail (hard error)
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_transaction_history_for_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -683,6 +683,7 @@ check_transaction_history_for_deposit (
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param account_pay_uri where did we transfer the funds?
+ * @param h_payto hash over @a account_payto_uri as it is in the DB
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination of @a coin_pub
@@ -698,6 +699,7 @@ wire_transfer_information_cb (
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *account_pay_uri,
+  const struct TALER_PaytoHashP *h_payto,
   struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -712,7 +714,18 @@ wire_transfer_information_cb (
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_PaytoHashP hpt;
 
+  TALER_payto_hash (account_pay_uri,
+                    &hpt);
+  if (0 !=
+      GNUNET_memcmp (&hpt,
+                     h_payto))
+  {
+    report_row_inconsistency ("wire_targets",
+                              rowid,
+                              "h-payto does not match payto URI");
+  }
   /* Obtain coin's transaction history */
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
