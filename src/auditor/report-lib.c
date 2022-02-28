@@ -558,7 +558,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
                                "BASE_URL");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_master_pub))
+  if (GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
     char *master_public_key_str;
@@ -596,32 +596,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
               "Taler auditor running for exchange master public key %s\n",
               TALER_B2S (&TALER_ARL_master_pub));
 
-  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_auditor_pub))
-  {
-    /* try loading private key and deriving public key */
-    char *fn;
-
-    if (GNUNET_OK ==
-        GNUNET_CONFIGURATION_get_value_filename (c,
-                                                 "auditor",
-                                                 "AUDITOR_PRIV_FILE",
-                                                 &fn))
-    {
-      struct TALER_AuditorPrivateKeyP auditor_priv;
-
-      if (GNUNET_OK ==
-          GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                             GNUNET_NO, /* do NOT create it! */
-                                             &auditor_priv.eddsa_priv))
-      {
-        GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
-                                            &TALER_ARL_auditor_pub.eddsa_pub);
-      }
-      GNUNET_free (fn);
-    }
-  }
-
-  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  if (GNUNET_is_zero (&TALER_ARL_auditor_pub))
   {
     /* private key not available, try configuration for public key */
     char *auditor_public_key_str;
@@ -651,6 +626,34 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
       return GNUNET_SYSERR;
     }
     GNUNET_free (auditor_public_key_str);
+  }
+
+  if (GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  {
+    /* try loading private key and deriving public key */
+    char *fn;
+
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_filename (c,
+                                                 "auditor",
+                                                 "AUDITOR_PRIV_FILE",
+                                                 &fn))
+    {
+      struct TALER_AuditorPrivateKeyP auditor_priv;
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Loading offline private key from `%s' to get auditor public key\n",
+                  fn);
+      if (GNUNET_OK ==
+          GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                             GNUNET_NO, /* do NOT create it! */
+                                             &auditor_priv.eddsa_priv))
+      {
+        GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
+                                            &TALER_ARL_auditor_pub.eddsa_pub);
+      }
+      GNUNET_free (fn);
+    }
   }
 
   if (GNUNET_OK !=

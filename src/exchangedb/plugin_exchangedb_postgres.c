@@ -241,6 +241,7 @@ prepare_statements (struct PostgresClosure *pg)
       "denomination_iterate",
       "SELECT"
       " master_sig"
+      ",denom_pub_hash"
       ",valid_from"
       ",expire_withdraw"
       ",expire_deposit"
@@ -1066,6 +1067,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",merchant_pub"
       ",denom.denom_pub"
       ",kc.coin_pub"
+      ",kc.age_commitment_hash"
       ",coin_sig"
       ",refund_deadline"
       ",wire_deadline"
@@ -3093,6 +3095,7 @@ postgres_insert_denomination_info (
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
+  struct TALER_DenominationHashP denom_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     TALER_PQ_query_param_denom_pub (denom_pub),
@@ -3111,8 +3114,13 @@ postgres_insert_denomination_info (
   };
   struct TALER_DenomFeeSet fees;
 
-  GNUNET_assert (denom_pub->age_mask.mask == issue->age_mask.mask);
-
+  GNUNET_assert (denom_pub->age_mask.mask ==
+                 issue->age_mask.mask);
+  TALER_denom_pub_hash (denom_pub,
+                        &denom_hash);
+  GNUNET_assert (0 ==
+                 GNUNET_memcmp (&denom_hash,
+                                &issue->properties.denom_hash));
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
                    GNUNET_TIME_timestamp_ntoh (
                      issue->properties.start).abs_time));
@@ -3244,9 +3252,12 @@ domination_cb_helper (void *cls,
   {
     struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
     struct TALER_DenominationPublicKey denom_pub;
+    struct TALER_DenominationHashP denom_hash;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &issue.signature),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                            &denom_hash),
       GNUNET_PQ_result_spec_timestamp_nbo ("valid_from",
                                            &issue.properties.start),
       GNUNET_PQ_result_spec_timestamp_nbo ("expire_withdraw",
@@ -3297,9 +3308,18 @@ domination_cb_helper (void *cls,
       = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
     TALER_denom_pub_hash (&denom_pub,
                           &issue.properties.denom_hash);
-    dic->cb (dic->cb_cls,
-             &denom_pub,
-             &issue);
+    if (0 !=
+        GNUNET_memcmp (&issue.properties.denom_hash,
+                       &denom_hash))
+    {
+      GNUNET_break (0);
+    }
+    else
+    {
+      dic->cb (dic->cb_cls,
+               &denom_pub,
+               &issue);
+    }
     TALER_denom_pub_free (&denom_pub);
   }
 }
@@ -6236,7 +6256,8 @@ add_revealed_coins (void *cls,
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &grctx->rrcs[off];
       struct GNUNET_PQ_ResultSpec rsi[] = {
-        GNUNET_PQ_result_spec_auto_from_type ("h_denom_pub",
+        /* NOTE: freshcoin_index selected and discarded here... */
+        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &rrc->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                               &rrc->orig_coin_link_sig),
@@ -8146,6 +8167,10 @@ deposit_serial_helper_cb (void *cls,
                                       &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &deposit.coin.coin_pub),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                              &deposit.coin.h_age_commitment),
+        &deposit.coin.no_age_commitment),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &deposit.csig),
       GNUNET_PQ_result_spec_timestamp ("refund_deadline",
@@ -8166,6 +8191,9 @@ deposit_serial_helper_cb (void *cls,
     };
     int ret;
 
+    memset (&deposit,
+            0,
+            sizeof (deposit));
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,

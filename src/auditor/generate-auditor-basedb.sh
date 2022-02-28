@@ -51,7 +51,7 @@ rm -f $WALLET_DB
 
 # Configuration file will be edited, so we create one
 # from the template.
-CONF=generate-auditor-basedb-prod.conf
+CONF=${BASEDB}.conf
 cp generate-auditor-basedb-template.conf $CONF
 
 
@@ -92,8 +92,11 @@ mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
 
+echo "AUDITOR PUB is $AUDITOR_PUB using file $AUDITOR_PRIV_FILE"
+
 # patch configuration
 taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
+taler-config -c $CONF -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
 taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
 taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
@@ -238,7 +241,6 @@ echo "Final clean up"
 dropdb $TARGET_DB
 
 rm -rf $DATA_DIR || true
-rm $CONF
 
 echo "====================================="
 echo "  Finished generation of $BASEDB"

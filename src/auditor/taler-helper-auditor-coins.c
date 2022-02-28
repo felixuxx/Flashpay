@@ -2194,7 +2194,12 @@ check_denomination (
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,
                                                 &auditor_sig);
-  if (0 >= qs)
+  if (0 > qs)
+  {
+    GNUNET_break (0);
+    return; /* skip! */
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Encountered denomination `%s' (%s) valid from %s (%llu-%llu) that this auditor is not auditing!\n",
