@@ -72,4 +72,7 @@ DROP FUNCTION IF EXISTS exchange_do_recoup_to_reserve;
 -- FIXME: drop other stored functions!
 
 -- And we're out of here...
+
+SELECT _v.unregister_patch('exchange-0002');
+
 COMMIT;
