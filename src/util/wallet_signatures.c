@@ -32,9 +32,9 @@ TALER_wallet_deposit_sign (
   const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_ExtensionContractHashP *h_extensions,
   const struct TALER_DenominationHashP *h_denom_pub,
-  struct GNUNET_TIME_Timestamp wallet_timestamp,
+  const struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Timestamp refund_deadline,
+  const struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {

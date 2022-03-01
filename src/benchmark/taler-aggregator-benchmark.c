@@ -532,7 +532,7 @@ run (void *cls,
       struct TALER_AgeMask mask = {
         .mask = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
       };
-      struct TALER_AgeCommitment ac = {0};
+      struct TALER_AgeCommitmentProof acp = {0};
 
       seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
                                        UINT64_MAX);
@@ -542,9 +542,9 @@ run (void *cls,
                        &mask,
                        13,
                        seed,
-                       &ac));
+                       &acp));
 
-      TALER_age_commitment_hash (&ac, &hac);
+      TALER_age_commitment_hash (&acp.commitment, &hac);
     }
 
     GNUNET_assert (GNUNET_OK ==

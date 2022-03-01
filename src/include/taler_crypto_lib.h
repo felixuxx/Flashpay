@@ -864,6 +864,14 @@ struct TALER_AgeCommitmentHash
   struct GNUNET_ShortHashCode shash;
 };
 
+/**
+ * @brief Signature of an age with the private key for the corresponding age group of an age commitment.
+ */
+struct TALER_AgeAttestation
+{
+  struct GNUNET_CRYPTO_EddsaSignature attest;
+};
+
 extern const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash;
 #define TALER_AgeCommitmentHash_isNullOrZero(ph) ((NULL == ph) || \
                                                   (0 == memcmp (ph, \
@@ -3307,7 +3315,7 @@ struct TALER_AgeCommitment
   /* The number of public keys, which must be the same as the number of
    * groups in the mask.
    */
-  size_t num_pub;
+  size_t num;
 
   /* The list of #num_pub public keys.  In must have same size as the number of
    * age groups defined in the mask.
@@ -3319,12 +3327,17 @@ struct TALER_AgeCommitment
    * The list has been allocated via GNUNET_malloc.
    */
   struct TALER_AgeCommitmentPublicKeyP *pub;
+};
 
+struct TALER_AgeProof
+{
   /* The number of private keys, which must be at most num_pub_keys.  One minus
    * this number corresponds to the largest age group that is supported with
    * this age commitment.
+   * **Note**, that this and the next field are only relevant on the wallet
+   * side for attestation and derive operations.
    */
-  size_t num_priv;
+  size_t num;
 
   /* List of #num_priv private keys.
    *
@@ -3335,6 +3348,12 @@ struct TALER_AgeCommitment
    * The list has been allocated via GNUNET_malloc.
    */
   struct TALER_AgeCommitmentPrivateKeyP *priv;
+};
+
+struct TALER_AgeCommitmentProof
+{
+  struct TALER_AgeCommitment commitment;
+  struct TALER_AgeProof proof;
 };
 
 /*
@@ -3354,7 +3373,7 @@ TALER_age_commitment_hash (
  * @param mask The age mask the defines the age groups
  * @param age The actual age for which an age commitment is generated
  * @param salt The salt that goes into the key generation.  MUST be choosen uniformly random.
- * @param commitment[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
+ * @param comm_proof[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
@@ -3362,28 +3381,76 @@ TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
   const uint64_t salt,
-  struct TALER_AgeCommitment *commitment);
+  struct TALER_AgeCommitmentProof *comm_proof);
 
 /*
  * @brief Derives another, equivalent age commitment for a given one.
  *
  * @param orig Original age commitment
  * @param salt Salt to randomly move the points on the elliptic curve in order to generate another, equivalent commitment.
- * @param derived[out] The resulting age commitment, ->priv and ->pub allocated via GNUNET_malloc on success.
+ * @param[out] derived The resulting age commitment, ->priv and ->pub allocated via GNUNET_malloc on success.
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
-  const struct TALER_AgeCommitment *orig,
+  const struct TALER_AgeCommitmentProof *orig,
   const uint64_t salt,
-  struct TALER_AgeCommitment *derived);
+  struct TALER_AgeCommitmentProof *derived);
+
+
+/*
+ * @brief Provide attestation for a given age, from a given age commitment, if possible.
+ *
+ * @param comm_proof The age commitment to be used for attestation.  For successful attestation, it must contain the private key for the corresponding age group.
+ * @param age Age (not age group) for which the an attestation should be done
+ * @param[out] attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
+ * @return GNUNET_OK on success, GNUNET_NO when no attestation can be made for that age with the given commitment, GNUNET_SYSERR otherwise
+ */
+enum GNUNET_GenericReturnValue
+TALER_age_commitment_attest (
+  const struct TALER_AgeCommitmentProof *comm_proof,
+  uint8_t age,
+  struct TALER_AgeAttestation *attest);
+
+/*
+ * @brief Verify the attestation for an given age and age commitment
+ *
+ * @param commitent The age commitment that went into the attestation.  Only the public keys are needed.
+ * @param age Age (not age group) for which the an attestation should be done
+ * @param attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
+ * @return GNUNET_OK when the attestation was successfull, GNUNET_NO no attestation couldn't be verified, GNUNET_SYSERR otherwise
+ */
+enum GNUNET_GenericReturnValue
+TALER_age_commitment_verify (
+  const struct TALER_AgeCommitment *commitment,
+  uint8_t age,
+  const struct TALER_AgeAttestation *attest);
 
 /*
  * @brief helper function to free memory of a struct TALER_AgeCommitment
- * @param cmt the commitment from which all memory should be freed.
+ *
+ * @param p the commitment from which all memory should be freed.
  */
 void
 TALER_age_commitment_free (
-  struct TALER_AgeCommitment *cmt);
+  struct TALER_AgeCommitment *p);
+
+/*
+ * @brief helper function to free memory of a struct TALER_AgeProof
+ *
+ * @param p the proof of commitment from which all memory should be freed.
+ */
+void
+TALER_age_proof_free (
+  struct TALER_AgeProof *p);
+
+/*
+ * @brief helper function to free memory of a struct TALER_AgeCommitmentProof
+ *
+ * @param p the commitment and its proof from which all memory should be freed.
+ */
+void
+TALER_age_commitment_proof_free (
+  struct TALER_AgeCommitmentProof *p);
 
 #endif

@@ -78,7 +78,7 @@ TALER_EXCHANGE_get_melt_data_ (
   md->melted_coin.fee_melt = rd->melt_pk.fees.refresh;
   md->melted_coin.original_value = rd->melt_pk.value;
   md->melted_coin.expire_deposit = rd->melt_pk.expire_deposit;
-  md->melted_coin.age_commitment = rd->melt_age_commitment;
+  md->melted_coin.age_commitment_proof = rd->melt_age_commitment_proof;
   md->melted_coin.h_age_commitment = rd->melt_h_age_commitment;
 
   GNUNET_assert (GNUNET_OK ==
@@ -183,24 +183,25 @@ TALER_EXCHANGE_get_melt_data_ (
                                              bks);
 
       /* Handle age commitment, if present */
-      if (NULL != md->melted_coin.age_commitment)
+      if (NULL != md->melted_coin.age_commitment_proof)
       {
         /* We use the first 8 bytes of the trans_sec to generate a new age
          * commitment */
         uint64_t age_seed = (uint64_t) trans_sec.key.bits[0]
                             | (uint64_t) trans_sec.key.bits[1] << 32;
 
-        fcd->age_commitment[i] = GNUNET_new (struct TALER_AgeCommitment);
+        fcd->age_commitment_proof[i] = GNUNET_new (struct
+                                                   TALER_AgeCommitmentProof);
         ach = GNUNET_new (struct TALER_AgeCommitmentHash);
 
         GNUNET_assert (GNUNET_OK ==
                        TALER_age_commitment_derive (
-                         md->melted_coin.age_commitment,
+                         md->melted_coin.age_commitment_proof,
                          age_seed,
-                         fcd->age_commitment[i]));
+                         fcd->age_commitment_proof[i]));
 
         TALER_age_commitment_hash (
-          fcd->age_commitment[i],
+          &fcd->age_commitment_proof[i]->commitment,
           ach);
       }
 

@@ -459,11 +459,11 @@ TALER_age_commitment_hash (
   }
 
   GNUNET_assert (__builtin_popcount (commitment->mask.mask) - 1 ==
-                 commitment->num_pub);
+                 commitment->num);
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
 
-  for (size_t i = 0; i < commitment->num_pub; i++)
+  for (size_t i = 0; i < commitment->num; i++)
   {
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &commitment->pub[i],
@@ -507,7 +507,7 @@ TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
   const uint64_t salt,
-  struct TALER_AgeCommitment *new)
+  struct TALER_AgeCommitmentProof *new)
 {
   uint8_t num_pub = __builtin_popcount (mask->mask) - 1;
   uint8_t num_priv = get_age_group (mask, age) - 1;
@@ -519,14 +519,14 @@ TALER_age_restriction_commit (
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
 
-  new->mask.mask = mask->mask;
-  new->num_pub = num_pub;
-  new->num_priv = num_priv;
+  new->commitment.mask.mask = mask->mask;
+  new->commitment.num = num_pub;
+  new->proof.num = num_priv;
 
-  new->pub = GNUNET_new_array (
+  new->commitment.pub = GNUNET_new_array (
     num_pub,
     struct TALER_AgeCommitmentPublicKeyP);
-  new->priv = GNUNET_new_array (
+  new->proof.priv = GNUNET_new_array (
     num_priv,
     struct TALER_AgeCommitmentPrivateKeyP);
 
@@ -542,7 +542,7 @@ TALER_age_restriction_commit (
 
     /* Only save the private keys for age groups less than num_priv */
     if (i < num_priv)
-      priv = &new->priv[i];
+      priv = &new->proof.priv[i];
 
     if  (GNUNET_OK !=
          GNUNET_CRYPTO_kdf (priv,
@@ -556,23 +556,23 @@ TALER_age_restriction_commit (
       goto FAIL;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&priv->eddsa_priv,
-                                        &new->pub[i].eddsa_pub);
+                                        &new->commitment.pub[i].eddsa_pub);
   }
 
   return GNUNET_OK;
 
 FAIL:
-  GNUNET_free (new->pub);
-  GNUNET_free (new->priv);
+  GNUNET_free (new->commitment.pub);
+  GNUNET_free (new->proof.priv);
   return GNUNET_SYSERR;
 }
 
 
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
-  const struct TALER_AgeCommitment *orig,
+  const struct TALER_AgeCommitmentProof *orig,
   const uint64_t salt,
-  struct TALER_AgeCommitment *new)
+  struct TALER_AgeCommitmentProof *new)
 {
   struct GNUNET_CRYPTO_EccScalar scalar;
   uint64_t saltBT = htonl (salt);
@@ -618,27 +618,30 @@ TALER_age_commitment_derive (
   * */
 
   GNUNET_assert (NULL != new);
-  GNUNET_assert (orig->num_pub == __builtin_popcount (orig->mask.mask) - 1);
-  GNUNET_assert (orig->num_priv <= orig->num_pub);
+  GNUNET_assert (orig->commitment.num== __builtin_popcount (
+                   orig->commitment.mask.mask) - 1);
+  GNUNET_assert (orig->proof.num <= orig->commitment.num);
 
-  new->mask = orig->mask;
-  new->num_pub = orig->num_pub;
-  new->num_priv = orig->num_priv;
-  new->pub = GNUNET_new_array (
-    new->num_pub,
+  new->commitment.mask = orig->commitment.mask;
+  new->commitment.num = orig->commitment.num;
+  new->proof.num = orig->proof.num;
+  new->commitment.pub = GNUNET_new_array (
+    new->commitment.num,
     struct TALER_AgeCommitmentPublicKeyP);
-  new->priv = GNUNET_new_array (
-    new->num_priv,
+  new->proof.priv = GNUNET_new_array (
+    new->proof.num,
     struct TALER_AgeCommitmentPrivateKeyP);
 
   /* scalar multiply the public keys on the curve */
-  for (size_t i = 0; i < orig->num_pub; i++)
+  for (size_t i = 0; i < orig->commitment.num; i++)
   {
     /* We shift all keys by the same scalar */
     struct GNUNET_CRYPTO_EccPoint *p = (struct
-                                        GNUNET_CRYPTO_EccPoint *) &orig->pub[i];
+                                        GNUNET_CRYPTO_EccPoint *) &orig->
+                                       commitment.pub[i];
     struct GNUNET_CRYPTO_EccPoint *np = (struct
-                                         GNUNET_CRYPTO_EccPoint *) &new->pub[i];
+                                         GNUNET_CRYPTO_EccPoint *) &new->
+                                        commitment.pub[i];
     if (GNUNET_OK !=
         GNUNET_CRYPTO_ecc_pmul_mpi (
           p,
@@ -651,7 +654,7 @@ TALER_age_commitment_derive (
   /* multiply the private keys */
   /* we borough ideas from GNUNET_CRYPTO_ecdsa_private_key_derive */
   {
-    for (size_t i = 0; i < orig->num_priv; i++)
+    for (size_t i = 0; i < orig->proof.num; i++)
     {
       uint8_t dc[32];
       gcry_mpi_t f, x, d, n;
@@ -664,7 +667,7 @@ TALER_age_commitment_derive (
                                        sizeof(factor));
 
       for (size_t j = 0; j < 32; j++)
-        dc[i] = orig->priv[i].eddsa_priv.d[31 - j];
+        dc[i] = orig->proof.priv[i].eddsa_priv.d[31 - j];
       GNUNET_CRYPTO_mpi_scan_unsigned (&x, dc, sizeof(dc));
 
       d = gcry_mpi_new (256);
@@ -672,7 +675,7 @@ TALER_age_commitment_derive (
       GNUNET_CRYPTO_mpi_print_unsigned (dc, sizeof(dc), d);
 
       for (size_t j = 0; j <32; j++)
-        new->priv[i].eddsa_priv.d[j] = dc[31 - 1];
+        new->proof.priv[i].eddsa_priv.d[j] = dc[31 - 1];
 
       sodium_memzero (dc, sizeof(dc));
       gcry_mpi_release (d);
@@ -690,8 +693,8 @@ TALER_age_commitment_derive (
   return GNUNET_OK;
 
 FAIL:
-  GNUNET_free (new->pub);
-  GNUNET_free (new->priv);
+  GNUNET_free (new->commitment.pub);
+  GNUNET_free (new->proof.priv);
   return GNUNET_SYSERR;
 }
 
@@ -703,23 +706,51 @@ TALER_age_commitment_free (
   if (NULL == commitment)
     return;
 
-  if (NULL != commitment->priv)
-  {
-    GNUNET_CRYPTO_zero_keys (
-      commitment->priv,
-      sizeof(*commitment->priv) * commitment->num_priv);
-
-    GNUNET_free (commitment->priv);
-    commitment->priv = NULL;
-  }
-
   if (NULL != commitment->pub)
   {
     GNUNET_free (commitment->pub);
-    commitment->priv = NULL;
+    commitment->pub = NULL;
+  }
+  GNUNET_free (commitment);
+}
+
+
+void
+TALER_age_proof_free (
+  struct TALER_AgeProof *proof)
+{
+  if (NULL != proof->priv)
+  {
+    GNUNET_CRYPTO_zero_keys (
+      proof->priv,
+      sizeof(*proof->priv) * proof->num);
+
+    GNUNET_free (proof->priv);
+    proof->priv = NULL;
+  }
+  GNUNET_free (proof);
+}
+
+
+void
+TALER_age_commitment_proof_free (
+  struct TALER_AgeCommitmentProof *cp)
+{
+  if (NULL != cp->proof.priv)
+  {
+    GNUNET_CRYPTO_zero_keys (
+      cp->proof.priv,
+      sizeof(*cp->proof.priv) * cp->proof.num);
+
+    GNUNET_free (cp->proof.priv);
+    cp->proof.priv = NULL;
   }
 
-  GNUNET_free (commitment);
+  if (NULL != cp->commitment.pub)
+  {
+    GNUNET_free (cp->commitment.pub);
+    cp->commitment.pub = NULL;
+  }
 }
 
 

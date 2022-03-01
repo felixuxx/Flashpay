@@ -296,18 +296,23 @@ check_commitment (struct RevealContext *rctx,
            * the transfer_secret and the old age commitment. */
           if (NULL != rctx->old_age_commitment)
           {
-            struct TALER_AgeCommitment ac = {0};
-            struct TALER_AgeCommitmentHash h = {0};
             uint64_t seed = (uint64_t) ts.key.bits[0]
                             | (uint64_t) ts.key.bits[1] << 32;
+            struct TALER_AgeCommitmentProof acp = {
+              /* we only need the commitment, not the proof, for the call to
+               * TALER_age_commitment_derive. */
+              .commitment = *(rctx->old_age_commitment)
+            };
+            struct TALER_AgeCommitmentProof nacp = {0};
+            struct TALER_AgeCommitmentHash h = {0};
 
             GNUNET_assert (GNUNET_OK ==
                            TALER_age_commitment_derive (
-                             rctx->old_age_commitment,
+                             &acp,
                              seed,
-                             &ac));
+                             &nacp));
 
-            TALER_age_commitment_hash (&ac, &h);
+            TALER_age_commitment_hash (&nacp.commitment, &h);
             hac = &h;
           }
 
@@ -614,8 +619,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     rctx->old_age_commitment = GNUNET_new (struct TALER_AgeCommitment);
     oac = rctx->old_age_commitment;
     oac->mask  =  TEH_age_mask;
-    oac->num_pub = ng;
-    oac->num_priv = 0; /* no private keys are needed for the reveal phase */
+    oac->num = ng;
     oac->pub = GNUNET_new_array (ng, struct TALER_AgeCommitmentPublicKeyP);
 
     /* Extract old age commitment */

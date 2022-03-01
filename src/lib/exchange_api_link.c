@@ -67,10 +67,10 @@ struct TALER_EXCHANGE_LinkHandle
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Age commitment of the original coin, might be NULL.
-   * Required to derive the new age commitment
+   * Age commitment and proof of the original coin, might be NULL.
+   * Required to derive the new age commitment and proof.
    */
-  const struct TALER_AgeCommitment *age_commitment;
+  const struct TALER_AgeCommitmentProof *age_commitment_proof;
 
 };
 
@@ -143,25 +143,25 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                          &alg_values,
                                          &bks);
 
-  lci->age_commitment = NULL;
+  lci->age_commitment_proof = NULL;
   lci->h_age_commitment = NULL;
 
   /* Derive the age commitment and calculate the hash */
-  if (NULL != lh->age_commitment)
+  if (NULL != lh->age_commitment_proof)
   {
     uint64_t seed  = (uint64_t) secret.key.bits[0]
                      | (uint64_t) secret.key.bits[1] << 32;
-    lci->age_commitment = GNUNET_new (struct TALER_AgeCommitment);
+    lci->age_commitment_proof = GNUNET_new (struct TALER_AgeCommitmentProof);
     lci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_age_commitment_derive (
-                     lh->age_commitment,
+                     lh->age_commitment_proof,
                      seed,
-                     lci->age_commitment));
+                     lci->age_commitment_proof));
 
     TALER_age_commitment_hash (
-      lci->age_commitment,
+      &(lci->age_commitment_proof->commitment),
       lci->h_age_commitment);
   }
 
@@ -471,7 +471,8 @@ handle_link_finished (void *cls,
 struct TALER_EXCHANGE_LinkHandle *
 TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
                      const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                     const struct TALER_AgeCommitment *age_commitment,
+                     const struct
+                     TALER_AgeCommitmentProof *age_commitment_proof,
                      TALER_EXCHANGE_LinkCallback link_cb,
                      void *link_cb_cls)
 {
@@ -510,7 +511,7 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
   lh->link_cb = link_cb;
   lh->link_cb_cls = link_cb_cls;
   lh->coin_priv = *coin_priv;
-  lh->age_commitment = age_commitment;
+  lh->age_commitment_proof = age_commitment_proof;
   lh->url = TEAH_path_to_url (exchange,
                               arg_str);
   if (NULL == lh->url)

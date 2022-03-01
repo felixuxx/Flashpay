@@ -287,7 +287,7 @@ deposit_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  const struct TALER_AgeCommitment *age_commitment = NULL;
+  const struct TALER_AgeCommitmentProof *age_commitment_proof = NULL;
   struct TALER_AgeCommitmentHash h_age_commitment = {0};
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
@@ -385,9 +385,9 @@ deposit_run (void *cls,
                                            ds->coin_index,
                                            &coin_priv)) ||
        (GNUNET_OK !=
-        TALER_TESTING_get_trait_age_commitment (coin_cmd,
-                                                ds->coin_index,
-                                                &age_commitment)) ||
+        TALER_TESTING_get_trait_age_commitment_proof (coin_cmd,
+                                                      ds->coin_index,
+                                                      &age_commitment_proof)) ||
        (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_pub (coin_cmd,
                                            ds->coin_index,
@@ -405,9 +405,10 @@ deposit_run (void *cls,
     return;
   }
 
-  if (NULL != age_commitment)
+  if (NULL != age_commitment_proof)
   {
-    TALER_age_commitment_hash (age_commitment, &h_age_commitment);
+    TALER_age_commitment_hash (&age_commitment_proof->commitment,
+                               &h_age_commitment);
   }
   ds->deposit_fee = denom_pub->fees.deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
@@ -533,7 +534,7 @@ deposit_traits (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
-  const struct TALER_AgeCommitment *age_commitment;
+  const struct TALER_AgeCommitmentProof *age_commitment_proof;
 
   if (GNUNET_YES != ds->command_initialized)
   {
@@ -556,9 +557,9 @@ deposit_traits (void *cls,
                                          ds->coin_index,
                                          &coin_spent_priv) ||
       (GNUNET_OK !=
-       TALER_TESTING_get_trait_age_commitment (coin_cmd,
-                                               ds->coin_index,
-                                               &age_commitment)))
+       TALER_TESTING_get_trait_age_commitment_proof (coin_cmd,
+                                                     ds->coin_index,
+                                                     &age_commitment_proof)))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
@@ -573,8 +574,8 @@ deposit_traits (void *cls,
       /* These traits are always available */
       TALER_TESTING_make_trait_coin_priv (index,
                                           coin_spent_priv),
-      TALER_TESTING_make_trait_age_commitment (index,
-                                               age_commitment),
+      TALER_TESTING_make_trait_age_commitment_proof (index,
+                                                     age_commitment_proof),
       TALER_TESTING_make_trait_wire_details (ds->wire_details),
       TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),

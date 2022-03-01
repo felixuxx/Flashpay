@@ -1682,10 +1682,10 @@ struct TALER_EXCHANGE_RefreshData
   struct TALER_CoinSpendPrivateKeyP melt_priv;
 
   /*
-   * age commitment and its hash that went into the original coin, might be
-   * NULL
+   * age commitment and proof and its hash that went into the original coin,
+   * might be NULL.
    */
-  const struct TALER_AgeCommitment *melt_age_commitment;
+  const struct TALER_AgeCommitmentProof *melt_age_commitment_proof;
   const struct TALER_AgeCommitmentHash *melt_h_age_commitment;
 
   /**
@@ -1858,7 +1858,7 @@ struct TALER_EXCHANGE_RevealedCoinInfo
   /**
    * Age commitment and its hash of the coin, might be NULL.
    */
-  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentProof *age_commitment_proof;
   struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
@@ -2002,7 +2002,7 @@ struct TALER_EXCHANGE_LinkedCoinInfo
   /**
    * Age commitment and its hash, if applicable.  Might be NULL.
    */
-  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentProof *age_commitment_proof;
   struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
@@ -2092,7 +2092,8 @@ typedef void
 struct TALER_EXCHANGE_LinkHandle *
 TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
                      const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                     const struct TALER_AgeCommitment *age_commitment,
+                     const struct
+                     TALER_AgeCommitmentProof *age_commitment_proof,
                      TALER_EXCHANGE_LinkCallback link_cb,
                      void *link_cb_cls);
 

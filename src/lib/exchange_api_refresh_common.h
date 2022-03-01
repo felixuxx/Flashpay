@@ -53,10 +53,10 @@ struct MeltedCoin
   struct TALER_Amount original_value;
 
   /**
-   * The original age commitment and its hash.  MUST be NULL if no age
-   * commitment was set.
+   * The original age commitment, its proof and its hash.  MUST be NULL if no
+   * age commitment was set.
    */
-  const struct TALER_AgeCommitment *age_commitment;
+  const struct TALER_AgeCommitmentProof *age_commitment_proof;
   const struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
@@ -100,11 +100,11 @@ struct FreshCoinData
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Arrays age commitments to be created, one for each cut-and-choose
-   * dimension.  The entries in each list might be NULL and indicate no age
-   * commitment/restriction on the particular coin.
+   * Arrays of age commitments and proofs to be created, one for each
+   * cut-and-choose dimension.  The entries in each list might be NULL and
+   * indicate no age commitment/restriction on the particular coin.
    */
-  struct TALER_AgeCommitment *age_commitment[TALER_CNC_KAPPA];
+  struct TALER_AgeCommitmentProof *age_commitment_proof[TALER_CNC_KAPPA];
 
   /**
    * Blinding key secrets for the coins, depending on the

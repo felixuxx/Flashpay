@@ -2484,6 +2484,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
   op (age_commitment, const struct TALER_AgeCommitment)                \
+  op (age_commitment_proof, const struct TALER_AgeCommitmentProof)     \
   op (h_age_commitment, const struct TALER_AgeCommitmentHash)          \
   op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)      \
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \

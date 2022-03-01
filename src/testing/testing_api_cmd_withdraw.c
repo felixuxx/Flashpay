@@ -138,10 +138,10 @@ struct WithdrawState
   uint8_t age;
 
   /**
-   * If age > 0, put here the corresponding age commitment and its hash,
-   * respectivelly, NULL otherwise.
+   * If age > 0, put here the corresponding age commitment with its proof and
+   * its hash, respectivelly, NULL otherwise.
    */
-  struct TALER_AgeCommitment *age_commitment;
+  struct TALER_AgeCommitmentProof *age_commitment_proof;
   struct TALER_AgeCommitmentHash *h_age_commitment;
 
   /**
@@ -524,10 +524,10 @@ withdraw_cleanup (void *cls,
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);
     ws->pk = NULL;
   }
-  if (NULL != ws->age_commitment)
+  if (NULL != ws->age_commitment_proof)
   {
-    TALER_age_commitment_free (ws->age_commitment);
-    ws->age_commitment = NULL;
+    TALER_age_commitment_proof_free (ws->age_commitment_proof);
+    ws->age_commitment_proof = NULL;
   }
   if (NULL != ws->h_age_commitment)
   {
@@ -579,7 +579,7 @@ withdraw_traits (void *cls,
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (
       (const char **) &ws->exchange_url),
-    TALER_TESTING_make_trait_age_commitment (0, ws->age_commitment),
+    TALER_TESTING_make_trait_age_commitment_proof (0, ws->age_commitment_proof),
     TALER_TESTING_make_trait_h_age_commitment (0, ws->h_age_commitment),
     TALER_TESTING_trait_end ()
   };
@@ -619,12 +619,12 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
   ws->age = age;
   if (0 < age)
   {
-    struct TALER_AgeCommitment *ac;
+    struct TALER_AgeCommitmentProof *acp;
     struct TALER_AgeCommitmentHash *hac;
     uint32_t seed;
     struct TALER_AgeMask mask;
 
-    ac = GNUNET_new (struct TALER_AgeCommitment);
+    acp = GNUNET_new (struct TALER_AgeCommitmentProof);
     hac = GNUNET_new (struct TALER_AgeCommitmentHash);
     seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
     mask = TALER_extensions_age_restriction_ageMask ();
@@ -634,7 +634,7 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
           &mask,
           age,
           seed,
-          ac))
+          acp))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to generate age commitment for age %d at %s\n",
@@ -643,8 +643,8 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
       GNUNET_assert (0);
     }
 
-    TALER_age_commitment_hash (ac,hac);
-    ws->age_commitment = ac;
+    TALER_age_commitment_hash (&acp->commitment,hac);
+    ws->age_commitment_proof = acp;
     ws->h_age_commitment = hac;
   }
 
