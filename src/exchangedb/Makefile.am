@@ -19,7 +19,6 @@ sql_DATA = \
   benchmark-0001.sql \
   exchange-0000.sql \
   exchange-0001.sql \
-  exchange-0002.sql \
   drop0001.sql
 
 EXTRA_DIST = \

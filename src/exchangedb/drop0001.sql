@@ -55,6 +55,7 @@ DROP TABLE IF EXISTS reserves CASCADE;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 
+
 DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,int,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
 
 DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bytea,bigint,bigint,int) ;
@@ -72,7 +73,5 @@ DROP FUNCTION IF EXISTS exchange_do_recoup_to_reserve;
 -- FIXME: drop other stored functions!
 
 -- And we're out of here...
-
-SELECT _v.unregister_patch('exchange-0002');
 
 COMMIT;
