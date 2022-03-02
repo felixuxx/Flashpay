@@ -75,6 +75,7 @@ lib_LTLIBRARIES = \
   libtalerutil.la
 
 libtalerutil_la_SOURCES = \
+  age_restriction.c \
   amount.c \
   auditor_signatures.c \
   config.c \

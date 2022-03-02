@@ -869,7 +869,7 @@ struct TALER_AgeCommitmentHash
  */
 struct TALER_AgeAttestation
 {
-  struct GNUNET_CRYPTO_EddsaSignature attest;
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
 
 extern const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash;

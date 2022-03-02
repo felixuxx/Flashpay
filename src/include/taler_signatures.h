@@ -271,6 +271,12 @@
  */
 #define TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH 1206
 
+/**
+ * Signature using a age restriction key for attestation of a particular
+ * age/age-group.
+ */
+#define TALER_SIGNATURE_WALLET_AGE_ATTESTATION 1207
+
 
 /******************************/
 /* Security module signatures */
@@ -1702,6 +1708,27 @@ struct TALER_MerchantPaySessionSigPS
    */
   struct GNUNET_HashCode h_session_id GNUNET_PACKED;
 
+};
+
+/**
+ * Used for attestation of a particular age
+ */
+struct TALER_AgeAttestationPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_WALLET_AGE_ATTESTATION.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Age mask that defines the underlying age groups
+   */
+  struct TALER_AgeMask mask;
+
+  /**
+   * The particular age that this attestation is for
+   */
+  uint8_t age;
 };
 
 
