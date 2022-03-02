@@ -102,11 +102,11 @@ run (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not setup partitions. Dropping default ones again\n");
-    }
-    if (GNUNET_OK != plugin->drop_tables (plugin->cls))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not drop tables after failed partitioning, please delete the DB manually\n");
+      if (GNUNET_OK != plugin->drop_tables (plugin->cls))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Could not drop tables after failed partitioning, please delete the DB manually\n");
+      }
     }
     TALER_EXCHANGEDB_plugin_unload (plugin);
     plugin = NULL;
