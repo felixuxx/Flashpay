@@ -101,6 +101,11 @@ test_high_level (void)
 }
 
 
+static struct TALER_AgeMask age_mask = {
+  .bits = 1 | 1 << 8 | 1 << 10 | 1 << 12
+          | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21
+};
+
 /**
  * Test the basic planchet functionality of creating a fresh planchet
  * and extracting the respective signature.
@@ -108,7 +113,7 @@ test_high_level (void)
  * @return 0 on success
  */
 static int
-test_planchets_rsa (void)
+test_planchets_rsa (uint8_t age)
 {
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
@@ -120,6 +125,26 @@ test_planchets_rsa (void)
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
   struct TALER_CoinPubHashP c_hash;
+  struct TALER_AgeCommitmentHash *ach = NULL;
+
+  if (0 < age)
+  {
+    struct TALER_AgeCommitmentHash ah = {0};
+    struct TALER_AgeCommitmentProof *acp;
+    uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                              UINT64_MAX);
+
+    acp = GNUNET_new (struct TALER_AgeCommitmentProof);
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_age_restriction_commit (&age_mask,
+                                                 age,
+                                                 salt,
+                                                 acp));
+    TALER_age_commitment_hash (&acp->commitment,
+                               &ah);
+    ach = &ah;
+  }
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
@@ -152,7 +177,7 @@ test_planchets_rsa (void)
                                          &alg_values,
                                          &bks,
                                          &coin_priv,
-                                         NULL, /* no age commitment */
+                                         ach,
                                          &c_hash,
                                          &pd));
   GNUNET_assert (GNUNET_OK ==
@@ -166,7 +191,7 @@ test_planchets_rsa (void)
                                          &blind_sig,
                                          &bks,
                                          &coin_priv,
-                                         NULL, /* no age commitment */
+                                         ach,
                                          &c_hash,
                                          &alg_values,
                                          &coin));
@@ -177,8 +202,6 @@ test_planchets_rsa (void)
   return 0;
 }
 
-
-/** FIXME-oec: Add test for planchets with age commitment hash */
 
 /**
  * @brief Function for CS signatures to derive public R_0 and R_1
@@ -220,7 +243,7 @@ derive_r_public (
  * @return 0 on success
  */
 static int
-test_planchets_cs (void)
+test_planchets_cs (uint8_t age)
 {
   struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
@@ -232,6 +255,26 @@ test_planchets_cs (void)
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
   struct TALER_ExchangeWithdrawValues alg_values;
+  struct TALER_AgeCommitmentHash *ach = NULL;
+
+  if (0 < age)
+  {
+    struct TALER_AgeCommitmentHash ah = {0};
+    struct TALER_AgeCommitmentProof *acp;
+    uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                              UINT64_MAX);
+
+    acp = GNUNET_new (struct TALER_AgeCommitmentProof);
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_age_restriction_commit (&age_mask,
+                                                 age,
+                                                 salt,
+                                                 acp));
+    TALER_age_commitment_hash (&acp->commitment,
+                               &ah);
+    ach = &ah;
+  }
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
@@ -260,7 +303,7 @@ test_planchets_cs (void)
                                          &alg_values,
                                          &bks,
                                          &coin_priv,
-                                         NULL,
+                                         ach,
                                          &c_hash,
                                          &pd));
   GNUNET_assert (GNUNET_OK ==
@@ -274,7 +317,7 @@ test_planchets_cs (void)
                                          &blind_sig,
                                          &bks,
                                          &coin_priv,
-                                         NULL,
+                                         ach,
                                          &c_hash,
                                          &alg_values,
                                          &coin));
@@ -294,11 +337,11 @@ test_planchets_cs (void)
  * @return 0 on success
  */
 static int
-test_planchets (void)
+test_planchets (uint8_t age)
 {
-  if (0 != test_planchets_rsa ())
+  if (0 != test_planchets_rsa (age))
     return -1;
-  return test_planchets_cs ();
+  return test_planchets_cs (age);
 }
 
 
@@ -399,12 +442,10 @@ main (int argc,
   (void) argv;
   if (0 != test_high_level ())
     return 1;
-  if (0 != test_planchets ())
+  if (0 != test_planchets (0))
     return 2;
-#if FIXME_OEC
-  if (0 != test_planchets_with_age_commitment ())
+  if (0 != test_planchets (13))
     return 3;
-#endif
   if (0 != test_exchange_sigs ())
     return 4;
   if (0 != test_merchant_sigs ())
