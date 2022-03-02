@@ -44,6 +44,11 @@ static int clear_shards;
  */
 static int gc_db;
 
+/**
+ * -P option: setup a partitioned database
+ */
+static uint32_t num_partitions;
+
 
 /**
  * Main function that will be run.
@@ -88,6 +93,24 @@ run (void *cls,
     TALER_EXCHANGEDB_plugin_unload (plugin);
     plugin = NULL;
     global_ret = EXIT_NOPERMISSION;
+    return;
+  }
+  if (1 <
+      num_partitions)
+  {
+    if (GNUNET_OK != plugin->setup_partitions (plugin->cls, &num_partitions))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not setup partitions. Dropping default ones again\n");
+    }
+    if (GNUNET_OK != plugin->drop_tables (plugin->cls))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not drop tables after failed partitioning, please delete the DB manually\n");
+    }
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
+    global_ret = EXIT_NOTINSTALLED;
     return;
   }
   if (gc_db || clear_shards)
@@ -150,6 +173,11 @@ main (int argc,
                                "shardunlock",
                                "unlock all revolving shard locks (use after system crash or shard size change while services are not running)",
                                &clear_shards),
+    GNUNET_GETOPT_option_uint ('P',
+                               "partition",
+                               "NUMBER",
+                               "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node (NOTE: this is different from sharding)",
+                               &num_partitions),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
