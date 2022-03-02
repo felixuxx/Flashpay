@@ -3146,13 +3146,13 @@ postgres_insert_denomination_info (
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.deposit),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refresh),
     TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refund),
-    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.mask),
+    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.bits),
     GNUNET_PQ_query_param_end
   };
   struct TALER_DenomFeeSet fees;
 
-  GNUNET_assert (denom_pub->age_mask.mask ==
-                 issue->age_mask.mask);
+  GNUNET_assert (denom_pub->age_mask.bits ==
+                 issue->age_mask.bits);
   TALER_denom_pub_hash (denom_pub,
                         &denom_hash);
   GNUNET_assert (0 ==
@@ -3225,7 +3225,7 @@ postgres_get_denomination_info (
     TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
                                      &issue->properties.fees.refund),
     GNUNET_PQ_result_spec_uint32 ("age_mask",
-                                  &issue->age_mask.mask),
+                                  &issue->age_mask.bits),
     GNUNET_PQ_result_spec_end
   };
 
@@ -3316,7 +3316,7 @@ domination_cb_helper (void *cls,
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_uint32 ("age_mask",
-                                    &issue.age_mask.mask),
+                                    &issue.age_mask.bits),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3464,7 +3464,7 @@ dominations_cb_helper (void *cls,
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_uint32 ("age_mask",
-                                    &meta.age_mask.mask),
+                                    &meta.age_mask.bits),
       GNUNET_PQ_result_spec_end
     };
 
@@ -10329,7 +10329,7 @@ postgres_lookup_denomination_key (
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
                                  &meta->fees.refund),
     GNUNET_PQ_result_spec_uint32 ("age_mask",
-                                  &meta->age_mask.mask),
+                                  &meta->age_mask.bits),
     GNUNET_PQ_result_spec_end
   };
 
@@ -10373,7 +10373,7 @@ postgres_add_denomination_key (
     TALER_PQ_query_param_amount (&meta->fees.deposit),
     TALER_PQ_query_param_amount (&meta->fees.refresh),
     TALER_PQ_query_param_amount (&meta->fees.refund),
-    GNUNET_PQ_query_param_uint32 (&meta->age_mask.mask),
+    GNUNET_PQ_query_param_uint32 (&meta->age_mask.bits),
     GNUNET_PQ_query_param_end
   };
 

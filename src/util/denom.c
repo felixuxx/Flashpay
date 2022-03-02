@@ -230,7 +230,7 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
                       struct TALER_DenominationHashP *denom_hash)
 {
   uint32_t opt[2] = {
-    htonl (denom_pub->age_mask.mask),
+    htonl (denom_pub->age_mask.bits),
     htonl ((uint32_t) denom_pub->cipher)
   };
   struct GNUNET_HashContext *hc;
@@ -558,8 +558,8 @@ TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
 {
   if (denom1->cipher != denom2->cipher)
     return (denom1->cipher > denom2->cipher) ? 1 : -1;
-  if (denom1->age_mask.mask != denom2->age_mask.mask)
-    return (denom1->age_mask.mask > denom2->age_mask.mask) ? 1 : -1;
+  if (denom1->age_mask.bits != denom2->age_mask.bits)
+    return (denom1->age_mask.bits > denom2->age_mask.bits) ? 1 : -1;
   switch (denom1->cipher)
   {
   case TALER_DENOMINATION_INVALID:

@@ -64,7 +64,7 @@ TALER_parse_age_group_string (
       if (prev >= val)
         return GNUNET_SYSERR;
 
-      mask->mask |= 1 << val;
+      mask->bits |= 1 << val;
       prev = val;
       val = 0;
       continue;
@@ -82,8 +82,8 @@ TALER_parse_age_group_string (
   if (0>val || 32<=val || prev>=val)
     return GNUNET_SYSERR;
 
-  mask->mask |= (1 << val);
-  mask->mask |= 1; // mark zeroth group, too
+  mask->bits |= (1 << val);
+  mask->bits |= 1; // mark zeroth group, too
 
   return GNUNET_OK;
 }
@@ -100,7 +100,7 @@ char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *m)
 {
-  uint32_t mask = m->mask;
+  uint32_t bits = m->bits;
   unsigned int n = 0;
   char *buf = GNUNET_malloc (32 * 3); // max characters possible
   char *pos = buf;
@@ -110,11 +110,11 @@ TALER_age_mask_to_string (
     return buf;
   }
 
-  while (mask != 0)
+  while (bits != 0)
   {
-    mask >>= 1;
+    bits >>= 1;
     n++;
-    if (0 == (mask & 1))
+    if (0 == (bits & 1))
     {
       continue;
     }
@@ -125,7 +125,7 @@ TALER_age_mask_to_string (
     }
     *(pos++) = '0' + n % 10;
 
-    if (0 != (mask >> 1))
+    if (0 != (bits >> 1))
     {
       *(pos++) = ':';
     }
@@ -160,7 +160,7 @@ age_restriction_disable (
     this->config_json = NULL;
   }
 
-  _config.mask.mask = 0;
+  _config.mask.bits = 0;
   _config.num_groups = 0;
 }
 
@@ -212,23 +212,23 @@ age_restriction_load_taler_config (
     return GNUNET_SYSERR;
 
 
-  mask.mask = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
+  mask.bits = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
   ret = GNUNET_OK;
 
   if (groups != NULL)
   {
     ret = TALER_parse_age_group_string (groups, &mask);
     if (GNUNET_OK != ret)
-      mask.mask = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
+      mask.bits = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
   }
 
   if (GNUNET_OK == ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "setting age mask to %x with #groups: %d\n", mask.mask,
-                __builtin_popcount (mask.mask) - 1);
-    _config.mask.mask = mask.mask;
-    _config.num_groups = __builtin_popcount (mask.mask) - 1; /* no underflow, first bit always set */
+                "setting age mask to %x with #groups: %d\n", mask.bits,
+                __builtin_popcount (mask.bits) - 1);
+    _config.mask.bits = mask.bits;
+    _config.num_groups = __builtin_popcount (mask.bits) - 1; /* no underflow, first bit always set */
     this->config = &_config;
 
     /* Note: we do now have _config set, however this->config_json is NOT set,
@@ -266,16 +266,16 @@ age_restriction_load_json_config (
   if (TALER_Extension_AgeRestriction != this->type)
     return GNUNET_SYSERR;
 
-  _config.mask.mask = mask.mask;
+  _config.mask.bits = mask.bits;
   _config.num_groups = 0;
 
-  if (mask.mask > 0)
+  if (mask.bits > 0)
   {
     /* if the mask is not zero, the first bit MUST be set */
-    if (0 == (mask.mask & 1))
+    if (0 == (mask.bits & 1))
       return GNUNET_SYSERR;
 
-    _config.num_groups = __builtin_popcount (mask.mask) - 1;
+    _config.num_groups = __builtin_popcount (mask.bits) - 1;
   }
 
   this->config = &_config;
@@ -358,7 +358,7 @@ struct TALER_Extension _extension_age_restriction = {
 bool
 TALER_extensions_age_restriction_is_configured ()
 {
-  return (0 != _config.mask.mask);
+  return (0 != _config.mask.bits);
 }
 
 

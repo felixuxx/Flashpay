@@ -64,7 +64,7 @@ TALER_JSON_pack_denom_pub (
           GNUNET_JSON_pack_string ("cipher",
                                    "RSA"),
           GNUNET_JSON_pack_uint64 ("age_mask",
-                                   pk->age_mask.mask),
+                                   pk->age_mask.bits),
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
                                            pk->details.rsa_public_key));
     break;
@@ -74,7 +74,7 @@ TALER_JSON_pack_denom_pub (
           GNUNET_JSON_pack_string ("cipher",
                                    "CS"),
           GNUNET_JSON_pack_uint64 ("age_mask",
-                                   pk->age_mask.mask),
+                                   pk->age_mask.bits),
           GNUNET_JSON_pack_data_varsize ("cs_public_key",
                                          &pk->details.cs_public_key,
                                          sizeof (pk->details.cs_public_key)));

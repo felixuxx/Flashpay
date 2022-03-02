@@ -3260,7 +3260,7 @@ load_age_mask (const char*section_name)
   static const struct TALER_AgeMask null_mask = {0};
   enum GNUNET_GenericReturnValue ret;
 
-  if (age_mask.mask == 0)
+  if (age_mask.bits == 0)
     return null_mask;
 
   if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (

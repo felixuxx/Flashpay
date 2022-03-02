@@ -425,7 +425,7 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
          (GNUNET_TIME_timestamp_cmp (now,
                                      <,
                                      pk->withdraw_valid_until)) &&
-         (age_restricted == (0 != pk->key.age_mask.mask)) )
+         (age_restricted == (0 != pk->key.age_mask.bits)) )
       return pk;
   }
   /* do 2nd pass to check if expiration times are to blame for
@@ -442,7 +442,7 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
           GNUNET_TIME_timestamp_cmp (now,
                                      >,
                                      pk->withdraw_valid_until) ) &&
-         (age_restricted == (0 != pk->key.age_mask.mask)) )
+         (age_restricted == (0 != pk->key.age_mask.bits)) )
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,

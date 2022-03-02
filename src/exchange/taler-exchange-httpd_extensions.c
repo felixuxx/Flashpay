@@ -131,7 +131,7 @@ extension_update_event_cb (void *cls,
   /* Special case age restriction: Update global flag and mask  */
   if (TALER_Extension_AgeRestriction == type)
   {
-    TEH_age_mask.mask = 0;
+    TEH_age_mask.bits = 0;
     TEH_age_restriction_enabled =
       TALER_extensions_age_restriction_is_enabled ();
     if (TEH_age_restriction_enabled)

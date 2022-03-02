@@ -38,7 +38,7 @@ TALER_age_commitment_hash (
     return;
   }
 
-  GNUNET_assert (__builtin_popcount (commitment->mask.mask) - 1 ==
+  GNUNET_assert (__builtin_popcount (commitment->mask.bits) - 1 ==
                  commitment->num);
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -67,7 +67,7 @@ get_age_group (
   const struct TALER_AgeMask *mask,
   uint8_t age)
 {
-  uint32_t m = mask->mask;
+  uint32_t m = mask->bits;
   uint8_t i = 0;
 
   while (m > 0)
@@ -89,26 +89,29 @@ TALER_age_restriction_commit (
   const uint64_t salt,
   struct TALER_AgeCommitmentProof *new)
 {
-  uint8_t num_pub = __builtin_popcount (mask->mask) - 1;
-  uint8_t num_priv = get_age_group (mask, age) - 1;
+  uint8_t num_pub = __builtin_popcount (mask->bits) - 1;
+  uint8_t num_priv = get_age_group (mask, age);
   size_t i;
 
   GNUNET_assert (NULL != new);
-  GNUNET_assert (mask->mask & 1); /* fist bit must have been set */
+  GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
   GNUNET_assert (0 <= num_priv);
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
 
-  new->commitment.mask.mask = mask->mask;
+  new->commitment.mask.bits = mask->bits;
   new->commitment.num = num_pub;
   new->proof.num = num_priv;
+  new->proof.priv = NULL;
 
   new->commitment.pub = GNUNET_new_array (
     num_pub,
     struct TALER_AgeCommitmentPublicKeyP);
-  new->proof.priv = GNUNET_new_array (
-    num_priv,
-    struct TALER_AgeCommitmentPrivateKeyP);
+
+  if (0 < num_priv)
+    new->proof.priv = GNUNET_new_array (
+      num_priv,
+      struct TALER_AgeCommitmentPrivateKeyP);
 
   /* Create as many private keys as we need and fill the rest of the
    * public keys with valid curve points.
@@ -143,7 +146,8 @@ TALER_age_restriction_commit (
 
 FAIL:
   GNUNET_free (new->commitment.pub);
-  GNUNET_free (new->proof.priv);
+  if (NULL != new->proof.priv)
+    GNUNET_free (new->proof.priv);
   return GNUNET_SYSERR;
 }
 
@@ -199,7 +203,7 @@ TALER_age_commitment_derive (
 
   GNUNET_assert (NULL != new);
   GNUNET_assert (orig->commitment.num== __builtin_popcount (
-                   orig->commitment.mask.mask) - 1);
+                   orig->commitment.mask.bits) - 1);
   GNUNET_assert (orig->proof.num <= orig->commitment.num);
 
   new->commitment.mask = orig->commitment.mask;
@@ -305,7 +309,7 @@ TALER_age_commitment_attest (
     return GNUNET_OK;
   }
 
-  if (group > cp->proof.num)
+  if (group >= cp->proof.num)
     return GNUNET_NO;
 
   {
@@ -316,7 +320,7 @@ TALER_age_commitment_attest (
       .age = age
     };
 
-    GNUNET_CRYPTO_eddsa_sign (&cp->proof.priv[group].eddsa_priv,
+    GNUNET_CRYPTO_eddsa_sign (&cp->proof.priv[group - 1].eddsa_priv,
                               &at,
                               &attest->eddsa_signature);
   }
@@ -345,7 +349,7 @@ TALER_age_commitment_verify (
   if (0 == group)
     return GNUNET_OK;
 
-  if (group > comm->num)
+  if (group >= comm->num)
     return GNUNET_NO;
 
   {
@@ -360,7 +364,7 @@ TALER_age_commitment_verify (
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_AGE_ATTESTATION,
                                   &at,
                                   &attest->eddsa_signature,
-                                  &comm->pub[group].eddsa_pub);
+                                  &comm->pub[group - 1].eddsa_pub);
   }
 }
 

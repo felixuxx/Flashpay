@@ -530,7 +530,7 @@ run (void *cls,
     {
       uint64_t seed;
       struct TALER_AgeMask mask = {
-        .mask = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
+        .bits = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
       };
       struct TALER_AgeCommitmentProof acp = {0};
 

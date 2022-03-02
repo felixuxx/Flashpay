@@ -797,7 +797,7 @@ load_age_mask (const char*section_name)
   static const struct TALER_AgeMask null_mask = {0};
   struct TALER_AgeMask age_mask = TALER_extensions_age_restriction_ageMask ();
 
-  if (age_mask.mask == 0)
+  if (age_mask.bits == 0)
     return null_mask;
 
   if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (
@@ -2120,7 +2120,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
          * the properties of the denomination.  Also, we build up the right
          * hash for the corresponding array. */
         if (TEH_age_restriction_enabled &&
-            (0 != dk->denom_pub.age_mask.mask))
+            (0 != dk->denom_pub.age_mask.bits))
         {
           have_age_restricted_denoms = true;
           array = age_restricted_denoms;

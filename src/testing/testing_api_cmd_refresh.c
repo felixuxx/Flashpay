@@ -1115,7 +1115,7 @@ melt_run (void *cls,
     /* Melt amount starts with the melt fee of the old coin; we'll add the
        values and withdraw fees of the fresh coins next */
     melt_amount = melt_denom_pub->fees.refresh;
-    age_restricted = melt_denom_pub->key.age_mask.mask != 0;
+    age_restricted = melt_denom_pub->key.age_mask.bits != 0;
     for (unsigned int i = 0; i<num_fresh_coins; i++)
     {
       const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;

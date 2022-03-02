@@ -850,7 +850,7 @@ struct TALER_BlindedDenominationSignature
  */
 struct TALER_AgeMask
 {
-  uint32_t mask;
+  uint32_t bits;
 };
 
 /**
