@@ -2233,7 +2233,8 @@ struct TALER_EXCHANGEDB_Plugin
   (*create_tables)(void *cls);
 
   /**
-   * Change already present tables of the database to more partitions
+   * Change already present tables of the database to num partitions
+   * Only has an effect if there are default partitions only
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param num the number of partitions to create for each partitioned table
