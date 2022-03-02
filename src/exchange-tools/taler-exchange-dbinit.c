@@ -98,7 +98,7 @@ run (void *cls,
   if (1 <
       num_partitions)
   {
-    if (GNUNET_OK != plugin->setup_partitions (plugin->cls, &num_partitions))
+    if (GNUNET_OK != plugin->setup_partitions (plugin->cls, num_partitions))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not setup partitions. Dropping default ones again\n");

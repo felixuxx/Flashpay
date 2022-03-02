@@ -2242,7 +2242,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_GenericReturnValue
   (*setup_partitions)(void *cls,
-                      const uint32_t *num);
+                      const uint32_t num);
 
   /**
    * Start a transaction.

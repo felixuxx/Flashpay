@@ -207,13 +207,13 @@ postgres_create_tables (void *cls)
  */
 static enum GNUNET_GenericReturnValue
 postgres_setup_partitions (void *cls,
-                           const uint32_t *num)
+                           const uint32_t num)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
   enum GNUNET_GenericReturnValue ret;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint32 (num),
+    GNUNET_PQ_query_param_uint32 (&num),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_PreparedStatement ps[] = {
