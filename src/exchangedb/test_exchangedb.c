@@ -1333,6 +1333,7 @@ run (void *cls)
   struct TALER_EXCHANGEDB_TransactionList *tlp;
   const char *sndr = "payto://x-taler-bank/localhost:8080/1";
   const char *rcvr = "payto://x-taler-bank/localhost:8080/2";
+  const uint32_t num_partitions = 10;
   unsigned int matched;
   unsigned int cnt;
   enum GNUNET_DB_QueryStatus qs;
@@ -1374,6 +1375,12 @@ run (void *cls)
   (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
+  {
+    result = 77;
+    goto cleanup;
+  }
+  if (GNUNET_OK !=
+      plugin->setup_partitions (plugin->cls, num_partitions))
   {
     result = 77;
     goto cleanup;
