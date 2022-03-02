@@ -107,11 +107,11 @@ run (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Could not drop tables after failed partitioning, please delete the DB manually\n");
       }
+      TALER_EXCHANGEDB_plugin_unload (plugin);
+      plugin = NULL;
+      global_ret = EXIT_NOTINSTALLED;
+      return;
     }
-    TALER_EXCHANGEDB_plugin_unload (plugin);
-    plugin = NULL;
-    global_ret = EXIT_NOTINSTALLED;
-    return;
   }
   if (gc_db || clear_shards)
   {
