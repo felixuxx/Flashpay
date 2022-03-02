@@ -1380,7 +1380,7 @@ run (void *cls)
     goto cleanup;
   }
   if (GNUNET_OK !=
-      plugin->setup_partitions (plugin->cls, &num_partitions))
+      plugin->setup_partitions (plugin->cls, num_partitions))
   {
     result = 77;
     goto cleanup;
