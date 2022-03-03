@@ -1217,15 +1217,17 @@ prepare_statements (struct PostgresClosure *pg)
       "mark_deposit_tiny",
       "UPDATE deposits"
       " SET tiny=TRUE"
-      " WHERE deposit_serial_id=$1",
-      1),
+      " WHERE shard=$2"
+      "   AND deposit_serial_id=$1",
+      2),
     /* Used in #postgres_mark_deposit_done() */
     GNUNET_PQ_make_prepare (
       "mark_deposit_done",
       "UPDATE deposits"
       " SET done=TRUE"
-      " WHERE deposit_serial_id=$1;",
-      1),
+      " WHERE shard=$2"
+      "   AND deposit_serial_id=$1;",
+      2),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
     GNUNET_PQ_make_prepare (
@@ -5429,16 +5431,20 @@ postgres_have_deposit2 (
  * @e iterate_ready_deposits()
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param merchant_pub identifies the beneficiary of the deposit
  * @param rowid identifies the deposit row to modify
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_tiny (void *cls,
+                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                             uint64_t rowid)
 {
   struct PostgresClosure *pg = cls;
+  uint64_t deposit_shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
+    GNUNET_PQ_query_param_uint64 (&deposit_shard),
     GNUNET_PQ_query_param_end
   };
 
@@ -5454,16 +5460,20 @@ postgres_mark_deposit_tiny (void *cls,
  * @e iterate_ready_deposits() or @e iterate_matching_deposits().
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param merchant_pub identifies the beneficiary of the deposit
  * @param rowid identifies the deposit row to modify
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_done (void *cls,
+                            const struct TALER_MerchantPublicKeyP *merchant_pub,
                             uint64_t rowid)
 {
   struct PostgresClosure *pg = cls;
+  uint64_t deposit_shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
+    GNUNET_PQ_query_param_uint64 (&deposit_shard),
     GNUNET_PQ_query_param_end
   };
 
@@ -8054,7 +8064,8 @@ postgres_start_deferred_wire_out (void *cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL READ COMMITTED"),
+    GNUNET_PQ_make_execute (
+      "START TRANSACTION ISOLATION LEVEL READ COMMITTED;"),
     GNUNET_PQ_make_execute ("SET CONSTRAINTS ALL DEFERRED;"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };

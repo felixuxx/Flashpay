@@ -488,6 +488,7 @@ deposit_cb (void *cls,
               "Aggregator marks deposit %llu as done\n",
               (unsigned long long) row_id);
   qs = db_plugin->mark_deposit_done (db_plugin->cls,
+                                     merchant_pub,
                                      row_id);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -610,6 +611,7 @@ aggregate_cb (void *cls,
     return qs;
   }
   qs = db_plugin->mark_deposit_done (db_plugin->cls,
+                                     &au->merchant_pub,
                                      row_id);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -842,12 +844,14 @@ run_aggregation (void *cls)
     }
     /* Mark transactions by row_id as minor */
     qs = db_plugin->mark_deposit_tiny (db_plugin->cls,
+                                       &au_active.merchant_pub,
                                        au_active.row_id);
     if (0 <= qs)
     {
       for (unsigned int i = 0; i<au_active.rows_offset; i++)
       {
         qs = db_plugin->mark_deposit_tiny (db_plugin->cls,
+                                           &au_active.merchant_pub,
                                            au_active.additional_rows[i]);
         if (0 > qs)
           break;
