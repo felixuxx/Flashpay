@@ -3970,7 +3970,7 @@ postgres_select_kyc_status (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -9668,8 +9668,10 @@ postgres_get_denomination_revocation (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
-    GNUNET_PQ_result_spec_uint64 ("denom_revocations_serial_id", rowid),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
+    GNUNET_PQ_result_spec_uint64 ("denom_revocations_serial_id",
+                                  rowid),
     GNUNET_PQ_result_spec_end
   };
 

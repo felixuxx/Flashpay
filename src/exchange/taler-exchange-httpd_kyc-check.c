@@ -60,11 +60,6 @@ struct KycPoller
   struct GNUNET_DB_EventHandler *eh;
 
   /**
-   * UUID found based on @e h_payto.
-   */
-  uint64_t payment_target_uuid;
-
-  /**
    * UUID being checked.
    */
   uint64_t auth_payment_target_uuid;
@@ -79,6 +74,11 @@ struct KycPoller
    * have finished the KYC for.
    */
   struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Payto URL as a string, as given to us by t
+   */
+  const char *hps;
 
   /**
    * When will this request time out?
@@ -183,9 +183,6 @@ kyc_check (void *cls,
                                            "inselect_wallet_status");
     return qs;
   }
-  // FIXME: avoid duplicating this...
-  kyp->payment_target_uuid = kyp->kyc.payment_target_uuid;
-
   return qs;
 }
 
@@ -293,32 +290,28 @@ TEH_handler_kyc_check (
                                          tms));
       }
     }
+    kyp->hps = MHD_lookup_connection_value (rc->connection,
+                                            MHD_GET_ARGUMENT_KIND,
+                                            "h_payto");
+    if (NULL == kyp->hps)
     {
-      const char *hps;
-
-      hps = MHD_lookup_connection_value (rc->connection,
-                                         MHD_GET_ARGUMENT_KIND,
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MISSING,
                                          "h_payto");
-      if (NULL == hps)
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_PARAMETER_MISSING,
-                                           "h_payto");
-      }
-      if (GNUNET_OK !=
-          GNUNET_STRINGS_string_to_data (hps,
-                                         strlen (hps),
-                                         &kyp->h_payto,
-                                         sizeof (kyp->h_payto)))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "h_payto");
-      }
+    }
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (kyp->hps,
+                                       strlen (kyp->hps),
+                                       &kyp->h_payto,
+                                       sizeof (kyp->h_payto)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "h_payto");
     }
   }
 
@@ -360,8 +353,13 @@ TEH_handler_kyc_check (
     return res;
 
   if (kyp->auth_payment_target_uuid !=
-      kyp->payment_target_uuid)
+      kyp->kyc.payment_target_uuid)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Account %llu provided, but payto %s is for %llu\n",
+                (unsigned long long) kyp->auth_payment_target_uuid,
+                kyp->hps,
+                (unsigned long long) kyp->kyc.payment_target_uuid);
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_UNAUTHORIZED,
@@ -391,9 +389,9 @@ TEH_handler_kyc_check (
 
     GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
     GNUNET_asprintf (&redirect_uri,
-                     "%s/kyc-proof/%llu",
+                     "%s/kyc-proof/%s",
                      TEH_base_url,
-                     (unsigned long long) kyp->payment_target_uuid);
+                     kyp->hps);
     redirect_uri_encoded = TALER_urlencode (redirect_uri);
     GNUNET_free (redirect_uri);
     GNUNET_asprintf (&url,

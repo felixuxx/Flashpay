@@ -427,6 +427,7 @@ admin_add_incoming_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
       TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
+      TALER_TESTING_make_trait_payto_uri (&fts->payto_debit_account),
       /* Used as a marker, content does not matter */
       TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
       TALER_TESTING_make_trait_exchange_bank_account_url (

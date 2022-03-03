@@ -157,6 +157,9 @@ check_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Running KYC check for payto URI: %s\n",
+              *payto_uri);
   TALER_payto_hash (*payto_uri,
                     &h_payto);
   kcg->kwh = TALER_EXCHANGE_kyc_check (is->exchange,

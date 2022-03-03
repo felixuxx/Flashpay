@@ -125,7 +125,7 @@ run (void *cls,
                                        0, /* age restriction off */
                                        MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_proof_kyc ("proof-kyc",
-                                 "withdraw-coin-1-lacking-kyc",
+                                 "create-reserve-1",
                                  "pass",
                                  "state",
                                  MHD_HTTP_SEE_OTHER),
