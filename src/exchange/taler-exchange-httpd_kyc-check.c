@@ -60,9 +60,14 @@ struct KycPoller
   struct GNUNET_DB_EventHandler *eh;
 
   /**
-   * UUID being checked.
+   * UUID found based on @e h_payto.
    */
   uint64_t payment_target_uuid;
+
+  /**
+   * UUID being checked.
+   */
+  uint64_t auth_payment_target_uuid;
 
   /**
    * Current KYC status.
@@ -74,11 +79,6 @@ struct KycPoller
    * have finished the KYC for.
    */
   struct TALER_PaytoHashP h_payto;
-
-  /**
-   * Hash of the payto:// URI that was given to us for auth.
-   */
-  struct TALER_PaytoHashP auth_h_payto;
 
   /**
    * When will this request time out?
@@ -170,7 +170,6 @@ kyc_check (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->select_kyc_status (TEH_plugin->cls,
-                                      kyp->payment_target_uuid,
                                       &kyp->h_payto,
                                       &kyp->kyc);
   if (qs < 0)
@@ -184,6 +183,9 @@ kyc_check (void *cls,
                                            "inselect_wallet_status");
     return qs;
   }
+  // FIXME: avoid duplicating this...
+  kyp->payment_target_uuid = kyp->kyc.payment_target_uuid;
+
   return qs;
 }
 
@@ -261,7 +263,7 @@ TEH_handler_kyc_check (
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                            "payment_target_uuid");
       }
-      kyp->payment_target_uuid = (uint64_t) payment_target_uuid;
+      kyp->auth_payment_target_uuid = (uint64_t) payment_target_uuid;
     }
     {
       const char *ts;
@@ -308,8 +310,8 @@ TEH_handler_kyc_check (
       if (GNUNET_OK !=
           GNUNET_STRINGS_string_to_data (hps,
                                          strlen (hps),
-                                         &kyp->auth_h_payto,
-                                         sizeof (kyp->auth_h_payto)))
+                                         &kyp->h_payto,
+                                         sizeof (kyp->h_payto)))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (rc->connection,
@@ -334,7 +336,7 @@ TEH_handler_kyc_check (
     struct TALER_KycCompletedEventP rep = {
       .header.size = htons (sizeof (rep)),
       .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-      .h_payto = kyp->auth_h_payto
+      .h_payto = kyp->h_payto
     };
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -356,9 +358,9 @@ TEH_handler_kyc_check (
                                 kyp);
   if (GNUNET_SYSERR == ret)
     return res;
-  if (0 !=
-      GNUNET_memcmp (&kyp->h_payto,
-                     &kyp->auth_h_payto))
+
+  if (kyp->auth_payment_target_uuid !=
+      kyp->payment_target_uuid)
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,

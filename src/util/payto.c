@@ -228,9 +228,16 @@ void
 TALER_payto_hash (const char *payto,
                   struct TALER_PaytoHashP *h_payto)
 {
+  struct GNUNET_HashCode sha512;
+
   GNUNET_CRYPTO_hash (payto,
                       strlen (payto) + 1,
-                      &h_payto->hash);
+                      &sha512);
+  GNUNET_static_assert (sizeof (sha512) > sizeof (*h_payto));
+  /* truncate */
+  memcpy (h_payto,
+          &sha512,
+          sizeof (*h_payto));
 }
 
 

@@ -289,9 +289,9 @@ lrbt_cb_table_reserves_in (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "credit",
         &td.details.reserves_in.credit),
-      GNUNET_PQ_result_spec_uint64 (
-        "wire_source_serial_id",
-        &td.details.reserves_in.sender_account),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wire_source_h_payto",
+        &td.details.reserves_in.sender_account_h_payto),
       GNUNET_PQ_result_spec_string (
         "exchange_account_section",
         &td.details.reserves_in.exchange_account_section),
@@ -350,9 +350,9 @@ lrbt_cb_table_reserves_close (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "wtid",
         &td.details.reserves_close.wtid),
-      GNUNET_PQ_result_spec_uint64 (
-        "wire_target_serial_id",
-        &td.details.reserves_close.wire_target_serial_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wire_target_h_payto",
+        &td.details.reserves_close.sender_account_h_payto),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount",
         &td.details.reserves_close.amount),
@@ -947,9 +947,9 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "wire_salt",
         &td.details.deposits.wire_salt),
-      GNUNET_PQ_result_spec_uint64 (
-        "wire_target_serial_id",
-        &td.details.deposits.wire_target_serial_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wire_target_h_payto",
+        &td.details.deposits.wire_target_h_payto),
       GNUNET_PQ_result_spec_bool (
         "tiny",
         &td.details.deposits.tiny),
@@ -1067,9 +1067,9 @@ lrbt_cb_table_wire_out (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "wtid_raw",
         &td.details.wire_out.wtid_raw),
-      GNUNET_PQ_result_spec_uint64 (
-        "wire_target_serial_id",
-        &td.details.wire_out.wire_target_serial_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wire_target_h_payto",
+        &td.details.wire_out.wire_target_h_payto),
       GNUNET_PQ_result_spec_string (
         "exchange_account_section",
         &td.details.wire_out.exchange_account_section),

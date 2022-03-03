@@ -546,7 +546,7 @@ struct TALER_PaytoHashP
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode hash;
+  struct GNUNET_ShortHashCode hash;
 };
 
 

@@ -176,7 +176,8 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.wire_reference),
     TALER_PQ_query_param_amount (&td->details.reserves_in.credit),
-    GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.sender_account),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_in.sender_account_h_payto),
     GNUNET_PQ_query_param_string (
       td->details.reserves_in.exchange_account_section),
     GNUNET_PQ_query_param_timestamp (
@@ -207,8 +208,8 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
       &td->details.reserves_close.execution_date),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_close.wtid),
-    GNUNET_PQ_query_param_uint64 (
-      &td->details.reserves_close.wire_target_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close.sender_account_h_payto),
     TALER_PQ_query_param_amount (&td->details.reserves_close.amount),
     TALER_PQ_query_param_amount (&td->details.reserves_close.closing_fee),
     GNUNET_PQ_query_param_auto_from_type (
@@ -523,7 +524,8 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
       &td->details.deposits.h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
-    GNUNET_PQ_query_param_uint64 (&td->details.deposits.wire_target_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.deposits.wire_target_h_payto),
     GNUNET_PQ_query_param_bool (td->details.deposits.tiny),
     GNUNET_PQ_query_param_bool (td->details.deposits.done),
     GNUNET_PQ_query_param_bool (td->details.deposits.extension_blocked),
@@ -579,7 +581,8 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_timestamp (&td->details.wire_out.execution_date),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_out.wtid_raw),
-    GNUNET_PQ_query_param_uint64 (&td->details.wire_out.wire_target_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wire_out.wire_target_h_payto),
     GNUNET_PQ_query_param_string (
       td->details.wire_out.exchange_account_section),
     TALER_PQ_query_param_amount (&td->details.wire_out.amount),

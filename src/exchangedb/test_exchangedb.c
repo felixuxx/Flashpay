@@ -616,6 +616,10 @@ static uint64_t deposit_rowid;
  */
 static uint64_t wire_target_row;
 
+/**
+ * Here #deposit_cb() will store the hash of the payto URI.
+ */
+static struct TALER_PaytoHashP wire_target_h_payto;
 
 /**
  * Function called with details about deposits that
@@ -662,6 +666,8 @@ deposit_cb (void *cls,
   {
     deposit_rowid = rowid;
     wire_target_row = wire_target;
+    TALER_payto_hash (payto_uri,
+                      &wire_target_h_payto);
     result = 9;
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
@@ -1048,6 +1054,10 @@ audit_wire_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
+  struct TALER_PaytoHashP h_payto;
+
+  TALER_payto_hash (deposit->receiver_wire_account,
+                    &h_payto);
   auditor_row_cnt = 0;
   memset (&wire_out_wtid,
           42,
@@ -1127,7 +1137,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
             plugin->store_wire_transfer_out (plugin->cls,
                                              wire_out_date,
                                              &wire_out_wtid,
-                                             kyc.payment_target_uuid,
+                                             &h_payto,
                                              "my-config-section",
                                              &wire_out_amount));
   }
@@ -2267,7 +2277,7 @@ run (void *cls)
   FAILIF (8 == result);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->iterate_matching_deposits (plugin->cls,
-                                             wire_target_row,
+                                             &wire_target_h_payto,
                                              &deposit.merchant_pub,
                                              &matching_deposit_cb,
                                              &deposit,

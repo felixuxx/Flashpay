@@ -429,7 +429,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves"
       " JOIN reserves_in ri USING (reserve_pub)"
       " JOIN wire_targets wt "
-      "  ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
+      "  ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
       " WHERE reserve_pub=$1"
       " LIMIT 1;",
       1),
@@ -439,31 +439,21 @@ prepare_statements (struct PostgresClosure *pg)
       "UPDATE wire_targets"
       " SET kyc_ok=TRUE"
       ",external_id=$2"
-      " WHERE wire_target_serial_id=$1",
+      " WHERE wire_target_h_payto=$1",
       2),
     GNUNET_PQ_make_prepare (
       "get_kyc_h_payto",
       "SELECT"
-      " h_payto"
+      " wire_target_h_payto"
       " FROM wire_targets"
-      " WHERE wire_target_serial_id=$1"
+      " WHERE wire_target_h_payto=$1"
       " LIMIT 1;",
-      1),
-    /* Used in #postgres_select_kyc_status() */
-    GNUNET_PQ_make_prepare (
-      "select_kyc_status",
-      "SELECT"
-      " kyc_ok"
-      ",h_payto"
-      " FROM wire_targets"
-      " WHERE"
-      " wire_target_serial_id=$1",
       1),
     /* Used in #postgres_inselect_wallet_kyc_status() */
     GNUNET_PQ_make_prepare (
       "insert_kyc_status",
       "INSERT INTO wire_targets"
-      "  (h_payto"
+      "  (wire_target_h_payto"
       "  ,payto_uri"
       "  ) VALUES "
       "  ($1, $2)"
@@ -475,7 +465,7 @@ prepare_statements (struct PostgresClosure *pg)
       " kyc_ok"
       ",wire_target_serial_id"
       " FROM wire_targets"
-      " WHERE h_payto=$1;",
+      " WHERE wire_target_h_payto=$1;",
       1),
     /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare (
@@ -509,7 +499,7 @@ prepare_statements (struct PostgresClosure *pg)
       "(reserve_pub"
       ",execution_date"
       ",wtid"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",amount_val"
       ",amount_frac"
       ",closing_fee_val"
@@ -536,11 +526,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",credit_val"
       ",credit_frac"
       ",exchange_account_section"
-      ",wire_source_serial_id"
+      ",wire_source_h_payto"
       ",execution_date"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
       " ON CONFLICT DO NOTHING;",
       7),
+#if FIXME_DEAD
     /* Used in #postgres_reserves_in_insert() to store transaction details */
     GNUNET_PQ_make_prepare (
       "reserves_in_add_by_pub",
@@ -550,11 +541,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",credit_val"
       ",credit_frac"
       ",exchange_account_section"
-      ",wire_source_serial_id"
+      ",wire_source_h_payto"
       ",execution_date"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
       " ON CONFLICT DO NOTHING;",
       7),
+#endif
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -571,7 +563,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves"
       "   USING (reserve_pub)"
       " JOIN wire_targets"
-      "   ON (wire_source_serial_id = wire_target_serial_id)"
+      "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1"
       " ORDER BY reserve_in_serial_id;",
       1),
@@ -591,7 +583,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves "
       "   USING (reserve_pub)"
       " JOIN wire_targets"
-      "   ON (wire_source_serial_id = wire_target_serial_id)"
+      "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
       " ORDER BY reserve_in_serial_id;",
       2),
@@ -607,7 +599,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",payto_uri AS sender_account_details"
       " FROM reserves_in"
       " JOIN wire_targets"
-      "   ON (wire_source_serial_id = wire_target_serial_id)"
+      "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_pub=$1;",
       1),
     /* Used in #postgres_do_withdraw() to store
@@ -1067,7 +1059,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",merchant_pub"
       ",h_contract_terms"
       ",wire_salt"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",coin_sig"
       ",exchange_timestamp"
       ",shard"
@@ -1096,7 +1088,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM deposits"
       " JOIN known_coins USING (known_coin_id)"
       " JOIN denominations USING (denominations_serial)"
-      " JOIN wire_targets USING (wire_target_serial_id)"
+      " JOIN wire_targets USING (wire_target_h_payto)"
       " WHERE ((coin_pub=$1)"
       "    AND (merchant_pub=$3)"
       "    AND (h_contract_terms=$2));",
@@ -1122,7 +1114,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",done"
       ",deposit_serial_id"
       " FROM deposits"
-      "    JOIN wire_targets USING (wire_target_serial_id)"
+      "    JOIN wire_targets USING (wire_target_h_payto)"
       "    JOIN known_coins kc USING (known_coin_id)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE ("
@@ -1145,7 +1137,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_deposit_frac"
       ",wire_deadline"
       " FROM deposits"
-      "    JOIN wire_targets USING (wire_target_serial_id)"
+      "    JOIN wire_targets USING (wire_target_h_payto)"
       "    JOIN known_coins USING (known_coin_id)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE ((coin_pub=$1)"
@@ -1169,7 +1161,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",kc.coin_pub"
       " FROM deposits"
       "  JOIN wire_targets "
-      "    USING (wire_target_serial_id)"
+      "    USING (wire_target_h_payto)"
       "  JOIN known_coins kc"
       "    USING (known_coin_id)"
       "  JOIN denominations denom"
@@ -1203,7 +1195,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE"
       "      merchant_pub=$1"
-      "  AND wire_target_serial_id=$2"
+      "  AND wire_target_h_payto=$2"
       "  AND done=FALSE"
       "  AND extension_blocked=FALSE"
       "  AND refund_deadline<$3"
@@ -1251,7 +1243,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",done"
       " FROM deposits"
       "    JOIN wire_targets"
-      "      USING (wire_target_serial_id)"
+      "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
       "      USING (known_coin_id)"
       "    JOIN denominations denoms"
@@ -1287,7 +1279,7 @@ prepare_statements (struct PostgresClosure *pg)
       " aggregation_serial_id"
       ",deposits.h_contract_terms"
       ",payto_uri"
-      ",h_payto"
+      ",wire_targets.wire_target_h_payto"
       ",kc.coin_pub"
       ",deposits.merchant_pub"
       ",wire_out.execution_date"
@@ -1300,7 +1292,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN deposits"
       "      USING (deposit_serial_id)"
       "    JOIN wire_targets"
-      "      USING (wire_target_serial_id)"
+      "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
       "      USING (known_coin_id)"
       "    JOIN denominations denom"
@@ -1323,7 +1315,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_deposit_frac"
       " FROM deposits"
       "    JOIN wire_targets"
-      "      USING (wire_target_serial_id)"
+      "      USING (wire_target_h_payto)"
       "    JOIN aggregation_tracking"
       "      USING (deposit_serial_id)"
       "    JOIN known_coins"
@@ -1382,7 +1374,7 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO wire_out "
       "(execution_date"
       ",wtid_raw"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",exchange_account_section"
       ",amount_val"
       ",amount_frac"
@@ -1395,7 +1387,7 @@ prepare_statements (struct PostgresClosure *pg)
       "(wireout_uuid"
       ",execution_date"
       ",wtid_raw"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",exchange_account_section"
       ",amount_val"
       ",amount_frac"
@@ -1456,7 +1448,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN known_coins"
       "     USING (known_coin_id)"
       "   JOIN wire_targets"
-      "     USING (wire_target_serial_id)"
+      "     USING (wire_target_h_payto)"
       " WHERE wire_deadline >= $1"
       " AND wire_deadline < $2"
       " AND NOT (EXISTS (SELECT 1"
@@ -1480,7 +1472,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       " FROM wire_out"
       "   JOIN wire_targets"
-      "     USING (wire_target_serial_id)"
+      "     USING (wire_target_h_payto)"
       " WHERE wireout_uuid>=$1"
       " ORDER BY wireout_uuid ASC;",
       1),
@@ -1496,7 +1488,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       " FROM wire_out"
       "   JOIN wire_targets"
-      "     USING (wire_target_serial_id)"
+      "     USING (wire_target_h_payto)"
       " WHERE "
       "      wireout_uuid>=$1 "
       "  AND exchange_account_section=$2"
@@ -1580,7 +1572,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",closing_fee_frac"
       " FROM reserves_close"
       "   JOIN wire_targets"
-      "     USING (wire_target_serial_id)"
+      "     USING (wire_target_h_payto)"
       "   JOIN reserves"
       "     USING (reserve_pub)"
       " WHERE close_uuid>=$1"
@@ -1649,7 +1641,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wtid"
       " FROM reserves_close"
       "   JOIN wire_targets"
-      "     USING (wire_target_serial_id)"
+      "     USING (wire_target_h_payto)"
       " WHERE reserve_pub=$1;",
       1),
     /* Used in #postgres_get_expired_reserves() */
@@ -1665,7 +1657,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN reserves_in ri"
       "     USING (reserve_pub)"
       "   JOIN wire_targets wt"
-      "     ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
+      "     ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
       " WHERE expiration_date<=$1"
       "   AND (current_balance_val != 0 "
       "        OR current_balance_frac != 0)"
@@ -2198,7 +2190,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_reference"
       ",credit_val"
       ",credit_frac"
-      ",wire_source_serial_id"
+      ",wire_source_h_payto"
       ",exchange_account_section"
       ",execution_date"
       " FROM reserves_in"
@@ -2212,7 +2204,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_pub"
       ",execution_date"
       ",wtid"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",amount_val"
       ",amount_frac"
       ",closing_fee_val"
@@ -2354,7 +2346,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_contract_terms"
       ",coin_sig"
       ",wire_salt"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",tiny"
       ",done"
       ",extension_blocked"
@@ -2382,7 +2374,7 @@ prepare_statements (struct PostgresClosure *pg)
       " wireout_uuid AS serial"
       ",execution_date"
       ",wtid_raw"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",exchange_account_section"
       ",amount_val"
       ",amount_frac"
@@ -2487,7 +2479,7 @@ prepare_statements (struct PostgresClosure *pg)
       "insert_into_table_wire_targets",
       "INSERT INTO wire_targets"
       "(wire_target_serial_id"
-      ",h_payto"
+      ",wire_target_h_payto"
       ",payto_uri"
       ",kyc_ok"
       ",external_id"
@@ -2513,7 +2505,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_reference"
       ",credit_val"
       ",credit_frac"
-      ",wire_source_serial_id"
+      ",wire_source_h_payto"
       ",exchange_account_section"
       ",execution_date"
       ",reserve_pub"
@@ -2526,7 +2518,7 @@ prepare_statements (struct PostgresClosure *pg)
       "(close_uuid"
       ",execution_date"
       ",wtid"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",amount_val"
       ",amount_frac"
       ",closing_fee_val"
@@ -2660,7 +2652,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_contract_terms"
       ",coin_sig"
       ",wire_salt"
-      ",wire_target_serial_id"
+      ",wire_target_h_payto"
       ",tiny"
       ",done"
       ",extension_blocked"
@@ -3914,22 +3906,22 @@ postgres_reserves_get (void *cls,
  * Set the KYC status to "OK" for a bank account.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param payment_target_uuid which account has been checked
+ * @param h_payto which account has been checked
  * @param id external ID to persist
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_set_kyc_ok (void *cls,
-                     uint64_t payment_target_uuid,
+                     const struct TALER_PaytoHashP *h_payto,
                      const char *id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_QueryParam params2[] = {
-    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_string (id),
     GNUNET_PQ_query_param_end
   };
@@ -3938,7 +3930,7 @@ postgres_set_kyc_ok (void *cls,
     .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED)
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+    GNUNET_PQ_result_spec_auto_from_type ("wire_target_h_payto",
                                           &rep.h_payto),
     GNUNET_PQ_result_spec_end
   };
@@ -3967,34 +3959,31 @@ postgres_set_kyc_ok (void *cls,
  * Get the @a kyc status and @a h_payto by UUID.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param payment_target_uuid which account to get the KYC status for
- * @param[out] h_payto set to the hash of the account's payto URI (unsalted)
+ * @param h_payto set to the hash of the account's payto URI (unsalted)
  * @param[out] kyc set to the KYC status of the account
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_select_kyc_status (void *cls,
-                            uint64_t payment_target_uuid,
-                            struct TALER_PaytoHashP *h_payto,
+                            const struct TALER_PaytoHashP *h_payto,
                             struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                          h_payto),
-    GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                          &kyc->ok),
+    GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
+                                  &kyc->payment_target_uuid),
+    GNUNET_PQ_result_spec_bool ("kyc_ok",
+                                &kyc->ok),
     GNUNET_PQ_result_spec_end
   };
 
   kyc->type = TALER_EXCHANGEDB_KYC_UNKNOWN;
-  kyc->payment_target_uuid = payment_target_uuid;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_kyc_status",
+                                                   "select_kyc_status_by_payto",
                                                    params,
                                                    rs);
 }
@@ -4015,7 +4004,6 @@ inselect_account_kyc_status (
   const char *payto_uri,
   struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-
   struct TALER_PaytoHashP h_payto;
   enum GNUNET_DB_QueryStatus qs;
 
@@ -4267,10 +4255,14 @@ postgres_reserves_in_insert (void *cls,
     enum GNUNET_DB_QueryStatus qs2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
     enum GNUNET_DB_QueryStatus qs3;
+    struct TALER_PaytoHashP h_payto;
 
+    TALER_payto_hash (sender_account_details,
+                      &h_payto);
     memset (&kyc,
             0,
             sizeof (kyc));
+    /* FIXME: inselect re-computes h_payto... */
     qs3 = inselect_account_kyc_status (pg,
                                        sender_account_details,
                                        &kyc);
@@ -4286,7 +4278,7 @@ postgres_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_uint64 (&wire_ref),
       TALER_PQ_query_param_amount (balance),
       GNUNET_PQ_query_param_string (exchange_account_section),
-      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
       GNUNET_PQ_query_param_timestamp (&execution_time),
       GNUNET_PQ_query_param_end
     };
@@ -5686,7 +5678,7 @@ match_deposit_cb (void *cls,
  * destination.  Those deposits must not already be "done".
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param wire_target destination of the wire transfer
+ * @param h_payto destination of the wire transfer
  * @param merchant_pub public key of the merchant
  * @param deposit_cb function to call for each deposit
  * @param deposit_cb_cls closure for @a deposit_cb
@@ -5697,7 +5689,7 @@ match_deposit_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (
   void *cls,
-  uint64_t wire_target,
+  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
   void *deposit_cb_cls,
@@ -5707,7 +5699,7 @@ postgres_iterate_matching_deposits (
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_uint64 (&wire_target),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
@@ -5955,7 +5947,11 @@ postgres_insert_deposit (void *cls,
   struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_KycStatus kyc;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_PaytoHashP h_payto;
 
+  TALER_payto_hash (deposit->receiver_wire_account,
+                    &h_payto);
+  /* FIXME: inselect re-computes h_payto... */
   qs = inselect_account_kyc_status (pg,
                                     deposit->receiver_wire_account,
                                     &kyc);
@@ -5975,7 +5971,7 @@ postgres_insert_deposit (void *cls,
       GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
       GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
       GNUNET_PQ_query_param_auto_from_type (&deposit->wire_salt),
-      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
       GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
       GNUNET_PQ_query_param_timestamp (&exchange_timestamp),
       GNUNET_PQ_query_param_uint64 (&shard),
@@ -7264,7 +7260,7 @@ handle_wt_result (void *cls,
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
-      GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+      GNUNET_PQ_result_spec_auto_from_type ("wire_target_h_payto",
                                             &h_payto),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
@@ -7798,7 +7794,11 @@ postgres_insert_reserve_closed (
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_EXCHANGEDB_KycStatus kyc;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_PaytoHashP h_payto;
 
+  TALER_payto_hash (receiver_account,
+                    &h_payto);
+  /* FIXME: inselect re-computes h_payto... */
   qs = inselect_account_kyc_status (pg,
                                     receiver_account,
                                     &kyc);
@@ -7813,7 +7813,7 @@ postgres_insert_reserve_closed (
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       GNUNET_PQ_query_param_timestamp (&execution_date),
       GNUNET_PQ_query_param_auto_from_type (wtid),
-      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
       TALER_PQ_query_param_amount (amount_with_fee),
       TALER_PQ_query_param_amount (closing_fee),
       GNUNET_PQ_query_param_end
@@ -8094,7 +8094,7 @@ postgres_start_deferred_wire_out (void *cls)
  * @param cls closure
  * @param date time of the wire transfer
  * @param wtid subject of the wire transfer
- * @param wire_target identifies the receiver account of the wire transfer
+ * @param h_payto identifies the receiver account of the wire transfer
  * @param exchange_account_section configuration section of the exchange specifying the
  *        exchange's bank account being used
  * @param amount amount that was transmitted
@@ -8105,7 +8105,7 @@ postgres_store_wire_transfer_out (
   void *cls,
   struct GNUNET_TIME_Timestamp date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  uint64_t wire_target,
+  const struct TALER_PaytoHashP *h_payto,
   const char *exchange_account_section,
   const struct TALER_Amount *amount)
 {
@@ -8113,7 +8113,7 @@ postgres_store_wire_transfer_out (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_uint64 (&wire_target),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_string (exchange_account_section),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_end
@@ -11774,9 +11774,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->iterate_active_auditors = &postgres_iterate_active_auditors;
   plugin->iterate_auditor_denominations =
     &postgres_iterate_auditor_denominations;
+  plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->reserves_get = &postgres_reserves_get;
   plugin->set_kyc_ok = &postgres_set_kyc_ok;
-  plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->inselect_wallet_kyc_status = &postgres_inselect_wallet_kyc_status;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;

@@ -260,7 +260,7 @@ TALER_EXCHANGE_reserves_get (
 
     end = GNUNET_STRINGS_data_to_string (
       reserve_pub,
-      sizeof (struct TALER_ReservePublicKeyP),
+      sizeof (*reserve_pub),
       pub_str,
       sizeof (pub_str));
     *end = '\0';

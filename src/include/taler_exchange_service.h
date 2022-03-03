@@ -2090,12 +2090,12 @@ typedef void
  * @return a handle for this request
  */
 struct TALER_EXCHANGE_LinkHandle *
-TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                     const struct
-                     TALER_AgeCommitmentProof *age_commitment_proof,
-                     TALER_EXCHANGE_LinkCallback link_cb,
-                     void *link_cb_cls);
+TALER_EXCHANGE_link (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentProof *age_commitment_proof,
+  TALER_EXCHANGE_LinkCallback link_cb,
+  void *link_cb_cls);
 
 
 /**
@@ -2699,7 +2699,7 @@ struct TALER_EXCHANGE_KycProofHandle;
  * Run interaction with exchange to provide proof of KYC status.
  *
  * @param eh exchange handle to use
- * @param payment_target number identifying the target
+ * @param h_payto hash of payto URI identifying the target account
  * @param code OAuth 2.0 code argument
  * @param state OAuth 2.0 state argument
  * @param cb function to call with the result
@@ -2708,7 +2708,7 @@ struct TALER_EXCHANGE_KycProofHandle;
  */
 struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *eh,
-                          uint64_t payment_target,
+                          const struct TALER_PaytoHashP *h_payto,
                           const char *code,
                           const char *state,
                           TALER_EXCHANGE_KycProofCallback cb,

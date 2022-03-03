@@ -141,7 +141,7 @@ handle_kyc_proof_finished (void *cls,
 
 struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
-                          uint64_t payment_target,
+                          const struct TALER_PaytoHashP *h_payto,
                           const char *code,
                           const char *state,
                           TALER_EXCHANGE_KycProofCallback cb,
@@ -158,11 +158,21 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   /* TODO: any escaping of code/state needed??? */
-  GNUNET_asprintf (&arg_str,
-                   "/kyc-proof/%llu?code=%s&state=%s",
-                   (unsigned long long) payment_target,
-                   code,
-                   state);
+  {
+    char hstr[sizeof (struct TALER_PaytoHashP) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (h_payto,
+                                         sizeof (*h_payto),
+                                         hstr,
+                                         sizeof (hstr));
+    *end = '\0';
+    GNUNET_asprintf (&arg_str,
+                     "/kyc-proof/%s?code=%s&state=%s",
+                     hstr,
+                     code,
+                     state);
+  }
   kph = GNUNET_new (struct TALER_EXCHANGE_KycProofHandle);
   kph->exchange = exchange;
   kph->cb = cb;

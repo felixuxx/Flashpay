@@ -239,7 +239,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t wire_reference;
       struct TALER_Amount credit;
-      uint64_t sender_account;
+      struct TALER_PaytoHashP sender_account_h_payto;
       char *exchange_account_section;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_ReservePublicKeyP reserve_pub;
@@ -250,7 +250,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_WireTransferIdentifierRawP wtid;
-      uint64_t wire_target_serial_id;
+      struct TALER_PaytoHashP sender_account_h_payto;
       struct TALER_Amount amount;
       struct TALER_Amount closing_fee;
     } reserves_close;
@@ -347,7 +347,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_PrivateContractHashP h_contract_terms;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_WireSaltP wire_salt;
-      uint64_t wire_target_serial_id;
+      struct TALER_PaytoHashP wire_target_h_payto;
       bool tiny;
       bool done;
       bool extension_blocked;
@@ -366,7 +366,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_WireTransferIdentifierRawP wtid_raw;
-      uint64_t wire_target_serial_id;
+      struct TALER_PaytoHashP wire_target_h_payto;
       char *exchange_account_section;
       struct TALER_Amount amount;
     } wire_out;
@@ -2479,13 +2479,13 @@ struct TALER_EXCHANGEDB_Plugin
    * Set the KYC status to "OK" for a bank account.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param payment_target_uuid which account has been checked
+   * @param h_payto which account has been checked
    * @param id ID data to persist
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*set_kyc_ok)(void *cls,
-                uint64_t payment_target_uuid,
+                const struct TALER_PaytoHashP *h_payto,
                 const char *id);
 
 
@@ -2493,15 +2493,13 @@ struct TALER_EXCHANGEDB_Plugin
    * Get the @a kyc status and @a h_payto by UUID.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param payment_target_uuid which account to get the KYC status for
-   * @param[out] h_payto set to the hash of the account's payto URI (unsalted)
+   * @param h_payto set to the hash of the account's payto URI (unsalted)
    * @param[out] kyc set to the KYC status of the account
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*select_kyc_status)(void *cls,
-                       uint64_t payment_target_uuid,
-                       struct TALER_PaytoHashP *h_payto,
+                       const struct TALER_PaytoHashP *h_payto,
                        struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
@@ -3044,7 +3042,7 @@ struct TALER_EXCHANGEDB_Plugin
    * destination.  Those deposits must not already be "done".
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param h_wire destination of the wire transfer
+   * @param h_payto destination of the wire transfer
    * @param merchant_pub public key of the merchant
    * @param deposit_cb function to call for each deposit
    * @param deposit_cb_cls closure for @a deposit_cb
@@ -3057,7 +3055,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*iterate_matching_deposits)(
     void *cls,
-    uint64_t wire_target,
+    const struct TALER_PaytoHashP *h_payto,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
     void *deposit_cb_cls,
@@ -3399,7 +3397,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param date time of the wire transfer
-   * @param wtid subject of the wire transfer
+   * @param h_payto identifies the receiver account of the wire transfer
    * @param wire_account details about the receiver account of the wire transfer,
    *        including 'url' in payto://-format
    * @param amount amount that was transmitted
@@ -3412,7 +3410,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct GNUNET_TIME_Timestamp date,
     const struct TALER_WireTransferIdentifierRawP *wtid,
-    uint64_t wire_target,
+    const struct TALER_PaytoHashP *h_payto,
     const char *exchange_account_section,
     const struct TALER_Amount *amount);
 

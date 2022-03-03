@@ -131,13 +131,14 @@ proof_kyc_run (void *cls,
 {
   struct KycProofGetState *kps = cls;
   const struct TALER_TESTING_Command *res_cmd;
-  const uint64_t *payment_target;
+  const char **payto_uri;
+  struct TALER_PaytoHashP h_payto;
 
   (void) cmd;
   kps->is = is;
-  res_cmd = TALER_TESTING_interpreter_lookup_command (kps->is,
-                                                      kps->
-                                                      payment_target_reference);
+  res_cmd = TALER_TESTING_interpreter_lookup_command (
+    kps->is,
+    kps->payment_target_reference);
   if (NULL == res_cmd)
   {
     GNUNET_break (0);
@@ -145,15 +146,17 @@ proof_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_payment_target_uuid (res_cmd,
-                                                   &payment_target))
+      TALER_TESTING_get_trait_payto_uri (res_cmd,
+                                         &payto_uri))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kps->is);
     return;
   }
+  TALER_payto_hash (*payto_uri,
+                    &h_payto);
   kps->kph = TALER_EXCHANGE_kyc_proof (is->exchange,
-                                       *payment_target,
+                                       &h_payto,
                                        kps->code,
                                        kps->state,
                                        &proof_kyc_cb,

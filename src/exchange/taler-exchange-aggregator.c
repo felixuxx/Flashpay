@@ -81,6 +81,11 @@ struct AggregationUnit
   /**
    * Selected wire target for the aggregation.
    */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Serial number of the wire target.
+   */
   uint64_t wire_target;
 
   /**
@@ -426,6 +431,8 @@ deposit_cb (void *cls,
 
   GNUNET_assert (NULL == au->payto_uri);
   au->payto_uri = GNUNET_strdup (payto_uri);
+  TALER_payto_hash (payto_uri,
+                    &au->h_payto);
   au->wire_target = wire_target;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
@@ -775,7 +782,7 @@ run_aggregation (void *cls)
               TALER_B2S (&au_active.merchant_pub),
               (unsigned long long) au_active.wire_target);
   qs = db_plugin->iterate_matching_deposits (db_plugin->cls,
-                                             au_active.wire_target,
+                                             &au_active.h_payto,
                                              &au_active.merchant_pub,
                                              &aggregate_cb,
                                              &au_active,
@@ -918,7 +925,7 @@ run_aggregation (void *cls)
     qs = db_plugin->store_wire_transfer_out (db_plugin->cls,
                                              au_active.execution_time,
                                              &au_active.wtid,
-                                             au_active.wire_target,
+                                             &au_active.h_payto,
                                              au_active.wa->section_name,
                                              &au_active.final_amount);
   cleanup_au (&au_active);

@@ -78,9 +78,9 @@ struct KycProofContext
   char *id;
 
   /**
-   * Payment target this is about.
+   * Hash of payment target URI this is about.
    */
-  unsigned long long payment_target_uuid;
+  struct TALER_PaytoHashP h_payto;
 
   /**
    * HTTP response to return.
@@ -171,7 +171,7 @@ persist_kyc_ok (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->set_kyc_ok (TEH_plugin->cls,
-                               kpc->payment_target_uuid,
+                               &kpc->h_payto,
                                kpc->id);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
@@ -530,24 +530,21 @@ TEH_handler_kyc_proof (
 
   if (NULL == kpc)
   { /* first time */
-    char dummy;
-
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
     rc->rh_ctx = kpc;
     rc->rh_cleaner = &clean_kpc;
-
-    if (1 !=
-        sscanf (args[0],
-                "%llu%c",
-                &kpc->payment_target_uuid,
-                &dummy))
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &kpc->h_payto,
+                                       sizeof (kpc->h_payto)))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "payment_target_uuid");
+                                         "h_payto");
     }
     kpc->authorization_code
       = MHD_lookup_connection_value (rc->connection,
