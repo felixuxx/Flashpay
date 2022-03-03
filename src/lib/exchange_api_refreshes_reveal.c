@@ -438,10 +438,11 @@ TALER_EXCHANGE_refreshes_reveal (
     for (size_t i = 0; i < rd->melt_age_commitment_proof->commitment.num; i++)
     {
       GNUNET_assert (0 ==
-                     json_array_append_new (old_age_commitment,
-                                            GNUNET_JSON_from_data_auto (
-                                              &rd->melt_age_commitment_proof->
-                                              commitment.pub[i])));
+                     json_array_append_new (
+                       old_age_commitment,
+                       GNUNET_JSON_from_data_auto (
+                         &rd->melt_age_commitment_proof->
+                         commitment.keys[i])));
     }
   }
 

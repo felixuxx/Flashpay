@@ -116,6 +116,7 @@ libtalerutil_la_LDFLAGS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 check_PROGRAMS = \
+ test_age_restriction \
  test_amount \
  test_crypto \
  test_helper_eddsa \
@@ -127,6 +128,11 @@ check_PROGRAMS = \
 TESTS = \
  $(check_PROGRAMS)
 
+test_age_restriction_SOURCES = \
+  test_age_restriction.c
+test_age_restriction_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
 
 test_amount_SOURCES = \
   test_amount.c

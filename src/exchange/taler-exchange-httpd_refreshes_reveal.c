@@ -620,14 +620,14 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     oac = rctx->old_age_commitment;
     oac->mask  =  TEH_age_mask;
     oac->num = ng;
-    oac->pub = GNUNET_new_array (ng, struct TALER_AgeCommitmentPublicKeyP);
+    oac->keys = GNUNET_new_array (ng, struct TALER_AgeCommitmentPublicKeyP);
 
     /* Extract old age commitment */
     for (unsigned int i = 0; i< ng; i++)
     {
       struct GNUNET_JSON_Specification ac_spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL,
-                                     &oac->pub[i]),
+                                     &oac->keys[i]),
         GNUNET_JSON_spec_end ()
       };
 
