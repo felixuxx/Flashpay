@@ -1579,27 +1579,29 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY close_uuid ASC;",
       1),
     /* Used in #postgres_get_reserve_history() to obtain recoup transactions
-       for a reserve */
+       for a reserve - query optimization should be disabled i.e.
+       BEGIN; SET LOCAL join_collapse_limit=1; query; COMMIT; */
     GNUNET_PQ_make_prepare (
       "recoup_by_reserve",
-      "SELECT"
-      " coins.coin_pub"
-      ",coin_sig"
-      ",coin_blind"
-      ",amount_val"
-      ",amount_frac"
-      ",recoup_timestamp"
-      ",denoms.denom_pub_hash"
-      ",coins.denom_sig"
-      " FROM reserves"
-      " JOIN reserves_out ro"
-      "   USING (reserve_uuid)"
-      " JOIN recoup"
-      "   USING (reserve_out_serial_id)"
+      "SELECT "
+      "  coins.coin_pub,"
+      "  coin_sig,"
+      "  coin_blind,"
+      "  amount_val,"
+      "  amount_frac,"
+      "  recoup_timestamp,"
+      "  denoms.denom_pub_hash,"
+      "  coins.denom_sig"
+      " FROM denominations denoms"
       " JOIN known_coins coins"
-      "     USING (known_coin_id)"
-      " JOIN denominations denoms"
-      "   ON (coins.denominations_serial = denoms.denominations_serial)"
+      "  ON (coins.denominations_serial = denoms.denominations_serial)"
+      " JOIN recoup"
+      "  USING (known_coin_id)"
+      " JOIN ("
+      "  reserves_out"
+      "   JOIN reserves"
+      "    USING (reserve_uuid)"
+      "  ) USING (reserve_out_serial_id)"
       " WHERE reserve_pub=$1;",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
