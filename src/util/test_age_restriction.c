@@ -23,20 +23,126 @@
 #include "taler_util.h"
 #include "taler_crypto_lib.h"
 
-static struct TALER_AgeMask age_mask = {
-  .bits = 1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21
-};
-
 extern uint8_t
 get_age_group (
   const struct TALER_AgeMask *mask,
   uint8_t age);
 
+/**
+ * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
+ *
+ * @param mask Age mask
+ * @return String representation of the age mask, allocated by GNUNET_malloc.
+ *         Can be used as value in the TALER config.
+ */
+char *
+age_mask_to_string (
+  const struct TALER_AgeMask *m)
+{
+  uint32_t bits = m->bits;
+  unsigned int n = 0;
+  char *buf = GNUNET_malloc (32 * 3); // max characters possible
+  char *pos = buf;
+
+  if (NULL == buf)
+  {
+    return buf;
+  }
+
+  while (bits != 0)
+  {
+    bits >>= 1;
+    n++;
+    if (0 == (bits & 1))
+    {
+      continue;
+    }
+
+    if (n > 9)
+    {
+      *(pos++) = '0' + n / 10;
+    }
+    *(pos++) = '0' + n % 10;
+
+    if (0 != (bits >> 1))
+    {
+      *(pos++) = ':';
+    }
+  }
+  return buf;
+}
+
+
+enum GNUNET_GenericReturnValue
+test_groups (void)
+{
+  struct
+  {
+    uint32_t bits;
+    uint8_t group[33];
+  } test[] = {
+    {
+      .bits =
+        1 | 1 << 5 | 1 << 13 | 1 << 23,
+
+        .group = { 0, 0, 0, 0, 0,
+                   1, 1, 1, 1, 1, 1, 1, 1,
+                   2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                   3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }
+
+
+    },
+    {
+      .bits =
+        1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21,
+        .group = { 0, 0, 0, 0, 0, 0, 0, 0,
+                   1, 1,
+                   2, 2,
+                   3, 3,
+                   4, 4,
+                   5, 5,
+                   6, 6, 6,
+                   7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
+
+
+    }
+  };
+
+  for (uint8_t t = 0; t < sizeof(test) / sizeof(test[0]); t++)
+  {
+    struct TALER_AgeMask mask = {.bits = test[t].bits};
+
+    for (uint8_t i = 0; i < 32; i++)
+    {
+      uint8_t r = get_age_group (&mask, i);
+      char *m = age_mask_to_string (&mask);
+
+      printf ("get_age_group(%s, %2d) = %d vs %d (exp)\n",
+              m,
+              i,
+              r,
+              test[t].group[i]);
+
+      if (test[t].group[i] != r)
+        return GNUNET_SYSERR;
+
+      GNUNET_free (m);
+    }
+  }
+
+  return GNUNET_OK;
+}
+
+
+static struct TALER_AgeMask age_mask = {
+  .bits = 1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << 14 | 1 << 16 | 1 << 18 | 1 << 21
+};
+
 enum GNUNET_GenericReturnValue
 test_attestation (void)
 {
   uint8_t age;
-  for (age = 0; age < 35; age++)
+  for (age = 0; age < 33; age++)
   {
     enum GNUNET_GenericReturnValue ret;
     struct TALER_AgeCommitmentProof acp[3] = {0};
@@ -57,9 +163,9 @@ test_attestation (void)
       acp[0].proof.num,
       age_group);
 
+    /* Also derive two more commitments right away */
     for (uint8_t i = 0; i<2; i++)
     {
-      /* Also derive another commitment right away */
       salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
                                        UINT64_MAX);
       GNUNET_assert (GNUNET_OK ==
@@ -126,8 +232,10 @@ main (int argc,
 {
   (void) argc;
   (void) argv;
-  if (GNUNET_OK != test_attestation ())
+  if (GNUNET_OK != test_groups ())
     return 1;
+  if (GNUNET_OK != test_attestation ())
+    return 2;
   return 0;
 }
 
