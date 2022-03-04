@@ -444,7 +444,7 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                       size_t *upload_data_size)
 {
   const struct TEH_RequestHandler *rh = rc->rh;
-  const char *args[rh->nargs + 1];
+  const char *args[rh->nargs + 2];
   size_t ulen = strlen (url) + 1;
   json_t *root = NULL;
   MHD_RESULT ret;
@@ -492,54 +492,43 @@ proceed_with_handler (struct TEH_RequestContext *rc,
 
   {
     char d[ulen];
+    unsigned int i;
+    char *sp;
 
-    /* Parse command-line arguments, if applicable */
-    args[0] = NULL;
-    if (rh->nargs > 0)
+    /* Parse command-line arguments */
+    /* make a copy of 'url' because 'strtok_r()' will modify */
+    memcpy (d,
+            url,
+            ulen);
+    i = 0;
+    args[i++] = strtok_r (d, "/", &sp);
+    while ( (NULL != args[i - 1]) &&
+            (i <= rh->nargs + 1) )
+      args[i++] = strtok_r (NULL, "/", &sp);
+    /* make sure above loop ran nicely until completion, and also
+       that there is no excess data in 'd' afterwards */
+    if ( ( (rh->nargs_is_upper_bound) &&
+           (i - 1 > rh->nargs) ) ||
+         ( (! rh->nargs_is_upper_bound) &&
+           (i - 1 != rh->nargs) ) )
     {
-      unsigned int i;
-      const char *fin;
-      char *sp;
+      char emsg[128 + 512];
 
-      /* make a copy of 'url' because 'strtok_r()' will modify */
-      memcpy (d,
-              url,
-              ulen);
-      i = 0;
-      args[i++] = strtok_r (d, "/", &sp);
-      while ( (NULL != args[i - 1]) &&
-              (i < rh->nargs) )
-        args[i++] = strtok_r (NULL, "/", &sp);
-      /* make sure above loop ran nicely until completion, and also
-         that there is no excess data in 'd' afterwards */
-      if ( (! rh->nargs_is_upper_bound) &&
-           ( (i != rh->nargs) ||
-             (NULL == args[i - 1]) ||
-             (NULL != (fin = strtok_r (NULL, "/", &sp))) ) )
-      {
-        char emsg[128 + 512];
-
-        GNUNET_snprintf (emsg,
-                         sizeof (emsg),
-                         "Got %u/%u segments for %s request ('%s')",
-                         (NULL == args[i - 1])
-                         ? i - 1
-                         : i + ((NULL != fin) ? 1 : 0),
-                         rh->nargs,
-                         rh->url,
-                         url);
-        GNUNET_break_op (0);
-        json_decref (root);
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
-                                           emsg);
-      }
-
-      /* just to be safe(r), we always terminate the array with a NULL
-         (even if handlers requested precise number of arguments) */
-      args[i] = NULL;
+      GNUNET_snprintf (emsg,
+                       sizeof (emsg),
+                       "Got %u+/%u segments for `%s' request (`%s')",
+                       i - 1,
+                       rh->nargs,
+                       rh->url,
+                       url);
+      GNUNET_break_op (0);
+      json_decref (root);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
+                                         emsg);
     }
+    GNUNET_assert (NULL == args[i - 1]);
 
     /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
        so we test for 'root' to decide which handler to invoke. */
