@@ -57,6 +57,12 @@
 #define TALER_SIGNATURE_MASTER_ADD_WIRE 1021
 
 /**
+ * Signature over global set of fees charged by the
+ * exchange.
+ */
+#define TALER_SIGNATURE_MASTER_GLOBAL_FEES 1022
+
+/**
  * Remove payto URI from the list of our wire methods.
  */
 #define TALER_SIGNATURE_MASTER_DEL_WIRE 1023
@@ -1246,6 +1252,36 @@ struct TALER_MasterWireFeePS
    * Closing fee charged when we wire back funds of a reserve.
    */
   struct TALER_AmountNBO closing_fee;
+
+};
+
+
+/**
+ * Global fees charged by the exchange independent of
+ * denomination or wire method.
+ */
+struct TALER_MasterGlobalFeePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_GLOBAL_FEES.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Start date when the fee goes into effect.
+   */
+  struct GNUNET_TIME_TimestampNBO start_date;
+
+  /**
+   * End date when the fee stops being in effect (exclusive)
+   */
+  struct GNUNET_TIME_TimestampNBO end_date;
+
+  /**
+   * Fee charged to the merchant per wire transfer.
+   */
+  struct TALER_GlobalFeeSetNBOP fees;
 
 };
 

@@ -473,6 +473,54 @@ TALER_exchange_offline_wire_fee_verify (
 
 
 void
+TALER_exchange_offline_global_fee_sign (
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
+  const struct TALER_GlobalFeeSet *fees,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterGlobalFeePS kv = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_GLOBAL_FEES),
+    .purpose.size = htonl (sizeof (kv)),
+    .start_date = GNUNET_TIME_timestamp_hton (start_time),
+    .end_date = GNUNET_TIME_timestamp_hton (end_time),
+  };
+
+  TALER_global_fee_set_hton (&kv.fees,
+                             fees);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &kv,
+                            &master_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_global_fee_verify (
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
+  const struct TALER_GlobalFeeSet *fees,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterGlobalFeePS wf = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_GLOBAL_FEES),
+    .purpose.size = htonl (sizeof (wf)),
+    .start_date = GNUNET_TIME_timestamp_hton (start_time),
+    .end_date = GNUNET_TIME_timestamp_hton (end_time)
+  };
+
+  TALER_global_fee_set_hton (&wf.fees,
+                             fees);
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_GLOBAL_FEES,
+                                &wf,
+                                &master_sig->eddsa_signature,
+                                &master_pub->eddsa_pub);
+}
+
+
+void
 TALER_exchange_offline_extension_config_hash_sign (
   const struct TALER_ExtensionConfigHashP *h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,

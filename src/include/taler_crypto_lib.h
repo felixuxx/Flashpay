@@ -3271,6 +3271,43 @@ TALER_exchange_offline_wire_fee_verify (
 
 
 /**
+ * Create global fees signature.
+ *
+ * @param start_time when do the fees start to apply
+ * @param end_time when do the fees start to apply
+ * @param fees the global fees
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_global_fee_sign (
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
+  const struct TALER_GlobalFeeSet *fees,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify global fees signature.
+ *
+ * @param start_time when do the fees start to apply
+ * @param end_time when do the fees start to apply
+ * @param fees the global fees
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_global_fee_verify (
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
+  const struct TALER_GlobalFeeSet *fees,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
  * Create wire account addition signature.
  *
  * @param payto_uri bank account
