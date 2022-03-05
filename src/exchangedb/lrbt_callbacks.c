@@ -1306,4 +1306,99 @@ lrbt_cb_table_recoup_refresh (void *cls,
 }
 
 
+/**
+ * Function called with extensions table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_extensions (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_EXTENSIONS
+  };
+  bool no_config = false;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("extension_id",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_string ("name",
+                                    &td.details.extensions.name),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("config",
+                                      &td.details.extensions.config),
+        &no_config),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with extension_details table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_extension_details (void *cls,
+                                 PGresult *result,
+                                 unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_EXTENSION_DETAILS
+  };
+  bool no_config = false;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("extension_details_serial_id",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("extension_options",
+                                      &td.details.extension_details.
+                                      extension_options),
+        &no_config),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
 /* end of lrbt_callbacks.c */

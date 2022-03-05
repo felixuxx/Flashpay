@@ -169,7 +169,9 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING,
   TALER_EXCHANGEDB_RT_WIRE_FEE,
   TALER_EXCHANGEDB_RT_RECOUP,
-  TALER_EXCHANGEDB_RT_RECOUP_REFRESH
+  TALER_EXCHANGEDB_RT_RECOUP_REFRESH,
+  TALER_EXCHANGEDB_RT_EXTENSIONS,
+  TALER_EXCHANGEDB_RT_EXTENSION_DETAILS,
 };
 
 
@@ -406,6 +408,17 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp timestamp;
       uint64_t rrc_serial;
     } recoup_refresh;
+
+    struct
+    {
+      char *name;
+      char *config;
+    } extensions;
+
+    struct
+    {
+      char *extension_options;
+    } extension_details;
 
   } details;
 

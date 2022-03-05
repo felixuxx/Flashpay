@@ -2123,6 +2123,22 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY recoup_refresh_uuid DESC"
       " LIMIT 1;",
       0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_extensions",
+      "SELECT"
+      " extension_id AS serial"
+      " FROM extensions"
+      " ORDER BY extension_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_extension_details",
+      "SELECT"
+      " extension_details_serial_id AS serial"
+      " FROM extension_details"
+      " ORDER BY extension_details_serial_id DESC"
+      " LIMIT 1;",
+      0),
     /* For postgres_lookup_records_by_table */
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_denominations",
@@ -2727,6 +2743,23 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8);",
       8),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_extensions",
+      "INSERT INTO extensions"
+      "(extension_id"
+      ",name"
+      ",config"
+      ") VALUES "
+      "($1, $2, $3);",
+      3),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_extension_details",
+      "INSERT INTO extension_details"
+      "(extension_details_serial_id"
+      ",extension_options"
+      ") VALUES "
+      "($1, $2);",
+      2),
 
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
@@ -10807,6 +10840,12 @@ postgres_lookup_serial_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
     statement = "select_serial_by_table_recoup_refresh";
     break;
+  case TALER_EXCHANGEDB_RT_EXTENSIONS:
+    statement = "select_serial_by_table_extensions";
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
+    statement = "select_serial_by_table_extension_details";
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -10972,6 +11011,14 @@ postgres_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_recoup_refresh";
     rh = &lrbt_cb_table_recoup_refresh;
     break;
+  case TALER_EXCHANGEDB_RT_EXTENSIONS:
+    statement = "select_above_serial_by_table_extensions";
+    rh = &lrbt_cb_table_extensions;
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
+    statement = "select_above_serial_by_table_extension_details";
+    rh = &lrbt_cb_table_extension_details;
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -11096,6 +11143,12 @@ postgres_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
     rh = &irbt_cb_table_recoup_refresh;
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSIONS:
+    rh = &irbt_cb_table_extensions;
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
+    rh = &irbt_cb_table_extension_details;
     break;
   default:
     GNUNET_break (0);

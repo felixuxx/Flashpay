@@ -111,6 +111,8 @@ static struct Table tables[] = {
   { .rt = TALER_EXCHANGEDB_RT_WIRE_FEE},
   { .rt = TALER_EXCHANGEDB_RT_RECOUP},
   { .rt = TALER_EXCHANGEDB_RT_RECOUP_REFRESH },
+  { .rt = TALER_EXCHANGEDB_RT_EXTENSIONS},
+  { .rt = TALER_EXCHANGEDB_RT_EXTENSION_DETAILS },
   { .end = true }
 };
 

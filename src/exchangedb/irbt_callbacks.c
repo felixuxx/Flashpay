@@ -702,4 +702,55 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
 }
 
 
+/**
+ * Function called with extensions records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_extensions (struct PostgresClosure *pg,
+                          const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_string (td->details.extensions.name),
+    NULL == td->details.extensions.config ?
+    GNUNET_PQ_query_param_null () :
+    GNUNET_PQ_query_param_string (td->details.extensions.config),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_extensions",
+                                             params);
+}
+
+
+/**
+ * Function called with extension_details records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_extension_details (struct PostgresClosure *pg,
+                                 const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    NULL ==
+    td->details.extension_details.extension_options ?
+    GNUNET_PQ_query_param_null () :
+    GNUNET_PQ_query_param_string (
+      td->details.extension_details.extension_options),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_extension_details",
+                                             params);
+}
+
+
 /* end of irbt_callbacks.c */
