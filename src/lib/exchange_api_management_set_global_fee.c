@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_management_set_wire_fee.c
- * @brief functions to set wire fees at an exchange
+ * @file lib/exchange_api_management_set_global_fee.c
+ * @brief functions to set global fees at an exchange
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -29,7 +29,7 @@
 #include "taler_json_lib.h"
 
 
-struct TALER_EXCHANGE_ManagementSetWireFeeHandle
+struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle
 {
 
   /**
@@ -50,7 +50,7 @@ struct TALER_EXCHANGE_ManagementSetWireFeeHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_ManagementSetWireFeeCallback cb;
+  TALER_EXCHANGE_ManagementSetGlobalFeeCallback cb;
 
   /**
    * Closure for @a cb.
@@ -66,25 +66,25 @@ struct TALER_EXCHANGE_ManagementSetWireFeeHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /management/wire request.
+ * HTTP /management/global request.
  *
  * @param cls the `struct TALER_EXCHANGE_ManagementAuditorEnableHandle *`
  * @param response_code HTTP response code, 0 on error
  * @param response response body, NULL if not in JSON
  */
 static void
-handle_set_wire_fee_finished (void *cls,
-                              long response_code,
-                              const void *response)
+handle_set_global_fee_finished (void *cls,
+                                long response_code,
+                                const void *response)
 {
-  struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh = cls;
+  struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *sgfh = cls;
   const json_t *json = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .http_status = (unsigned int) response_code,
     .reply = json
   };
 
-  swfh->job = NULL;
+  sgfh->job = NULL;
   switch (response_code)
   {
   case MHD_HTTP_NO_CONTENT:
@@ -107,107 +107,118 @@ handle_set_wire_fee_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d for exchange management set wire fee\n",
+                "Unexpected response code %u/%d for exchange management set global fee\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     break;
   }
-  if (NULL != swfh->cb)
+  if (NULL != sgfh->cb)
   {
-    swfh->cb (swfh->cb_cls,
+    sgfh->cb (sgfh->cb_cls,
               &hr);
-    swfh->cb = NULL;
+    sgfh->cb = NULL;
   }
-  TALER_EXCHANGE_management_set_wire_fees_cancel (swfh);
+  TALER_EXCHANGE_management_set_global_fees_cancel (sgfh);
 }
 
 
-struct TALER_EXCHANGE_ManagementSetWireFeeHandle *
-TALER_EXCHANGE_management_set_wire_fees (
+struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *
+TALER_EXCHANGE_management_set_global_fees (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_base_url,
-  const char *wire_method,
   struct GNUNET_TIME_Timestamp validity_start,
   struct GNUNET_TIME_Timestamp validity_end,
-  const struct TALER_WireFeeSet *fees,
+  const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   const struct TALER_MasterSignatureP *master_sig,
-  TALER_EXCHANGE_ManagementSetWireFeeCallback cb,
+  TALER_EXCHANGE_ManagementSetGlobalFeeCallback cb,
   void *cb_cls)
 {
-  struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh;
+  struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *sgfh;
   CURL *eh;
   json_t *body;
 
-  swfh = GNUNET_new (struct TALER_EXCHANGE_ManagementSetWireFeeHandle);
-  swfh->cb = cb;
-  swfh->cb_cls = cb_cls;
-  swfh->ctx = ctx;
-  swfh->url = TALER_url_join (exchange_base_url,
-                              "management/wire-fee",
+  sgfh = GNUNET_new (struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle);
+  sgfh->cb = cb;
+  sgfh->cb_cls = cb_cls;
+  sgfh->ctx = ctx;
+  sgfh->url = TALER_url_join (exchange_base_url,
+                              "management/global-fee",
                               NULL);
-  if (NULL == swfh->url)
+  if (NULL == sgfh->url)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not construct request URL.\n");
-    GNUNET_free (swfh);
+    GNUNET_free (sgfh);
     return NULL;
   }
   body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("wire_method",
-                             wire_method),
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 master_sig),
     GNUNET_JSON_pack_timestamp ("fee_start",
                                 validity_start),
     GNUNET_JSON_pack_timestamp ("fee_end",
                                 validity_end),
-    TALER_JSON_pack_amount ("closing_fee",
-                            &fees->closing),
-    TALER_JSON_pack_amount ("wad_fee",
-                            &fees->wad),
-    TALER_JSON_pack_amount ("wire_fee",
-                            &fees->wire));
-  eh = TALER_EXCHANGE_curl_easy_get_ (swfh->url);
+    TALER_JSON_pack_amount ("history_fee",
+                            &fees->history),
+    TALER_JSON_pack_amount ("kyc_fee",
+                            &fees->kyc),
+    TALER_JSON_pack_amount ("account_fee",
+                            &fees->account),
+    TALER_JSON_pack_amount ("purse_fee",
+                            &fees->purse),
+    GNUNET_JSON_pack_time_rel ("purse_timeout",
+                               purse_timeout),
+    GNUNET_JSON_pack_time_rel ("kyc_timeout",
+                               kyc_timeout),
+    GNUNET_JSON_pack_time_rel ("history_expiration",
+                               history_expiration),
+    GNUNET_JSON_pack_uint64 ("purse_account_limit",
+                             purse_account_limit));
+  eh = TALER_EXCHANGE_curl_easy_get_ (sgfh->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
-      TALER_curl_easy_post (&swfh->post_ctx,
+      TALER_curl_easy_post (&sgfh->post_ctx,
                             eh,
                             body))
   {
     GNUNET_break (0);
     json_decref (body);
-    GNUNET_free (swfh->url);
+    GNUNET_free (sgfh->url);
     GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
-              swfh->url);
-  swfh->job = GNUNET_CURL_job_add2 (ctx,
+              sgfh->url);
+  sgfh->job = GNUNET_CURL_job_add2 (ctx,
                                     eh,
-                                    swfh->post_ctx.headers,
-                                    &handle_set_wire_fee_finished,
-                                    swfh);
-  if (NULL == swfh->job)
+                                    sgfh->post_ctx.headers,
+                                    &handle_set_global_fee_finished,
+                                    sgfh);
+  if (NULL == sgfh->job)
   {
-    TALER_EXCHANGE_management_set_wire_fees_cancel (swfh);
+    TALER_EXCHANGE_management_set_global_fees_cancel (sgfh);
     return NULL;
   }
-  return swfh;
+  return sgfh;
 }
 
 
 void
-TALER_EXCHANGE_management_set_wire_fees_cancel (
-  struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh)
+TALER_EXCHANGE_management_set_global_fees_cancel (
+  struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *sgfh)
 {
-  if (NULL != swfh->job)
+  if (NULL != sgfh->job)
   {
-    GNUNET_CURL_job_cancel (swfh->job);
-    swfh->job = NULL;
+    GNUNET_CURL_job_cancel (sgfh->job);
+    sgfh->job = NULL;
   }
-  TALER_curl_easy_post_finished (&swfh->post_ctx);
-  GNUNET_free (swfh->url);
-  GNUNET_free (swfh);
+  TALER_curl_easy_post_finished (&sgfh->post_ctx);
+  GNUNET_free (sgfh->url);
+  GNUNET_free (sgfh);
 }

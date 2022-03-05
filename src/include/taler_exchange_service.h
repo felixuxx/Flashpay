@@ -3511,7 +3511,7 @@ TALER_EXCHANGE_management_set_wire_fees (
   struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterSignatureP *master_sig,
-  TALER_EXCHANGE_ManagementWireEnableCallback cb,
+  TALER_EXCHANGE_ManagementSetWireFeeCallback cb,
   void *cb_cls);
 
 
@@ -3523,6 +3523,68 @@ TALER_EXCHANGE_management_set_wire_fees (
 void
 TALER_EXCHANGE_management_set_wire_fees_cancel (
   struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh);
+
+
+/**
+ * Function called with information about the global fee setting operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementSetGlobalFeeCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/global-fees request.
+ */
+struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle;
+
+
+/**
+ * Inform the exchange about global fees.
+ *
+ * @param ctx the context
+ * @param exchange_base_url HTTP base URL for the exchange
+ * @param validity_start start date for the provided wire fees
+ * @param validity_end end date for the provided wire fees
+ * @param fees the wire fees for this time period
+ * @param purse_timeout when do purses time out
+ * @param kyc_timeout when do reserves without KYC time out
+ * @param history_expiration how long are account histories preserved
+ * @param purse_account_limit how many purses are free per account
+ * @param master_sig signature affirming the wire fees;
+ *        of purpose #TALER_SIGNATURE_MASTER_GLOBAL_FEES
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *
+TALER_EXCHANGE_management_set_global_fees (
+  struct GNUNET_CURL_Context *ctx,
+  const char *exchange_base_url,
+  struct GNUNET_TIME_Timestamp validity_start,
+  struct GNUNET_TIME_Timestamp validity_end,
+  const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementSetGlobalFeeCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_enable_wire() operation.
+ *
+ * @param swfh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_set_global_fees_cancel (
+  struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *sgfh);
 
 
 /**
