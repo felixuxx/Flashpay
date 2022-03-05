@@ -68,6 +68,13 @@
 #define OP_SET_WIRE_FEE "exchange-set-wire-fee-0"
 
 /**
+ * Name of the operation to set a 'global-fee'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_SET_GLOBAL_FEE "exchange-set-global-fee-0"
+
+/**
  * Name of the operation to 'upload' key signatures
  * The last component --by convention-- identifies the protocol version
  * and should be incremented whenever the JSON format of the 'argument' changes.
@@ -378,6 +385,34 @@ struct WireFeeRequest
 
 
 /**
+ * Data structure for announcing global fees.
+ */
+struct GlobalFeeRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct GlobalFeeRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct GlobalFeeRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Ongoing /keys request.
  */
 struct UploadKeysRequest
@@ -509,6 +544,16 @@ static struct WireFeeRequest *wfr_head;
  * Active wire fee requests.
  */
 static struct WireFeeRequest *wfr_tail;
+
+/**
+ * Active global fee requests.
+ */
+static struct GlobalFeeRequest *gfr_head;
+
+/**
+ * Active global fee requests.
+ */
+static struct GlobalFeeRequest *gfr_tail;
 
 /**
  * Active keys upload requests.
@@ -647,6 +692,21 @@ do_shutdown (void *cls)
     }
   }
   {
+    struct GlobalFeeRequest *gfr;
+
+    while (NULL != (gfr = gfr_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete global fee #%u\n",
+                  (unsigned int) gfr->idx);
+      TALER_EXCHANGE_management_set_global_fees_cancel (gfr->h);
+      GNUNET_CONTAINER_DLL_remove (gfr_head,
+                                   gfr_tail,
+                                   gfr);
+      GNUNET_free (gfr);
+    }
+  }
+  {
     struct UploadKeysRequest *ukr;
 
     while (NULL != (ukr = ukr_head))
@@ -727,6 +787,7 @@ test_shutdown (void)
        (NULL == war_head) &&
        (NULL == wdr_head) &&
        (NULL == wfr_head) &&
+       (NULL == gfr_head) &&
        (NULL == ukr_head) &&
        (NULL == uer_head) &&
        (NULL == mgkh) &&
@@ -1552,6 +1613,129 @@ upload_wire_fee (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post global fee operation result.
+ *
+ * @param cls closure with a `struct WireFeeRequest`
+ * @param hr HTTP response data
+ */
+static void
+global_fee_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct GlobalFeeRequest *gfr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) gfr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = EXIT_FAILURE;
+  }
+  GNUNET_CONTAINER_DLL_remove (gfr_head,
+                               gfr_tail,
+                               gfr);
+  GNUNET_free (gfr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload global fee.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value arguments for denomination revocation
+ */
+static void
+upload_global_fee (const char *exchange_url,
+                   size_t idx,
+                   const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct GlobalFeeRequest *gfr;
+  const char *err_name;
+  unsigned int err_line;
+  struct TALER_GlobalFeeSet fees;
+  struct GNUNET_TIME_Timestamp start_time;
+  struct GNUNET_TIME_Timestamp end_time;
+  struct GNUNET_TIME_Relative purse_timeout;
+  struct GNUNET_TIME_Relative kyc_timeout;
+  struct GNUNET_TIME_Relative history_expiration;
+  uint32_t purse_account_limit;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount ("history_fee",
+                            currency,
+                            &fees.history),
+    TALER_JSON_spec_amount ("kyc_fee",
+                            currency,
+                            &fees.kyc),
+    TALER_JSON_spec_amount ("account_fee",
+                            currency,
+                            &fees.account),
+    TALER_JSON_spec_amount ("purse_fee",
+                            currency,
+                            &fees.purse),
+    GNUNET_JSON_spec_relative_time ("purse_timeout",
+                                    &purse_timeout),
+    GNUNET_JSON_spec_relative_time ("kyc_timeout",
+                                    &kyc_timeout),
+    GNUNET_JSON_spec_relative_time ("history_expiration",
+                                    &history_expiration),
+    GNUNET_JSON_spec_uint32 ("purse_account_limit",
+                             &purse_account_limit),
+    GNUNET_JSON_spec_timestamp ("start_time",
+                                &start_time),
+    GNUNET_JSON_spec_timestamp ("end_time",
+                                &end_time),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to set wire fee: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = EXIT_FAILURE;
+    test_shutdown ();
+    return;
+  }
+  gfr = GNUNET_new (struct GlobalFeeRequest);
+  gfr->idx = idx;
+  gfr->h =
+    TALER_EXCHANGE_management_set_global_fees (ctx,
+                                               exchange_url,
+                                               start_time,
+                                               end_time,
+                                               &fees,
+                                               purse_timeout,
+                                               kyc_timeout,
+                                               history_expiration,
+                                               purse_account_limit,
+                                               &master_sig,
+                                               &global_fee_cb,
+                                               gfr);
+  GNUNET_CONTAINER_DLL_insert (gfr_head,
+                               gfr_tail,
+                               gfr);
+}
+
+
+/**
  * Function called with information about the post upload keys operation result.
  *
  * @param cls closure with a `struct UploadKeysRequest`
@@ -1891,6 +2075,10 @@ trigger_upload (const char *exchange_url)
     {
       .key = OP_SET_WIRE_FEE,
       .cb = &upload_wire_fee
+    },
+    {
+      .key = OP_SET_GLOBAL_FEE,
+      .cb = &upload_global_fee
     },
     {
       .key = OP_UPLOAD_SIGS,
@@ -2443,6 +2631,131 @@ do_set_wire_fee (char *const *args)
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
   next (args + 5);
+}
+
+
+/**
+ * Set global fees for the given year.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the year, args[1] the history fee, args[2] the kyc fee, args[3]
+ *        the account fee and args[4] the purse fee. These are followed by args[5] purse timeout,
+ *        args[6] kyc timeout and args[7] history expiration. Last is args[8] the (free) purse account limit.
+ */
+static void
+do_set_global_fee (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig;
+  char dummy;
+  unsigned int year;
+  struct TALER_GlobalFeeSet fees;
+  struct GNUNET_TIME_Relative purse_timeout;
+  struct GNUNET_TIME_Relative kyc_timeout;
+  struct GNUNET_TIME_Relative history_expiration;
+  unsigned int purse_account_limit;
+  struct GNUNET_TIME_Timestamp start_time;
+  struct GNUNET_TIME_Timestamp end_time;
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not setting global fee\n");
+    test_shutdown ();
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) ||
+       (NULL == args[2]) ||
+       (NULL == args[3]) ||
+       (NULL == args[4]) ||
+       (NULL == args[5]) ||
+       (NULL == args[6]) ||
+       (NULL == args[7]) ||
+       (NULL == args[8]) ||
+       ( (1 != sscanf (args[0],
+                       "%u%c",
+                       &year,
+                       &dummy)) &&
+         (0 != strcasecmp ("now",
+                           args[0])) ) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[1],
+                                &fees.history)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[2],
+                                &fees.kyc)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[3],
+                                &fees.account)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[4],
+                                &fees.purse)) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_fancy_time_to_relative (args[5],
+                                               &purse_timeout)) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_fancy_time_to_relative (args[6],
+                                               &kyc_timeout)) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_fancy_time_to_relative (args[7],
+                                               &history_expiration)) ||
+       (1 != sscanf (args[8],
+                     "%u%c",
+                     &purse_account_limit,
+                     &dummy)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must use YEAR, HISTORY-FEE, KYC-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, KYC-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (0 == strcasecmp ("now",
+                       args[0]))
+    year = GNUNET_TIME_get_current_year ();
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_NO))
+    return;
+  start_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year));
+  end_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year + 1));
+
+  TALER_exchange_offline_global_fee_sign (start_time,
+                                          end_time,
+                                          &fees,
+                                          purse_timeout,
+                                          kyc_timeout,
+                                          history_expiration,
+                                          (uint32_t) purse_account_limit,
+                                          &master_priv,
+                                          &master_sig);
+  output_operation (OP_SET_GLOBAL_FEE,
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_timestamp ("start_time",
+                                                  start_time),
+                      GNUNET_JSON_pack_timestamp ("end_time",
+                                                  end_time),
+                      TALER_JSON_pack_amount ("history_fee",
+                                              &fees.history),
+                      TALER_JSON_pack_amount ("kyc_fee",
+                                              &fees.kyc),
+                      TALER_JSON_pack_amount ("account_fee",
+                                              &fees.account),
+                      TALER_JSON_pack_amount ("purse_fee",
+                                              &fees.purse),
+                      GNUNET_JSON_pack_time_rel ("purse_timeout",
+                                                 purse_timeout),
+                      GNUNET_JSON_pack_time_rel ("kyc_timeout",
+                                                 kyc_timeout),
+                      GNUNET_JSON_pack_time_rel ("history_expiration",
+                                                 history_expiration),
+                      GNUNET_JSON_pack_uint64 ("purse_account_limit",
+                                               (uint32_t) purse_account_limit),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
+  next (args + 9);
 }
 
 
@@ -3834,6 +4147,12 @@ work (void *cls)
       .help =
         "sign wire fees for the given year (year, wire method, wire fee and closing fee must be given as arguments)",
       .cb = &do_set_wire_fee
+    },
+    {
+      .name = "global-fee",
+      .help =
+        "sign global fees for the given year (year, history fee, kyc fee, account fee, purse fee, purse timeout, kyc timeout, history expiration and the maximum number of free purses per account must be given as arguments)",
+      .cb = &do_set_global_fee
     },
     {
       .name = "upload",
