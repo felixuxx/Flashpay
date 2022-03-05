@@ -1173,11 +1173,65 @@ lrbt_cb_table_wire_fee (void *cls,
       GNUNET_PQ_result_spec_timestamp ("end_date",
                                        &td.details.wire_fee.end_date),
       TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
-                                   &td.details.wire_fee.wire_fee),
+                                   &td.details.wire_fee.fees.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
-                                   &td.details.wire_fee.closing_fee),
+                                   &td.details.wire_fee.fees.closing),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
+                                   &td.details.wire_fee.fees.wad),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &td.details.wire_fee.master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wire_fee table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_global_fee (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_GLOBAL_FEE
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_timestamp ("start_date",
+                                       &td.details.global_fee.start_date),
+      GNUNET_PQ_result_spec_timestamp ("end_date",
+                                       &td.details.global_fee.end_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
+                                   &td.details.global_fee.fees.history),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
+                                   &td.details.global_fee.fees.kyc),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &td.details.global_fee.master_sig),
       GNUNET_PQ_result_spec_end
     };
 

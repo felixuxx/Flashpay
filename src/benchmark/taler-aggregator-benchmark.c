@@ -574,7 +574,7 @@ run (void *cls,
   }
 
   {
-    struct TALER_Amount wire_fee;
+    struct TALER_WireFeeSet fees;
     struct TALER_MasterSignatureP master_sig;
     unsigned int year;
     struct GNUNET_TIME_Timestamp ws;
@@ -585,7 +585,9 @@ run (void *cls,
     {
       ws = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y - 1));
       we = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y));
-      make_amount (0, 5, &wire_fee);
+      make_amount (0, 5, &fees.wire);
+      make_amount (0, 5, &fees.wad);
+      make_amount (0, 5, &fees.closing);
       memset (&master_sig,
               0,
               sizeof (master_sig));
@@ -594,8 +596,7 @@ run (void *cls,
                                    "x-taler-bank",
                                    ws,
                                    we,
-                                   &wire_fee,
-                                   &wire_fee,
+                                   &fees,
                                    &master_sig))
       {
         GNUNET_break (0);

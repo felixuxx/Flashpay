@@ -217,6 +217,7 @@ expired_reserve_cb (void *cls,
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
   enum TALER_AmountArithmeticResult ret;
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_EXCHANGEDB_AccountInfo *wa;
@@ -241,10 +242,9 @@ expired_reserve_cb (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* lookup `closing_fee` from time of actual reserve expiration
+  /* lookup `fees` from time of actual reserve expiration
      (we may be lagging behind!) */
   {
-    struct TALER_Amount wire_fee;
     struct GNUNET_TIME_Timestamp start_date;
     struct GNUNET_TIME_Timestamp end_date;
     struct TALER_MasterSignatureP master_sig;
@@ -255,8 +255,7 @@ expired_reserve_cb (void *cls,
                                   expiration_date,
                                   &start_date,
                                   &end_date,
-                                  &wire_fee,
-                                  &closing_fee,
+                                  &fees,
                                   &master_sig);
     if (0 >= qs)
     {
@@ -269,6 +268,7 @@ expired_reserve_cb (void *cls,
   }
 
   /* calculate transfer amount */
+  closing_fee = fees.closing;
   ret = TALER_amount_subtract (&amount_without_fee,
                                left,
                                &closing_fee);

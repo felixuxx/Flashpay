@@ -305,14 +305,9 @@ struct WireFeeInfo
   struct GNUNET_TIME_Timestamp end_date;
 
   /**
-   * How high is the wire fee.
+   * How high are the wire fees.
    */
-  struct TALER_Amount wire_fee;
-
-  /**
-   * How high is the closing fee.
-   */
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
 
 };
 
@@ -911,7 +906,7 @@ get_wire_fee (struct AggregationContext *ac,
         GNUNET_TIME_timestamp_cmp (pos->end_date,
                                    >,
                                    timestamp) )
-      return &pos->wire_fee;
+      return &pos->fees.wire;
     if (GNUNET_TIME_timestamp_cmp (pos->start_date,
                                    >,
                                    timestamp))
@@ -926,8 +921,7 @@ get_wire_fee (struct AggregationContext *ac,
                                    timestamp,
                                    &wfi->start_date,
                                    &wfi->end_date,
-                                   &wfi->wire_fee,
-                                   &wfi->closing_fee,
+                                   &wfi->fees,
                                    &master_sig))
   {
     GNUNET_break (0);
@@ -944,8 +938,7 @@ get_wire_fee (struct AggregationContext *ac,
           method,
           wfi->start_date,
           wfi->end_date,
-          &wfi->wire_fee,
-          &wfi->closing_fee,
+          &wfi->fees,
           &TALER_ARL_master_pub,
           &master_sig))
     {
@@ -958,7 +951,7 @@ get_wire_fee (struct AggregationContext *ac,
   /* Established fee, keep in sorted list */
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Wire fee is %s starting at %s\n",
-              TALER_amount2s (&wfi->wire_fee),
+              TALER_amount2s (&wfi->fees.wire),
               GNUNET_TIME_timestamp2s (wfi->start_date));
   if ( (NULL == pos) ||
        (NULL == pos->prev) )
@@ -999,7 +992,7 @@ get_wire_fee (struct AggregationContext *ac,
                         TALER_JSON_pack_time_abs_human ("time",
                                                         wfi->end_date.abs_time)));
   }
-  return &wfi->wire_fee;
+  return &wfi->fees.wire;
 }
 
 

@@ -1244,14 +1244,10 @@ struct TALER_MasterWireFeePS
   struct GNUNET_TIME_TimestampNBO end_date;
 
   /**
-   * Fee charged to the merchant per wire transfer.
+   * Fees charged for wire transfers using the
+   * given wire method.
    */
-  struct TALER_AmountNBO wire_fee;
-
-  /**
-   * Closing fee charged when we wire back funds of a reserve.
-   */
-  struct TALER_AmountNBO closing_fee;
+  struct TALER_WireFeeSetNBOP fees;
 
 };
 

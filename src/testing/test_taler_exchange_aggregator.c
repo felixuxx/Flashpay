@@ -99,6 +99,7 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
                                               config_filename,
                                               "EUR:0.01",
+                                              "EUR:0.01",
                                               "EUR:0.01"),
     // check no aggregation happens on a empty database
     CMD_EXEC_AGGREGATOR ("run-aggregator-on-empty-db",

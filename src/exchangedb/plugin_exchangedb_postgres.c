@@ -1347,6 +1347,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       ",master_sig"
       " FROM wire_fee"
       " WHERE wire_method=$1"
@@ -1364,10 +1366,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
+      10),
     /* Used in #postgres_store_wire_transfer_out */
     GNUNET_PQ_make_prepare (
       "insert_wire_out",
@@ -1826,6 +1830,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       ",start_date"
       ",end_date"
       ",master_sig"
@@ -1936,6 +1942,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       " FROM wire_fee"
       " WHERE wire_method=$1"
       " AND end_date > $2"
@@ -2421,6 +2429,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       ",master_sig"
       " FROM wire_fee"
       " WHERE wire_fee_serial > $1"
@@ -2711,10 +2721,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-      9),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);",
+      11),
     GNUNET_PQ_make_prepare (
       "insert_into_table_recoup",
       "INSERT INTO recoup"
@@ -7554,8 +7566,7 @@ postgres_insert_aggregation_tracking (
  * @param date for which date do we want the fee?
  * @param[out] start_date when does the fee go into effect
  * @param[out] end_date when does the fee end being valid
- * @param[out] wire_fee how high is the wire transfer fee
- * @param[out] closing_fee how high is the closing fee
+ * @param[out] fees how high are the wire fees
  * @param[out] master_sig signature over the above by the exchange master key
  * @return status of the transaction
  */
@@ -7565,8 +7576,7 @@ postgres_get_wire_fee (void *cls,
                        struct GNUNET_TIME_Timestamp date,
                        struct GNUNET_TIME_Timestamp *start_date,
                        struct GNUNET_TIME_Timestamp *end_date,
-                       struct TALER_Amount *wire_fee,
-                       struct TALER_Amount *closing_fee,
+                       struct TALER_WireFeeSet *fees,
                        struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
@@ -7576,11 +7586,18 @@ postgres_get_wire_fee (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_timestamp ("start_date", start_date),
-    GNUNET_PQ_result_spec_timestamp ("end_date", end_date),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee", wire_fee),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee", closing_fee),
-    GNUNET_PQ_result_spec_auto_from_type ("master_sig", master_sig),
+    GNUNET_PQ_result_spec_timestamp ("start_date",
+                                     start_date),
+    GNUNET_PQ_result_spec_timestamp ("end_date",
+                                     end_date),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
+                                 &fees->wire),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
+                                 &fees->wad),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
+                                 &fees->closing),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
     GNUNET_PQ_result_spec_end
   };
 
@@ -7598,8 +7615,7 @@ postgres_get_wire_fee (void *cls,
  * @param type type of wire transfer this fee applies for
  * @param start_date when does the fee go into effect
  * @param end_date when does the fee end being valid
- * @param wire_fee how high is the wire transfer fee
- * @param closing_fee how high is the closing fee
+ * @param fees how high are the wire fees
  * @param master_sig signature over the above by the exchange master key
  * @return transaction status code
  */
@@ -7608,8 +7624,7 @@ postgres_insert_wire_fee (void *cls,
                           const char *type,
                           struct GNUNET_TIME_Timestamp start_date,
                           struct GNUNET_TIME_Timestamp end_date,
-                          const struct TALER_Amount *wire_fee,
-                          const struct TALER_Amount *closing_fee,
+                          const struct TALER_WireFeeSet *fees,
                           const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
@@ -7617,13 +7632,13 @@ postgres_insert_wire_fee (void *cls,
     GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_timestamp (&start_date),
     GNUNET_PQ_query_param_timestamp (&end_date),
-    TALER_PQ_query_param_amount (wire_fee),
-    TALER_PQ_query_param_amount (closing_fee),
+    TALER_PQ_query_param_amount (&fees->wire),
+    TALER_PQ_query_param_amount (&fees->closing),
+    TALER_PQ_query_param_amount (&fees->wad),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
-  struct TALER_Amount wf;
-  struct TALER_Amount cf;
+  struct TALER_WireFeeSet wx;
   struct TALER_MasterSignatureP sig;
   struct GNUNET_TIME_Timestamp sd;
   struct GNUNET_TIME_Timestamp ed;
@@ -7634,8 +7649,7 @@ postgres_insert_wire_fee (void *cls,
                               start_date,
                               &sd,
                               &ed,
-                              &wf,
-                              &cf,
+                              &wx,
                               &sig);
   if (qs < 0)
     return qs;
@@ -7647,14 +7661,9 @@ postgres_insert_wire_fee (void *cls,
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    if (0 != TALER_amount_cmp (wire_fee,
-                               &wf))
-    {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (0 != TALER_amount_cmp (closing_fee,
-                               &cf))
+    if (0 !=
+        TALER_wire_fee_set_cmp (fees,
+                                &wx))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -10230,15 +10239,16 @@ get_wire_fees_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct TALER_MasterSignatureP master_sig;
-    struct TALER_Amount wire_fee;
-    struct TALER_Amount closing_fee;
+    struct TALER_WireFeeSet fees;
     struct GNUNET_TIME_Timestamp start_date;
     struct GNUNET_TIME_Timestamp end_date;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
-                                   &wire_fee),
+                                   &fees.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
-                                   &closing_fee),
+                                   &fees.closing),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
+                                   &fees.wad),
       GNUNET_PQ_result_spec_timestamp ("start_date",
                                        &start_date),
       GNUNET_PQ_result_spec_timestamp ("end_date",
@@ -10258,8 +10268,7 @@ get_wire_fees_cb (void *cls,
       return;
     }
     ctx->cb (ctx->cb_cls,
-             &wire_fee,
-             &closing_fee,
+             &fees,
              start_date,
              end_date,
              &master_sig);
@@ -10604,16 +10613,10 @@ struct WireFeeLookupContext
 {
 
   /**
-   * Set to the wire fee. Set to invalid if fees conflict over
+   * Set to the wire fees. Set to invalid if fees conflict over
    * the given time period.
    */
-  struct TALER_Amount *wire_fee;
-
-  /**
-   * Set to the closing fee. Set to invalid if fees conflict over
-   * the given time period.
-   */
-  struct TALER_Amount *closing_fee;
+  struct TALER_WireFeeSet *fees;
 
   /**
    * Plugin context.
@@ -10640,13 +10643,14 @@ wire_fee_by_time_helper (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_Amount wf;
-    struct TALER_Amount cf;
+    struct TALER_WireFeeSet fs;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
-                                   &wf),
+                                   &fs.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
-                                   &cf),
+                                   &fs.closing),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
+                                   &fs.wad),
       GNUNET_PQ_result_spec_end
     };
 
@@ -10657,40 +10661,24 @@ wire_fee_by_time_helper (void *cls,
     {
       GNUNET_break (0);
       /* invalidate */
-      memset (wlc->wire_fee,
+      memset (wlc->fees,
               0,
-              sizeof (struct TALER_Amount));
-      memset (wlc->closing_fee,
-              0,
-              sizeof (struct TALER_Amount));
+              sizeof (struct TALER_WireFeeSet));
       return;
     }
     if (0 == i)
     {
-      *wlc->wire_fee = wf;
-      *wlc->closing_fee = cf;
+      *wlc->fees = fs;
       continue;
     }
-    if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&wf,
-                                     wlc->wire_fee)) ||
-         (GNUNET_YES !=
-          TALER_amount_cmp_currency (&cf,
-                                     wlc->closing_fee)) ||
-         (0 !=
-          TALER_amount_cmp (&wf,
-                            wlc->wire_fee)) ||
-         (0 !=
-          TALER_amount_cmp (&cf,
-                            wlc->closing_fee)) )
+    if (0 !=
+        TALER_wire_fee_set_cmp (&fs,
+                                wlc->fees))
     {
       /* invalidate */
-      memset (wlc->wire_fee,
+      memset (wlc->fees,
               0,
-              sizeof (struct TALER_Amount));
-      memset (wlc->closing_fee,
-              0,
-              sizeof (struct TALER_Amount));
+              sizeof (struct TALER_WireFeeSet));
       return;
     }
   }
@@ -10700,7 +10688,7 @@ wire_fee_by_time_helper (void *cls,
 /**
  * Lookup information about known wire fees.  Finds all applicable
  * fees in the given range. If they are identical, returns the
- * respective @a wire_fee and @a closing_fee. If any of the fees
+ * respective @a fees. If any of the fees
  * differ between @a start_time and @a end_time, the transaction
  * succeeds BUT returns an invalid amount for both fees.
  *
@@ -10708,11 +10696,8 @@ wire_fee_by_time_helper (void *cls,
  * @param wire_method the wire method to lookup fees for
  * @param start_time starting time of fee
  * @param end_time end time of fee
- * @param[out] wire_fee wire fee for that time period; if
- *             different wire fee exists within this time
- *             period, an 'invalid' amount is returned.
- * @param[out] closing_fee wire fee for that time period; if
- *             different wire fee exists within this time
+ * @param[out] fees wire fees for that time period; if
+ *             different fees exists within this time
  *             period, an 'invalid' amount is returned.
  * @return transaction status code
  */
@@ -10722,8 +10707,7 @@ postgres_lookup_wire_fee_by_time (
   const char *wire_method,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
-  struct TALER_Amount *wire_fee,
-  struct TALER_Amount *closing_fee)
+  struct TALER_WireFeeSet *fees)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -10733,9 +10717,8 @@ postgres_lookup_wire_fee_by_time (
     GNUNET_PQ_query_param_end
   };
   struct WireFeeLookupContext wlc = {
-    .wire_fee = wire_fee,
-    .closing_fee = closing_fee,
-    .pg = pg,
+    .fees = fees,
+    .pg = pg
   };
 
   return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
@@ -10833,6 +10816,9 @@ postgres_lookup_serial_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_WIRE_FEE:
     statement = "select_serial_by_table_wire_fee";
+    break;
+  case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
+    statement = "select_serial_by_table_global_fee";
     break;
   case TALER_EXCHANGEDB_RT_RECOUP:
     statement = "select_serial_by_table_recoup";
@@ -11003,6 +10989,10 @@ postgres_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_wire_fee";
     rh = &lrbt_cb_table_wire_fee;
     break;
+  case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
+    statement = "select_above_serial_by_table_global_fee";
+    rh = &lrbt_cb_table_global_fee;
+    break;
   case TALER_EXCHANGEDB_RT_RECOUP:
     statement = "select_above_serial_by_table_recoup";
     rh = &lrbt_cb_table_recoup;
@@ -11137,6 +11127,9 @@ postgres_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_WIRE_FEE:
     rh = &irbt_cb_table_wire_fee;
+    break;
+  case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
+    rh = &irbt_cb_table_global_fee;
     break;
   case TALER_EXCHANGEDB_RT_RECOUP:
     rh = &irbt_cb_table_recoup;

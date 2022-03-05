@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -59,6 +59,11 @@ struct WireFeeState
    * Closing fee amount to use.
    */
   const char *closing_fee;
+
+  /**
+   * Wad fee amount to use.
+   */
+  const char *wad_fee;
 
   /**
    * Expected HTTP response code.
@@ -121,8 +126,7 @@ wire_add_run (void *cls,
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Timestamp start_time;
   struct GNUNET_TIME_Timestamp end_time;
-  struct TALER_Amount wire_fee;
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
 
   (void) cmd;
   ds->is = is;
@@ -135,10 +139,13 @@ wire_add_run (void *cls,
                               GNUNET_TIME_UNIT_HOURS));
   if ( (GNUNET_OK !=
         TALER_string_to_amount (ds->closing_fee,
-                                &closing_fee)) ||
+                                &fees.closing)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (ds->wad_fee,
+                                &fees.wad)) ||
        (GNUNET_OK !=
         TALER_string_to_amount (ds->wire_fee,
-                                &wire_fee)) )
+                                &fees.wire)) )
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -156,8 +163,7 @@ wire_add_run (void *cls,
     TALER_exchange_offline_wire_fee_sign (ds->wire_method,
                                           start_time,
                                           end_time,
-                                          &wire_fee,
-                                          &closing_fee,
+                                          &fees,
                                           &is->master_priv,
                                           &master_sig);
   }
@@ -167,8 +173,7 @@ wire_add_run (void *cls,
     ds->wire_method,
     start_time,
     end_time,
-    &wire_fee,
-    &closing_fee,
+    &fees,
     &master_sig,
     &wire_add_cb,
     ds);
@@ -212,6 +217,7 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
                                 const char *wire_method,
                                 const char *wire_fee,
                                 const char *closing_fee,
+                                const char *wad_fee,
                                 unsigned int expected_http_status,
                                 bool bad_sig)
 {
@@ -223,6 +229,7 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
   ds->wire_method = wire_method;
   ds->wire_fee = wire_fee;
   ds->closing_fee = closing_fee;
+  ds->wad_fee = wad_fee;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

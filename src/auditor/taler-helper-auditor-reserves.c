@@ -862,7 +862,7 @@ get_closing_fee (const char *receiver_account,
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Timestamp start_date;
   struct GNUNET_TIME_Timestamp end_date;
-  struct TALER_Amount wire_fee;
+  struct TALER_WireFeeSet fees;
   char *method;
 
   method = TALER_payto_get_method (receiver_account);
@@ -875,8 +875,7 @@ get_closing_fee (const char *receiver_account,
                                    atime,
                                    &start_date,
                                    &end_date,
-                                   &wire_fee,
-                                   fee,
+                                   &fees,
                                    &master_sig))
   {
     char *diag;
@@ -892,6 +891,7 @@ get_closing_fee (const char *receiver_account,
     GNUNET_free (method);
     return GNUNET_SYSERR;
   }
+  *fee = fees.closing;
   GNUNET_free (method);
   return GNUNET_OK;
 }

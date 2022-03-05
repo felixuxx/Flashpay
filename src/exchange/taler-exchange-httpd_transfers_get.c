@@ -211,9 +211,9 @@ struct WtidTransactionContext
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Wire fee applicable at @e exec_time.
+   * Wire fees applicable at @e exec_time.
    */
-  struct TALER_Amount wire_fee;
+  struct TALER_WireFeeSet fees;
 
   /**
    * Execution time of the wire transfer
@@ -401,7 +401,6 @@ get_transfer_deposits (void *cls,
   struct GNUNET_TIME_Timestamp wire_fee_start_date;
   struct GNUNET_TIME_Timestamp wire_fee_end_date;
   struct TALER_MasterSignatureP wire_fee_master_sig;
-  struct TALER_Amount closing_fee;
 
   /* resetting to NULL/0 in case transaction was repeated after
      serialization failure */
@@ -457,8 +456,7 @@ get_transfer_deposits (void *cls,
                                    ctx->exec_time,
                                    &wire_fee_start_date,
                                    &wire_fee_end_date,
-                                   &ctx->wire_fee,
-                                   &closing_fee,
+                                   &ctx->fees,
                                    &wire_fee_master_sig);
     GNUNET_free (wire_method);
   }
@@ -478,7 +476,7 @@ get_transfer_deposits (void *cls,
   if (0 >
       TALER_amount_subtract (&ctx->total,
                              &ctx->total,
-                             &ctx->wire_fee))
+                             &ctx->fees.wire))
   {
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -528,7 +526,7 @@ TEH_handler_transfers_get (struct TEH_RequestContext *rc,
                                     &ctx.total,
                                     &ctx.merchant_pub,
                                     ctx.payto_uri,
-                                    &ctx.wire_fee,
+                                    &ctx.fees.wire,
                                     ctx.exec_time,
                                     ctx.wdd_head);
   free_ctx (&ctx);

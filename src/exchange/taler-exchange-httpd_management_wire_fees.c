@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+  Copyright (C) 2020, 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -58,14 +58,9 @@ struct AddFeeContext
   struct GNUNET_TIME_Timestamp end_time;
 
   /**
-   * Wire fee amount.
+   * Wire fee amounts.
    */
-  struct TALER_Amount wire_fee;
-
-  /**
-   * Closing fee amount.
-   */
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
 
 };
 
@@ -91,16 +86,14 @@ add_fee (void *cls,
 {
   struct AddFeeContext *afc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_Amount wire_fee;
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
 
   qs = TEH_plugin->lookup_wire_fee_by_time (
     TEH_plugin->cls,
     afc->wire_method,
     afc->start_time,
     afc->end_time,
-    &wire_fee,
-    &closing_fee);
+    &fees);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -115,13 +108,10 @@ add_fee (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs)
   {
     if ( (GNUNET_OK ==
-          TALER_amount_is_valid (&wire_fee)) &&
+          TALER_amount_is_valid (&fees.wire)) &&
          (0 ==
-          TALER_amount_cmp (&wire_fee,
-                            &afc->wire_fee)) &&
-         (0 ==
-          TALER_amount_cmp (&closing_fee,
-                            &afc->closing_fee)) )
+          TALER_wire_fee_set_cmp (&fees,
+                                  &afc->fees)) )
     {
       /* this will trigger the 'success' response */
       return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
@@ -142,8 +132,7 @@ add_fee (void *cls,
     afc->wire_method,
     afc->start_time,
     afc->end_time,
-    &afc->wire_fee,
-    &afc->closing_fee,
+    &afc->fees,
     &afc->master_sig);
   if (qs < 0)
   {
@@ -175,12 +164,15 @@ TEH_handler_management_post_wire_fees (
                                 &afc.start_time),
     GNUNET_JSON_spec_timestamp ("fee_end",
                                 &afc.end_time),
-    TALER_JSON_spec_amount ("closing_fee",
-                            TEH_currency,
-                            &afc.closing_fee),
     TALER_JSON_spec_amount ("wire_fee",
                             TEH_currency,
-                            &afc.wire_fee),
+                            &afc.fees.wire),
+    TALER_JSON_spec_amount ("closing_fee",
+                            TEH_currency,
+                            &afc.fees.closing),
+    TALER_JSON_spec_amount ("wad_fee",
+                            TEH_currency,
+                            &afc.fees.wad),
     GNUNET_JSON_spec_end ()
   };
 
@@ -201,8 +193,7 @@ TEH_handler_management_post_wire_fees (
         afc.wire_method,
         afc.start_time,
         afc.end_time,
-        &afc.wire_fee,
-        &afc.closing_fee,
+        &afc.fees,
         &TEH_master_public_key,
         &afc.master_sig))
   {

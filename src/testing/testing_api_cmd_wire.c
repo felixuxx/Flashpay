@@ -119,7 +119,7 @@ wire_cb (void *cls,
                NULL != waf;
                waf = waf->next)
           {
-            if (0 != TALER_amount_cmp (&waf->wire_fee,
+            if (0 != TALER_amount_cmp (&waf->fees.wire,
                                        &expected_fee))
             {
               GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

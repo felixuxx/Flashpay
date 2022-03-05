@@ -200,8 +200,7 @@ add_wire_account (void *cls,
  * Add information about a wire account to @a cls.
  *
  * @param cls a `json_t *` array to expand with wire account details
- * @param wire_fee the wire fee we charge
- * @param closing_fee the closing fee we charge
+ * @param fees the wire fees we charge
  * @param start_date from when are these fees valid (start date)
  * @param end_date until when are these fees valid (end date, exclusive)
  * @param master_sig master key signature affirming that this is the correct
@@ -209,8 +208,7 @@ add_wire_account (void *cls,
  */
 static void
 add_wire_fee (void *cls,
-              const struct TALER_Amount *wire_fee,
-              const struct TALER_Amount *closing_fee,
+              const struct TALER_WireFeeSet *fees,
               struct GNUNET_TIME_Timestamp start_date,
               struct GNUNET_TIME_Timestamp end_date,
               const struct TALER_MasterSignatureP *master_sig)
@@ -222,9 +220,11 @@ add_wire_fee (void *cls,
         a,
         GNUNET_JSON_PACK (
           TALER_JSON_pack_amount ("wire_fee",
-                                  wire_fee),
+                                  &fees->wire),
+          TALER_JSON_pack_amount ("wad_fee",
+                                  &fees->wad),
           TALER_JSON_pack_amount ("closing_fee",
-                                  closing_fee),
+                                  &fees->closing),
           GNUNET_JSON_pack_timestamp ("start_date",
                                       start_date),
           GNUNET_JSON_pack_timestamp ("end_date",

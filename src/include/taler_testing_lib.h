@@ -2107,6 +2107,7 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
                                 const char *wire_method,
                                 const char *wire_fee,
                                 const char *closing_fee,
+                                const char *wad_fee,
                                 unsigned int expected_http_status,
                                 bool bad_sig);
 
@@ -2180,13 +2181,15 @@ TALER_TESTING_cmd_exec_offline_sign_keys (const char *label,
  * @param config_filename configuration filename.
  * @param wire_fee the wire fee to affirm (for the current year)
  * @param closing_fee the closing fee to affirm (for the current year)
+ * @param wad_fee the wad fee to affirm
  * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
                                           const char *config_filename,
                                           const char *wire_fee,
-                                          const char *closing_fee);
+                                          const char *closing_fee,
+                                          const char *wad_fee);
 
 
 /**

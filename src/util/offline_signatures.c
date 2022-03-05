@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -415,8 +415,7 @@ TALER_exchange_offline_wire_fee_sign (
   const char *payment_method,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -430,10 +429,8 @@ TALER_exchange_offline_wire_fee_sign (
   GNUNET_CRYPTO_hash (payment_method,
                       strlen (payment_method) + 1,
                       &kv.h_wire_method);
-  TALER_amount_hton (&kv.wire_fee,
-                     wire_fee);
-  TALER_amount_hton (&kv.closing_fee,
-                     closing_fee);
+  TALER_wire_fee_set_hton (&kv.fees,
+                           fees);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -445,8 +442,7 @@ TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -460,10 +456,8 @@ TALER_exchange_offline_wire_fee_verify (
   GNUNET_CRYPTO_hash (payment_method,
                       strlen (payment_method) + 1,
                       &wf.h_wire_method);
-  TALER_amount_hton (&wf.wire_fee,
-                     wire_fee);
-  TALER_amount_hton (&wf.closing_fee,
-                     closing_fee);
+  TALER_wire_fee_set_hton (&wf.fees,
+                           fees);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
                                 &wf,

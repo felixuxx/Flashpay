@@ -124,6 +124,46 @@ TALER_wire_fee_set_ntoh (struct TALER_WireFeeSet *fees,
 }
 
 
+int
+TALER_global_fee_set_cmp (const struct TALER_GlobalFeeSet *f1,
+                          const struct TALER_GlobalFeeSet *f2)
+{
+  int ret;
+
+  ret = TALER_amount_cmp (&f1->history,
+                          &f2->history);
+  if (0 != ret)
+    return ret;
+  ret = TALER_amount_cmp (&f1->kyc,
+                          &f2->kyc);
+  if (0 != ret)
+    return ret;
+  return 0;
+}
+
+
+int
+TALER_wire_fee_set_cmp (const struct TALER_WireFeeSet *f1,
+                        const struct TALER_WireFeeSet *f2)
+{
+  int ret;
+
+  ret = TALER_amount_cmp (&f1->wire,
+                          &f2->wire);
+  if (0 != ret)
+    return ret;
+  ret = TALER_amount_cmp (&f1->closing,
+                          &f2->closing);
+  if (0 != ret)
+    return ret;
+  ret = TALER_amount_cmp (&f1->wad,
+                          &f2->wad);
+  if (0 != ret)
+    return ret;
+  return 0;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_denom_fee_check_currency (
   const char *currency,

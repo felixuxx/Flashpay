@@ -635,14 +635,41 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_string (td->details.wire_fee.wire_method),
     GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.start_date),
     GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.end_date),
-    TALER_PQ_query_param_amount (&td->details.wire_fee.wire_fee),
-    TALER_PQ_query_param_amount (&td->details.wire_fee.closing_fee),
+    TALER_PQ_query_param_amount (&td->details.wire_fee.fees.wire),
+    TALER_PQ_query_param_amount (&td->details.wire_fee.fees.closing),
+    TALER_PQ_query_param_amount (&td->details.wire_fee.fees.wad),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
     GNUNET_PQ_query_param_end
   };
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_fee",
+                                             params);
+}
+
+
+/**
+ * Function called with wire_fee records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_global_fee (struct PostgresClosure *pg,
+                          const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_timestamp (&td->details.global_fee.start_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.global_fee.end_date),
+    TALER_PQ_query_param_amount (&td->details.global_fee.fees.history),
+    TALER_PQ_query_param_amount (&td->details.global_fee.fees.kyc),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_global_fee",
                                              params);
 }
 

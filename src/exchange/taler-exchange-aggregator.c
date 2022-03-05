@@ -43,7 +43,7 @@ struct AggregationUnit
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Total amount to be transferred, before subtraction of @e wire_fee and rounding down.
+   * Total amount to be transferred, before subtraction of @e fees.wire and rounding down.
    */
   struct TALER_Amount total_amount;
 
@@ -55,7 +55,7 @@ struct AggregationUnit
   /**
    * Wire fee we charge for @e wp at @e execution_time.
    */
-  struct TALER_Amount wire_fee;
+  struct TALER_WireFeeSet fees;
 
   /**
    * Wire transfer identifier we use.
@@ -454,7 +454,6 @@ deposit_cb (void *cls,
   /* make sure we have current fees */
   au->execution_time = GNUNET_TIME_timestamp_get ();
   {
-    struct TALER_Amount closing_fee;
     struct GNUNET_TIME_Timestamp start_date;
     struct GNUNET_TIME_Timestamp end_date;
     struct TALER_MasterSignatureP master_sig;
@@ -465,8 +464,7 @@ deposit_cb (void *cls,
                                   au->execution_time,
                                   &start_date,
                                   &end_date,
-                                  &au->wire_fee,
-                                  &closing_fee,
+                                  &au->fees,
                                   &master_sig);
     if (0 >= qs)
     {
@@ -482,7 +480,7 @@ deposit_cb (void *cls,
               "Aggregator starts aggregation for deposit %llu to %s with wire fee %s\n",
               (unsigned long long) row_id,
               TALER_B2S (&au->wtid),
-              TALER_amount2s (&au->wire_fee));
+              TALER_amount2s (&au->fees.wire));
   qs = db_plugin->insert_aggregation_tracking (db_plugin->cls,
                                                &au->wtid,
                                                row_id);
@@ -820,7 +818,7 @@ run_aggregation (void *cls)
   if ( (0 >=
         TALER_amount_subtract (&au_active.final_amount,
                                &au_active.total_amount,
-                               &au_active.wire_fee)) ||
+                               &au_active.fees.wire)) ||
        (GNUNET_SYSERR ==
         TALER_amount_round_down (&au_active.final_amount,
                                  &currency_round_unit)) ||

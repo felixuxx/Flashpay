@@ -915,23 +915,24 @@ test_wire_fees (void)
 {
   struct GNUNET_TIME_Timestamp start_date;
   struct GNUNET_TIME_Timestamp end_date;
-  struct TALER_Amount wire_fee;
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Timestamp sd;
   struct GNUNET_TIME_Timestamp ed;
-  struct TALER_Amount fee;
-  struct TALER_Amount fee2;
+  struct TALER_WireFeeSet fees2;
   struct TALER_MasterSignatureP ms;
 
   start_date = GNUNET_TIME_timestamp_get ();
   end_date = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MINUTES);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.424242",
-                                         &wire_fee));
+                                         &fees.wire));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":2.424242",
-                                         &closing_fee));
+                                         &fees.closing));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":3.424242",
+                                         &fees.wad));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &master_sig,
                               sizeof (master_sig));
@@ -940,8 +941,7 @@ test_wire_fees (void)
                                "wire-method",
                                start_date,
                                end_date,
-                               &wire_fee,
-                               &closing_fee,
+                               &fees,
                                &master_sig))
   {
     GNUNET_break (0);
@@ -952,8 +952,7 @@ test_wire_fees (void)
                                "wire-method",
                                start_date,
                                end_date,
-                               &wire_fee,
-                               &closing_fee,
+                               &fees,
                                &master_sig))
   {
     GNUNET_break (0);
@@ -967,8 +966,7 @@ test_wire_fees (void)
                             end_date,
                             &sd,
                             &ed,
-                            &fee,
-                            &fee2,
+                            &fees2,
                             &ms))
   {
     GNUNET_break (0);
@@ -980,8 +978,7 @@ test_wire_fees (void)
                             start_date,
                             &sd,
                             &ed,
-                            &fee,
-                            &fee2,
+                            &fees2,
                             &ms))
   {
     GNUNET_break (0);
@@ -993,10 +990,8 @@ test_wire_fees (void)
        (GNUNET_TIME_timestamp_cmp (ed,
                                    !=,
                                    end_date)) ||
-       (0 != TALER_amount_cmp (&fee,
-                               &wire_fee)) ||
-       (0 != TALER_amount_cmp (&fee2,
-                               &closing_fee)) ||
+       (0 != TALER_wire_fee_set_cmp (&fees,
+                                     &fees2)) ||
        (0 != GNUNET_memcmp (&ms,
                             &master_sig)) )
   {

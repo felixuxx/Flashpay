@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -144,9 +144,11 @@ parse_fees (json_t *fees)
         GNUNET_JSON_spec_fixed_auto ("sig",
                                      &wa->master_sig),
         TALER_JSON_spec_amount_any ("wire_fee",
-                                    &wa->wire_fee),
+                                    &wa->fees.wire),
+        TALER_JSON_spec_amount_any ("wad_fee",
+                                    &wa->fees.wad),
         TALER_JSON_spec_amount_any ("closing_fee",
-                                    &wa->closing_fee),
+                                    &wa->fees.closing),
         GNUNET_JSON_spec_timestamp ("start_date",
                                     &wa->start_date),
         GNUNET_JSON_spec_timestamp ("end_date",
@@ -230,8 +232,10 @@ handle_wire_finished (void *cls,
       struct FeeMap *fm;
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_json ("accounts", &accounts),
-        GNUNET_JSON_spec_json ("fees", &fees),
+        GNUNET_JSON_spec_json ("accounts",
+                               &accounts),
+        GNUNET_JSON_spec_json ("fees",
+                               &fees),
         GNUNET_JSON_spec_end ()
       };
 
@@ -277,8 +281,10 @@ handle_wire_finished (void *cls,
           struct TALER_EXCHANGE_WireAccount *wa = &was[i];
           json_t *account;
           struct GNUNET_JSON_Specification spec_account[] = {
-            GNUNET_JSON_spec_string ("payto_uri", &wa->payto_uri),
-            GNUNET_JSON_spec_fixed_auto ("master_sig", &wa->master_sig),
+            GNUNET_JSON_spec_string ("payto_uri",
+                                     &wa->payto_uri),
+            GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                         &wa->master_sig),
             GNUNET_JSON_spec_end ()
           };
           char *method;

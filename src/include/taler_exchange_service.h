@@ -642,13 +642,7 @@ struct TALER_EXCHANGE_WireAggregateFees
   /**
    * Fee to be paid whenever the exchange wires funds to the merchant.
    */
-  struct TALER_Amount wire_fee;
-
-  /**
-   * Fee to be paid when the exchange closes a reserve and wires funds
-   * back to a customer.
-   */
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
 
   /**
    * Time when this fee goes into effect (inclusive)
@@ -3501,8 +3495,7 @@ struct TALER_EXCHANGE_ManagementSetWireFeeHandle;
  * @param wire_method for which wire method are fees provided
  * @param validity_start start date for the provided wire fees
  * @param validity_end end date for the provided wire fees
- * @param wire_fee the wire fee for this time period
- * @param closing_fee the closing fee for this time period
+ * @param fees the wire fees for this time period
  * @param master_sig signature affirming the wire fees;
  *        of purpose #TALER_SIGNATURE_MASTER_WIRE_FEES
  * @param cb function to call with the exchange's result
@@ -3516,8 +3509,7 @@ TALER_EXCHANGE_management_set_wire_fees (
   const char *wire_method,
   struct GNUNET_TIME_Timestamp validity_start,
   struct GNUNET_TIME_Timestamp validity_end,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
   void *cb_cls);

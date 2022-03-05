@@ -168,6 +168,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_WIRE_OUT,
   TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING,
   TALER_EXCHANGEDB_RT_WIRE_FEE,
+  TALER_EXCHANGEDB_RT_GLOBAL_FEE,
   TALER_EXCHANGEDB_RT_RECOUP,
   TALER_EXCHANGEDB_RT_RECOUP_REFRESH,
   TALER_EXCHANGEDB_RT_EXTENSIONS,
@@ -384,10 +385,17 @@ struct TALER_EXCHANGEDB_TableData
       char *wire_method;
       struct GNUNET_TIME_Timestamp start_date;
       struct GNUNET_TIME_Timestamp end_date;
-      struct TALER_Amount wire_fee;
-      struct TALER_Amount closing_fee;
+      struct TALER_WireFeeSet fees;
       struct TALER_MasterSignatureP master_sig;
     } wire_fee;
+
+    struct
+    {
+      struct GNUNET_TIME_Timestamp start_date;
+      struct GNUNET_TIME_Timestamp end_date;
+      struct TALER_GlobalFeeSet fees;
+      struct TALER_MasterSignatureP master_sig;
+    } global_fee;
 
     struct
     {
@@ -1899,8 +1907,7 @@ typedef void
  * Provide information about wire fees.
  *
  * @param cls closure
- * @param wire_fee the wire fee we charge
- * @param closing_fee the closing fee we charge
+ * @param fees the wire fees we charge
  * @param start_date from when are these fees valid (start date)
  * @param end_date until when are these fees valid (end date, exclusive)
  * @param master_sig master key signature affirming that this is the correct
@@ -1909,8 +1916,26 @@ typedef void
 typedef void
 (*TALER_EXCHANGEDB_WireFeeCallback)(
   void *cls,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Provide information about global fees.
+ *
+ * @param cls closure
+ * @param fees the global fees we charge
+ * @param start_date from when are these fees valid (start date)
+ * @param end_date until when are these fees valid (end date, exclusive)
+ * @param master_sig master key signature affirming that this is the correct
+ *                   fee (of purpose #TALER_SIGNATURE_MASTER_GLOBAL_FEES)
+ */
+typedef void
+(*TALER_EXCHANGEDB_GlobalFeeCallback)(
+  void *cls,
+  const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Timestamp start_date,
   struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterSignatureP *master_sig);
@@ -3256,8 +3281,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wire_method which wire method is the fee about?
    * @param start_date when does the fee go into effect
    * @param end_date when does the fee end being valid
-   * @param wire_fee how high is the wire transfer fee
-   * @param closing_fee how high is the closing fee
+   * @param fees how high is are the wire fees
    * @param master_sig signature over the above by the exchange master key
    * @return transaction status code
    */
@@ -3266,9 +3290,26 @@ struct TALER_EXCHANGEDB_Plugin
                      const char *wire_method,
                      struct GNUNET_TIME_Timestamp start_date,
                      struct GNUNET_TIME_Timestamp end_date,
-                     const struct TALER_Amount *wire_fee,
-                     const struct TALER_Amount *closing_fee,
+                     const struct TALER_WireFeeSet *fees,
                      const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Insert global fee set into database.
+   *
+   * @param cls closure
+   * @param start_date when does the fee go into effect
+   * @param end_date when does the fee end being valid
+   * @param fees how high is are the global fees
+   * @param master_sig signature over the above by the exchange master key
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_global_fee)(void *cls,
+                       struct GNUNET_TIME_Timestamp start_date,
+                       struct GNUNET_TIME_Timestamp end_date,
+                       const struct TALER_GlobalFeeSet *fees,
+                       const struct TALER_MasterSignatureP *master_sig);
 
 
   /**
@@ -3279,8 +3320,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param date for which date do we want the fee?
    * @param[out] start_date when does the fee go into effect
    * @param[out] end_date when does the fee end being valid
-   * @param[out] wire_fee how high is the wire transfer fee
-   * @param[out] closing_fee how high is the closing fee
+   * @param[out] fees how high are the wire fees
    * @param[out] master_sig signature over the above by the exchange master key
    * @return query status of the transaction
    */
@@ -3290,9 +3330,29 @@ struct TALER_EXCHANGEDB_Plugin
                   struct GNUNET_TIME_Timestamp date,
                   struct GNUNET_TIME_Timestamp *start_date,
                   struct GNUNET_TIME_Timestamp *end_date,
-                  struct TALER_Amount *wire_fee,
-                  struct TALER_Amount *closing_fee,
+                  struct TALER_WireFeeSet *fees,
                   struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Obtain global fees from database.
+   *
+   * @param cls closure
+   * @param date for which date do we want the fee?
+   * @param[out] start_date when does the fee go into effect
+   * @param[out] end_date when does the fee end being valid
+   * @param[out] fees how high are the global fees
+   * @param[out] master_sig signature over the above by the exchange master key
+   * @return query status of the transaction
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_global_fee)(void *cls,
+                    const char *type,
+                    struct GNUNET_TIME_Timestamp date,
+                    struct GNUNET_TIME_Timestamp *start_date,
+                    struct GNUNET_TIME_Timestamp *end_date,
+                    struct TALER_GlobalFeeSet *fees,
+                    struct TALER_MasterSignatureP *master_sig);
 
 
   /**
@@ -3875,6 +3935,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain information about the global fee structure of the exchange.
+   *
+   * @param cls closure
+   * @param cb function to call on each account
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_global_fees)(void *cls,
+                     TALER_EXCHANGEDB_GlobalFeeCallback cb,
+                     void *cb_cls);
+
+
+  /**
    * Store information about a revoked online signing key.
    *
    * @param cls closure
@@ -4012,10 +4086,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wire_method the wire method to lookup fees for
    * @param start_time starting time of fee
    * @param end_time end time of fee
-   * @param[out] wire_fee wire fee for that time period; if
-   *             different wire fee exists within this time
-   *             period, an 'invalid' amount is returned.
-   * @param[out] closing_fee wire fee for that time period; if
+   * @param[out] fees set to wire fees for that time period; if
    *             different wire fee exists within this time
    *             period, an 'invalid' amount is returned.
    * @return transaction status code
@@ -4026,8 +4097,7 @@ struct TALER_EXCHANGEDB_Plugin
     const char *wire_method,
     struct GNUNET_TIME_Timestamp start_time,
     struct GNUNET_TIME_Timestamp end_time,
-    struct TALER_Amount *wire_fee,
-    struct TALER_Amount *closing_fee);
+    struct TALER_WireFeeSet *fees);
 
 
   /**

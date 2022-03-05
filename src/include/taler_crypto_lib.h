@@ -831,6 +831,18 @@ TALER_global_fee_set_ntoh (struct TALER_GlobalFeeSet *fees,
 
 
 /**
+ * Compare global fee sets.
+ *
+ * @param f1 first set to compare
+ * @param f2 second set to compare
+ * @return 0 if sets are equal
+ */
+int
+TALER_global_fee_set_cmp (const struct TALER_GlobalFeeSet *f1,
+                          const struct TALER_GlobalFeeSet *f2);
+
+
+/**
  * Convert wire fee set from host to network byte order.
  *
  * @param[out] nbo where to write the result
@@ -850,6 +862,18 @@ TALER_wire_fee_set_hton (struct TALER_WireFeeSetNBOP *nbo,
 void
 TALER_wire_fee_set_ntoh (struct TALER_WireFeeSet *fees,
                          const struct TALER_WireFeeSetNBOP *nbo);
+
+
+/**
+ * Compare wire fee sets.
+ *
+ * @param f1 first set to compare
+ * @param f2 second set to compare
+ * @return 0 if sets are equal
+ */
+int
+TALER_wire_fee_set_cmp (const struct TALER_WireFeeSet *f1,
+                        const struct TALER_WireFeeSet *f2);
 
 
 /**
@@ -3231,8 +3255,7 @@ TALER_auditor_denom_validity_verify (
  * @param payment_method the payment method
  * @param start_time when do the fees start to apply
  * @param end_time when do the fees start to apply
- * @param wire_fee the wire fee
- * @param closing_fee the closing fee
+ * @param fees the wire fees
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
@@ -3241,8 +3264,7 @@ TALER_exchange_offline_wire_fee_sign (
   const char *payment_method,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -3253,8 +3275,7 @@ TALER_exchange_offline_wire_fee_sign (
  * @param payment_method the payment method
  * @param start_time when do the fees start to apply
  * @param end_time when do the fees start to apply
- * @param wire_fee the wire fee
- * @param closing_fee the closing fee
+ * @param fees the wire fees
  * @param master_pub public key to verify against
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
@@ -3264,8 +3285,7 @@ TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 

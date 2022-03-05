@@ -1491,8 +1491,7 @@ upload_wire_fee (const char *exchange_url,
   struct WireFeeRequest *wfr;
   const char *err_name;
   unsigned int err_line;
-  struct TALER_Amount wire_fee;
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
   struct GNUNET_TIME_Timestamp start_time;
   struct GNUNET_TIME_Timestamp end_time;
   struct GNUNET_JSON_Specification spec[] = {
@@ -1500,10 +1499,13 @@ upload_wire_fee (const char *exchange_url,
                              &wire_method),
     TALER_JSON_spec_amount ("wire_fee",
                             currency,
-                            &wire_fee),
+                            &fees.wire),
+    TALER_JSON_spec_amount ("wad_fee",
+                            currency,
+                            &fees.wad),
     TALER_JSON_spec_amount ("closing_fee",
                             currency,
-                            &closing_fee),
+                            &fees.closing),
     GNUNET_JSON_spec_timestamp ("start_time",
                                 &start_time),
     GNUNET_JSON_spec_timestamp ("end_time",
@@ -1539,8 +1541,7 @@ upload_wire_fee (const char *exchange_url,
                                              wire_method,
                                              start_time,
                                              end_time,
-                                             &wire_fee,
-                                             &closing_fee,
+                                             &fees,
                                              &master_sig,
                                              &wire_fee_cb,
                                              wfr);
@@ -2360,8 +2361,8 @@ do_del_wire (char *const *args)
  * Set wire fees for the given year.
  *
  * @param args the array of command-line arguments to process next;
- *        args[0] must be the year, args[1] the wire fee and args[2]
- *        the closing fee.
+ *        args[0] must be the year, args[1] the wire method, args[2] the wire fee and args[3]
+ *        the closing fee and args[4] the wad fee.
  */
 static void
 do_set_wire_fee (char *const *args)
@@ -2369,8 +2370,7 @@ do_set_wire_fee (char *const *args)
   struct TALER_MasterSignatureP master_sig;
   char dummy;
   unsigned int year;
-  struct TALER_Amount wire_fee;
-  struct TALER_Amount closing_fee;
+  struct TALER_WireFeeSet fees;
   struct GNUNET_TIME_Timestamp start_time;
   struct GNUNET_TIME_Timestamp end_time;
 
@@ -2386,6 +2386,7 @@ do_set_wire_fee (char *const *args)
        (NULL == args[1]) ||
        (NULL == args[2]) ||
        (NULL == args[3]) ||
+       (NULL == args[4]) ||
        ( (1 != sscanf (args[0],
                        "%u%c",
                        &year,
@@ -2394,13 +2395,16 @@ do_set_wire_fee (char *const *args)
                            args[0])) ) ||
        (GNUNET_OK !=
         TALER_string_to_amount (args[2],
-                                &wire_fee)) ||
+                                &fees.wire)) ||
        (GNUNET_OK !=
         TALER_string_to_amount (args[3],
-                                &closing_fee)) )
+                                &fees.closing)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[4],
+                                &fees.wad)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "You must use YEAR, METHOD, WIRE-FEE and CLOSING-FEE as arguments for this subcommand\n");
+                "You must use YEAR, METHOD, WIRE-FEE, CLOSING-FEE and WAD-FEE as arguments for this subcommand\n");
     test_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
@@ -2419,8 +2423,7 @@ do_set_wire_fee (char *const *args)
   TALER_exchange_offline_wire_fee_sign (args[1],
                                         start_time,
                                         end_time,
-                                        &wire_fee,
-                                        &closing_fee,
+                                        &fees,
                                         &master_priv,
                                         &master_sig);
   output_operation (OP_SET_WIRE_FEE,
@@ -2432,12 +2435,14 @@ do_set_wire_fee (char *const *args)
                       GNUNET_JSON_pack_timestamp ("end_time",
                                                   end_time),
                       TALER_JSON_pack_amount ("wire_fee",
-                                              &wire_fee),
+                                              &fees.wire),
+                      TALER_JSON_pack_amount ("wad_fee",
+                                              &fees.wad),
                       TALER_JSON_pack_amount ("closing_fee",
-                                              &closing_fee),
+                                              &fees.closing),
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
-  next (args + 4);
+  next (args + 5);
 }
 
 

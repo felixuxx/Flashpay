@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2021 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -129,8 +129,7 @@ TALER_EXCHANGE_management_set_wire_fees (
   const char *wire_method,
   struct GNUNET_TIME_Timestamp validity_start,
   struct GNUNET_TIME_Timestamp validity_end,
-  const struct TALER_Amount *wire_fee,
-  const struct TALER_Amount *closing_fee,
+  const struct TALER_WireFeeSet *fees,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
   void *cb_cls)
@@ -163,9 +162,11 @@ TALER_EXCHANGE_management_set_wire_fees (
     GNUNET_JSON_pack_timestamp ("fee_end",
                                 validity_end),
     TALER_JSON_pack_amount ("closing_fee",
-                            closing_fee),
+                            &fees->closing),
+    TALER_JSON_pack_amount ("wad_fee",
+                            &fees->wad),
     TALER_JSON_pack_amount ("wire_fee",
-                            wire_fee));
+                            &fees->wire));
   eh = TALER_EXCHANGE_curl_easy_get_ (swfh->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
