@@ -733,6 +733,18 @@ handle_post_management (struct TEH_RequestContext *rc,
                                                   root);
   }
   if (0 == strcmp (args[0],
+                   "global-fee"))
+  {
+    if (NULL != args[1])
+    {
+      GNUNET_break_op (0);
+      return r404 (rc->connection,
+                   "/management/global-fee/*");
+    }
+    return TEH_handler_management_post_global_fees (rc->connection,
+                                                    root);
+  }
+  if (0 == strcmp (args[0],
                    "extensions"))
   {
     return TEH_handler_management_post_extensions (rc->connection,

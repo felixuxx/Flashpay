@@ -4129,6 +4129,33 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Lookup information about known global fees.
+   *
+   * @param cls closure
+   * @param start_time starting time of fee
+   * @param end_time end time of fee
+   * @param[out] fees set to wire fees for that time period; if
+   *             different global fee exists within this time
+   *             period, an 'invalid' amount is returned.
+   * @param[out] purse_timeout set to when unmerged purses expire
+   * @param[out] kyc_timeout set to when reserves without kyc expire
+   * @param[out] history_expiration set to when we expire reserve histories
+   * @param[out] purse_account_limit set to number of free purses
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_global_fee_by_time)(
+    void *cls,
+    struct GNUNET_TIME_Timestamp start_time,
+    struct GNUNET_TIME_Timestamp end_time,
+    struct TALER_GlobalFeeSet *fees,
+    struct GNUNET_TIME_Relative *purse_timeout,
+    struct GNUNET_TIME_Relative *kyc_timeout,
+    struct GNUNET_TIME_Relative *history_expiration,
+    uint32_t *purse_account_limit);
+
+
+  /**
    * Lookup the latest serial number of @a table.  Used in
    * exchange-auditor database replication.
    *

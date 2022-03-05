@@ -136,6 +136,19 @@ TEH_handler_management_post_wire_fees (
 
 
 /**
+ * Handle a POST "/management/global-fees" request.
+ *
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_management_post_global_fees (
+  struct MHD_Connection *connection,
+  const json_t *root);
+
+
+/**
  * Handle a POST "/management/extensions" request.
  *
  * @param connection the MHD connection to handle
