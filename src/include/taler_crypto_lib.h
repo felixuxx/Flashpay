@@ -695,6 +695,18 @@ struct TALER_GlobalFeeSetNBOP
    */
   struct TALER_AmountNBO kyc;
 
+  /**
+   * The fee the exchange charges for keeping
+   * an account or reserve open for a year.
+   */
+  struct TALER_AmountNBO account;
+
+  /**
+   * The fee the exchange charges if a purse
+   * is abandoned and this was not covered by
+   * the account limit.
+   */
+  struct TALER_AmountNBO purse;
 };
 
 
@@ -783,6 +795,18 @@ struct TALER_GlobalFeeSet
    */
   struct TALER_Amount kyc;
 
+  /**
+   * The fee the exchange charges for keeping
+   * an account or reserve open for a year.
+   */
+  struct TALER_Amount account;
+
+  /**
+   * The fee the exchange charges if a purse
+   * is abandoned and this was not covered by
+   * the account limit.
+   */
+  struct TALER_Amount purse;
 };
 
 
@@ -3296,6 +3320,10 @@ TALER_exchange_offline_wire_fee_verify (
  * @param start_time when do the fees start to apply
  * @param end_time when do the fees start to apply
  * @param fees the global fees
+ * @param purse_timeout how long do unmerged purses stay around
+ * @param kyc_timeout how long do we keep funds in a reserve without KYC?
+ * @param history_expiration how long do we keep the history of an account
+ * @param purse_account_limit how many concurrent purses are free per account holder
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
@@ -3304,6 +3332,10 @@ TALER_exchange_offline_global_fee_sign (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -3314,6 +3346,10 @@ TALER_exchange_offline_global_fee_sign (
  * @param start_time when do the fees start to apply
  * @param end_time when do the fees start to apply
  * @param fees the global fees
+ * @param purse_timeout how long do unmerged purses stay around
+ * @param kyc_timeout how long do we keep funds in a reserve without KYC?
+ * @param history_expiration how long do we keep the history of an account
+ * @param purse_account_limit how many concurrent purses are free per account holder
  * @param master_pub public key to verify against
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
@@ -3323,6 +3359,10 @@ TALER_exchange_offline_global_fee_verify (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 

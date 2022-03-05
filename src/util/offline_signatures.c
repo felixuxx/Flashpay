@@ -471,6 +471,10 @@ TALER_exchange_offline_global_fee_sign (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -479,6 +483,10 @@ TALER_exchange_offline_global_fee_sign (
     .purpose.size = htonl (sizeof (kv)),
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
     .end_date = GNUNET_TIME_timestamp_hton (end_time),
+    .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
+    .kyc_timeout = GNUNET_TIME_relative_hton (kyc_timeout),
+    .history_expiration = GNUNET_TIME_relative_hton (history_expiration),
+    .purse_account_limit = htonl (purse_account_limit)
   };
 
   TALER_global_fee_set_hton (&kv.fees,
@@ -494,6 +502,10 @@ TALER_exchange_offline_global_fee_verify (
   struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -501,7 +513,11 @@ TALER_exchange_offline_global_fee_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_GLOBAL_FEES),
     .purpose.size = htonl (sizeof (wf)),
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
-    .end_date = GNUNET_TIME_timestamp_hton (end_time)
+    .end_date = GNUNET_TIME_timestamp_hton (end_time),
+    .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
+    .kyc_timeout = GNUNET_TIME_relative_hton (kyc_timeout),
+    .history_expiration = GNUNET_TIME_relative_hton (history_expiration),
+    .purse_account_limit = htonl (purse_account_limit)
   };
 
   TALER_global_fee_set_hton (&wf.fees,

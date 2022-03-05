@@ -1275,9 +1275,41 @@ struct TALER_MasterGlobalFeePS
   struct GNUNET_TIME_TimestampNBO end_date;
 
   /**
+   * How long does an exchange keep a purse around after a purse
+   * has expired (or been successfully merged)?  A 'GET' request
+   * for a purse will succeed until the purse expiration time
+   * plus this value.
+   */
+  struct GNUNET_TIME_RelativeNBO purse_timeout;
+
+  /**
+   * How long does the exchange promise to keep funds
+   * an account for which the KYC has never happened
+   * after a purse was merged into an account? Basically,
+   * after this time funds in an account without KYC are
+   * forfeit.
+   */
+  struct GNUNET_TIME_RelativeNBO kyc_timeout;
+
+  /**
+   * How long will the exchange preserve the account history?  After an
+   * account was deleted/closed, the exchange will retain the account history
+   * for legal reasons until this time.
+   */
+  struct GNUNET_TIME_RelativeNBO history_expiration;
+
+  /**
    * Fee charged to the merchant per wire transfer.
    */
   struct TALER_GlobalFeeSetNBOP fees;
+
+  /**
+   * Number of concurrent purses that any
+   * account holder is allowed to create without having
+   * to pay the @e purse_fee. Here given in NBO.
+   */
+  uint32_t purse_account_limit;
+
 
 };
 

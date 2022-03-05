@@ -84,6 +84,10 @@ TALER_global_fee_set_hton (struct TALER_GlobalFeeSetNBOP *nbo,
                      &fees->history);
   TALER_amount_hton (&nbo->kyc,
                      &fees->kyc);
+  TALER_amount_hton (&nbo->account,
+                     &fees->account);
+  TALER_amount_hton (&nbo->purse,
+                     &fees->purse);
 }
 
 
@@ -95,6 +99,10 @@ TALER_global_fee_set_ntoh (struct TALER_GlobalFeeSet *fees,
                      &nbo->history);
   TALER_amount_ntoh (&fees->kyc,
                      &nbo->kyc);
+  TALER_amount_ntoh (&fees->account,
+                     &nbo->account);
+  TALER_amount_ntoh (&fees->purse,
+                     &nbo->purse);
 }
 
 
@@ -136,6 +144,14 @@ TALER_global_fee_set_cmp (const struct TALER_GlobalFeeSet *f1,
     return ret;
   ret = TALER_amount_cmp (&f1->kyc,
                           &f2->kyc);
+  if (0 != ret)
+    return ret;
+  ret = TALER_amount_cmp (&f1->account,
+                          &f2->account);
+  if (0 != ret)
+    return ret;
+  ret = TALER_amount_cmp (&f1->purse,
+                          &f2->purse);
   if (0 != ret)
     return ret;
   return 0;
