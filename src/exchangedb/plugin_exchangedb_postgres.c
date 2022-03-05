@@ -2116,6 +2116,14 @@ prepare_statements (struct PostgresClosure *pg)
       " LIMIT 1;",
       0),
     GNUNET_PQ_make_prepare (
+      "select_serial_by_table_global_fee",
+      "SELECT"
+      " global_fee_serial AS serial"
+      " FROM global_fee"
+      " ORDER BY global_fee_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
       "select_serial_by_table_recoup",
       "SELECT"
       " recoup_uuid AS serial"
@@ -2437,6 +2445,29 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY wire_fee_serial ASC;",
       1),
     GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_global_fee",
+      "SELECT"
+      " global_fee_serial AS serial"
+      ",start_date"
+      ",end_date"
+      ",history_fee_val"
+      ",history_fee_frac"
+      ",kyc_fee_val"
+      ",kyc_fee_frac"
+      ",account_fee_val"
+      ",account_fee_frac"
+      ",purse_fee_val"
+      ",purse_fee_frac"
+      ",purse_timeout"
+      ",kyc_timeout"
+      ",history_expiration"
+      ",purse_account_limit"
+      ",master_sig"
+      " FROM global_fee"
+      " WHERE global_fee_serial > $1"
+      " ORDER BY global_fee_serial ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_recoup",
       "SELECT"
       " recoup_uuid AS serial"
@@ -2727,6 +2758,28 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);",
       11),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_global_fee",
+      "INSERT INTO global_fee"
+      "(global_fee_serial"
+      ",start_date"
+      ",end_date"
+      ",history_fee_val"
+      ",history_fee_frac"
+      ",kyc_fee_val"
+      ",kyc_fee_frac"
+      ",account_fee_val"
+      ",account_fee_frac"
+      ",purse_fee_val"
+      ",purse_fee_frac"
+      ",purse_timeout"
+      ",kyc_timeout"
+      ",history_expiration"
+      ",purse_account_limit"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);",
+      16),
     GNUNET_PQ_make_prepare (
       "insert_into_table_recoup",
       "INSERT INTO recoup"

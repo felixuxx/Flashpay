@@ -1220,18 +1220,42 @@ lrbt_cb_table_global_fee (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_timestamp ("start_date",
-                                       &td.details.global_fee.start_date),
-      GNUNET_PQ_result_spec_timestamp ("end_date",
-                                       &td.details.global_fee.end_date),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
-                                   &td.details.global_fee.fees.history),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
-                                   &td.details.global_fee.fees.kyc),
-      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                            &td.details.global_fee.master_sig),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_timestamp (
+        "start_date",
+        &td.details.global_fee.start_date),
+      GNUNET_PQ_result_spec_timestamp (
+        "end_date",
+        &td.details.global_fee.end_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "history_fee",
+        &td.details.global_fee.fees.history),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "kyc_fee",
+        &td.details.global_fee.fees.kyc),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "account_fee",
+        &td.details.global_fee.fees.account),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "purse_fee",
+        &td.details.global_fee.fees.purse),
+      GNUNET_PQ_result_spec_relative_time (
+        "purse_timeout",
+        &td.details.global_fee.purse_timeout),
+      GNUNET_PQ_result_spec_relative_time (
+        "kyc_timeout",
+        &td.details.global_fee.kyc_timeout),
+      GNUNET_PQ_result_spec_relative_time (
+        "history_expiration",
+        &td.details.global_fee.history_expiration),
+      GNUNET_PQ_result_spec_uint32 (
+        "purse_account_limit",
+        &td.details.global_fee.purse_account_limit),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "master_sig",
+        &td.details.global_fee.master_sig),
       GNUNET_PQ_result_spec_end
     };
 

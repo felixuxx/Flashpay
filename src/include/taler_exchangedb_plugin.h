@@ -394,6 +394,10 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp start_date;
       struct GNUNET_TIME_Timestamp end_date;
       struct TALER_GlobalFeeSet fees;
+      struct GNUNET_TIME_Relative purse_timeout;
+      struct GNUNET_TIME_Relative kyc_timeout;
+      struct GNUNET_TIME_Relative history_expiration;
+      uint32_t purse_account_limit;
       struct TALER_MasterSignatureP master_sig;
     } global_fee;
 
@@ -1927,6 +1931,10 @@ typedef void
  *
  * @param cls closure
  * @param fees the global fees we charge
+ * @param purse_timeout when do purses time out
+ * @param kyc_timeout when do reserves without KYC time out
+ * @param history_expiration how long are account histories preserved
+ * @param purse_account_limit how many purses are free per account
  * @param start_date from when are these fees valid (start date)
  * @param end_date until when are these fees valid (end date, exclusive)
  * @param master_sig master key signature affirming that this is the correct
@@ -1936,6 +1944,10 @@ typedef void
 (*TALER_EXCHANGEDB_GlobalFeeCallback)(
   void *cls,
   const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
   struct GNUNET_TIME_Timestamp start_date,
   struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterSignatureP *master_sig);
@@ -3301,6 +3313,10 @@ struct TALER_EXCHANGEDB_Plugin
    * @param start_date when does the fee go into effect
    * @param end_date when does the fee end being valid
    * @param fees how high is are the global fees
+   * @param purse_timeout when do purses time out
+   * @param kyc_timeout when do reserves without KYC time out
+   * @param history_expiration how long are account histories preserved
+   * @param purse_account_limit how many purses are free per account
    * @param master_sig signature over the above by the exchange master key
    * @return transaction status code
    */
@@ -3309,6 +3325,11 @@ struct TALER_EXCHANGEDB_Plugin
                        struct GNUNET_TIME_Timestamp start_date,
                        struct GNUNET_TIME_Timestamp end_date,
                        const struct TALER_GlobalFeeSet *fees,
+                       struct GNUNET_TIME_Relative purse_timeout,
+                       struct GNUNET_TIME_Relative kyc_timeout,
+                       struct GNUNET_TIME_Relative history_expiration,
+                       uint32_t purse_account_limit,
+
                        const struct TALER_MasterSignatureP *master_sig);
 
 
@@ -3342,16 +3363,23 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] start_date when does the fee go into effect
    * @param[out] end_date when does the fee end being valid
    * @param[out] fees how high are the global fees
+   * @param[out] purse_timeout when do purses time out
+   * @param[out] kyc_timeout when do reserves without KYC time out
+   * @param[out] history_expiration how long are account histories preserved
+   * @param[out] purse_account_limit how many purses are free per account
    * @param[out] master_sig signature over the above by the exchange master key
    * @return query status of the transaction
    */
   enum GNUNET_DB_QueryStatus
   (*get_global_fee)(void *cls,
-                    const char *type,
                     struct GNUNET_TIME_Timestamp date,
                     struct GNUNET_TIME_Timestamp *start_date,
                     struct GNUNET_TIME_Timestamp *end_date,
                     struct TALER_GlobalFeeSet *fees,
+                    struct GNUNET_TIME_Relative *purse_timeout,
+                    struct GNUNET_TIME_Relative *kyc_timeout,
+                    struct GNUNET_TIME_Relative *history_expiration,
+                    uint32_t *purse_account_limit,
                     struct TALER_MasterSignatureP *master_sig);
 
 

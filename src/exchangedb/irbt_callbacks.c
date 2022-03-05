@@ -659,12 +659,30 @@ irbt_cb_table_global_fee (struct PostgresClosure *pg,
                           const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_timestamp (&td->details.global_fee.start_date),
-    GNUNET_PQ_query_param_timestamp (&td->details.global_fee.end_date),
-    TALER_PQ_query_param_amount (&td->details.global_fee.fees.history),
-    TALER_PQ_query_param_amount (&td->details.global_fee.fees.kyc),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
+    GNUNET_PQ_query_param_uint64 (
+      &td->serial),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.global_fee.start_date),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.global_fee.end_date),
+    TALER_PQ_query_param_amount (
+      &td->details.global_fee.fees.history),
+    TALER_PQ_query_param_amount (
+      &td->details.global_fee.fees.kyc),
+    TALER_PQ_query_param_amount (
+      &td->details.global_fee.fees.account),
+    TALER_PQ_query_param_amount (
+      &td->details.global_fee.fees.purse),
+    GNUNET_PQ_query_param_relative_time (
+      &td->details.global_fee.purse_timeout),
+    GNUNET_PQ_query_param_relative_time (
+      &td->details.global_fee.kyc_timeout),
+    GNUNET_PQ_query_param_relative_time (
+      &td->details.global_fee.history_expiration),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.global_fee.purse_account_limit),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.global_fee.master_sig),
     GNUNET_PQ_query_param_end
   };
 
