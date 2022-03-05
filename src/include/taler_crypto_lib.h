@@ -647,6 +647,57 @@ struct TALER_DenomFeeSetNBOP
 };
 
 
+/**
+ * Set of the fees applying for a given
+ * time-range and wire method.
+ */
+struct TALER_WireFeeSetNBOP
+{
+
+  /**
+   * The fee the exchange charges for wiring funds
+   * to a merchant.
+   */
+  struct TALER_AmountNBO wire;
+
+  /**
+   * The fee the exchange charges for closing a reserve
+   * and wiring the funds back to the origin account.
+   */
+  struct TALER_AmountNBO closing;
+
+  /**
+   * The fee the exchange charges for cross-exchange
+   * P2P payments.
+   */
+  struct TALER_AmountNBO wad;
+
+};
+
+
+/**
+ * Set of the fees applying globally for a given
+ * time-range.
+ */
+struct TALER_GlobalFeeSetNBOP
+{
+
+  /**
+   * The fee the exchange charges for returning the
+   * history of a reserve or account.
+   */
+  struct TALER_AmountNBO history;
+
+  /**
+   * The fee the exchange charges for performing a
+   * KYC check on a reserve to turn it into an account
+   * that can be used for P2P payments.
+   */
+  struct TALER_AmountNBO kyc;
+
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -685,6 +736,57 @@ struct TALER_DenomFeeSet
 
 
 /**
+ * Set of the fees applying for a given
+ * time-range and wire method.
+ */
+struct TALER_WireFeeSet
+{
+
+  /**
+   * The fee the exchange charges for wiring funds
+   * to a merchant.
+   */
+  struct TALER_Amount wire;
+
+  /**
+   * The fee the exchange charges for closing a reserve
+   * and wiring the funds back to the origin account.
+   */
+  struct TALER_Amount closing;
+
+  /**
+   * The fee the exchange charges for cross-exchange
+   * P2P payments.
+   */
+  struct TALER_Amount wad;
+
+};
+
+
+/**
+ * Set of the fees applying globally for a given
+ * time-range.
+ */
+struct TALER_GlobalFeeSet
+{
+
+  /**
+   * The fee the exchange charges for returning the
+   * history of a reserve or account.
+   */
+  struct TALER_Amount history;
+
+  /**
+   * The fee the exchange charges for performing a
+   * KYC check on a reserve to turn it into an account
+   * that can be used for P2P payments.
+   */
+  struct TALER_Amount kyc;
+
+};
+
+
+/**
  * Convert fee set from host to network byte order.
  *
  * @param[out] nbo where to write the result
@@ -704,6 +806,50 @@ TALER_denom_fee_set_hton (struct TALER_DenomFeeSetNBOP *nbo,
 void
 TALER_denom_fee_set_ntoh (struct TALER_DenomFeeSet *fees,
                           const struct TALER_DenomFeeSetNBOP *nbo);
+
+
+/**
+ * Convert global fee set from host to network byte order.
+ *
+ * @param[out] nbo where to write the result
+ * @param fees fee set to convert
+ */
+void
+TALER_global_fee_set_hton (struct TALER_GlobalFeeSetNBOP *nbo,
+                           const struct TALER_GlobalFeeSet *fees);
+
+
+/**
+ * Convert global fee set from network to host network byte order.
+ *
+ * @param[out] fees where to write the result
+ * @param nbo fee set to convert
+ */
+void
+TALER_global_fee_set_ntoh (struct TALER_GlobalFeeSet *fees,
+                           const struct TALER_GlobalFeeSetNBOP *nbo);
+
+
+/**
+ * Convert wire fee set from host to network byte order.
+ *
+ * @param[out] nbo where to write the result
+ * @param fees fee set to convert
+ */
+void
+TALER_wire_fee_set_hton (struct TALER_WireFeeSetNBOP *nbo,
+                         const struct TALER_WireFeeSet *fees);
+
+
+/**
+ * Convert wire fee set from network to host network byte order.
+ *
+ * @param[out] fees where to write the result
+ * @param nbo fee set to convert
+ */
+void
+TALER_wire_fee_set_ntoh (struct TALER_WireFeeSet *fees,
+                         const struct TALER_WireFeeSetNBOP *nbo);
 
 
 /**

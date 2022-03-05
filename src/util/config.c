@@ -130,6 +130,8 @@ enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            char **currency)
 {
+  size_t slen;
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "taler",
@@ -141,7 +143,8 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
-  if (strlen (*currency) >= TALER_CURRENCY_LEN)
+  slen = strlen (*currency);
+  if (slen >= TALER_CURRENCY_LEN)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Currency `%s' longer than the allowed limit of %u characters.",
@@ -151,5 +154,15 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
     *currency = NULL;
     return GNUNET_SYSERR;
   }
+  for (size_t i = 0; i<slen; i++)
+    if (! isalpha ((unsigned char) (*currency)[i]))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Currency `%s' must only use characters from the A-Z range.",
+                  *currency);
+      GNUNET_free (*currency);
+      *currency = NULL;
+      return GNUNET_SYSERR;
+    }
   return GNUNET_OK;
 }

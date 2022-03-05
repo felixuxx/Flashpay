@@ -76,6 +76,54 @@ TALER_denom_fee_set_ntoh (struct TALER_DenomFeeSet *fees,
 }
 
 
+void
+TALER_global_fee_set_hton (struct TALER_GlobalFeeSetNBOP *nbo,
+                           const struct TALER_GlobalFeeSet *fees)
+{
+  TALER_amount_hton (&nbo->history,
+                     &fees->history);
+  TALER_amount_hton (&nbo->kyc,
+                     &fees->kyc);
+}
+
+
+void
+TALER_global_fee_set_ntoh (struct TALER_GlobalFeeSet *fees,
+                           const struct TALER_GlobalFeeSetNBOP *nbo)
+{
+  TALER_amount_ntoh (&fees->history,
+                     &nbo->history);
+  TALER_amount_ntoh (&fees->kyc,
+                     &nbo->kyc);
+}
+
+
+void
+TALER_wire_fee_set_hton (struct TALER_WireFeeSetNBOP *nbo,
+                         const struct TALER_WireFeeSet *fees)
+{
+  TALER_amount_hton (&nbo->wire,
+                     &fees->wire);
+  TALER_amount_hton (&nbo->closing,
+                     &fees->closing);
+  TALER_amount_hton (&nbo->wad,
+                     &fees->wad);
+}
+
+
+void
+TALER_wire_fee_set_ntoh (struct TALER_WireFeeSet *fees,
+                         const struct TALER_WireFeeSetNBOP *nbo)
+{
+  TALER_amount_ntoh (&fees->wire,
+                     &nbo->wire);
+  TALER_amount_ntoh (&fees->closing,
+                     &nbo->closing);
+  TALER_amount_ntoh (&fees->wad,
+                     &nbo->wad);
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_denom_fee_check_currency (
   const char *currency,
