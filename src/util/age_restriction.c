@@ -184,7 +184,12 @@ TALER_age_commitment_derive (
       new->proof.num,
       struct TALER_AgeCommitmentPrivateKeyP);
 
-  memcpy (label, &salt, sizeof(salt));
+  {
+    /* Because GNUNET_CRYPTO_ecdsa_public_key_derive expects char * (and calls
+     * strlen on it), we must avoid 0's in the label.  */
+    uint64_t nz_salt = salt | 0x8040201008040201;
+    memcpy (label, &nz_salt, sizeof(nz_salt));
+  }
 
   /* 1. Derive the public keys */
   for (size_t i = 0; i < orig->commitment.num; i++)
