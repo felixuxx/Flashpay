@@ -1,0 +1,7 @@
+http://192.168.42.1:8081/deposit 1.36432
+http://192.168.42.1:8081/keys 0.145
+http://192.168.42.1:8081/reserve/withdraw 0.711581
+http://192.168.42.1:8081/refresh/link 0.215
+http://192.168.42.1:8081/refresh/reveal 1.42
+http://192.168.42.1:8081/refresh/melt 1.06365
+http://192.168.42.2:8081/admin/add/incoming 0.386
