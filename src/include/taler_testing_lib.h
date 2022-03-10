@@ -2445,6 +2445,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
   op (bank_row, const uint64_t)                                    \
   op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
+  op (h_payto, const struct TALER_PaytoHashP)                      \
   op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
   op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \
   op (reserve_pub, const struct TALER_ReservePublicKeyP)           \
