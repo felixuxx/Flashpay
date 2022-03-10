@@ -5423,6 +5423,7 @@ postgres_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
     { "reserves_in_get_transactions",
       add_bank_to_exchange },
+#ifndef GRID5K_MARCO_OPT
     /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
     { "get_reserves_out",
       &add_withdraw_coin },
@@ -5432,6 +5433,7 @@ postgres_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
     { "close_by_reserve",
       &add_exchange_to_bank },
+#endif
     /* List terminator */
     { NULL,
       NULL }
