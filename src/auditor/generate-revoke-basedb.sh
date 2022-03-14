@@ -49,6 +49,9 @@ echo " FOUND"
 echo -n "Testing for taler-wallet-cli"
 taler-wallet-cli -v >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
+echo -n "Testing for curl"
+curl --help >/dev/null </dev/null || exit_skip " MISSING"
+echo " FOUND"
 
 
 
@@ -165,7 +168,8 @@ taler-exchange-offline -c $CONF \
   download sign \
   enable-account payto://x-taler-bank/localhost/Exchange \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
-  wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
   upload &> taler-exchange-offline.log
 
 echo -n "."
