@@ -140,6 +140,7 @@ add_auditor_denom_sig (void *cls,
       TALER_B2S (awc->auditor_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_auditor_denom_validity_verify (
         auditor_url,
@@ -213,7 +214,7 @@ TEH_handler_auditors (
     return MHD_YES;   /* failure */
   ret = TEH_DB_run_transaction (connection,
                                 "add auditor denom sig",
-                                TEH_MT_OTHER,
+                                TEH_MT_REQUEST_OTHER,
                                 &res,
                                 &add_auditor_denom_sig,
                                 &awc);

@@ -684,6 +684,7 @@ clean_age:
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
 
     /* Check signature */
+    TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
     if (GNUNET_OK !=
         TALER_wallet_link_verify (
           &rrcs[i].h_denom_pub,

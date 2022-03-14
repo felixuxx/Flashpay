@@ -221,6 +221,7 @@ TEH_handler_management_post_global_fees (
       return MHD_YES; /* failure */
   }
 
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_offline_global_fee_verify (
         afc.start_time,
@@ -248,7 +249,7 @@ TEH_handler_management_post_global_fees (
 
     res = TEH_DB_run_transaction (connection,
                                   "add global fee",
-                                  TEH_MT_OTHER,
+                                  TEH_MT_REQUEST_OTHER,
                                   &ret,
                                   &add_fee,
                                   &afc);

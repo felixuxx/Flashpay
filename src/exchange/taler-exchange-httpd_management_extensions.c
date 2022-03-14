@@ -278,7 +278,7 @@ TEH_handler_management_post_extensions (
 
     res = TEH_DB_run_transaction (connection,
                                   "set extensions",
-                                  TEH_MT_OTHER,
+                                  TEH_MT_REQUEST_OTHER,
                                   &ret,
                                   &set_extensions,
                                   &sec);

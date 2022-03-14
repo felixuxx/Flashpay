@@ -382,6 +382,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
 
     deposit.deposit_fee = dk->meta.fees.deposit;
     /* check coin signature */
+    TEH_METRICS_num_verifications[TEH_MT_CIPHER]++;
     if (GNUNET_YES !=
         TALER_test_coin_valid (&deposit.coin,
                                &dk->denom_pub))
@@ -405,6 +406,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        NULL);
   }
 
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_deposit_verify (&deposit.amount_with_fee,
                                    &deposit.deposit_fee,
@@ -472,7 +474,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "execute deposit",
-                                TEH_MT_DEPOSIT,
+                                TEH_MT_REQUEST_DEPOSIT,
                                 &mhd_ret,
                                 &deposit_transaction,
                                 &dc))

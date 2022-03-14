@@ -2453,6 +2453,7 @@ TEH_keys_denomination_sign_withdraw (
   switch (hd->denom_pub.cipher)
   {
   case TALER_DENOMINATION_RSA:
+    TEH_METRICS_num_signatures[TEH_MT_CIPHER]++;
     return TALER_CRYPTO_helper_rsa_sign (
       ksh->helpers->rsadh,
       &hd->h_details.h_rsa,
@@ -2460,6 +2461,7 @@ TEH_keys_denomination_sign_withdraw (
       bp->details.rsa_blinded_planchet.blinded_msg_size,
       bs);
   case TALER_DENOMINATION_CS:
+    TEH_METRICS_num_signatures[TEH_MT_CIPHER]++;
     return TALER_CRYPTO_helper_cs_sign_withdraw (
       ksh->helpers->csdh,
       &hd->h_details.h_cs,
@@ -2492,6 +2494,7 @@ TEH_keys_denomination_sign_melt (
   switch (hd->denom_pub.cipher)
   {
   case TALER_DENOMINATION_RSA:
+    TEH_METRICS_num_signatures[TEH_MT_CIPHER]++;
     return TALER_CRYPTO_helper_rsa_sign (
       ksh->helpers->rsadh,
       &hd->h_details.h_rsa,
@@ -2499,6 +2502,7 @@ TEH_keys_denomination_sign_melt (
       bp->details.rsa_blinded_planchet.blinded_msg_size,
       bs);
   case TALER_DENOMINATION_CS:
+    TEH_METRICS_num_signatures[TEH_MT_CIPHER]++;
     return TALER_CRYPTO_helper_cs_sign_melt (
       ksh->helpers->csdh,
       &hd->h_details.h_cs,
@@ -2645,6 +2649,7 @@ TEH_keys_exchange_sign2_ (
 {
   enum TALER_ErrorCode ec;
 
+  TEH_METRICS_num_signatures[TEH_MT_EDDSA]++;
   ec = TALER_CRYPTO_helper_esign_sign_ (ksh->helpers->esh,
                                         purpose,
                                         pub,

@@ -118,6 +118,7 @@ TEH_handler_kyc_wallet (
   if (GNUNET_NO == ret)
     return MHD_YES;   /* failure */
 
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP,
                                    &purpose,
@@ -140,7 +141,7 @@ TEH_handler_kyc_wallet (
       0);
   ret = TEH_DB_run_transaction (rc->connection,
                                 "check wallet kyc",
-                                TEH_MT_OTHER,
+                                TEH_MT_REQUEST_OTHER,
                                 &res,
                                 &wallet_kyc_check,
                                 &krc);

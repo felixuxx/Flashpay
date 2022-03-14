@@ -219,6 +219,7 @@ verify_and_execute_recoup (
   }
 
   /* check denomination signature */
+  TEH_METRICS_num_verifications[TEH_MT_CIPHER]++;
   if (GNUNET_YES !=
       TALER_test_coin_valid (coin,
                              &dk->denom_pub))
@@ -232,6 +233,7 @@ verify_and_execute_recoup (
   }
 
   /* check recoup request signature */
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_recoup_verify (&coin->denom_pub_hash,
                                   coin_bks,
@@ -341,7 +343,7 @@ verify_and_execute_recoup (
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run recoup",
-                                TEH_MT_OTHER,
+                                TEH_MT_REQUEST_OTHER,
                                 &mhd_ret,
                                 &recoup_transaction,
                                 &pc))

@@ -68,6 +68,7 @@ TEH_RESPONSE_compile_transaction_history (
                                             &h_wire);
 #if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
+        TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
         if (GNUNET_OK !=
             TALER_wallet_deposit_verify (&deposit->amount_with_fee,
                                          &deposit->deposit_fee,
@@ -132,6 +133,7 @@ TEH_RESPONSE_compile_transaction_history (
         const struct TALER_AgeCommitmentHash *phac = NULL;
 
 #if ENABLE_SANITY_CHECKS
+        TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
         if (GNUNET_OK !=
             TALER_wallet_melt_verify (&melt->amount_with_fee,
                                       &melt->melt_fee,
@@ -185,6 +187,7 @@ TEH_RESPONSE_compile_transaction_history (
         struct TALER_Amount value;
 
 #if ENABLE_SANITY_CHECKS
+        TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
         if (GNUNET_OK !=
             TALER_merchant_refund_verify (coin_pub,
                                           &refund->h_contract_terms,

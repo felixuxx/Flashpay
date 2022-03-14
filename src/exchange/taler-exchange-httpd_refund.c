@@ -209,6 +209,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     .refund = refund
   };
 
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_merchant_refund_verify (&refund->coin.coin_pub,
                                     &refund->details.h_contract_terms,
@@ -275,7 +276,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run refund",
-                                TEH_MT_OTHER,
+                                TEH_MT_REQUEST_OTHER,
                                 &mhd_ret,
                                 &refund_transaction,
                                 &rctx))

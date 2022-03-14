@@ -179,6 +179,7 @@ add_keys (void *cls,
     }
 
     /* check signature is valid */
+    TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
     if (GNUNET_OK !=
         TALER_exchange_offline_denom_validity_verify (
           &d->h_denom_pub,
@@ -277,6 +278,7 @@ add_keys (void *cls,
     }
 
     /* check signature is valid */
+    TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
     if (GNUNET_OK !=
         TALER_exchange_offline_signkey_validity_verify (
           &s->exchange_pub,
@@ -459,7 +461,7 @@ TEH_handler_management_post_keys (
 
     res = TEH_DB_run_transaction (connection,
                                   "add keys",
-                                  TEH_MT_OTHER,
+                                  TEH_MT_REQUEST_OTHER,
                                   &ret,
                                   &add_keys,
                                   &akc);

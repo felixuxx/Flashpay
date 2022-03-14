@@ -675,7 +675,7 @@ TEH_handler_kyc_proof (
 
     ret = TEH_DB_run_transaction (kpc->rc->connection,
                                   "check proof kyc",
-                                  TEH_MT_OTHER,
+                                  TEH_MT_REQUEST_OTHER,
                                   &res,
                                   &persist_kyc_ok,
                                   kpc);

@@ -29,27 +29,45 @@
 /**
  * Request types for which we collect metrics.
  */
-enum TEH_MetricType
+enum TEH_MetricTypeRequest
 {
-  TEH_MT_OTHER = 0,
-  TEH_MT_DEPOSIT = 1,
-  TEH_MT_WITHDRAW = 2,
-  TEH_MT_MELT = 3,
-  TEH_MT_COUNT = 4 /* MUST BE LAST! */
+  TEH_MT_REQUEST_OTHER = 0,
+  TEH_MT_REQUEST_DEPOSIT = 1,
+  TEH_MT_REQUEST_WITHDRAW = 2,
+  TEH_MT_REQUEST_MELT = 3,
+  TEH_MT_REQUEST_COUNT = 4 /* MUST BE LAST! */
 };
 
+/**
+ * Cipher types for which we collect metrics.
+ */
+enum TEH_MetricTypeRequestCipher
+{
+  TEH_MT_CIPHER = 0,
+  TEH_MT_EDDSA = 2,
+  TEH_MT_CIPHER_COUNT = 3
+};
 
 /**
  * Number of requests handled of the respective type.
  */
-extern unsigned long long TEH_METRICS_num_requests[TEH_MT_COUNT];
+extern unsigned long long TEH_METRICS_num_requests[TEH_MT_REQUEST_COUNT];
 
 /**
  * Number of serialization errors encountered when
  * handling requests of the respective type.
  */
-extern unsigned long long TEH_METRICS_num_conflict[TEH_MT_COUNT];
+extern unsigned long long TEH_METRICS_num_conflict[TEH_MT_REQUEST_COUNT];
 
+/**
+ * Number of signatures created by the respecitve cipher.
+ */
+extern unsigned long long TEH_METRICS_num_signatures[TEH_MT_CIPHER_COUNT];
+
+/**
+ * Number of signatures verified by the respecitve cipher.
+ */
+extern unsigned long long TEH_METRICS_num_verifications[TEH_MT_CIPHER_COUNT];
 
 /**
  * Handle a "/metrics" request.

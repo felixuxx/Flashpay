@@ -178,7 +178,7 @@ TEH_handler_management_auditors_AP_disable (
 
   ret = TEH_DB_run_transaction (connection,
                                 "del auditor",
-                                TEH_MT_OTHER,
+                                TEH_MT_REQUEST_OTHER,
                                 &res,
                                 &del_auditor,
                                 &dac);

@@ -96,7 +96,7 @@ typedef enum GNUNET_DB_QueryStatus
 enum GNUNET_GenericReturnValue
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-                        enum TEH_MetricType mt,
+                        enum TEH_MetricTypeRequest mt,
                         MHD_RESULT *mhd_ret,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls);

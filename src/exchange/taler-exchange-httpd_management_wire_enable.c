@@ -165,6 +165,7 @@ TEH_handler_management_post_wire (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_offline_wire_add_verify (awc.payto_uri,
                                               awc.validity_start,
@@ -178,6 +179,7 @@ TEH_handler_management_post_wire (
       TALER_EC_EXCHANGE_MANAGEMENT_WIRE_ADD_SIGNATURE_INVALID,
       NULL);
   }
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_wire_signature_check (awc.payto_uri,
                                            &TEH_master_public_key,
@@ -214,7 +216,7 @@ TEH_handler_management_post_wire (
 
     res = TEH_DB_run_transaction (connection,
                                   "add wire",
-                                  TEH_MT_OTHER,
+                                  TEH_MT_REQUEST_OTHER,
                                   &ret,
                                   &add_wire,
                                   &awc);

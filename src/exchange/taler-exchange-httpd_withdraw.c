@@ -489,6 +489,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
+  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_withdraw_verify (&wc.collectable.denom_pub_hash,
                                     &wc.collectable.amount_with_fee,
@@ -525,7 +526,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (rc->connection,
                                 "run withdraw",
-                                TEH_MT_WITHDRAW,
+                                TEH_MT_REQUEST_WITHDRAW,
                                 &mhd_ret,
                                 &withdraw_transaction,
                                 &wc))

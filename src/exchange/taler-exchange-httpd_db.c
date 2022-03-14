@@ -81,7 +81,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 enum GNUNET_GenericReturnValue
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-                        enum TEH_MetricType mt,
+                        enum TEH_MetricTypeRequest mt,
                         MHD_RESULT *mhd_ret,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls)
@@ -99,7 +99,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                                              NULL);
     return GNUNET_SYSERR;
   }
-  GNUNET_assert (mt < TEH_MT_COUNT);
+  GNUNET_assert (mt < TEH_MT_REQUEST_COUNT);
   TEH_METRICS_num_requests[mt]++;
   for (unsigned int retries = 0;
        retries < MAX_TRANSACTION_COMMIT_RETRIES;
