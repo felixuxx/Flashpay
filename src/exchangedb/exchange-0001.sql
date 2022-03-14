@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS reserves
   ,current_balance_val INT8 NOT NULL
   ,current_balance_frac INT4 NOT NULL
   ,expiration_date INT8 NOT NULL
-  ,gc_date INT8 NOT NULL
+  ,gc_date INT8 NOT NULL    
   )
   PARTITION BY HASH (reserve_pub);
 COMMENT ON TABLE reserves
@@ -931,6 +931,58 @@ CREATE INDEX IF NOT EXISTS recoup_by_reserve_out_serial_id_index
 CREATE INDEX IF NOT EXISTS recoup_by_known_coin_id_index
   ON recoup
   (known_coin_id);
+
+
+CREATE TABLE IF NOT EXISTS reserves_out_by_reserve
+  (reserve_uuid INT8 NOT NULL -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
+  ,h_blind_ev BYTEA CHECK (LENGTH(h_blind_ev)=64) 
+  )
+  PARTITION BY HASH (reserve_uuid);
+COMMENT ON TABLE reserves_out_by_reserve
+  IS 'Information in this table is strictly redundant with that of reserves_out, but saved by a different primary key for fast lookups by reserve public key/uuid.';
+
+CREATE TABLE IF NOT EXISTS reserves_out_by_reserve_default
+  PARTITION OF reserves_out_by_reserve
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+CREATE OR REPLACE FUNCTION reserves_out_by_reserve_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO reserves_out_by_reserve
+    (reserve_uuid
+    ,h_blind_ev)
+  VALUES
+    (NEW.reserve_uuid
+    ,NEW.h_blind_ev);
+  RETURN NEW;
+END $$;  
+COMMENT ON FUNCTION reserves_out_by_reserve_insert_trigger()
+  IS 'Replicate reserve_out inserts into reserve_out_by_reserve_default table.';
+
+CREATE TRIGGER reserves_out_on_insert
+  AFTER INSERT
+   ON reserves_out
+   FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_insert_trigger();
+
+
+CREATE OR REPLACE FUNCTION reserves_out_by_reserve_delete_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  DELETE FROM reserves_out_by_reserve
+   WHERE reserve_uuid = OLD.reserve_uuid;
+  RETURN OLD;
+END $$;  
+COMMENT ON FUNCTION reserves_out_by_reserve_delete_trigger()
+  IS 'Replicate reserve_out deletions into reserve_out_by_reserve_default table.';
+
+CREATE TRIGGER reserves_out_on_delete
+  AFTER DELETE
+    ON reserves_out
+   FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_delete_trigger();
 
 
 CREATE TABLE IF NOT EXISTS recoup_refresh

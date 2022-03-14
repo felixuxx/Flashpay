@@ -713,21 +713,23 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_reserves_out",
       "SELECT"
-      " h_blind_ev"
+      " ro.h_blind_ev"
       ",denom.denom_pub_hash"
-      ",denom_sig"
-      ",reserve_sig"
-      ",execution_date"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
+      ",ro.denom_sig"
+      ",ro.reserve_sig"
+      ",ro.execution_date"
+      ",ro.amount_with_fee_val"
+      ",ro.amount_with_fee_frac"
       ",denom.fee_withdraw_val"
       ",denom.fee_withdraw_frac"
-      " FROM reserves"
-      "    JOIN reserves_out"
-      "      USING (reserve_uuid)"
-      "    JOIN denominations denom"
-      "      USING (denominations_serial)"
-      " WHERE reserve_pub=$1;",
+      " FROM denominations denom"
+      " JOIN reserves_out ro"
+      "   ON (ro.denominations_serial = denom.denominations_serial)"
+      " JOIN reserves_out_by_reserve ror"
+      "   ON (ro.h_blind_ev = ror.h_blind_ev)"
+      " JOIN reserves res"
+      "   ON (res.reserve_uuid = ror.reserve_uuid)"
+      " WHERE res.reserve_pub=$1;",
       1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
     GNUNET_PQ_make_prepare (
@@ -1643,15 +1645,16 @@ prepare_statements (struct PostgresClosure *pg)
       "  coins.denom_sig"
       " FROM denominations denoms"
       " JOIN known_coins coins"
-      "  ON (coins.denominations_serial = denoms.denominations_serial)"
-      " JOIN recoup"
-      "  USING (known_coin_id)"
-      " JOIN ("
-      "  reserves_out"
-      "   JOIN reserves"
-      "    USING (reserve_uuid)"
-      "  ) USING (reserve_out_serial_id)"
-      " WHERE reserve_pub=$1;",
+      "   ON (coins.denominations_serial = denoms.denominations_serial)"
+      " JOIN recoup rc"
+      "   ON (rc.known_coin_id = coins.known_coin_id)"
+      " JOIN reserves_out ro"
+      "   ON (ro.reserve_out_serial_id = rc.reserve_out_serial_id)"
+      " JOIN reserves_out_by_reserve ror"
+      "   ON (ror.h_blind_ev = ro.h_blind_ev)"
+      " JOIN reserves res"
+      "   ON (res.reserve_uuid = ror.reserve_uuid)"
+      " WHERE res.reserve_pub=$1;",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        affecting old coins of refreshed coins */

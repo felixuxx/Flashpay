@@ -27,6 +27,8 @@ BEGIN;
 SELECT _v.unregister_patch('exchange-0001');
 
 -- Drops for exchange-0001.sql
+DROP TRIGGER IF EXISTS reserves_out_on_insert ON reserves_out_default;
+DROP TRIGGER IF EXISTS reserves_out_on_delete ON reserves_out_default;
 DROP TABLE IF EXISTS revolving_work_shards CASCADE;
 DROP TABLE IF EXISTS extensions CASCADE;
 DROP TABLE IF EXISTS auditors CASCADE;
@@ -63,6 +65,7 @@ DROP FUNCTION IF EXISTS add_constraints_to_known_coins_partition;
 DROP TABLE IF EXISTS reserves_close CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_reserves_close_partition;
 DROP TABLE IF EXISTS reserves_out CASCADE;
+DROP TABLE IF EXISTS reserves_out_by_reserve CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_reserves_out_partition;
 DROP TABLE IF EXISTS reserves_in CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_reserves_in_partition;
@@ -75,6 +78,9 @@ DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,int,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
 
 DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bytea,bigint,bigint,int) ;
+
+DROP FUNCTION IF EXISTS reserves_out_by_reserve_insert_trigger();
+DROP FUNCTION IF EXISTS reserves_out_by_reserve_delete_trigger();
 
 DROP FUNCTION IF EXISTS exchange_do_deposit;
 
