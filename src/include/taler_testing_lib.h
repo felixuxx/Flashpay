@@ -1087,8 +1087,7 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation_with_retry (
-  struct TALER_TESTING_Command
-  cmd);
+  struct TALER_TESTING_Command cmd);
 
 
 /**

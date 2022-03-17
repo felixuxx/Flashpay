@@ -32,7 +32,7 @@ export BASEDB=${1:-"revoke-basedb"}
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
-export TARGET_DB=${BASEDB}
+export TARGET_DB=`basename ${BASEDB}`
 TMP_DIR=`mktemp -d revocation-tmp-XXXXXX`
 export WALLET_DB=wallet-revocation.json
 rm -f $WALLET_DB
@@ -40,7 +40,7 @@ rm -f $WALLET_DB
 # Configuration file will be edited, so we create one
 # from the template.
 export CONF=generate-auditor-basedb-revocation.conf
-cp generate-auditor-basedb-template.conf $CONF
+cp generate-auditor-basedb.conf $CONF
 
 
 echo -n "Testing for taler-bank-manage"
@@ -136,7 +136,7 @@ done
 
 if [ 1 != $OK ]
 then
-    exit_skip "Failed to launch services"
+    exit_skip "Failed to launch Bank services"
 fi
 
 # Wait for all other services to be available
@@ -158,7 +158,7 @@ done
 if [ 1 != $OK ]
 then
     cleanup
-    exit_skip "Failed to launch services"
+    exit_skip "Failed to launch Taler services"
 fi
 echo " DONE"
 

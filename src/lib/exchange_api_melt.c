@@ -496,16 +496,16 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
                                 &mh->md.rc),
     GNUNET_JSON_pack_allow_null (
       mh->md.melted_coin.h_age_commitment
-       ? GNUNET_JSON_pack_data_auto ("age_commitment_hash",
-                                     mh->md.melted_coin.h_age_commitment)
-       : GNUNET_JSON_pack_string ("age_commitment_hash",
-                                  NULL)),
+      ? GNUNET_JSON_pack_data_auto ("age_commitment_hash",
+                                    mh->md.melted_coin.h_age_commitment)
+      : GNUNET_JSON_pack_string ("age_commitment_hash",
+                                 NULL)),
     GNUNET_JSON_pack_allow_null (
       mh->send_rms
-       ? GNUNET_JSON_pack_data_auto ("rms",
-                                     &mh->rms)
-       : GNUNET_JSON_pack_string ("rms",
-                                  NULL)));
+      ? GNUNET_JSON_pack_data_auto ("rms",
+                                    &mh->rms)
+      : GNUNET_JSON_pack_string ("rms",
+                                 NULL)));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;

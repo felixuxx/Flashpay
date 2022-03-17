@@ -850,7 +850,7 @@ run (void *cls,
      * Run transfers. This will do the transfer as refund deadline
      * was 0, except of course because the refund succeeded, the
      * transfer should no longer be done.
-     *///
+     */
     CMD_EXEC_AGGREGATOR ("run-aggregator-3b"),
     /* check that aggregator didn't do anything, as expected */
     TALER_TESTING_cmd_check_bank_empty ("check-refund-fast-not-run"),

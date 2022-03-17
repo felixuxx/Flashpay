@@ -868,7 +868,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.fee_refresh_frac"
       ",old_coin_pub"
       ",old_coin_sig"
-      ",h_age_commitment"
+      ",kc.age_commitment_hash"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",noreveal_index"
@@ -887,7 +887,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " denom.denom_pub"
       ",kc.coin_pub AS old_coin_pub"
-      ",h_age_commitment"
+      ",kc.age_commitment_hash"
       ",old_coin_sig"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
@@ -913,7 +913,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.denom_pub_hash"
       ",denoms.fee_refresh_val"
       ",denoms.fee_refresh_frac"
-      ",h_age_commitment"
+      ",kc.age_commitment_hash"
       ",melt_serial_id"
       " FROM refresh_commitments"
       " JOIN known_coins kc"
@@ -1558,6 +1558,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",ro.h_blind_ev"
       ",denoms.denom_pub_hash"
       ",coins.denom_sig"
+      ",coins.age_commitment_hash"
       ",denoms.denom_pub"
       ",amount_val"
       ",amount_frac"
@@ -1581,6 +1582,7 @@ prepare_statements (struct PostgresClosure *pg)
       " recoup_refresh_uuid"
       ",recoup_timestamp"
       ",old_coins.coin_pub AS old_coin_pub"
+      ",old_coins.age_commitment_hash"
       ",old_denoms.denom_pub_hash AS old_denom_pub_hash"
       ",new_coins.coin_pub As coin_pub"
       ",coin_sig"
@@ -6344,7 +6346,7 @@ postgres_get_melt (void *cls,
     GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
                                           &melt->session.coin_sig),
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+      GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                             &melt->session.coin.h_age_commitment),
       &h_age_commitment_is_null),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -6964,7 +6966,7 @@ add_coin_melt (void *cls,
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
                                      &melt->melt_fee),
         GNUNET_PQ_result_spec_allow_null (
-          GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+          GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                                 &melt->h_age_commitment),
           &melt->no_age_commitment),
         GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
@@ -8742,7 +8744,7 @@ refreshs_serial_helper_cb (void *cls,
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_auto_from_type ("h_age_commitment",
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                               &h_age_commitment),
         &ac_isnull),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
@@ -9525,6 +9527,10 @@ recoup_serial_helper_cb (void *cls,
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                              &coin.h_age_commitment),
+        &coin.no_age_commitment),
       TALER_PQ_result_spec_denom_sig ("denom_sig",
                                       &coin.denom_sig),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
@@ -9676,6 +9682,10 @@ recoup_refresh_serial_helper_cb (void *cls,
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                              &coin.h_age_commitment),
+        &coin.no_age_commitment),
       TALER_PQ_result_spec_denom_sig ("denom_sig",
                                       &coin.denom_sig),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",

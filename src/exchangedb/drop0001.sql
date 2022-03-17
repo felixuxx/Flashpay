@@ -27,8 +27,8 @@ BEGIN;
 SELECT _v.unregister_patch('exchange-0001');
 
 -- Drops for exchange-0001.sql
-DROP TRIGGER IF EXISTS reserves_out_on_insert ON reserves_out_default;
-DROP TRIGGER IF EXISTS reserves_out_on_delete ON reserves_out_default;
+DROP TRIGGER IF EXISTS reserves_out_on_insert ON reserves_out;
+DROP TRIGGER IF EXISTS reserves_out_on_delete ON reserves_out;
 DROP TABLE IF EXISTS revolving_work_shards CASCADE;
 DROP TABLE IF EXISTS extensions CASCADE;
 DROP TABLE IF EXISTS auditors CASCADE;

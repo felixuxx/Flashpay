@@ -2039,7 +2039,7 @@ check_recoup (struct CoinContext *cc,
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 recoup_cb (void *cls,
            uint64_t rowid,
            struct GNUNET_TIME_Timestamp timestamp,

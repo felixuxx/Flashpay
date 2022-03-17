@@ -262,8 +262,8 @@ TALER_amount_is_currency (const struct TALER_Amount *amount,
     return GNUNET_SYSERR;
   return (0 == strcasecmp (currency,
                            amount->currency))
-    ? GNUNET_OK
-    : GNUNET_NO;
+         ? GNUNET_OK
+         : GNUNET_NO;
 }
 
 

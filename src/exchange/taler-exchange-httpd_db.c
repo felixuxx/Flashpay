@@ -149,6 +149,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
       return GNUNET_OK;
     TEH_METRICS_num_conflict[mt]++;
   }
+  TEH_plugin->rollback (TEH_plugin->cls);
   TALER_LOG_ERROR ("Transaction `%s' commit failed %u times\n",
                    name,
                    MAX_TRANSACTION_COMMIT_RETRIES);

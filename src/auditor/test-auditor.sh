@@ -6,7 +6,7 @@
 #
 # Requires 'jq' tool and Postgres superuser rights!
 set -eu
-set -x
+#set -x
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
@@ -472,11 +472,9 @@ function test_4() {
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
 SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT w.wire_target_serial_id FROM deposits d, wire_targets w WHERE d.wire_target_serial_id = w.wire_target_serial_id AND deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO wire_targets (wire_target_serial_id, payto_uri, h_payto, kyc_ok) VALUES (DEFAULT, 'payto://x-taler-bank/localhost/testuser-xxlargtp', '\xe67a8933f7521572236301d7ff63e217245f777ed4b4d7e8df1b989900743658f4c10042ff9e5ce517bff4e5387b27877780673d85393f289aea5ee1946021c3', false) RETURNING wire_target_serial_id;"  | psql $DB -Aqt`
-echo OLD_WIRE_ID=$OLD_WIRE_ID
-echo NEW_WIRE_ID=$NEW_WIRE_ID
-echo "UPDATE deposits SET wire_target_serial_id=$NEW_WIRE_ID WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
+echo "UPDATE deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -510,7 +508,7 @@ fi
 
 echo PASS
 # Undo:
-echo "UPDATE deposits SET wire_target_serial_id=$OLD_WIRE_ID WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -867,7 +865,7 @@ function test_13() {
 echo "===========13: wrong melt signature ==========="
 # Modify denom_sig, so it is wrong
 COIN_PUB=`echo "SELECT old_coin_pub FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_known_pub='$COIN_PUB';" | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
 NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
 echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
@@ -1487,11 +1485,11 @@ function test_26() {
 echo "===========26: deposit wire target malformed ================="
 # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
 SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT w.wire_target_serial_id FROM deposits d, wire_targets w WHERE d.wire_target_serial_id = w.wire_target_serial_id AND deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO wire_targets (wire_target_serial_id, payto_uri, h_payto, kyc_ok) VALUES (DEFAULT, 'payto://x-taler-bank/localhost/testuser-xxlargtp', '\xe67a8933f7521572236301d7ff63e217245f777ed4b4d7e8df1b989900743658f4c10042ff9e5ce517bff4e5387b27877780673d85393f289aea5ee1946021c3', false) RETURNING wire_target_serial_id;"  | psql $DB -Aqt`
+OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
 echo OLD_WIRE_ID=$OLD_WIRE_ID
 echo NEW_WIRE_ID=$NEW_WIRE_ID
-echo "UPDATE deposits SET wire_target_serial_id=$NEW_WIRE_ID WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -1525,7 +1523,7 @@ fi
 
 echo PASS
 # Undo:
-echo "UPDATE deposits SET wire_target_serial_id=$OLD_WIRE_ID WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -1891,6 +1889,7 @@ else
     then
         MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
         echo " FOUND. Generating fresh database at $MYDIR"
+        pwd
         if ./generate-auditor-basedb.sh $MYDIR/basedb
         then
             check_with_database $MYDIR/basedb

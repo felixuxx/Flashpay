@@ -455,7 +455,7 @@ COMMENT ON COLUMN refresh_commitments.rc
 COMMENT ON COLUMN refresh_commitments.old_coin_pub
   IS 'Coin being melted in the refresh process.';
 COMMENT ON COLUMN refresh_commitments.h_age_commitment
-  IS 'The (optional) age commitment that was involved in the minting process of the coin, may be NULL.';
+  IS 'The (optional) age commitment that was involved in the minting process of the coin, may be NULL. -- FIXME: Oec: this is in known_coins, why replicated here!??!';
 
 CREATE TABLE IF NOT EXISTS refresh_commitments_default
   PARTITION OF refresh_commitments

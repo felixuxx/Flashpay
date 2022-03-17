@@ -41,7 +41,7 @@ BASEDB=${1:-"auditor-basedb"}
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
-export TARGET_DB=${BASEDB}
+export TARGET_DB=`basename ${BASEDB}`
 
 export WALLET_DB=${BASEDB:-"wallet"}.wdb
 
@@ -52,7 +52,7 @@ rm -f $WALLET_DB
 # Configuration file will be edited, so we create one
 # from the template.
 CONF=${BASEDB}.conf
-cp generate-auditor-basedb-template.conf $CONF
+cp generate-auditor-basedb.conf $CONF
 
 
 echo -n "Testing for taler-bank-manage"
@@ -66,7 +66,7 @@ curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
 
-
+pwd
 # Clean up
 
 DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
