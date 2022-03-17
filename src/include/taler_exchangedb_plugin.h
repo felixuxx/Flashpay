@@ -313,7 +313,6 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_CoinSpendPublicKeyP old_coin_pub;
       struct TALER_CoinSpendSignatureP old_coin_sig;
       struct TALER_Amount amount_with_fee;
-      struct TALER_AgeCommitmentHash h_age_commitment;
       uint32_t noreveal_index;
     } refresh_commitments;
 

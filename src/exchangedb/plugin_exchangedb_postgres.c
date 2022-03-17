@@ -649,7 +649,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_zombie_bad AS zombie_required"
       ",out_noreveal_index AS noreveal_index"
       " FROM exchange_do_melt"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
       9),
     /* Used in #postgres_do_refund() to refund a deposit. */
     GNUNET_PQ_make_prepare (
@@ -1582,7 +1582,7 @@ prepare_statements (struct PostgresClosure *pg)
       " recoup_refresh_uuid"
       ",recoup_timestamp"
       ",old_coins.coin_pub AS old_coin_pub"
-      ",old_coins.age_commitment_hash"
+      ",new_coins.age_commitment_hash"
       ",old_denoms.denom_pub_hash AS old_denom_pub_hash"
       ",new_coins.coin_pub As coin_pub"
       ",coin_sig"
@@ -2736,9 +2736,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_with_fee_frac"
       ",noreveal_index"
       ",old_coin_pub"
-      ",h_age_commitment"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      "($1, $2, $3, $4, $5, $6, $7);",
       7),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refresh_revealed_coins",
@@ -4860,7 +4859,6 @@ postgres_do_melt (
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refresh->coin_sig),
     GNUNET_PQ_query_param_uint64 (&known_coin_id),
-    GNUNET_PQ_query_param_auto_from_type (&refresh->coin.h_age_commitment),
     GNUNET_PQ_query_param_uint32 (&refresh->noreveal_index),
     GNUNET_PQ_query_param_bool (*zombie_required),
     GNUNET_PQ_query_param_end
@@ -9692,7 +9690,7 @@ recoup_refresh_serial_helper_cb (void *cls,
                                    &amount),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
