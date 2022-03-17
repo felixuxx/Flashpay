@@ -56,7 +56,7 @@ TEH_handler_management_signkeys_EP_revoke (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_offline_signkey_revoke_verify (exchange_pub,
                                                     &TEH_master_public_key,

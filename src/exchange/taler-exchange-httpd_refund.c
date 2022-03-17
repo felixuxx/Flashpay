@@ -209,7 +209,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     .refund = refund
   };
 
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_merchant_refund_verify (&refund->coin.coin_pub,
                                     &refund->details.h_contract_terms,

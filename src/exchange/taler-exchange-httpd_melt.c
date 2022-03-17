@@ -341,7 +341,17 @@ check_melt_valid (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_MELT_FEES_EXCEED_CONTRIBUTION,
                                        NULL);
   }
-  TEH_METRICS_num_verifications[TEH_MT_CIPHER]++;
+  switch (dk->denom_pub.cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
+    break;
+  case TALER_DENOMINATION_CS:
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
+    break;
+  default:
+    break;
+  }
   if (GNUNET_OK !=
       TALER_test_coin_valid (&rmc->refresh_session.coin,
                              &dk->denom_pub))
@@ -354,7 +364,7 @@ check_melt_valid (struct MHD_Connection *connection,
   }
 
   /* verify signature of coin for melt operation */
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_melt_verify (&rmc->refresh_session.amount_with_fee,
                                 &rmc->coin_refresh_fee,

@@ -489,7 +489,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_withdraw_verify (&wc.collectable.denom_pub_hash,
                                     &wc.collectable.amount_with_fee,

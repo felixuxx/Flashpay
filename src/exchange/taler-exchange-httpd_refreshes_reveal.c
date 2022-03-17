@@ -262,6 +262,7 @@ check_commitment (struct RevealContext *rctx,
 
         GNUNET_CRYPTO_ecdhe_key_get_public (&tpriv->ecdhe_priv,
                                             &rce->transfer_pub.ecdhe_pub);
+        TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_ECDH]++;
         TALER_link_reveal_transfer_secret (tpriv,
                                            &rctx->melt.session.coin.coin_pub,
                                            &ts);
@@ -684,7 +685,7 @@ clean_age:
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
 
     /* Check signature */
-    TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
     if (GNUNET_OK !=
         TALER_wallet_link_verify (
           &rrcs[i].h_denom_pub,

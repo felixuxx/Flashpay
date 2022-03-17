@@ -219,7 +219,17 @@ verify_and_execute_recoup (
   }
 
   /* check denomination signature */
-  TEH_METRICS_num_verifications[TEH_MT_CIPHER]++;
+  switch (dk->denom_pub.cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
+    break;
+  case TALER_DENOMINATION_CS:
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
+    break;
+  default:
+    break;
+  }
   if (GNUNET_YES !=
       TALER_test_coin_valid (coin,
                              &dk->denom_pub))
@@ -233,7 +243,7 @@ verify_and_execute_recoup (
   }
 
   /* check recoup request signature */
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_recoup_verify (&coin->denom_pub_hash,
                                   coin_bks,

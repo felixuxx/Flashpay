@@ -39,13 +39,23 @@ enum TEH_MetricTypeRequest
 };
 
 /**
- * Cipher types for which we collect metrics.
+ * Cipher types for which we collect signature metrics.
  */
-enum TEH_MetricTypeRequestCipher
+enum TEH_MetricTypeSignature
 {
-  TEH_MT_CIPHER = 0,
-  TEH_MT_EDDSA = 2,
-  TEH_MT_CIPHER_COUNT = 3
+  TEH_MT_SIGNATURE_RSA = 0,
+  TEH_MT_SIGNATURE_CS = 1,
+  TEH_MT_SIGNATURE_EDDSA = 2,
+  TEH_MT_SIGNATURE_COUNT = 3
+};
+
+/**
+ * Cipher types for which we collect key exchange metrics.
+ */
+enum TEH_MetricTypeKeyX
+{
+  TEH_MT_KEYX_ECDH = 0,
+  TEH_MT_KEYX_COUNT = 1
 };
 
 /**
@@ -62,12 +72,17 @@ extern unsigned long long TEH_METRICS_num_conflict[TEH_MT_REQUEST_COUNT];
 /**
  * Number of signatures created by the respecitve cipher.
  */
-extern unsigned long long TEH_METRICS_num_signatures[TEH_MT_CIPHER_COUNT];
+extern unsigned long long TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_COUNT];
 
 /**
  * Number of signatures verified by the respecitve cipher.
  */
-extern unsigned long long TEH_METRICS_num_verifications[TEH_MT_CIPHER_COUNT];
+extern unsigned long long TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_COUNT];
+
+/**
+ * Number of key exchnages done with the respective cipher.
+ */
+extern unsigned long long TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_COUNT];
 
 /**
  * Handle a "/metrics" request.

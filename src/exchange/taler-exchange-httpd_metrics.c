@@ -33,9 +33,11 @@ unsigned long long TEH_METRICS_num_requests[TEH_MT_REQUEST_COUNT];
 
 unsigned long long TEH_METRICS_num_conflict[TEH_MT_REQUEST_COUNT];
 
-unsigned long long TEH_METRICS_num_signatures[TEH_MT_CIPHER_COUNT];
+unsigned long long TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_COUNT];
 
-unsigned long long TEH_METRICS_num_verifications[TEH_MT_CIPHER_COUNT];
+unsigned long long TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_COUNT];
+
+unsigned long long TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_COUNT];
 
 MHD_RESULT
 TEH_handler_metrics (struct TEH_RequestContext *rc,
@@ -62,15 +64,21 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "taler_exchange_received_requests{type=\"%s\"} %llu\n"
                    "taler_exchange_received_requests{type=\"%s\"} %llu\n"
                    "# HELP taler_exchange_num_signatures "
-                   " number of signatures created by cipher (rsa, cs) and eddsa\n"
+                   " number of signatures created by cipher\n"
                    "# TYPE taler_exchange_num_signatures counter\n"
                    "taler_exchange_num_signatures{type=\"%s\"} %llu\n"
                    "taler_exchange_num_signatures{type=\"%s\"} %llu\n"
+                   "taler_exchange_num_signatures{type=\"%s\"} %llu\n"
                    "# HELP taler_exchange_num_signature_verifications "
-                   " number of signatures verified by cipher (rsa, cs) and eddsa\n"
+                   " number of signatures verified by cipher\n"
                    "# TYPE taler_exchange_num_signature_verifications counter\n"
                    "taler_exchange_num_signature_verifications{type=\"%s\"} %llu\n"
-                   "taler_exchange_num_signature_verifications{type=\"%s\"} %llu\n",
+                   "taler_exchange_num_signature_verifications{type=\"%s\"} %llu\n"
+                   "taler_exchange_num_signature_verifications{type=\"%s\"} %llu\n"
+                   "# HELP taler_exchange_num_keyexchanges "
+                   " number of key exchanges done by cipher\n"
+                   "# TYPE taler_exchange_num_keyexchanges counter\n"
+                   "taler_exchange_num_keyexchanges{type=\"%s\"} %llu\n",
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_REQUEST_OTHER],
                    "deposit",
@@ -87,14 +95,20 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    TEH_METRICS_num_requests[TEH_MT_REQUEST_WITHDRAW],
                    "melt",
                    TEH_METRICS_num_requests[TEH_MT_REQUEST_MELT],
-                   "cipher",
-                   TEH_METRICS_num_signatures[TEH_MT_CIPHER],
+                   "rsa",
+                   TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA],
+                   "cs",
+                   TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS],
                    "eddsa",
-                   TEH_METRICS_num_signatures[TEH_MT_EDDSA],
-                   "cipher",
-                   TEH_METRICS_num_verifications[TEH_MT_CIPHER],
+                   TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_EDDSA],
+                   "rsa",
+                   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA],
+                   "cs",
+                   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS],
                    "eddsa",
-                   TEH_METRICS_num_verifications[TEH_MT_EDDSA]);
+                   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA],
+                   "ecdh",
+                   TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_ECDH]);
   resp = MHD_create_response_from_buffer (strlen (reply),
                                           reply,
                                           MHD_RESPMEM_MUST_FREE);

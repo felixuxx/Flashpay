@@ -188,7 +188,7 @@ TEH_handler_management_post_wire_fees (
       return MHD_YES; /* failure */
   }
 
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_offline_wire_fee_verify (
         afc.wire_method,

@@ -56,7 +56,7 @@ TEH_handler_management_denominations_HDP_revoke (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
-  TEH_METRICS_num_verifications[TEH_MT_EDDSA]++;
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_offline_denomination_revoke_verify (
         h_denom_pub,
