@@ -191,7 +191,7 @@ TALER_wallet_recoup_sign (
 {
   struct TALER_RecoupRequestPS pr = {
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
-    .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+    .purpose.size = htonl (sizeof (pr)),
     .h_denom_pub = *h_denom_pub,
     .coin_blind = *coin_bks
   };
