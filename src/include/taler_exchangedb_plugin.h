@@ -340,6 +340,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t shard;
       uint64_t known_coin_id;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_Amount amount_with_fee;
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct GNUNET_TIME_Timestamp exchange_timestamp;
@@ -402,7 +403,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      uint64_t known_coin_id;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
       union TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;
@@ -413,6 +414,7 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       uint64_t known_coin_id;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
       union TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;

@@ -511,6 +511,8 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.shard),
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.deposits.coin_pub),
     TALER_PQ_query_param_amount (&td->details.deposits.amount_with_fee),
     GNUNET_PQ_query_param_timestamp (&td->details.deposits.wallet_timestamp),
     GNUNET_PQ_query_param_timestamp (
@@ -706,7 +708,8 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_blind),
     TALER_PQ_query_param_amount (&td->details.recoup.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.recoup.timestamp),
-    GNUNET_PQ_query_param_uint64 (&td->details.recoup.known_coin_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.recoup.coin_pub),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup.reserve_out_serial_id),
     GNUNET_PQ_query_param_end
   };
@@ -735,6 +738,8 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (&td->details.recoup_refresh.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.recoup_refresh.timestamp),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.known_coin_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.recoup.coin_pub),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.rrc_serial),
     GNUNET_PQ_query_param_end
   };

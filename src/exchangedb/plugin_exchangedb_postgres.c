@@ -980,11 +980,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_with_fee_val "
       ",amount_with_fee_frac "
       ") SELECT deposit_serial_id, $3, $5, $6, $7"
-      "    FROM deposits"
-      "   WHERE known_coin_id="
-      "     (SELECT known_coin_id "
-      "        FROM known_coins"
-      "       WHERE coin_pub=$1)"
+      "    FROM deposits" // FIXME: also select by shard!
+      "   WHERE coin_pub=$1"
       "     AND h_contract_terms=$4"
       "     AND merchant_pub=$2",
       7),
@@ -1002,8 +999,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_refund_frac "
       ",refund_serial_id"
       " FROM refunds"
-      " JOIN deposits USING (deposit_serial_id)"
-      " JOIN known_coins USING (known_coin_id)"
+      " JOIN deposits USING (deposit_serial_id)"  // FIXME: use shard, too!
+      " JOIN known_coins USING (coin_pub)"
       " JOIN denominations denom USING (denominations_serial)"
       " WHERE coin_pub=$1;",
       1),
@@ -1014,8 +1011,8 @@ prepare_statements (struct PostgresClosure *pg)
       " refunds.amount_with_fee_val"
       ",refunds.amount_with_fee_frac"
       " FROM refunds"
-      " JOIN deposits USING (deposit_serial_id)"
-      " JOIN known_coins USING (known_coin_id)"
+      " JOIN deposits USING (deposit_serial_id)" // FIXME: use shard!
+      " JOIN known_coins USING (coin_pub)"
       " WHERE coin_pub=$1"
       "   AND merchant_pub=$2"
       "   AND h_contract_terms=$3;",
@@ -1034,8 +1031,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",refunds.amount_with_fee_frac"
       ",refund_serial_id"
       " FROM refunds"
-      "   JOIN deposits USING (deposit_serial_id)"
-      "   JOIN known_coins kc USING (known_coin_id)"
+      "   JOIN deposits USING (deposit_serial_id)" // FIXME: use shard!
+      "   JOIN known_coins kc USING (coin_pub)"
       "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
       " WHERE refund_serial_id>=$1"
       " ORDER BY refund_serial_id ASC;",
@@ -1053,6 +1050,7 @@ prepare_statements (struct PostgresClosure *pg)
       "insert_deposit",
       "INSERT INTO deposits "
       "(known_coin_id"
+      ",coin_pub"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",wallet_timestamp"
@@ -1065,10 +1063,10 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_sig"
       ",exchange_timestamp"
       ",shard"
-      ") SELECT known_coin_id, $2, $3, $4, $5, $6, "
+      ") SELECT known_coin_id, $1, $2, $3, $4, $5, $6, "
       " $7, $8, $9, $10, $11, $12, $13"
       "    FROM known_coins"
-      "   WHERE coin_pub=$1"
+      "   WHERE coin_pub=$1" // FIXME: maybe we know known_coin_id already in caller?
       " ON CONFLICT DO NOTHING;",
       13),
     /* Fetch an existing deposit request, used to ensure idempotency
@@ -1087,8 +1085,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_contract_terms"
       ",wire_salt"
       ",payto_uri AS receiver_wire_account"
-      " FROM deposits"
-      " JOIN known_coins USING (known_coin_id)"
+      " FROM deposits" // FIXME: also select on shard!?
+      " JOIN known_coins USING (coin_pub)"
       " JOIN denominations USING (denominations_serial)"
       " JOIN wire_targets USING (wire_target_h_payto)"
       " WHERE ((coin_pub=$1)"
@@ -1117,10 +1115,10 @@ prepare_statements (struct PostgresClosure *pg)
       ",deposit_serial_id"
       " FROM deposits"
       "    JOIN wire_targets USING (wire_target_h_payto)"
-      "    JOIN known_coins kc USING (known_coin_id)"
+      "    JOIN known_coins kc USING (coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE ("
-      "  (deposit_serial_id>=$1)"
+      "  (deposit_serial_id>=$1)" // FIXME: also select by shard!?
       " )"
       " ORDER BY deposit_serial_id ASC;",
       1),
@@ -1140,9 +1138,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_deadline"
       " FROM deposits"
       "    JOIN wire_targets USING (wire_target_h_payto)"
-      "    JOIN known_coins USING (known_coin_id)"
+      "    JOIN known_coins USING (coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
-      " WHERE ((coin_pub=$1)"
+      " WHERE ((coin_pub=$1)" // FIXME: also select by shard!
       "    AND (merchant_pub=$3)"
       "    AND (h_contract_terms=$2)"
       " );",
@@ -1165,7 +1163,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  JOIN wire_targets "
       "    USING (wire_target_h_payto)"
       "  JOIN known_coins kc"
-      "    USING (known_coin_id)"
+      "    USING (coin_pub)"
       "  JOIN denominations denom"
       "    USING (denominations_serial)"
       " WHERE "
@@ -1193,7 +1191,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_contract_terms"
       ",kc.coin_pub"
       " FROM deposits"
-      "    JOIN known_coins kc USING (known_coin_id)"
+      "    JOIN known_coins kc USING (coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE"
       "      merchant_pub=$1"
@@ -1224,6 +1222,7 @@ prepare_statements (struct PostgresClosure *pg)
       2),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
+    // FIXME: this one is horribly inefficient right now!
     GNUNET_PQ_make_prepare (
       "get_deposit_with_coin_pub",
       "SELECT"
@@ -1247,7 +1246,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN wire_targets"
       "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
-      "      USING (known_coin_id)"
+      "      USING (coin_pub)"
       "    JOIN denominations denoms"
       "      USING (denominations_serial)"
       " WHERE coin_pub=$1;",
@@ -1296,7 +1295,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN wire_targets"
       "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
-      "      USING (known_coin_id)"
+      "      USING (coin_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       "    JOIN wire_out"
@@ -1321,7 +1320,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN aggregation_tracking"
       "      USING (deposit_serial_id)"
       "    JOIN known_coins"
-      "      USING (known_coin_id)"
+      "      USING (coin_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       "    JOIN wire_out"
@@ -1497,7 +1496,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",done"
       " FROM deposits d"
       "   JOIN known_coins"
-      "     USING (known_coin_id)"
+      "     USING (coin_pub)"
       "   JOIN wire_targets"
       "     USING (wire_target_h_payto)"
       " WHERE wire_deadline >= $1"
@@ -1505,7 +1504,7 @@ prepare_statements (struct PostgresClosure *pg)
       " AND NOT (EXISTS (SELECT 1"
       "            FROM refunds"
       "            JOIN deposits dx USING (deposit_serial_id)"
-      "            WHERE (dx.known_coin_id = d.known_coin_id))"
+      "            WHERE (dx.coin_pub = d.coin_pub))"
       "       OR EXISTS (SELECT 1"
       "            FROM aggregation_tracking"
       "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
@@ -1564,7 +1563,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       " FROM recoup"
       "    JOIN known_coins coins"
-      "      USING (known_coin_id)"
+      "      USING (coin_pub)"
       "    JOIN reserves_out ro"
       "      USING (reserve_out_serial_id)"
       "    JOIN reserves"
@@ -1601,7 +1600,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    INNER JOIN known_coins old_coins"
       "      ON (rfc.old_coin_pub = old_coins.coin_pub)"
       "    INNER JOIN known_coins new_coins"
-      "      ON (new_coins.known_coin_id = recoup_refresh.known_coin_id)"
+      "      ON (new_coins.coin_pub = recoup_refresh.coin_pub)"
       "    INNER JOIN denominations new_denoms"
       "      ON (new_coins.denominations_serial = new_denoms.denominations_serial)"
       "    INNER JOIN denominations old_denoms"
@@ -1649,7 +1648,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN known_coins coins"
       "   ON (coins.denominations_serial = denoms.denominations_serial)"
       " JOIN recoup rc"
-      "   ON (rc.known_coin_id = coins.known_coin_id)"
+      "   ON (rc.coin_pub = coins.coin_pub)"
       " JOIN reserves_out ro"
       "   ON (ro.reserve_out_serial_id = rc.reserve_out_serial_id)"
       " JOIN reserves_out_by_reserve ror"
@@ -1674,7 +1673,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",recoup_refresh_uuid"
       " FROM recoup_refresh"
       " JOIN known_coins coins"
-      "   USING (known_coin_id)"
+      "   USING (coin_pub)"
       " JOIN denominations denoms"
       "   USING (denominations_serial)"
       " WHERE rrc_serial IN"
@@ -1739,7 +1738,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves"
       "   USING (reserve_uuid)"
       " JOIN known_coins coins"
-      "   USING (known_coin_id)"
+      "   USING (coin_pub)"
       " JOIN denominations denoms"
       "   ON (denoms.denominations_serial = coins.denominations_serial)"
       " WHERE coins.coin_pub=$1;",
@@ -1766,7 +1765,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN known_coins old_coins"
       "      ON (rfc.old_coin_pub = old_coins.coin_pub)"
       "    JOIN known_coins coins"
-      "      ON (recoup_refresh.known_coin_id = coins.known_coin_id)"
+      "      ON (recoup_refresh.coin_pub = coins.coin_pub)"
       "    JOIN denominations denoms"
       "      ON (denoms.denominations_serial = coins.denominations_serial)"
       " WHERE coins.coin_pub=$1;",
@@ -2439,6 +2438,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " deposit_serial_id AS serial"
       ",shard"
+      ",coin_pub"
       ",known_coin_id"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
@@ -2546,7 +2546,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_val"
       ",amount_frac"
       ",recoup_timestamp"
-      ",known_coin_id"
+      ",coin_pub"
       ",reserve_out_serial_id"
       " FROM recoup"
       " WHERE recoup_uuid > $1"
@@ -2561,6 +2561,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_val"
       ",amount_frac"
       ",recoup_timestamp"
+      ",coin_pub"
       ",known_coin_id"
       ",rrc_serial"
       " FROM recoup_refresh"
@@ -2770,6 +2771,7 @@ prepare_statements (struct PostgresClosure *pg)
       "(deposit_serial_id"
       ",shard"
       ",known_coin_id"
+      ",coin_pub"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",wallet_timestamp"
@@ -2787,8 +2789,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",extension_details_serial_id"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18);",
-      18),
+      " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
+      19),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refunds",
       "INSERT INTO refunds"
@@ -2858,7 +2860,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_val"
       ",amount_frac"
       ",recoup_timestamp"
-      ",known_coin_id"
+      ",coin_pub"
       ",reserve_out_serial_id"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8);",
@@ -2873,10 +2875,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",recoup_timestamp"
       ",known_coin_id"
+      ",coin_pub"
       ",rrc_serial"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
     GNUNET_PQ_make_prepare (
       "insert_into_table_extensions",
       "INSERT INTO extensions"

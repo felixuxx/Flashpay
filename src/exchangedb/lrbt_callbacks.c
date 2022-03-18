@@ -920,6 +920,9 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "known_coin_id",
         &td.details.deposits.known_coin_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.deposits.coin_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount_with_fee",
         &td.details.deposits.amount_with_fee),
@@ -1306,8 +1309,9 @@ lrbt_cb_table_recoup (void *cls,
                                    &td.details.recoup.amount),
       GNUNET_PQ_result_spec_timestamp ("recoup_timestamp",
                                        &td.details.recoup.timestamp),
-      GNUNET_PQ_result_spec_uint64 ("known_coin_id",
-                                    &td.details.recoup.known_coin_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.recoup.coin_pub),
       GNUNET_PQ_result_spec_uint64 ("reserve_out_serial_id",
                                     &td.details.recoup.reserve_out_serial_id),
       GNUNET_PQ_result_spec_end
@@ -1363,6 +1367,9 @@ lrbt_cb_table_recoup_refresh (void *cls,
                                        &td.details.recoup_refresh.timestamp),
       GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                     &td.details.recoup_refresh.known_coin_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.recoup_refresh.coin_pub),
       GNUNET_PQ_result_spec_uint64 ("rrc_serial",
                                     &td.details.recoup_refresh.rrc_serial),
       GNUNET_PQ_result_spec_end
