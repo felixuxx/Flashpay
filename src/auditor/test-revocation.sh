@@ -74,8 +74,9 @@ function pre_audit () {
 
     if test ${1:-no} = "aggregator"
     then
+        export CONF
         echo -n "Running exchange aggregator ..."
-        taler-exchange-aggregator -L INFO -t -c $CONF 2> aggregator.log || exit_fail "FAIL"
+        taler-exchange-aggregator -L INFO -t -c $CONF -y 2> aggregator.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange closer ..."
         taler-exchange-closer -L INFO -t -c $CONF 2> closer.log || exit_fail "FAIL"

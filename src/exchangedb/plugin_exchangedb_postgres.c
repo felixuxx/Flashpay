@@ -1193,8 +1193,8 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM deposits"
       "    JOIN known_coins kc USING (coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
-      " WHERE"
-      "      merchant_pub=$1"
+      " WHERE shard=$4"
+      "  AND merchant_pub=$1"
       "  AND wire_target_h_payto=$2"
       "  AND done=FALSE"
       "  AND extension_blocked=FALSE"
@@ -1203,7 +1203,7 @@ prepare_statements (struct PostgresClosure *pg)
       " LIMIT "
       TALER_QUOTE (
         TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
-      3),
+      4),
     /* Used in #postgres_mark_deposit_tiny() */
     GNUNET_PQ_make_prepare (
       "mark_deposit_tiny",
@@ -1303,6 +1303,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE wtid_raw=$1;",
       1),
     /* Used in #postgres_lookup_transfer_by_deposit */
+    // FIXME: select by shard?
     GNUNET_PQ_make_prepare (
       "lookup_deposit_wtid",
       "SELECT"
@@ -1483,6 +1484,10 @@ prepare_statements (struct PostgresClosure *pg)
       " LIMIT $2;",
       2),
     /* Used in #postgres_select_deposits_missing_wire */
+    // FIXME: used by the auditor; can probably be done
+    // smarter by checking if 'done' or 'tiny' or 'blocked'
+    // are set correctly when going over deposits, instead
+    // of JOINing with refunds.
     GNUNET_PQ_make_prepare (
       "deposits_get_overdue",
       "SELECT"
@@ -5870,10 +5875,12 @@ postgres_iterate_matching_deposits (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  uint64_t shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_uint64 (&shard),
     GNUNET_PQ_query_param_end
   };
   struct MatchingDepositContext mdc = {
