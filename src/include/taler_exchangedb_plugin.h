@@ -359,6 +359,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
+      uint64_t shard;
       uint64_t deposit_serial_id;
       struct TALER_MerchantSignatureP merchant_sig;
       uint64_t rtransaction_id;

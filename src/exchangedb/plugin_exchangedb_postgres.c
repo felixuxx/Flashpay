@@ -979,43 +979,45 @@ prepare_statements (struct PostgresClosure *pg)
       ",rtransaction_id "
       ",amount_with_fee_val "
       ",amount_with_fee_frac "
-      ") SELECT deposit_serial_id, $3, $5, $6, $7"
-      "    FROM deposits" // FIXME: also select by shard!
-      "   WHERE coin_pub=$1"
-      "     AND h_contract_terms=$4"
-      "     AND merchant_pub=$2",
+      ") SELECT dbc.deposit_serial_id, $3, $5, $6, $7"
+      "    FROM deposits_by_coin dbc"
+      "    JOIN deposits dep USING (shard,deposit_serial_id)"
+      "   WHERE dbc.coin_pub=$1"
+      "     AND dep.h_contract_terms=$4"
+      "     AND dep.merchant_pub=$2",
       7),
     /* Query the 'refunds' by coin public key */
     GNUNET_PQ_make_prepare (
       "get_refunds_by_coin",
       "SELECT"
-      " merchant_pub"
-      ",merchant_sig"
-      ",h_contract_terms"
-      ",rtransaction_id"
-      ",refunds.amount_with_fee_val"
-      ",refunds.amount_with_fee_frac"
+      " dep.merchant_pub"
+      ",ref.merchant_sig"
+      ",dep.h_contract_terms"
+      ",ref.rtransaction_id"
+      ",ref.amount_with_fee_val"
+      ",ref.amount_with_fee_frac"
       ",denom.fee_refund_val "
       ",denom.fee_refund_frac "
-      ",refund_serial_id"
-      " FROM refunds"
-      " JOIN deposits USING (deposit_serial_id)"  // FIXME: use shard, too!
-      " JOIN known_coins USING (coin_pub)"
+      ",ref.refund_serial_id"
+      " FROM deposits_by_coin dbc"
+      " JOIN refunds ref USING (deposit_serial_id)"
+      " JOIN deposits dep ON (dbc.shard = dep.shard AND dbc.deposit_serial_id = dep.deposit_serial_id)"
+      " JOIN known_coins kc ON (dbc.coin_pub = kc.coin_pub)"
       " JOIN denominations denom USING (denominations_serial)"
-      " WHERE coin_pub=$1;",
+      " WHERE dbc.coin_pub=$1;",
       1),
     /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
     GNUNET_PQ_make_prepare (
       "get_refunds_by_coin_and_contract",
       "SELECT"
-      " refunds.amount_with_fee_val"
-      ",refunds.amount_with_fee_frac"
-      " FROM refunds"
-      " JOIN deposits USING (deposit_serial_id)" // FIXME: use shard!
-      " JOIN known_coins USING (coin_pub)"
-      " WHERE coin_pub=$1"
-      "   AND merchant_pub=$2"
-      "   AND h_contract_terms=$3;",
+      " ref.amount_with_fee_val"
+      ",ref.amount_with_fee_frac"
+      " FROM deposits_by_coin dbc"
+      " JOIN refunds ref USING (shard,deposit_serial_id)"
+      " JOIN deposits dep ON (dbc.shard = dep.shard AND dbc.deposit_serial_id = dep.deposit_serial_id)"
+      " WHERE dbc.coin_pub=$1"
+      "   AND dep.merchant_pub=$2"
+      "   AND dep.h_contract_terms=$3;",
       3),
     /* Fetch refunds with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -1031,7 +1033,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",refunds.amount_with_fee_frac"
       ",refund_serial_id"
       " FROM refunds"
-      "   JOIN deposits USING (deposit_serial_id)" // FIXME: use shard!
+      "   JOIN deposits USING (shard, deposit_serial_id)"
       "   JOIN known_coins kc USING (coin_pub)"
       "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
       " WHERE refund_serial_id>=$1"
@@ -1074,24 +1076,25 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_deposit",
       "SELECT"
-      " amount_with_fee_val"
-      ",amount_with_fee_frac"
+      " dep.amount_with_fee_val"
+      ",dep.amount_with_fee_frac"
       ",denominations.fee_deposit_val"
       ",denominations.fee_deposit_frac"
-      ",wallet_timestamp"
-      ",exchange_timestamp"
-      ",refund_deadline"
-      ",wire_deadline"
-      ",h_contract_terms"
-      ",wire_salt"
-      ",payto_uri AS receiver_wire_account"
-      " FROM deposits" // FIXME: also select on shard!?
-      " JOIN known_coins USING (coin_pub)"
+      ",dep.wallet_timestamp"
+      ",dep.exchange_timestamp"
+      ",dep.refund_deadline"
+      ",dep.wire_deadline"
+      ",dep.h_contract_terms"
+      ",dep.wire_salt"
+      ",wt.payto_uri AS receiver_wire_account"
+      " FROM deposits_by_coin dbc"
+      " JOIN deposits dep USING (shard,deposit_serial_id)"
+      " JOIN known_coins kc ON (kc.coin_pub = dbc.coin_pub)"
       " JOIN denominations USING (denominations_serial)"
-      " JOIN wire_targets USING (wire_target_h_payto)"
-      " WHERE ((coin_pub=$1)"
-      "    AND (merchant_pub=$3)"
-      "    AND (h_contract_terms=$2));",
+      " JOIN wire_targets wt USING (wire_target_h_payto)"
+      " WHERE dbc.coin_pub=$1"
+      "   AND dep.merchant_pub=$3"
+      "   AND dep.h_contract_terms=$2;",
       3),
     /* Fetch deposits with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -1127,23 +1130,23 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_deposit_without_wtid",
       "SELECT"
-      " kyc_ok"
-      ",wire_target_serial_id AS payment_target_uuid"
-      ",wire_salt"
-      ",payto_uri"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
+      " wt.kyc_ok"
+      ",wt.wire_target_serial_id AS payment_target_uuid"
+      ",dep.wire_salt"
+      ",wt.payto_uri"
+      ",dep.amount_with_fee_val"
+      ",dep.amount_with_fee_frac"
       ",denom.fee_deposit_val"
       ",denom.fee_deposit_frac"
-      ",wire_deadline"
-      " FROM deposits"
-      "    JOIN wire_targets USING (wire_target_h_payto)"
-      "    JOIN known_coins USING (coin_pub)"
+      ",dep.wire_deadline"
+      " FROM deposits_by_coin dbc"
+      "    JOIN deposits dep USING (shard,deposit_serial_id)"
+      "    JOIN wire_targets wt USING (wire_target_h_payto)"
+      "    JOIN known_coins kc ON (kc.coin_pub = dbc.coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
-      " WHERE ((coin_pub=$1)" // FIXME: also select by shard!
-      "    AND (merchant_pub=$3)"
-      "    AND (h_contract_terms=$2)"
-      " );",
+      " WHERE dbc.coin_pub=$1"
+      "   AND dep.merchant_pub=$3"
+      "   AND dep.h_contract_terms=$2;",
       3),
     /* Used in #postgres_get_ready_deposit() */
     GNUNET_PQ_make_prepare (
@@ -1222,34 +1225,35 @@ prepare_statements (struct PostgresClosure *pg)
       2),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
-    // FIXME: this one is horribly inefficient right now!
     GNUNET_PQ_make_prepare (
       "get_deposit_with_coin_pub",
       "SELECT"
-      " amount_with_fee_val"
-      ",amount_with_fee_frac"
+      " dep.amount_with_fee_val"
+      ",dep.amount_with_fee_frac"
       ",denoms.fee_deposit_val"
       ",denoms.fee_deposit_frac"
       ",denoms.denom_pub_hash"
       ",kc.age_commitment_hash"
-      ",wallet_timestamp"
-      ",refund_deadline"
-      ",wire_deadline"
-      ",merchant_pub"
-      ",h_contract_terms"
-      ",wire_salt"
-      ",payto_uri"
-      ",coin_sig"
-      ",deposit_serial_id"
-      ",done"
-      " FROM deposits"
-      "    JOIN wire_targets"
+      ",dep.wallet_timestamp"
+      ",dep.refund_deadline"
+      ",dep.wire_deadline"
+      ",dep.merchant_pub"
+      ",dep.h_contract_terms"
+      ",dep.wire_salt"
+      ",wt.payto_uri"
+      ",dep.coin_sig"
+      ",dep.deposit_serial_id"
+      ",dep.done"
+      " FROM deposits_by_coin dbc"
+      "    JOIN deposits dep"
+      "      USING (shard,deposit_serial_id)"
+      "    JOIN wire_targets wt"
       "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
-      "      USING (coin_pub)"
+      "      ON (kc.coin_pub = dbc.coin_pub)"
       "    JOIN denominations denoms"
       "      USING (denominations_serial)"
-      " WHERE coin_pub=$1;",
+      " WHERE dbc.coin_pub=$1;",
       1),
 
     /* Used in #postgres_get_link_data(). */
@@ -1303,32 +1307,33 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE wtid_raw=$1;",
       1),
     /* Used in #postgres_lookup_transfer_by_deposit */
-    // FIXME: select by shard?
     GNUNET_PQ_make_prepare (
       "lookup_deposit_wtid",
       "SELECT"
       " aggregation_tracking.wtid_raw"
       ",wire_out.execution_date"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",wire_salt"
-      ",payto_uri"
+      ",dep.amount_with_fee_val"
+      ",dep.amount_with_fee_frac"
+      ",dep.wire_salt"
+      ",wt.payto_uri"
       ",denom.fee_deposit_val"
       ",denom.fee_deposit_frac"
-      " FROM deposits"
-      "    JOIN wire_targets"
+      " FROM deposits_by_coin dbc"
+      "    JOIN deposits dep"
+      "      USING (shard,deposit_serial_id)"
+      "    JOIN wire_targets wt"
       "      USING (wire_target_h_payto)"
       "    JOIN aggregation_tracking"
       "      USING (deposit_serial_id)"
-      "    JOIN known_coins"
-      "      USING (coin_pub)"
+      "    JOIN known_coins kc"
+      "      ON (kc.coin_pub = dbc.coin_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       "    JOIN wire_out"
       "      USING (wtid_raw)"
-      " WHERE coin_pub=$1"
-      "  AND merchant_pub=$3"
-      "  AND h_contract_terms=$2",
+      " WHERE dbc.coin_pub=$1"
+      "   AND dep.merchant_pub=$3"
+      "   AND dep.h_contract_terms=$2",
       3),
     /* Used in #postgres_insert_aggregation_tracking */
     GNUNET_PQ_make_prepare (
@@ -2468,6 +2473,7 @@ prepare_statements (struct PostgresClosure *pg)
       "select_above_serial_by_table_refunds",
       "SELECT"
       " refund_serial_id AS serial"
+      ",shard"
       ",merchant_sig"
       ",rtransaction_id"
       ",amount_with_fee_val"
@@ -2799,15 +2805,16 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "insert_into_table_refunds",
       "INSERT INTO refunds"
-      "(refund_serial_id"
+      "(shard"
+      ",refund_serial_id"
       ",merchant_sig"
       ",rtransaction_id"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",deposit_serial_id"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6);",
-      6),
+      "($1, $2, $3, $4, $5, $6, $7);",
+      7),
     GNUNET_PQ_make_prepare (
       "insert_into_table_aggregation_tracking",
       "INSERT INTO aggregation_tracking"
