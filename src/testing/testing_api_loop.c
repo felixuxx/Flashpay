@@ -98,8 +98,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
  * Obtain main execution context for the main loop.
  */
 struct GNUNET_CURL_Context *
-TALER_TESTING_interpreter_get_context
-  (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is)
 {
   return is->ctx;
 }
@@ -230,7 +229,6 @@ interpreter_run (void *cls)
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   is->task = NULL;
-
   if (NULL == cmd->label)
   {
 
@@ -321,7 +319,7 @@ do_shutdown (void *cls)
 /**
  * Function run when the test terminates (good or bad) with timeout.
  *
- * @param cls NULL
+ * @param cls the `struct TALER_TESTING_Interpreter *`
  */
 static void
 do_timeout (void *cls)
@@ -339,7 +337,7 @@ do_timeout (void *cls)
  * Task triggered whenever we receive a SIGCHLD (child
  * process died).
  *
- * @param cls closure
+ * @param cls the `struct TALER_TESTING_Interpreter *`
  */
 static void
 maint_child_death (void *cls)
@@ -455,12 +453,14 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
   memcpy (is->commands,
           commands,
           sizeof (struct TALER_TESTING_Command) * i);
-  is->timeout_task = GNUNET_SCHEDULER_add_delayed
-                       (timeout,
-                       &do_timeout,
-                       is);
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown, is);
-  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run, is);
+  is->timeout_task = GNUNET_SCHEDULER_add_delayed (
+    timeout,
+    &do_timeout,
+    is);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 is);
+  is->task = GNUNET_SCHEDULER_add_now (&interpreter_run,
+                                       is);
 }
 
 
@@ -541,12 +541,13 @@ TALER_TESTING_cert_cb (void *cls,
                   hr->http_status,
                   (int) hr->ec);
       TALER_EXCHANGE_disconnect (is->exchange);
-      GNUNET_assert (NULL != (is->exchange
-                                = TALER_EXCHANGE_connect (is->ctx,
-                                                          main_ctx->exchange_url,
-                                                          &TALER_TESTING_cert_cb,
-                                                          main_ctx,
-                                                          TALER_EXCHANGE_OPTION_END)));
+      GNUNET_assert (
+        NULL != (is->exchange
+                   = TALER_EXCHANGE_connect (is->ctx,
+                                             main_ctx->exchange_url,
+                                             &TALER_TESTING_cert_cb,
+                                             main_ctx,
+                                             TALER_EXCHANGE_OPTION_END)));
       return;
     }
     else
@@ -663,13 +664,14 @@ main_wrapper_exchange_connect (void *cls)
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
                                                     main_ctx);
   is->working = GNUNET_YES;
-  GNUNET_break
-    (NULL != (is->exchange =
-                TALER_EXCHANGE_connect (is->ctx,
-                                        exchange_url,
-                                        &TALER_TESTING_cert_cb,
-                                        main_ctx,
-                                        TALER_EXCHANGE_OPTION_END)));
+  GNUNET_assert (NULL == is->exchange);
+  GNUNET_break (
+    NULL != (is->exchange =
+               TALER_EXCHANGE_connect (is->ctx,
+                                       exchange_url,
+                                       &TALER_TESTING_cert_cb,
+                                       main_ctx,
+                                       TALER_EXCHANGE_OPTION_END)));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting main test loop\n");
   main_ctx->main_cb (main_ctx->main_cb_cls,
@@ -802,7 +804,10 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      struct GNUNET_OS_Process *exchanged,
                      int exchange_connect)
 {
-  struct TALER_TESTING_Interpreter is;
+  struct TALER_TESTING_Interpreter is = {
+    .cfg = cfg,
+    .exchanged = exchanged
+  };
   struct MainContext main_ctx = {
     .main_cb = main_cb,
     .main_cb_cls = main_cb_cls,
@@ -811,11 +816,6 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   };
   struct GNUNET_SIGNAL_Context *shc_chld;
 
-  memset (&is,
-          0,
-          sizeof (is));
-  is.exchanged = exchanged;
-  is.cfg = cfg;
   if (GNUNET_OK !=
       load_keys (&is))
     return GNUNET_SYSERR;
