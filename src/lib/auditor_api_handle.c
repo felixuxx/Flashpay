@@ -454,6 +454,7 @@ request_version (void *cls)
                          &hr,
                          NULL,
                          TALER_AUDITOR_VC_PROTOCOL_ERROR);
+    GNUNET_free (vr);
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -467,6 +468,8 @@ request_version (void *cls)
     auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
                                                         &request_version,
                                                         auditor);
+    GNUNET_free (vr->url);
+    GNUNET_free (vr);
     return;
   }
   GNUNET_break (CURLE_OK ==
