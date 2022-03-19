@@ -31,6 +31,8 @@ DROP TRIGGER IF EXISTS reserves_out_on_insert ON reserves_out;
 DROP TRIGGER IF EXISTS reserves_out_on_delete ON reserves_out;
 DROP TRIGGER IF EXISTS deposits_on_insert ON deposits;
 DROP TRIGGER IF EXISTS deposits_on_delete ON deposits;
+DROP TRIGGER IF EXISTS recoup_on_insert ON recoup;
+DROP TRIGGER IF EXISTS recoup_on_delete ON recoup;
 DROP TABLE IF EXISTS revolving_work_shards CASCADE;
 DROP TABLE IF EXISTS extensions CASCADE;
 DROP TABLE IF EXISTS auditors CASCADE;

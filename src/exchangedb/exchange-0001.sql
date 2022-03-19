@@ -1007,6 +1007,66 @@ $$;
 SELECT add_constraints_to_recoup_partition('default');
 
 
+CREATE TABLE IF NOT EXISTS recoup_by_reserve
+  (reserve_out_serial_id INT8 NOT NULL -- REFERENCES reserves (reserve_out_serial_id) ON DELETE CASCADE
+  ,coin_pub BYTEA CHECK (LENGTH(coin_pub)=32) 
+  )
+  PARTITION BY HASH (reserve_out_serial_id);
+COMMENT ON TABLE recoup_by_reserve
+  IS 'Information in this table is strictly redundant with that of recoup, but saved by a different primary key for fast lookups by reserve_out_serial_id.';
+
+CREATE INDEX IF NOT EXISTS recoup_by_reserve_main_index
+  ON recoup_by_reserve
+  (reserve_out_serial_id);
+
+CREATE TABLE IF NOT EXISTS recoup_by_reserve_default
+  PARTITION OF recoup_by_reserve
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+CREATE OR REPLACE FUNCTION recoup_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO recoup_by_reserve
+    (reserve_out_serial_id
+    ,coin_pub)
+  VALUES
+    (NEW.reserve_out_serial_id
+    ,NEW.coin_pub);
+  RETURN NEW;
+END $$;  
+COMMENT ON FUNCTION recoup_insert_trigger()
+  IS 'Replicate recoup inserts into recoup_by_reserve table.';
+
+CREATE TRIGGER recoup_on_insert
+  AFTER INSERT
+   ON recoup
+   FOR EACH ROW EXECUTE FUNCTION recoup_insert_trigger();
+
+
+CREATE OR REPLACE FUNCTION recoup_delete_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  DELETE FROM recoup_by_reserve
+   WHERE reserve_out_serial_id = OLD.reserve_out_serial_id
+     AND coin_pub = OLD.coin_pub;
+  RETURN OLD;
+END $$;  
+COMMENT ON FUNCTION recoup_delete_trigger()
+  IS 'Replicate recoup deletions into recoup_by_reserve table.';
+
+CREATE TRIGGER recoup_on_delete
+  AFTER DELETE
+    ON recoup
+   FOR EACH ROW EXECUTE FUNCTION recoup_delete_trigger();
+
+
+
+
+
 CREATE TABLE IF NOT EXISTS reserves_out_by_reserve
   (reserve_uuid INT8 NOT NULL -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
   ,h_blind_ev BYTEA CHECK (LENGTH(h_blind_ev)=64) 
