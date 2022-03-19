@@ -227,6 +227,13 @@ COMMENT ON TABLE reserves_close
 COMMENT ON COLUMN reserves_close.wire_target_h_payto
   IS 'Identifies the credited bank account (and KYC status). Note that closing does not depend on KYC.';
 
+CREATE INDEX IF NOT EXISTS reserves_close_by_close_uuid_index
+  ON reserves_close
+  (close_uuid);
+CREATE INDEX IF NOT EXISTS reserves_close_by_reserve_pub_index
+  ON reserves_close
+  (reserve_pub);
+
 CREATE TABLE IF NOT EXISTS reserves_close_default
   PARTITION OF reserves_close
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -248,12 +255,6 @@ $$;
 
 SELECT add_constraints_to_reserves_close_partition('default');
 
-CREATE INDEX IF NOT EXISTS reserves_close_by_close_uuid_index
-  ON reserves_close
-  (close_uuid);
-CREATE INDEX IF NOT EXISTS reserves_close_by_reserve_pub_index
-  ON reserves_close
-  (reserve_pub);
 
 
 CREATE TABLE IF NOT EXISTS reserves_out
@@ -275,6 +276,17 @@ COMMENT ON COLUMN reserves_out.h_blind_ev
 COMMENT ON COLUMN reserves_out.denominations_serial
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
 
+CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_out_serial_id_index
+  ON reserves_out
+  (reserve_out_serial_id);
+CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_uuid_and_execution_date_index
+  ON reserves_out
+  (reserve_uuid, execution_date);
+COMMENT ON INDEX reserves_out_by_reserve_uuid_and_execution_date_index
+  IS 'for get_reserves_out and exchange_do_withdraw_limit_check';
+
+
+
 CREATE TABLE IF NOT EXISTS reserves_out_default
   PARTITION OF reserves_out
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -295,15 +307,6 @@ END
 $$;
 
 SELECT add_constraints_to_reserves_out_partition('default');
-
-CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_out_serial_id_index
-  ON reserves_out
-  (reserve_out_serial_id);
-CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_uuid_and_execution_date_index
-  ON reserves_out
-  (reserve_uuid, execution_date);
-COMMENT ON INDEX reserves_out_by_reserve_uuid_and_execution_date_index
-  IS 'for get_reserves_out and exchange_do_withdraw_limit_check';
 
 
 CREATE TABLE IF NOT EXISTS auditors
@@ -514,6 +517,13 @@ COMMENT ON COLUMN refresh_revealed_coins.h_coin_ev
 COMMENT ON COLUMN refresh_revealed_coins.ev_sig
   IS 'exchange signature over the envelope';
 
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_rrc_serial_index
+  ON refresh_revealed_coins
+  (rrc_serial);
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_melt_serial_id_index
+  ON refresh_revealed_coins
+  (melt_serial_id);
+
 CREATE TABLE IF NOT EXISTS refresh_revealed_coins_default
   PARTITION OF refresh_revealed_coins
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -541,12 +551,6 @@ $$;
 SELECT add_constraints_to_refresh_revealed_coins_partition('default');
 
 
-CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_rrc_serial_index
-  ON refresh_revealed_coins
-  (rrc_serial);
-CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_melt_serial_id_index
-  ON refresh_revealed_coins
-  (melt_serial_id);
 
 
 CREATE TABLE IF NOT EXISTS refresh_transfer_keys
@@ -626,27 +630,6 @@ CREATE TABLE IF NOT EXISTS deposits
   )
   PARTITION BY HASH (shard); -- FIXME: why not BY RANGE? RANGE would seem better for 'deposits_get_ready'!
 
-CREATE TABLE IF NOT EXISTS deposits_default
-  PARTITION OF deposits
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
-CREATE OR REPLACE FUNCTION add_constraints_to_deposits_partition(
-  IN partition_suffix VARCHAR
-)
-RETURNS void
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  EXECUTE FORMAT (
-    'ALTER TABLE deposits_' || partition_suffix || ' '
-      'ADD CONSTRAINT deposits_' || partition_suffix || '_deposit_serial_id_pkey '
-        'PRIMARY KEY (deposit_serial_id)'
-  );
-END
-$$;
-
-SELECT add_constraints_to_deposits_partition('default');
-
 COMMENT ON TABLE deposits
   IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
 COMMENT ON COLUMN deposits.shard
@@ -679,6 +662,7 @@ CREATE INDEX IF NOT EXISTS deposits_for_get_ready_index
   );
 COMMENT ON INDEX deposits_for_get_ready_index
   IS 'for deposits_get_ready';
+
 CREATE INDEX IF NOT EXISTS deposits_for_iterate_matching_index
   ON deposits
   (shard
@@ -692,6 +676,29 @@ COMMENT ON INDEX deposits_for_iterate_matching_index
   IS 'for deposits_iterate_matching';
 
 
+CREATE TABLE IF NOT EXISTS deposits_default
+  PARTITION OF deposits
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+CREATE OR REPLACE FUNCTION add_constraints_to_deposits_partition(
+  IN partition_suffix VARCHAR
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE FORMAT (
+    'ALTER TABLE deposits_' || partition_suffix || ' '
+      'ADD CONSTRAINT deposits_' || partition_suffix || '_deposit_serial_id_pkey '
+        'PRIMARY KEY (deposit_serial_id)'
+  );
+END
+$$;
+
+SELECT add_constraints_to_deposits_partition('default');
+
+
+
 CREATE TABLE IF NOT EXISTS deposits_by_coin
   (deposit_serial_id BIGINT
   ,shard INT8 NOT NULL
@@ -701,10 +708,13 @@ CREATE TABLE IF NOT EXISTS deposits_by_coin
 COMMENT ON TABLE deposits_by_coin
   IS 'Enables fast lookups of deposit by coin_pub, auto-populated via TRIGGER below';
 
+CREATE INDEX IF NOT EXISTS deposits_by_coin_main_index
+  ON deposits_by_coin
+  (coin_pub);
+
 CREATE TABLE IF NOT EXISTS deposits_by_coin_default
   PARTITION OF deposits_by_coin
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 
 CREATE OR REPLACE FUNCTION deposits_by_coin_insert_trigger()
   RETURNS trigger
@@ -728,7 +738,6 @@ CREATE TRIGGER deposits_on_insert
   AFTER INSERT
    ON deposits
    FOR EACH ROW EXECUTE FUNCTION deposits_by_coin_insert_trigger();
-
 
 CREATE OR REPLACE FUNCTION deposits_by_coin_delete_trigger()
   RETURNS trigger
@@ -817,6 +826,14 @@ COMMENT ON COLUMN wire_out.exchange_account_section
 COMMENT ON COLUMN wire_out.wire_target_h_payto
   IS 'Identifies the credited bank account and KYC status';
 
+CREATE INDEX IF NOT EXISTS wire_out_by_wireout_uuid_index
+  ON wire_out
+  (wireout_uuid);
+CREATE INDEX IF NOT EXISTS wire_out_by_wire_target_h_payto_index
+  ON wire_out
+  (wire_target_h_payto);
+
+
 CREATE TABLE IF NOT EXISTS wire_out_default
   PARTITION OF wire_out
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -838,12 +855,6 @@ $$;
 
 SELECT add_constraints_to_wire_out_partition('default');
 
-CREATE INDEX IF NOT EXISTS wire_out_by_wireout_uuid_index
-  ON wire_out
-  (wireout_uuid);
-CREATE INDEX IF NOT EXISTS wire_out_by_wire_target_h_payto_index
-  ON wire_out
-  (wire_target_h_payto);
 
 
 CREATE TABLE IF NOT EXISTS aggregation_tracking
@@ -963,6 +974,17 @@ COMMENT ON COLUMN recoup.coin_sig
 COMMENT ON COLUMN recoup.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the withdraw operation.';
 
+CREATE INDEX IF NOT EXISTS recoup_by_recoup_uuid_index
+  ON recoup
+  (recoup_uuid);
+CREATE INDEX IF NOT EXISTS recoup_by_reserve_out_serial_id_index
+  ON recoup
+  (reserve_out_serial_id);
+CREATE INDEX IF NOT EXISTS recoup_by_coin_pub_index
+  ON recoup
+  (coin_pub);
+
+
 CREATE TABLE IF NOT EXISTS recoup_default
   PARTITION OF recoup
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -984,16 +1006,6 @@ $$;
 
 SELECT add_constraints_to_recoup_partition('default');
 
-CREATE INDEX IF NOT EXISTS recoup_by_recoup_uuid_index
-  ON recoup
-  (recoup_uuid);
-CREATE INDEX IF NOT EXISTS recoup_by_reserve_out_serial_id_index
-  ON recoup
-  (reserve_out_serial_id);
-CREATE INDEX IF NOT EXISTS recoup_by_coin_pub_index
-  ON recoup
-  (coin_pub);
-
 
 CREATE TABLE IF NOT EXISTS reserves_out_by_reserve
   (reserve_uuid INT8 NOT NULL -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
@@ -1002,6 +1014,11 @@ CREATE TABLE IF NOT EXISTS reserves_out_by_reserve
   PARTITION BY HASH (reserve_uuid);
 COMMENT ON TABLE reserves_out_by_reserve
   IS 'Information in this table is strictly redundant with that of reserves_out, but saved by a different primary key for fast lookups by reserve public key/uuid.';
+
+CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_main_index
+  ON reserves_out_by_reserve
+  (reserve_uuid);
+
 
 CREATE TABLE IF NOT EXISTS reserves_out_by_reserve_default
   PARTITION OF reserves_out_by_reserve
@@ -1047,6 +1064,9 @@ CREATE TRIGGER reserves_out_on_delete
    FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_delete_trigger();
 
 
+
+
+
 CREATE TABLE IF NOT EXISTS recoup_refresh
   (recoup_refresh_uuid BIGINT GENERATED BY DEFAULT AS IDENTITY -- UNIQUE
   ,coin_pub BYTEA NOT NULL CHECK (LENGTH(coin_pub)=32) -- REFERENCES known_coins (coin_pub)
@@ -1070,6 +1090,17 @@ COMMENT ON COLUMN recoup_refresh.rrc_serial
 COMMENT ON COLUMN recoup_refresh.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.';
 
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_recoup_refresh_uuid_index
+  ON recoup_refresh
+  (recoup_refresh_uuid);
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_rrc_serial_index
+  ON recoup_refresh
+  (rrc_serial);
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_coin_pub_index
+  ON recoup_refresh
+  (coin_pub);
+
+
 CREATE TABLE IF NOT EXISTS recoup_refresh_default
   PARTITION OF recoup_refresh
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
@@ -1091,15 +1122,6 @@ $$;
 
 SELECT add_constraints_to_recoup_refresh_partition('default');
 
-CREATE INDEX IF NOT EXISTS recoup_refresh_by_recoup_refresh_uuid_index
-  ON recoup_refresh
-  (recoup_refresh_uuid);
-CREATE INDEX IF NOT EXISTS recoup_refresh_by_rrc_serial_index
-  ON recoup_refresh
-  (rrc_serial);
-CREATE INDEX IF NOT EXISTS recoup_refresh_by_coin_pub_index
-  ON recoup_refresh
-  (coin_pub);
 
 
 CREATE TABLE IF NOT EXISTS prewire
@@ -1118,9 +1140,6 @@ COMMENT ON COLUMN prewire.finished
   IS 'set to TRUE once bank confirmed receiving the wire transfer request';
 COMMENT ON COLUMN prewire.buf
   IS 'serialized data to send to the bank to execute the wire transfer';
-CREATE TABLE IF NOT EXISTS prewire_default
-  PARTITION OF prewire
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE INDEX IF NOT EXISTS prewire_by_finished_index
   ON prewire
@@ -1133,6 +1152,11 @@ CREATE INDEX IF NOT EXISTS prewire_by_failed_finished_index
   (failed,finished);
 COMMENT ON INDEX prewire_by_failed_finished_index
   IS 'for wire_prepare_data_get';
+
+CREATE TABLE IF NOT EXISTS prewire_default
+  PARTITION OF prewire
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
 
 
 CREATE TABLE IF NOT EXISTS wire_accounts
