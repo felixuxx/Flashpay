@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -76,12 +76,6 @@ enum AuditorHandleState
 
 
 /**
- * Data for the request to get the /version of a auditor.
- */
-struct VersionRequest;
-
-
-/**
  * Handle to the auditor
  */
 struct TALER_AUDITOR_Handle
@@ -111,7 +105,12 @@ struct TALER_AUDITOR_Handle
    * Data for the request to get the /version of a auditor,
    * NULL once we are past stage #MHS_INIT.
    */
-  struct VersionRequest *vr;
+  struct GNUNET_CURL_Job *vr;
+
+  /**
+   * The url for the @e vr job.
+   */
+  char *vr_url;
 
   /**
    * Task for retrying /version request.
@@ -145,49 +144,11 @@ struct TALER_AUDITOR_Handle
 /* ***************** Internal /version fetching ************* */
 
 /**
- * Data for the request to get the /version of a auditor.
- */
-struct VersionRequest
-{
-  /**
-   * The connection to auditor this request handle will use
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
-   * The url for this handle
-   */
-  char *url;
-
-  /**
-   * Entry for this request with the `struct GNUNET_CURL_Context`.
-   */
-  struct GNUNET_CURL_Job *job;
-
-};
-
-
-/**
- * Release memory occupied by a version request.
- * Note that this does not cancel the request
- * itself.
- *
- * @param vr request to free
- */
-static void
-free_version_request (struct VersionRequest *vr)
-{
-  GNUNET_free (vr->url);
-  GNUNET_free (vr);
-}
-
-
-/**
  * Decode the JSON in @a resp_obj from the /version response and store the data
  * in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
- * @param[out] auditor where to store the results we decoded
+ * @param[in,out] auditor where to store the results we decoded
  * @param[out] vc where to store version compatibility data
  * @return #TALER_EC_NONE on success
  */
@@ -200,6 +161,7 @@ decode_version_json (const json_t *resp_obj,
   unsigned int age;
   unsigned int revision;
   unsigned int current;
+  char dummy;
   const char *ver;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("version",
@@ -224,14 +186,16 @@ decode_version_json (const json_t *resp_obj,
     return TALER_EC_GENERIC_JSON_INVALID;
   }
   if (3 != sscanf (ver,
-                   "%u:%u:%u",
+                   "%u:%u:%u%c",
                    &current,
                    &revision,
-                   &age))
+                   &age,
+                   &dummy))
   {
     GNUNET_break_op (0);
     return TALER_EC_GENERIC_VERSION_MALFORMED;
   }
+  GNUNET_free (auditor->version);
   auditor->version = GNUNET_strdup (ver);
   vi->version = auditor->version;
   *vc = TALER_AUDITOR_VC_MATCH;
@@ -264,7 +228,7 @@ request_version (void *cls);
  * Callback used when downloading the reply to a /version request
  * is complete.
  *
- * @param cls the `struct VersionRequest`
+ * @param cls the `struct TALER_AUDITOR_Handle`
  * @param response_code HTTP response code, 0 on error
  * @param gresp_obj parsed JSON result, NULL on error, must be a `const json_t *`
  */
@@ -273,21 +237,19 @@ version_completed_cb (void *cls,
                       long response_code,
                       const void *gresp_obj)
 {
+  struct TALER_AUDITOR_Handle *auditor = cls;
   const json_t *resp_obj = gresp_obj;
-  struct VersionRequest *vr = cls;
-  struct TALER_AUDITOR_Handle *auditor = vr->auditor;
   enum TALER_AUDITOR_VersionCompatibility vc;
   struct TALER_AUDITOR_HttpResponse hr = {
     .reply = resp_obj,
     .http_status = (unsigned int) response_code
   };
 
+  auditor->vr = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received version from URL `%s' with status %ld.\n",
-              vr->url,
+              auditor->url,
               response_code);
-  free_version_request (vr);
-  auditor->vr = NULL;
   vc = TALER_AUDITOR_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
@@ -357,6 +319,43 @@ version_completed_cb (void *cls,
 }
 
 
+/**
+ * Initiate download of /version from the auditor.
+ *
+ * @param cls auditor where to download /version from
+ */
+static void
+request_version (void *cls)
+{
+  struct TALER_AUDITOR_Handle *auditor = cls;
+  CURL *eh;
+
+  auditor->retry_task = NULL;
+  GNUNET_assert (NULL == auditor->vr);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requesting auditor version with URL `%s'.\n",
+              auditor->vr_url);
+  eh = TALER_AUDITOR_curl_easy_get_ (auditor->vr_url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    auditor->retry_delay = EXCHANGE_LIB_BACKOFF (auditor->retry_delay);
+    auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
+                                                        &request_version,
+                                                        auditor);
+    return;
+  }
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_TIMEOUT,
+                                  (long) 300));
+  auditor->vr = GNUNET_CURL_job_add (auditor->ctx,
+                                     eh,
+                                     &version_completed_cb,
+                                     auditor);
+}
+
+
 /* ********************* library internal API ********* */
 
 
@@ -371,8 +370,7 @@ enum GNUNET_GenericReturnValue
 TALER_AUDITOR_handle_is_ready_ (struct TALER_AUDITOR_Handle *h)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Checking if auditor %p (%s) is now ready: %s\n",
-              h,
+              "Checking if auditor at `%s` is now ready: %s\n",
               h->url,
               (MHD_VERSION == h->state) ? "yes" : "no");
   return (MHS_VERSION == h->state) ? GNUNET_YES : GNUNET_NO;
@@ -401,81 +399,27 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
 {
   struct TALER_AUDITOR_Handle *auditor;
 
-  /* Disable 100 continue processing */
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_CURL_append_header (ctx,
-                                           "Expect:"));
   auditor = GNUNET_new (struct TALER_AUDITOR_Handle);
+  auditor->version_cb = version_cb;
+  auditor->version_cb_cls = version_cb_cls;
   auditor->retry_delay = GNUNET_TIME_UNIT_SECONDS; /* start slowly */
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);
-  auditor->version_cb = version_cb;
-  auditor->version_cb_cls = version_cb_cls;
+  auditor->vr_url = TALER_AUDITOR_path_to_url_ (auditor,
+                                                "/version");
+  if (NULL == auditor->vr_url)
+  {
+    GNUNET_break (0);
+    GNUNET_free (auditor->url);
+    GNUNET_free (auditor);
+    return NULL;
+  }
   auditor->retry_task = GNUNET_SCHEDULER_add_now (&request_version,
                                                   auditor);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Connecting to auditor at URL `%s' (%p).\n",
-              url,
-              auditor);
+              "Connecting to auditor at URL `%s'.\n",
+              url);
   return auditor;
-}
-
-
-/**
- * Initiate download of /version from the auditor.
- *
- * @param cls auditor where to download /version from
- */
-static void
-request_version (void *cls)
-{
-  struct TALER_AUDITOR_Handle *auditor = cls;
-  struct VersionRequest *vr;
-  CURL *eh;
-
-  auditor->retry_task = NULL;
-  GNUNET_assert (NULL == auditor->vr);
-  vr = GNUNET_new (struct VersionRequest);
-  vr->auditor = auditor;
-  vr->url = TALER_AUDITOR_path_to_url_ (auditor,
-                                        "/version");
-  if (NULL == vr->url)
-  {
-    struct TALER_AUDITOR_HttpResponse hr = {
-      .ec = TALER_EC_GENERIC_CONFIGURATION_INVALID
-    };
-
-    auditor->version_cb (auditor->version_cb_cls,
-                         &hr,
-                         NULL,
-                         TALER_AUDITOR_VC_PROTOCOL_ERROR);
-    GNUNET_free (vr);
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requesting auditor version with URL `%s'.\n",
-              vr->url);
-  eh = TALER_AUDITOR_curl_easy_get_ (vr->url);
-  if (NULL == eh)
-  {
-    GNUNET_break (0);
-    auditor->retry_delay = EXCHANGE_LIB_BACKOFF (auditor->retry_delay);
-    auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
-                                                        &request_version,
-                                                        auditor);
-    GNUNET_free (vr->url);
-    GNUNET_free (vr);
-    return;
-  }
-  GNUNET_break (CURLE_OK ==
-                curl_easy_setopt (eh,
-                                  CURLOPT_TIMEOUT,
-                                  (long) 300));
-  vr->job = GNUNET_CURL_job_add (auditor->ctx,
-                                 eh,
-                                 &version_completed_cb,
-                                 vr);
-  auditor->vr = vr;
 }
 
 
@@ -483,21 +427,20 @@ void
 TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Disconnecting from auditor at URL `%s' (%p).\n",
-              auditor->url,
-              auditor);
+              "Disconnecting from auditor at URL `%s'.\n",
+              auditor->url);
   if (NULL != auditor->vr)
   {
-    GNUNET_CURL_job_cancel (auditor->vr->job);
-    free_version_request (auditor->vr);
+    GNUNET_CURL_job_cancel (auditor->vr);
     auditor->vr = NULL;
   }
-  GNUNET_free (auditor->version);
   if (NULL != auditor->retry_task)
   {
     GNUNET_SCHEDULER_cancel (auditor->retry_task);
     auditor->retry_task = NULL;
   }
+  GNUNET_free (auditor->version);
+  GNUNET_free (auditor->vr_url);
   GNUNET_free (auditor->url);
   GNUNET_free (auditor);
 }

@@ -359,6 +359,10 @@ TALER_AUDITOR_deposit_confirmation (
                                   dh->ctx.headers,
                                   &handle_deposit_confirmation_finished,
                                   dh);
+  /* Disable 100 continue processing */
+  GNUNET_CURL_extend_headers (dh->job,
+                              curl_slist_append (NULL,
+                                                 "Expect:"));
   return dh;
 }
 

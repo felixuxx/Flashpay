@@ -193,17 +193,6 @@ handle_exchanges_finished (void *cls,
 }
 
 
-/**
- * Submit an /exchanges request to the auditor and get the
- * auditor's response.  If the auditor's reply is not
- * well-formed, we return an HTTP status code of zero to @a cb.
- *
- * @param auditor the auditor handle; the auditor must be ready to operate
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
 struct TALER_AUDITOR_ListExchangesHandle *
 TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
                               TALER_AUDITOR_ListExchangesResultCallback cb,
@@ -247,12 +236,6 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
 }
 
 
-/**
- * Cancel a list exchanges request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param leh the list exchanges request handle
- */
 void
 TALER_AUDITOR_list_exchanges_cancel (
   struct TALER_AUDITOR_ListExchangesHandle *leh)
