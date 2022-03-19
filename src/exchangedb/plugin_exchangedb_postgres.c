@@ -722,13 +722,13 @@ prepare_statements (struct PostgresClosure *pg)
       ",ro.amount_with_fee_frac"
       ",denom.fee_withdraw_val"
       ",denom.fee_withdraw_frac"
-      " FROM denominations denom"
-      " JOIN reserves_out ro"
-      "   ON (ro.denominations_serial = denom.denominations_serial)"
+      " FROM reserves res"
       " JOIN reserves_out_by_reserve ror"
-      "   ON (ro.h_blind_ev = ror.h_blind_ev)"
-      " JOIN reserves res"
       "   ON (res.reserve_uuid = ror.reserve_uuid)"
+      " JOIN reserves_out ro"
+      "   ON (ro.h_blind_ev = ror.h_blind_ev)"
+      " JOIN denominations denom"
+      "   ON (ro.denominations_serial = denom.denominations_serial)"
       " WHERE res.reserve_pub=$1;",
       1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
@@ -1654,17 +1654,17 @@ prepare_statements (struct PostgresClosure *pg)
       "  recoup_timestamp,"
       "  denoms.denom_pub_hash,"
       "  coins.denom_sig"
-      " FROM denominations denoms"
-      " JOIN known_coins coins"
-      "   ON (coins.denominations_serial = denoms.denominations_serial)"
-      " JOIN recoup rc"
-      "   ON (rc.coin_pub = coins.coin_pub)"
-      " JOIN reserves_out ro"
-      "   ON (ro.reserve_out_serial_id = rc.reserve_out_serial_id)"
+      " FROM reserves res"
       " JOIN reserves_out_by_reserve ror"
-      "   ON (ror.h_blind_ev = ro.h_blind_ev)"
-      " JOIN reserves res"
       "   ON (res.reserve_uuid = ror.reserve_uuid)"
+      " JOIN reserves_out ro"
+      "   ON (ror.h_blind_ev = ro.h_blind_ev)"
+      " JOIN recoup rc"
+      "   ON (ro.reserve_out_serial_id = rc.reserve_out_serial_id)"
+      " JOIN known_coins coins"
+      "   ON (rc.coin_pub = coins.coin_pub)"
+      " JOIN denominations denoms"
+      "   ON (coins.denominations_serial = denoms.denominations_serial)"
       " WHERE res.reserve_pub=$1;",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
@@ -1743,6 +1743,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",recoup_timestamp"
       ",recoup_uuid"
       " FROM recoup"
+      // FIXME: suboptimal sub-query here: crosses shards!
+      // MAYBE: replace reserve_out_serial_id with
+      // reserve_pub and use new reserve_out_by_reserve table?
       " JOIN reserves_out ro"
       "   USING (reserve_out_serial_id)"
       " JOIN reserves"

@@ -598,7 +598,6 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_insert (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
-
     ale->ah = TALER_AUDITOR_connect (exchange->ctx,
                                      ale->auditor_url,
                                      &auditor_version_cb,

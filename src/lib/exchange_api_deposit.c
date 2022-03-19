@@ -382,7 +382,6 @@ handle_deposit_finished (void *cls,
       TEAH_get_auditors_for_dc (dh->exchange,
                                 &auditor_cb,
                                 dh);
-
     }
     dr.details.success.exchange_sig = &dh->exchange_sig;
     dr.details.success.exchange_pub = &dh->exchange_pub;
