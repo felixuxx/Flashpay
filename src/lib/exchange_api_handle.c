@@ -131,7 +131,7 @@ struct TEAH_AuditorListEntry
    * Flag indicating that the auditor is available and that protocol
    * version compatibility is given.
    */
-  int is_up;
+  bool is_up;
 
 };
 
@@ -207,7 +207,7 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
   {
     struct TEAH_AuditorInteractionEntry *aie;
 
-    if (GNUNET_NO == ale->is_up)
+    if (! ale->is_up)
       continue;
     aie = ac (ac_cls,
               ale->ah,
@@ -344,7 +344,6 @@ parse_json_denomkey (const char *currency,
     GNUNET_JSON_spec_end ()
   };
 
-
   if (GNUNET_OK !=
       GNUNET_JSON_parse (denom_key_obj,
                          spec,
@@ -353,7 +352,6 @@ parse_json_denomkey (const char *currency,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   TALER_denom_pub_hash (&denom_key->key,
                         &denom_key->h_key);
   if (NULL != hash_context)
@@ -553,7 +551,7 @@ auditor_version_cb (
     }
     return;
   }
-  ale->is_up = GNUNET_YES;
+  ale->is_up = true;
 }
 
 
@@ -591,7 +589,8 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
       continue; /* found, no need to add */
 
     /* new auditor, add */
-    TALER_LOG_DEBUG ("Found new auditor!\n");
+    TALER_LOG_DEBUG ("Found new auditor %s!\n",
+                     auditor->auditor_url);
     ale = GNUNET_new (struct TEAH_AuditorListEntry);
     ale->auditor_pub = auditor->auditor_pub;
     ale->auditor_url = GNUNET_strdup (auditor->auditor_url);
@@ -836,16 +835,22 @@ decode_keys_json (const json_t *resp_obj,
      * "age_restricted_denoms"
      */
     struct
-    { char *name;
+    {
+      char *name;
       struct GNUNET_HashContext *hc;
-      bool is_optional_age_restriction;}
+      bool is_optional_age_restriction;
+    }
     hive[2] = {
-      { "denoms",
+      {
+        "denoms",
         hash_context,
-        false },
-      { "age_restricted_denoms",
+        false
+      },
+      {
+        "age_restricted_denoms",
         hash_context_restricted,
-        true  }
+        true
+      }
     };
 
     for (size_t s = 0; s < sizeof(hive) / sizeof(hive[0]); s++)

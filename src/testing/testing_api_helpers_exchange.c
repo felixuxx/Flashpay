@@ -720,7 +720,8 @@ TALER_TESTING_setup_with_exchange_cfg (
     return GNUNET_NO;
   }
 
-  if (0 == strcmp ("tcp", serve))
+  if (0 == strcmp ("tcp",
+                   serve))
   {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,

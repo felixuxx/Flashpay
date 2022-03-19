@@ -270,17 +270,14 @@ do_shutdown (void *cls)
   label = is->commands[is->ip].label;
   if (NULL == label)
     label = "END";
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Executing shutdown at `%s'\n",
               label);
-
   for (unsigned int j = 0;
        NULL != (cmd = &is->commands[j])->label;
        j++)
     cmd->cleanup (cmd->cls,
                   cmd);
-
   if (NULL != is->exchange)
   {
     TALER_LOG_DEBUG ("Disconnecting the exchange\n");
@@ -291,6 +288,11 @@ do_shutdown (void *cls)
   {
     GNUNET_SCHEDULER_cancel (is->task);
     is->task = NULL;
+  }
+  if (NULL != is->fakebank)
+  {
+    TALER_FAKEBANK_stop (is->fakebank);
+    is->fakebank = NULL;
   }
   if (NULL != is->ctx)
   {
@@ -311,11 +313,6 @@ do_shutdown (void *cls)
   {
     GNUNET_SCHEDULER_cancel (is->child_death_task);
     is->child_death_task = NULL;
-  }
-  if (NULL != is->fakebank)
-  {
-    TALER_FAKEBANK_stop (is->fakebank);
-    is->fakebank = NULL;
   }
   GNUNET_free (is->commands);
 }
@@ -620,6 +617,11 @@ do_abort (void *cls)
     TALER_EXCHANGE_disconnect (is->exchange);
     is->exchange = NULL;
   }
+  if (NULL != is->fakebank)
+  {
+    TALER_FAKEBANK_stop (is->fakebank);
+    is->fakebank = NULL;
+  }
   if (NULL != is->ctx)
   {
     GNUNET_CURL_fini (is->ctx);
@@ -822,17 +824,16 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
     return GNUNET_SYSERR;
   sigpipe = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
   GNUNET_assert (NULL != sigpipe);
-  shc_chld = GNUNET_SIGNAL_handler_install
-               (GNUNET_SIGCHLD,
-               &sighandler_child_death);
-  is.ctx = GNUNET_CURL_init
-             (&GNUNET_CURL_gnunet_scheduler_reschedule,
-             &is.rc);
+  shc_chld = GNUNET_SIGNAL_handler_install (
+    GNUNET_SIGCHLD,
+    &sighandler_child_death);
+  is.ctx = GNUNET_CURL_init (
+    &GNUNET_CURL_gnunet_scheduler_reschedule,
+    &is.rc);
   GNUNET_CURL_enable_async_scope_header (is.ctx,
                                          "Taler-Correlation-Id");
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
-
 
   /* Blocking */
   if (GNUNET_YES == exchange_connect)

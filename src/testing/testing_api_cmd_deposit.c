@@ -241,6 +241,7 @@ deposit_cb (void *cls,
           ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
                                                         MAX_BACKOFF);
         ds->is->commands[ds->is->ip].num_tries++;
+        GNUNET_assert (NULL == ds->retry_task);
         ds->retry_task
           = GNUNET_SCHEDULER_add_delayed (ds->backoff,
                                           &do_retry,
@@ -452,6 +453,7 @@ deposit_run (void *cls,
                                coin_priv,
                                &coin_sig);
   }
+  GNUNET_assert (NULL == ds->dh);
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,
                                    ds->wire_deadline,
@@ -552,14 +554,14 @@ deposit_traits (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return GNUNET_NO;
   }
-  if (GNUNET_OK !=
-      TALER_TESTING_get_trait_coin_priv (coin_cmd,
-                                         ds->coin_index,
-                                         &coin_spent_priv) ||
-      (GNUNET_OK !=
-       TALER_TESTING_get_trait_age_commitment_proof (coin_cmd,
-                                                     ds->coin_index,
-                                                     &age_commitment_proof)))
+  if ( (GNUNET_OK !=
+        TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                           ds->coin_index,
+                                           &coin_spent_priv)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_age_commitment_proof (coin_cmd,
+                                                      ds->coin_index,
+                                                      &age_commitment_proof)) )
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
