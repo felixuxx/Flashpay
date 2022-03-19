@@ -291,7 +291,6 @@ AC_CHECK_HEADERS([gnunet/gnunet_sq_lib.h],
 
 
 # check for libmicrohttpd
-microhttpd=0
 AC_MSG_CHECKING([for microhttpd])
 AC_ARG_WITH([microhttpd],
             [AS_HELP_STRING([--with-microhttpd=PFX], [base of microhttpd installation])],
@@ -303,14 +302,7 @@ AS_CASE([$with_microhttpd],
         [no], [AC_MSG_ERROR([--with-microhttpd is required])],
         [LDFLAGS="-L$with_microhttpd/lib $LDFLAGS"
          CPPFLAGS="-I$with_microhttpd/include $CPPFLAGS"])
-AC_CHECK_LIB(microhttpd,MHD_start_daemon,
-  [AC_CHECK_HEADER([microhttpd.h],[microhttpd=1])])
-AC_CHECK_DECL([MHD_DAEMON_INFO_CURRENT_CONNECTIONS],,[microhttpd=0],[[#include <microhttpd.h>]])
-AS_IF([test $microhttpd = 0],
-  [AC_MSG_ERROR([[
-***
-*** You need libmicrohttpd >= 0.9.39 to build this program.
-*** ]])])
+MHD_VERSION_AT_LEAST([0.9.39])
 
 # check for libjansson (Jansson JSON library)
 jansson=0
