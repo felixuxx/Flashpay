@@ -1048,11 +1048,16 @@ decode_keys_json (const json_t *resp_obj,
     if (have_age_restricted_denom)
     {
       struct GNUNET_HashCode hcr;
+
       GNUNET_CRYPTO_hash_context_finish (hash_context_restricted,
                                          &hcr);
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &hcr,
                                        sizeof(struct GNUNET_HashCode));
+    }
+    else
+    {
+      GNUNET_CRYPTO_hash_context_abort (hash_context_restricted);
     }
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
