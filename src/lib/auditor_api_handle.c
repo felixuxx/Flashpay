@@ -286,6 +286,8 @@ version_completed_cb (void *cls,
               "Received version from URL `%s' with status %ld.\n",
               vr->url,
               response_code);
+  free_version_request (vr);
+  auditor->vr = NULL;
   vc = TALER_AUDITOR_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
@@ -293,8 +295,6 @@ version_completed_cb (void *cls,
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* NOTE: this design is debatable. We MAY want to throw this error at the
        client. We may then still additionally internally re-try. */
-    free_version_request (vr);
-    auditor->vr = NULL;
     GNUNET_assert (NULL == auditor->retry_task);
     auditor->retry_delay = EXCHANGE_LIB_BACKOFF (auditor->retry_delay);
     auditor->retry_task = GNUNET_SCHEDULER_add_delayed (auditor->retry_delay,
@@ -333,11 +333,9 @@ version_completed_cb (void *cls,
   if (MHD_HTTP_OK != response_code)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "/version failed for auditor %p: %u!\n",
-                auditor,
+                "/version failed for auditor %s: %u!\n",
+                auditor->url,
                 (unsigned int) response_code);
-    auditor->vr = NULL;
-    free_version_request (vr);
     auditor->state = MHS_FAILED;
     /* notify application that we failed */
     auditor->version_cb (auditor->version_cb_cls,
@@ -346,14 +344,11 @@ version_completed_cb (void *cls,
                          vc);
     return;
   }
-
-  auditor->vr = NULL;
-  free_version_request (vr);
   TALER_LOG_DEBUG ("Switching auditor state to 'version'\n");
   auditor->state = MHS_VERSION;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Auditor %p is now READY!\n",
-              auditor);
+              "Auditor %s is now READY!\n",
+              auditor->url);
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
                        &hr,
