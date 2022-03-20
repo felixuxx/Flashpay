@@ -629,6 +629,40 @@ CREATE TABLE IF NOT EXISTS deposits
   ,UNIQUE (shard, coin_pub, merchant_pub, h_contract_terms)
   )
   PARTITION BY HASH (shard); -- FIXME: why not BY RANGE? RANGE would seem better for 'deposits_get_ready'!
+-- FIXME:
+-- new idea: partition deposits by coin_pub (remove deposits_by_coin)
+-- define 'ready' == ! (tiny || done || blocked)
+-- add new deposits_by_ready (on shard + wire_deadline), select by shard, then ready + deadline
+--         -- use triggers to ONLY include 'ready' deposits (delete on update)!
+--         -- use multi-level partitions: Hash(shard) + Range(wire_deadline/sec)
+-- add new deposits_by_match (on shard + refund_deadline)
+--         -- use triggers to ONLY include 'ready' deposits (delete on update)!
+--         -- use multi-level partitions: Hash(shard) + Range(refund_deadline/sec)
+-- => first we select per-merchant shard, basically stay on the same system as other ops for the same merchant
+-- => second we select by deadline, use enough values so that _usually_ the aggregator
+--    and the 'insert' process _can_ work on different shards!
+-- => the latter could be achieved by dynamically (!) creating/deleting partitions:
+--    create new partitions 'as needed', drop old ones once the aggregator has made
+--    them empty; as 'new' deposits will always have deadlines in the future, this
+--    would basically guarantee no conflict between aggregator and exchange service!
+-- SEE also: https://www.cybertec-postgresql.com/en/automatic-partition-creation-in-postgresql/
+-- (article is slightly wrong, as this works:)
+--CREATE TABLE tab (
+--  id bigint GENERATED ALWAYS AS IDENTITY,
+--  ts timestamp NOT NULL,
+--  data text
+-- PARTITION BY LIST ((ts::date));
+-- CREATE TABLE tab_def PARTITION OF tab DEFAULT;
+-- BEGIN
+-- CREATE TABLE tab_part2 (LIKE tab);
+-- insert into tab_part2 (id,ts, data) values (5,'2022-03-21', 'foo');
+-- alter table tab attach partition tab_part2 for values in ('2022-03-21');
+-- commit;
+-- Naturally, to ensure this is actually 100% conflict-free, we'd
+-- need to create tables at the granularity of the wire/refund deadlines;
+-- that is right now seconds (!). But I see no problem with changing the
+-- aggregator to basically always run 1 minute behind and use minutes instead!
+
 
 COMMENT ON TABLE deposits
   IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
