@@ -1406,11 +1406,13 @@ TALER_TESTING_cmd_reserve_poll (const char *label,
  * Fail if it did not conclude by the timeout.
  *
  * @param label our label
+ * @param timeout how long to give the long poll to finish
  * @param poll_reference reference to a #TALER_TESTING_cmd_reserve_poll() command
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_reserve_poll_finish (const char *label,
+                                       struct GNUNET_TIME_Relative timeout,
                                        const char *poll_reference);
 
 

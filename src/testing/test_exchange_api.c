@@ -134,6 +134,11 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:6.02"),
+    TALER_TESTING_cmd_reserve_poll ("poll-reserve-1",
+                                    "create-reserve-1",
+                                    "EUR:6.02",
+                                    GNUNET_TIME_UNIT_MINUTES,
+                                    MHD_HTTP_OK),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
                                                  "EUR:6.02",
                                                  bc.user42_payto,
@@ -144,6 +149,9 @@ run (void *cls,
      * transfer.
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    TALER_TESTING_cmd_reserve_poll_finish ("finish-poll-reserve-1",
+                                           GNUNET_TIME_UNIT_SECONDS,
+                                           "poll-reserve-1"),
     /**
      * Withdraw EUR:5.
      */
@@ -290,7 +298,8 @@ run (void *cls,
                                        MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
-     * deposit fee) *///
+     * deposit fee)
+     */
     TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
                                "refresh-withdraw-coin-1",
                                0,
@@ -587,7 +596,8 @@ run (void *cls,
                                        MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin
      * (in full) (merchant would receive EUR:0.99 due to 1 ct
-     * deposit fee) *///
+     * deposit fee)
+     */
     TALER_TESTING_cmd_deposit ("refresh-deposit-partial-age",
                                "refresh-withdraw-coin-age-1",
                                0,

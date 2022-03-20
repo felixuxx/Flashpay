@@ -34,6 +34,11 @@ struct PollState
 {
 
   /**
+   * How long do we give the exchange to respond?
+   */
+  struct GNUNET_TIME_Relative timeout;
+
+  /**
    * Label to the command which created the reserve to check,
    * needed to resort the reserve key.
    */
@@ -331,7 +336,7 @@ finish_run (void *cls,
   }
   GNUNET_assert (NULL == ss->ps);
   ss->ps = ps;
-  ps->tt = GNUNET_SCHEDULER_add_delayed (ss->timeout,
+  ps->tt = GNUNET_SCHEDULER_add_delayed (ps->timeout,
                                          &finish_timeout,
                                          ps);
 }
@@ -347,29 +352,31 @@ static void
 finish_cleanup (void *cls,
                 const struct TALER_TESTING_Command *cmd)
 {
-  struct PollState *ss = cls;
+  struct PollState *ps = cls;
 
-  if (NULL != ss->tt)
+  if (NULL != ps->tt)
   {
-    GNUNET_SCHEDULER_cancel (ss->tt);
-    ss->tt = NULL;
+    GNUNET_SCHEDULER_cancel (ps->tt);
+    ps->tt = NULL;
   }
-  GNUNET_free (ss);
+  GNUNET_free (ps);
 }
 
 
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_reserve_poll_finish (const char *label,
+                                       struct GNUNET_TIME_Relative timeout,
                                        const char *poll_reference)
 {
-  struct PollState *ss;
+  struct PollState *ps;
 
   GNUNET_assert (NULL != poll_reference);
-  ss = GNUNET_new (struct PollState);
-  ss->poll_reference = poll_reference;
+  ps = GNUNET_new (struct PollState);
+  ps->timeout = timeout;
+  ps->poll_reference = poll_reference;
   {
     struct TALER_TESTING_Command cmd = {
-      .cls = ss,
+      .cls = ps,
       .label = label,
       .run = &finish_run,
       .cleanup = &finish_cleanup
