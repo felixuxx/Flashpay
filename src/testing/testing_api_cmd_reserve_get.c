@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_cmd_status.c
+ * @file testing/testing_api_cmd_reserve_get.c
  * @brief Implement the GET /reserve/$RID test command.
  * @author Marcello Stanisci
  */
