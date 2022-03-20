@@ -373,4 +373,86 @@ TALER_wallet_account_setup_sign (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_history_verify (
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_Amount *history_fee,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveHistoryRequestPS rhr = {
+    .purpose.size = htonl (sizeof (rhr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_HISTORY),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (ts)
+  };
+
+  TALER_amount_hton (&rhr.history_fee,
+                     history_fee);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
+    &rhr,
+    &reserve_sig->eddsa_signature,
+    &reserve_pub->eddsa_pub);
+}
+
+
+void
+TALER_wallet_reserve_history_sign (
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_Amount *history_fee,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveHistoryRequestPS rhr = {
+    .purpose.size = htonl (sizeof (rhr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_HISTORY),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (ts)
+  };
+
+  TALER_amount_hton (&rhr.history_fee,
+                     history_fee);
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &rhr,
+                            &reserve_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_status_verify (
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveStatusRequestPS rsr = {
+    .purpose.size = htonl (sizeof (rsr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_STATUS),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (ts)
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_RESERVE_STATUS,
+    &rsr,
+    &reserve_sig->eddsa_signature,
+    &reserve_pub->eddsa_pub);
+}
+
+
+void
+TALER_wallet_reserve_status_sign (
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveStatusRequestPS rsr = {
+    .purpose.size = htonl (sizeof (rsr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_STATUS),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (ts)
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &rsr,
+                            &reserve_sig->eddsa_signature);
+}
+
+
 /* end of wallet_signatures.c */

@@ -283,6 +283,16 @@
  */
 #define TALER_SIGNATURE_WALLET_AGE_ATTESTATION 1207
 
+/**
+ * Request full reserve history and pay for it.
+ */
+#define TALER_SIGNATURE_WALLET_RESERVE_HISTORY 1208
+
+/**
+ * Request detailed account status (for free).
+ */
+#define TALER_SIGNATURE_WALLET_RESERVE_STATUS 1209
+
 
 /******************************/
 /* Security module signatures */
@@ -440,6 +450,51 @@ struct TALER_LinkDataPS
    * Hash of the blinded new coin.
    */
   struct TALER_BlindedCoinHashP coin_envelope_hash;
+};
+
+
+/**
+ * Response by which a wallet requests an account status.
+ */
+struct TALER_ReserveStatusRequestPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_STATUS
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the wallet make the requst.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+};
+
+
+/**
+ * Response by which a wallet requests a full
+ * reserve history and indicates it is willing
+ * to pay for it.
+ */
+struct TALER_ReserveHistoryRequestPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_HISTORY
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the wallet make the requst.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+  /**
+   * How much does the exchange charge for the history?
+   */
+  struct TALER_AmountNBO history_fee;
+
 };
 
 
