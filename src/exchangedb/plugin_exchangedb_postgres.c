@@ -8729,7 +8729,7 @@ struct RefreshsSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -8781,7 +8781,7 @@ refreshs_serial_helper_cb (void *cls,
                                             &rc),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -8874,7 +8874,7 @@ struct RefundsSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -9010,7 +9010,7 @@ struct ReservesInSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -9053,7 +9053,7 @@ reserves_in_serial_helper_cb (void *cls,
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -9187,7 +9187,7 @@ struct ReservesOutSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -9233,7 +9233,7 @@ reserves_out_serial_helper_cb (void *cls,
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
