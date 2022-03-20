@@ -57,7 +57,7 @@
  * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
  * exchange_api_handle.c!
  */
-#define EXCHANGE_PROTOCOL_VERSION "12:0:0"
+#define EXCHANGE_PROTOCOL_VERSION "13:0:1"
 
 
 /**
@@ -280,6 +280,31 @@ struct SigningKey
 };
 
 
+/**
+ * Set of global fees (and options) for a time range.
+ */
+struct GlobalFee
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct GlobalFee *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct GlobalFee *prev;
+
+  struct GNUNET_TIME_Timestamp start_date;
+  struct GNUNET_TIME_Timestamp end_date;
+  struct GNUNET_TIME_Relative purse_timeout;
+  struct GNUNET_TIME_Relative kyc_timeout;
+  struct GNUNET_TIME_Relative history_expiration;
+  struct TALER_MasterSignatureP master_sig;
+  struct TALER_GlobalFeeSet fees;
+  uint32_t purse_account_limit;
+};
+
 struct TEH_KeyStateHandle
 {
 
@@ -297,10 +322,26 @@ struct TEH_KeyStateHandle
   struct GNUNET_CONTAINER_MultiPeerMap *signkey_map;
 
   /**
+   * Head of DLL of our global fees.
+   */
+  struct GlobalFee *gf_head;
+
+  /**
+   * Tail of DLL of our global fees.
+   */
+  struct GlobalFee *gf_tail;
+
+  /**
    * json array with the auditors of this exchange. Contains exactly
    * the information needed for the "auditors" field of the /keys response.
    */
   json_t *auditors;
+
+  /**
+   * json array with the global fees of this exchange. Contains exactly
+   * the information needed for the "global_fees" field of the /keys response.
+   */
+  json_t *global_fees;
 
   /**
    * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
@@ -548,7 +589,7 @@ suspend_request (struct MHD_Connection *connection)
  * @param value a `struct TEH_DenominationKey`
  * @return #GNUNET_OK
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_dk (void *cls,
           const struct GNUNET_HashCode *hc,
           void *value)
@@ -1174,7 +1215,16 @@ static void
 destroy_key_state (struct TEH_KeyStateHandle *ksh,
                    bool free_helper)
 {
+  struct GlobalFee *gf;
+
   clear_response_cache (ksh);
+  while (NULL != (gf = ksh->gf_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (ksh->gf_head,
+                                 ksh->gf_tail,
+                                 gf);
+    GNUNET_free (gf);
+  }
   GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
                                          &clear_denomination_cb,
                                          ksh);
@@ -1185,6 +1235,8 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
   GNUNET_CONTAINER_multipeermap_destroy (ksh->signkey_map);
   json_decref (ksh->auditors);
   ksh->auditors = NULL;
+  json_decref (ksh->global_fees);
+  ksh->global_fees = NULL;
   if (free_helper)
   {
     destroy_key_helpers (ksh->helpers);
@@ -1817,6 +1869,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    denoms),
     GNUNET_JSON_pack_array_incref ("auditors",
                                    ksh->auditors),
+    GNUNET_JSON_pack_array_incref ("global_fees",
+                                   ksh->global_fees),
     GNUNET_JSON_pack_timestamp ("list_issue_date",
                                 last_cpd),
     GNUNET_JSON_pack_data_auto ("eddsa_pub",
@@ -1825,7 +1879,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                 &exchange_sig));
   GNUNET_assert (NULL != keys);
 
-  // Set wallet limit if KYC is configured
+  /* Set wallet limit if KYC is configured */
   if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
        (GNUNET_OK ==
         TALER_amount_is_valid (&TEH_kyc_config.wallet_balance_limit)) )
@@ -1839,7 +1893,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
           &TEH_kyc_config.wallet_balance_limit)));
   }
 
-  // Signal support for the configured, enabled extensions.
+  /* Signal support for the configured, enabled extensions. */
   {
     json_t *extensions = json_object ();
     bool has_extensions = false;
@@ -2202,6 +2256,70 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
 
 /**
+ * Called with information about global fees.
+ *
+ * @param cls `struct TEH_KeyStateHandle *` we are building
+ * @param fees the global fees we charge
+ * @param purse_timeout when do purses time out
+ * @param kyc_timeout when do reserves without KYC time out
+ * @param history_expiration how long are account histories preserved
+ * @param purse_account_limit how many purses are free per account
+ * @param start_date from when are these fees valid (start date)
+ * @param end_date until when are these fees valid (end date, exclusive)
+ * @param master_sig master key signature affirming that this is the correct
+ *                   fee (of purpose #TALER_SIGNATURE_MASTER_GLOBAL_FEES)
+ */
+static void
+global_fee_info_cb (
+  void *cls,
+  const struct TALER_GlobalFeeSet *fees,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  uint32_t purse_account_limit,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TEH_KeyStateHandle *ksh = cls;
+  struct GlobalFee *gf;
+
+  gf = GNUNET_new (struct GlobalFee);
+  gf->start_date = start_date;
+  gf->end_date = end_date;
+  gf->fees = *fees;
+  gf->purse_timeout = purse_timeout;
+  gf->kyc_timeout = kyc_timeout;
+  gf->history_expiration = history_expiration;
+  gf->purse_account_limit = purse_account_limit;
+  gf->master_sig = *master_sig;
+  GNUNET_CONTAINER_DLL_insert (ksh->gf_head,
+                               ksh->gf_tail,
+                               gf);
+  GNUNET_assert (
+    0 ==
+    json_array_append_new (
+      ksh->global_fees,
+      GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_timestamp ("start_date",
+                                    start_date),
+        GNUNET_JSON_pack_timestamp ("end_date",
+                                    end_date),
+        TALER_JSON_PACK_GLOBAL_FEES (fees),
+        GNUNET_JSON_pack_time_rel ("history_expiration",
+                                   history_expiration),
+        GNUNET_JSON_pack_time_rel ("account_kyc_timeout",
+                                   kyc_timeout),
+        GNUNET_JSON_pack_time_rel ("purse_timeout",
+                                   purse_timeout),
+        GNUNET_JSON_pack_uint64 ("purse_account_limit",
+                                 purse_account_limit),
+        GNUNET_JSON_pack_data_auto ("master_sig",
+                                    master_sig))));
+}
+
+
+/**
  * Create a key state.
  *
  * @param[in] hs helper state to (re)use, NULL if not available
@@ -2246,6 +2364,20 @@ build_key_state (struct HelperState *hs,
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
   GNUNET_break (GNUNET_OK ==
                 TEH_plugin->preflight (TEH_plugin->cls));
+  if (NULL != ksh->global_fees)
+    json_decref (ksh->global_fees);
+  ksh->global_fees = json_array ();
+  qs = TEH_plugin->get_global_fees (TEH_plugin->cls,
+                                    &global_fee_info_cb,
+                                    ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
   qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
                                           &denomination_info_cb,
                                           ksh);

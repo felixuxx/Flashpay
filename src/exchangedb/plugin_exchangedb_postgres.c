@@ -1385,6 +1385,28 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE start_date <= $1"
       "   AND end_date > $1;",
       1),
+    /* Used in #postgres_get_global_fees() */
+    GNUNET_PQ_make_prepare (
+      "get_global_fees",
+      "SELECT "
+      " start_date"
+      ",end_date"
+      ",history_fee_val"
+      ",history_fee_frac"
+      ",kyc_fee_val"
+      ",kyc_fee_frac"
+      ",account_fee_val"
+      ",account_fee_frac"
+      ",purse_fee_val"
+      ",purse_fee_frac"
+      ",purse_timeout"
+      ",kyc_timeout"
+      ",history_expiration"
+      ",purse_account_limit"
+      ",master_sig"
+      " FROM global_fee"
+      " WHERE start_date >= $1",
+      1),
     /* Used in #postgres_insert_wire_fee */
     GNUNET_PQ_make_prepare (
       "insert_wire_fee",
@@ -7819,6 +7841,142 @@ postgres_get_global_fee (void *cls,
 
 
 /**
+ * Closure for #global_fees_cb().
+ */
+struct GlobalFeeContext
+{
+  /**
+   * Function to call for each global fee block.
+   */
+  TALER_EXCHANGEDB_GlobalFeeCallback cb;
+
+  /**
+   * Closure to give to @e rec.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Set to #GNUNET_SYSERR on error.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+global_fees_cb (void *cls,
+                PGresult *result,
+                unsigned int num_results)
+{
+  struct GlobalFeeContext *gctx = cls;
+  struct PostgresClosure *pg = gctx->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_GlobalFeeSet fees;
+    struct GNUNET_TIME_Relative purse_timeout;
+    struct GNUNET_TIME_Relative kyc_timeout;
+    struct GNUNET_TIME_Relative history_expiration;
+    uint32_t purse_account_limit;
+    struct GNUNET_TIME_Timestamp start_date;
+    struct GNUNET_TIME_Timestamp end_date;
+    struct TALER_MasterSignatureP master_sig;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_timestamp ("start_date",
+                                       &start_date),
+      GNUNET_PQ_result_spec_timestamp ("end_date",
+                                       &end_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
+                                   &fees.history),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
+                                   &fees.kyc),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("account_fee",
+                                   &fees.account),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
+                                   &fees.purse),
+      GNUNET_PQ_result_spec_relative_time ("purse_timeout",
+                                           &purse_timeout),
+      GNUNET_PQ_result_spec_relative_time ("kyc_timeout",
+                                           &kyc_timeout),
+      GNUNET_PQ_result_spec_relative_time ("history_expiration",
+                                           &history_expiration),
+      GNUNET_PQ_result_spec_uint32 ("purse_account_limit",
+                                    &purse_account_limit),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      gctx->status = GNUNET_SYSERR;
+      break;
+    }
+    gctx->cb (gctx->cb_cls,
+              &fees,
+              purse_timeout,
+              kyc_timeout,
+              history_expiration,
+              purse_account_limit,
+              start_date,
+              end_date,
+              &master_sig);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Obtain global fees from database.
+ *
+ * @param cls closure
+ * @param cb function to call on each fee entry
+ * @param cb_cls closure for @a cb
+ * @return status of the transaction
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_global_fees (void *cls,
+                          TALER_EXCHANGEDB_GlobalFeeCallback cb,
+                          void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Timestamp date
+    = GNUNET_TIME_timestamp_get ();
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_timestamp (&date),
+    GNUNET_PQ_query_param_end
+  };
+  struct GlobalFeeContext gctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                               "get_global_fees",
+                                               params,
+                                               &global_fees_cb,
+                                               &gctx);
+}
+
+
+/**
  * Insert wire transfer fee into database.
  *
  * @param cls closure
@@ -8034,7 +8192,7 @@ struct ExpiredReserveContext
   /**
    * Set to #GNUNET_SYSERR on error.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -8053,7 +8211,7 @@ reserve_expired_cb (void *cls,
 {
   struct ExpiredReserveContext *erc = cls;
   struct PostgresClosure *pg = erc->pg;
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
 
   ret = GNUNET_OK;
   for (unsigned int i = 0; i<num_results; i++)
@@ -8117,13 +8275,14 @@ postgres_get_expired_reserves (void *cls,
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_end
   };
-  struct ExpiredReserveContext ectx;
+  struct ExpiredReserveContext ectx = {
+    .rec = rec,
+    .rec_cls = rec_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
   enum GNUNET_DB_QueryStatus qs;
 
-  ectx.rec = rec;
-  ectx.rec_cls = rec_cls;
-  ectx.pg = pg;
-  ectx.status = GNUNET_OK;
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_expired_reserves",
                                              params,
@@ -12371,6 +12530,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_global_fee = &postgres_insert_global_fee;
   plugin->get_wire_fee = &postgres_get_wire_fee;
   plugin->get_global_fee = &postgres_get_global_fee;
+  plugin->get_global_fees = &postgres_get_global_fees;
   plugin->get_expired_reserves = &postgres_get_expired_reserves;
   plugin->insert_reserve_closed = &postgres_insert_reserve_closed;
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;

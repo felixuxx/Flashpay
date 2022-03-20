@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -40,7 +40,7 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define EXCHANGE_PROTOCOL_CURRENT 12
+#define EXCHANGE_PROTOCOL_CURRENT 13
 
 /**
  * How many versions are we backwards compatible with?
@@ -255,7 +255,7 @@ free_keys_request (struct KeysRequest *kr)
  */
 static enum GNUNET_GenericReturnValue
 parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
-                    int check_sigs,
+                    bool check_sigs,
                     json_t *sign_key_obj,
                     const struct TALER_MasterPublicKeyP *master_key)
 {
@@ -317,7 +317,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 static enum GNUNET_GenericReturnValue
 parse_json_denomkey (const char *currency,
                      struct TALER_EXCHANGE_DenomPublicKey *denom_key,
-                     int check_sigs,
+                     bool check_sigs,
                      json_t *denom_key_obj,
                      struct TALER_MasterPublicKeyP *master_key,
                      struct GNUNET_HashContext *hash_context)
@@ -394,7 +394,7 @@ EXITIF_exit:
  */
 static enum GNUNET_GenericReturnValue
 parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
-                    int check_sigs,
+                    bool check_sigs,
                     json_t *auditor_obj,
                     const struct TALER_EXCHANGE_Keys *key_data)
 {
@@ -499,6 +499,79 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     off++;
   }
   auditor->num_denom_keys = off;
+  GNUNET_JSON_parse_free (spec);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse a exchange's global fee information encoded in JSON.
+ *
+ * @param[out] gf where to return the result
+ * @param check_sigs should we check signatures
+ * @param[in] fee_obj json to parse
+ * @param key_data already parsed information about the exchange
+ * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
+ *        invalid or the json malformed.
+ */
+static enum GNUNET_GenericReturnValue
+parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
+                  bool check_sigs,
+                  json_t *fee_obj,
+                  const struct TALER_EXCHANGE_Keys *key_data)
+{
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_timestamp ("start_time",
+                                &gf->start_date),
+    GNUNET_JSON_spec_timestamp ("end_time",
+                                &gf->end_date),
+    GNUNET_JSON_spec_relative_time ("purse_timeout",
+                                    &gf->purse_timeout),
+    GNUNET_JSON_spec_relative_time ("kyc_timeout",
+                                    &gf->kyc_timeout),
+    GNUNET_JSON_spec_relative_time ("history_expiration",
+                                    &gf->history_expiration),
+    GNUNET_JSON_spec_uint32 ("purse_account_limit",
+                             &gf->purse_account_limit),
+    TALER_JSON_SPEC_GLOBAL_FEES (key_data->currency,
+                                 &gf->fees),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &gf->master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (fee_obj,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+#if DEBUG
+    json_dumpf (fee_obj,
+                stderr,
+                JSON_INDENT (2));
+#endif
+    return GNUNET_SYSERR;
+  }
+  if (check_sigs)
+  {
+    if (GNUNET_OK !=
+        TALER_exchange_offline_global_fee_verify (
+          gf->start_date,
+          gf->end_date,
+          &gf->fees,
+          gf->purse_timeout,
+          gf->kyc_timeout,
+          gf->history_expiration,
+          gf->purse_account_limit,
+          &key_data->master_pub,
+          &gf->master_sig))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+  }
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
@@ -691,7 +764,7 @@ decode_keys_json (const json_t *resp_obj,
               stderr,
               JSON_INDENT (2));
 #endif
-  /* check the version */
+  /* check the version first */
   {
     const char *ver;
     unsigned int age;
@@ -760,6 +833,32 @@ decode_keys_json (const json_t *resp_obj,
   {
     hash_context = GNUNET_CRYPTO_hash_context_start ();
     hash_context_restricted = GNUNET_CRYPTO_hash_context_start ();
+  }
+
+  /* parse the global fees */
+  {
+    json_t *global_fees;
+    json_t *global_fee;
+    unsigned int index;
+
+    EXITIF (NULL == (global_fees =
+                       json_object_get (resp_obj,
+                                        "global_fees")));
+    EXITIF (! json_is_array (global_fees));
+    if (0 != (key_data->num_global_fees =
+                json_array_size (global_fees)))
+    {
+      key_data->global_fees
+        = GNUNET_new_array (key_data->num_global_fees,
+                            struct TALER_EXCHANGE_GlobalFee);
+      json_array_foreach (global_fees, index, global_fee) {
+        EXITIF (GNUNET_SYSERR ==
+                parse_global_fee (&key_data->global_fees[index],
+                                  check_sig,
+                                  global_fee,
+                                  key_data));
+      }
+    }
   }
 
   /* parse the signing keys */

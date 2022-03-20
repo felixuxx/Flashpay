@@ -3968,7 +3968,7 @@ struct TALER_EXCHANGEDB_Plugin
    * Obtain information about the global fee structure of the exchange.
    *
    * @param cls closure
-   * @param cb function to call on each account
+   * @param cb function to call on each fee entry
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */

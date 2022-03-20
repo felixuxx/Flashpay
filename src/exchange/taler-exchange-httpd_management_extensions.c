@@ -126,6 +126,11 @@ set_extensions (void *cls,
         .size = htons (sizeof (ev)),
         .type = htons (TALER_DBEVENT_EXCHANGE_EXTENSIONS_UPDATED)
       };
+
+      // FIXME-Oec: bug: convert type to NBO first!
+      // FIXME-Oec: bug: sizeof enum is ill-defined...
+      // FIXME-Oec: bug: don't see /keys listening to the event
+      // FIXME-Oec: why is   TEH_keys_update_states (); not enough?
       TEH_plugin->event_notify (TEH_plugin->cls,
                                 &ev,
                                 type,
@@ -293,7 +298,6 @@ TEH_handler_management_post_extensions (
     NULL,
     NULL,
     0);
-
 
 CLEANUP:
   for (unsigned int i = 0; i < sec.num_extensions; i++)

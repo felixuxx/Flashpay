@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -256,7 +257,7 @@ TEH_handler_management_post_global_fees (
     if (GNUNET_SYSERR == res)
       return ret;
   }
-  //  TEH_global_update_state (); // FIXME: trigger!
+  TEH_keys_update_states ();
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

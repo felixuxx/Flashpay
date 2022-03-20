@@ -204,6 +204,55 @@ struct TALER_EXCHANGE_AuditorInformation
 
 
 /**
+ * Global fees and options of an exchange for a given time period.
+ */
+struct TALER_EXCHANGE_GlobalFee
+{
+
+  /**
+   * Signature affirming all of the data.
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Starting time of the validity period (inclusive).
+   */
+  struct GNUNET_TIME_Timestamp start_date;
+
+  /**
+   * End time of the validity period (exclusive).
+   */
+  struct GNUNET_TIME_Timestamp end_date;
+
+  /**
+   * Unmerged purses will be timed out after at most this time.
+   */
+  struct GNUNET_TIME_Relative purse_timeout;
+
+  /**
+   * Accounts without KYC will be closed after this time.
+   */
+  struct GNUNET_TIME_Relative kyc_timeout;
+
+  /**
+   * Account history is limited to this timeframe.
+   */
+  struct GNUNET_TIME_Relative history_expiration;
+
+  /**
+   * Fees that apply globally, independent of denomination
+   * and wire method.
+   */
+  struct TALER_GlobalFeeSet fees;
+
+  /**
+   * Number of free purses per account.
+   */
+  uint32_t purse_account_limit;
+};
+
+
+/**
  * @brief Information about keys from the exchange.
  */
 struct TALER_EXCHANGE_Keys
@@ -228,6 +277,11 @@ struct TALER_EXCHANGE_Keys
    * Array of the keys of the auditors of the exchange.
    */
   struct TALER_EXCHANGE_AuditorInformation *auditors;
+
+  /**
+   * Array with the global fees of the exchange.
+   */
+  struct TALER_EXCHANGE_GlobalFee *global_fees;
 
   /**
    * Supported Taler protocol version by the exchange.
@@ -271,6 +325,11 @@ struct TALER_EXCHANGE_Keys
    * If age restriction is enabled on the exchange, we get an non-zero age_mask
    */
   struct TALER_AgeMask age_mask;
+
+  /**
+   * Length of the @e global_fees array.
+   */
+  unsigned int num_global_fees;
 
   /**
    * Length of the @e sign_keys array (number of valid entries).
