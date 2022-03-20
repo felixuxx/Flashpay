@@ -1384,6 +1384,37 @@ TALER_TESTING_cmd_status (const char *label,
 
 
 /**
+ * Create a GET "reserves" command with a @a timeout.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to check.
+ * @param expected_balance expected balance for the reserve.
+ * @param timeout how long to long-poll for the reserve to exist.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_poll (const char *label,
+                                const char *reserve_reference,
+                                const char *expected_balance,
+                                struct GNUNET_TIME_Relative timeout,
+                                unsigned int expected_response_code);
+
+
+/**
+ * Wait for #TALER_TESTING_cmd_reserve_poll() to finish.
+ * Fail if it did not conclude by the timeout.
+ *
+ * @param label our label
+ * @param poll_reference reference to a #TALER_TESTING_cmd_reserve_poll() command
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_poll_finish (const char *label,
+                                       const char *poll_reference);
+
+
+/**
  * Create a POST "/reserves/$RID/history" command.
  *
  * @param label the command label.

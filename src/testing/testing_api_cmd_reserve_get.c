@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -28,10 +28,45 @@
 
 
 /**
+ * State for a "poll" CMD.
+ */
+struct PollState
+{
+
+  /**
+   * Label to the command which created the reserve to check,
+   * needed to resort the reserve key.
+   */
+  const char *poll_reference;
+
+  /**
+   * Timeout to wait for at most.
+   */
+  struct GNUNET_SCHEDULER_Task *tt;
+
+  /**
+   * The interpreter we are using.
+   */
+  struct TALER_TESTING_Interpreter *is;
+};
+
+
+/**
  * State for a "status" CMD.
  */
 struct StatusState
 {
+
+  /**
+   * How long do we give the exchange to respond?
+   */
+  struct GNUNET_TIME_Relative timeout;
+
+  /**
+   * Poller waiting for us.
+   */
+  struct PollState *ps;
+
   /**
    * Label to the command which created the reserve to check,
    * needed to resort the reserve key.
@@ -62,6 +97,7 @@ struct StatusState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
+
 };
 
 
@@ -94,24 +130,31 @@ reserve_status_cb (void *cls,
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
-  if (MHD_HTTP_OK != ss->expected_response_code)
+  if (MHD_HTTP_OK == ss->expected_response_code)
   {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (ss->expected_balance,
+                                           &eb));
+    if (0 != TALER_amount_cmp (&eb,
+                               &rs->details.ok.balance))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected amount in reserve: %s\n",
+                  TALER_amount_to_string (&rs->details.ok.balance));
+      TALER_TESTING_interpreter_fail (ss->is);
+      return;
+    }
+  }
+  if (NULL != ss->ps)
+  {
+    /* force continuation on long poller */
+    GNUNET_SCHEDULER_cancel (ss->ps->tt);
+    ss->ps->tt = NULL;
     TALER_TESTING_interpreter_next (is);
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (ss->expected_balance,
-                                         &eb));
-  if (0 != TALER_amount_cmp (&eb,
-                             &rs->details.ok.balance))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected amount in reserve: %s\n",
-                TALER_amount_to_string (&rs->details.ok.balance));
-    TALER_TESTING_interpreter_fail (ss->is);
-    return;
-  }
-  TALER_TESTING_interpreter_next (is);
+  if (GNUNET_TIME_relative_is_zero (ss->timeout))
+    TALER_TESTING_interpreter_next (is);
 }
 
 
@@ -152,9 +195,14 @@ status_run (void *cls,
   }
   ss->rsh = TALER_EXCHANGE_reserves_get (is->exchange,
                                          ss->reserve_pubp,
-                                         GNUNET_TIME_UNIT_ZERO,
+                                         ss->timeout,
                                          &reserve_status_cb,
                                          ss);
+  if (! GNUNET_TIME_relative_is_zero (ss->timeout))
+  {
+    TALER_TESTING_interpreter_next (is);
+    return;
+  }
 }
 
 
@@ -203,6 +251,128 @@ TALER_TESTING_cmd_status (const char *label,
       .label = label,
       .run = &status_run,
       .cleanup = &status_cleanup
+    };
+
+    return cmd;
+  }
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_poll (const char *label,
+                                const char *reserve_reference,
+                                const char *expected_balance,
+                                struct GNUNET_TIME_Relative timeout,
+                                unsigned int expected_response_code)
+{
+  struct StatusState *ss;
+
+  GNUNET_assert (NULL != reserve_reference);
+  ss = GNUNET_new (struct StatusState);
+  ss->reserve_reference = reserve_reference;
+  ss->expected_balance = expected_balance;
+  ss->expected_response_code = expected_response_code;
+  ss->timeout = timeout;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ss,
+      .label = label,
+      .run = &status_run,
+      .cleanup = &status_cleanup
+    };
+
+    return cmd;
+  }
+}
+
+
+/**
+ * Long poller timed out. Fail the test.
+ *
+ * @param cls a `struct PollState`
+ */
+static void
+finish_timeout (void *cls)
+{
+  struct PollState *ps = cls;
+
+  ps->tt = NULL;
+  GNUNET_break (0);
+  TALER_TESTING_interpreter_fail (ps->is);
+}
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command being executed.
+ * @param is the interpreter state.
+ */
+static void
+finish_run (void *cls,
+            const struct TALER_TESTING_Command *cmd,
+            struct TALER_TESTING_Interpreter *is)
+{
+  struct PollState *ps = cls;
+  const struct TALER_TESTING_Command *poll_reserve;
+  struct StatusState *ss;
+
+  ps->is = is;
+  poll_reserve
+    = TALER_TESTING_interpreter_lookup_command (is,
+                                                ps->poll_reference);
+  GNUNET_assert (poll_reserve->run == &status_run);
+  ss = poll_reserve->cls;
+  if (NULL == ss->rsh)
+  {
+    TALER_TESTING_interpreter_next (is);
+    return;
+  }
+  GNUNET_assert (NULL == ss->ps);
+  ss->ps = ps;
+  ps->tt = GNUNET_SCHEDULER_add_delayed (ss->timeout,
+                                         &finish_timeout,
+                                         ps);
+}
+
+
+/**
+ * Cleanup the state from a "reserve finish" CMD.
+ *
+ * @param cls closure.
+ * @param cmd the command which is being cleaned up.
+ */
+static void
+finish_cleanup (void *cls,
+                const struct TALER_TESTING_Command *cmd)
+{
+  struct PollState *ss = cls;
+
+  if (NULL != ss->tt)
+  {
+    GNUNET_SCHEDULER_cancel (ss->tt);
+    ss->tt = NULL;
+  }
+  GNUNET_free (ss);
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_poll_finish (const char *label,
+                                       const char *poll_reference)
+{
+  struct PollState *ss;
+
+  GNUNET_assert (NULL != poll_reference);
+  ss = GNUNET_new (struct PollState);
+  ss->poll_reference = poll_reference;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ss,
+      .label = label,
+      .run = &finish_run,
+      .cleanup = &finish_cleanup
     };
 
     return cmd;
