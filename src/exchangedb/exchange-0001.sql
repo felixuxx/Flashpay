@@ -1339,6 +1339,323 @@ CREATE INDEX IF NOT EXISTS revolving_work_shards_by_job_name_active_last_attempt
   ,last_attempt
   );
 
+-- Tables for P2P payments
+
+CREATE TABLE IF NOT EXISTS partners
+  (partner_serial_id BIGSERIAL UNIQUE
+  ,partner_master_pub BYTEA NOT NULL CHECK(LENGTH(partner_master_pub)=32)
+  ,start_date INT8 NOT NULL
+  ,end_date INT8 NOT NULL
+  ,wad_frequency INT8 NOT NULL
+  ,wad_fee_val INT8 NOT NULL
+  ,wad_fee_frac INT4 NOT NULL
+  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  ,partner_base_url TEXT NOT NULL
+  );
+COMMENT ON TABLE partners
+  IS 'exchanges we do wad transfers to';
+COMMENT ON COLUMN partners.partner_master_pub
+  IS 'offline master public key of the partner';
+COMMENT ON COLUMN partners.start_date
+  IS 'starting date of the partnership';
+COMMENT ON COLUMN partners.end_date
+  IS 'end date of the partnership';
+COMMENT ON COLUMN partners.wad_frequency
+  IS 'how often do we promise to do wad transfers';
+COMMENT ON COLUMN partners.wad_fee_val
+  IS 'how high is the fee for a wallet to be added to a wad to this partner';
+COMMENT ON COLUMN partners.partner_base_url
+  IS 'base URL of the REST API for this partner';
+COMMENT ON COLUMN partners.master_sig
+  IS 'signature of our master public key affirming the partnership, of purpose TALER_SIGNATURE_MASTER_PARTNER_DETAILS';
+
+CREATE TABLE IF NOT EXISTS mergers
+  (merge_request_serial_id BIGSERIAL UNIQUE
+  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
+  ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
+  ,reserve_url TEXT NOT NULL
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
+  ,merge_timestamp INT8 NOT NULL
+  ,purse_expiration INT8 NOT NULL
+  ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
+  ,purse_val INT8 NOT NULL
+  ,purse_frac INT4 NOT NULL
+  ,PRIMARY KEY (purse_pub)
+  ); -- partition by purse_pub; plus materialized index by reserve_pub!
+COMMENT ON TABLE mergers
+  IS 'Merge requests where a purse- and account-owner requested merging the purse into the account';
+COMMENT ON COLUMN mergers.partner_serial_id
+  IS 'identifies the partner exchange, NULL in case the target reserve lives at this exchange';
+COMMENT ON COLUMN mergers.reserve_url
+  IS 'payto://-URL of the reserve, identifies the exchange and the reserve';
+COMMENT ON COLUMN mergers.reserve_pub
+  IS 'public key of the target reserve';
+COMMENT ON COLUMN mergers.purse_pub
+  IS 'public key of the purse';
+COMMENT ON COLUMN mergers.reserve_sig
+  IS 'signature by the reserve private key affirming the merge';
+COMMENT ON COLUMN mergers.purse_sig
+  IS 'signature by the purse private key affirming the merge';
+COMMENT ON COLUMN mergers.merge_timestamp
+  IS 'when was the merge message signed';
+COMMENT ON COLUMN mergers.purse_expiration
+  IS 'when is the purse set to expire';
+COMMENT ON COLUMN mergers.h_contract_terms
+  IS 'hash of the contract terms both sides are to agree upon';
+COMMENT ON COLUMN mergers.purse_val
+  IS 'amount to be transferred from the purse to the reserve (excludes deposit fees)';
+CREATE INDEX IF NOT EXISTS mergers_reserve_pub
+  ON mergers (reserve_pub);
+COMMENT ON INDEX mergers_reserve_pub
+  IS 'needed in reserve history computation';
+
+CREATE TABLE IF NOT EXISTS contracts
+  (contract_serial_id BIGSERIAL UNIQUE
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
+  ,pub_ckey BYTEA NOT NULL CHECK (LENGTH(pub_ckey)=32)
+  ,e_contract BYTEA NOT NULL
+  ,PRIMARY KEY (purse_pub)
+  ); -- partition by purse_pub
+COMMENT ON TABLE contracts
+  IS 'encrypted contracts associated with purses';
+COMMENT ON COLUMN contracts.purse_pub
+  IS 'public key of the purse that the contract is associated with';
+COMMENT ON COLUMN contracts.pub_ckey
+  IS 'Public ECDH key used to encrypt the contract, to be used with the purse private key for decryption';
+COMMENT ON COLUMN contracts.e_contract
+  IS 'AES-GCM encrypted contract terms (contains gzip compressed JSON after decryption)';
+
+CREATE TABLE IF NOT EXISTS history_requests
+  (reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves(reserve_pub) ON DELETE CASCADE
+  ,request_timestamp INT8 NOT NULL
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,history_fee_val INT8 NOT NULL
+  ,history_fee_frac INT4 NOT NULL
+  ,PRIMARY KEY (reserve_pub,request_timestamp)
+  ); -- partition by reserve_pub
+COMMENT ON TABLE history_requests
+  IS 'Paid history requests issued by a client against a reserve';
+COMMENT ON COLUMN history_requests.request_timestamp
+  IS 'When was the history request made';
+COMMENT ON COLUMN history_requests.reserve_sig
+  IS 'Signature approving payment for the history request';
+COMMENT ON COLUMN history_requests.history_fee_val
+  IS 'History fee approved by the signature';
+
+CREATE TABLE IF NOT EXISTS close_requests
+  (reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) REFERENCES reserves(reserve_pub) ON DELETE CASCADE
+  ,close_timestamp INT8 NOT NULL
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,close_val INT8 NOT NULL
+  ,close_frac INT4 NOT NULL
+  ,PRIMARY KEY (reserve_pub,close_timestamp)
+  ); -- partition by reserve_pub
+COMMENT ON TABLE close_requests
+  IS 'Explicit requests by a reserve owner to close a reserve immediately';
+COMMENT ON COLUMN close_requests.close_timestamp
+  IS 'When the request was created by the client';
+COMMENT ON COLUMN close_requests.reserve_sig
+  IS 'Signature affirming that the reserve is to be closed';
+COMMENT ON COLUMN close_requests.close_val
+  IS 'Balance of the reserve at the time of closing, to be wired to the associated bank account (minus the closing fee)';
+
+CREATE TABLE IF NOT EXISTS purse_requests
+  (purse_deposit_serial_id BIGSERIAL UNIQUE
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
+  ,purse_expiration INT8 NOT NULL
+  ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
+  ,amount_with_fee_val INT8 NOT NULL
+  ,amount_with_fee_frac INT4 NOT NULL
+  ,purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)
+  ,PRIMARY KEY (purse_pub)
+  ); -- partition by purse_pub
+COMMENT ON TABLE purse_requests
+  IS 'Requests establishing purses, associating them with a contract but without a target reserve';
+COMMENT ON COLUMN purse_requests.purse_pub
+  IS 'Public key of the purse';
+COMMENT ON COLUMN purse_requests.purse_expiration
+  IS 'When the purse is set to expire';
+COMMENT ON COLUMN purse_requests.h_contract_terms
+  IS 'Hash of the contract the parties are to agree to';
+COMMENT ON COLUMN purse_requests.amount_with_fee_val
+  IS 'Total amount expected to be in the purse';
+COMMENT ON COLUMN purse_requests.purse_sig
+  IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
+
+CREATE TABLE IF NOT EXISTS purse_deposits
+  (purse_deposit_serial_id BIGSERIAL UNIQUE
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
+  ,purse_expiration INT8 NOT NULL
+  ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
+  ,amount_with_fee_val INT8 NOT NULL
+  ,amount_with_fee_frac INT4 NOT NULL
+  ,coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)
+  ,PRIMARY KEY (purse_pub,coin_pub)
+  ); -- partition by purse_pub, plus a materialized index by coin_pub!
+COMMENT ON TABLE purse_deposits
+  IS 'Requests depositing coins into a purse';
+COMMENT ON COLUMN purse_deposits.purse_pub
+  IS 'Public key of the purse';
+COMMENT ON COLUMN purse_deposits.purse_expiration
+  IS 'When the purse is set to expire';
+COMMENT ON COLUMN purse_deposits.coin_pub
+  IS 'Public key of the coin being deposited';
+COMMENT ON COLUMN purse_deposits.amount_with_fee_val
+  IS 'Total amount being deposited';
+COMMENT ON COLUMN purse_deposits.coin_sig
+  IS 'Signature of the coin affirming the deposit into the purse, of type TALER_SIGNATURE_PURSE_DEPOSIT';
+
+CREATE TABLE IF NOT EXISTS wads_out
+  (wad_out_serial_id BIGSERIAL UNIQUE
+  ,wad_id BYTEA PRIMARY KEY CHECK (LENGTH(wad_id)=24)
+  ,partner_serial_id INT8 NOT NULL REFERENCES partners(partner_serial_id) ON DELETE CASCADE
+  ,amount_val INT8 NOT NULL
+  ,amount_frac INT4 NOT NULL
+  ,execution_time INT8 NOT NULL
+  ); -- partition by wad_id
+COMMENT ON TABLE wads_out
+  IS 'Wire transfers made to another exchange to transfer purse funds';
+COMMENT ON COLUMN wads_out.wad_id
+  IS 'Unique identifier of the wad, part of the wire transfer subject';
+COMMENT ON COLUMN wads_out.partner_serial_id
+  IS 'target exchange of the wad';
+COMMENT ON COLUMN wads_out.amount_val
+  IS 'Amount that was wired';
+COMMENT ON COLUMN wads_out.execution_time
+  IS 'Time when the wire transfer was scheduled';
+
+CREATE TABLE IF NOT EXISTS wad_out_entries
+  (wad_out_entry_serial_id BIGSERIAL UNIQUE
+  ,wad_out_serial_id INT8 REFERENCES wads_out (wad_out_serial_id) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)
+  ,purse_pub BYTEA PRIMARY KEY CHECK(LENGTH(purse_pub)=32)
+  ,h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)
+  ,purse_expiration INT8 NOT NULL
+  ,merge_timestamp INT8 NOT NULL
+  ,amount_with_fee_val INT8 NOT NULL
+  ,amount_with_fee_frac INT4 NOT NULL
+  ,wad_fee_val INT8 NOT NULL
+  ,wad_fee_frac INT4 NOT NULL
+  ,deposit_fees_val INT8 NOT NULL
+  ,deposit_fees_frac INT4 NOT NULL
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
+  ); -- partition by purse_pub? do we need a materialized index by reserve_pub?
+CREATE INDEX IF NOT EXISTS wad_out_entries_index_by_wad
+  ON wad_out_entries (wad_out_serial_id);
+COMMENT ON TABLE wad_out_entries
+  IS 'Purses combined into a wad';
+COMMENT ON COLUMN wad_out_entries.wad_out_serial_id
+  IS 'Wad the purse was part of';
+COMMENT ON COLUMN wad_out_entries.reserve_pub
+  IS 'Target reserve for the purse';
+COMMENT ON COLUMN wad_out_entries.purse_pub
+  IS 'Public key of the purse';
+COMMENT ON COLUMN wad_out_entries.h_contract
+  IS 'Hash of the contract associated with the purse';
+COMMENT ON COLUMN wad_out_entries.purse_expiration
+  IS 'Time when the purse expires';
+COMMENT ON COLUMN wad_out_entries.merge_timestamp
+  IS 'Time when the merge was approved';
+COMMENT ON COLUMN wad_out_entries.amount_with_fee_val
+  IS 'Total amount in the purse';
+COMMENT ON COLUMN wad_out_entries.wad_fee_val
+  IS 'Wat fee charged to the purse';
+COMMENT ON COLUMN wad_out_entries.deposit_fees_val
+  IS 'Total deposit fees charged to the purse';
+COMMENT ON COLUMN wad_out_entries.reserve_sig
+  IS 'Signature by the receiving reserve, of purpose TALER_SIGNATURE_ACCOUNT_MERGE';
+COMMENT ON COLUMN wad_out_entries.purse_sig
+  IS 'Signature by the purse of purpose TALER_SIGNATURE_PURSE_MERGE';
+
+CREATE TABLE IF NOT EXISTS wads_in
+  (wad_in_serial_id BIGSERIAL UNIQUE
+  ,wad_id BYTEA PRIMARY KEY CHECK (LENGTH(wad_id)=24)
+  ,origin_exchange_url TEXT NOT NULL
+  ,amount_val INT8 NOT NULL
+  ,amount_frac INT4 NOT NULL
+  ,arrival_time INT8 NOT NULL
+  ,UNIQUE (wad_id, origin_exchange_url)
+  ); -- partition by wad_id
+COMMENT ON TABLE wads_in
+  IS 'Incoming exchange-to-exchange wad wire transfers';
+COMMENT ON COLUMN wads_in.wad_id
+  IS 'Unique identifier of the wad, part of the wire transfer subject';
+COMMENT ON COLUMN wads_in.origin_exchange_url
+  IS 'Base URL of the originating URL, also part of the wire transfer subject';
+COMMENT ON COLUMN wads_in.amount_val
+  IS 'Actual amount that was received by our exchange';
+COMMENT ON COLUMN wads_in.arrival_time
+  IS 'Time when the wad was received';
+
+CREATE TABLE IF NOT EXISTS wad_in_entries
+  (wad_in_entry_serial_id BIGSERIAL UNIQUE
+  ,wad_in_serial_id INT8 REFERENCES wads_in (wad_in_serial_id) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL CHECK(LENGTH(reserve_pub)=32)
+  ,purse_pub BYTEA PRIMARY KEY CHECK(LENGTH(purse_pub)=32)
+  ,h_contract BYTEA NOT NULL CHECK(LENGTH(h_contract)=64)
+  ,purse_expiration INT8 NOT NULL
+  ,merge_timestamp INT8 NOT NULL
+  ,amount_with_fee_val INT8 NOT NULL
+  ,amount_with_fee_frac INT4 NOT NULL
+  ,wad_fee_val INT8 NOT NULL
+  ,wad_fee_frac INT4 NOT NULL
+  ,deposit_fees_val INT8 NOT NULL
+  ,deposit_fees_frac INT4 NOT NULL
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
+  ); -- partition by purse or reserve? likely need both (so extra table?)
+COMMENT ON TABLE wad_in_entries
+  IS 'list of purses aggregated in a wad according to the sending exchange';
+COMMENT ON COLUMN wad_in_entries.wad_in_serial_id
+  IS 'wad for which the given purse was included in the aggregation';
+COMMENT ON COLUMN wad_in_entries.reserve_pub
+  IS 'target account of the purse (must be at the local exchange)';
+COMMENT ON COLUMN wad_in_entries.purse_pub
+  IS 'public key of the purse that was merged';
+COMMENT ON COLUMN wad_in_entries.h_contract
+  IS 'hash of the contract terms of the purse';
+COMMENT ON COLUMN wad_in_entries.purse_expiration
+  IS 'Time when the purse was set to expire';
+COMMENT ON COLUMN wad_in_entries.merge_timestamp
+  IS 'Time when the merge was approved';
+COMMENT ON COLUMN wad_in_entries.amount_with_fee_val
+  IS 'Total amount in the purse';
+COMMENT ON COLUMN wad_in_entries.wad_fee_val
+  IS 'Total wad fees paid by the purse';
+COMMENT ON COLUMN wad_in_entries.deposit_fees_val
+  IS 'Total deposit fees paid when depositing coins into the purse';
+COMMENT ON COLUMN wad_in_entries.reserve_sig
+  IS 'Signature by the receiving reserve, of purpose TALER_SIGNATURE_ACCOUNT_MERGE';
+COMMENT ON COLUMN wad_in_entries.purse_sig
+  IS 'Signature by the purse of purpose TALER_SIGNATURE_PURSE_MERGE';
+CREATE INDEX IF NOT EXISTS wad_in_entries_wad_in_serial
+  ON wad_in_entries (wad_in_serial_id);
+CREATE INDEX IF NOT EXISTS wad_in_entries_reserve_pub
+  ON wad_in_entries (reserve_pub);
+COMMENT ON INDEX wad_in_entries_wad_in_serial
+  IS 'needed to lookup all transfers associated with a wad';
+COMMENT ON INDEX wad_in_entries_reserve_pub
+  IS 'needed to compute reserve history';
+
+CREATE TABLE IF NOT EXISTS partner_accounts
+  (payto_uri VARCHAR PRIMARY KEY
+  ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
+  ,partner_master_sig BYTEA CHECK (LENGTH(partner_master_sig)=64)
+  ,last_seen INT8 NOT NULL
+  );
+CREATE INDEX IF NOT EXISTS partner_accounts_index_by_partner_and_time
+  ON partner_accounts (partner_serial_id,last_seen);
+COMMENT ON TABLE partner_accounts
+  IS 'Table with bank accounts of the partner exchange. Entries never expire as we need to remember the signature for the auditor.';
+COMMENT ON COLUMN partner_accounts.payto_uri
+  IS 'payto URI (RFC 8905) with the bank account of the partner exchange.';
+COMMENT ON COLUMN partner_accounts.partner_master_sig
+  IS 'Signature of purpose TALER_SIGNATURE_MASTER_WIRE_DETAILS by the partner master public key';
+COMMENT ON COLUMN partner_accounts.last_seen
+  IS 'Last time we saw this account as being active at the partner exchange. Used to select the most recent entry, and to detect when we should check again.';
 
 
 -- Stored procedures
