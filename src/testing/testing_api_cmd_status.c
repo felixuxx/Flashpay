@@ -18,7 +18,7 @@
 */
 /**
  * @file testing/testing_api_cmd_status.c
- * @brief Implement the /reserve/status test command.
+ * @brief Implement the GET /reserve/$RID test command.
  * @author Marcello Stanisci
  */
 #include "platform.h"
@@ -66,250 +66,50 @@ struct StatusState
 
 
 /**
- * Compare @a h1 and @a h2.
- *
- * @param h1 a history entry
- * @param h2 a history entry
- * @return 0 if @a h1 and @a h2 are equal
- */
-static int
-history_entry_cmp (const struct TALER_EXCHANGE_ReserveHistory *h1,
-                   const struct TALER_EXCHANGE_ReserveHistory *h2)
-{
-  if (h1->type != h2->type)
-    return 1;
-  switch (h1->type)
-  {
-  case TALER_EXCHANGE_RTT_CREDIT:
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 == strcasecmp (h1->details.in_details.sender_url,
-                           h2->details.in_details.sender_url)) &&
-         (h1->details.in_details.wire_reference ==
-          h2->details.in_details.wire_reference) &&
-         (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
-                                     ==,
-                                     h2->details.in_details.timestamp)) )
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_WITHDRAWAL:
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          TALER_amount_cmp (&h1->details.withdraw.fee,
-                            &h2->details.withdraw.fee)) )
-      /* testing_api_cmd_withdraw doesn't set the out_authorization_sig,
-         so we cannot test for it here. but if the amount matches,
-         that should be good enough. */
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_RECOUP:
-    /* exchange_sig, exchange_pub and timestamp are NOT available
-       from the original recoup response, hence here NOT check(able/ed) */
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          GNUNET_memcmp (&h1->details.recoup_details.coin_pub,
-                         &h2->details.recoup_details.coin_pub)) )
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_CLOSE:
-    /* testing_api_cmd_exec_closer doesn't set the
-       receiver_account_details, exchange_sig, exchange_pub or wtid or timestamp
-       so we cannot test for it here. but if the amount matches,
-       that should be good enough. */
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          TALER_amount_cmp (&h1->details.close_details.fee,
-                            &h2->details.close_details.fee)) )
-      return 0;
-    return 1;
-  }
-  GNUNET_assert (0);
-  return 1;
-}
-
-
-/**
- * Check if @a cmd changed the reserve, if so, find the
- * entry in @a history and set the respective index in @a found
- * to #GNUNET_YES. If the entry is not found, return #GNUNET_SYSERR.
- *
- * @param reserve_pub public key of the reserve for which we have the @a history
- * @param cmd command to analyze for impact on history
- * @param history_length number of entries in @a history and @a found
- * @param history history to check
- * @param[in,out] found array to update
- * @return #GNUNET_OK if @a cmd action on reserve was found in @a history
- */
-static enum GNUNET_GenericReturnValue
-analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
-                 const struct TALER_TESTING_Command *cmd,
-                 unsigned int history_length,
-                 const struct TALER_EXCHANGE_ReserveHistory *history,
-                 int *found)
-{
-  if (TALER_TESTING_cmd_is_batch (cmd))
-  {
-    struct TALER_TESTING_Command *cur;
-    struct TALER_TESTING_Command **bcmd;
-
-    cur = TALER_TESTING_cmd_batch_get_current (cmd);
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_batch_cmds (cmd,
-                                            &bcmd))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    for (unsigned int i = 0; NULL != (*bcmd)[i].label; i++)
-    {
-      struct TALER_TESTING_Command *step = &(*bcmd)[i];
-
-      if (step == cur)
-        break; /* if *we* are in a batch, make sure not to analyze commands past 'now' */
-      if (GNUNET_OK !=
-          analyze_command (reserve_pub,
-                           step,
-                           history_length,
-                           history,
-                           found))
-        return GNUNET_SYSERR;
-    }
-    return GNUNET_OK;
-  }
-  else
-  {
-    const struct TALER_ReservePublicKeyP *rp;
-    const struct TALER_EXCHANGE_ReserveHistory *he;
-
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_pub (cmd,
-                                             &rp))
-      return GNUNET_OK; /* command does nothing for reserves */
-    if (0 !=
-        GNUNET_memcmp (rp,
-                       reserve_pub))
-      return GNUNET_OK; /* command affects some _other_ reserve */
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_history (cmd,
-                                                 &he))
-    {
-      /* NOTE: only for debugging... */
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Command `%s' has the reserve_pub trait, but does not reserve history trait\n",
-                  cmd->label);
-      return GNUNET_OK; /* command does nothing for reserves */
-    }
-    for (unsigned int i = 0; i<history_length; i++)
-    {
-      if (found[i])
-        continue; /* already found, skip */
-      if (0 ==
-          history_entry_cmp (he,
-                             &history[i]))
-      {
-        found[i] = GNUNET_YES;
-        return GNUNET_OK;
-      }
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Command `%s' reserve history entry not found\n",
-                cmd->label);
-    return GNUNET_SYSERR;
-  }
-}
-
-
-/**
  * Check that the reserve balance and HTTP response code are
  * both acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param balance current balance in the reserve, NULL on error.
- * @param history_length number of entries in the transaction
- *        history, 0 on error.
- * @param history detailed transaction history, NULL on error.
+ * @param rs HTTP response details
  */
 static void
 reserve_status_cb (void *cls,
-                   const struct TALER_EXCHANGE_HttpResponse *hr,
-                   const struct TALER_Amount *balance,
-                   unsigned int history_length,
-                   const struct TALER_EXCHANGE_ReserveHistory *history)
+                   const struct TALER_EXCHANGE_ReserveSummary *rs)
 {
   struct StatusState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
   struct TALER_Amount eb;
 
   ss->rsh = NULL;
-  if (ss->expected_response_code != hr->http_status)
+  if (ss->expected_response_code != rs->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected HTTP response code: %d in %s:%u\n",
-                hr->http_status,
+                rs->hr.http_status,
                 __FILE__,
                 __LINE__);
-    json_dumpf (hr->reply,
+    json_dumpf (rs->hr.reply,
                 stderr,
                 0);
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
-
+  if (MHD_HTTP_OK != ss->expected_response_code)
+  {
+    TALER_TESTING_interpreter_next (is);
+    return;
+  }
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (ss->expected_balance,
                                          &eb));
-
   if (0 != TALER_amount_cmp (&eb,
-                             balance))
+                             &rs->details.ok.balance))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected amount in reserve: %s\n",
-                TALER_amount_to_string (balance));
+                TALER_amount_to_string (&rs->details.ok.balance));
     TALER_TESTING_interpreter_fail (ss->is);
     return;
-  }
-  {
-    int found[history_length];
-
-    memset (found,
-            0,
-            sizeof (found));
-    for (unsigned int i = 0; i<= (unsigned int) is->ip; i++)
-    {
-      struct TALER_TESTING_Command *cmd = &is->commands[i];
-
-      if (GNUNET_OK !=
-          analyze_command (ss->reserve_pubp,
-                           cmd,
-                           history_length,
-                           history,
-                           found))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Entry for command `%s' missing in history\n",
-                    cmd->label);
-        TALER_TESTING_interpreter_fail (ss->is);
-        return;
-      }
-    }
-    for (unsigned int i = 0; i<history_length; i++)
-      if (! found[i])
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "History entry at index %u of type %d not justified by command history\n",
-                    i,
-                    history[i].type);
-        TALER_TESTING_interpreter_fail (ss->is);
-        return;
-      }
   }
   TALER_TESTING_interpreter_next (is);
 }

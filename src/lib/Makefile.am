@@ -18,7 +18,7 @@ lib_LTLIBRARIES = \
   libtalerexchange.la
 
 libtalerexchange_la_LDFLAGS = \
-  -version-info 4:0:0 \
+  -version-info 5:0:0 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
   exchange_api_auditor_add_denomination.c \
@@ -51,6 +51,8 @@ libtalerexchange_la_SOURCES = \
   exchange_api_refreshes_reveal.c \
   exchange_api_refund.c \
   exchange_api_reserves_get.c \
+  exchange_api_reserves_history.c \
+  exchange_api_reserves_status.c \
   exchange_api_transfers_get.c \
   exchange_api_withdraw.c \
   exchange_api_withdraw2.c \

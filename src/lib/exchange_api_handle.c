@@ -2181,6 +2181,27 @@ TALER_EXCHANGE_get_denomination_key (
 }
 
 
+const struct TALER_EXCHANGE_GlobalFee *
+TALER_EXCHANGE_get_global_fee (
+  const struct TALER_EXCHANGE_Keys *keys,
+  struct GNUNET_TIME_Timestamp ts)
+{
+  for (unsigned int i = 0; i<keys->num_global_fees; i++)
+  {
+    const struct TALER_EXCHANGE_GlobalFee *gf = &keys->global_fees[i];
+
+    if (GNUNET_TIME_timestamp_cmp (ts,
+                                   >=,
+                                   gf->start_date) &&
+        GNUNET_TIME_timestamp_cmp (ts,
+                                   <,
+                                   gf->end_date))
+      return gf;
+  }
+  return NULL;
+}
+
+
 struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_copy_denomination_key (
   const struct TALER_EXCHANGE_DenomPublicKey *key)

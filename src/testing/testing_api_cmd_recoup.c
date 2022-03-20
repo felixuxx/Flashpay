@@ -62,7 +62,7 @@ struct RecoupState
    * Reserve history entry, set if this recoup actually filled up a reserve.
    * Otherwise `reserve_history.type` will be zero.
    */
-  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
 };
 

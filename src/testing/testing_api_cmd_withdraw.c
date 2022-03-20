@@ -148,7 +148,7 @@ struct WithdrawState
    * Reserve history entry that corresponds to this operation.
    * Will be of type #TALER_EXCHANGE_RTT_WITHDRAWAL.
    */
-  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
   /**
    * Withdraw handle (while operation is running).

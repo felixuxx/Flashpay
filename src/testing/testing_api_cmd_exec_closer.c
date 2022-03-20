@@ -49,7 +49,7 @@ struct CloserState
    * expect_close is true.  Will be of type
    * #TALER_EXCHANGE_RTT_RESERVE_CLOSED.
    */
-  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
   /**
    * If the closer filled a reserve (@e expect_close is set), this is set to

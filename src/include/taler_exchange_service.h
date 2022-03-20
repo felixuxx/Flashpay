@@ -637,6 +637,19 @@ TALER_EXCHANGE_get_denomination_key (
 
 
 /**
+ * Obtain the global fee details from the exchange.
+ *
+ * @param keys the exchange's key set
+ * @param ts time for when to fetch the fees
+ * @return details about the fees, NULL if no fees are known at @a ts
+ */
+const struct TALER_EXCHANGE_GlobalFee *
+TALER_EXCHANGE_get_global_fee (
+  const struct TALER_EXCHANGE_Keys *keys,
+  struct GNUNET_TIME_Timestamp ts);
+
+
+/**
  * Create a copy of a denomination public key.
  *
  * @param key key to copy
@@ -1281,13 +1294,6 @@ TALER_EXCHANGE_csr_withdraw_cancel (
 
 /* ********************* GET /reserves/$RESERVE_PUB *********************** */
 
-
-/**
- * @brief A /reserves/ GET Handle
- */
-struct TALER_EXCHANGE_ReservesGetHandle;
-
-
 /**
  * Ways how a reserve's balance may change.
  */
@@ -1320,7 +1326,7 @@ enum TALER_EXCHANGE_ReserveTransactionType
 /**
  * @brief Entry in the reserve's transaction history.
  */
-struct TALER_EXCHANGE_ReserveHistory
+struct TALER_EXCHANGE_ReserveHistoryEntry
 {
 
   /**
@@ -1454,22 +1460,58 @@ struct TALER_EXCHANGE_ReserveHistory
 
 
 /**
+ * @brief A /reserves/ GET Handle
+ */
+struct TALER_EXCHANGE_ReservesGetHandle;
+
+
+/**
+ * @brief Reserve summary.
+ */
+struct TALER_EXCHANGE_ReserveSummary
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Reserve balance.
+       */
+      struct TALER_Amount balance;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to serve the result of submitting a
  * reserve status request to a exchange.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param balance current balance in the reserve, NULL on error
- * @param history_length number of entries in the transaction history, 0 on error
- * @param history detailed transaction history, NULL on error
+ * @param rs HTTP response data
  */
 typedef void
 (*TALER_EXCHANGE_ReservesGetCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_Amount *balance,
-  unsigned int history_length,
-  const struct TALER_EXCHANGE_ReserveHistory *history);
+  const struct TALER_EXCHANGE_ReserveSummary *rs);
 
 
 /**
@@ -1508,6 +1550,214 @@ TALER_EXCHANGE_reserves_get (
 void
 TALER_EXCHANGE_reserves_get_cancel (
   struct TALER_EXCHANGE_ReservesGetHandle *rgh);
+
+
+/**
+ * @brief A /reserves/$RID/status Handle
+ */
+struct TALER_EXCHANGE_ReservesStatusHandle;
+
+
+/**
+ * @brief Reserve status details.
+ */
+struct TALER_EXCHANGE_ReserveStatus
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Reserve balance.
+       */
+      struct TALER_Amount balance;
+
+      /**
+       * Reserve history.
+       */
+      const struct TALER_EXCHANGE_ReserveHistoryEntry *history;
+
+      /**
+       * Length of the @e history array.
+       */
+      unsigned int history_len;
+
+      /**
+       * KYC passed?
+       */
+      bool kyc_ok;
+
+      /**
+       * KYC required to withdraw?
+       */
+      bool kyc_required;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve status request to a exchange.
+ *
+ * @param cls closure
+ * @param rs HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesStatusCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveStatus *rs);
+
+
+/**
+ * Submit a request to obtain the reserve status.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to inspect
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesStatusHandle *
+TALER_EXCHANGE_reserves_status (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  TALER_EXCHANGE_ReservesStatusCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a reserve status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_status_cancel (
+  struct TALER_EXCHANGE_ReservesStatusHandle *rsh);
+
+
+/**
+ * @brief A /reserves/$RID/history Handle
+ */
+struct TALER_EXCHANGE_ReservesHistoryHandle;
+
+
+/**
+ * @brief Reserve history details.
+ */
+struct TALER_EXCHANGE_ReserveHistory
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Reserve balance.
+       */
+      struct TALER_Amount balance;
+
+      /**
+       * Reserve history.
+       */
+      const struct TALER_EXCHANGE_ReserveHistoryEntry *history;
+
+      /**
+       * Length of the @e history array.
+       */
+      unsigned int history_len;
+
+      /**
+       * KYC passed?
+       */
+      bool kyc_ok;
+
+      /**
+       * KYC required to withdraw?
+       */
+      bool kyc_required;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve history request to a exchange.
+ *
+ * @param cls closure
+ * @param rs HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesHistoryCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveHistory *rs);
+
+
+/**
+ * Submit a request to obtain the reserve history.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to inspect
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesHistoryHandle *
+TALER_EXCHANGE_reserves_history (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  TALER_EXCHANGE_ReservesHistoryCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a reserve history request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_history_cancel (
+  struct TALER_EXCHANGE_ReservesHistoryHandle *rsh);
 
 
 /* ********************* POST /reserves/$RESERVE_PUB/withdraw *********************** */
@@ -2451,7 +2701,7 @@ TALER_EXCHANGE_parse_reserve_history (
   const char *currency,
   struct TALER_Amount *balance,
   unsigned int history_length,
-  struct TALER_EXCHANGE_ReserveHistory *rhistory);
+  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory);
 
 
 /**
@@ -2462,7 +2712,7 @@ TALER_EXCHANGE_parse_reserve_history (
  */
 void
 TALER_EXCHANGE_free_reserve_history (
-  struct TALER_EXCHANGE_ReserveHistory *rhistory,
+  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory,
   unsigned int len);
 
 

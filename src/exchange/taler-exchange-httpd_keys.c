@@ -280,31 +280,6 @@ struct SigningKey
 };
 
 
-/**
- * Set of global fees (and options) for a time range.
- */
-struct GlobalFee
-{
-  /**
-   * Kept in a DLL.
-   */
-  struct GlobalFee *next;
-
-  /**
-   * Kept in a DLL.
-   */
-  struct GlobalFee *prev;
-
-  struct GNUNET_TIME_Timestamp start_date;
-  struct GNUNET_TIME_Timestamp end_date;
-  struct GNUNET_TIME_Relative purse_timeout;
-  struct GNUNET_TIME_Relative kyc_timeout;
-  struct GNUNET_TIME_Relative history_expiration;
-  struct TALER_MasterSignatureP master_sig;
-  struct TALER_GlobalFeeSet fees;
-  uint32_t purse_account_limit;
-};
-
 struct TEH_KeyStateHandle
 {
 
@@ -324,12 +299,12 @@ struct TEH_KeyStateHandle
   /**
    * Head of DLL of our global fees.
    */
-  struct GlobalFee *gf_head;
+  struct TEH_GlobalFee *gf_head;
 
   /**
    * Tail of DLL of our global fees.
    */
-  struct GlobalFee *gf_tail;
+  struct TEH_GlobalFee *gf_tail;
 
   /**
    * json array with the auditors of this exchange. Contains exactly
@@ -1215,7 +1190,7 @@ static void
 destroy_key_state (struct TEH_KeyStateHandle *ksh,
                    bool free_helper)
 {
-  struct GlobalFee *gf;
+  struct TEH_GlobalFee *gf;
 
   clear_response_cache (ksh);
   while (NULL != (gf = ksh->gf_head))
@@ -2282,9 +2257,9 @@ global_fee_info_cb (
   const struct TALER_MasterSignatureP *master_sig)
 {
   struct TEH_KeyStateHandle *ksh = cls;
-  struct GlobalFee *gf;
+  struct TEH_GlobalFee *gf;
 
-  gf = GNUNET_new (struct GlobalFee);
+  gf = GNUNET_new (struct TEH_GlobalFee);
   gf->start_date = start_date;
   gf->end_date = end_date;
   gf->fees = *fees;
@@ -2517,11 +2492,32 @@ TEH_keys_get_state (void)
 }
 
 
+const struct TEH_GlobalFee *
+TEH_keys_global_fee_by_time (
+  struct TEH_KeyStateHandle *ksh,
+  struct GNUNET_TIME_Timestamp ts)
+{
+  for (const struct TEH_GlobalFee *gf = ksh->gf_head;
+       NULL != gf;
+       gf = gf->next)
+  {
+    if (GNUNET_TIME_timestamp_cmp (ts,
+                                   >=,
+                                   gf->start_date) &&
+        GNUNET_TIME_timestamp_cmp (ts,
+                                   <,
+                                   gf->end_date))
+      return gf;
+  }
+  return NULL;
+}
+
+
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct
-                               TALER_DenominationHashP *h_denom_pub,
-                               struct MHD_Connection *conn,
-                               MHD_RESULT *mret)
+TEH_keys_denomination_by_hash (
+  const struct TALER_DenominationHashP *h_denom_pub,
+  struct MHD_Connection *conn,
+  MHD_RESULT *mret)
 {
   struct TEH_KeyStateHandle *ksh;
 

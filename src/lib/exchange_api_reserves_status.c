@@ -81,34 +81,30 @@ struct TALER_EXCHANGE_ReservesStatusHandle
  * We received an #MHD_HTTP_OK status code. Handle the JSON
  * response.
  *
- * @param rgh handle of the request
+ * @param rsh handle of the request
  * @param j JSON response
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rgh,
+handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rsh,
                            const json_t *j)
 {
   json_t *history;
   unsigned int len;
-  bool kyc_ok;
-  bool kyc_required;
-  struct TALER_Amount balance;
-  struct TALER_Amount balance_from_history;
+  struct TALER_EXCHANGE_ReserveStatus rs = {
+    .hr.reply = j,
+    .hr.http_status = MHD_HTTP_OK
+  };
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
-                                &balance),
+                                &rs.details.ok.balance),
     GNUNET_JSON_spec_bool ("kyc_passed",
-                           &kyc_ok),
+                           &rs.details.ok.kyc_ok),
     GNUNET_JSON_spec_bool ("kyc_required",
-                           &kyc_required),
+                           &rs.details.ok.kyc_required),
     GNUNET_JSON_spec_json ("history",
                            &history),
     GNUNET_JSON_spec_end ()
-  };
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = MHD_HTTP_OK
   };
 
   if (GNUNET_OK !=
@@ -122,16 +118,16 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rgh,
   }
   len = json_array_size (history);
   {
-    struct TALER_EXCHANGE_ReserveHistory *rhistory;
+    struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory;
 
     rhistory = GNUNET_new_array (len,
-                                 struct TALER_EXCHANGE_ReserveHistory);
+                                 struct TALER_EXCHANGE_ReserveHistoryEntry);
     if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (rgh->exchange,
+        TALER_EXCHANGE_parse_reserve_history (rsh->exchange,
                                               history,
-                                              &rgh->reserve_pub,
-                                              balance.currency,
-                                              &balance_from_history,
+                                              &rsh->reserve_pub,
+                                              rs.details.ok.balance.currency,
+                                              NULL,
                                               len,
                                               rhistory))
     {
@@ -141,27 +137,13 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rgh,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    // FIXME: status history is allowed to be
-    // partial, so this is NOT ok...
-    if (0 !=
-        TALER_amount_cmp (&balance_from_history,
-                          &balance))
+    if (NULL != rsh->cb)
     {
-      /* exchange cannot add up balances!? */
-      GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    if (NULL != rgh->cb)
-    {
-      rgh->cb (rgh->cb_cls,
-               &hr,
-               &balance,
-               len,
-               rhistory);
-      rgh->cb = NULL;
+      rs.details.ok.history = rhistory;
+      rs.details.ok.history_len = len;
+      rsh->cb (rsh->cb_cls,
+               &rs);
+      rsh->cb = NULL;
     }
     TALER_EXCHANGE_free_reserve_history (rhistory,
                                          len);
@@ -184,75 +166,72 @@ handle_reserves_status_finished (void *cls,
                                  long response_code,
                                  const void *response)
 {
-  struct TALER_EXCHANGE_ReservesStatusHandle *rgh = cls;
+  struct TALER_EXCHANGE_ReservesStatusHandle *rsh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_ReserveStatus rs = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
-  rgh->job = NULL;
+  rsh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rs.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        handle_reserves_status_ok (rgh,
+        handle_reserves_status_ok (rsh,
                                    j))
     {
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      rs.hr.http_status = 0;
+      rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break (0);
-    hr.ec = TALER_JSON_status_error_code (j);
-    hr.hint = TALER_JSON_status_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break (0);
-    hr.ec = TALER_JSON_status_error_code (j);
-    hr.hint = TALER_JSON_status_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_status_error_code (j);
-    hr.hint = TALER_JSON_status_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_status_error_code (j);
-    hr.hint = TALER_JSON_status_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_status_error_code (j);
-    hr.hint = TALER_JSON_status_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for reserves status\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) rs.hr.ec);
     break;
   }
-  if (NULL != rgh->cb)
+  if (NULL != rsh->cb)
   {
-    rgh->cb (rgh->cb_cls,
-             &hr,
-             NULL,
-             0,
-             NULL);
-    rgh->cb = NULL;
+    rsh->cb (rsh->cb_cls,
+             &rs);
+    rsh->cb = NULL;
   }
-  TALER_EXCHANGE_reserves_status_cancel (rgh);
+  TALER_EXCHANGE_reserves_status_cancel (rsh);
 }
 
 
@@ -263,10 +242,11 @@ TALER_EXCHANGE_reserves_status (
   TALER_EXCHANGE_ReservesStatusCallback cb,
   void *cb_cls)
 {
-  struct TALER_EXCHANGE_ReservesStatusHandle *rgh;
+  struct TALER_EXCHANGE_ReservesStatusHandle *rsh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
+  struct TALER_ReserveSignatureP reserve_sig;
   struct GNUNET_TIME_Timestamp ts
     = GNUNET_TIME_timestamp_get ();
 
@@ -276,19 +256,19 @@ TALER_EXCHANGE_reserves_status (
     GNUNET_break (0);
     return NULL;
   }
-  rgh = GNUNET_new (struct TALER_EXCHANGE_ReservesStatusHandle);
-  rgh->exchange = exchange;
-  rgh->cb = cb;
-  rgh->cb_cls = cb_cls;
+  rsh = GNUNET_new (struct TALER_EXCHANGE_ReservesStatusHandle);
+  rsh->exchange = exchange;
+  rsh->cb = cb;
+  rsh->cb_cls = cb_cls;
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                      &rgh->reserve_pub.eddsa_pub);
+                                      &rsh->reserve_pub.eddsa_pub);
   {
     char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      &rgh->reserve_pub,
-      sizeof (rgh->reserve_pub),
+      &rsh->reserve_pub,
+      sizeof (rsh->reserve_pub),
       pub_str,
       sizeof (pub_str));
     *end = '\0';
@@ -297,19 +277,19 @@ TALER_EXCHANGE_reserves_status (
                      "/reserves/%s/status",
                      pub_str);
   }
-  rgh->url = TEAH_path_to_url (exchange,
+  rsh->url = TEAH_path_to_url (exchange,
                                arg_str);
-  if (NULL == rgh->url)
+  if (NULL == rsh->url)
   {
-    GNUNET_free (rgh);
+    GNUNET_free (rsh);
     return NULL;
   }
-  eh = TALER_EXCHANGE_curl_easy_status_ (rgh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (rsh->url);
   if (NULL == eh)
   {
     GNUNET_break (0);
-    GNUNET_free (rgh->url);
-    GNUNET_free (rgh);
+    GNUNET_free (rsh->url);
+    GNUNET_free (rsh);
     return NULL;
   }
   TALER_wallet_reserve_status_sign (ts,
@@ -318,46 +298,45 @@ TALER_EXCHANGE_reserves_status (
   {
     json_t *status_obj = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_timestamp ("request_timestamp",
-                                  &ts),
+                                  ts),
       GNUNET_JSON_pack_data_auto ("reserve_sig",
                                   &reserve_sig));
 
     if (GNUNET_OK !=
-        TALER_curl_easy_post (&rgh->post_ctx,
+        TALER_curl_easy_post (&rsh->post_ctx,
                               eh,
                               status_obj))
-      )
-      {
-        GNUNET_break (0);
-        curl_easy_cleanup (eh);
-        json_decref (status_obj);
-        GNUNET_free (rgh->url);
-        GNUNET_free (rgh);
-        return NULL;
-      }
+    {
+      GNUNET_break (0);
+      curl_easy_cleanup (eh);
       json_decref (status_obj);
+      GNUNET_free (rsh->url);
+      GNUNET_free (rsh);
+      return NULL;
+    }
+    json_decref (status_obj);
   }
   ctx = TEAH_handle_to_context (exchange);
-  rgh->job = GNUNET_CURL_job_add (ctx,
+  rsh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_reserves_status_finished,
-                                  rgh);
-  return rgh;
+                                  rsh);
+  return rsh;
 }
 
 
 void
 TALER_EXCHANGE_reserves_status_cancel (
-  struct TALER_EXCHANGE_ReservesStatusHandle *rgh)
+  struct TALER_EXCHANGE_ReservesStatusHandle *rsh)
 {
-  if (NULL != rgh->job)
+  if (NULL != rsh->job)
   {
-    GNUNET_CURL_job_cancel (rgh->job);
-    rgh->job = NULL;
+    GNUNET_CURL_job_cancel (rsh->job);
+    rsh->job = NULL;
   }
-  TALER_curl_easy_post_finished (&rgh->post_ctx);
-  GNUNET_free (rgh->url);
-  GNUNET_free (rgh);
+  TALER_curl_easy_post_finished (&rsh->post_ctx);
+  GNUNET_free (rsh->url);
+  GNUNET_free (rsh);
 }
 
 

@@ -34,7 +34,7 @@ TALER_EXCHANGE_parse_reserve_history (
   const char *currency,
   struct TALER_Amount *balance,
   unsigned int history_length,
-  struct TALER_EXCHANGE_ReserveHistory *rhistory)
+  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory)
 {
   struct GNUNET_HashCode uuid[history_length];
   unsigned int uuid_off;
@@ -50,7 +50,7 @@ TALER_EXCHANGE_parse_reserve_history (
   uuid_off = 0;
   for (unsigned int off = 0; off<history_length; off++)
   {
-    struct TALER_EXCHANGE_ReserveHistory *rh = &rhistory[off];
+    struct TALER_EXCHANGE_ReserveHistoryEntry *rh = &rhistory[off];
     json_t *transaction;
     struct TALER_Amount amount;
     const char *type;
@@ -368,14 +368,20 @@ TALER_EXCHANGE_parse_reserve_history (
   }
 
   /* check balance = total_in - total_out < withdraw-amount */
-  if (0 >
-      TALER_amount_subtract (balance,
-                             &total_in,
-                             &total_out))
+  if (NULL != balance)
   {
-    /* total_in < total_out, why did the exchange ever allow this!? */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    /* if balance is NULL, we may have a partial history
+       in which case the subtraction may fail, so we do
+       not even check that invariant in this case. */
+    if (0 >
+        TALER_amount_subtract (balance,
+                               &total_in,
+                               &total_out))
+    {
+      /* total_in < total_out, why did the exchange ever allow this!? */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -383,7 +389,7 @@ TALER_EXCHANGE_parse_reserve_history (
 
 void
 TALER_EXCHANGE_free_reserve_history (
-  struct TALER_EXCHANGE_ReserveHistory *rhistory,
+  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory,
   unsigned int len)
 {
   for (unsigned int i = 0; i<len; i++)

@@ -83,18 +83,14 @@ static enum GNUNET_GenericReturnValue
 handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
                         const json_t *j)
 {
-  json_t *history;
-  unsigned int len;
-  struct TALER_Amount balance;
-  struct TALER_Amount balance_from_history;
+  struct TALER_EXCHANGE_ReserveSummary rs = {
+    .hr.reply = j,
+    .hr.http_status = MHD_HTTP_OK
+  };
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
-                                &balance),
+                                &rs.details.ok.balance),
     GNUNET_JSON_spec_end ()
-  };
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = MHD_HTTP_OK
   };
 
   if (GNUNET_OK !=
@@ -106,55 +102,9 @@ handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  history = json_object_get (j,
-                             "history");
-  if (NULL == history)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  len = json_array_size (history);
-  {
-    struct TALER_EXCHANGE_ReserveHistory *rhistory;
-
-    rhistory = GNUNET_new_array (len,
-                                 struct TALER_EXCHANGE_ReserveHistory);
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (rgh->exchange,
-                                              history,
-                                              &rgh->reserve_pub,
-                                              balance.currency,
-                                              &balance_from_history,
-                                              len,
-                                              rhistory))
-    {
-      GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
-      return GNUNET_SYSERR;
-    }
-    if (0 !=
-        TALER_amount_cmp (&balance_from_history,
-                          &balance))
-    {
-      /* exchange cannot add up balances!? */
-      GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
-      return GNUNET_SYSERR;
-    }
-    if (NULL != rgh->cb)
-    {
-      rgh->cb (rgh->cb_cls,
-               &hr,
-               &balance,
-               len,
-               rhistory);
-      rgh->cb = NULL;
-    }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
-  }
+  rgh->cb (rgh->cb_cls,
+           &rs);
+  rgh->cb = NULL;
   return GNUNET_OK;
 }
 
@@ -174,61 +124,59 @@ handle_reserves_get_finished (void *cls,
 {
   struct TALER_EXCHANGE_ReservesGetHandle *rgh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_ReserveSummary rs = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   rgh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rs.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         handle_reserves_get_ok (rgh,
                                 j))
     {
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      rs.hr.http_status = 0;
+      rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for reserves get\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) rs.hr.ec);
     break;
   }
   if (NULL != rgh->cb)
   {
     rgh->cb (rgh->cb_cls,
-             &hr,
-             NULL,
-             0, NULL);
+             &rs);
     rgh->cb = NULL;
   }
   TALER_EXCHANGE_reserves_get_cancel (rgh);

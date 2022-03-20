@@ -177,14 +177,14 @@ reserve_withdraw_payment_required (
      total incoming and outgoing amounts */
   len = json_array_size (history);
   {
-    struct TALER_EXCHANGE_ReserveHistory *rhistory;
+    struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory;
 
     /* Use heap allocation as "len" may be very big and thus this may
        not fit on the stack. Use "GNUNET_malloc_large" as a malicious
        exchange may theoretically try to crash us by giving a history
        that does not fit into our memory. */
     rhistory = GNUNET_malloc_large (
-      sizeof (struct TALER_EXCHANGE_ReserveHistory)
+      sizeof (struct TALER_EXCHANGE_ReserveHistoryEntry)
       * len);
     if (NULL == rhistory)
     {

@@ -1382,15 +1382,38 @@ TALER_TESTING_cmd_status (const char *label,
                           const char *expected_balance,
                           unsigned int expected_response_code);
 
-/**
- * Index of the deposit value trait of a deposit command.
- */
-#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE 0
 
 /**
- * Index of the deposit fee trait of a deposit command.
+ * Create a POST "/reserves/$RID/history" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to check.
+ * @param expected_balance expected balance for the reserve.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
  */
-#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE 1
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_history (const char *label,
+                                   const char *reserve_reference,
+                                   const char *expected_balance,
+                                   unsigned int expected_response_code);
+
+
+/**
+ * Create a POST "/reserves/$RID/status" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to check.
+ * @param expected_balance expected balance for the reserve.
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_status (const char *label,
+                                  const char *reserve_reference,
+                                  const char *expected_balance,
+                                  unsigned int expected_response_code);
+
 
 /**
  * Create a "deposit" command.
@@ -2455,7 +2478,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (contract_terms, const json_t)                                \
   op (wire_details, const json_t)                                  \
   op (exchange_keys, const json_t)                                 \
-  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistory) \
+  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
   op (exchange_url, const char *)                                  \
   op (exchange_bank_account_url, const char *)                     \
   op (taler_uri, const char *)                                     \

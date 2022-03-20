@@ -83,6 +83,64 @@ struct TEH_DenominationKey
 
 
 /**
+ * Set of global fees (and options) for a time range.
+ */
+struct TEH_GlobalFee
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct TEH_GlobalFee *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct TEH_GlobalFee *prev;
+
+  /**
+   * Beginning of the validity period (inclusive).
+   */
+  struct GNUNET_TIME_Timestamp start_date;
+
+  /**
+   * End of the validity period (exclusive).
+   */
+  struct GNUNET_TIME_Timestamp end_date;
+
+  /**
+   * How long do unmerged purses stay around at most?
+   */
+  struct GNUNET_TIME_Relative purse_timeout;
+
+  /**
+   * How long do we keep accounts without KYC?
+   */
+  struct GNUNET_TIME_Relative kyc_timeout;
+
+  /**
+   * What is the longest history we return?
+   */
+  struct GNUNET_TIME_Relative history_expiration;
+
+  /**
+   * Signature affirming these details.
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+  /**
+   * Fee structure for operations that do not depend
+   * on a denomination or wire method.
+   */
+  struct TALER_GlobalFeeSet fees;
+
+  /**
+   * Number of free purses per account.
+   */
+  uint32_t purse_account_limit;
+};
+
+
+/**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
  * reference counted and only destroyed once the last user is done
@@ -130,6 +188,20 @@ TEH_keys_update_states (void);
 
 
 /**
+ * Look up global fee structure by @a ts.
+ *
+ * @param ksh key state state to look in
+ * @param ts timestamp to lookup global fees at
+ * @return the global fee details, or
+ *         NULL if none are configured for @a ts
+ */
+const struct TEH_GlobalFee *
+TEH_keys_global_fee_by_time (
+  struct TEH_KeyStateHandle *ksh,
+  struct GNUNET_TIME_Timestamp ts);
+
+
+/**
  * Look up the issue for a denom public key.  Note that the result
  * must only be used in this thread and only until another key or
  * key state is resolved.
@@ -141,10 +213,10 @@ TEH_keys_update_states (void);
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct
-                               TALER_DenominationHashP *h_denom_pub,
-                               struct MHD_Connection *conn,
-                               MHD_RESULT *mret);
+TEH_keys_denomination_by_hash (
+  const struct TALER_DenominationHashP *h_denom_pub,
+  struct MHD_Connection *conn,
+  MHD_RESULT *mret);
 
 
 /**

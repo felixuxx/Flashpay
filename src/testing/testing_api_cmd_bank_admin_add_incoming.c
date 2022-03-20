@@ -107,7 +107,7 @@ struct AdminAddIncomingState
    * the "sender_url" field is set to a 'const char *' and
    * MUST NOT be free()'ed.
    */
-  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
   /**
    * Set to the wire transfer's unique ID.
