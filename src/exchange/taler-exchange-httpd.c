@@ -48,6 +48,7 @@
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserves_get.h"
+#include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_wire.h"
@@ -212,6 +213,19 @@ typedef MHD_RESULT
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const json_t *root);
 
+/**
+ * Signature of functions that handle operations on reserves.
+ *
+ * @param rc request context
+ * @param reserve_pub the public key of the reserve
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*ReserveOpHandler)(struct TEH_RequestContext *rc,
+                    const struct TALER_ReservePublicKeyP *reserve_pub,
+                    const json_t *root);
+
 
 /**
  * Generate a 404 "not found" reply on @a connection with
@@ -237,8 +251,7 @@ r404 (struct MHD_Connection *connection,
  *
  * @param rc request context
  * @param root uploaded JSON data
- * @param args array of additional options (first must be the
- *         reserve public key, the second one should be "withdraw")
+ * @param args array of additional options
  * @return MHD result code
  */
 static MHD_RESULT
@@ -303,6 +316,71 @@ handle_post_coins (struct TEH_RequestContext *rc,
                      args[1]))
       return h[i].handler (rc->connection,
                            &coin_pub,
+                           root);
+  return r404 (rc->connection,
+               args[1]);
+}
+
+
+/**
+ * Handle a "/reserves/$RESERVE_PUB/$OP" POST request.  Parses the "reserve_pub"
+ * EdDSA key of the reserve and demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_reserves (struct TEH_RequestContext *rc,
+                      const json_t *root,
+                      const char *const args[2])
+{
+  struct TALER_ReservePublicKeyP reserve_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1])
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     */
+    ReserveOpHandler handler;
+
+  } h[] = {
+    {
+      .op = "withdraw",
+      .handler = &TEH_handler_withdraw
+    },
+    {
+      .op = "status",
+      .handler = &TEH_handler_reserves_status
+    },
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &reserve_pub,
+                                     sizeof (reserve_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_PUB_MALFORMED,
+                                       args[0]);
+  }
+  for (unsigned int i = 0; NULL != h[i].op; i++)
+    if (0 == strcmp (h[i].op,
+                     args[1]))
+      return h[i].handler (rc,
+                           &reserve_pub,
                            root);
   return r404 (rc->connection,
                args[1]);
@@ -947,7 +1025,7 @@ handle_mhd_request (void *cls,
     {
       .url = "reserves",
       .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEH_handler_withdraw,
+      .handler.post = &handle_post_reserves,
       .nargs = 2
     },
     /* coins */

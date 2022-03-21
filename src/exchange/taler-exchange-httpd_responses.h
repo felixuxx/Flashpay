@@ -34,17 +34,14 @@
 
 
 /**
- * Compile the history of a reserve into a JSON object
- * and calculate the total balance.
+ * Compile the history of a reserve into a JSON object.
  *
  * @param rh reserve history to JSON-ify
- * @param[out] balance set to current reserve balance
  * @return json representation of the @a rh, NULL on error
  */
 json_t *
 TEH_RESPONSE_compile_reserve_history (
-  const struct TALER_EXCHANGEDB_ReserveHistory *rh,
-  struct TALER_Amount *balance);
+  const struct TALER_EXCHANGEDB_ReserveHistory *rh);
 
 
 /**

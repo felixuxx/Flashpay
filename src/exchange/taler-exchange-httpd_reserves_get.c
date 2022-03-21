@@ -165,37 +165,6 @@ db_event_cb (void *cls,
 
 
 /**
- * Send reserve history to client.
- *
- * @param connection connection to the client
- * @param rh reserve history to return
- * @return MHD result code
- */
-static MHD_RESULT
-reply_reserve_history_success (struct MHD_Connection *connection,
-                               const struct TALER_EXCHANGEDB_ReserveHistory *rh)
-{
-  json_t *json_history;
-  struct TALER_Amount balance;
-
-  json_history = TEH_RESPONSE_compile_reserve_history (rh,
-                                                       &balance);
-  if (NULL == json_history)
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                       NULL);
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_OK,
-    TALER_JSON_pack_amount ("balance",
-                            &balance),
-    GNUNET_JSON_pack_array_steal ("history",
-                                  json_history));
-}
-
-
-/**
  * Closure for #reserve_history_transaction.
  */
 struct ReserveHistoryContext
@@ -205,10 +174,18 @@ struct ReserveHistoryContext
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
+#ifndef MBOSS_DONE
   /**
    * History of the reserve, set in the callback.
+   * FIXME: get rid of this once benchmarking is done!
    */
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
+#endif
+
+  /**
+   * Balance of the reserve, set in the callback.
+   */
+  struct TALER_Amount balance;
 
 };
 
@@ -226,23 +203,37 @@ struct ReserveHistoryContext
  * @param cls a `struct ReserveHistoryContext *`
  * @param connection MHD request which triggered the transaction
  * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!); unused
+ *             if transaction failed (!)
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-reserve_history_transaction (void *cls,
+reserve_balance_transaction (void *cls,
                              struct MHD_Connection *connection,
                              MHD_RESULT *mhd_ret)
 {
   struct ReserveHistoryContext *rsc = cls;
-  struct TALER_Amount balance;
+  enum GNUNET_DB_QueryStatus qs;
 
-  (void) connection;
-  (void) mhd_ret;
-  return TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          &rsc->reserve_pub,
-                                          &balance,
-                                          &rsc->rh);
+#ifdef MBOSS_DONE
+  qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
+                                        &rsc->reserve_pub,
+                                        &rsc->balance);
+#else
+  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
+                                        &rsc->reserve_pub,
+                                        &rsc->balance,
+                                        &rsc->rh);
+#endif
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                    "get_reserve_balance");
+  }
+  return qs;
 }
 
 
@@ -314,10 +305,10 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
   rsc.rh = NULL;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
-                              "get reserve history",
+                              "get reserve balance",
                               TEH_MT_REQUEST_OTHER,
                               &mhd_ret,
-                              &reserve_history_transaction,
+                              &reserve_balance_transaction,
                               &rsc))
   {
     if (NULL != eh)
@@ -335,7 +326,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     {
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_RESERVES_GET_STATUS_UNKNOWN,
+                                         TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
                                          args[0]);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -358,10 +349,15 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
   if (NULL != eh)
     TEH_plugin->event_listen_cancel (TEH_plugin->cls,
                                      eh);
-  mhd_ret = reply_reserve_history_success (rc->connection,
-                                           rsc.rh);
+  mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_amount ("balance",
+                            &rsc.balance));
+#ifndef MBOSS_DONE
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rsc.rh);
+#endif
   return mhd_ret;
 }
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,34 +14,30 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_withdraw.h
- * @brief Handle /reserve/withdraw requests
+ * @file taler-exchange-httpd_reserves_status.h
+ * @brief Handle /reserves/$RESERVE_PUB STATUS requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_WITHDRAW_H
-#define TALER_EXCHANGE_HTTPD_WITHDRAW_H
+#ifndef TALER_EXCHANGE_HTTPD_RESERVES_STATUS_H
+#define TALER_EXCHANGE_HTTPD_RESERVES_STATUS_H
 
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
 
 
 /**
- * Handle a "/reserves/$RESERVE_PUB/withdraw" request.  Parses the the requested "denom_pub" which
- * specifies the key/value of the coin to be withdrawn, and checks that the
- * signature "reserve_sig" makes this a valid withdrawal request from the
- * specified reserve.  If so, the envelope with the blinded coin "coin_ev" is
- * passed down to execute the withdrawal operation.
+ * Handle a POST "/reserves/$RID/status" request.
  *
  * @param rc request context
- * @param root uploaded JSON data
  * @param reserve_pub public key of the reserve
+ * @param root uploaded body from the client
  * @return MHD result code
-  */
+ */
 MHD_RESULT
-TEH_handler_withdraw (struct TEH_RequestContext *rc,
-                      const struct TALER_ReservePublicKeyP *reserve_pub,
-                      const json_t *root);
+TEH_handler_reserves_status (struct TEH_RequestContext *rc,
+                             const struct TALER_ReservePublicKeyP *reserve_pub,
+                             const json_t *root);
 
 #endif

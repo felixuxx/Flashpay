@@ -52,32 +52,19 @@ reply_withdraw_insufficient_funds (
   const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_history;
-  struct TALER_Amount balance;
 
-  json_history = TEH_RESPONSE_compile_reserve_history (rh,
-                                                       &balance);
+  json_history = TEH_RESPONSE_compile_reserve_history (rh);
   if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
                                        NULL);
-  if (0 !=
-      TALER_amount_cmp (&balance,
-                        ebalance))
-  {
-    GNUNET_break (0);
-    json_decref (json_history);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-                                       "reserve balance corrupt");
-  }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
     TALER_JSON_pack_ec (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
     TALER_JSON_pack_amount ("balance",
-                            &balance),
+                            ebalance),
     TALER_JSON_pack_amount ("requested_amount",
                             withdraw_amount),
     GNUNET_JSON_pack_array_steal ("history",
@@ -104,7 +91,6 @@ struct WithdrawContext
    * information each time.
    */
   struct TALER_Amount amount_with_fee;
-
 
   /**
    * Blinded planchet.
@@ -329,8 +315,8 @@ check_request_idempotent (struct TEH_RequestContext *rc,
 
 MHD_RESULT
 TEH_handler_withdraw (struct TEH_RequestContext *rc,
-                      const json_t *root,
-                      const char *const args[2])
+                      const struct TALER_ReservePublicKeyP *reserve_pub,
+                      const json_t *root)
 {
   struct WithdrawContext wc;
   struct GNUNET_JSON_Specification spec[] = {
@@ -348,18 +334,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   memset (&wc,
           0,
           sizeof (wc));
-  if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (args[0],
-                                     strlen (args[0]),
-                                     &wc.collectable.reserve_pub,
-                                     sizeof (wc.collectable.reserve_pub)))
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
-                                       args[0]);
-  }
+  wc.collectable.reserve_pub = *reserve_pub;
 
   {
     enum GNUNET_GenericReturnValue res;

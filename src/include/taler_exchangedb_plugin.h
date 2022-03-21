@@ -2847,6 +2847,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * The current reserve balance of the specified reserve.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the reserve
+   * @param[out] balance set to the reserve balance
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_balance)(void *cls,
+                         const struct TALER_ReservePublicKeyP *reserve_pub,
+                         struct TALER_Amount *balance);
+
+
+  /**
    * Free memory associated with the given reserve history.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

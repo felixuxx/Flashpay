@@ -732,6 +732,17 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE res.reserve_pub=$1;",
       1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
+
+    GNUNET_PQ_make_prepare (
+      "get_reserve_balance",
+      "SELECT"
+      " current_balance_val"
+      ",current_balance_frac"
+      " FROM reserves"
+      " WHERE reserve_pub=$1;",
+      1),
+    /* Fetch deposits with rowid '\geq' the given parameter */
+
     GNUNET_PQ_make_prepare (
       "audit_get_reserves_out_incr",
       "SELECT"
@@ -5530,6 +5541,37 @@ postgres_get_reserve_history (void *cls,
                                         &rhc.balance_in,
                                         &rhc.balance_out));
   return qs;
+}
+
+
+/**
+ * Get the balance of the specified reserve.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param reserve_pub public key of the reserve
+ * @param[out] balance set to the reserve balance
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_reserve_balance (void *cls,
+                              const struct TALER_ReservePublicKeyP *reserve_pub,
+                              struct TALER_Amount *balance)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
+                                 balance),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_reserve_balance",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -12503,6 +12545,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->do_refund = &postgres_do_refund;
   plugin->do_recoup = &postgres_do_recoup;
   plugin->do_recoup_refresh = &postgres_do_recoup_refresh;
+  plugin->get_reserve_balance = &postgres_get_reserve_balance;
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->count_known_coins = &postgres_count_known_coins;

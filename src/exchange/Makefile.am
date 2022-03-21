@@ -108,6 +108,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \
+  taler-exchange-httpd_reserves_status.c taler-exchange-httpd_reserves_status.h \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \

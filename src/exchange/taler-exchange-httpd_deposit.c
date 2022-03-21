@@ -205,18 +205,6 @@ deposit_transaction (void *cls,
 }
 
 
-/**
- * Handle a "/coins/$COIN_PUB/deposit" request.  Parses the JSON, and, if
- * successful, passes the JSON data to #deposit_transaction() to
- * further check the details of the operation specified.  If everything checks
- * out, this will ultimately lead to the "/deposit" being executed, or
- * rejected.
- *
- * @param connection the MHD connection to handle
- * @param coin_pub public key of the coin
- * @param root uploaded JSON data
- * @return MHD result code
-  */
 MHD_RESULT
 TEH_handler_deposit (struct MHD_Connection *connection,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,

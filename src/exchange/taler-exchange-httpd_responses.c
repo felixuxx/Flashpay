@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -605,31 +605,11 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
 }
 
 
-/**
- * Compile the history of a reserve into a JSON object
- * and calculate the total balance.
- *
- * @param rh reserve history to JSON-ify
- * @param[out] balance set to current reserve balance
- * @return json representation of the @a rh, NULL on error
- */
 json_t *
 TEH_RESPONSE_compile_reserve_history (
-  const struct TALER_EXCHANGEDB_ReserveHistory *rh,
-  struct TALER_Amount *balance)
+  const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
-  struct TALER_Amount credit_total;
-  struct TALER_Amount withdraw_total;
   json_t *json_history;
-  enum InitAmounts
-  {
-    /** Nothing initialized */
-    IA_NONE = 0,
-    /** credit_total initialized */
-    IA_CREDIT = 1,
-    /** withdraw_total initialized */
-    IA_WITHDRAW = 2
-  } init = IA_NONE;
 
   json_history = json_array ();
   for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
@@ -642,20 +622,7 @@ TEH_RESPONSE_compile_reserve_history (
       {
         const struct TALER_EXCHANGEDB_BankTransfer *bank =
           pos->details.bank;
-        if (0 == (IA_CREDIT & init))
-        {
-          credit_total = bank->amount;
-          init |= IA_CREDIT;
-        }
-        else if (0 >
-                 TALER_amount_add (&credit_total,
-                                   &credit_total,
-                                   &bank->amount))
-        {
-          GNUNET_break (0);
-          json_decref (json_history);
-          return NULL;
-        }
+
         if (0 !=
             json_array_append_new (
               json_history,
@@ -681,26 +648,7 @@ TEH_RESPONSE_compile_reserve_history (
       {
         const struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw
           = pos->details.withdraw;
-        struct TALER_Amount value;
 
-        value = withdraw->amount_with_fee;
-        if (0 == (IA_WITHDRAW & init))
-        {
-          withdraw_total = value;
-          init |= IA_WITHDRAW;
-        }
-        else
-        {
-          if (0 >
-              TALER_amount_add (&withdraw_total,
-                                &withdraw_total,
-                                &value))
-          {
-            GNUNET_break (0);
-            json_decref (json_history);
-            return NULL;
-          }
-        }
         if (0 !=
             json_array_append_new (
               json_history,
@@ -716,7 +664,7 @@ TEH_RESPONSE_compile_reserve_history (
                 TALER_JSON_pack_amount ("withdraw_fee",
                                         &withdraw->withdraw_fee),
                 TALER_JSON_pack_amount ("amount",
-                                        &value))))
+                                        &withdraw->amount_with_fee))))
         {
           GNUNET_break (0);
           json_decref (json_history);
@@ -731,20 +679,6 @@ TEH_RESPONSE_compile_reserve_history (
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
-        if (0 == (IA_CREDIT & init))
-        {
-          credit_total = recoup->value;
-          init |= IA_CREDIT;
-        }
-        else if (0 >
-                 TALER_amount_add (&credit_total,
-                                   &credit_total,
-                                   &recoup->value))
-        {
-          GNUNET_break (0);
-          json_decref (json_history);
-          return NULL;
-        }
         {
           struct TALER_RecoupConfirmationPS pc = {
             .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
@@ -796,26 +730,7 @@ TEH_RESPONSE_compile_reserve_history (
           pos->details.closing;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
-        struct TALER_Amount value;
 
-        value = closing->amount;
-        if (0 == (IA_WITHDRAW & init))
-        {
-          withdraw_total = value;
-          init |= IA_WITHDRAW;
-        }
-        else
-        {
-          if (0 >
-              TALER_amount_add (&withdraw_total,
-                                &withdraw_total,
-                                &value))
-          {
-            GNUNET_break (0);
-            json_decref (json_history);
-            return NULL;
-          }
-        }
         {
           struct TALER_ReserveCloseConfirmationPS rcc = {
             .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED),
@@ -826,7 +741,7 @@ TEH_RESPONSE_compile_reserve_history (
           };
 
           TALER_amount_hton (&rcc.closing_amount,
-                             &value);
+                             &closing->amount);
           TALER_amount_hton (&rcc.closing_fee,
                              &closing->closing_fee);
           TALER_payto_hash (closing->receiver_account_details,
@@ -858,7 +773,7 @@ TEH_RESPONSE_compile_reserve_history (
                 GNUNET_JSON_pack_timestamp ("timestamp",
                                             closing->execution_date),
                 TALER_JSON_pack_amount ("amount",
-                                        &value),
+                                        &closing->amount),
                 TALER_JSON_pack_amount ("closing_fee",
                                         &closing->closing_fee))))
         {
@@ -869,31 +784,6 @@ TEH_RESPONSE_compile_reserve_history (
       }
       break;
     }
-  }
-
-  if (0 == (IA_CREDIT & init))
-  {
-    /* We should not have gotten here, without credits no reserve
-       should exist! */
-    GNUNET_break (0);
-    json_decref (json_history);
-    return NULL;
-  }
-  if (0 == (IA_WITHDRAW & init))
-  {
-    /* did not encounter any withdraw operations, set withdraw_total to zero */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (credit_total.currency,
-                                          &withdraw_total));
-  }
-  if (0 >
-      TALER_amount_subtract (balance,
-                             &credit_total,
-                             &withdraw_total))
-  {
-    GNUNET_break (0);
-    json_decref (json_history);
-    return NULL;
   }
 
   return json_history;
