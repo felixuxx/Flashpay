@@ -148,7 +148,8 @@ reserve_withdraw_payment_required (
   const json_t *json)
 {
   struct TALER_Amount balance;
-  struct TALER_Amount balance_from_history;
+  struct TALER_Amount total_in_from_history;
+  struct TALER_Amount total_out_from_history;
   json_t *history;
   size_t len;
   struct GNUNET_JSON_Specification spec[] = {
@@ -197,7 +198,8 @@ reserve_withdraw_payment_required (
                                               history,
                                               &wh->reserve_pub,
                                               balance.currency,
-                                              &balance_from_history,
+                                              &total_in_from_history,
+                                              &total_out_from_history,
                                               len,
                                               rhistory))
     {
@@ -210,14 +212,6 @@ reserve_withdraw_payment_required (
                                          len);
   }
 
-  if (0 !=
-      TALER_amount_cmp (&balance_from_history,
-                        &balance))
-  {
-    /* exchange cannot add up balances!? */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
   /* Check that funds were really insufficient */
   if (0 >= TALER_amount_cmp (&wh->requested_amount,
                              &balance))

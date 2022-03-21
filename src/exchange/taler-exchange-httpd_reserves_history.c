@@ -32,6 +32,14 @@
 
 
 /**
+ * How far do we allow a client's time to be off when
+ * checking the request timestamp?
+ */
+#define TIMESTAMP_TOLERANCE \
+  GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
+
+
+/**
  * Closure for #reserve_history_transaction.
  */
 struct ReserveHistoryContext
@@ -121,8 +129,7 @@ reserve_history_transaction (void *cls,
   struct ReserveHistoryContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  // FIXME: first deduct rsc->gf->fees.history from balance!
-  // FIXME: pass rsc.gf->history_expiration?
+  // FIXME: first deduct rsc->gf->fees.history from reserve balance (and persist the signature justifying this)
   qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         rsc->reserve_pub,
                                         &rsc->balance,
@@ -175,13 +182,21 @@ TEH_handler_reserves_history (struct TEH_RequestContext *rc,
     }
   }
   now = GNUNET_TIME_timestamp_get ();
-  /* FIXME: check that 'timestamp' is close to 'now' */
-
+  if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
+                                        rsc.timestamp.abs_time,
+                                        TIMESTAMP_TOLERANCE))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
+                                       NULL);
+  }
   rsc.gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
                                         rsc.timestamp);
   if (NULL == rsc.gf)
   {
-    GNUNET_break_op (0);
+    GNUNET_break (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,

@@ -91,7 +91,6 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
 {
   json_t *history;
   unsigned int len;
-  struct TALER_Amount history_balance;
   struct TALER_EXCHANGE_ReserveHistory rs = {
     .hr.reply = j,
     .hr.http_status = MHD_HTTP_OK
@@ -123,15 +122,13 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
 
     rhistory = GNUNET_new_array (len,
                                  struct TALER_EXCHANGE_ReserveHistoryEntry);
-    // FIXME: even this history could be partial
-    // (if the reserve is too old!); update API
-    // and return incoming & outgoing totals separately?
     if (GNUNET_OK !=
         TALER_EXCHANGE_parse_reserve_history (rsh->exchange,
                                               history,
                                               &rsh->reserve_pub,
                                               rs.details.ok.balance.currency,
-                                              &history_balance,
+                                              &rs.details.ok.total_in,
+                                              &rs.details.ok.total_out,
                                               len,
                                               rhistory))
     {

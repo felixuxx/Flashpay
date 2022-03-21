@@ -32,21 +32,20 @@ TALER_EXCHANGE_parse_reserve_history (
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,
-  struct TALER_Amount *balance,
+  struct TALER_Amount *total_in,
+  struct TALER_Amount *total_out,
   unsigned int history_length,
   struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory)
 {
   struct GNUNET_HashCode uuid[history_length];
   unsigned int uuid_off;
-  struct TALER_Amount total_in;
-  struct TALER_Amount total_out;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (currency,
-                                        &total_in));
+                                        total_in));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (currency,
-                                        &total_out));
+                                        total_out));
   uuid_off = 0;
   for (unsigned int off = 0; off<history_length; off++)
   {
@@ -76,7 +75,7 @@ TALER_EXCHANGE_parse_reserve_history (
     rhistory[off].amount = amount;
     if (GNUNET_YES !=
         TALER_amount_cmp_currency (&amount,
-                                   &total_in))
+                                   total_in))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -99,8 +98,8 @@ TALER_EXCHANGE_parse_reserve_history (
 
       rh->type = TALER_EXCHANGE_RTT_CREDIT;
       if (0 >
-          TALER_amount_add (&total_in,
-                            &total_in,
+          TALER_amount_add (total_in,
+                            total_in,
                             &amount))
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
@@ -206,8 +205,8 @@ TALER_EXCHANGE_parse_reserve_history (
       uuid_off++;
 
       if (0 >
-          TALER_amount_add (&total_out,
-                            &total_out,
+          TALER_amount_add (total_out,
+                            total_out,
                             &amount))
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
@@ -274,8 +273,8 @@ TALER_EXCHANGE_parse_reserve_history (
         return GNUNET_SYSERR;
       }
       if (0 >
-          TALER_amount_add (&total_in,
-                            &total_in,
+          TALER_amount_add (total_in,
+                            total_in,
                             &rh->amount))
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
@@ -349,8 +348,8 @@ TALER_EXCHANGE_parse_reserve_history (
         return GNUNET_SYSERR;
       }
       if (0 >
-          TALER_amount_add (&total_out,
-                            &total_out,
+          TALER_amount_add (total_out,
+                            total_out,
                             &rh->amount))
       {
         /* overflow in history already!? inconceivable! Bad exchange! */
@@ -362,23 +361,6 @@ TALER_EXCHANGE_parse_reserve_history (
     else
     {
       /* unexpected 'type', protocol incompatibility, complain! */
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-  }
-
-  /* check balance = total_in - total_out < withdraw-amount */
-  if (NULL != balance)
-  {
-    /* if balance is NULL, we may have a partial history
-       in which case the subtraction may fail, so we do
-       not even check that invariant in this case. */
-    if (0 >
-        TALER_amount_subtract (balance,
-                               &total_in,
-                               &total_out))
-    {
-      /* total_in < total_out, why did the exchange ever allow this!? */
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }

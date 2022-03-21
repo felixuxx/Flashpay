@@ -127,7 +127,8 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rsh,
                                               history,
                                               &rsh->reserve_pub,
                                               rs.details.ok.balance.currency,
-                                              NULL,
+                                              &rs.details.ok.total_in,
+                                              &rs.details.ok.total_out,
                                               len,
                                               rhistory))
     {

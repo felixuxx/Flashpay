@@ -1583,9 +1583,20 @@ struct TALER_EXCHANGE_ReserveStatus
     {
 
       /**
-       * Reserve balance.
+       * Current reserve balance.  May not be the difference between
+       * @e total_in and @e total_out because the @e may be truncated.
        */
       struct TALER_Amount balance;
+
+      /**
+       * Total of all inbound transactions in @e history.
+       */
+      struct TALER_Amount total_in;
+
+      /**
+       * Total of all outbound transactions in @e history.
+       */
+      struct TALER_Amount total_out;
 
       /**
        * Reserve history.
@@ -1687,9 +1698,21 @@ struct TALER_EXCHANGE_ReserveHistory
     {
 
       /**
-       * Reserve balance.
+       * Reserve balance. May not be the difference between
+       * @e total_in and @e total_out because the @e may be truncated
+       * due to expiration.
        */
       struct TALER_Amount balance;
+
+      /**
+       * Total of all inbound transactions in @e history.
+       */
+      struct TALER_Amount total_in;
+
+      /**
+       * Total of all outbound transactions in @e history.
+       */
+      struct TALER_Amount total_out;
 
       /**
        * Reserve history.
@@ -2685,7 +2708,8 @@ TALER_EXCHANGE_verify_coin_history (
  * @param history JSON array with the history
  * @param reserve_pub public key of the reserve to inspect
  * @param currency currency we expect the balance to be in
- * @param[out] balance final balance
+ * @param[out] total_in set to value of credits to reserve
+ * @param[out] total_out set to value of debits from reserve
  * @param history_length number of entries in @a history
  * @param[out] rhistory array of length @a history_length, set to the
  *             parsed history entries
@@ -2699,7 +2723,8 @@ TALER_EXCHANGE_parse_reserve_history (
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,
-  struct TALER_Amount *balance,
+  struct TALER_Amount *total_in,
+  struct TALER_Amount *total_out,
   unsigned int history_length,
   struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory);
 

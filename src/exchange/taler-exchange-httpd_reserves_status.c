@@ -30,6 +30,13 @@
 #include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_responses.h"
 
+/**
+ * How far do we allow a client's time to be off when
+ * checking the request timestamp?
+ */
+#define TIMESTAMP_TOLERANCE \
+  GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MINUTES, 15)
+
 
 /**
  * Closure for #reserve_status_transaction.
@@ -140,6 +147,7 @@ TEH_handler_reserves_status (struct TEH_RequestContext *rc,
                                  &reserve_sig),
     GNUNET_JSON_spec_end ()
   };
+  struct GNUNET_TIME_Timestamp now;
 
   rsc.reserve_pub = reserve_pub;
   {
@@ -158,6 +166,17 @@ TEH_handler_reserves_status (struct TEH_RequestContext *rc,
       GNUNET_break_op (0);
       return MHD_YES; /* failure */
     }
+  }
+  now = GNUNET_TIME_timestamp_get ();
+  if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
+                                        timestamp.abs_time,
+                                        TIMESTAMP_TOLERANCE))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
+                                       NULL);
   }
   if (GNUNET_OK !=
       TALER_wallet_reserve_status_verify (timestamp,

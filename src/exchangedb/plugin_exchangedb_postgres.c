@@ -5595,6 +5595,7 @@ postgres_get_reserve_status (void *cls,
     GNUNET_PQ_query_param_end
   };
 
+  /* FIXME: actually implement reserve history truncation logic! */
   rhc.reserve_pub = reserve_pub;
   rhc.rh = NULL;
   rhc.rh_tail = NULL;
