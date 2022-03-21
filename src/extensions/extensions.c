@@ -26,12 +26,17 @@
 
 
 /* head of the list of all registered extensions */
+// FIXME: remove unnecessary initializers.
+// FIXME: remove unncessary "_" prefix.
 static struct TALER_Extension *_extensions = NULL;
 static bool _initialized = false;
+
 
 void
 TALER_extensions_init ()
 {
+  // FIXME: a bit ugly. Why not have the age_restriction
+  // module have an initializer that registers itself here?
   extern struct TALER_Extension _extension_age_restriction;
   if (! _initialized)
     _extensions = &_extension_age_restriction;
@@ -47,11 +52,12 @@ TALER_extensions_get_head ()
 }
 
 
+// FIXME: 'new' is a C++ keyword, to NOT use for variable names
 enum GNUNET_GenericReturnValue
 TALER_extensions_add (
   const struct TALER_Extension *new)
 {
-  struct TALER_Extension *ext;
+  struct TALER_Extension *ext; // FIXME: limit scope to for() loop
 
   if (_initialized)
     return GNUNET_SYSERR;
@@ -59,6 +65,7 @@ TALER_extensions_add (
   GNUNET_assert (NULL != _extensions);
 
   /* Sanity checks */
+  // FIXME: bracket all expressions
   if (NULL == new ||
       NULL == new->name ||
       NULL == new->version ||
@@ -69,7 +76,8 @@ TALER_extensions_add (
       NULL == new->load_taler_config ||
       NULL == new->next)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "invalid extension\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "invalid extension\n");
     return GNUNET_SYSERR;
   }
 
@@ -77,9 +85,12 @@ TALER_extensions_add (
   for (ext = _extensions; NULL != ext; ext = ext->next)
   {
     if (new->type == ext->type ||
-        0 == strcmp (new->name, ext->name))
+        0 == strcmp (new->name,
+                     ext->name))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, "extension collision\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "extension collision for `%s'\n",
+                  new->name);
       return GNUNET_NO;
     }
   }
@@ -95,7 +106,6 @@ const struct TALER_Extension *
 TALER_extensions_get_by_type (
   enum TALER_Extension_Type type)
 {
-
   for (const struct TALER_Extension *it = _extensions;
        NULL != it;
        it = it->next)
@@ -138,27 +148,6 @@ TALER_extensions_get_by_name (
 
 
 enum GNUNET_GenericReturnValue
-config_hash_verify (
-  const struct TALER_ExtensionConfigHashP *h_config,
-  const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_MasterSignatureP *master_sig
-  )
-{
-  struct TALER_MasterExtensionConfigurationPS ec = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
-    .purpose.size = htonl (sizeof(ec)),
-    .h_config = *h_config
-  };
-
-  return GNUNET_CRYPTO_eddsa_verify (
-    TALER_SIGNATURE_MASTER_EXTENSION,
-    &ec,
-    &master_sig->eddsa_signature,
-    &master_pub->eddsa_pub);
-}
-
-
-enum GNUNET_GenericReturnValue
 TALER_extensions_verify_json_config_signature (
   json_t *extensions,
   struct TALER_MasterSignatureP *extensions_sig,
@@ -167,25 +156,29 @@ TALER_extensions_verify_json_config_signature (
   struct TALER_ExtensionConfigHashP h_config;
 
   if (GNUNET_OK !=
-      TALER_JSON_extensions_config_hash (extensions, &h_config))
+      TALER_JSON_extensions_config_hash (extensions,
+                                         &h_config))
     return GNUNET_SYSERR;
-
-  if (GNUNET_OK != config_hash_verify (
+  if (GNUNET_OK !=
+      TALER_exchange_offline_extension_config_hash_verify (
         &h_config,
         master_pub,
         extensions_sig))
     return GNUNET_NO;
-
   return GNUNET_OK;
 }
 
 
+// FIXME: use CamelCase to follow conventions
+// FIXME: document struct and members
 struct load_conf_closure
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg;
   enum GNUNET_GenericReturnValue error;
 };
 
+
+// FIXME: document
 static void
 collect_extensions (
   void *cls,
@@ -197,7 +190,6 @@ collect_extensions (
 
   if (GNUNET_OK != col->error)
     return;
-
   if (0 != strncasecmp (section,
                         TALER_EXTENSION_SECTION_PREFIX,
                         sizeof(TALER_EXTENSION_SECTION_PREFIX) - 1))
@@ -266,7 +258,12 @@ TALER_extensions_is_json_config (
     GNUNET_JSON_spec_end ()
   };
 
-  ret = GNUNET_JSON_parse (obj, spec, NULL, NULL);
+  ret = GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL,
+                           NULL);
+  // FIXME: convention says, 'true' path is for
+  // error handling.
   if (GNUNET_OK == ret)
   {
     *config = json_copy (cfg);
