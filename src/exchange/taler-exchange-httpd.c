@@ -48,6 +48,7 @@
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserves_get.h"
+#include "taler-exchange-httpd_reserves_history.h"
 #include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
@@ -357,6 +358,10 @@ handle_post_reserves (struct TEH_RequestContext *rc,
     {
       .op = "status",
       .handler = &TEH_handler_reserves_status
+    },
+    {
+      .op = "history",
+      .handler = &TEH_handler_reserves_history
     },
     {
       .op = NULL,

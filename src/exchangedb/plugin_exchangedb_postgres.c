@@ -5545,6 +5545,101 @@ postgres_get_reserve_history (void *cls,
 
 
 /**
+ * Get a truncated transaction history associated with the specified
+ * reserve.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param reserve_pub public key of the reserve
+ * @param[out] balance set to the reserve balance
+ * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_reserve_status (void *cls,
+                             const struct TALER_ReservePublicKeyP *reserve_pub,
+                             struct TALER_Amount *balance,
+                             struct TALER_EXCHANGEDB_ReserveHistory **rhp)
+{
+  struct PostgresClosure *pg = cls;
+  struct ReserveHistoryContext rhc;
+  struct
+  {
+    /**
+     * Name of the prepared statement to run.
+     */
+    const char *statement;
+    /**
+     * Function to use to process the results.
+     */
+    GNUNET_PQ_PostgresResultHandler cb;
+  } work[] = {
+    /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
+    { "reserves_in_get_transactions",
+      add_bank_to_exchange },
+    /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
+    { "get_reserves_out",
+      &add_withdraw_coin },
+    /** #TALER_EXCHANGEDB_RO_RECOUP_COIN */
+    { "recoup_by_reserve",
+      &add_recoup },
+    /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
+    { "close_by_reserve",
+      &add_exchange_to_bank },
+    /* List terminator */
+    { NULL,
+      NULL }
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  rhc.reserve_pub = reserve_pub;
+  rhc.rh = NULL;
+  rhc.rh_tail = NULL;
+  rhc.pg = pg;
+  rhc.status = GNUNET_OK;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        &rhc.balance_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        &rhc.balance_out));
+  qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS; /* make static analysis happy */
+  for (unsigned int i = 0; NULL != work[i].cb; i++)
+  {
+    qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                               work[i].statement,
+                                               params,
+                                               work[i].cb,
+                                               &rhc);
+    if ( (0 > qs) ||
+         (GNUNET_OK != rhc.status) )
+      break;
+  }
+  if ( (qs < 0) ||
+       (rhc.status != GNUNET_OK) )
+  {
+    common_free_reserve_history (cls,
+                                 rhc.rh);
+    rhc.rh = NULL;
+    if (qs >= 0)
+    {
+      /* status == SYSERR is a very hard error... */
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
+  *rhp = rhc.rh;
+  GNUNET_assert (0 <=
+                 TALER_amount_subtract (balance,
+                                        &rhc.balance_in,
+                                        &rhc.balance_out));
+  return qs;
+}
+
+
+/**
  * Get the balance of the specified reserve.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -12547,6 +12642,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->do_recoup_refresh = &postgres_do_recoup_refresh;
   plugin->get_reserve_balance = &postgres_get_reserve_balance;
   plugin->get_reserve_history = &postgres_get_reserve_history;
+  plugin->get_reserve_status = &postgres_get_reserve_status;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->count_known_coins = &postgres_count_known_coins;
   plugin->ensure_coin_known = &postgres_ensure_coin_known;

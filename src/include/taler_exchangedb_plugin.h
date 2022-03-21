@@ -2847,6 +2847,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Get truncated transaction history associated with the specified
+   * reserve.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the reserve
+   * @param[out] balance set to the reserve balance
+   * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_reserve_status)(void *cls,
+                        const struct TALER_ReservePublicKeyP *reserve_pub,
+                        struct TALER_Amount *balance,
+                        struct TALER_EXCHANGEDB_ReserveHistory **rhp);
+
+
+  /**
    * The current reserve balance of the specified reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
