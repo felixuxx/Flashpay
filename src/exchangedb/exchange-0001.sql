@@ -1405,10 +1405,10 @@ COMMENT ON COLUMN partners.master_sig
 
 CREATE TABLE IF NOT EXISTS mergers
   (merge_request_serial_id BIGSERIAL UNIQUE
-  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
-  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
+  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
   ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
   ,merge_timestamp INT8 NOT NULL
   ,purse_expiration INT8 NOT NULL

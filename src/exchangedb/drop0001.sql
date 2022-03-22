@@ -79,12 +79,15 @@ DROP TABLE IF EXISTS denominations CASCADE;
 DROP TABLE IF EXISTS cs_nonce_locks CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 
-DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,int,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
+DROP FUNCTION IF EXISTS exchange_do_withdraw;
+DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check;
 
-DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bytea,bigint,bigint,int) ;
-
-DROP FUNCTION IF EXISTS reserves_out_by_reserve_insert_trigger();
-DROP FUNCTION IF EXISTS reserves_out_by_reserve_delete_trigger();
+DROP FUNCTION IF EXISTS recoup_insert_trigger;
+DROP FUNCTION IF EXISTS recoup_delete_trigger;
+DROP FUNCTION IF EXISTS deposits_by_coin_insert_trigger;
+DROP FUNCTION IF EXISTS deposits_by_coin_delete_trigger;
+DROP FUNCTION IF EXISTS reserves_out_by_reserve_insert_trigger;
+DROP FUNCTION IF EXISTS reserves_out_by_reserve_delete_trigger;
 
 DROP FUNCTION IF EXISTS exchange_do_deposit;
 
