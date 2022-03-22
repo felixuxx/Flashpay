@@ -888,4 +888,86 @@ TALER_exchange_wire_signature_make (
 }
 
 
+/**
+ * Message signed by account to merge a purse into a reserve.
+ */
+struct TALER_PartnerConfigurationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_PARNTER_DETAILS
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+  struct TALER_MasterPublicKeyP partner_pub;
+  struct GNUNET_TIME_TimestampNBO start_date;
+  struct GNUNET_TIME_TimestampNBO end_date;
+  struct GNUNET_TIME_RelativeNBO wad_frequency;
+  struct TALER_AmountNBO wad_fee;
+  struct GNUNET_HashCode h_url;
+};
+
+
+void
+TALER_exchange_offline_partner_details_sign (
+  const struct TALER_MasterPublicKeyP *partner_pub,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  struct GNUNET_TIME_Relative wad_frequency,
+  const struct TALER_Amount *wad_fee,
+  const char *partner_base_url,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_PartnerConfigurationPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_PARTNER_DETAILS),
+    .purpose.size = htonl (sizeof (wd)),
+    .partner_pub = *partner_pub,
+    .start_date = GNUNET_TIME_timestamp_hton (start_date),
+    .end_date = GNUNET_TIME_timestamp_hton (end_date),
+    .wad_frequency = GNUNET_TIME_relative_hton (wad_frequency),
+  };
+
+  GNUNET_CRYPTO_hash (partner_base_url,
+                      strlen (partner_base_url) + 1,
+                      &wd.h_url);
+  TALER_amount_hton (&wd.wad_fee,
+                     wad_fee);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &wd,
+                            &master_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_partner_details_verify (
+  const struct TALER_MasterPublicKeyP *partner_pub,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  struct GNUNET_TIME_Relative wad_frequency,
+  const struct TALER_Amount *wad_fee,
+  const char *partner_base_url,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_PartnerConfigurationPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_PARTNER_DETAILS),
+    .purpose.size = htonl (sizeof (wd)),
+    .partner_pub = *partner_pub,
+    .start_date = GNUNET_TIME_timestamp_hton (start_date),
+    .end_date = GNUNET_TIME_timestamp_hton (end_date),
+    .wad_frequency = GNUNET_TIME_relative_hton (wad_frequency),
+  };
+
+  GNUNET_CRYPTO_hash (partner_base_url,
+                      strlen (partner_base_url) + 1,
+                      &wd.h_url);
+  TALER_amount_hton (&wd.wad_fee,
+                     wad_fee);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_PARTNER_DETAILS,
+                                     &wd,
+                                     &master_sig->eddsa_signature,
+                                     &master_pub->eddsa_pub);
+}
+
+
 /* end of offline_signatures.c */

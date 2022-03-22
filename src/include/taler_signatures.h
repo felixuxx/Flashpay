@@ -97,6 +97,11 @@
  */
 #define TALER_SIGNATURE_MASTER_EXTENSION 1031
 
+/**
+ * Signature affirming a partner configuration for wads.
+ */
+#define TALER_SIGNATURE_MASTER_PARTNER_DETAILS 1032
+
 /*********************************************/
 /* Exchange online signatures (with signing key) */
 /*********************************************/

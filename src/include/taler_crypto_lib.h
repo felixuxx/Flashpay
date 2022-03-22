@@ -195,13 +195,39 @@ struct TALER_TransferPublicKeyP
 
 
 /**
- * @brief Type of transfer public keys used during refresh
+ * @brief Type of transfer private keys used during refresh
  * operations.
  */
 struct TALER_TransferPrivateKeyP
 {
   /**
    * Taler uses ECDHE for melting session keys.
+   */
+  struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
+};
+
+
+/**
+ * @brief Type of public keys used for contract
+ * encryption.
+ */
+struct TALER_ContractDiffiePublicP
+{
+  /**
+   * Taler uses ECDHE for contract encryption.
+   */
+  struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
+};
+
+
+/**
+ * @brief Type of private keys used for contract
+ * encryption.
+ */
+struct TALER_ContractDiffiePrivateP
+{
+  /**
+   * Taler uses ECDHE for contract encryption.
    */
   struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
 };
@@ -3423,6 +3449,32 @@ TALER_exchange_offline_denom_validity_verify (
   struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_DenomFeeSet *fees,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+// FIXME: document
+void
+TALER_exchange_offline_partner_details_sign (
+  const struct TALER_MasterPublicKeyP *partner_pub,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  struct GNUNET_TIME_Relative wad_frequency,
+  const struct TALER_Amount *wad_fee,
+  const char *partner_base_url,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+// FIXME: document
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_partner_details_verify (
+  const struct TALER_MasterPublicKeyP *partner_pub,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  struct GNUNET_TIME_Relative wad_frequency,
+  const struct TALER_Amount *wad_fee,
+  const char *partner_base_url,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
