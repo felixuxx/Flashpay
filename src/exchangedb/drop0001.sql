@@ -79,6 +79,19 @@ DROP TABLE IF EXISTS denominations CASCADE;
 DROP TABLE IF EXISTS cs_nonce_locks CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 
+DROP TABLE IF EXISTS partners CASCADE;
+DROP TABLE IF EXISTS mergers CASCADE;
+DROP TABLE IF EXISTS contracts CASCADE;
+DROP TABLE IF EXISTS history_requests CASCADE;
+DROP TABLE IF EXISTS close_requests CASCADE;
+DROP TABLE IF EXISTS purse_requests CASCADE;
+DROP TABLE IF EXISTS wads_out CASCADE;
+DROP TABLE IF EXISTS wads_out_entries CASCADE;
+DROP TABLE IF EXISTS wads_in CASCADE;
+DROP TABLE IF EXISTS wads_in_entries CASCADE;
+DROP TABLE IF EXISTS partner_accounts CASCADE;
+
+
 DROP FUNCTION IF EXISTS exchange_do_withdraw;
 DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check;
 
