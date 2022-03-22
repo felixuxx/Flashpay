@@ -23,6 +23,42 @@
 #include "taler_signatures.h"
 
 
+/**
+ * @brief Format used to generate the signature on a request to refund
+ * a coin into the account of the customer.
+ */
+struct TALER_RefundRequestPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_MERCHANT_REFUND.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the proposal data to identify the contract
+   * which is being refunded.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Merchant-generated transaction ID for the refund.
+   */
+  uint64_t rtransaction_id GNUNET_PACKED;
+
+  /**
+   * Amount to be refunded, including refund fee charged by the
+   * exchange to the customer.
+   */
+  struct TALER_AmountNBO refund_amount;
+};
+
+
 void
 TALER_merchant_refund_sign (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -72,6 +108,70 @@ TALER_merchant_refund_verify (
                                 &rr,
                                 &merchant_sig->eddsa_sig,
                                 &merchant_pub->eddsa_pub);
+}
+
+
+/**
+ * @brief Information signed by the exchange's master
+ * key affirming the IBAN details for the exchange.
+ */
+struct TALER_MerchantWireDetailsPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MERCHANT_WIRE_DETAILS.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Salted hash over the account holder's payto:// URL and
+   * the salt, as done by #TALER_merchant_wire_signature_hash().
+   */
+  struct TALER_MerchantWireHashP h_wire_details GNUNET_PACKED;
+
+};
+
+
+enum GNUNET_GenericReturnValue
+TALER_merchant_wire_signature_check (
+  const char *payto_uri,
+  const struct TALER_WireSaltP *salt,
+  const struct TALER_MerchantPublicKeyP *merch_pub,
+  const struct TALER_MerchantSignatureP *merch_sig)
+{
+  struct TALER_MerchantWireDetailsPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS),
+    .purpose.size = htonl (sizeof (wd))
+  };
+
+  TALER_merchant_wire_signature_hash (payto_uri,
+                                      salt,
+                                      &wd.h_wire_details);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS,
+                                     &wd,
+                                     &merch_sig->eddsa_sig,
+                                     &merch_pub->eddsa_pub);
+}
+
+
+void
+TALER_merchant_wire_signature_make (
+  const char *payto_uri,
+  const struct TALER_WireSaltP *salt,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct TALER_MerchantSignatureP *merch_sig)
+{
+  struct TALER_MerchantWireDetailsPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_WIRE_DETAILS),
+    .purpose.size = htonl (sizeof (wd))
+  };
+
+  TALER_merchant_wire_signature_hash (payto_uri,
+                                      salt,
+                                      &wd.h_wire_details);
+  GNUNET_CRYPTO_eddsa_sign (&merch_priv->eddsa_priv,
+                            &wd,
+                            &merch_sig->eddsa_sig);
 }
 
 

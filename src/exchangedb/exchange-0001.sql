@@ -1407,7 +1407,6 @@ CREATE TABLE IF NOT EXISTS mergers
   (merge_request_serial_id BIGSERIAL UNIQUE
   ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
-  ,reserve_url TEXT NOT NULL
   ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
   ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
   ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
@@ -1422,16 +1421,14 @@ COMMENT ON TABLE mergers
   IS 'Merge requests where a purse- and account-owner requested merging the purse into the account';
 COMMENT ON COLUMN mergers.partner_serial_id
   IS 'identifies the partner exchange, NULL in case the target reserve lives at this exchange';
-COMMENT ON COLUMN mergers.reserve_url
-  IS 'payto://-URL of the reserve, identifies the exchange and the reserve';
 COMMENT ON COLUMN mergers.reserve_pub
   IS 'public key of the target reserve';
 COMMENT ON COLUMN mergers.purse_pub
   IS 'public key of the purse';
 COMMENT ON COLUMN mergers.reserve_sig
-  IS 'signature by the reserve private key affirming the merge';
+  IS 'signature by the reserve private key affirming the merge, of type TALER_SIGNATURE_WALLET_ACCOUNT_MERGE';
 COMMENT ON COLUMN mergers.purse_sig
-  IS 'signature by the purse private key affirming the merge';
+  IS 'signature by the purse private key affirming the merge, of type TALER_SIGNATURE_WALLET_PURSE_MERGE';
 COMMENT ON COLUMN mergers.merge_timestamp
   IS 'when was the merge message signed';
 COMMENT ON COLUMN mergers.purse_expiration
@@ -1502,6 +1499,8 @@ CREATE TABLE IF NOT EXISTS purse_requests
   ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
+  ,balance_val INT8 NOT NULL
+  ,balance_frac INT4 NOT NULL
   ,purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)
   ,PRIMARY KEY (purse_pub)
   ); -- partition by purse_pub
@@ -1515,13 +1514,14 @@ COMMENT ON COLUMN purse_requests.h_contract_terms
   IS 'Hash of the contract the parties are to agree to';
 COMMENT ON COLUMN purse_requests.amount_with_fee_val
   IS 'Total amount expected to be in the purse';
+COMMENT ON COLUMN purse_requests.balance_val
+  IS 'Total amount actually in the purse';
 COMMENT ON COLUMN purse_requests.purse_sig
   IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
 
 CREATE TABLE IF NOT EXISTS purse_deposits
   (purse_deposit_serial_id BIGSERIAL UNIQUE
   ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
-  ,purse_expiration INT8 NOT NULL
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
@@ -1532,8 +1532,6 @@ COMMENT ON TABLE purse_deposits
   IS 'Requests depositing coins into a purse';
 COMMENT ON COLUMN purse_deposits.purse_pub
   IS 'Public key of the purse';
-COMMENT ON COLUMN purse_deposits.purse_expiration
-  IS 'When the purse is set to expire';
 COMMENT ON COLUMN purse_deposits.coin_pub
   IS 'Public key of the coin being deposited';
 COMMENT ON COLUMN purse_deposits.amount_with_fee_val

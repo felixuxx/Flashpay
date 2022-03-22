@@ -32,6 +32,16 @@
  */
 #define TALER_MAX_FRESH_COINS 256
 
+/**
+ * Cut-and-choose size for refreshing.  Client looses the gamble (of
+ * unaccountable transfers) with probability 1/TALER_CNC_KAPPA.  Refresh cost
+ * increases linearly with TALER_CNC_KAPPA, and 3 is sufficient up to a
+ * income/sales tax of 66% of total transaction value.  As there is
+ * no good reason to change this security parameter, we declare it
+ * fixed and part of the protocol.
+ */
+#define TALER_CNC_KAPPA 3
+
 
 /* ****************** Coin crypto primitives ************* */
 
@@ -248,6 +258,30 @@ struct TALER_MasterPublicKeyP
 
 
 /**
+ * @brief Type of the offline master public keys used by the exchange.
+ */
+struct TALER_MasterPrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for the long-term offline master key.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * @brief Type of signatures by the offline master public key used by the exchange.
+ */
+struct TALER_MasterSignatureP
+{
+  /**
+   * Taler uses EdDSA for the long-term offline master key.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
  * @brief Type of the private key used by the auditor.
  */
 struct TALER_AuditorPrivateKeyP
@@ -284,30 +318,6 @@ struct TALER_AuditorSignatureP
 
 
 /**
- * @brief Type of the offline master public keys used by the exchange.
- */
-struct TALER_MasterPrivateKeyP
-{
-  /**
-   * Taler uses EdDSA for the long-term offline master key.
-   */
-  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
-};
-
-
-/**
- * @brief Type of signatures by the offline master public key used by the exchange.
- */
-struct TALER_MasterSignatureP
-{
-  /**
-   * Taler uses EdDSA for the long-term offline master key.
-   */
-  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
-};
-
-
-/**
  * @brief Type of public keys for Taler coins.  The same key material is used
  * for EdDSA and ECDHE operations.
  */
@@ -334,6 +344,18 @@ struct TALER_CoinSpendPrivateKeyP
 };
 
 /**
+ * @brief Type of signatures made with Taler coins.
+ */
+struct TALER_CoinSpendSignatureP
+{
+  /**
+   * Taler uses EdDSA for coins.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
  * @brief Type of private keys for age commitment in coins.
  */
 struct TALER_AgeCommitmentPrivateKeyP
@@ -358,12 +380,37 @@ struct TALER_AgeCommitmentPublicKeyP
 
 
 /**
- * @brief Type of signatures made with Taler coins.
+ * @brief Type of online public keys used by the wallet to establish a purse.
  */
-struct TALER_CoinSpendSignatureP
+struct TALER_PursePublicKeyP
 {
   /**
-   * Taler uses EdDSA for coins.
+   * Taler uses EdDSA for purse message signing.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * @brief Type of online private keys used by the wallet for
+ * a purse.
+ */
+struct TALER_PursePrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for online signatures sessions.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * @brief Type of signatures used by the wallet to sign purse messages online.
+ */
+struct TALER_PurseSignatureP
+{
+  /**
+   * Taler uses EdDSA for online signatures sessions.
    */
   struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
@@ -2542,16 +2589,244 @@ TALER_exchange_deposit_confirm_verify (
 
 /* ********************* wallet signing ************************** */
 
+
+/**
+ * Sign a request to create a purse.
+ *
+ * @param purse_expiration when should the purse expire
+ * @param h_contract_terms contract the two parties agree on
+ * @param min_age age restriction to apply for deposits into the purse
+ * @param amount total amount in the purse (including fees)
+ * @param purse_priv key identifying the purse
+ * @param[out] purse_sig resulting signature
+ */
+void
+TALER_wallet_purse_create_sign (
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  uint32_t min_age,
+  const struct TALER_Amount *amount,
+  const struct TALER_PursePrivateKeyP *purse_priv,
+  struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Verify a purse creation request.
+ *
+ * @param purse_expiration when should the purse expire
+ * @param h_contract_terms contract the two parties agree on
+ * @param min_age age restriction to apply for deposits into the purse
+ * @param amount total amount in the purse (including fees)
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_CREATE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_create_verify (
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  uint32_t min_age,
+  const struct TALER_Amount *amount,
+  const struct TALER_PursePublicKeyP *purse_pub,
+  const struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Sign a request to inquire about a purse's status.
+ *
+ * @param purse_priv key identifying the purse
+ * @param[out] purse_sig resulting signature
+ */
+void
+TALER_wallet_purse_status_sign (
+  const struct TALER_PursePrivateKeyP *purse_priv,
+  struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Verify a purse status request signature.
+ *
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_STATUS_REQUEST
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_status_verify (
+  const struct TALER_PursePublicKeyP *purse_pub,
+  const struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Sign a request to deposit a coin into a purse.
+ *
+ * @param purse_pub purse’s public key
+ * @param amount amount of the coin's value to transfer to the purse
+ * @param coin_priv key identifying the coin to be deposited
+ * @param[out] coin_sig resulting signature
+ */
+void
+TALER_wallet_purse_deposit_sign (
+  const struct TALER_PursePublicKeyP *purse_pub,
+  const struct TALER_Amount *amount,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Verify a purse deposit request.
+ *
+ * @param purse_pub purse’s public key
+ * @param amount amount of the coin's value to transfer to the purse
+ * @param coin_pub key identifying the coin that is being deposited
+ * @param[out] coin_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_deposit_verify (
+  const struct TALER_PursePublicKeyP *purse_pub,
+  const struct TALER_Amount *amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Sign a request by a purse to merge it into an account.
+ *
+ * @param reserve_url identifies the location of the reserve,
+ *        included public key must match @e reserve_priv
+ * @param merge_timestamp time when the merge happened
+ * @param purse_priv key identifying the purse
+ * @param[out] purse_sig resulting signature
+ */
+void
+TALER_wallet_purse_merge_sign (
+  const char *reserve_url,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  const struct TALER_PursePrivateKeyP *purse_priv,
+  struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Verify a purse merge request.
+ *
+ * @param reserve_url identifies the location of the reserve,
+ *        included public key must match @e reserve_priv
+ * @param merge_timestamp time when the merge happened
+ * @param purse_pub public key of the purse to merge
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_MERGE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_merge_verify (
+  const char *reserve_url,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  const struct TALER_PursePublicKeyP *purse_pub,
+  const struct TALER_PurseSignatureP *purse_sig);
+
+
+/**
+ * Sign a request by an account to merge a purse.
+ *
+ * @param reserve_url identifies the location of the reserve,
+ *        included public key must match @e reserve_priv
+ * @param merge_timestamp time when the merge happened
+ * @param purse_pub public key of the purse to merge
+ * @param purse_expiration when should the purse expire
+ * @param h_contract_terms contract the two parties agree on
+ * @param amount total amount in the purse (including fees)
+ * @param min_age age restriction to apply for deposits into the purse
+ * @param reserve_priv key identifying the reserve
+ * @param[out] reserve_sig resulting signature
+ */
+void
+TALER_wallet_account_merge_sign (
+  const char *reserve_url,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  const struct TALER_PursePublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_Amount *amount,
+  uint32_t min_age,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Verify an account's request to merge a purse.
+ *
+ * @param reserve_url identifies the location of the reserve,
+ *        included public key must match @e reserve_priv
+ * @param merge_timestamp time when the merge happened
+ * @param purse_pub public key of the purse to merge
+ * @param purse_expiration when should the purse expire
+ * @param h_contract_terms contract the two parties agree on
+ * @param amount total amount in the purse (including fees)
+ * @param min_age age restriction to apply for deposits into the purse
+ * @param reserve_pub account’s public key
+ * @param reserve_sig the signature made with purpose #TALER_SIGNATURE_WALLET_ACCOUNT_MERGE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_account_merge_verify (
+  const char *reserve_url,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  const struct TALER_PursePublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_Amount *amount,
+  uint32_t min_age,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Sign a request to delete/close an account.
+ *
+ * @param reserve_priv key identifying the reserve
+ * @param[out] reserve_sig resulting signature
+ */
+void
+TALER_wallet_account_close_sign (
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Verify wallet request to close an account.
+ *
+ * @param reserve_pub account’s public key
+ * @param reserve_sig the signature made with purpose #TALER_SIGNATURE_WALLET_RESERVE_CLOSE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_account_close_verify (
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
 /**
  * Sign a request by a wallet to perform a KYC check.
  *
  * @param reserve_priv key identifying the wallet/account
- * @param reserve_sig resulting signature
+ * @param[out] reserve_sig resulting signature
  */
 void
 TALER_wallet_account_setup_sign (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Verify account setup request.
+ *
+ * @param reserve_pub reserve the setup request was for
+ * @param reserve_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_account_setup_verify (
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
 
 
 /**

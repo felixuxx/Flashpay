@@ -31,17 +31,6 @@
 #include "taler_amount_lib.h"
 #include "taler_crypto_lib.h"
 
-/**
- * Cut-and-choose size for refreshing.  Client looses the gamble (of
- * unaccountable transfers) with probability 1/TALER_CNC_KAPPA.  Refresh cost
- * increases linearly with TALER_CNC_KAPPA, and 3 is sufficient up to a
- * income/sales tax of 66% of total transaction value.  As there is
- * no good reason to change this security parameter, we declare it
- * fixed and part of the protocol.
- */
-#define TALER_CNC_KAPPA 3
-
-
 /*********************************************/
 /* Exchange offline signatures (with master key) */
 /*********************************************/
@@ -221,12 +210,6 @@
 #define TALER_SIGNATURE_MERCHANT_PAYMENT_OK 1104
 
 /**
- * Signature where the merchant confirms that the user replayed
- * a payment for a browser session.
- */
-#define TALER_SIGNATURE_MERCHANT_PAY_SESSION 1106
-
-/**
  * Signature where the merchant confirms its own (salted)
  * wire details (not yet really used).
  */
@@ -292,6 +275,36 @@
  * Request detailed account status (for free).
  */
 #define TALER_SIGNATURE_WALLET_RESERVE_STATUS 1209
+
+/**
+ * Request purse creation (without reserve).
+ */
+#define TALER_SIGNATURE_WALLET_PURSE_CREATE 1210
+
+/**
+ * Request coin to be deposited into a purse.
+ */
+#define TALER_SIGNATURE_WALLET_PURSE_DEPOSIT 1211
+
+/**
+ * Request purse status.
+ */
+#define TALER_SIGNATURE_WALLET_PURSE_STATUS 1212
+
+/**
+ * Request purse to be merged with a reserve (by purse).
+ */
+#define TALER_SIGNATURE_WALLET_PURSE_MERGE 1213
+
+/**
+ * Request purse to be merged with a reserve (by account).
+ */
+#define TALER_SIGNATURE_WALLET_ACCOUNT_MERGE 1214
+
+/**
+ * Request account to be closed.
+ */
+#define TALER_SIGNATURE_WALLET_RESERVE_CLOSE 1215
 
 
 /******************************/
@@ -419,207 +432,6 @@ struct TALER_SigningKeyAnnouncementPS
 
 
 /**
- * @brief Format used for to allow the wallet to authenticate
- * link data provided by the exchange.
- */
-struct TALER_LinkDataPS
-{
-
-  /**
-   * Purpose must be #TALER_SIGNATURE_WALLET_COIN_LINK.
-   * Used with an EdDSA signature of a `struct TALER_CoinPublicKeyP`.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the denomination public key of the new coin.
-   */
-  struct TALER_DenominationHashP h_denom_pub;
-
-  /**
-   * Transfer public key (for which the private key was not revealed)
-   */
-  struct TALER_TransferPublicKeyP transfer_pub;
-
-  /**
-   * Hash of the age commitment, if applicable.  Can be all zero
-   */
-  struct TALER_AgeCommitmentHash h_age_commitment;
-
-  /**
-   * Hash of the blinded new coin.
-   */
-  struct TALER_BlindedCoinHashP coin_envelope_hash;
-};
-
-
-/**
- * Response by which a wallet requests an account status.
- */
-struct TALER_ReserveStatusRequestPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_STATUS
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * When did the wallet make the requst.
-   */
-  struct GNUNET_TIME_TimestampNBO request_timestamp;
-
-};
-
-
-/**
- * Response by which a wallet requests a full
- * reserve history and indicates it is willing
- * to pay for it.
- */
-struct TALER_ReserveHistoryRequestPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_HISTORY
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * When did the wallet make the requst.
-   */
-  struct GNUNET_TIME_TimestampNBO request_timestamp;
-
-  /**
-   * How much does the exchange charge for the history?
-   */
-  struct TALER_AmountNBO history_fee;
-
-};
-
-
-/**
- * @brief Format used for to generate the signature on a request to withdraw
- * coins from a reserve.
- */
-struct TALER_WithdrawRequestPS
-{
-
-  /**
-   * Purpose must be #TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW.
-   * Used with an EdDSA signature of a `struct TALER_ReservePublicKeyP`.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Value of the coin being exchanged (matching the denomination key)
-   * plus the transaction fee.  We include this in what is being
-   * signed so that we can verify a reserve's remaining total balance
-   * without needing to access the respective denomination key
-   * information each time.
-   */
-  struct TALER_AmountNBO amount_with_fee;
-
-  /**
-   * Hash of the denomination public key for the coin that is withdrawn.
-   */
-  struct TALER_DenominationHashP h_denomination_pub GNUNET_PACKED;
-
-  /**
-   * Hash of the (blinded) message to be signed by the Exchange.
-   */
-  struct TALER_BlindedCoinHashP h_coin_envelope GNUNET_PACKED;
-};
-
-
-/**
- * @brief Format used to generate the signature on a request to deposit
- * a coin into the account of a merchant.
- */
-struct TALER_DepositRequestPS
-{
-  /**
-   * Purpose must be #TALER_SIGNATURE_WALLET_COIN_DEPOSIT.
-   * Used for an EdDSA signature with the `struct TALER_CoinSpendPublicKeyP`.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the contract for which this deposit is made.
-   */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
-
-  /**
-   * Hash over the age commitment that went into the coin. Maybe all zero, if
-   * age commitment isn't applicable to the denomination.
-   */
-  struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
-
-  /**
-   * Hash over extension attributes shared with the exchange.
-   */
-  struct TALER_ExtensionContractHashP h_extensions GNUNET_PACKED;
-
-  /**
-   * Hash over the wiring information of the merchant.
-   */
-  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
-
-  /**
-   * Hash over the denomination public key used to sign the coin.
-   */
-  struct TALER_DenominationHashP h_denom_pub GNUNET_PACKED;
-
-  /**
-   * Time when this request was generated.  Used, for example, to
-   * assess when (roughly) the income was achieved for tax purposes.
-   * Note that the Exchange will only check that the timestamp is not "too
-   * far" into the future (i.e. several days).  The fact that the
-   * timestamp falls within the validity period of the coin's
-   * denomination key is irrelevant for the validity of the deposit
-   * request, as obviously the customer and merchant could conspire to
-   * set any timestamp.  Also, the Exchange must accept very old deposit
-   * requests, as the merchant might have been unable to transmit the
-   * deposit request in a timely fashion (so back-dating is not
-   * prevented).
-   */
-  struct GNUNET_TIME_TimestampNBO wallet_timestamp;
-
-  /**
-   * How much time does the merchant have to issue a refund request?
-   * Zero if refunds are not allowed.  After this time, the coin
-   * cannot be refunded.
-   */
-  struct GNUNET_TIME_TimestampNBO refund_deadline;
-
-  /**
-   * Amount to be deposited, including deposit fee charged by the
-   * exchange.  This is the total amount that the coin's value at the exchange
-   * will be reduced by.
-   */
-  struct TALER_AmountNBO amount_with_fee;
-
-  /**
-   * Depositing fee charged by the exchange.  This must match the Exchange's
-   * denomination key's depositing fee.  If the client puts in an
-   * invalid deposit fee (too high or too low) that does not match the
-   * Exchange's denomination key, the deposit operation is invalid and
-   * will be rejected by the exchange.  The @e amount_with_fee minus the
-   * @e deposit_fee is the amount that will be transferred to the
-   * account identified by @e h_wire.
-   */
-  struct TALER_AmountNBO deposit_fee;
-
-  /**
-   * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction or to inquire about the wire transfer identifier.
-   */
-  struct TALER_MerchantPublicKeyP merchant;
-
-};
-
-
-/**
  * @brief Format used to generate the signature on a confirmation
  * from the exchange that a deposit request succeeded.
  */
@@ -692,42 +504,6 @@ struct TALER_DepositConfirmationPS
  * @brief Format used to generate the signature on a request to refund
  * a coin into the account of the customer.
  */
-struct TALER_RefundRequestPS
-{
-  /**
-   * Purpose must be #TALER_SIGNATURE_MERCHANT_REFUND.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the proposal data to identify the contract
-   * which is being refunded.
-   */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
-
-  /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Merchant-generated transaction ID for the refund.
-   */
-  uint64_t rtransaction_id GNUNET_PACKED;
-
-  /**
-   * Amount to be refunded, including refund fee charged by the
-   * exchange to the customer.
-   */
-  struct TALER_AmountNBO refund_amount;
-};
-
-
-/**
- * @brief Format used to generate the signature on a request to refund
- * a coin into the account of the customer.
- */
 struct TALER_RefundConfirmationPS
 {
   /**
@@ -767,58 +543,6 @@ struct TALER_RefundConfirmationPS
 
 
 /**
- * @brief Message signed by a coin to indicate that the coin should be
- * melted.
- */
-struct TALER_RefreshMeltCoinAffirmationPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_WALLET_COIN_MELT.
-   * Used for an EdDSA signature with the `struct TALER_CoinSpendPublicKeyP`.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Which melt commitment is made by the wallet.
-   */
-  struct TALER_RefreshCommitmentP rc GNUNET_PACKED;
-
-  /**
-   * Hash over the denomination public key used to sign the coin.
-   */
-  struct TALER_DenominationHashP h_denom_pub GNUNET_PACKED;
-
-  /**
-   * If age commitment was provided during the withdrawal of the coin, this is
-   * the hash of the age commitment vector.  It must be all zeroes if no age
-   * commitment was provided.
-   */
-  struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
-
-  /**
-   * How much of the value of the coin should be melted?  This amount
-   * includes the fees, so the final amount contributed to the melt is
-   * this value minus the fee for melting the coin.  We include the
-   * fee in what is being signed so that we can verify a reserve's
-   * remaining total balance without needing to access the respective
-   * denomination key information each time.
-   */
-  struct TALER_AmountNBO amount_with_fee;
-
-  /**
-   * Melting fee charged by the exchange.  This must match the Exchange's
-   * denomination key's melting fee.  If the client puts in an invalid
-   * melting fee (too high or too low) that does not match the Exchange's
-   * denomination key, the melting operation is invalid and will be
-   * rejected by the exchange.  The @e amount_with_fee minus the @e
-   * melt_fee is the amount that will be credited to the melting
-   * session.
-   */
-  struct TALER_AmountNBO melt_fee;
-};
-
-
-/**
  * @brief Format of the block signed by the Exchange in response to a successful
  * "/refresh/melt" request.  Hereby the exchange affirms that all of the
  * coins were successfully melted.  This also commits the exchange to a
@@ -843,51 +567,6 @@ struct TALER_RefreshMeltConfirmationPS
    */
   uint32_t noreveal_index GNUNET_PACKED;
 
-};
-
-
-/**
- * @brief Information about a signing key of the exchange.  Signing keys are used
- * to sign exchange messages other than coins, i.e. to confirm that a
- * deposit was successful or that a refresh was accepted.
- */
-struct TALER_ExchangeSigningKeyValidityPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * When does this signing key begin to be valid?
-   */
-  struct GNUNET_TIME_TimestampNBO start;
-
-  /**
-   * When does this signing key expire? Note: This is currently when
-   * the Exchange will definitively stop using it.  Signatures made with
-   * the key remain valid until @e end.  When checking validity periods,
-   * clients should allow for some overlap between keys and tolerate
-   * the use of either key during the overlap time (due to the
-   * possibility of clock skew).
-   */
-  struct GNUNET_TIME_TimestampNBO expire;
-
-  /**
-   * When do signatures with this signing key become invalid?  After
-   * this point, these signatures cannot be used in (legal) disputes
-   * anymore, as the Exchange is then allowed to destroy its side of the
-   * evidence.  @e end is expected to be significantly larger than @e
-   * expire (by a year or more).
-   */
-  struct GNUNET_TIME_TimestampNBO end;
-
-  /**
-   * The public online signing key that the exchange will use
-   * between @e start and @e expire.
-   */
-  struct TALER_ExchangePublicKeyP signkey_pub;
 };
 
 
@@ -943,128 +622,47 @@ struct TALER_ExchangeAccountSetupSuccessPS
 
 
 /**
- * @brief Signature made by the exchange offline key over the information of
- * an auditor to be added to the exchange's set of auditors.
+ * @brief Information about a signing key of the exchange.  Signing keys are used
+ * to sign exchange messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
  */
-struct TALER_MasterAddAuditorPS
+struct TALER_ExchangeSigningKeyValidityPS
 {
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_ADD_AUDITOR.   Signed
-   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Time of the change.
+   * When does this signing key begin to be valid?
    */
-  struct GNUNET_TIME_TimestampNBO start_date;
+  struct GNUNET_TIME_TimestampNBO start;
 
   /**
-   * Public key of the auditor.
+   * When does this signing key expire? Note: This is currently when
+   * the Exchange will definitively stop using it.  Signatures made with
+   * the key remain valid until @e end.  When checking validity periods,
+   * clients should allow for some overlap between keys and tolerate
+   * the use of either key during the overlap time (due to the
+   * possibility of clock skew).
    */
-  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct GNUNET_TIME_TimestampNBO expire;
 
   /**
-   * Hash over the auditor's URL.
+   * When do signatures with this signing key become invalid?  After
+   * this point, these signatures cannot be used in (legal) disputes
+   * anymore, as the Exchange is then allowed to destroy its side of the
+   * evidence.  @e end is expected to be significantly larger than @e
+   * expire (by a year or more).
    */
-  struct GNUNET_HashCode h_auditor_url GNUNET_PACKED;
-};
-
-
-/**
- * @brief Signature made by the exchange offline key over the information of
- * an auditor to be removed from the exchange's set of auditors.
- */
-struct TALER_MasterDelAuditorPS
-{
+  struct GNUNET_TIME_TimestampNBO end;
 
   /**
-   * Purpose is #TALER_SIGNATURE_MASTER_DEL_AUDITOR.   Signed
-   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   * The public online signing key that the exchange will use
+   * between @e start and @e expire.
    */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Time of the change.
-   */
-  struct GNUNET_TIME_TimestampNBO end_date;
-
-  /**
-   * Public key of the auditor.
-   */
-  struct TALER_AuditorPublicKeyP auditor_pub;
-
-};
-
-
-/**
- * @brief Signature made by the exchange offline key over the information of
- * a payto:// URI to be added to the exchange's set of active wire accounts.
- */
-struct TALER_MasterAddWirePS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_ADD_WIRE.   Signed
-   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Time of the change.
-   */
-  struct GNUNET_TIME_TimestampNBO start_date;
-
-  /**
-   * Hash over the exchange's payto URI.
-   */
-  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
-};
-
-
-/**
- * @brief Signature made by the exchange offline key over the information of
- * a  wire method to be removed to the exchange's set of active accounts.
- */
-struct TALER_MasterDelWirePS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_DEL_WIRE.   Signed
-   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Time of the change.
-   */
-  struct GNUNET_TIME_TimestampNBO end_date;
-
-  /**
-   * Hash over the exchange's payto URI.
-   */
-  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
-
-};
-
-
-/*
- * @brief Signature made by the exchange offline key over the
- * configuration of an extension.
- */
-struct TALER_MasterExtensionConfigurationPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_EXTENSION.   Signed
-   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the JSON object that represents the configuration of an extension.
-   */
-  struct TALER_ExtensionConfigHashP h_config GNUNET_PACKED;
+  struct TALER_ExchangePublicKeyP signkey_pub;
 };
 
 
@@ -1224,183 +822,6 @@ struct TALER_ExchangeKeyValidityPS
    * the variable-size RSA key in this struct.)
    */
   struct TALER_DenominationHashP denom_hash GNUNET_PACKED;
-
-};
-
-
-/**
- * @brief Information signed by the exchange's master
- * key affirming the IBAN details for the exchange.
- */
-struct TALER_MasterWireDetailsPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_DETAILS.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the account holder's payto:// URL.
-   */
-  struct TALER_PaytoHashP h_wire_details GNUNET_PACKED;
-
-};
-
-
-/**
- * @brief Information signed by the exchange's master
- * key affirming the IBAN details for the exchange.
- */
-struct TALER_MerchantWireDetailsPS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MERCHANT_WIRE_DETAILS.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Salted hash over the account holder's payto:// URL and
-   * the salt, as done by #TALER_merchant_wire_signature_hash().
-   */
-  struct TALER_MerchantWireHashP h_wire_details GNUNET_PACKED;
-
-};
-
-
-/**
- * @brief Information signed by the exchange's master
- * key stating the wire fee to be paid per wire transfer.
- */
-struct TALER_MasterWireFeePS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_FEES.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the wire method (yes, H("x-taler-bank") or H("iban")), in lower
-   * case, including 0-terminator.  Used to uniquely identify which
-   * wire method these fees apply to.
-   */
-  struct GNUNET_HashCode h_wire_method;
-
-  /**
-   * Start date when the fee goes into effect.
-   */
-  struct GNUNET_TIME_TimestampNBO start_date;
-
-  /**
-   * End date when the fee stops being in effect (exclusive)
-   */
-  struct GNUNET_TIME_TimestampNBO end_date;
-
-  /**
-   * Fees charged for wire transfers using the
-   * given wire method.
-   */
-  struct TALER_WireFeeSetNBOP fees;
-
-};
-
-
-/**
- * Global fees charged by the exchange independent of
- * denomination or wire method.
- */
-struct TALER_MasterGlobalFeePS
-{
-
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_GLOBAL_FEES.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Start date when the fee goes into effect.
-   */
-  struct GNUNET_TIME_TimestampNBO start_date;
-
-  /**
-   * End date when the fee stops being in effect (exclusive)
-   */
-  struct GNUNET_TIME_TimestampNBO end_date;
-
-  /**
-   * How long does an exchange keep a purse around after a purse
-   * has expired (or been successfully merged)?  A 'GET' request
-   * for a purse will succeed until the purse expiration time
-   * plus this value.
-   */
-  struct GNUNET_TIME_RelativeNBO purse_timeout;
-
-  /**
-   * How long does the exchange promise to keep funds
-   * an account for which the KYC has never happened
-   * after a purse was merged into an account? Basically,
-   * after this time funds in an account without KYC are
-   * forfeit.
-   */
-  struct GNUNET_TIME_RelativeNBO kyc_timeout;
-
-  /**
-   * How long will the exchange preserve the account history?  After an
-   * account was deleted/closed, the exchange will retain the account history
-   * for legal reasons until this time.
-   */
-  struct GNUNET_TIME_RelativeNBO history_expiration;
-
-  /**
-   * Fee charged to the merchant per wire transfer.
-   */
-  struct TALER_GlobalFeeSetNBOP fees;
-
-  /**
-   * Number of concurrent purses that any
-   * account holder is allowed to create without having
-   * to pay the @e purse_fee. Here given in NBO.
-   */
-  uint32_t purse_account_limit;
-
-
-};
-
-
-/**
- * @brief Message confirming that a denomination key was revoked.
- */
-struct TALER_MasterDenominationKeyRevocationPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the denomination key.
-   */
-  struct TALER_DenominationHashP h_denom_pub;
-
-};
-
-
-/**
- * @brief Message confirming that an exchange online signing key was revoked.
- */
-struct TALER_MasterSigningKeyRevocationPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_REVOKED.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * The exchange's public key.
-   */
-  struct TALER_ExchangePublicKeyP exchange_pub;
 
 };
 
@@ -1603,32 +1024,6 @@ struct TALER_ConfirmWirePS
 
 
 /**
- * Signed data to request that a coin should be refunded as part of
- * the "emergency" /recoup protocol.  The refund will go back to the bank
- * account that created the reserve.
- */
-struct TALER_RecoupRequestPS
-{
-  /**
-   * Purpose is #TALER_SIGNATURE_WALLET_COIN_RECOUP
-   * or #TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the (revoked) denomination public key of the coin.
-   */
-  struct TALER_DenominationHashP h_denom_pub;
-
-  /**
-   * Blinding factor that was used to withdraw the coin.
-   */
-  union TALER_DenominationBlindingKeyP coin_blind;
-
-};
-
-
-/**
  * Response by which the exchange affirms that it will
  * refund a coin as part of the emergency /recoup
  * protocol.  The recoup will go back to the bank
@@ -1801,53 +1196,6 @@ struct TALER_ReserveCloseConfirmationPS
    * Wire transfer subject.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
-};
-
-
-/**
- * Used by the merchant to confirm to the frontend that
- * the user did a payment replay with the current browser session.
- */
-struct TALER_MerchantPaySessionSigPS
-{
-  /**
-   * Set to #TALER_SIGNATURE_MERCHANT_PAY_SESSION.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hashed order id.
-   * Hashed without the 0-termination.
-   */
-  struct GNUNET_HashCode h_order_id GNUNET_PACKED;
-
-  /**
-   * Hashed session id.
-   * Hashed without the 0-termination.
-   */
-  struct GNUNET_HashCode h_session_id GNUNET_PACKED;
-
-};
-
-/**
- * Used for attestation of a particular age
- */
-struct TALER_AgeAttestationPS
-{
-  /**
-   * Purpose must be #TALER_SIGNATURE_WALLET_AGE_ATTESTATION.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Age mask that defines the underlying age groups
-   */
-  struct TALER_AgeMask mask;
-
-  /**
-   * The particular age that this attestation is for
-   */
-  uint8_t age;
 };
 
 

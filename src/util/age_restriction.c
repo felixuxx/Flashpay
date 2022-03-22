@@ -217,6 +217,28 @@ TALER_age_commitment_derive (
 }
 
 
+/**
+ * Used for attestation of a particular age
+ */
+struct TALER_AgeAttestationPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_WALLET_AGE_ATTESTATION.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Age mask that defines the underlying age groups
+   */
+  struct TALER_AgeMask mask;
+
+  /**
+   * The particular age that this attestation is for
+   */
+  uint8_t age;
+};
+
+
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_attest (
   const struct TALER_AgeCommitmentProof *cp,

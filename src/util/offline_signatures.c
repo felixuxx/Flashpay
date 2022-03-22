@@ -23,6 +23,36 @@
 #include "taler_signatures.h"
 
 
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * an auditor to be added to the exchange's set of auditors.
+ */
+struct TALER_MasterAddAuditorPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_ADD_AUDITOR.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_TimestampNBO start_date;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * Hash over the auditor's URL.
+   */
+  struct GNUNET_HashCode h_auditor_url GNUNET_PACKED;
+};
+
+
 void
 TALER_exchange_offline_auditor_add_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
@@ -73,6 +103,32 @@ TALER_exchange_offline_auditor_add_verify (
 }
 
 
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * an auditor to be removed from the exchange's set of auditors.
+ */
+struct TALER_MasterDelAuditorPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DEL_AUDITOR.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_TimestampNBO end_date;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+};
+
+
 void
 TALER_exchange_offline_auditor_del_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
@@ -115,6 +171,24 @@ TALER_exchange_offline_auditor_del_verify (
 }
 
 
+/**
+ * @brief Message confirming that a denomination key was revoked.
+ */
+struct TALER_MasterDenominationKeyRevocationPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the denomination key.
+   */
+  struct TALER_DenominationHashP h_denom_pub;
+
+};
+
+
 void
 TALER_exchange_offline_denomination_revoke_sign (
   const struct TALER_DenominationHashP *h_denom_pub,
@@ -152,6 +226,24 @@ TALER_exchange_offline_denomination_revoke_verify (
     &master_sig->eddsa_signature,
     &master_pub->eddsa_pub);
 }
+
+
+/**
+ * @brief Message confirming that an exchange online signing key was revoked.
+ */
+struct TALER_MasterSigningKeyRevocationPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_REVOKED.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The exchange's public key.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+};
 
 
 void
@@ -320,6 +412,31 @@ TALER_exchange_offline_denom_validity_verify (
 }
 
 
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * a payto:// URI to be added to the exchange's set of active wire accounts.
+ */
+struct TALER_MasterAddWirePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_ADD_WIRE.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_TimestampNBO start_date;
+
+  /**
+   * Hash over the exchange's payto URI.
+   */
+  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+};
+
+
 void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
@@ -365,6 +482,32 @@ TALER_exchange_offline_wire_add_verify (
 }
 
 
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * a  wire method to be removed to the exchange's set of active accounts.
+ */
+struct TALER_MasterDelWirePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DEL_WIRE.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_TimestampNBO end_date;
+
+  /**
+   * Hash over the exchange's payto URI.
+   */
+  struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+
+};
+
+
 void
 TALER_exchange_offline_wire_del_sign (
   const char *payto_uri,
@@ -408,6 +551,44 @@ TALER_exchange_offline_wire_del_verify (
     &master_sig->eddsa_signature,
     &master_pub->eddsa_pub);
 }
+
+
+/**
+ * @brief Information signed by the exchange's master
+ * key stating the wire fee to be paid per wire transfer.
+ */
+struct TALER_MasterWireFeePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_FEES.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the wire method (yes, H("x-taler-bank") or H("iban")), in lower
+   * case, including 0-terminator.  Used to uniquely identify which
+   * wire method these fees apply to.
+   */
+  struct GNUNET_HashCode h_wire_method;
+
+  /**
+   * Start date when the fee goes into effect.
+   */
+  struct GNUNET_TIME_TimestampNBO start_date;
+
+  /**
+   * End date when the fee stops being in effect (exclusive)
+   */
+  struct GNUNET_TIME_TimestampNBO end_date;
+
+  /**
+   * Fees charged for wire transfers using the
+   * given wire method.
+   */
+  struct TALER_WireFeeSetNBOP fees;
+
+};
 
 
 void
@@ -464,6 +645,68 @@ TALER_exchange_offline_wire_fee_verify (
                                 &master_sig->eddsa_signature,
                                 &master_pub->eddsa_pub);
 }
+
+
+/**
+ * Global fees charged by the exchange independent of
+ * denomination or wire method.
+ */
+struct TALER_MasterGlobalFeePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_GLOBAL_FEES.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Start date when the fee goes into effect.
+   */
+  struct GNUNET_TIME_TimestampNBO start_date;
+
+  /**
+   * End date when the fee stops being in effect (exclusive)
+   */
+  struct GNUNET_TIME_TimestampNBO end_date;
+
+  /**
+   * How long does an exchange keep a purse around after a purse
+   * has expired (or been successfully merged)?  A 'GET' request
+   * for a purse will succeed until the purse expiration time
+   * plus this value.
+   */
+  struct GNUNET_TIME_RelativeNBO purse_timeout;
+
+  /**
+   * How long does the exchange promise to keep funds
+   * an account for which the KYC has never happened
+   * after a purse was merged into an account? Basically,
+   * after this time funds in an account without KYC are
+   * forfeit.
+   */
+  struct GNUNET_TIME_RelativeNBO kyc_timeout;
+
+  /**
+   * How long will the exchange preserve the account history?  After an
+   * account was deleted/closed, the exchange will retain the account history
+   * for legal reasons until this time.
+   */
+  struct GNUNET_TIME_RelativeNBO history_expiration;
+
+  /**
+   * Fee charged to the merchant per wire transfer.
+   */
+  struct TALER_GlobalFeeSetNBOP fees;
+
+  /**
+   * Number of concurrent purses that any
+   * account holder is allowed to create without having
+   * to pay the @e purse_fee. Here given in NBO.
+   */
+  uint32_t purse_account_limit;
+
+
+};
 
 
 void
@@ -530,6 +773,25 @@ TALER_exchange_offline_global_fee_verify (
 }
 
 
+/**
+ * @brief Signature made by the exchange offline key over the
+ * configuration of an extension.
+ */
+struct TALER_MasterExtensionConfigurationPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_EXTENSION.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the JSON object that represents the configuration of an extension.
+   */
+  struct TALER_ExtensionConfigHashP h_config GNUNET_PACKED;
+};
+
+
 void
 TALER_exchange_offline_extension_config_hash_sign (
   const struct TALER_ExtensionConfigHashP *h_config,
@@ -564,6 +826,65 @@ TALER_exchange_offline_extension_config_hash_verify (
                                      &ec,
                                      &master_sig->eddsa_signature,
                                      &master_pub->eddsa_pub);
+}
+
+
+/**
+ * @brief Information signed by the exchange's master
+ * key affirming the IBAN details for the exchange.
+ */
+struct TALER_MasterWireDetailsPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_WIRE_DETAILS.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the account holder's payto:// URL.
+   */
+  struct TALER_PaytoHashP h_wire_details GNUNET_PACKED;
+
+};
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_wire_signature_check (
+  const char *payto_uri,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterWireDetailsPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_DETAILS),
+    .purpose.size = htonl (sizeof (wd))
+  };
+
+  TALER_payto_hash (payto_uri,
+                    &wd.h_wire_details);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_DETAILS,
+                                     &wd,
+                                     &master_sig->eddsa_signature,
+                                     &master_pub->eddsa_pub);
+}
+
+
+void
+TALER_exchange_wire_signature_make (
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterWireDetailsPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_DETAILS),
+    .purpose.size = htonl (sizeof (wd))
+  };
+
+  TALER_payto_hash (payto_uri,
+                    &wd.h_wire_details);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &wd,
+                            &master_sig->eddsa_signature);
 }
 
 

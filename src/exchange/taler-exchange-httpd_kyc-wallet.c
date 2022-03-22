@@ -104,10 +104,6 @@ TEH_handler_kyc_wallet (
   };
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
-  };
 
   (void) args;
   ret = TALER_MHD_parse_json_data (rc->connection,
@@ -120,10 +116,8 @@ TEH_handler_kyc_wallet (
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP,
-                                   &purpose,
-                                   &reserve_sig.eddsa_signature,
-                                   &krc.reserve_pub.eddsa_pub))
+      TALER_wallet_account_setup_verify (&krc.reserve_pub,
+                                         &reserve_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
