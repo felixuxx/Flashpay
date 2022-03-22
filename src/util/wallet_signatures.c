@@ -618,7 +618,7 @@ TALER_wallet_account_setup_verify (
   };
 
   return GNUNET_CRYPTO_eddsa_verify_ (
-    TALER_SIGNATURE_WALLET_RESERVE_STATUS,
+    TALER_SIGNATURE_WALLET_ACCOUNT_SETUP,
     &purpose,
     &reserve_sig->eddsa_signature,
     &reserve_pub->eddsa_pub);
