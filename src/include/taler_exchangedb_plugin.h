@@ -4323,6 +4323,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*delete_shard_locks)(void *cls);
 
+
   /**
    * Function called to save the configuration of an extension
    * (age-restriction, peer2peer, ...)
@@ -4337,6 +4338,7 @@ struct TALER_EXCHANGEDB_Plugin
                           const char *extension_name,
                           const char *config);
 
+
   /**
    * Function called to retrieve the configuration of an extension
    * (age-restriction, peer2peer, ...)
@@ -4350,6 +4352,120 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_extension_config)(void *cls,
                           const char *extension_name,
                           char **config);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_partner)(void *cls,
+                    const struct TALER_MasterPublicKeyP *master_pub,
+                    struct GNUNET_TIME_Timestamp start_date,
+                    struct GNUNET_TIME_Timestamp end_date,
+                    struct GNUNET_TIME_Relative wad_frequency,
+                    const struct TALER_Amount *wad_fee,
+                    const char *partner_base_url,
+                    const struct TALER_MasterSignatureP *master_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_contract)(void *cls,
+                     const struct TALER_PurseContractPublicKeyP *purse_pub,
+                     const struct TALER_ContractDiffiePublicP *pub_ckey,
+                     size_t econtract_size,
+                     const void *econtract);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*select_contract)(void *cls,
+                     const struct TALER_PurseContractPublicKeyP *purse_pub,
+                     struct TALER_ContractDiffiePublicP *pub_ckey,
+                     size_t *econtract_size,
+                     void **econtract);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_request)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_PurseMergePublicKeyP *merge_pub,
+    struct GNUNET_TIME_Timestamp purse_expiration,
+    const struct TALER_PrivateContractHashP *h_contract_terms,
+    const struct TALER_Amount *amount,
+    const struct TALER_PurseContractSignatureP *purse_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_request)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct TALER_PurseMergePublicKeyP *merge_pub,
+    struct GNUNET_TIME_Timestamp *purse_expiration,
+    struct TALER_PrivateContractHashP *h_contract_terms,
+    struct TALER_Amount *target_amount,
+    struct TALER_Amount *balance,
+    struct TALER_PurseContractSignatureP *purse_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_deposit)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    const struct TALER_Amount *amount,
+    const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_merge)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_PurseMergePublicKeyP *merge_pub,
+    const struct TALER_PurseMergeSignatureP *merge_sig,
+    const struct GNUNET_TIME_Timestamp merge_timestamp,
+    uint64_t partner_serial_id,
+    const struct TALER_ReservePublicKeyP *reserve_pub);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_merge)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct TALER_PurseMergePublicKeyP *merge_pub,
+    struct TALER_PurseMergeSignatureP *merge_sig,
+    struct GNUNET_TIME_Timestamp *merge_timestamp,
+    uint64_t *partner_serial_id,
+    struct TALER_ReservePublicKeyP *reserve_pub);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_account_merge)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*select_account_merge)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct TALER_ReservePublicKeyP *reserve_pub,
+    struct TALER_ReserveSignatureP *reserve_sig);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_history_request)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_ReserveSignatureP *reserve_sig,
+    struct GNUNET_TIME_Absolute request_timestamp,
+    const struct TALER_Amount *history);
+
+
+  enum GNUNET_DB_QueryStatus
+  (*insert_close_request)(void *cls,
+                          const struct TALER_ReservePublicKeyP *reserve_pub,
+                          const struct TALER_ReserveSignatureP *reserve_sig,
+                          struct TALER_Amount *final_balance);
+
 
 };
 

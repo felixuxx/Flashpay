@@ -1403,44 +1403,84 @@ COMMENT ON COLUMN partners.partner_base_url
 COMMENT ON COLUMN partners.master_sig
   IS 'signature of our master public key affirming the partnership, of purpose TALER_SIGNATURE_MASTER_PARTNER_DETAILS';
 
-CREATE TABLE IF NOT EXISTS mergers
-  (merge_request_serial_id BIGSERIAL UNIQUE
-  ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
-  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
-  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+
+CREATE TABLE IF NOT EXISTS purse_requests
+  (purse_deposit_serial_id BIGSERIAL UNIQUE
   ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
-  ,purse_sig BYTEA NOT NULL CHECK (LENGTH(purse_sig)=64)
-  ,merge_timestamp INT8 NOT NULL
+  ,merge_pub BYTEA NOT NULL CHECK (LENGTH(merge_pub)=32)
   ,purse_expiration INT8 NOT NULL
   ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
-  ,purse_val INT8 NOT NULL
-  ,purse_frac INT4 NOT NULL
+  ,amount_with_fee_val INT8 NOT NULL
+  ,amount_with_fee_frac INT4 NOT NULL
+  ,balance_val INT8 NOT NULL
+  ,balance_frac INT4 NOT NULL
+  ,purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)
+  ,PRIMARY KEY (purse_pub)
+  ); -- partition by purse_pub
+COMMENT ON TABLE purse_requests
+  IS 'Requests establishing purses, associating them with a contract but without a target reserve';
+COMMENT ON COLUMN purse_requests.purse_pub
+  IS 'Public key of the purse';
+COMMENT ON COLUMN purse_requests.purse_expiration
+  IS 'When the purse is set to expire';
+COMMENT ON COLUMN purse_requests.h_contract_terms
+  IS 'Hash of the contract the parties are to agree to';
+COMMENT ON COLUMN purse_requests.amount_with_fee_val
+  IS 'Total amount expected to be in the purse';
+COMMENT ON COLUMN purse_requests.balance_val
+  IS 'Total amount actually in the purse';
+COMMENT ON COLUMN purse_requests.purse_sig
+  IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
+
+
+CREATE TABLE IF NOT EXISTS purse_merges
+  (purse_merge_request_serial_id BIGSERIAL -- UNIQUE
+  ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL CHECK(length(reserve_pub)=32)--REFERENCES reserves (reserve_pub) ON DELETE CASCADE
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32) --REFERENCES purse_requests (purse_pub) ON DELETE CASCADE
+  ,merge_sig BYTEA NOT NULL CHECK (LENGTH(merge_sig)=64)
+  ,merge_timestamp INT8 NOT NULL
   ,PRIMARY KEY (purse_pub)
   ); -- partition by purse_pub; plus materialized index by reserve_pub!
-COMMENT ON TABLE mergers
-  IS 'Merge requests where a purse- and account-owner requested merging the purse into the account';
-COMMENT ON COLUMN mergers.partner_serial_id
+COMMENT ON TABLE purse_merges
+  IS 'Merge requests where a purse-owner requested merging the purse into the account';
+COMMENT ON COLUMN purse_merges.partner_serial_id
   IS 'identifies the partner exchange, NULL in case the target reserve lives at this exchange';
-COMMENT ON COLUMN mergers.reserve_pub
+COMMENT ON COLUMN purse_merges.reserve_pub
   IS 'public key of the target reserve';
-COMMENT ON COLUMN mergers.purse_pub
+COMMENT ON COLUMN purse_merges.purse_pub
   IS 'public key of the purse';
-COMMENT ON COLUMN mergers.reserve_sig
-  IS 'signature by the reserve private key affirming the merge, of type TALER_SIGNATURE_WALLET_ACCOUNT_MERGE';
-COMMENT ON COLUMN mergers.purse_sig
+COMMENT ON COLUMN purse_merges.merge_sig
   IS 'signature by the purse private key affirming the merge, of type TALER_SIGNATURE_WALLET_PURSE_MERGE';
-COMMENT ON COLUMN mergers.merge_timestamp
+COMMENT ON COLUMN purse_merges.merge_timestamp
   IS 'when was the merge message signed';
-COMMENT ON COLUMN mergers.purse_expiration
-  IS 'when is the purse set to expire';
-COMMENT ON COLUMN mergers.h_contract_terms
-  IS 'hash of the contract terms both sides are to agree upon';
-COMMENT ON COLUMN mergers.purse_val
-  IS 'amount to be transferred from the purse to the reserve (excludes deposit fees)';
-CREATE INDEX IF NOT EXISTS mergers_reserve_pub
-  ON mergers (reserve_pub);
-COMMENT ON INDEX mergers_reserve_pub
+CREATE INDEX IF NOT EXISTS purse_merges_reserve_pub
+  ON purse_merges (reserve_pub);
+COMMENT ON INDEX purse_merges_reserve_pub
   IS 'needed in reserve history computation';
+
+
+CREATE TABLE IF NOT EXISTS account_mergers
+  (account_merge_request_serial_id BIGSERIAL -- UNIQUE
+  ,reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32) -- REFERENCES reserves (reserve_pub) ON DELETE CASCADE
+  ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
+  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32) -- REFERENCES purse_requests (purse_pub)
+  ,PRIMARY KEY (reserve_pub)
+  ); -- partition by purse_pub; plus materialized index by reserve_pub!
+COMMENT ON TABLE account_mergers
+  IS 'Merge requests where a purse- and account-owner requested merging the purse into the account';
+COMMENT ON COLUMN account_mergers.reserve_pub
+  IS 'public key of the target reserve';
+COMMENT ON COLUMN account_mergers.purse_pub
+  IS 'public key of the purse';
+COMMENT ON COLUMN account_mergers.reserve_sig
+  IS 'signature by the reserve private key affirming the merge, of type TALER_SIGNATURE_WALLET_ACCOUNT_MERGE';
+
+CREATE INDEX IF NOT EXISTS account_mergers_purse_pub
+  ON account_mergers (purse_pub);
+COMMENT ON INDEX account_mergers_purse_pub
+  IS 'needed when checking for a purse merge status';
+  
 
 CREATE TABLE IF NOT EXISTS contracts
   (contract_serial_id BIGSERIAL UNIQUE
@@ -1492,32 +1532,6 @@ COMMENT ON COLUMN close_requests.reserve_sig
 COMMENT ON COLUMN close_requests.close_val
   IS 'Balance of the reserve at the time of closing, to be wired to the associated bank account (minus the closing fee)';
 
-CREATE TABLE IF NOT EXISTS purse_requests
-  (purse_deposit_serial_id BIGSERIAL UNIQUE
-  ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
-  ,purse_expiration INT8 NOT NULL
-  ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
-  ,amount_with_fee_val INT8 NOT NULL
-  ,amount_with_fee_frac INT4 NOT NULL
-  ,balance_val INT8 NOT NULL
-  ,balance_frac INT4 NOT NULL
-  ,purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)
-  ,PRIMARY KEY (purse_pub)
-  ); -- partition by purse_pub
-COMMENT ON TABLE purse_requests
-  IS 'Requests establishing purses, associating them with a contract but without a target reserve';
-COMMENT ON COLUMN purse_requests.purse_pub
-  IS 'Public key of the purse';
-COMMENT ON COLUMN purse_requests.purse_expiration
-  IS 'When the purse is set to expire';
-COMMENT ON COLUMN purse_requests.h_contract_terms
-  IS 'Hash of the contract the parties are to agree to';
-COMMENT ON COLUMN purse_requests.amount_with_fee_val
-  IS 'Total amount expected to be in the purse';
-COMMENT ON COLUMN purse_requests.balance_val
-  IS 'Total amount actually in the purse';
-COMMENT ON COLUMN purse_requests.purse_sig
-  IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
 
 CREATE TABLE IF NOT EXISTS purse_deposits
   (purse_deposit_serial_id BIGSERIAL UNIQUE
