@@ -787,7 +787,7 @@ END $$;
 COMMENT ON FUNCTION deposits_by_coin_delete_trigger()
   IS 'Replicate deposits deletions into deposits_by_coin table.';
 
-CREATE TRIGGER deposit_on_delete
+CREATE TRIGGER deposits_on_delete
   AFTER DELETE
     ON deposits
    FOR EACH ROW EXECUTE FUNCTION deposits_by_coin_delete_trigger();
@@ -1410,10 +1410,11 @@ CREATE TABLE IF NOT EXISTS purse_requests
   ,merge_pub BYTEA NOT NULL CHECK (LENGTH(merge_pub)=32)
   ,purse_expiration INT8 NOT NULL
   ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
+  ,age_limit INT4 NOT NULL
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
-  ,balance_val INT8 NOT NULL
-  ,balance_frac INT4 NOT NULL
+  ,balance_val INT8 NOT NULL DEFAULT (0)
+  ,balance_frac INT4 NOT NULL DEFAULT (0)
   ,purse_sig BYTEA NOT NULL CHECK(LENGTH(purse_sig)=64)
   ,PRIMARY KEY (purse_pub)
   ); -- partition by purse_pub
@@ -1431,6 +1432,9 @@ COMMENT ON COLUMN purse_requests.balance_val
   IS 'Total amount actually in the purse';
 COMMENT ON COLUMN purse_requests.purse_sig
   IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
+
+-- FIXME: create purse_by_merge materialized index table
+-- for merge_pub => purse_pub mapping!
 
 
 CREATE TABLE IF NOT EXISTS purse_merges
@@ -1487,6 +1491,7 @@ CREATE TABLE IF NOT EXISTS contracts
   ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
   ,pub_ckey BYTEA NOT NULL CHECK (LENGTH(pub_ckey)=32)
   ,e_contract BYTEA NOT NULL
+  ,purse_expiration INT8 NOT NULL
   ,PRIMARY KEY (purse_pub)
   ); -- partition by purse_pub
 COMMENT ON TABLE contracts
@@ -2897,6 +2902,86 @@ DELETE FROM cs_nonce_locks
   WHERE max_denomination_serial <= denom_min;
 
 END $$;
+
+
+
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
+  IN in_purse_pub BYTEA,
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_coin_pub BYTEA,
+  IN in_coin_sig BYTEA,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
+  IN in_purse_pub BYTEA,
+  IN in_merge_sig BYTEA,
+  IN in_merge_timestamp INT8,
+  IN in_partner_url VARCHAR,
+  IN in_reserve_pub BYTEA,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_account_merge(
+  IN in_purse_pub BYTEA,
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_sig BYTEA,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_history_request(
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_sig BYTEA,
+  IN in_request_timestamp INT8,
+  IN in_history_fee_val INT8,
+  IN in_history_fee_frac INT4,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_close_request(
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_sig BYTEA,
+  OUT out_final_balance_val INT8,
+  OUT out_final_balance_frac INT4,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME
+END $$;
+
 
 
 -- Complete transaction

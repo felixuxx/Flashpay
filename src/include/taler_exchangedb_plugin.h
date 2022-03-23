@@ -4354,6 +4354,20 @@ struct TALER_EXCHANGEDB_Plugin
                           char **config);
 
 
+  /**
+   * Function called to store configuration data about a partner
+   * exchange that we are federated with.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub public offline signing key of the partner exchange
+   * @param start_date when does the following data start to be valid
+   * @param end_date when does the validity end (exclusive)
+   * @param wad_frequency how often do we do exchange-to-exchange settlements?
+   * @param wad_fee how much do we charge for transfers to the partner
+   * @param partner_base_url base URL of the partner exchange
+   * @param master_sig signature with our offline signing key affirming the above
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_partner)(void *cls,
                     const struct TALER_MasterPublicKeyP *master_pub,
@@ -4365,6 +4379,16 @@ struct TALER_EXCHANGEDB_Plugin
                     const struct TALER_MasterSignatureP *master_sig);
 
 
+  /**
+   * Function called to persist an encrypted contract associated with a reserve.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub the purse the contract is associated with (must exist)
+   * @param pub_ckey ephemeral key for DH used to encrypt the contract
+   * @param econtract_size number of bytes in @a econtract
+   * @param econtract the encrypted contract
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_contract)(void *cls,
                      const struct TALER_PurseContractPublicKeyP *purse_pub,
@@ -4373,6 +4397,16 @@ struct TALER_EXCHANGEDB_Plugin
                      const void *econtract);
 
 
+  /**
+   * Function called to retrieve an encrypted contract.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub key to lookup the contract by
+   * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
+   * @param[out] econtract_size set to the number of bytes in @a econtract
+   * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*select_contract)(void *cls,
                      const struct TALER_PurseContractPublicKeyP *purse_pub,
@@ -4381,6 +4415,19 @@ struct TALER_EXCHANGEDB_Plugin
                      void **econtract);
 
 
+  /**
+   * Function called to create a new purse with certain meta data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the new purse
+   * @param merge_pub public key providing the merge capability
+   * @param purse_expiration time when the purse will expire
+   * @param h_contract_terms hash of the contract for the purse
+   * @param age_limit age limit to enforce for payments into the purse
+   * @param amount target amount (with fees) to be put into the purse
+   * @param purse_sig signature with @a purse_pub's private key affirming the above
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_purse_request)(
     void *cls,
@@ -4388,10 +4435,25 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PurseMergePublicKeyP *merge_pub,
     struct GNUNET_TIME_Timestamp purse_expiration,
     const struct TALER_PrivateContractHashP *h_contract_terms,
+    uint32_t age_limit,
     const struct TALER_Amount *amount,
     const struct TALER_PurseContractSignatureP *purse_sig);
 
 
+  /**
+   * Function called to reutrn meta data about a purse by the
+   * purse public key.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse
+   * @param[out] merge_pub public key representing the merge capability
+   * @param[out] purse_expiration when would an unmerged purse expire
+   * @param[out] h_contract_terms contract associated with the purse
+   * @param[out] target_amount amount to be put into the purse
+   * @param[out] balance amount put so far into the purse
+   * @param[out] purse_sig signature of the purse over the initialization data
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*select_purse_request)(
     void *cls,
@@ -4404,8 +4466,49 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_PurseContractSignatureP *purse_sig);
 
 
+  /**
+   * Function called to return meta data about a purse by the
+   * merge capability key.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param merge_pub public key representing the merge capability
+   * @param[out] purse_pub public key of the purse
+   * @param[out] purse_expiration when would an unmerged purse expire
+   * @param[out] h_contract_terms contract associated with the purse
+   * @param[out] target_amount amount to be put into the purse
+   * @param[out] balance amount put so far into the purse
+   * @param[out] purse_sig signature of the purse over the initialization data
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
-  (*insert_purse_deposit)(
+  (*select_purse_by_merge_pub)(
+    void *cls,
+    const struct TALER_PurseMergePublicKeyP *merge_pub,
+    struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct GNUNET_TIME_Timestamp *purse_expiration,
+    struct TALER_PrivateContractHashP *h_contract_terms,
+    struct TALER_Amount *target_amount,
+    struct TALER_Amount *balance,
+    struct TALER_PurseContractSignatureP *purse_sig);
+
+
+  /**
+   * Function called to execute a transaction crediting
+   * a purse with @a amount from @a coin_pub. Reduces the
+   * value of @a coin_pub and increase the balance of
+   * the @a purse_pub purse. If the balance reaches the
+   * target amount and the purse has been merged, triggers
+   * the updates of the reserve/account balance.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub purse to credit
+   * @param coin_pub coin to deposit (debit)
+   * @param amount fraction of the coin's value to deposit
+   * @param coin_sig signature affirming the operation
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_purse_deposit)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -4413,53 +4516,99 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_CoinSpendSignatureP *coin_sig);
 
 
+  /**
+   * Function called to approve merging a purse into a
+   * reserve by the respective purse merge key.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub purse to merge
+   * @param merge_sig signature affirming the merge
+   * @param merge_timestamp time of the merge
+   * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
+   * @param reserve_pub public key of the reserve to credit
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
-  (*insert_purse_merge)(
+  (*do_purse_merge)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
-    const struct TALER_PurseMergePublicKeyP *merge_pub,
     const struct TALER_PurseMergeSignatureP *merge_sig,
     const struct GNUNET_TIME_Timestamp merge_timestamp,
-    uint64_t partner_serial_id,
+    const char *partner_url,
     const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
+  /**
+   * Function called to approve merging of a purse with
+   * an account, made by the receiving account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse
+   * @param[out] merge_sig set to the signature confirming the merge
+   * @param[out] merge_timestamp set to the time of the merge
+   * @param[out] partner_url set to the URL of the target exchange, or NULL if the target exchange is us. To be freed by the caller.
+   * @param[out] reserve_pub set to the public key of the reserve/account being credited
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*select_purse_merge)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
-    struct TALER_PurseMergePublicKeyP *merge_pub,
     struct TALER_PurseMergeSignatureP *merge_sig,
     struct GNUNET_TIME_Timestamp *merge_timestamp,
-    uint64_t *partner_serial_id,
+    char **partner_url,
     struct TALER_ReservePublicKeyP *reserve_pub);
 
 
+  /**
+   * Function called to approve merging of a purse with
+   * an account, made by the receiving account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse being merged
+   * @param reserve_pub public key of the account being credited
+   * @param reserve_sig signature of the account holder affirming the merge
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
-  (*insert_account_merge)(
+  (*do_account_merge)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_ReserveSignatureP *reserve_sig);
 
 
-  enum GNUNET_DB_QueryStatus
-  (*select_account_merge)(
-    void *cls,
-    const struct TALER_PurseContractPublicKeyP *purse_pub,
-    struct TALER_ReservePublicKeyP *reserve_pub,
-    struct TALER_ReserveSignatureP *reserve_sig);
-
-
+  /**
+   * Function called to persist a signature that
+   * prove that the client requested an
+   * account history.  Debits the @a history_fee from
+   * the reserve (if possible).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub account that the history was requested for
+   * @param reserve_sig signature affirming the request
+   * @param request_timestamp when was the request made
+   * @param history_fee how much should the @a reserve_pub be charged for the request
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_history_request)(
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_ReserveSignatureP *reserve_sig,
     struct GNUNET_TIME_Absolute request_timestamp,
-    const struct TALER_Amount *history);
+    const struct TALER_Amount *history_fee);
 
 
+  /**
+   * Function called to initiate closure of an account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the account to close
+   * @param reserve_sig signature affiming that the account is to be closed
+   * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_close_request)(void *cls,
                           const struct TALER_ReservePublicKeyP *reserve_pub,

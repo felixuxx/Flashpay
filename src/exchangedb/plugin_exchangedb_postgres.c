@@ -3068,6 +3068,124 @@ prepare_statements (struct PostgresClosure *pg)
       "FROM extensions"
       "   WHERE name=$1;",
       1),
+
+    /* Used in #postgres_insert_partner() */
+    GNUNET_PQ_make_prepare (
+      "insert_partner",
+      "INSERT INTO partners"
+      "  (partner_master_pub"
+      "  ,start_date"
+      "  ,end_date"
+      "  ,wad_frequency"
+      "  ,wad_fee_val"
+      "  ,wad_fee_frac"
+      "  ,master_sig"
+      "  ,partner_base_url"
+      "  ) VALUES "
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
+    /* Used in #postgres_insert_contract() */
+    GNUNET_PQ_make_prepare (
+      "insert_contract",
+      "INSERT INTO contracts"
+      "  (purse_pub"
+      "  ,pub_ckey"
+      "  ,e_contract"
+      "  ,purse_expiration"
+      "  ) SELECT "
+      "  $1, $2, $3, purse_expiration"
+      "  FROM purse_requests"
+      "  WHERE purse_pub=$1;",
+      3),
+    /* Used in #postgres_select_contract */
+    GNUNET_PQ_make_prepare (
+      "select_contract",
+      "SELECT "
+      " pub_ckey"
+      ",e_contract"
+      " FROM contracts"
+      "   WHERE purse_pub=$1;",
+      1),
+    /* Used in #postgres_insert_purse_request() */
+    GNUNET_PQ_make_prepare (
+      "insert_purse_request",
+      "INSERT INTO purse_requests"
+      "  (purse_pub"
+      "  ,merge_pub"
+      "  ,purse_expiration"
+      "  ,h_contract_terms"
+      "  ,age_limit"
+      "  ,amount_with_fee_val"
+      "  ,amount_with_fee_frac"
+      "  ,purse_sig"
+      "  ) VALUES "
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
+      7),
+    /* Used in #postgres_select_purse_request */
+    GNUNET_PQ_make_prepare (
+      "select_purse_request",
+      "SELECT "
+      " merge_pub"
+      ",purse_expiration"
+      ",h_contract_terms"
+      ",age_limit"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",purse_sig"
+      " FROM purse_requests"
+      " WHERE purse_pub=$1;",
+      1),
+    /* Used in #postgres_do_purse_deposit() */
+    GNUNET_PQ_make_prepare (
+      "call_purse_deposit",
+      "SELECT 1"
+      " FROM exchange_do_purse_deposit"
+      "  ($1, $2, $3, $4, $5);",
+      5),
+    /* Used in #postgres_do_purse_merge() */
+    GNUNET_PQ_make_prepare (
+      "call_purse_merge",
+      "SELECT 1"
+      " FROM exchange_do_purse_merge"
+      "  ($1, $2, $3, $4, $5);",
+      5),
+    /* Used in #postgres_select_purse_merge */
+    GNUNET_PQ_make_prepare (
+      "select_purse_merge",
+      "SELECT "
+      " reserve_pub"
+      ",purse_pub"
+      ",merge_sig"
+      ",merge_timestamp"
+      ",partner_base_url"
+      " FROM purse_merges"
+      " JOIN partners USING (partner_serial_id)"
+      " WHERE purse_pub=$1;",
+      1),
+    /* Used in #postgres_do_account_merge() */
+    GNUNET_PQ_make_prepare (
+      "call_account_merge",
+      "SELECT 1"
+      " FROM exchange_do_account_merge"
+      "  ($1, $2, $3);",
+      3),
+    /* Used in #postgres_insert_history_request() */
+    GNUNET_PQ_make_prepare (
+      "call_history_request",
+      "SELECT 1"
+      " FROM exchange_do_history_request"
+      "  ($1, $2, $3, $4, $5)",
+      5),
+    /* Used in #postgres_insert_close_request() */
+    GNUNET_PQ_make_prepare (
+      "call_account_close",
+      "SELECT "
+      " out_final_balance_val"
+      ",out_final_balance_frac"
+      " FROM exchange_do_close_request"
+      "  ($1, $2)",
+      2),
+
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -9946,7 +10064,7 @@ struct RecoupRefreshSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -10102,7 +10220,7 @@ struct ReserveClosedSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -10148,7 +10266,7 @@ reserve_closed_serial_helper_cb (void *cls,
                                    &closing_fee),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -10377,7 +10495,7 @@ struct MissingWireContext
   /**
    * Set to #GNUNET_SYSERR on error.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -10737,7 +10855,7 @@ struct GetWireAccountsContext
   /**
    * Flag set to #GNUNET_OK as long as everything is fine.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 
 };
 
@@ -10844,7 +10962,7 @@ struct GetWireFeesContext
   /**
    * Flag set to #GNUNET_OK as long as everything is fine.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 
 };
 
@@ -12527,6 +12645,317 @@ postgres_get_extension_config (void *cls,
 
 
 /**
+ * Function called to store configuration data about a partner
+ * exchange that we are federated with.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub public offline signing key of the partner exchange
+ * @param start_date when does the following data start to be valid
+ * @param end_date when does the validity end (exclusive)
+ * @param wad_frequency how often do we do exchange-to-exchange settlements?
+ * @param wad_fee how much do we charge for transfers to the partner
+ * @param partner_base_url base URL of the partner exchange
+ * @param master_sig signature with our offline signing key affirming the above
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_partner (void *cls,
+                         const struct TALER_MasterPublicKeyP *master_pub,
+                         struct GNUNET_TIME_Timestamp start_date,
+                         struct GNUNET_TIME_Timestamp end_date,
+                         struct GNUNET_TIME_Relative wad_frequency,
+                         const struct TALER_Amount *wad_fee,
+                         const char *partner_base_url,
+                         const struct TALER_MasterSignatureP *master_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to persist an encrypted contract associated with a reserve.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub the purse the contract is associated with (must exist)
+ * @param pub_ckey ephemeral key for DH used to encrypt the contract
+ * @param econtract_size number of bytes in @a econtract
+ * @param econtract the encrypted contract
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_contract (void *cls,
+                          const struct TALER_PurseContractPublicKeyP *purse_pub,
+                          const struct TALER_ContractDiffiePublicP *pub_ckey,
+                          size_t econtract_size,
+                          const void *econtract)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to retrieve an encrypted contract.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub key to lookup the contract by
+ * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
+ * @param[out] econtract_size set to the number of bytes in @a econtract
+ * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_contract (void *cls,
+                          const struct TALER_PurseContractPublicKeyP *purse_pub,
+                          struct TALER_ContractDiffiePublicP *pub_ckey,
+                          size_t *econtract_size,
+                          void **econtract)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to create a new purse with certain meta data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub public key of the new purse
+ * @param merge_pub public key providing the merge capability
+ * @param purse_expiration time when the purse will expire
+ * @param h_contract_terms hash of the contract for the purse
+ * @param age_limit age limit to enforce for payments into the purse
+ * @param amount target amount (with fees) to be put into the purse
+ * @param purse_sig signature with @a purse_pub's private key affirming the above
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_purse_request (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  uint32_t age_limit,
+  const struct TALER_Amount *amount,
+  const struct TALER_PurseContractSignatureP *purse_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to reutrn meta data about a purse by the
+ * purse public key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub public key of the purse
+ * @param[out] merge_pub public key representing the merge capability
+ * @param[out] purse_expiration when would an unmerged purse expire
+ * @param[out] h_contract_terms contract associated with the purse
+ * @param[out] target_amount amount to be put into the purse
+ * @param[out] balance amount put so far into the purse
+ * @param[out] purse_sig signature of the purse over the initialization data
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse_request (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_PurseMergePublicKeyP *merge_pub,
+  struct GNUNET_TIME_Timestamp *purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  struct TALER_Amount *target_amount,
+  struct TALER_Amount *balance,
+  struct TALER_PurseContractSignatureP *purse_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to return meta data about a purse by the
+ * merge capability key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param merge_pub public key representing the merge capability
+ * @param[out] purse_pub public key of the purse
+ * @param[out] purse_expiration when would an unmerged purse expire
+ * @param[out] h_contract_terms contract associated with the purse
+ * @param[out] target_amount amount to be put into the purse
+ * @param[out] balance amount put so far into the purse
+ * @param[out] purse_sig signature of the purse over the initialization data
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse_by_merge_pub (
+  void *cls,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp *purse_expiration,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  struct TALER_Amount *target_amount,
+  struct TALER_Amount *balance,
+  struct TALER_PurseContractSignatureP *purse_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to execute a transaction crediting
+ * a purse with @a amount from @a coin_pub. Reduces the
+ * value of @a coin_pub and increase the balance of
+ * the @a purse_pub purse. If the balance reaches the
+ * target amount and the purse has been merged, triggers
+ * the updates of the reserve/account balance.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub purse to credit
+ * @param coin_pub coin to deposit (debit)
+ * @param amount fraction of the coin's value to deposit
+ * @param coin_sig signature affirming the operation
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_purse_deposit (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *amount,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to approve merging a purse into a
+ * reserve by the respective purse merge key.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub purse to merge
+ * @param merge_sig signature affirming the merge
+ * @param merge_timestamp time of the merge
+ * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
+ * @param reserve_pub public key of the reserve to credit
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_purse_merge (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseMergeSignatureP *merge_sig,
+  const struct GNUNET_TIME_Timestamp merge_timestamp,
+  const char *partner_url,
+  const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to approve merging of a purse with
+ * an account, made by the receiving account.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub public key of the purse
+ * @param[out] merge_sig set to the signature confirming the merge
+ * @param[out] merge_timestamp set to the time of the merge
+ * @param[out] partner_url set to the URL of the target exchange, or NULL if the target exchange is us. To be freed by the caller.
+ * @param[out] reserve_pub set to the public key of the reserve/account being credited
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse_merge (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_PurseMergeSignatureP *merge_sig,
+  struct GNUNET_TIME_Timestamp *merge_timestamp,
+  char **partner_url,
+  struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to approve merging of a purse with
+ * an account, made by the receiving account.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub public key of the purse being merged
+ * @param reserve_pub public key of the account being credited
+ * @param reserve_sig signature of the account holder affirming the merge
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_account_merge (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to persist a signature that
+ * prove that the client requested an
+ * account history.  Debits the @a history_fee from
+ * the reserve (if possible).
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param reserve_pub account that the history was requested for
+ * @param reserve_sig signature affirming the request
+ * @param request_timestamp when was the request made
+ * @param history_fee how much should the @a reserve_pub be charged for the request
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_history_request (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig,
+  struct GNUNET_TIME_Absolute request_timestamp,
+  const struct TALER_Amount *history)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Function called to initiate closure of an account.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param reserve_pub public key of the account to close
+ * @param reserve_sig signature affiming that the account is to be closed
+ * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_close_request (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig,
+  struct TALER_Amount *final_balance)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -12772,6 +13201,30 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_set_extension_config;
   plugin->get_extension_config
     = &postgres_get_extension_config;
+  plugin->insert_partner
+    = &postgres_insert_partner;
+  plugin->insert_contract
+    = &postgres_insert_contract;
+  plugin->select_contract
+    = &postgres_select_contract;
+  plugin->insert_purse_request
+    = &postgres_insert_purse_request;
+  plugin->select_purse_request
+    = &postgres_select_purse_request;
+  plugin->select_purse_by_merge_pub
+    = &postgres_select_purse_by_merge_pub;
+  plugin->do_purse_deposit
+    = &postgres_do_purse_deposit;
+  plugin->do_purse_merge
+    = &postgres_do_purse_merge;
+  plugin->select_purse_merge
+    = &postgres_select_purse_merge;
+  plugin->do_account_merge
+    = &postgres_do_account_merge;
+  plugin->insert_history_request
+    = &postgres_insert_history_request;
+  plugin->insert_close_request
+    = &postgres_insert_close_request;
   return plugin;
 }
 
