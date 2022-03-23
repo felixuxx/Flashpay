@@ -90,6 +90,22 @@ authchange_run (void *cls,
 
 
 /**
+ * Call GNUNET_CURL_fini(). Done as a separate task to
+ * ensure that all of the command's cleanups have been
+ * executed first.  See #7151.
+ *
+ * @param cls a `struct GNUNET_CURL_Context *` to clean up.
+ */
+static void
+deferred_cleanup_cb (void *cls)
+{
+  struct GNUNET_CURL_Context *ctx = cls;
+
+  GNUNET_CURL_fini (ctx);
+}
+
+
+/**
  * Cleanup the state from a "authchange" CMD.
  *
  * @param cls closure.
@@ -104,7 +120,8 @@ authchange_cleanup (void *cls,
   (void) cmd;
   if (NULL != ss->old_ctx)
   {
-    GNUNET_CURL_fini (ss->old_ctx);
+    (void) GNUNET_SCHEDULER_add_now (&deferred_cleanup_cb,
+                                     ss->old_ctx);
     ss->old_ctx = NULL;
   }
   GNUNET_free (ss);
