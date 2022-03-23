@@ -302,7 +302,7 @@ AS_CASE([$with_microhttpd],
         [no], [AC_MSG_ERROR([--with-microhttpd is required])],
         [LDFLAGS="-L$with_microhttpd/lib $LDFLAGS"
          CPPFLAGS="-I$with_microhttpd/include $CPPFLAGS"])
-MHD_VERSION_AT_LEAST([0.9.39])
+MHD_VERSION_AT_LEAST([0.9.71])
 
 # check for libjansson (Jansson JSON library)
 jansson=0
