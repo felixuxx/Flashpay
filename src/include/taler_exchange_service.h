@@ -3973,4 +3973,398 @@ void
 TALER_EXCHANGE_add_auditor_denomination_cancel (
   struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah);
 
+
+/* ********************* W2W API ****************** */
+
+
+/**
+ * Response generated for a purse get request.
+ */
+struct TALER_EXCHANGE_PurseGetResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+  } details;
+
+};
+
+/**
+ * Function called with information about the a purse.
+ *
+ * @param cls closure
+ * @param pgr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_PurseGetCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_PurseGetResponse *pgr);
+
+
+/**
+ * @brief Handle for a GET /purses/$PPUB request.
+ */
+struct TALER_EXCHANGE_PurseGetHandle;
+
+
+/**
+ * Request information about a purse from the exchange.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param purse_priv private key of the purse to check
+ * @param merge_timeout how long to wait for a merge to happen
+ * @param deposit_timeout how long to wait for a deposit to happen
+ * @param return_contract true if we should return the contract (if available)
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_PurseGetHandle *
+TALER_EXCHANGE_purse_get (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  struct GNUNET_TIME_Relative merge_timeout,
+  struct GNUNET_TIME_Relative deposit_timeout,
+  bool return_contract,
+  TALER_EXCHANGE_PurseGetCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_purse_deposit() operation.
+ *
+ * @param pgh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_purse_get_cancel (
+  struct TALER_EXCHANGE_PurseGetHandle *pgh);
+
+
+/**
+ * Response generated for a purse creation request.
+ */
+struct TALER_EXCHANGE_PurseCreateDepositResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+  } details;
+
+};
+
+/**
+ * Function called with information about the creation
+ * of a new purse.
+ *
+ * @param cls closure
+ * @param pcr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_PurseCreateDepositCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_PurseCreateDepositResponse *pcr);
+
+
+/**
+ * @brief Handle for a POST /purses/$PID/create request.
+ */
+struct TALER_EXCHANGE_PurseCreateDepositHandle;
+
+
+/**
+ * Information about a coin to be deposited into a purse.
+ */
+struct TALER_EXCHANGE_PurseDeposit
+{
+  /**
+   * Age commitment data.
+   */
+  struct TALER_AgeCommitment age_commitment;
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Signature proving the validity of the coin.
+   */
+  struct TALER_DenominationSignature denom_sig;
+
+  /**
+   * Hash of the denomination's public key.
+   */
+  struct TALER_DenominationHash h_denom_pub;
+
+  /**
+   * Amount of the coin to transfer into the purse.
+   */
+  struct TALER_Amount amount;
+
+};
+
+
+/**
+ * Inform the exchange that a purse should be created
+ * and coins deposited into it.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param purse_priv private key of the purse
+ * @param merge_pub identifies merge credential
+ * @param contract_terms contract the purse is about
+ * @param min_age minimum age we need to prove for the purse
+ * @param purse_expiration when will the unmerged purse expire
+ * @param purse_value_after_fees target amount in the purse
+ * @param num_deposits length of the @a deposits array
+ * @param deposits array of deposits to make into the purse
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_PurseCreateDepositHandle *
+TALER_EXCHANGE_purse_create_with_deposit (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  const json_t *contract_terms,
+  uint32_t min_age,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *purse_value_after_fees,
+  unsigned int num_deposits,
+  const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  TALER_EXCHANGE_PurseCreateCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_purse_create_with_deposit() operation.
+ *
+ * @param pch handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_purse_create_with_deposit_cancel (
+  struct TALER_EXCHANGE_PurseCreateHandle *pch);
+
+
+/**
+ * Response generated for an account merge request.
+ */
+struct TALER_EXCHANGE_AccountMergeResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+  } details;
+
+};
+
+/**
+ * Function called with information about an account merge
+ * operation.
+ *
+ * @param cls closure
+ * @param pcr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_AccountMergeCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_AccountMergeResponse *amr);
+
+
+/**
+ * @brief Handle for a POST /purses/$PID/merge request.
+ */
+struct TALER_EXCHANGE_AccountMergeHandle;
+
+
+/**
+ * Inform the exchange that a purse should be merged
+ * with a reserve.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_AccountMergeHandle *
+TALER_EXCHANGE_account_merge (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  TALER_EXCHANGE_PurseCreateCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_account_merge() operation.
+ *
+ * @param amh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_account_merge_cancel (
+  struct TALER_EXCHANGE_AccountMergeHandle *amh);
+
+
+/**
+ * Response generated for a purse creation request.
+ */
+struct TALER_EXCHANGE_PurseCreateMergeResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+  } details;
+
+};
+
+/**
+ * Function called with information about the creation
+ * of a new purse.
+ *
+ * @param cls closure
+ * @param pcr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_PurseCreateMergeCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_PurseCreateMergeResponse *pcr);
+
+
+/**
+ * @brief Handle for a POST /reserves/$RID/purse request.
+ */
+struct TALER_EXCHANGE_PurseCreateMergeHandle;
+
+
+/**
+ * Inform the exchange that a purse should be created
+ * and merged with a reserve.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param reserve_priv private key of the reserve
+ * @param purse_priv private key of the purse
+ * @param contract_terms contract the purse is about
+ * @param min_age minimum age we need to prove for the purse
+ * @param purse_expiration when will the unmerged purse expire
+ * @param purse_value_after_fees target amount in the purse
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_PurseCreateMergeHandle *
+TALER_EXCHANGE_purse_create_with_merge (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PurseReservePrivateKeyP *reserve_priv,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  const json_t *contract_terms,
+  uint32_t min_age,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *purse_value_after_fees,
+  TALER_EXCHANGE_PurseCreateMergeCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_purse_create_with_merge() operation.
+ *
+ * @param pch handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_purse_create_with_merge_cancel (
+  struct TALER_EXCHANGE_PurseCreateMergeHandle *pch);
+
+
+/**
+ * Response generated for purse deposit request.
+ */
+struct TALER_EXCHANGE_PurseDepositResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+  } details;
+
+};
+
+/**
+ * Function called with information about a deposit-into-purse
+ * operation.
+ *
+ * @param cls closure
+ * @param pcr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_PurseDepositCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_PurseDepositResponse *amr);
+
+
+/**
+ * @brief Handle for a POST /purses/$PID/deposit request.
+ */
+struct TALER_EXCHANGE_PurseDepositHandle;
+
+
+/**
+ * Inform the exchange that a purse should be merged
+ * with a reserve.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_AccountMergeHandle *
+TALER_EXCHANGE_account_merge (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  TALER_EXCHANGE_PurseCreateCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_account_merge() operation.
+ *
+ * @param amh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_account_merge_cancel (
+  struct TALER_EXCHANGE_AccountMergeHandle *amh);
+
+
 #endif  /* _TALER_EXCHANGE_SERVICE_H */
