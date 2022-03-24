@@ -93,6 +93,76 @@ run (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "got request\n");
+    if (0 == strcmp ("eddsa_get_public",
+                     op))
+    {
+      struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+      struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+      json_t *resp;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("eddsa_priv",
+                                     &eddsa_priv),
+        GNUNET_JSON_spec_end ()
+      };
+      if (GNUNET_OK != GNUNET_JSON_parse (args,
+                                          spec,
+                                          NULL,
+                                          NULL))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "malformed op args\n");
+        global_ret = 1;
+        return;
+      }
+      GNUNET_CRYPTO_eddsa_key_get_public (&eddsa_priv,
+                                          &eddsa_pub);
+      resp = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("eddsa_pub",
+                                    &eddsa_pub)
+        );
+      json_dumpf (resp, stdout, JSON_COMPACT);
+      printf ("\n");
+      fflush (stdout);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "sent response\n");
+      GNUNET_JSON_parse_free (spec);
+      continue;
+    }
+    if (0 == strcmp ("ecdhe_get_public",
+                     op))
+    {
+      struct GNUNET_CRYPTO_EcdhePublicKey ecdhe_pub;
+      struct GNUNET_CRYPTO_EcdhePrivateKey ecdhe_priv;
+      json_t *resp;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("ecdhe_priv",
+                                     &ecdhe_priv),
+        GNUNET_JSON_spec_end ()
+      };
+      if (GNUNET_OK != GNUNET_JSON_parse (args,
+                                          spec,
+                                          NULL,
+                                          NULL))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "malformed op args\n");
+        global_ret = 1;
+        return;
+      }
+      GNUNET_CRYPTO_ecdhe_key_get_public (&ecdhe_priv,
+                                          &ecdhe_pub);
+      resp = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("ecdhe_pub",
+                                    &ecdhe_pub)
+        );
+      json_dumpf (resp, stdout, JSON_COMPACT);
+      printf ("\n");
+      fflush (stdout);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "sent response\n");
+      GNUNET_JSON_parse_free (spec);
+      continue;
+    }
     if (0 == strcmp ("eddsa_verify",
                      op))
     {
