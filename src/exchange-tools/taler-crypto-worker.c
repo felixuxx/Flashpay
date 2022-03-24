@@ -135,6 +135,53 @@ run (void *cls,
       fflush (stdout);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "sent response\n");
+      GNUNET_JSON_parse_free (eddsa_verify_spec);
+      continue;
+    }
+    if (0 == strcmp ("kx_ecdhe_eddsa",
+                     op))
+    {
+      struct GNUNET_CRYPTO_EcdhePrivateKey priv;
+      struct GNUNET_CRYPTO_EddsaPublicKey pub;
+      struct GNUNET_HashCode key_material;
+      json_t *resp;
+      struct GNUNET_JSON_Specification kx_spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
+                                     &pub),
+        GNUNET_JSON_spec_fixed_auto ("ecdhe_priv",
+                                     &priv),
+        GNUNET_JSON_spec_end ()
+      };
+      if (GNUNET_OK != GNUNET_JSON_parse (args,
+                                          kx_spec,
+                                          NULL,
+                                          NULL))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "malformed op args\n");
+        global_ret = 1;
+        return;
+      }
+      if (GNUNET_OK != GNUNET_CRYPTO_ecdh_eddsa (&priv,
+                                                 &pub,
+                                                 &key_material))
+      {
+        // FIXME: Return as result?
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "kx failed\n");
+        global_ret = 1;
+        return;
+      }
+      resp = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("h",
+                                    &key_material)
+        );
+      json_dumpf (resp, stdout, JSON_COMPACT);
+      printf ("\n");
+      fflush (stdout);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "sent response\n");
+      GNUNET_JSON_parse_free (kx_spec);
       continue;
     }
     if (0 == strcmp ("eddsa_sign",
@@ -176,9 +223,9 @@ run (void *cls,
       fflush (stdout);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "sent response\n");
+      GNUNET_JSON_parse_free (eddsa_sign_spec);
       continue;
     }
-#if FIXME_FLORIAN
     if (0 == strcmp ("setup_refresh_planchet", op))
     {
       struct TALER_TransferSecretP transfer_secret;
@@ -192,7 +239,13 @@ run (void *cls,
         GNUNET_JSON_spec_end ()
       };
       struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct TALER_PlanchetSecretsP ps;
+      struct TALER_CoinSpendPrivateKeyP coin_priv;
+      struct TALER_PlanchetMasterSecretP ps;
+      struct TALER_ExchangeWithdrawValues alg_values = {
+        // FIXME: also allow CS
+        .cipher = TALER_DENOMINATION_RSA,
+      };
+      union TALER_DenominationBlindingKeyP dbk;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (args,
@@ -208,22 +261,90 @@ run (void *cls,
       TALER_transfer_secret_to_planchet_secret (&transfer_secret,
                                                 coin_index,
                                                 &ps);
-      GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
+      TALER_planchet_setup_coin_priv (&ps,
+                                      &alg_values,
+                                      &coin_priv);
+      GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
                                           &coin_pub.eddsa_pub);
+      TALER_planchet_blinding_secret_create (&ps,
+                                             &alg_values,
+                                             &dbk);
 
       resp = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_data_auto ("coin_priv", &ps.coin_priv),
+        GNUNET_JSON_pack_data_auto ("coin_priv", &coin_priv),
         GNUNET_JSON_pack_data_auto ("coin_pub", &coin_pub),
-        GNUNET_JSON_pack_data_auto ("blinding_key", &ps.blinding_key)
+        GNUNET_JSON_pack_data_auto ("blinding_key", &dbk.rsa_bks)
         );
       json_dumpf (resp, stdout, JSON_COMPACT);
       printf ("\n");
       fflush (stdout);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "sent response\n");
+      GNUNET_JSON_parse_free (setup_refresh_planchet_spec);
       continue;
     }
-#endif
+    if (0 == strcmp ("rsa_blind", op))
+    {
+      struct GNUNET_HashCode hm;
+      struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
+      void *pub_enc;
+      size_t pub_enc_size;
+      int success;
+      struct GNUNET_CRYPTO_RsaPublicKey *pub;
+      void *blinded_buf;
+      size_t blinded_size;
+      json_t *resp;
+      struct GNUNET_JSON_Specification rsa_blind_spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("hm",
+                                     &hm),
+        GNUNET_JSON_spec_fixed_auto ("bks",
+                                     &bks),
+        GNUNET_JSON_spec_varsize ("pub",
+                                  &pub_enc,
+                                  &pub_enc_size),
+        GNUNET_JSON_spec_end ()
+      };
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (args,
+                             rsa_blind_spec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "malformed op args\n");
+        global_ret = 1;
+        return;
+      }
+      pub = GNUNET_CRYPTO_rsa_public_key_decode (pub_enc,
+                                                 pub_enc_size);
+      success = GNUNET_CRYPTO_rsa_blind (&hm,
+                                         &bks,
+                                         pub,
+                                         &blinded_buf,
+                                         &blinded_size);
+
+      if (GNUNET_YES == success)
+      {
+        resp = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_data_varsize ("blinded", blinded_buf, blinded_size),
+          GNUNET_JSON_pack_bool ("success", true)
+          );
+      }
+      else
+      {
+        resp = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_bool ("success", false)
+          );
+      }
+      json_dumpf (resp, stdout, JSON_COMPACT);
+      printf ("\n");
+      fflush (stdout);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "sent response\n");
+      GNUNET_JSON_parse_free (rsa_blind_spec);
+      GNUNET_free (blinded_buf);
+      continue;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "unsupported operation '%s'\n",
                 op);
