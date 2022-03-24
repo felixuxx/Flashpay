@@ -3060,13 +3060,13 @@ struct TALER_EXCHANGEDB_Plugin
    * returned by @e iterate_ready_deposits()
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param merchant_pub identifies the beneficiary of the deposit
+   * @param coin_pub identifies the coin of the deposit
    * @param deposit_rowid identifies the deposit row to modify
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*mark_deposit_tiny)(void *cls,
-                       const struct TALER_MerchantPublicKeyP *merchant_pub,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rowid);
 
 
@@ -3076,13 +3076,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @e iterate_ready_deposits() or @e iterate_matching_deposits().
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param merchant_pub identifies the beneficiary of the deposit
+   * @param coin_pub identifies the coin of the deposit
    * @param deposit_rowid identifies the deposit row to modify
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*mark_deposit_done)(void *cls,
-                       const struct TALER_MerchantPublicKeyP *merchant_pub,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rowid);
 
 

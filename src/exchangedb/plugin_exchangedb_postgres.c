@@ -990,12 +990,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",rtransaction_id "
       ",amount_with_fee_val "
       ",amount_with_fee_frac "
-      ") SELECT dbc.deposit_serial_id, $3, $5, $6, $7"
-      "    FROM deposits_by_coin dbc"
-      "    JOIN deposits dep USING (shard,deposit_serial_id)"
-      "   WHERE dbc.coin_pub=$1"
-      "     AND dep.h_contract_terms=$4"
-      "     AND dep.merchant_pub=$2",
+      ") SELECT deposit_serial_id, $3, $5, $6, $7"
+      "    FROM deposits" /* FIXME: check if adding additional AND on the 'shard' would help (possibly after reviewing indices on deposits!) */
+      "   WHERE coin_pub=$1"
+      "     AND h_contract_terms=$4"
+      "     AND merchant_pub=$2",
       7),
     /* Query the 'refunds' by coin public key */
     GNUNET_PQ_make_prepare (
@@ -1010,12 +1009,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_refund_val "
       ",denom.fee_refund_frac "
       ",ref.refund_serial_id"
-      " FROM deposits_by_coin dbc"
+      " FROM deposits dep"
       " JOIN refunds ref USING (deposit_serial_id)"
-      " JOIN deposits dep ON (dbc.shard = dep.shard AND dbc.deposit_serial_id = dep.deposit_serial_id)"
-      " JOIN known_coins kc ON (dbc.coin_pub = kc.coin_pub)"
+      " JOIN known_coins kc ON (dep.coin_pub = kc.coin_pub)"
       " JOIN denominations denom USING (denominations_serial)"
-      " WHERE dbc.coin_pub=$1;",
+      " WHERE dep.coin_pub=$1;",
       1),
     /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
     GNUNET_PQ_make_prepare (
@@ -1023,10 +1021,9 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " ref.amount_with_fee_val"
       ",ref.amount_with_fee_frac"
-      " FROM deposits_by_coin dbc"
+      " FROM deposits dep"
       " JOIN refunds ref USING (shard,deposit_serial_id)"
-      " JOIN deposits dep ON (dbc.shard = dep.shard AND dbc.deposit_serial_id = dep.deposit_serial_id)"
-      " WHERE dbc.coin_pub=$1"
+      " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$2"
       "   AND dep.h_contract_terms=$3;",
       3),
@@ -1053,6 +1050,7 @@ prepare_statements (struct PostgresClosure *pg)
     /* Lock deposit table; NOTE: we may want to eventually shard the
        deposit table to avoid this lock being the main point of
        contention limiting transaction performance. */
+    // FIXME: check if this query is even still used!
     GNUNET_PQ_make_prepare (
       "lock_deposit",
       "LOCK TABLE deposits;",
@@ -1098,12 +1096,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",dep.h_contract_terms"
       ",dep.wire_salt"
       ",wt.payto_uri AS receiver_wire_account"
-      " FROM deposits_by_coin dbc"
-      " JOIN deposits dep USING (shard,deposit_serial_id)"
-      " JOIN known_coins kc ON (kc.coin_pub = dbc.coin_pub)"
+      " FROM deposits dep"
+      " JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
       " JOIN denominations USING (denominations_serial)"
       " JOIN wire_targets wt USING (wire_target_h_payto)"
-      " WHERE dbc.coin_pub=$1"
+      " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2;",
       3),
@@ -1150,12 +1147,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_deposit_val"
       ",denom.fee_deposit_frac"
       ",dep.wire_deadline"
-      " FROM deposits_by_coin dbc"
-      "    JOIN deposits dep USING (shard,deposit_serial_id)"
+      " FROM deposits dep"
       "    JOIN wire_targets wt USING (wire_target_h_payto)"
-      "    JOIN known_coins kc ON (kc.coin_pub = dbc.coin_pub)"
+      "    JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
-      " WHERE dbc.coin_pub=$1"
+      " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2;",
       3),
@@ -1163,7 +1159,7 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "deposits_get_ready",
       "SELECT"
-      " deposit_serial_id"
+      " dep.deposit_serial_id"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",denom.fee_deposit_val"
@@ -1173,47 +1169,46 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_target_serial_id"
       ",merchant_pub"
       ",kc.coin_pub"
-      " FROM deposits"
+      " FROM deposits_by_ready dbr"
+      "  JOIN deposits dep"
+      "    ON (dbr.coin_pub = dep.coin_pub AND dbr.deposit_serial_id = dep.deposit_serial_id)"
       "  JOIN wire_targets "
       "    USING (wire_target_h_payto)"
       "  JOIN known_coins kc"
-      "    USING (coin_pub)"
+      "    ON (kc.coin_pub = dep.coin_pub)"
       "  JOIN denominations denom"
       "    USING (denominations_serial)"
-      " WHERE "
-      "       shard >= $2"
-      "   AND shard <= $3"
-      "   AND done=FALSE"
-      "   AND extension_blocked=FALSE"
-      "   AND tiny=FALSE"
-      "   AND wire_deadline<=$1"
+      " WHERE dbr.wire_deadline<=$1"
+      "   AND dbr.shard >= $2"
+      "   AND dbr.shard <= $3"
       "   AND (kyc_ok OR $4)"
       " ORDER BY "
-      "   shard ASC"
-      "  ,wire_deadline ASC"
+      "   dbr.wire_deadline ASC"
+      "  ,dbr.shard ASC"
       " LIMIT 1;",
       4),
     /* Used in #postgres_iterate_matching_deposits() */
     GNUNET_PQ_make_prepare (
       "deposits_iterate_matching",
       "SELECT"
-      " deposit_serial_id"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
+      " dep.deposit_serial_id"
+      ",dep.amount_with_fee_val"
+      ",dep.amount_with_fee_frac"
       ",denom.fee_deposit_val"
       ",denom.fee_deposit_frac"
-      ",h_contract_terms"
-      ",kc.coin_pub"
-      " FROM deposits"
-      "    JOIN known_coins kc USING (coin_pub)"
-      "    JOIN denominations denom USING (denominations_serial)"
-      " WHERE shard=$4"
-      "  AND merchant_pub=$1"
-      "  AND wire_target_h_payto=$2"
-      "  AND done=FALSE"
-      "  AND extension_blocked=FALSE"
-      "  AND refund_deadline<$3"
-      " ORDER BY refund_deadline ASC"
+      ",dep.h_contract_terms"
+      ",dfm.coin_pub"
+      " FROM deposits_for_matching dfm"
+      "    JOIN deposits dep "
+      "      ON (dep.coin_pub = dfm.coin_pub and dep.deposit_serial_id = dfm.deposit_serial_id)"
+      "    JOIN known_coins kc"
+      "      ON (dep.coin_pub = kc.coin_pub)"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      " WHERE dfm.refund_deadline<$3"
+      "  AND dfm.shard=$4"
+      "  AND dep.merchant_pub=$1"
+      "  AND dep.wire_target_h_payto=$2"
       " LIMIT "
       TALER_QUOTE (
         TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
@@ -1223,16 +1218,16 @@ prepare_statements (struct PostgresClosure *pg)
       "mark_deposit_tiny",
       "UPDATE deposits"
       " SET tiny=TRUE"
-      " WHERE shard=$2"
-      "   AND deposit_serial_id=$1",
+      " WHERE coin_pub=$1"
+      "   AND deposit_serial_id=$2",
       2),
     /* Used in #postgres_mark_deposit_done() */
     GNUNET_PQ_make_prepare (
       "mark_deposit_done",
       "UPDATE deposits"
       " SET done=TRUE"
-      " WHERE shard=$2"
-      "   AND deposit_serial_id=$1;",
+      " WHERE coin_pub=$1"
+      "   AND deposit_serial_id=$2;",
       2),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
@@ -1255,16 +1250,14 @@ prepare_statements (struct PostgresClosure *pg)
       ",dep.coin_sig"
       ",dep.deposit_serial_id"
       ",dep.done"
-      " FROM deposits_by_coin dbc"
-      "    JOIN deposits dep"
-      "      USING (shard,deposit_serial_id)"
+      " FROM deposits dep"
       "    JOIN wire_targets wt"
       "      USING (wire_target_h_payto)"
       "    JOIN known_coins kc"
-      "      ON (kc.coin_pub = dbc.coin_pub)"
+      "      ON (kc.coin_pub = dep.coin_pub)"
       "    JOIN denominations denoms"
       "      USING (denominations_serial)"
-      " WHERE dbc.coin_pub=$1;",
+      " WHERE dep.coin_pub=$1;",
       1),
 
     /* Used in #postgres_get_link_data(). */
@@ -1329,20 +1322,18 @@ prepare_statements (struct PostgresClosure *pg)
       ",wt.payto_uri"
       ",denom.fee_deposit_val"
       ",denom.fee_deposit_frac"
-      " FROM deposits_by_coin dbc"
-      "    JOIN deposits dep"
-      "      USING (shard,deposit_serial_id)"
+      " FROM deposits dep"
       "    JOIN wire_targets wt"
       "      USING (wire_target_h_payto)"
       "    JOIN aggregation_tracking"
       "      USING (deposit_serial_id)"
       "    JOIN known_coins kc"
-      "      ON (kc.coin_pub = dbc.coin_pub)"
+      "      ON (kc.coin_pub = dep.coin_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       "    JOIN wire_out"
       "      USING (wtid_raw)"
-      " WHERE dbc.coin_pub=$1"
+      " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2",
       3),
@@ -5898,14 +5889,13 @@ postgres_have_deposit2 (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_tiny (void *cls,
-                            const struct TALER_MerchantPublicKeyP *merchant_pub,
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             uint64_t rowid)
 {
   struct PostgresClosure *pg = cls;
-  uint64_t deposit_shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_uint64 (&rowid),
-    GNUNET_PQ_query_param_uint64 (&deposit_shard),
     GNUNET_PQ_query_param_end
   };
 
@@ -5927,14 +5917,13 @@ postgres_mark_deposit_tiny (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_done (void *cls,
-                            const struct TALER_MerchantPublicKeyP *merchant_pub,
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             uint64_t rowid)
 {
   struct PostgresClosure *pg = cls;
-  uint64_t deposit_shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_uint64 (&rowid),
-    GNUNET_PQ_query_param_uint64 (&deposit_shard),
     GNUNET_PQ_query_param_end
   };
 
@@ -6430,6 +6419,12 @@ postgres_insert_deposit (void *cls,
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
+  }
+  if (GNUNET_TIME_timestamp_cmp (deposit->wire_deadline,
+                                 <,
+                                 deposit->refund_deadline))
+  {
+    GNUNET_break (0);
   }
   {
     uint64_t shard = compute_shard (&deposit->merchant_pub);

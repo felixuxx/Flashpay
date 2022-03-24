@@ -2284,7 +2284,7 @@ run (void *cls)
                          "test-2"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_tiny (plugin->cls,
-                                     &deposit.merchant_pub,
+                                     &deposit.coin.coin_pub,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
@@ -2306,7 +2306,7 @@ run (void *cls)
                          "test-3"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
-                                     &deposit.merchant_pub,
+                                     &deposit.coin.coin_pub,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
