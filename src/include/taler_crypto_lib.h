@@ -2727,6 +2727,7 @@ TALER_wallet_purse_status_verify (
 /**
  * Sign a request to deposit a coin into a purse.
  *
+ * @param exchange_base_url URL of the exchange hosting the purse
  * @param purse_pub purse’s public key
  * @param amount amount of the coin's value to transfer to the purse
  * @param coin_priv key identifying the coin to be deposited
@@ -2734,6 +2735,7 @@ TALER_wallet_purse_status_verify (
  */
 void
 TALER_wallet_purse_deposit_sign (
+  const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
@@ -2743,6 +2745,7 @@ TALER_wallet_purse_deposit_sign (
 /**
  * Verify a purse deposit request.
  *
+ * @param exchange_base_url URL of the exchange hosting the purse
  * @param purse_pub purse’s public key
  * @param amount amount of the coin's value to transfer to the purse
  * @param coin_pub key identifying the coin that is being deposited
@@ -2751,6 +2754,7 @@ TALER_wallet_purse_deposit_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_deposit_verify (
+  const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,

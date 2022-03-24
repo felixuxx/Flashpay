@@ -1540,6 +1540,7 @@ COMMENT ON COLUMN close_requests.close_val
 
 CREATE TABLE IF NOT EXISTS purse_deposits
   (purse_deposit_serial_id BIGSERIAL UNIQUE
+  ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
   ,purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
   ,amount_with_fee_val INT8 NOT NULL
@@ -1549,6 +1550,8 @@ CREATE TABLE IF NOT EXISTS purse_deposits
   ); -- partition by purse_pub, plus a materialized index by coin_pub!
 COMMENT ON TABLE purse_deposits
   IS 'Requests depositing coins into a purse';
+COMMENT ON COLUMN purse_deposits.partner_serial_id
+  IS 'identifies the partner exchange, NULL in case the target purse lives at this exchange';
 COMMENT ON COLUMN purse_deposits.purse_pub
   IS 'Public key of the purse';
 COMMENT ON COLUMN purse_deposits.coin_pub

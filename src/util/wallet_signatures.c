@@ -902,11 +902,17 @@ struct TALER_PurseDepositPS
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
 
+  /**
+   * Hash of the base URL of the exchange hosting the
+   * @e purse_pub.
+   */
+  struct GNUNET_HashCode h_exchange_base_url;
 };
 
 
 void
 TALER_wallet_purse_deposit_sign (
+  const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
@@ -918,6 +924,9 @@ TALER_wallet_purse_deposit_sign (
     .purse_pub = *purse_pub,
   };
 
+  GNUNET_CRYPTO_hash (exchange_base_url,
+                      strlen (exchange_base_url) + 1,
+                      &pm.h_exchange_base_url);
   TALER_amount_hton (&pm.coin_amount,
                      amount);
   GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
@@ -928,6 +937,7 @@ TALER_wallet_purse_deposit_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_deposit_verify (
+  const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -939,6 +949,9 @@ TALER_wallet_purse_deposit_verify (
     .purse_pub = *purse_pub,
   };
 
+  GNUNET_CRYPTO_hash (exchange_base_url,
+                      strlen (exchange_base_url) + 1,
+                      &pm.h_exchange_base_url);
   TALER_amount_hton (&pm.coin_amount,
                      amount);
   return GNUNET_CRYPTO_eddsa_verify (
