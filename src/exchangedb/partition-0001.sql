@@ -229,6 +229,28 @@ BEGIN
     );
     PERFORM add_constraints_to_deposits_partition(num_partitions::varchar);
 
+-- TODO: dynamically (!) creating/deleting deposits partitions:
+--    create new partitions 'as needed', drop old ones once the aggregator has made
+--    them empty; as 'new' deposits will always have deadlines in the future, this
+--    would basically guarantee no conflict between aggregator and exchange service!
+-- SEE also: https://www.cybertec-postgresql.com/en/automatic-partition-creation-in-postgresql/
+-- (article is slightly wrong, as this works:)
+--CREATE TABLE tab (
+--  id bigint GENERATED ALWAYS AS IDENTITY,
+--  ts timestamp NOT NULL,
+--  data text
+-- PARTITION BY LIST ((ts::date));
+-- CREATE TABLE tab_def PARTITION OF tab DEFAULT;
+-- BEGIN
+-- CREATE TABLE tab_part2 (LIKE tab);
+-- insert into tab_part2 (id,ts, data) values (5,'2022-03-21', 'foo');
+-- alter table tab attach partition tab_part2 for values in ('2022-03-21');
+-- commit;
+-- Naturally, to ensure this is actually 100% conflict-free, we'd
+-- need to create tables at the granularity of the wire/refund deadlines;
+-- that is right now configurable via AGGREGATOR_SHIFT option.
+
+
     PERFORM create_table_partition(
       'refunds'
       ,modulus

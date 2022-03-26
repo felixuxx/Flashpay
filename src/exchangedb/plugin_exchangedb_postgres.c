@@ -116,6 +116,12 @@ struct PostgresClosure
   struct GNUNET_TIME_Relative legal_reserve_expiration_time;
 
   /**
+   * What delay should we introduce before ready transactions
+   * are actually aggregated?
+   */
+  struct GNUNET_TIME_Relative aggregator_shift;
+
+  /**
    * Which currency should we assume all amounts to be in?
    */
   char *currency;
@@ -5993,7 +5999,8 @@ postgres_get_ready_deposit (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  now = GNUNET_TIME_absolute_get ();
+  now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
+                                         pg->aggregator_shift);
   GNUNET_assert (start_shard_row < end_shard_row);
   GNUNET_assert (end_shard_row <= INT32_MAX);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -6154,7 +6161,7 @@ postgres_iterate_matching_deposits (
   uint32_t limit)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  struct GNUNET_TIME_Absolute now = {0};
   uint64_t shard = compute_shard (merchant_pub);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
@@ -6173,6 +6180,8 @@ postgres_iterate_matching_deposits (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
+                                         pg->aggregator_shift);
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_iterate_matching",
                                              params,
@@ -13012,6 +13021,17 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (cfg,
+                                           "exchangedb",
+                                           "AGGREGATOR_SHIFT",
+                                           &pg->aggregator_shift))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchangedb",
+                               "AGGREGATOR_SHIFT");
+  }
+
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
                                  &pg->currency))
