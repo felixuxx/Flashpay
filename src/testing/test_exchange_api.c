@@ -83,6 +83,7 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
+  TALER_TESTING_cmd_sleep ("sleep-before-aggregator", 2), \
   TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
   TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
 
@@ -453,8 +454,6 @@ run (void *cls,
     TALER_TESTING_cmd_track_transfer_empty ("wire-deposit-failing",
                                             NULL,
                                             MHD_HTTP_NOT_FOUND),
-    TALER_TESTING_cmd_sleep ("sleep-before-aggregator",
-                             1),
     /* Run transfers. Note that _actual_ aggregation will NOT
      * happen here, as each deposit operation is run with a
      * fresh merchant public key, so the aggregator will treat
@@ -759,7 +758,7 @@ run (void *cls,
      * Note, this operation takes two commands: one to "flush"
      * the preliminary transfer (used to withdraw) from the
      * fakebank and the second to actually check there are not
-     * other transfers around. *///
+     * other transfers around. */
     TALER_TESTING_cmd_check_bank_empty ("check_bank_transfer-pre-refund"),
     TALER_TESTING_cmd_refund_with_id ("refund-ok",
                                       MHD_HTTP_OK,

@@ -43,12 +43,6 @@
 #define AUTO_EXPLAIN 1
 
 /**
- * Should we explicitly lock certain individual tables prior to SELECT+INSERT
- * combis?
- */
-#define EXPLICIT_LOCKS 0
-
-/**
  * Wrapper macro to add the currency from the plugin's state
  * when fetching amounts from the database.
  *
@@ -991,13 +985,14 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "insert_refund",
       "INSERT INTO refunds "
-      "(deposit_serial_id "
+      "(coin_pub "
+      ",deposit_serial_id"
       ",merchant_sig "
       ",rtransaction_id "
       ",amount_with_fee_val "
       ",amount_with_fee_frac "
-      ") SELECT deposit_serial_id, $3, $5, $6, $7"
-      "    FROM deposits" /* FIXME: check if adding additional AND on the 'shard' would help (possibly after reviewing indices on deposits!) */
+      ") SELECT $1, deposit_serial_id, $3, $5, $6, $7"
+      "    FROM deposits"
       "   WHERE coin_pub=$1"
       "     AND h_contract_terms=$4"
       "     AND merchant_pub=$2",
@@ -1015,11 +1010,14 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_refund_val "
       ",denom.fee_refund_frac "
       ",ref.refund_serial_id"
-      " FROM deposits dep"
-      " JOIN refunds ref USING (deposit_serial_id)"
-      " JOIN known_coins kc ON (dep.coin_pub = kc.coin_pub)"
-      " JOIN denominations denom USING (denominations_serial)"
-      " WHERE dep.coin_pub=$1;",
+      " FROM refunds ref"
+      " JOIN deposits dep"
+      "   ON (ref.coin_pub = dep.coin_pub AND ref.deposit_serial_id = dep.deposit_serial_id)"
+      " JOIN known_coins kc"
+      "   ON (ref.coin_pub = kc.coin_pub)"
+      " JOIN denominations denom"
+      "   USING (denominations_serial)"
+      " WHERE ref.coin_pub=$1;",
       1),
     /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
     GNUNET_PQ_make_prepare (
@@ -1027,9 +1025,10 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " ref.amount_with_fee_val"
       ",ref.amount_with_fee_frac"
-      " FROM deposits dep"
-      " JOIN refunds ref USING (shard,deposit_serial_id)"
-      " WHERE dep.coin_pub=$1"
+      " FROM refunds ref"
+      " JOIN deposits dep"
+      "   USING (coin_pub,deposit_serial_id)"
+      " WHERE ref.coin_pub=$1"
       "   AND dep.merchant_pub=$2"
       "   AND dep.h_contract_terms=$3;",
       3),
@@ -1037,30 +1036,26 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "audit_get_refunds_incr",
       "SELECT"
-      " merchant_pub"
-      ",merchant_sig"
-      ",h_contract_terms"
-      ",rtransaction_id"
+      " dep.merchant_pub"
+      ",ref.merchant_sig"
+      ",dep.h_contract_terms"
+      ",ref.rtransaction_id"
       ",denom.denom_pub"
       ",kc.coin_pub"
-      ",refunds.amount_with_fee_val"
-      ",refunds.amount_with_fee_frac"
-      ",refund_serial_id"
-      " FROM refunds"
-      "   JOIN deposits USING (shard, deposit_serial_id)"
-      "   JOIN known_coins kc USING (coin_pub)"
-      "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
-      " WHERE refund_serial_id>=$1"
-      " ORDER BY refund_serial_id ASC;",
+      ",ref.amount_with_fee_val"
+      ",ref.amount_with_fee_frac"
+      ",ref.refund_serial_id"
+      " FROM refunds ref"
+      "   JOIN deposits dep"
+      "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
+      "   JOIN known_coins kc"
+      "     ON (dep.coin_pub=kc.coin_pub)"
+      "   JOIN denominations denom"
+      "     ON (kc.denominations_serial=denom.denominations_serial)"
+      " WHERE ref.refund_serial_id>=$1"
+      " ORDER BY ref.refund_serial_id ASC;",
       1),
-    /* Lock deposit table; NOTE: we may want to eventually shard the
-       deposit table to avoid this lock being the main point of
-       contention limiting transaction performance. */
-    // FIXME: check if this query is even still used!
-    GNUNET_PQ_make_prepare (
-      "lock_deposit",
-      "LOCK TABLE deposits;",
-      0),
+
     /* Store information about a /deposit the exchange is to execute.
        Used in #postgres_insert_deposit(). */
     GNUNET_PQ_make_prepare (
@@ -1542,9 +1537,8 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE wire_deadline >= $1"
       " AND wire_deadline < $2"
       " AND NOT (EXISTS (SELECT 1"
-      "            FROM refunds"
-      "            JOIN deposits dx USING (deposit_serial_id)"
-      "            WHERE (dx.coin_pub = d.coin_pub))"
+      "            FROM refunds r"
+      "            WHERE (r.coin_pub = d.coin_pub) AND (r.deposit_serial_id = d.deposit_serial_id))"
       "       OR EXISTS (SELECT 1"
       "            FROM aggregation_tracking"
       "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
@@ -2509,7 +2503,7 @@ prepare_statements (struct PostgresClosure *pg)
       "select_above_serial_by_table_refunds",
       "SELECT"
       " refund_serial_id AS serial"
-      ",shard"
+      ",coin_pub"
       ",merchant_sig"
       ",rtransaction_id"
       ",amount_with_fee_val"
@@ -2841,7 +2835,7 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "insert_into_table_refunds",
       "INSERT INTO refunds"
-      "(shard"
+      "(coin_pub"
       ",refund_serial_id"
       ",merchant_sig"
       ",rtransaction_id"
@@ -5842,16 +5836,7 @@ postgres_have_deposit2 (
   };
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_MerchantWireHashP h_wire2;
-#if EXPLICIT_LOCKS
-  struct GNUNET_PQ_QueryParam no_params[] = {
-    GNUNET_PQ_query_param_end
-  };
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                    "lock_deposit",
-                                                    no_params)))
-    return qs;
-#endif
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting deposits for coin %s\n",
               TALER_B2S (coin_pub));
@@ -9314,6 +9299,7 @@ refunds_serial_helper_cb (void *cls,
   struct RefundsSerialContext *rsc = cls;
   struct PostgresClosure *pg = rsc->pg;
 
+  fprintf (stderr, "Got %u results\n", num_results);
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct TALER_EXCHANGEDB_Refund refund;
@@ -9338,7 +9324,7 @@ refunds_serial_helper_cb (void *cls,
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,

@@ -554,7 +554,7 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_uint64 (&td->details.refunds.shard),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.refunds.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&td->details.refunds.merchant_sig),
     GNUNET_PQ_query_param_uint64 (&td->details.refunds.rtransaction_id),
     TALER_PQ_query_param_amount (&td->details.refunds.amount_with_fee),

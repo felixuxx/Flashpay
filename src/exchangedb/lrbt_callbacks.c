@@ -1010,9 +1010,9 @@ lrbt_cb_table_refunds (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
-      GNUNET_PQ_result_spec_uint64 (
-        "shard",
-        &td.details.refunds.shard),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.refunds.coin_pub),
       GNUNET_PQ_result_spec_auto_from_type (
         "merchant_sig",
         &td.details.refunds.merchant_sig),
