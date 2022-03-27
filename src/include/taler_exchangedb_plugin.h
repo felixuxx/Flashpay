@@ -351,7 +351,6 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_WireSaltP wire_salt;
       struct TALER_PaytoHashP wire_target_h_payto;
-      bool tiny;
       bool done;
       bool extension_blocked;
       uint64_t extension_details_serial_id;
@@ -1562,58 +1561,6 @@ struct TALER_EXCHANGEDB_TransactionList
 
 
 /**
- * Function called with details about deposits that have been made,
- * with the goal of executing the corresponding wire transaction.
- *
- * @param cls closure
- * @param rowid unique ID for the deposit in our DB, used for marking
- *              it as 'tiny' or 'done'
- * @param coin_pub public key of the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
- */
-typedef enum GNUNET_DB_QueryStatus
-(*TALER_EXCHANGEDB_MatchingDepositIterator)(
-  void *cls,
-  uint64_t rowid,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *amount_with_fee,
-  const struct TALER_Amount *deposit_fee,
-  const struct TALER_PrivateContractHashP *h_contract_terms);
-
-
-/**
- * Function called with details about deposits that have been made,
- * with the goal of executing the corresponding wire transaction.
- *
- * @param cls closure
- * @param rowid unique ID for the deposit in our DB, used for marking
- *              it as 'tiny' or 'done'
- * @param merchant_pub public key of the merchant
- * @param coin_pub public key of the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_target unique ID of the receiver account
- * @param payto_uri how to pay the merchant, URI in payto://-format;
- * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
- */
-typedef enum GNUNET_DB_QueryStatus
-(*TALER_EXCHANGEDB_DepositIterator)(
-  void *cls,
-  uint64_t rowid,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *amount_with_fee,
-  const struct TALER_Amount *deposit_fee,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  uint64_t wire_target,
-  const char *payto_uri);
-
-
-/**
  * Callback with data about a prepared wire transfer.
  *
  * @param cls closure
@@ -2215,7 +2162,6 @@ typedef void
  * @param amount value of the deposit, including fee
  * @param payto_uri where should the funds be wired; URI in payto://-format
  * @param deadline what was the requested wire transfer deadline
- * @param tiny did the exchange defer this transfer because it is too small?
  * @param done did the exchange claim that it made a transfer?
  */
 typedef void
@@ -2226,7 +2172,6 @@ typedef void
   const struct TALER_Amount *amount,
   const char *payto_uri,
   struct GNUNET_TIME_Timestamp deadline,
-  bool tiny,
   bool done);
 
 
@@ -3055,40 +3000,8 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Mark a deposit as tiny, thereby declaring that it cannot be executed by
-   * itself (only included in a larger aggregation) and should no longer be
-   * returned by @e iterate_ready_deposits()
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param coin_pub identifies the coin of the deposit
-   * @param deposit_rowid identifies the deposit row to modify
-   * @return query result status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*mark_deposit_tiny)(void *cls,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       uint64_t rowid);
-
-
-  /**
-   * Mark a deposit as done, thereby declaring that it cannot be
-   * executed at all anymore, and should no longer be returned by
-   * @e iterate_ready_deposits() or @e iterate_matching_deposits().
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param coin_pub identifies the coin of the deposit
-   * @param deposit_rowid identifies the deposit row to modify
-   * @return query result status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*mark_deposit_done)(void *cls,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       uint64_t rowid);
-
-
-  /**
    * Obtain information about deposits that are ready to be executed.
-   * Such deposits must not be marked as "tiny" or "done", and the
+   * Such deposits must not be marked as "done", and the
    * execution time, the refund deadlines must both be in the past and
    * the KYC status must be 'ok'.
    *
@@ -3113,37 +3026,9 @@ struct TALER_EXCHANGEDB_Plugin
 /**
  * Maximum number of results we return from iterate_matching_deposits().
  *
- * Limit on the number of transactions we aggregate at once.  Note
- * that the limit must be big enough to ensure that when transactions
- * of the smallest possible unit are aggregated, they do surpass the
- * "tiny" threshold beyond which we never trigger a wire transaction!
+ * Limit on the number of transactions we aggregate at once.
  */
 #define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT 10000
-
-  /**
-   * Obtain information about other pending deposits for the same
-   * destination.  Those deposits must not already be "done".
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param h_payto destination of the wire transfer
-   * @param merchant_pub public key of the merchant
-   * @param deposit_cb function to call for each deposit
-   * @param deposit_cb_cls closure for @a deposit_cb
-   * @param limit maximum number of matching deposits to return; should
-   *        be #TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT, larger values
-   *        are not supported, smaller values would be inefficient.
-   * @return number of rows processed, 0 if none exist,
-   *         transaction status code on error
-   */
-  enum GNUNET_DB_QueryStatus
-  (*iterate_matching_deposits)(
-    void *cls,
-    const struct TALER_PaytoHashP *h_payto,
-    const struct TALER_MerchantPublicKeyP *merchant_pub,
-    TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
-    void *deposit_cb_cls,
-    uint32_t limit);
-
 
   /**
    * Aggregate all matching deposits for @a h_payto and

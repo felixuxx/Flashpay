@@ -778,8 +778,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
  * @param amount value of the deposit, including fee
  * @param payto_uri where should the funds be wired
  * @param deadline what was the requested wire transfer deadline
- * @param tiny did the exchange defer this transfer because it is too small?
- *             NOTE: only valid in internal audit mode!
  * @param done did the exchange claim that it made a transfer?
  *             NOTE: only valid in internal audit mode!
  */
@@ -790,7 +788,6 @@ wire_missing_cb (void *cls,
                  const struct TALER_Amount *amount,
                  const char *payto_uri,
                  struct GNUNET_TIME_Timestamp deadline,
-                 bool tiny,
                  bool done)
 {
   json_t *rep;
@@ -799,23 +796,11 @@ wire_missing_cb (void *cls,
   TALER_ARL_amount_add (&total_amount_lag,
                         &total_amount_lag,
                         amount);
-  if (internal_checks)
-  {
-    /* In internal mode, we insist that the entry was
-       actually marked as tiny. */
-    if (tiny &&
-        (0 > TALER_amount_cmp (amount,
-                               &tiny_amount)) )
-      return; /* acceptable, amount was tiny */
-  }
-  else
-  {
-    /* External auditors do not replicate tiny, so they
-       only check that the amount is tiny */
-    if (0 > TALER_amount_cmp (amount,
-                              &tiny_amount))
-      return; /* acceptable, amount was tiny */
-  }
+  /* For now, we simplify and only check that the
+     amount was tiny */
+  if (0 > TALER_amount_cmp (amount,
+                            &tiny_amount))
+    return; /* acceptable, amount was tiny */
   rep = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("row",
                              rowid),

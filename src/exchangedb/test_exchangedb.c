@@ -607,71 +607,9 @@ cb_wt_check (void *cls,
 
 
 /**
- * Here #deposit_cb() will store the row ID of the deposit.
- */
-static uint64_t deposit_rowid;
-
-/**
- * Here #deposit_cb() will store the row ID of the account.
- */
-static uint64_t wire_target_row;
-
-/**
- * Here #deposit_cb() will store the hash of the payto URI.
+ * Here we store the hash of the payto URI.
  */
 static struct TALER_PaytoHashP wire_target_h_payto;
-
-/**
- * Function called with details about deposits that
- * have been made.  Called in the test on the
- * deposit given in @a cls.
- *
- * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
- * @param rowid unique ID for the deposit in our DB, used for marking
- *              it as 'tiny' or 'done'
- * @param merchant_pub public key of the merchant
- * @param coin_pub public key of the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_target unique ID of the receiver account
- * @param payto_uri how to pay the merchant, URI in payto://-format;
- * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
- */
-static enum GNUNET_DB_QueryStatus
-deposit_cb (void *cls,
-            uint64_t rowid,
-            const struct TALER_MerchantPublicKeyP *merchant_pub,
-            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-            const struct TALER_Amount *amount_with_fee,
-            const struct TALER_Amount *deposit_fee,
-            const struct TALER_PrivateContractHashP *h_contract_terms,
-            uint64_t wire_target,
-            const char *payto_uri)
-{
-  struct TALER_EXCHANGEDB_Deposit *deposit = cls;
-
-  if ( (0 == GNUNET_memcmp (merchant_pub,
-                            &deposit->merchant_pub)) &&
-       (0 == TALER_amount_cmp (amount_with_fee,
-                               &deposit->amount_with_fee)) &&
-       (0 == TALER_amount_cmp (deposit_fee,
-                               &deposit->deposit_fee)) &&
-       (0 == GNUNET_memcmp (h_contract_terms,
-                            &deposit->h_contract_terms)) &&
-       (0 == GNUNET_memcmp (coin_pub,
-                            &deposit->coin.coin_pub)) &&
-       (0 == strcmp (payto_uri,
-                     deposit->receiver_wire_account)) )
-  {
-    deposit_rowid = rowid;
-    wire_target_row = wire_target;
-    TALER_payto_hash (payto_uri,
-                      &wire_target_h_payto);
-    result = 9;
-  }
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
 
 
 /**
@@ -1191,7 +1129,6 @@ drop:
  * @param amount value of the deposit, including fee
  * @param payto_uri where should the funds be wired
  * @param deadline what was the requested wire transfer deadline
- * @param tiny did the exchange defer this transfer because it is too small?
  * @param done did the exchange claim that it made a transfer?
  */
 static void
@@ -1201,7 +1138,6 @@ wire_missing_cb (void *cls,
                  const struct TALER_Amount *amount,
                  const char *payto_uri,
                  struct GNUNET_TIME_Timestamp deadline,
-                 bool tiny,
                  bool done)
 {
   const struct TALER_EXCHANGEDB_Deposit *deposit = cls;
@@ -1209,11 +1145,6 @@ wire_missing_cb (void *cls,
   (void) payto_uri;
   (void) deadline;
   (void) rowid;
-  if (tiny)
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
   if (done)
   {
     GNUNET_break (0);
@@ -2212,14 +2143,26 @@ run (void *cls)
   FAILIF (0 == auditor_row_cnt);
   result = 8;
   sleep (2); /* give deposit time to be ready */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_ready_deposit (plugin->cls,
-                                     0,
-                                     INT32_MAX,
-                                     true,
-                                     &deposit_cb,
-                                     &deposit));
-  FAILIF (8 == result);
+  {
+    struct TALER_MerchantPublicKeyP merchant_pub2;
+    char *payto_uri2;
+
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->get_ready_deposit (plugin->cls,
+                                       0,
+                                       INT32_MAX,
+                                       true,
+                                       &merchant_pub2,
+                                       &payto_uri2));
+    FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
+                                &deposit.merchant_pub));
+    FAILIF (0 != strcmp (payto_uri2,
+                         deposit.receiver_wire_account));
+    TALER_payto_hash (payto_uri2,
+                      &wire_target_h_payto);
+    GNUNET_free (payto_uri2);
+  }
+
   {
     struct TALER_Amount total;
     struct TALER_WireTransferIdentifierRawP wtid;

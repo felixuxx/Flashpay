@@ -1176,33 +1176,6 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,dbr.shard ASC"
       " LIMIT 1;",
       4),
-    /* FIXME: deprecated; Used in #postgres_iterate_matching_deposits() */
-    GNUNET_PQ_make_prepare (
-      "deposits_iterate_matching",
-      "SELECT"
-      " dep.deposit_serial_id"
-      ",dep.amount_with_fee_val"
-      ",dep.amount_with_fee_frac"
-      ",denom.fee_deposit_val"
-      ",denom.fee_deposit_frac"
-      ",dep.h_contract_terms"
-      ",dfm.coin_pub"
-      " FROM deposits_for_matching dfm"
-      "    JOIN deposits dep "
-      "      ON (dep.coin_pub = dfm.coin_pub and dep.deposit_serial_id = dfm.deposit_serial_id)"
-      "    JOIN known_coins kc"
-      "      ON (dep.coin_pub = kc.coin_pub)"
-      "    JOIN denominations denom"
-      "      USING (denominations_serial)"
-      " WHERE dfm.refund_deadline<$3"
-      "  AND dfm.merchant_pub=$1"
-      "  AND dep.merchant_pub=$1"
-      "  AND dep.wire_target_h_payto=$2"
-      " LIMIT "
-      TALER_QUOTE (
-        TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
-      3),
-
     /* Used in #postgres_aggregate() */
     GNUNET_PQ_make_prepare (
       "aggregate",
@@ -1309,24 +1282,6 @@ prepare_statements (struct PostgresClosure *pg)
       "DELETE FROM aggregation_transient"
       " WHERE wire_target_h_payto=$1"
       "   AND wtid_raw=$2",
-      2),
-
-
-    /* FIXME-deprecated: Used in #postgres_mark_deposit_tiny() */
-    GNUNET_PQ_make_prepare (
-      "mark_deposit_tiny",
-      "UPDATE deposits"
-      " SET tiny=TRUE"
-      " WHERE coin_pub=$1"
-      "   AND deposit_serial_id=$2",
-      2),
-    /* FIXME-deprecated: Used in #postgres_mark_deposit_done() */
-    GNUNET_PQ_make_prepare (
-      "mark_deposit_done",
-      "UPDATE deposits"
-      " SET done=TRUE"
-      " WHERE coin_pub=$1"
-      "   AND deposit_serial_id=$2;",
       2),
 
     /* Used in #postgres_get_coin_transactions() to obtain information
@@ -1614,7 +1569,7 @@ prepare_statements (struct PostgresClosure *pg)
       2),
     /* Used in #postgres_select_deposits_missing_wire */
     // FIXME: used by the auditor; can probably be done
-    // smarter by checking if 'done' or 'tiny' or 'blocked'
+    // smarter by checking if 'done' or 'blocked'
     // are set correctly when going over deposits, instead
     // of JOINing with refunds.
     GNUNET_PQ_make_prepare (
@@ -1626,7 +1581,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_with_fee_frac"
       ",payto_uri"
       ",wire_deadline"
-      ",tiny"
       ",done"
       " FROM deposits d"
       "   JOIN known_coins"
@@ -2590,7 +2544,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_sig"
       ",wire_salt"
       ",wire_target_h_payto"
-      ",tiny"
       ",done"
       ",extension_blocked"
       ",extension_details_serial_id"
@@ -2923,14 +2876,13 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_sig"
       ",wire_salt"
       ",wire_target_h_payto"
-      ",tiny"
       ",done"
       ",extension_blocked"
       ",extension_details_serial_id"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
-      19),
+      " $11, $12, $13, $14, $15, $16, $17, $18);",
+      18),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refunds",
       "INSERT INTO refunds"
@@ -6202,64 +6154,8 @@ postgres_delete_aggregation_transient (
 
 
 /**
- * Mark a deposit as tiny, thereby declaring that it cannot be
- * executed by itself and should no longer be returned by
- * @e iterate_ready_deposits()
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param merchant_pub identifies the beneficiary of the deposit
- * @param rowid identifies the deposit row to modify
- * @return query result status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_mark_deposit_tiny (void *cls,
-                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                            uint64_t rowid)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_uint64 (&rowid),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "mark_deposit_tiny",
-                                             params);
-}
-
-
-/**
- * Mark a deposit as done, thereby declaring that it cannot be
- * executed at all anymore, and should no longer be returned by
- * @e iterate_ready_deposits() or @e iterate_matching_deposits().
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param merchant_pub identifies the beneficiary of the deposit
- * @param rowid identifies the deposit row to modify
- * @return query result status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_mark_deposit_done (void *cls,
-                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                            uint64_t rowid)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_uint64 (&rowid),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "mark_deposit_done",
-                                             params);
-}
-
-
-/**
  * Obtain information about deposits that are ready to be executed.  Such
- * deposits must not be marked as "tiny" or "done", the execution time must be
+ * deposits must not be marked as "done", the execution time must be
  * in the past, and the KYC status must be 'ok'.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -6308,173 +6204,6 @@ postgres_get_ready_deposit (void *cls,
                                                    "deposits_get_ready",
                                                    params,
                                                    rs);
-}
-
-
-/**
- * Closure for #match_deposit_cb().
- */
-struct MatchingDepositContext
-{
-  /**
-   * Function to call for each result
-   */
-  TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb;
-
-  /**
-   * Closure for @e deposit_cb.
-   */
-  void *deposit_cb_cls;
-
-  /**
-   * Public key of the merchant against which we are matching.
-   */
-  const struct TALER_MerchantPublicKeyP *merchant_pub;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Maximum number of results to return.
-   */
-  uint32_t limit;
-
-  /**
-   * Loop counter, actual number of results returned.
-   */
-  unsigned int i;
-
-  /**
-   * Set to #GNUNET_SYSERR on hard errors.
-   */
-  enum GNUNET_GenericReturnValue status;
-};
-
-
-/**
- * Helper function for #postgres_iterate_matching_deposits().
- * To be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct MatchingDepositContext *`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-match_deposit_cb (void *cls,
-                  PGresult *result,
-                  unsigned int num_results)
-{
-  struct MatchingDepositContext *mdc = cls;
-  struct PostgresClosure *pg = mdc->pg;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Found %u/%u matching deposits\n",
-              num_results,
-              mdc->limit);
-  num_results = GNUNET_MIN (num_results,
-                            mdc->limit);
-  for (mdc->i = 0; mdc->i<num_results; mdc->i++)
-  {
-    struct TALER_Amount amount_with_fee;
-    struct TALER_Amount deposit_fee;
-    struct TALER_PrivateContractHashP h_contract_terms;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
-    uint64_t serial_id;
-    enum GNUNET_DB_QueryStatus qs;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
-                                    &serial_id),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &amount_with_fee),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                   &deposit_fee),
-      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                            &h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &coin_pub),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  mdc->i))
-    {
-      GNUNET_break (0);
-      mdc->status = GNUNET_SYSERR;
-      return;
-    }
-    qs = mdc->deposit_cb (mdc->deposit_cb_cls,
-                          serial_id,
-                          &coin_pub,
-                          &amount_with_fee,
-                          &deposit_fee,
-                          &h_contract_terms);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-      break;
-  }
-}
-
-
-/**
- * Obtain information about other pending deposits for the same
- * destination.  Those deposits must not already be "done".
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto destination of the wire transfer
- * @param merchant_pub public key of the merchant
- * @param deposit_cb function to call for each deposit
- * @param deposit_cb_cls closure for @a deposit_cb
- * @param limit maximum number of matching deposits to return
- * @return transaction status code, if positive:
- *         number of rows processed, 0 if none exist
- */
-static enum GNUNET_DB_QueryStatus
-postgres_iterate_matching_deposits (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
-  void *deposit_cb_cls,
-  uint32_t limit)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now = {0};
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_end
-  };
-  struct MatchingDepositContext mdc = {
-    .deposit_cb = deposit_cb,
-    .deposit_cb_cls = deposit_cb_cls,
-    .merchant_pub = merchant_pub,
-    .pg = pg,
-    .limit = limit,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
-                                         pg->aggregator_shift);
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "deposits_iterate_matching",
-                                             params,
-                                             &match_deposit_cb,
-                                             &mdc);
-  if (GNUNET_OK != mdc.status)
-  {
-    GNUNET_break (0);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (qs >= 0)
-    return mdc.i;
-  return qs;
 }
 
 
@@ -10806,7 +10535,6 @@ missing_wire_cb (void *cls,
     struct TALER_Amount amount;
     char *payto_uri;
     struct GNUNET_TIME_Timestamp deadline;
-    bool tiny;
     bool done;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
@@ -10819,8 +10547,6 @@ missing_wire_cb (void *cls,
                                     &payto_uri),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        &deadline),
-      GNUNET_PQ_result_spec_bool ("tiny",
-                                  &tiny),
       GNUNET_PQ_result_spec_bool ("done",
                                   &done),
       GNUNET_PQ_result_spec_end
@@ -10841,7 +10567,6 @@ missing_wire_cb (void *cls,
              &amount,
              payto_uri,
              deadline,
-             tiny,
              done);
     GNUNET_PQ_cleanup_result (rs);
   }
@@ -13384,10 +13109,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_update_aggregation_transient;
   plugin->delete_aggregation_transient
     = &postgres_delete_aggregation_transient;
-  plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
-  plugin->mark_deposit_done = &postgres_mark_deposit_done;
   plugin->get_ready_deposit = &postgres_get_ready_deposit;
-  plugin->iterate_matching_deposits = &postgres_iterate_matching_deposits;
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->insert_refund = &postgres_insert_refund;
   plugin->select_refunds_by_coin = &postgres_select_refunds_by_coin;

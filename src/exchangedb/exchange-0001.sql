@@ -699,7 +699,6 @@ CREATE TABLE IF NOT EXISTS deposits
   ,coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)
   ,wire_salt BYTEA NOT NULL CHECK (LENGTH(wire_salt)=16)
   ,wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)
-  ,tiny BOOLEAN NOT NULL DEFAULT FALSE
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_blocked BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_details_serial_id INT8 REFERENCES extension_details (extension_details_serial_id) ON DELETE CASCADE
@@ -722,8 +721,6 @@ COMMENT ON COLUMN deposits.extension_blocked
   IS 'True if the aggregation of the deposit is currently blocked by some extension mechanism. Used to filter out deposits that must not be processed by the canonical deposit logic.';
 COMMENT ON COLUMN deposits.extension_details_serial_id
   IS 'References extensions table, NULL if extensions are not used';
-COMMENT ON COLUMN deposits.tiny
-  IS 'Set to TRUE if we decided that the amount is too small to ever trigger a wire transfer by itself (requires real aggregation)';
 
 CREATE INDEX IF NOT EXISTS deposits_by_coin_pub_index
   ON deposits
@@ -795,11 +792,8 @@ CREATE OR REPLACE FUNCTION deposits_insert_trigger()
   AS $$
 DECLARE
   is_ready BOOLEAN;
-DECLARE
-  is_tready BOOLEAN; -- is ready, but may be tiny
 BEGIN
-  is_ready  = NOT (NEW.done OR NEW.tiny OR NEW.extension_blocked);
-  is_tready = NOT (NEW.done OR NEW.extension_blocked);
+  is_ready  = NOT (NEW.done OR NEW.extension_blocked);
 
   IF (is_ready)
   THEN
@@ -813,9 +807,6 @@ BEGIN
       ,NEW.shard
       ,NEW.coin_pub
       ,NEW.deposit_serial_id);
-  END IF;
-  IF (is_tready)
-  THEN
     INSERT INTO deposits_for_matching
       (refund_deadline
       ,merchant_pub
@@ -845,15 +836,9 @@ DECLARE
   was_ready BOOLEAN;
 DECLARE
   is_ready BOOLEAN;
-DECLARE
-  was_tready BOOLEAN; -- was ready, but may be tiny
-DECLARE
-  is_tready BOOLEAN; -- is ready, but may be tiny
 BEGIN
-  was_ready = NOT (OLD.done OR OLD.tiny OR OLD.extension_blocked);
-  is_ready  = NOT (NEW.done OR NEW.tiny OR NEW.extension_blocked);
-  was_tready = NOT (OLD.done OR OLD.extension_blocked);
-  is_tready  = NOT (NEW.done OR NEW.extension_blocked);
+  was_ready = NOT (OLD.done OR OLD.extension_blocked);
+  is_ready  = NOT (NEW.done OR NEW.extension_blocked);
   IF (was_ready AND NOT is_ready)
   THEN
     DELETE FROM deposits_by_ready
@@ -861,9 +846,6 @@ BEGIN
        AND shard = OLD.shard
        AND coin_pub = OLD.coin_pub
        AND deposit_serial_id = OLD.deposit_serial_id;
-  END IF;
-  IF (was_tready AND NOT is_tready)
-  THEN
     DELETE FROM deposits_for_matching
      WHERE refund_deadline = OLD.refund_deadline
        AND merchant_pub = OLD.merchant_pub
@@ -882,9 +864,6 @@ BEGIN
       ,NEW.shard
       ,NEW.coin_pub
       ,NEW.deposit_serial_id);
-  END IF;
-  IF (is_tready AND NOT was_tready)
-  THEN
     INSERT INTO deposits_for_matching
       (refund_deadline
       ,merchant_pub
@@ -912,11 +891,8 @@ CREATE OR REPLACE FUNCTION deposits_delete_trigger()
   AS $$
 DECLARE
   was_ready BOOLEAN;
-DECLARE
-  was_tready BOOLEAN; -- is ready, but may be tiny
 BEGIN
-  was_ready  = NOT (OLD.done OR OLD.tiny OR OLD.extension_blocked);
-  was_tready = NOT (OLD.done OR OLD.extension_blocked);
+  was_ready  = NOT (OLD.done OR OLD.extension_blocked);
 
   IF (was_ready)
   THEN
@@ -925,9 +901,6 @@ BEGIN
        AND shard = OLD.shard
        AND coin_pub = OLD.coin_pub
        AND deposit_serial_id = OLD.deposit_serial_id;
-  END IF;
-  IF (was_tready)
-  THEN
     DELETE FROM deposits_for_matching
      WHERE refund_deadline = OLD.refund_deadline
        AND merchant_pub = OLD.merchant_pub
@@ -1061,10 +1034,6 @@ CREATE TRIGGER wire_out_on_delete
 
 -- ------------------------------ aggregation_transient ----------------------------------------
 
--- Note: this table is not yet used; it is designed
--- to allow us to get rid of the 'tiny BOOL' and
--- the associated need to look at tiny
--- deposits repeatedly.
 CREATE TABLE IF NOT EXISTS aggregation_transient
   (amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL

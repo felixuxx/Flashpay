@@ -954,9 +954,6 @@ lrbt_cb_table_deposits (void *cls,
         "wire_target_h_payto",
         &td.details.deposits.wire_target_h_payto),
       GNUNET_PQ_result_spec_bool (
-        "tiny",
-        &td.details.deposits.tiny),
-      GNUNET_PQ_result_spec_bool (
         "done",
         &td.details.deposits.done),
       GNUNET_PQ_result_spec_auto_from_type (

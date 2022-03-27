@@ -526,7 +526,6 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.wire_target_h_payto),
-    GNUNET_PQ_query_param_bool (td->details.deposits.tiny),
     GNUNET_PQ_query_param_bool (td->details.deposits.done),
     GNUNET_PQ_query_param_bool (td->details.deposits.extension_blocked),
     0 == td->details.deposits.extension_details_serial_id
