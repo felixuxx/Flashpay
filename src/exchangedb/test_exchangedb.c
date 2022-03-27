@@ -675,48 +675,6 @@ deposit_cb (void *cls,
 
 
 /**
- * Function called with details about deposits that
- * have been made.  Called in the test on the
- * deposit given in @a cls.
- *
- * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
- * @param rowid unique ID for the deposit in our DB, used for marking
- *              it as 'tiny' or 'done'
- * @param coin_pub public key of the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param deposit_fee amount the exchange gets to keep as transaction fees
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
- */
-static enum GNUNET_DB_QueryStatus
-matching_deposit_cb (void *cls,
-                     uint64_t rowid,
-                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                     const struct TALER_Amount *amount_with_fee,
-                     const struct TALER_Amount *deposit_fee,
-                     const struct TALER_PrivateContractHashP *h_contract_terms)
-{
-  struct TALER_EXCHANGEDB_Deposit *deposit = cls;
-
-  deposit_rowid = rowid;
-  if ( (0 != TALER_amount_cmp (amount_with_fee,
-                               &deposit->amount_with_fee)) ||
-       (0 != TALER_amount_cmp (deposit_fee,
-                               &deposit->deposit_fee)) ||
-       (0 != GNUNET_memcmp (h_contract_terms,
-                            &deposit->h_contract_terms)) ||
-       (0 != GNUNET_memcmp (coin_pub,
-                            &deposit->coin.coin_pub)) )
-  {
-    GNUNET_break (0);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
-
-
-/**
  * Callback for #select_deposits_above_serial_id ()
  *
  * @param cls closure
@@ -1055,7 +1013,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                     &h_payto);
   auditor_row_cnt = 0;
   memset (&wire_out_wtid,
-          42,
+          41,
           sizeof (wire_out_wtid));
   wire_out_date = GNUNET_TIME_timestamp_get ();
   GNUNET_assert (GNUNET_OK ==
@@ -1109,14 +1067,6 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                                 &coin_fee2,
                                                 &kyc));
   }
-  /* insert WT data */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_aggregation_tracking (plugin->cls,
-                                               &wire_out_wtid,
-                                               deposit_rowid));
-
-  /* Now let's fix the transient constraint violation by
-     putting in the WTID into the wire_out table */
   {
     struct TALER_ReservePublicKeyP rpub;
     struct TALER_EXCHANGEDB_KycStatus kyc;
@@ -2270,44 +2220,92 @@ run (void *cls)
                                      &deposit_cb,
                                      &deposit));
   FAILIF (8 == result);
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->iterate_matching_deposits (plugin->cls,
-                                             &wire_target_h_payto,
-                                             &deposit.merchant_pub,
-                                             &matching_deposit_cb,
-                                             &deposit,
-                                             2));
+  {
+    struct TALER_Amount total;
+    struct TALER_WireTransferIdentifierRawP wtid;
+
+    memset (&wtid,
+            41,
+            sizeof (wtid));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->aggregate (plugin->cls,
+                               &wire_target_h_payto,
+                               &deposit.merchant_pub,
+                               &wtid,
+                               &total));
+  }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         "test-2"));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->mark_deposit_tiny (plugin->cls,
-                                     &deposit.coin.coin_pub,
-                                     deposit_rowid));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->get_ready_deposit (plugin->cls,
-                                     0,
-                                     INT32_MAX,
-                                     true,
-                                     &deposit_cb,
-                                     &deposit));
-  plugin->rollback (plugin->cls);
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_ready_deposit (plugin->cls,
-                                     0,
-                                     INT32_MAX,
-                                     true,
-                                     &deposit_cb,
-                                     &deposit));
-  FAILIF (GNUNET_OK !=
-          plugin->start (plugin->cls,
                          "test-3"));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->mark_deposit_done (plugin->cls,
-                                     &deposit.coin.coin_pub,
-                                     deposit_rowid));
+  {
+    struct TALER_WireTransferIdentifierRawP wtid;
+    struct TALER_Amount total;
+    struct TALER_WireTransferIdentifierRawP wtid2;
+    struct TALER_Amount total2;
+
+    memset (&wtid,
+            42,
+            sizeof (wtid));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (CURRENCY ":42",
+                                           &total));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+            plugin->select_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  "x-bank",
+                                                  &wtid2,
+                                                  &total2));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->create_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  "x-bank",
+                                                  &wtid,
+                                                  &total));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->select_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  "x-bank",
+                                                  &wtid2,
+                                                  &total2));
+    FAILIF (0 !=
+            GNUNET_memcmp (&wtid2,
+                           &wtid));
+    FAILIF (0 !=
+            TALER_amount_cmp (&total2,
+                              &total));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (CURRENCY ":43",
+                                           &total));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->update_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  &wtid,
+                                                  &total));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->select_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  "x-bank",
+                                                  &wtid2,
+                                                  &total2));
+    FAILIF (0 !=
+            GNUNET_memcmp (&wtid2,
+                           &wtid));
+    FAILIF (0 !=
+            TALER_amount_cmp (&total2,
+                              &total));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->delete_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  &wtid));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+            plugin->select_aggregation_transient (plugin->cls,
+                                                  &wire_target_h_payto,
+                                                  "x-bank",
+                                                  &wtid2,
+                                                  &total2));
+  }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
 

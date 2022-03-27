@@ -3146,6 +3146,98 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Aggregate all matching deposits for @a h_payto and
+   * @a merchant_pub, returning the total amounts.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param merchant_pub public key of the merchant
+   * @param wtid wire transfer ID to set for the aggregate
+   * @param[out] total set to the sum of the total deposits minus applicable deposit fees and refunds
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*aggregate)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
+    struct TALER_Amount *total);
+
+
+  /**
+   * Create a new entry in the transient aggregation table.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param exchange_account_section exchange account to use
+   * @param wtid the raw wire transfer identifier to be used
+   * @param total amount to be wired in the future
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*create_aggregation_transient)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const char *exchange_account_section,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
+    const struct TALER_Amount *total);
+
+
+  /**
+   * Find existing entry in the transient aggregation table.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param exchange_account_section exchange account to use
+   * @param[out] wtid set to the raw wire transfer identifier to be used
+   * @param[out] total existing amount to be wired in the future
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aggregation_transient)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const char *exchange_account_section,
+    struct TALER_WireTransferIdentifierRawP *wtid,
+    struct TALER_Amount *total);
+
+
+  /**
+   * Update existing entry in the transient aggregation table.
+   * @a h_payto is only needed for query performance.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param wtid the raw wire transfer identifier to update
+   * @param total new total amount to be wired in the future
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_aggregation_transient)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_WireTransferIdentifierRawP *wtid,
+    const struct TALER_Amount *total);
+
+
+  /**
+   * Delete existing entry in the transient aggregation table.
+   * @a h_payto is only needed for query performance.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param wtid the raw wire transfer identifier to update
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_aggregation_transient)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_WireTransferIdentifierRawP *wtid);
+
+
+  /**
    * Lookup melt commitment data under the given @a rc.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

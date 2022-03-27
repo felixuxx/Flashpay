@@ -82,9 +82,9 @@ DROP TABLE IF EXISTS denominations CASCADE;
 DROP TABLE IF EXISTS cs_nonce_locks CASCADE;
 DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 
-DROP TABLE IF EXISTS deposits_by_coin CASCADE;
 DROP TABLE IF EXISTS global_fee CASCADE;
 DROP TABLE IF EXISTS recoup_by_reserve CASCADE;
+DROP TABLE IF EXISTS aggregation_transient CASCADE;
 
 
 DROP TABLE IF EXISTS partners CASCADE;
