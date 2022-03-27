@@ -1160,29 +1160,17 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "deposits_get_ready",
       "SELECT"
-      " dep.deposit_serial_id"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",denom.fee_deposit_val"
-      ",denom.fee_deposit_frac"
-      ",h_contract_terms"
-      ",payto_uri"
-      ",wire_target_serial_id"
+      " payto_uri"
       ",merchant_pub"
-      ",kc.coin_pub"
       " FROM deposits_by_ready dbr"
       "  JOIN deposits dep"
       "    ON (dbr.coin_pub = dep.coin_pub AND dbr.deposit_serial_id = dep.deposit_serial_id)"
-      "  JOIN wire_targets "
+      "  JOIN wire_targets wt"
       "    USING (wire_target_h_payto)"
-      "  JOIN known_coins kc"
-      "    ON (kc.coin_pub = dep.coin_pub)"
-      "  JOIN denominations denom"
-      "    USING (denominations_serial)"
       " WHERE dbr.wire_deadline<=$1"
       "   AND dbr.shard >= $2"
       "   AND dbr.shard <= $3"
-      "   AND (kyc_ok OR $4)"
+      "   AND (wt.kyc_ok OR $4)"
       " ORDER BY "
       "   dbr.wire_deadline ASC"
       "  ,dbr.shard ASC"
@@ -1218,22 +1206,23 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_aggregate() */
     GNUNET_PQ_make_prepare (
       "aggregate",
-      "WITH rdy AS (" /* find deposits ready */
+      "WITH rdy AS (" /* find deposits ready by merchant */
       "  SELECT"
       "    coin_pub"
       "    FROM deposits_for_matching"
-      "    WHERE refund_deadline<$1"
-      "      AND merchant_pub=$2"
+      "    WHERE refund_deadline<$1" /* filter by shard, only actually executable deposits */
+      "      AND merchant_pub=$2" /* filter by target merchant */
       "    ORDER BY refund_deadline ASC" /* ordering is not critical */
       "    LIMIT "
-      TALER_QUOTE (TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT)
+      TALER_QUOTE (TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) /* limits transaction size */
       " )"
-      " ,dep AS (" /* restrict to our merchant and account */
+      " ,dep AS (" /* restrict to our merchant and account and mark as done */
       "  UPDATE deposits"
       "     SET done=TRUE"
       "   WHERE coin_pub IN (SELECT coin_pub FROM rdy)"
-      "     AND merchant_pub=$2"
-      "     AND wire_target_h_payto=$3"
+      "     AND merchant_pub=$2" /* theoretically, same coin could be spent at another merchant */
+      "     AND wire_target_h_payto=$3" /* merchant could have a 2nd bank account */
+      "     AND done=FALSE" /* theoretically, same coin could be spend at the same merchant a 2nd time */
       "   RETURNING"
       "     deposit_serial_id"
       "    ,coin_pub"
@@ -1244,18 +1233,26 @@ prepare_statements (struct PostgresClosure *pg)
       "    amount_with_fee_val AS refund_val"
       "   ,amount_with_fee_frac AS refund_frac"
       "   ,coin_pub"
+      "   ,deposit_serial_id" /* theoretically, coin could be in multiple refunded transactions */
       "    FROM refunds"
       "   WHERE coin_pub IN (SELECT coin_pub FROM dep)"
       "     AND deposit_serial_id IN (SELECT deposit_serial_id FROM dep))"
+      " ,coins_with_fees AS (" /* find coins for which deposit fees apply */
+      "  SELECT"
+      "     coin_pub"
+      "    ,deposit_serial_id" /* ensures that if the same coin is deposited twice, it is in the list twice */
+      "    FROM dep"
+      "   WHERE deposit_serial_id NOT IN (SELECT deposit_serial_id FROM ref))"
       " ,fees AS (" /* find deposit fees for non-refunded deposits */
       "  SELECT"
       "    denom.fee_deposit_val AS fee_val"
       "   ,denom.fee_deposit_frac AS fee_frac"
-      "    FROM known_coins kc"
+      "   ,cs.deposit_serial_id" /* ensures we get the fee for each coin, not once per denomination */
+      "    FROM coins_with_fees cs"
+      "    JOIN known_coins kc"
+      "      USING (coin_pub)"
       "    JOIN denominations denom"
-      "      USING (denominations_serial)"
-      "    WHERE coin_pub IN (SELECT coin_pub FROM dep)"
-      "      AND coin_pub NOT IN (SELECT coin_pub FROM ref))"
+      "      USING (denominations_serial))"
       " ,dummy AS (" /* add deposits to aggregation_tracking */
       "    INSERT INTO aggregation_tracking"
       "    (deposit_serial_id"
@@ -1263,14 +1260,14 @@ prepare_statements (struct PostgresClosure *pg)
       "    SELECT deposit_serial_id,$4"
       "      FROM dep)"
       "SELECT" /* calculate totals (deposits, refunds and fees) */
-      "  CAST(COALESCE(SUM(dep.amount_val),0) AS INT8) AS sum_deposit_value"
-      " ,COALESCE(SUM(dep.amount_frac),0) AS sum_deposit_fraction"
+      "  CAST(COALESCE(SUM(dep.amount_val),0) AS INT8) AS sum_deposit_value" /* cast needed, otherwise we get NUMBER */
+      " ,COALESCE(SUM(dep.amount_frac),0) AS sum_deposit_fraction" /* SUM over INT returns INT8 */
       " ,CAST(COALESCE(SUM(ref.refund_val),0) AS INT8) AS sum_refund_value"
       " ,COALESCE(SUM(ref.refund_frac),0) AS sum_refund_fraction"
       " ,CAST(COALESCE(SUM(fees.fee_val),0) AS INT8) AS sum_fee_value"
       " ,COALESCE(SUM(fees.fee_frac),0) AS sum_fee_fraction"
       " FROM dep "
-      "   FULL OUTER JOIN ref ON (FALSE)"
+      "   FULL OUTER JOIN ref ON (FALSE)"    /* We just want all sums */
       "   FULL OUTER JOIN fees ON (FALSE);",
       4),
 
@@ -6270,8 +6267,8 @@ postgres_mark_deposit_done (void *cls,
  * @param end_shard_row maximum shard row to select (inclusive)
  * @param kyc_off true if we should not check the KYC status because
  *                this exchange does not need/support KYC checks.
- * @param deposit_cb function to call for ONE such deposit
- * @param deposit_cb_cls closure for @a deposit_cb
+ * @param[out] merchant_pub set to the public key of a merchant with a ready deposit
+ * @param[out] payto_uri set to the account of the merchant, to be freed by caller
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -6279,8 +6276,8 @@ postgres_get_ready_deposit (void *cls,
                             uint64_t start_shard_row,
                             uint64_t end_shard_row,
                             bool kyc_off,
-                            TALER_EXCHANGEDB_DepositIterator deposit_cb,
-                            void *deposit_cb_cls)
+                            struct TALER_MerchantPublicKeyP *merchant_pub,
+                            char **payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now = {0};
@@ -6291,34 +6288,13 @@ postgres_get_ready_deposit (void *cls,
     GNUNET_PQ_query_param_bool (kyc_off),
     GNUNET_PQ_query_param_end
   };
-  struct TALER_Amount amount_with_fee;
-  struct TALER_Amount deposit_fee;
-  struct TALER_PrivateContractHashP h_contract_terms;
-  struct TALER_MerchantPublicKeyP merchant_pub;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-  uint64_t serial_id;
-  uint64_t wire_target;
-  char *payto_uri;
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
-                                  &serial_id),
-    GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
-                                  &wire_target),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 &amount_with_fee),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                 &deposit_fee),
-    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                          &h_contract_terms),
     GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
-                                          &merchant_pub),
-    GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                          &coin_pub),
+                                          merchant_pub),
     GNUNET_PQ_result_spec_string ("payto_uri",
-                                  &payto_uri),
+                                  payto_uri),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
   now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
                                          pg->aggregator_shift);
@@ -6328,25 +6304,10 @@ postgres_get_ready_deposit (void *cls,
               "Finding ready deposits by deadline %s (%llu)\n",
               GNUNET_TIME_absolute2s (now),
               (unsigned long long) now.abs_value_us);
-
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "deposits_get_ready",
-                                                 params,
-                                                 rs);
-  if (qs <= 0)
-    return qs;
-
-  qs = deposit_cb (deposit_cb_cls,
-                   serial_id,
-                   &merchant_pub,
-                   &coin_pub,
-                   &amount_with_fee,
-                   &deposit_fee,
-                   &h_contract_terms,
-                   wire_target,
-                   payto_uri);
-  GNUNET_PQ_cleanup_result (rs);
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "deposits_get_ready",
+                                                   params,
+                                                   rs);
 }
 
 

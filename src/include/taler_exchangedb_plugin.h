@@ -3097,8 +3097,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param end_shard_row maximum shard row to select (inclusive)
    * @param kyc_off true if we should not check the KYC status because
    *                this exchange does not need/support KYC checks.
-   * @param deposit_cb function to call for ONE such deposit
-   * @param deposit_cb_cls closure for @a deposit_cb
+   * @param[out] merchant_pub set to the public key of a merchant with a ready deposit
+   * @param[out] payto_uri set to the account of the merchant, to be freed by caller
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -3106,8 +3106,8 @@ struct TALER_EXCHANGEDB_Plugin
                        uint64_t start_shard_row,
                        uint64_t end_shard_row,
                        bool kyc_off,
-                       TALER_EXCHANGEDB_DepositIterator deposit_cb,
-                       void *deposit_cb_cls);
+                       struct TALER_MerchantPublicKeyP *merchant_pub,
+                       char **payto_uri);
 
 
 /**
