@@ -125,13 +125,13 @@ test_extension_config (void)
           plugin->set_extension_config (plugin->cls,
                                         "fnord",
                                         "bar"));
-
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_extension_config (plugin->cls,
                                         "fnord",
                                         &config));
 
   FAILIF (0 != strcmp ("bar", config));
+  GNUNET_free (config);
 
   /* let's do this again! */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -145,6 +145,7 @@ test_extension_config (void)
                                         &config));
 
   FAILIF (0 != strcmp ("buzz", config));
+  GNUNET_free (config);
 
   /* let's do this again, with NULL */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1351,6 +1352,7 @@ run (void *cls)
   TALER_denom_pub_hash (&dkp->pub,
                         &cbc.denom_pub_hash);
   RND_BLK (&cbc.reserve_sig);
+  RND_BLK (&ps);
   TALER_planchet_blinding_secret_create (&ps,
                                          &alg_values,
                                          &bks);
@@ -1381,6 +1383,8 @@ run (void *cls)
                      TALER_coin_ev_hash (&pd.blinded_planchet,
                                          &cbc.denom_pub_hash,
                                          &cbc.h_coin_envelope));
+      if (i != 0)
+        TALER_blinded_denom_sig_free (&cbc.sig);
       GNUNET_assert (
         GNUNET_OK ==
         TALER_denom_sign_blinded (
