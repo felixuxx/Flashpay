@@ -90,14 +90,14 @@ derive_key (const void *key_material,
  * @param[out] res_size size of the ciphertext
  */
 static void
-encrypt (const struct NonceP *nonce,
-         const void *key,
-         size_t key_len,
-         const void *data,
-         size_t data_size,
-         const char *salt,
-         void **res,
-         size_t *res_size)
+contract_encrypt (const struct NonceP *nonce,
+                  const void *key,
+                  size_t key_len,
+                  const void *data,
+                  size_t data_size,
+                  const char *salt,
+                  void **res,
+                  size_t *res_size)
 {
   size_t ciphertext_size;
   struct SymKeyP skey;
@@ -134,13 +134,13 @@ encrypt (const struct NonceP *nonce,
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-decrypt (const void *key,
-         size_t key_len,
-         const void *data,
-         size_t data_size,
-         const char *salt,
-         void **res,
-         size_t *res_size)
+contract_decrypt (const void *key,
+                  size_t key_len,
+                  const void *data,
+                  size_t data_size,
+                  const char *salt,
+                  void **res,
+                  size_t *res_size)
 {
   const struct NonceP *nonce;
   struct SymKeyP skey;
@@ -251,14 +251,14 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
                               sizeof (nonce));
-  encrypt (&nonce,
-           &key,
-           sizeof (key),
-           hdr,
-           sizeof (*hdr) + cbuf_size,
-           MERGE_SALT,
-           econtract,
-           econtract_size);
+  contract_encrypt (&nonce,
+                    &key,
+                    sizeof (key),
+                    hdr,
+                    sizeof (*hdr) + cbuf_size,
+                    MERGE_SALT,
+                    econtract,
+                    econtract_size);
   GNUNET_free (hdr);
 }
 
@@ -289,13 +289,13 @@ TALER_CRYPTO_contract_decrypt_for_merge (
     return NULL;
   }
   if (GNUNET_OK !=
-      decrypt (&key,
-               sizeof (key),
-               econtract,
-               econtract_size,
-               MERGE_SALT,
-               &xhdr,
-               &hdr_size))
+      contract_decrypt (&key,
+                        sizeof (key),
+                        econtract,
+                        econtract_size,
+                        MERGE_SALT,
+                        &xhdr,
+                        &hdr_size))
   {
     GNUNET_break_op (0);
     return NULL;
