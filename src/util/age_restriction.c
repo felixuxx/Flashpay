@@ -171,25 +171,25 @@ enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
   const struct TALER_AgeCommitmentProof *orig,
   const uint64_t salt,
-  struct TALER_AgeCommitmentProof *new)
+  struct TALER_AgeCommitmentProof *newacp)
 {
-  GNUNET_assert (NULL != new);
+  GNUNET_assert (NULL != newacp);
   GNUNET_assert (orig->proof.num <=
                  orig->commitment.num);
   GNUNET_assert (orig->commitment.num ==
                  __builtin_popcount (orig->commitment.mask.bits) - 1);
 
-  new->commitment.mask = orig->commitment.mask;
-  new->commitment.num = orig->commitment.num;
-  new->commitment.keys = GNUNET_new_array (
-    new->commitment.num,
+  newacp->commitment.mask = orig->commitment.mask;
+  newacp->commitment.num = orig->commitment.num;
+  newacp->commitment.keys = GNUNET_new_array (
+    newacp->commitment.num,
     struct TALER_AgeCommitmentPublicKeyP);
 
-  new->proof.num = orig->proof.num;
-  new->proof.keys = NULL;
-  if (0 != new->proof.num)
-    new->proof.keys = GNUNET_new_array (
-      new->proof.num,
+  newacp->proof.num = orig->proof.num;
+  newacp->proof.keys = NULL;
+  if (0 != newacp->proof.num)
+    newacp->proof.keys = GNUNET_new_array (
+      newacp->proof.num,
       struct TALER_AgeCommitmentPrivateKeyP);
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
@@ -200,7 +200,7 @@ TALER_age_commitment_derive (
       &orig->commitment.keys[i].pub,
       &salt,
       sizeof(salt),
-      &new->commitment.keys[i].pub);
+      &newacp->commitment.keys[i].pub);
   }
 
   /* 2. Derive the private keys */
@@ -210,7 +210,7 @@ TALER_age_commitment_derive (
       &orig->proof.keys[i].priv,
       &salt,
       sizeof(salt),
-      &new->proof.keys[i].priv);
+      &newacp->proof.keys[i].priv);
   }
 #else
   char label[sizeof(uint64_t) + 1] = {0};
@@ -227,7 +227,7 @@ TALER_age_commitment_derive (
       &orig->commitment.keys[i].pub,
       label,
       "age commitment derive",
-      &new->commitment.keys[i].pub);
+      &newacp->commitment.keys[i].pub);
   }
 
   /* 2. Derive the private keys */
@@ -238,7 +238,7 @@ TALER_age_commitment_derive (
       &orig->proof.keys[i].priv,
       label,
       "age commitment derive");
-    new->proof.keys[i].priv = *priv;
+    newacp->proof.keys[i].priv = *priv;
     GNUNET_free (priv);
   }
 #endif
@@ -352,9 +352,9 @@ TALER_age_commitment_verify (
     };
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
-  #define verify(a,b,c,d)      GNUNET_CRYPTO_edx25519_verify (a,b,c,d)
+  #define verify(a,b,c,d)      GNUNET_CRYPTO_edx25519_verify ((a),(b),(c),(d))
 #else
-  #define verify(a,b,c,d)      GNUNET_CRYPTO_ecdsa_verify (a,b,c,d)
+  #define verify(a,b,c,d)      GNUNET_CRYPTO_ecdsa_verify ((a),(b),(c),(d))
 #endif
     return verify (TALER_SIGNATURE_WALLET_AGE_ATTESTATION,
                    &at,
