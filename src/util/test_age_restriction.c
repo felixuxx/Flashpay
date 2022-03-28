@@ -195,11 +195,11 @@ test_attestation (void)
 
         if (min_group <= age_group &&
             GNUNET_OK != ret)
-          return GNUNET_SYSERR;
+          ret = GNUNET_SYSERR;
 
         if (min_group > age_group &&
             GNUNET_NO != ret)
-          return GNUNET_SYSERR;
+          ret = GNUNET_SYSERR;
 
         if (min_group > age_group)
           continue;
@@ -218,9 +218,14 @@ test_attestation (void)
           min_group);
 
         if (GNUNET_OK != ret)
-          return ret;
+          break;
       }
+
+      TALER_age_commitment_proof_free (&acp[i]);
     }
+
+    if (GNUNET_SYSERR == ret)
+      return ret;
   }
   return GNUNET_OK;
 }
