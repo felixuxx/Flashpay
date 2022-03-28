@@ -3985,10 +3985,16 @@ struct TALER_EXCHANGE_ContractGetResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
+  /**
+   * Details depending on the HTTP status code.
+   */
   union
   {
+    /**
+     * Information returned on #MHD_HTTP_OK.
+     */
     struct
     {
 
@@ -4000,13 +4006,13 @@ struct TALER_EXCHANGE_ContractGetResponse
         /**
          * This is a request for payment.
          */
-        TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST,
+        TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST = 0,
 
         /**
          * This is a payment, the receiver needs to
          * accepts the terms.
          */
-        TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER
+        TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER = 1
       } type;
 
       /**
@@ -4026,7 +4032,7 @@ struct TALER_EXCHANGE_ContractGetResponse
       } keys;
 
       /**
-       * Total value of the purse.
+       * Total value of the contract/purse.
        */
       struct TALER_Amount amount;
 
@@ -4046,6 +4052,7 @@ struct TALER_EXCHANGE_ContractGetResponse
       struct GNUNET_TIME_Timestamp purse_expiration;
 
     } success;
+
   } details;
 
 };
@@ -4105,7 +4112,7 @@ struct TALER_EXCHANGE_PurseGetResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on the HTTP status.
@@ -4327,7 +4334,7 @@ struct TALER_EXCHANGE_AccountMergeResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on the HTTP status.
@@ -4411,7 +4418,7 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on the HTTP status.
@@ -4498,7 +4505,7 @@ struct TALER_EXCHANGE_PurseDepositResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
    * Details depending on the HTTP status.

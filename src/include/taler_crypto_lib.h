@@ -29,7 +29,7 @@
 
 
 /**
- * Maximum number of fresh coins we allow per refresh operation.
+ * Maximum number of coins we allow per operation.
  */
 #define TALER_MAX_FRESH_COINS 256
 
