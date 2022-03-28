@@ -4287,6 +4287,9 @@ struct TALER_EXCHANGE_PurseDeposit
  * @param purse_expiration when will the unmerged purse expire
  * @param num_deposits length of the @a deposits array
  * @param deposits array of deposits to make into the purse
+ * @param upload_contract true to upload the contract; must
+ *        be FALSE for repeated calls to this API for the
+ *        same purse (i.e. when adding more deposits).
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -4301,6 +4304,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   struct GNUNET_TIME_Timestamp purse_expiration,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  bool upload_contract,
   TALER_EXCHANGE_PurseCreateDepositCallback cb,
   void *cb_cls);
 

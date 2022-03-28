@@ -202,6 +202,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   struct GNUNET_TIME_Timestamp purse_expiration,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  bool upload_contract,
   TALER_EXCHANGE_PurseCreateDepositCallback cb,
   void *cb_cls)
 {
@@ -335,23 +336,25 @@ TALER_EXCHANGE_purse_create_with_deposit (
   }
   GNUNET_free (url);
   {
-    void *econtract;
-    size_t econtract_size;
+    void *econtract = NULL;
+    size_t econtract_size = 0;
 
-    TALER_CRYPTO_contract_encrypt_for_merge (&purse_pub,
-                                             contract_priv,
-                                             merge_priv,
-                                             contract_terms,
-                                             &econtract,
-                                             &econtract_size);
+    if (upload_contract)
+      TALER_CRYPTO_contract_encrypt_for_merge (&purse_pub,
+                                               contract_priv,
+                                               merge_priv,
+                                               contract_terms,
+                                               &econtract,
+                                               &econtract_size);
     create_obj = GNUNET_JSON_PACK (
       TALER_JSON_pack_amount ("amount",
                               &purse_value_after_fees),
       GNUNET_JSON_pack_uint64 ("min_age",
                                min_age),
-      GNUNET_JSON_pack_data_varsize ("econtract",
-                                     econtract,
-                                     econtract_size),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_data_varsize ("econtract",
+                                       econtract,
+                                       econtract_size)),
       GNUNET_JSON_pack_data_auto ("contract_pub",
                                   &contract_pub),
       GNUNET_JSON_pack_data_auto ("merge_pub",

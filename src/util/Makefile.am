@@ -105,8 +105,11 @@ libtalerutil_la_SOURCES = \
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
+  -lsodium \
+  -ljansson \
   $(LIBGCRYPT_LIBS) \
   -lmicrohttpd $(XLIB) \
+  -lz \
   -lm
 
 libtalerutil_la_LDFLAGS = \
