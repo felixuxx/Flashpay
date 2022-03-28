@@ -386,10 +386,17 @@ struct TALER_CoinSpendSignatureP
  */
 struct TALER_AgeCommitmentPrivateKeyP
 {
+#ifdef AGE_RESTRICTION_WITH_ECDSA
   /**
    * Taler uses EcDSA for coins when signing age verification attestation.
    */
   struct GNUNET_CRYPTO_EcdsaPrivateKey priv;
+#else
+  /**
+   * Taler uses Edx25519 for coins when signing age verification attestation.
+   */
+  struct GNUNET_CRYPTO_Edx25519PrivateKey priv;
+#endif
 };
 
 
@@ -398,10 +405,17 @@ struct TALER_AgeCommitmentPrivateKeyP
  */
 struct TALER_AgeCommitmentPublicKeyP
 {
+#ifdef AGE_RESTRICTION_WITH_ECDSA
   /**
    * Taler uses EcDSA for coins when signing age verification attestation.
    */
   struct GNUNET_CRYPTO_EcdsaPublicKey pub;
+#else
+  /**
+   * Taler uses Edx25519 for coins when signing age verification attestation.
+   */
+  struct GNUNET_CRYPTO_Edx25519PublicKey pub;
+#endif
 };
 
 
@@ -1174,7 +1188,11 @@ struct TALER_AgeCommitmentHash
  */
 struct TALER_AgeAttestation
 {
+#ifdef AGE_RESTRICTION_WITH_ECDSA
   struct GNUNET_CRYPTO_EcdsaSignature signature;
+#else
+  struct GNUNET_CRYPTO_Edx25519Signature signature;
+#endif
 };
 
 extern const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash;

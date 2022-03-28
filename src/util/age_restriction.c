@@ -47,8 +47,7 @@ TALER_age_commitment_hash (
   {
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &commitment->keys[i],
-                                     sizeof(struct
-                                            GNUNET_CRYPTO_EcdsaPublicKey));
+                                     sizeof(commitment->keys[i]));
   }
 
   GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -128,13 +127,23 @@ TALER_age_restriction_commit (
     if (i < num_priv)
       pkey = &new->proof.keys[i];
 
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+    GNUNET_CRYPTO_edx25519_key_create_from_seed (&salti,
+                                                 sizeof(salti),
+                                                 &pkey->priv);
+    GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
+                                           &new->commitment.keys[i].pub);
+  }
+
+  return GNUNET_OK;
+#else
     if  (GNUNET_OK !=
          GNUNET_CRYPTO_kdf (pkey,
                             sizeof (*pkey),
                             &salti,
                             sizeof (salti),
                             "age commitment",
-                            strlen ("age derivation"),
+                            strlen ("age commitment"),
                             NULL, 0))
       goto FAIL;
 
@@ -154,6 +163,7 @@ FAIL:
   if (NULL != new->proof.keys)
     GNUNET_free (new->proof.keys);
   return GNUNET_SYSERR;
+#endif
 }
 
 
@@ -163,8 +173,6 @@ TALER_age_commitment_derive (
   const uint64_t salt,
   struct TALER_AgeCommitmentProof *new)
 {
-  char label[sizeof(uint64_t) + 1] = {0};
-
   GNUNET_assert (NULL != new);
   GNUNET_assert (orig->proof.num <=
                  orig->commitment.num);
@@ -184,12 +192,33 @@ TALER_age_commitment_derive (
       new->proof.num,
       struct TALER_AgeCommitmentPrivateKeyP);
 
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+  /* 1. Derive the public keys */
+  for (size_t i = 0; i < orig->commitment.num; i++)
   {
-    /* Because GNUNET_CRYPTO_ecdsa_public_key_derive expects char * (and calls
-     * strlen on it), we must avoid 0's in the label.  */
-    uint64_t nz_salt = salt | 0x8040201008040201;
-    memcpy (label, &nz_salt, sizeof(nz_salt));
+    GNUNET_CRYPTO_edx25519_public_key_derive (
+      &orig->commitment.keys[i].pub,
+      &salt,
+      sizeof(salt),
+      &new->commitment.keys[i].pub);
   }
+
+  /* 2. Derive the private keys */
+  for (size_t i = 0; i < orig->proof.num; i++)
+  {
+    GNUNET_CRYPTO_edx25519_private_key_derive (
+      &orig->proof.keys[i].priv,
+      &salt,
+      sizeof(salt),
+      &new->proof.keys[i].priv);
+  }
+#else
+  char label[sizeof(uint64_t) + 1] = {0};
+
+  /* Because GNUNET_CRYPTO_ecdsa_public_key_derive expects char * (and calls
+   * strlen on it), we must avoid 0's in the label.  */
+  uint64_t nz_salt = salt | 0x8040201008040201;
+  memcpy (label, &nz_salt, sizeof(nz_salt));
 
   /* 1. Derive the public keys */
   for (size_t i = 0; i < orig->commitment.num; i++)
@@ -212,6 +241,7 @@ TALER_age_commitment_derive (
     new->proof.keys[i].priv = *priv;
     GNUNET_free (priv);
   }
+#endif
 
   return GNUNET_OK;
 }
@@ -276,9 +306,14 @@ TALER_age_commitment_attest (
       .age = age
     };
 
-    GNUNET_CRYPTO_ecdsa_sign (&cp->proof.keys[group - 1].priv,
-                              &at,
-                              &attest->signature);
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+  #define sign(a,b,c)  GNUNET_CRYPTO_edx25519_sign (a,b,c)
+#else
+  #define sign(a,b,c)  GNUNET_CRYPTO_ecdsa_sign (a,b,c)
+#endif
+    sign (&cp->proof.keys[group - 1].priv,
+          &at,
+          &attest->signature);
   }
 
   return GNUNET_OK;
@@ -316,11 +351,15 @@ TALER_age_commitment_verify (
       .age = age,
     };
 
-    return
-      GNUNET_CRYPTO_ecdsa_verify (TALER_SIGNATURE_WALLET_AGE_ATTESTATION,
-                                  &at,
-                                  &attest->signature,
-                                  &comm->keys[group - 1].pub);
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+  #define verify(a,b,c,d)      GNUNET_CRYPTO_edx25519_verify (a,b,c,d)
+#else
+  #define verify(a,b,c,d)      GNUNET_CRYPTO_ecdsa_verify (a,b,c,d)
+#endif
+    return verify (TALER_SIGNATURE_WALLET_AGE_ATTESTATION,
+                   &at,
+                   &attest->signature,
+                   &comm->keys[group - 1].pub);
   }
 }
 
