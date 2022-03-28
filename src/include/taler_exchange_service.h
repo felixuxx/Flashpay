@@ -3978,6 +3978,126 @@ TALER_EXCHANGE_add_auditor_denomination_cancel (
 
 
 /**
+ * Response generated for a contract get request.
+ */
+struct TALER_EXCHANGE_ContractGetResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse *hr;
+
+  union
+  {
+    struct
+    {
+
+      /**
+       * What is the type of the transaction?
+       */
+      enum
+      {
+        /**
+         * This is a request for payment.
+         */
+        TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST,
+
+        /**
+         * This is a payment, the receiver needs to
+         * accepts the terms.
+         */
+        TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER
+      } type;
+
+      /**
+       * Key material, depending on @e type.
+       */
+      union
+      {
+        /**
+         * Set if @e type is #TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST.
+         */
+        struct TALER_PurseContractPublicKeyP purse_pub;
+
+        /**
+         * Set if @e type is #TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER.
+         */
+        struct TALER_PurseMergePrivateKeyP merge_priv;
+      } keys;
+
+      /**
+       * Total value of the purse.
+       */
+      struct TALER_Amount amount;
+
+      /**
+       * Contract terms.
+       */
+      json_t *contract_terms;
+
+      /**
+       * Minimum age required to pay for the contract.
+       */
+      uint8_t min_age;
+
+      /**
+       * When will the purse expire?
+       */
+      struct GNUNET_TIME_Timestamp purse_expiration;
+
+    } success;
+  } details;
+
+};
+
+/**
+ * Function called with information about the a purse.
+ *
+ * @param cls closure
+ * @param pgr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ContractGetCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ContractGetResponse *pgr);
+
+
+/**
+ * @brief Handle for a GET /contracts/$CPUB request.
+ */
+struct TALER_EXCHANGE_ContractsGetHandle;
+
+
+/**
+ * Request information about a contract from the exchange.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param contract_priv private key of the contract
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ContractGetHandle *
+TALER_EXCHANGE_contract_get (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  TALER_EXCHANGE_ContractGetCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_contract_get() operation.
+ *
+ * @param cgh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_contract_get_cancel (
+  struct TALER_EXCHANGE_ContractGetHandle *cgh);
+
+
+/**
  * Response generated for a purse get request.
  */
 struct TALER_EXCHANGE_PurseGetResponse
@@ -3987,11 +4107,35 @@ struct TALER_EXCHANGE_PurseGetResponse
    */
   struct TALER_EXCHANGE_HttpResponse *hr;
 
+  /**
+   * Details depending on the HTTP status.
+   */
   union
   {
+    /**
+     * Response on #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Time when the purse was merged (or zero if it
+       * was not merged).
+       */
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+
+      /**
+       * Time when the full amount was deposited into
+       * the purse (or zero if a sufficient amount
+       * was not yet deposited).
+       */
+      struct GNUNET_TIME_Timestamp deposit_timestamp;
+
+    } success;
+
   } details;
 
 };
+
 
 /**
  * Function called with information about the a purse.
@@ -4016,10 +4160,9 @@ struct TALER_EXCHANGE_PurseGetHandle;
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param purse_priv private key of the purse to check
+ * @param purse_priv private key of the purse
  * @param merge_timeout how long to wait for a merge to happen
  * @param deposit_timeout how long to wait for a deposit to happen
- * @param return_contract true if we should return the contract (if available)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -4031,7 +4174,6 @@ TALER_EXCHANGE_purse_get (
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   struct GNUNET_TIME_Relative merge_timeout,
   struct GNUNET_TIME_Relative deposit_timeout,
-  bool return_contract,
   TALER_EXCHANGE_PurseGetCallback cb,
   void *cb_cls);
 
@@ -4054,10 +4196,27 @@ struct TALER_EXCHANGE_PurseCreateDepositResponse
   /**
    * Full HTTP response.
    */
-  struct TALER_EXCHANGE_HttpResponse *hr;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
+  /**
+   * Details depending on the HTTP status.
+   */
   union
   {
+
+    /**
+     * Detailed returned on #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Private key that can be used to obtain the contract.
+       */
+      struct TALER_ContractDiffiePrivateP contract_priv;
+
+    } success;
+
   } details;
 
 };
@@ -4086,10 +4245,12 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle;
  */
 struct TALER_EXCHANGE_PurseDeposit
 {
+#if FIXME_OEC
   /**
    * Age commitment data.
    */
   struct TALER_AgeCommitment age_commitment;
+#endif
 
   /**
    * Private key of the coin.
@@ -4118,14 +4279,12 @@ struct TALER_EXCHANGE_PurseDeposit
  * Inform the exchange that a purse should be created
  * and coins deposited into it.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange the exchange to interact with
  * @param purse_priv private key of the purse
- * @param merge_pub identifies merge credential
+ * @param merge_priv the merge credential
+ * @param contract_priv key needed to obtain and decrypt the contract
  * @param contract_terms contract the purse is about
- * @param min_age minimum age we need to prove for the purse
  * @param purse_expiration when will the unmerged purse expire
- * @param purse_value_after_fees target amount in the purse
  * @param num_deposits length of the @a deposits array
  * @param deposits array of deposits to make into the purse
  * @param cb function to call with the exchange's result
@@ -4134,14 +4293,12 @@ struct TALER_EXCHANGE_PurseDeposit
  */
 struct TALER_EXCHANGE_PurseCreateDepositHandle *
 TALER_EXCHANGE_purse_create_with_deposit (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
-  uint32_t min_age,
   struct GNUNET_TIME_Timestamp purse_expiration,
-  const struct TALER_Amount *purse_value_after_fees,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
   TALER_EXCHANGE_PurseCreateDepositCallback cb,
@@ -4168,8 +4325,19 @@ struct TALER_EXCHANGE_AccountMergeResponse
    */
   struct TALER_EXCHANGE_HttpResponse *hr;
 
+  /**
+   * Details depending on the HTTP status.
+   */
   union
   {
+    /**
+     * Detailed returned on #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+    } success;
+
   } details;
 
 };
@@ -4241,8 +4409,18 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
    */
   struct TALER_EXCHANGE_HttpResponse *hr;
 
+  /**
+   * Details depending on the HTTP status.
+   */
   union
   {
+    /**
+     * Detailed returned on #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+    } success;
   } details;
 
 };
@@ -4290,7 +4468,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const json_t *contract_terms,
-  uint32_t min_age,
+  uint8_t min_age,
   struct GNUNET_TIME_Timestamp purse_expiration,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_Amount *purse_value_after_fees,
@@ -4318,8 +4496,18 @@ struct TALER_EXCHANGE_PurseDepositResponse
    */
   struct TALER_EXCHANGE_HttpResponse *hr;
 
+  /**
+   * Details depending on the HTTP status.
+   */
   union
   {
+    /**
+     * Detailed returned on #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+    } success;
   } details;
 
 };
@@ -4364,7 +4552,7 @@ TALER_EXCHANGE_purse_deposit (
   const char *url,
   const char *purse_exchange_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  uint32_t min_age,
+  uint8_t min_age,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
   TALER_EXCHANGE_PurseDepositCallback cb,

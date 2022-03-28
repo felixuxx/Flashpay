@@ -25,6 +25,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_error_codes.h"
 #include <gcrypt.h>
+#include <jansson.h>
 
 
 /**
@@ -2183,6 +2184,48 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *amount_with_fee);
 
+
+/**
+ * Encrypt contract for transmission to a party that will
+ * merge it into a reserve.
+ *
+ * @param purse_pub public key of the purse
+ * @param contract_priv private key of the contract
+ * @param merge_priv merge capability to include
+ * @param contract_terms contract terms to encrypt
+ * @param[out] econtract set to encrypted contract
+ * @param[out] econtract_size set to number of bytes in @a econtract
+ */
+void
+TALER_CRYPTO_contract_encrypt_for_merge (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  const json_t *contract_terms,
+  void **econtract,
+  size_t *econtract_size);
+
+
+/**
+ * Encrypt contract for the party that will
+ * merge it into a reserve.
+ *
+ * @param purse_pub public key of the purse
+ * @param contract_priv private key of the contract
+ * @param econtract encrypted contract
+ * @param econtract_size  number of bytes in @a econtract
+ * @param[out] merge_priv set to merge capability
+ * @return decrypted contract terms, or NULL on failure
+ */
+json_t *
+TALER_CRYPTO_contract_decrypt_for_merge (
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const void *econtract,
+  size_t econtract_size,
+  struct TALER_PurseMergePrivateKeyP *merge_priv);
+
+
 /* **************** Helper-based RSA operations **************** */
 
 /**
@@ -4050,7 +4093,8 @@ struct TALER_AgeCommitmentProof
   struct TALER_AgeProof proof;
 };
 
-/*
+
+/**
  * @brief Generates a hash of the public keys in the age commitment.
  *
  * @param commitment the age commitment - one public key per age group
@@ -4061,14 +4105,15 @@ TALER_age_commitment_hash (
   const struct TALER_AgeCommitment *commitment,
   struct TALER_AgeCommitmentHash *hash);
 
-/*
+
+/**
  * @brief Generates an age commitent for the given age.
  *
  * @param mask The age mask the defines the age groups
  * @param age The actual age for which an age commitment is generated
  * @param salt The salt that goes into the key generation.  MUST be choosen uniformly random.
  * @param comm_proof[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
- * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
@@ -4077,13 +4122,14 @@ TALER_age_restriction_commit (
   const uint64_t salt,
   struct TALER_AgeCommitmentProof *comm_proof);
 
-/*
+
+/**
  * @brief Derives another, equivalent age commitment for a given one.
  *
  * @param orig Original age commitment
  * @param salt Salt to randomly move the points on the elliptic curve in order to generate another, equivalent commitment.
  * @param[out] derived The resulting age commitment, ->priv and ->pub allocated via GNUNET_malloc on success.
- * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
@@ -4092,13 +4138,13 @@ TALER_age_commitment_derive (
   struct TALER_AgeCommitmentProof *derived);
 
 
-/*
+/**
  * @brief Provide attestation for a given age, from a given age commitment, if possible.
  *
  * @param comm_proof The age commitment to be used for attestation.  For successful attestation, it must contain the private key for the corresponding age group.
  * @param age Age (not age group) for which the an attestation should be done
  * @param[out] attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
- * @return GNUNET_OK on success, GNUNET_NO when no attestation can be made for that age with the given commitment, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK on success, #GNUNET_NO when no attestation can be made for that age with the given commitment, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_attest (

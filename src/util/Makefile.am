@@ -80,6 +80,7 @@ libtalerutil_la_SOURCES = \
   auditor_signatures.c \
   config.c \
   crypto.c \
+  crypto_contract.c \
   crypto_helper_common.c crypto_helper_common.h \
   crypto_helper_rsa.c \
   crypto_helper_cs.c \
