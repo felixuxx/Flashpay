@@ -70,10 +70,38 @@ struct TALER_EXCHANGE_DepositGetHandle
   void *cb_cls;
 
   /**
-   * Information the exchange should sign in response.
-   * (with pre-filled fields from the request).
+   * Hash over the wiring information of the merchant.
    */
-  struct TALER_ConfirmWirePS depconf;
+  struct TALER_MerchantWireHashP h_wire;
+
+  /**
+   * Hash over the contract for which this deposit is made.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Raw value (binary encoding) of the wire transfer subject.
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * When did the exchange execute this transfer? Note that the
+   * timestamp may not be exactly the same on the wire, i.e.
+   * because the wire has a different timezone or resolution.
+   */
+  struct GNUNET_TIME_Timestamp execution_time;
+
+  /**
+   * The contribution of @e coin_pub to the total transfer volume.
+   * This is the value of the deposit minus the fee.
+   */
+  struct TALER_Amount coin_contribution;
 
 };
 
@@ -87,6 +115,7 @@ struct TALER_EXCHANGE_DepositGetHandle
  * @param exchange_sig the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
+// FIXME: inline...
 static enum GNUNET_GenericReturnValue
 verify_deposit_wtid_signature_ok (
   const struct TALER_EXCHANGE_DepositGetHandle *dwh,
@@ -104,10 +133,15 @@ verify_deposit_wtid_signature_ok (
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE,
-                                  &dwh->depconf,
-                                  &exchange_sig->eddsa_signature,
-                                  &exchange_pub->eddsa_pub))
+      TALER_exchange_online_confirm_wire_verify (
+        &dwh->h_wire,
+        &dwh->h_contract_terms,
+        &dwh->wtid,
+        &dwh->coin_pub,
+        dwh->execution_time,
+        &dwh->coin_contribution,
+        exchange_pub,
+        exchange_sig))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -168,11 +202,10 @@ handle_deposit_wtid_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      dwh->depconf.execution_time = GNUNET_TIME_timestamp_hton (
-        dr.details.success.execution_time);
-      dwh->depconf.wtid = dr.details.success.wtid;
-      TALER_amount_hton (&dwh->depconf.coin_contribution,
-                         &dr.details.success.coin_contribution);
+      // FIXME: remove once we inline function below...
+      dwh->execution_time = dr.details.success.execution_time;
+      dwh->wtid = dr.details.success.wtid;
+      dwh->coin_contribution = dr.details.success.coin_contribution;
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
                                             &dr.details.success.exchange_pub,
@@ -285,6 +318,7 @@ TALER_EXCHANGE_deposits_get (
     GNUNET_break (0);
     return NULL;
   }
+  // FIXME: move to helper!
   dtp.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
   dtp.purpose.size = htonl (sizeof (dtp));
   dtp.h_contract_terms = *h_contract_terms;
@@ -351,11 +385,9 @@ TALER_EXCHANGE_deposits_get (
     GNUNET_free (dwh);
     return NULL;
   }
-  dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
-  dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
-  dwh->depconf.h_wire = *h_wire;
-  dwh->depconf.h_contract_terms = *h_contract_terms;
-  dwh->depconf.coin_pub = *coin_pub;
+  dwh->h_wire = *h_wire;
+  dwh->h_contract_terms = *h_contract_terms;
+  dwh->coin_pub = *coin_pub;
 
   eh = TALER_EXCHANGE_curl_easy_get_ (dwh->url);
   if (NULL == eh)

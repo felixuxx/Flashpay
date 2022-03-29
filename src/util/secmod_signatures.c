@@ -23,6 +23,37 @@
 #include "taler_signatures.h"
 
 
+/**
+ * @brief format used by the signing crypto helper when affirming
+ *        that it created an exchange signing key.
+ */
+struct TALER_SigningKeyAnnouncementPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_SM_SIGNING_KEY.
+   * Used with an EdDSA signature of a `struct TALER_SecurityModulePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Public signing key of the exchange this is about.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * When does the key become available?
+   */
+  struct GNUNET_TIME_TimestampNBO anchor_time;
+
+  /**
+   * How long is the key available after @e anchor_time?
+   */
+  struct GNUNET_TIME_RelativeNBO duration;
+
+};
+
+
 void
 TALER_exchange_secmod_eddsa_sign (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
@@ -68,6 +99,41 @@ TALER_exchange_secmod_eddsa_verify (
                                 &secm_pub->eddsa_pub);
 }
 
+
+/**
+ * @brief format used by the denomination crypto helper when affirming
+ *        that it created a denomination key.
+ */
+struct TALER_DenominationKeyAnnouncementPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY.
+   * Used with an EdDSA signature of a `struct TALER_SecurityModulePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the denomination public key.
+   */
+  struct TALER_DenominationHashP h_denom;
+
+  /**
+   * Hash of the section name in the configuration of this denomination.
+   */
+  struct GNUNET_HashCode h_section_name;
+
+  /**
+   * When does the key become available?
+   */
+  struct GNUNET_TIME_TimestampNBO anchor_time;
+
+  /**
+   * How long is the key available after @e anchor_time?
+   */
+  struct GNUNET_TIME_RelativeNBO duration_withdraw;
+
+};
 
 void
 TALER_exchange_secmod_rsa_sign (

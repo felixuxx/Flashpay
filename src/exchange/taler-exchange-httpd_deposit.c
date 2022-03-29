@@ -57,41 +57,36 @@
  * @return MHD result code
  */
 static MHD_RESULT
-reply_deposit_success (struct MHD_Connection *connection,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_MerchantWireHashP *h_wire,
-                       const struct TALER_ExtensionContractHashP *h_extensions,
-                       const struct
-                       TALER_PrivateContractHashP *h_contract_terms,
-                       struct GNUNET_TIME_Timestamp exchange_timestamp,
-                       struct GNUNET_TIME_Timestamp refund_deadline,
-                       struct GNUNET_TIME_Timestamp wire_deadline,
-                       const struct TALER_MerchantPublicKeyP *merchant,
-                       const struct TALER_Amount *amount_without_fee)
+reply_deposit_success (
+  struct MHD_Connection *connection,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp refund_deadline,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  const struct TALER_MerchantPublicKeyP *merchant,
+  const struct TALER_Amount *amount_without_fee)
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  struct TALER_DepositConfirmationPS dc = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT),
-    .purpose.size = htonl (sizeof (dc)),
-    .h_contract_terms = *h_contract_terms,
-    .h_wire = *h_wire,
-    .exchange_timestamp = GNUNET_TIME_timestamp_hton (exchange_timestamp),
-    .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
-    .wire_deadline = GNUNET_TIME_timestamp_hton (wire_deadline),
-    .coin_pub = *coin_pub,
-    .merchant_pub = *merchant
-  };
   enum TALER_ErrorCode ec;
 
-  if (NULL != h_extensions)
-    dc.h_extensions = *h_extensions;
-  TALER_amount_hton (&dc.amount_without_fee,
-                     amount_without_fee);
   if (TALER_EC_NONE !=
-      (ec = TEH_keys_exchange_sign (&dc,
-                                    &pub,
-                                    &sig)))
+      (ec = TALER_exchange_online_deposit_confirmation_sign (
+         &TEH_keys_exchange_sign_,
+         h_contract_terms,
+         h_wire,
+         h_extensions,
+         exchange_timestamp,
+         wire_deadline,
+         refund_deadline,
+         amount_without_fee,
+         coin_pub,
+         merchant,
+         &pub,
+         &sig)))
   {
     return TALER_MHD_reply_with_ec (connection,
                                     ec,

@@ -170,7 +170,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
   }
 
   if (GNUNET_OK !=
-      TALER_exchange_melt_confirmation_verify (
+      TALER_exchange_online_melt_confirmation_verify (
         &mh->md.rc,
         mh->noreveal_index,
         exchange_pub,

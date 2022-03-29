@@ -105,12 +105,6 @@ handle_kyc_check_finished (void *cls,
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
-      struct TALER_ExchangeAccountSetupSuccessPS kyc_purpose = {
-        .purpose.size = htonl (sizeof (kyc_purpose)),
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-        .h_payto = kch->h_payto
-      };
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -122,8 +116,6 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      kyc_purpose.timestamp = GNUNET_TIME_timestamp_hton (
-        ks.details.kyc_ok.timestamp);
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
@@ -137,11 +129,11 @@ handle_kyc_check_finished (void *cls,
       }
 
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS,
-            &kyc_purpose,
-            &ks.details.kyc_ok.exchange_sig.eddsa_signature,
-            &ks.details.kyc_ok.exchange_pub.eddsa_pub))
+          TALER_exchange_online_account_setup_success_verify (
+            &kch->h_payto,
+            ks.details.kyc_ok.timestamp,
+            &ks.details.kyc_ok.exchange_pub,
+            &ks.details.kyc_ok.exchange_sig))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;

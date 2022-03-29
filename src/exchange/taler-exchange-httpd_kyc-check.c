@@ -414,19 +414,15 @@ TEH_handler_kyc_check (
   {
     struct TALER_ExchangePublicKeyP pub;
     struct TALER_ExchangeSignatureP sig;
-    struct TALER_ExchangeAccountSetupSuccessPS as = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-      .purpose.size = htonl (sizeof (as)),
-      .h_payto = kyp->h_payto,
-      .timestamp = GNUNET_TIME_timestamp_hton (now)
-    };
     enum TALER_ErrorCode ec;
 
     if (TALER_EC_NONE !=
-        (ec = TEH_keys_exchange_sign (&as,
-                                      &pub,
-                                      &sig)))
+        (ec = TALER_exchange_online_account_setup_success_sign (
+           &TEH_keys_exchange_sign_,
+           &kyp->h_payto,
+           now,
+           &pub,
+           &sig)))
     {
       return TALER_MHD_reply_with_ec (rc->connection,
                                       ec,

@@ -367,7 +367,7 @@ TEH_keys_exchange_sign_ (
  * number of bytes of the data structure, including its header.  Use
  * #TEH_keys_exchange_sign() instead of calling this function directly!
  *
- * @param ksh key state state to look in
+ * @param cls key state state to look in
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
@@ -375,7 +375,7 @@ TEH_keys_exchange_sign_ (
  */
 enum TALER_ErrorCode
 TEH_keys_exchange_sign2_ (
-  struct TEH_KeyStateHandle *ksh,
+  void *cls,
   const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);

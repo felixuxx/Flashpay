@@ -46,34 +46,30 @@
  * @return MHD result code
  */
 static MHD_RESULT
-reply_deposit_details (struct MHD_Connection *connection,
-                       const struct
-                       TALER_PrivateContractHashP *h_contract_terms,
-                       const struct TALER_MerchantWireHashP *h_wire,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_Amount *coin_contribution,
-                       const struct TALER_WireTransferIdentifierRawP *wtid,
-                       struct GNUNET_TIME_Timestamp exec_time)
+reply_deposit_details (
+  struct MHD_Connection *connection,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Timestamp exec_time)
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  struct TALER_ConfirmWirePS cw = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE),
-    .purpose.size = htonl (sizeof (cw)),
-    .h_wire = *h_wire,
-    .h_contract_terms = *h_contract_terms,
-    .wtid = *wtid,
-    .coin_pub = *coin_pub,
-    .execution_time = GNUNET_TIME_timestamp_hton (exec_time)
-  };
   enum TALER_ErrorCode ec;
 
-  TALER_amount_hton (&cw.coin_contribution,
-                     coin_contribution);
   if (TALER_EC_NONE !=
-      (ec = TEH_keys_exchange_sign (&cw,
-                                    &pub,
-                                    &sig)))
+      (ec = TALER_exchange_online_confirm_wire_sign (
+         &TEH_keys_exchange_sign_,
+         h_wire,
+         h_contract_terms,
+         wtid,
+         coin_pub,
+         exec_time,
+         coin_contribution,
+         &pub,
+         &sig)))
   {
     return TALER_MHD_reply_with_ec (connection,
                                     ec,

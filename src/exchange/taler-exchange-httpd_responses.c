@@ -241,21 +241,16 @@ TEH_RESPONSE_compile_transaction_history (
           pos->details.old_coin_recoup;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
-        struct TALER_RecoupRefreshConfirmationPS pc = {
-          .purpose.purpose = htonl (
-            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
-          .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_timestamp_hton (pr->timestamp),
-          .coin_pub = pr->coin.coin_pub,
-          .old_coin_pub = pr->old_coin_pub
-        };
 
-        TALER_amount_hton (&pc.recoup_amount,
-                           &pr->value);
         if (TALER_EC_NONE !=
-            TEH_keys_exchange_sign (&pc,
-                                    &epub,
-                                    &esig))
+            TALER_exchange_online_confirm_recoup_refresh_sign (
+              &TEH_keys_exchange_sign_,
+              pr->timestamp,
+              &pr->value,
+              &pr->coin.coin_pub,
+              &pr->old_coin_pub,
+              &epub,
+              &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -295,20 +290,16 @@ TEH_RESPONSE_compile_transaction_history (
           pos->details.recoup;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
-        struct TALER_RecoupConfirmationPS pc = {
-          .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
-          .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_timestamp_hton (recoup->timestamp),
-          .coin_pub = *coin_pub,
-          .reserve_pub = recoup->reserve_pub
-        };
 
-        TALER_amount_hton (&pc.recoup_amount,
-                           &recoup->value);
         if (TALER_EC_NONE !=
-            TEH_keys_exchange_sign (&pc,
-                                    &epub,
-                                    &esig))
+            TALER_exchange_online_confirm_recoup_sign (
+              &TEH_keys_exchange_sign_,
+              recoup->timestamp,
+              &recoup->value,
+              coin_pub,
+              &recoup->reserve_pub,
+              &epub,
+              &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -351,21 +342,16 @@ TEH_RESPONSE_compile_transaction_history (
           pos->details.recoup_refresh;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
-        struct TALER_RecoupRefreshConfirmationPS pc = {
-          .purpose.purpose = htonl (
-            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
-          .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_timestamp_hton (pr->timestamp),
-          .coin_pub = *coin_pub,
-          .old_coin_pub = pr->old_coin_pub
-        };
 
-        TALER_amount_hton (&pc.recoup_amount,
-                           &pr->value);
         if (TALER_EC_NONE !=
-            TEH_keys_exchange_sign (&pc,
-                                    &epub,
-                                    &esig))
+            TALER_exchange_online_confirm_recoup_refresh_sign (
+              &TEH_keys_exchange_sign_,
+              pr->timestamp,
+              &pr->value,
+              coin_pub,
+              &pr->old_coin_pub,
+              &epub,
+              &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -424,18 +410,12 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
   enum TALER_ErrorCode ec;
 
   now = GNUNET_TIME_timestamp_get ();
-  {
-    struct TALER_DenominationUnknownAffirmationPS dua = {
-      .purpose.size = htonl (sizeof (dua)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN),
-      .timestamp = GNUNET_TIME_timestamp_hton (now),
-      .h_denom_pub = *dph,
-    };
-
-    ec = TEH_keys_exchange_sign (&dua,
-                                 &epub,
-                                 &esig);
-  }
+  ec = TALER_exchange_online_denomination_unknown_sign (
+    &TEH_keys_exchange_sign_,
+    now,
+    dph,
+    &epub,
+    &esig);
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);
@@ -471,22 +451,14 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
   enum TALER_ErrorCode ecr;
   struct GNUNET_TIME_Timestamp now
     = GNUNET_TIME_timestamp_get ();
-  struct TALER_DenominationExpiredAffirmationPS dua = {
-    .purpose.size = htonl (sizeof (dua)),
-    .purpose.purpose = htonl (
-      TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED),
-    .timestamp = GNUNET_TIME_timestamp_hton (now),
-    .h_denom_pub = *dph,
-  };
 
-  /* strncpy would create a compiler warning */
-  memcpy (dua.operation,
-          oper,
-          GNUNET_MIN (sizeof (dua.operation),
-                      strlen (oper)));
-  ecr = TEH_keys_exchange_sign (&dua,
-                                &epub,
-                                &esig);
+  ecr = TALER_exchange_online_denomination_expired_sign (
+    &TEH_keys_exchange_sign_,
+    now,
+    dph,
+    oper,
+    &epub,
+    &esig);
   if (TALER_EC_NONE != ecr)
   {
     GNUNET_break (0);
@@ -523,18 +495,12 @@ TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
   enum TALER_ErrorCode ec;
 
   now = GNUNET_TIME_timestamp_get ();
-  {
-    struct TALER_DenominationUnknownAffirmationPS dua = {
-      .purpose.size = htonl (sizeof (dua)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN),
-      .timestamp = GNUNET_TIME_timestamp_hton (now),
-      .h_denom_pub = *dph,
-    };
-
-    ec = TEH_keys_exchange_sign (&dua,
-                                 &epub,
-                                 &esig);
-  }
+  ec = TALER_exchange_online_denomination_unknown_sign (
+    &TEH_keys_exchange_sign_,
+    now,
+    dph,
+    &epub,
+    &esig);
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);
@@ -679,26 +645,19 @@ TEH_RESPONSE_compile_reserve_history (
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_confirm_recoup_sign (
+              &TEH_keys_exchange_sign_,
+              recoup->timestamp,
+              &recoup->value,
+              &recoup->coin.coin_pub,
+              &recoup->reserve_pub,
+              &pub,
+              &sig))
         {
-          struct TALER_RecoupConfirmationPS pc = {
-            .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
-            .purpose.size = htonl (sizeof (pc)),
-            .timestamp = GNUNET_TIME_timestamp_hton (recoup->timestamp),
-            .coin_pub = recoup->coin.coin_pub,
-            .reserve_pub = recoup->reserve_pub
-          };
-
-          TALER_amount_hton (&pc.recoup_amount,
-                             &recoup->value);
-          if (TALER_EC_NONE !=
-              TEH_keys_exchange_sign (&pc,
-                                      &pub,
-                                      &sig))
-          {
-            GNUNET_break (0);
-            json_decref (json_history);
-            return NULL;
-          }
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
         }
 
         if (0 !=
@@ -731,30 +690,21 @@ TEH_RESPONSE_compile_reserve_history (
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
+        if (TALER_EC_NONE !=
+            TALER_exchange_online_reserve_closed_sign (
+              &TEH_keys_exchange_sign_,
+              closing->execution_date,
+              &closing->amount,
+              &closing->closing_fee,
+              closing->receiver_account_details,
+              &closing->wtid,
+              &pos->details.closing->reserve_pub,
+              &pub,
+              &sig))
         {
-          struct TALER_ReserveCloseConfirmationPS rcc = {
-            .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED),
-            .purpose.size = htonl (sizeof (rcc)),
-            .timestamp = GNUNET_TIME_timestamp_hton (closing->execution_date),
-            .reserve_pub = pos->details.closing->reserve_pub,
-            .wtid = closing->wtid
-          };
-
-          TALER_amount_hton (&rcc.closing_amount,
-                             &closing->amount);
-          TALER_amount_hton (&rcc.closing_fee,
-                             &closing->closing_fee);
-          TALER_payto_hash (closing->receiver_account_details,
-                            &rcc.h_payto);
-          if (TALER_EC_NONE !=
-              TEH_keys_exchange_sign (&rcc,
-                                      &pub,
-                                      &sig))
-          {
-            GNUNET_break (0);
-            json_decref (json_history);
-            return NULL;
-          }
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
         }
         if (0 !=
             json_array_append_new (

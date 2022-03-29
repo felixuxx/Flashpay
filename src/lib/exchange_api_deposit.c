@@ -361,17 +361,18 @@ handle_deposit_finished (void *cls,
       }
 
       if (GNUNET_OK !=
-          TALER_exchange_deposit_confirm_verify (&dh->h_contract_terms,
-                                                 &dh->h_wire,
-                                                 &dh->h_extensions,
-                                                 dh->exchange_timestamp,
-                                                 dh->wire_deadline,
-                                                 dh->refund_deadline,
-                                                 &dh->amount_without_fee,
-                                                 &dh->coin_pub,
-                                                 &dh->merchant_pub,
-                                                 &dh->exchange_pub,
-                                                 &dh->exchange_sig))
+          TALER_exchange_online_deposit_confirmation_verify (
+            &dh->h_contract_terms,
+            &dh->h_wire,
+            &dh->h_extensions,
+            dh->exchange_timestamp,
+            dh->wire_deadline,
+            dh->refund_deadline,
+            &dh->amount_without_fee,
+            &dh->coin_pub,
+            &dh->merchant_pub,
+            &dh->exchange_pub,
+            &dh->exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;

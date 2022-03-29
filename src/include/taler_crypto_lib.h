@@ -1456,6 +1456,132 @@ struct TALER_ExchangeWithdrawValues
 
 
 /**
+ * @brief Information about a signing key of the exchange.  Signing keys are used
+ * to sign exchange messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
+ *
+ * FIXME: remove this from the public API...
+ */
+struct TALER_ExchangeSigningKeyValidityPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When does this signing key begin to be valid?
+   */
+  struct GNUNET_TIME_TimestampNBO start;
+
+  /**
+   * When does this signing key expire? Note: This is currently when
+   * the Exchange will definitively stop using it.  Signatures made with
+   * the key remain valid until @e end.  When checking validity periods,
+   * clients should allow for some overlap between keys and tolerate
+   * the use of either key during the overlap time (due to the
+   * possibility of clock skew).
+   */
+  struct GNUNET_TIME_TimestampNBO expire;
+
+  /**
+   * When do signatures with this signing key become invalid?  After
+   * this point, these signatures cannot be used in (legal) disputes
+   * anymore, as the Exchange is then allowed to destroy its side of the
+   * evidence.  @e end is expected to be significantly larger than @e
+   * expire (by a year or more).
+   */
+  struct GNUNET_TIME_TimestampNBO end;
+
+  /**
+   * The public online signing key that the exchange will use
+   * between @e start and @e expire.
+   */
+  struct TALER_ExchangePublicKeyP signkey_pub;
+};
+
+
+/**
+ * @brief Information about a denomination key. Denomination keys
+ * are used to sign coins of a certain value into existence.
+ *
+ * FIXME: remove this from the public API...
+ */
+struct TALER_DenominationKeyValidityPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The long-term offline master key of the exchange that was
+   * used to create @e signature.
+   */
+  struct TALER_MasterPublicKeyP master;
+
+  /**
+   * Start time of the validity period for this key.
+   */
+  struct GNUNET_TIME_TimestampNBO start;
+
+  /**
+   * The exchange will sign fresh coins between @e start and this time.
+   * @e expire_withdraw will be somewhat larger than @e start to
+   * ensure a sufficiently large anonymity set, while also allowing
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
+   * with high transaction volume.  The period may also differ between
+   * types of coins.  A exchange may also have a few denomination keys
+   * with the same value with overlapping validity periods, to address
+   * issues such as clock skew.
+   */
+  struct GNUNET_TIME_TimestampNBO expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * exchange will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.  @e expire_deposit must be
+   * significantly larger than @e expire_withdraw (by months or even
+   * years).
+   */
+  struct GNUNET_TIME_TimestampNBO expire_deposit;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_deposit (by a year or more).
+   */
+  struct GNUNET_TIME_TimestampNBO expire_legal;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_AmountNBO value;
+
+  /**
+   * Fees for the coin.
+   */
+  struct TALER_DenomFeeSetNBOP fees;
+
+  /**
+   * Hash code of the denomination public key. (Used to avoid having
+   * the variable-size RSA key in this struct.)
+   */
+  struct TALER_DenominationHashP denom_hash GNUNET_PACKED;
+
+};
+
+
+/**
  * Free internals of @a denom_pub, but not @a denom_pub itself.
  *
  * @param[in] denom_pub key to free
@@ -2678,40 +2804,6 @@ TALER_CRYPTO_helper_esign_disconnect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh);
 
 
-/* ********************* exchange signing ************************** */
-
-
-/**
- * Verify a deposit confirmation.
- *
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param h_wire hash of the merchant’s account details
- * @param h_extensions hash over the extensions, can be NULL
- * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
- * @param wire_deadline date until which the exchange should wire the funds
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param amount_without_fee the amount to be deposited after fees
- * @param coin_pub public key of the deposited coin
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param exchange_pub exchange's online signing public key
- * @param exchange_sig the signature made with purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT
- * @return #GNUNET_OK if the signature is valid
- */
-enum GNUNET_GenericReturnValue
-TALER_exchange_deposit_confirm_verify (
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
-  struct GNUNET_TIME_Timestamp exchange_timestamp,
-  struct GNUNET_TIME_Timestamp wire_deadline,
-  struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_Amount *amount_without_fee,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_ExchangeSignatureP *exchange_sig);
-
-
 /* ********************* wallet signing ************************** */
 
 
@@ -3331,6 +3423,518 @@ TALER_merchant_refund_verify (
   const struct TALER_Amount *amount,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_MerchantSignatureP *merchant_sig);
+
+
+/* ********************* exchange online signing ************************** */
+
+
+/**
+ * Signature of a function that signs the message in @a purpose with the
+ * exchange's signing key.
+ *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header. *
+ * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the exchange
+ * @param[out] sig signature over purpose using current signing key
+ * @return #TALER_EC_NONE on success
+ */
+typedef enum TALER_ErrorCode
+(*TALER_ExchangeSignCallback)(
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Signature of a function that signs the message in @a purpose with the
+ * exchange's signing key.
+ *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header. *
+ * @param cls closure
+ * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the exchange
+ * @param[out] sig signature over purpose using current signing key
+ * @return #TALER_EC_NONE on success
+ */
+typedef enum TALER_ErrorCode
+(*TALER_ExchangeSignCallback2)(
+  void *cls,
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create deposit confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_wire hash of the merchant’s account details
+ * @param h_extensions hash over the extensions, can be NULL
+ * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
+ * @param wire_deadline date until which the exchange should wire the funds
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param amount_without_fee the amount to be deposited after fees
+ * @param coin_pub public key of the deposited coin
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_deposit_confirmation_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify deposit confirmation signature.
+ *
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_wire hash of the merchant’s account details
+ * @param h_extensions hash over the extensions, can be NULL
+ * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
+ * @param wire_deadline date until which the exchange should wire the funds
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param amount_without_fee the amount to be deposited after fees
+ * @param coin_pub public key of the deposited coin
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_deposit_confirmation_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_ExtensionContractHashP *h_extensions,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create refund confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX wire transfer subject used
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_refund_confirmation_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant,
+  uint64_t rtransaction_id,
+  const struct TALER_Amount *refund_amount,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify refund confirmation signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_refund_confirmation_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant,
+  uint64_t rtransaction_id,
+  const struct TALER_Amount *refund_amount,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create refresh melt confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_melt_confirmation_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_RefreshCommitmentP *rc,
+  uint32_t noreveal_index,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify refresh melt confirmation signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_melt_confirmation_verify (
+  const struct TALER_RefreshCommitmentP *rc,
+  uint32_t noreveal_index,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create exchange key set signature.
+ *
+ * @param scb function to call to create the signature
+ * @param timestamp time when the key set was issued
+ * @param hc hash over all the keys
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_key_set_sign (
+  TALER_ExchangeSignCallback2 scb,
+  void *cls,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct GNUNET_HashCode *hc,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify key set signature.
+ *
+ * @param timestamp time when the key set was issued
+ * @param hc hash over all the keys
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_key_set_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct GNUNET_HashCode *hc,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create account setup success signature.
+ *
+ * @param scb function to call to create the signature
+ * @param h_payto target of the KYC account
+ * @param timestamp time when the KYC was confirmed
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_account_setup_success_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Timestamp timestamp,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify account setup success signature.
+ *
+ * @param h_payto target of the KYC account
+ * @param timestamp time when the KYC was confirmed
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_account_setup_success_verify (
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+void
+TALER_exchange_online_wire_deposit_append (
+  struct GNUNET_HashContext *hash_context,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp execution_time,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *deposit_value,
+  const struct TALER_Amount *deposit_fee);
+
+
+/**
+ * Create wire deposit signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_wire_deposit_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_Amount *total,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const char *payto,
+  const struct GNUNET_HashCode *h_details,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify wire deposit signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_wire_deposit_verify (
+  const struct TALER_Amount *total,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct GNUNET_HashCode *h_details,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create wire confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_confirm_wire_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Timestamp execution_time,
+  const struct TALER_Amount *coin_contribution,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify confirm wire signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_confirm_wire_verify (
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Timestamp execution_time,
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create confirm recoup signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_confirm_recoup_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *recoup_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify confirm recoup signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_confirm_recoup_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *recoup_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create confirm recoup refresh signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_confirm_recoup_refresh_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *recoup_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify confirm recoup refresh signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_confirm_recoup_refresh_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *recoup_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create denomination unknown signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_denomination_unknown_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify denomination unknown signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_denomination_unknown_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create denomination expired signature.
+ *
+ * @param scb function to call to create the signature
+ * @param XXX
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_denomination_expired_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const char *op,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify denomination expired signature.
+ *
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_denomination_expired_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const char *op,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create reserve closure signature.
+ *
+ * @param scb function to call to create the signature
+ * @param timestamp time when the reserve was closed
+ * @param closing_amount amount left in the reserve
+ * @param closing_fee closing fee charged
+ * @param payto target of the wire transfer
+ * @param wtid wire transfer subject used
+ * @param reserve_pub public key of the closed reserve
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_reserve_closed_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *closing_amount,
+  const struct TALER_Amount *closing_fee,
+  const char *payto,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify reserve closure signature.
+ *
+ * @param timestamp time when the reserve was closed
+ * @param closing_amount amount left in the reserve
+ * @param closing_fee closing fee charged
+ * @param payto target of the wire transfer
+ * @param wtid wire transfer subject used
+ * @param reserve_pub public key of the closed reserve
+ * @param pub where to write the public key
+ * @param sig where to write the signature
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_reserve_closed_verify (
+  struct GNUNET_TIME_Timestamp timestamp,
+  const struct TALER_Amount *closing_amount,
+  const struct TALER_Amount *closing_fee,
+  const char *payto,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
 
 
 /* ********************* offline signing ************************** */

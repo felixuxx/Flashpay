@@ -70,9 +70,33 @@ struct TALER_EXCHANGE_RefundHandle
   void *cb_cls;
 
   /**
-   * Information the exchange should sign in response.
+   * Hash over the proposal data to identify the contract
+   * which is being refunded.
    */
-  struct TALER_RefundConfirmationPS depconf;
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * The Merchant's public key.  Allows the merchant to later refund
+   * the transaction or to inquire about the wire transfer identifier.
+   */
+  struct TALER_MerchantPublicKeyP merchant;
+
+  /**
+   * Merchant-generated transaction ID for the refund.
+   */
+  uint64_t rtransaction_id;
+
+  /**
+   * Amount to be refunded, including refund fee charged by the
+   * exchange to the customer.
+   */
+  struct TALER_Amount refund_amount;
 
 };
 
@@ -119,10 +143,14 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND,
-                                  &rh->depconf,
-                                  &exchange_sig->eddsa_signature,
-                                  &exchange_pub->eddsa_pub))
+      TALER_exchange_online_refund_confirmation_verify (
+        &rh->h_contract_terms,
+        &rh->coin_pub,
+        &rh->merchant,
+        rh->rtransaction_id,
+        &rh->refund_amount,
+        exchange_pub,
+        exchange_sig))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -253,16 +281,16 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                        wallet_timestamp,
                                        &merchant_pub,
                                        refund_deadline,
-                                       &rh->depconf.coin_pub,
+                                       &rh->coin_pub,
                                        &sig))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+      if ( (0 != GNUNET_memcmp (&rh->h_contract_terms,
                                 &h_contract_terms)) ||
-           (0 != GNUNET_memcmp (&rh->depconf.merchant,
+           (0 != GNUNET_memcmp (&rh->merchant,
                                 &merchant_pub)) )
       {
         /* deposit information is about a different merchant/contract */
@@ -334,7 +362,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          TALER_merchant_refund_verify (&rh->depconf.coin_pub,
+          TALER_merchant_refund_verify (&rh->coin_pub,
                                         &h_contract_terms,
                                         rtransaction_id,
                                         &sig_amount,
@@ -345,9 +373,9 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+      if ( (0 != GNUNET_memcmp (&rh->h_contract_terms,
                                 &h_contract_terms)) ||
-           (0 != GNUNET_memcmp (&rh->depconf.merchant,
+           (0 != GNUNET_memcmp (&rh->merchant,
                                 &merchant_pub)) )
       {
         /* refund is about a different merchant/contract */
@@ -355,7 +383,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      if (rtransaction_id == rh->depconf.rtransaction_id)
+      if (rtransaction_id == rh->rtransaction_id)
       {
         /* Eh, this shows either a dependency failure or idempotency,
            but must not happen in a conflict reply. Fail! */
@@ -398,16 +426,12 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   }
 
   {
-    struct TALER_Amount amount;
-
-    TALER_amount_ntoh (&amount,
-                       &rh->depconf.refund_amount);
     if (have_refund)
     {
       if (0 >
           TALER_amount_add (&rtotal,
                             &rtotal,
-                            &amount))
+                            &rh->refund_amount))
       {
         GNUNET_break (0);
         GNUNET_JSON_parse_free (spec);
@@ -416,7 +440,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     }
     else
     {
-      rtotal = amount;
+      rtotal = rh->refund_amount;
     }
   }
   if (-1 == TALER_amount_cmp (&dtotal,
@@ -472,7 +496,6 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   e = json_array_get (h, 0);
   {
     struct TALER_Amount amount;
-    struct TALER_Amount depconf_amount;
     const char *type;
     struct TALER_MerchantSignatureP sig;
     struct TALER_Amount refund_fee;
@@ -507,7 +530,7 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
-        TALER_merchant_refund_verify (&rh->depconf.coin_pub,
+        TALER_merchant_refund_verify (&rh->coin_pub,
                                       &h_contract_terms,
                                       rtransaction_id,
                                       &amount,
@@ -518,14 +541,12 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    TALER_amount_ntoh (&depconf_amount,
-                       &rh->depconf.refund_amount);
-    if ( (rtransaction_id != rh->depconf.rtransaction_id) ||
-         (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+    if ( (rtransaction_id != rh->rtransaction_id) ||
+         (0 != GNUNET_memcmp (&rh->h_contract_terms,
                               &h_contract_terms)) ||
-         (0 != GNUNET_memcmp (&rh->depconf.merchant,
+         (0 != GNUNET_memcmp (&rh->merchant,
                               &merchant_pub)) ||
-         (0 == TALER_amount_cmp (&depconf_amount,
+         (0 == TALER_amount_cmp (&rh->refund_amount,
                                  &amount)) )
     {
       GNUNET_break_op (0);
@@ -669,15 +690,15 @@ handle_refund_finished (void *cls,
 
 
 struct TALER_EXCHANGE_RefundHandle *
-TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
-                       const struct TALER_Amount *amount,
-                       const struct
-                       TALER_PrivateContractHashP *h_contract_terms,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       uint64_t rtransaction_id,
-                       const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                       TALER_EXCHANGE_RefundCallback cb,
-                       void *cb_cls)
+TALER_EXCHANGE_refund (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_Amount *amount,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  uint64_t rtransaction_id,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  TALER_EXCHANGE_RefundCallback cb,
+  void *cb_cls)
 {
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_MerchantSignatureP merchant_sig;
@@ -735,15 +756,11 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (rh);
     return NULL;
   }
-  rh->depconf.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
-  rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
-  rh->depconf.h_contract_terms = *h_contract_terms;
-  rh->depconf.coin_pub = *coin_pub;
-  rh->depconf.merchant = merchant_pub;
-  rh->depconf.rtransaction_id = GNUNET_htonll (rtransaction_id);
-  TALER_amount_hton (&rh->depconf.refund_amount,
-                     amount);
-
+  rh->h_contract_terms = *h_contract_terms;
+  rh->coin_pub = *coin_pub;
+  rh->merchant = merchant_pub;
+  rh->rtransaction_id = rtransaction_id;
+  rh->refund_amount = *amount;
   eh = TALER_EXCHANGE_curl_easy_get_ (rh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

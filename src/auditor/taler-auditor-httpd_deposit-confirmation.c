@@ -182,17 +182,18 @@ verify_and_execute_deposit_confirmation (
 
   /* check deposit confirmation signature */
   if (GNUNET_OK !=
-      TALER_exchange_deposit_confirm_verify (&dc->h_contract_terms,
-                                             &dc->h_wire,
-                                             NULL /* h_extensions! */,
-                                             dc->exchange_timestamp,
-                                             dc->wire_deadline,
-                                             dc->refund_deadline,
-                                             &dc->amount_without_fee,
-                                             &dc->coin_pub,
-                                             &dc->merchant,
-                                             &dc->exchange_pub,
-                                             &dc->exchange_sig))
+      TALER_exchange_online_deposit_confirmation_verify (
+        &dc->h_contract_terms,
+        &dc->h_wire,
+        NULL /* h_extensions! */,
+        dc->exchange_timestamp,
+        dc->wire_deadline,
+        dc->refund_deadline,
+        &dc->amount_without_fee,
+        &dc->coin_pub,
+        &dc->merchant,
+        &dc->exchange_pub,
+        &dc->exchange_sig))
   {
     TALER_LOG_WARNING (
       "Invalid signature on /deposit-confirmation request\n");

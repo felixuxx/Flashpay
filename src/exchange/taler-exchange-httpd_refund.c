@@ -50,22 +50,18 @@ reply_refund_success (struct MHD_Connection *connection,
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  struct TALER_RefundConfirmationPS rc = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND),
-    .purpose.size = htonl (sizeof (rc)),
-    .h_contract_terms = refund->h_contract_terms,
-    .coin_pub = *coin_pub,
-    .merchant = refund->merchant_pub,
-    .rtransaction_id = GNUNET_htonll (refund->rtransaction_id)
-  };
   enum TALER_ErrorCode ec;
 
-  TALER_amount_hton (&rc.refund_amount,
-                     &refund->refund_amount);
   if (TALER_EC_NONE !=
-      (ec = TEH_keys_exchange_sign (&rc,
-                                    &pub,
-                                    &sig)))
+      (ec = TALER_exchange_online_refund_confirmation_sign (
+         &TEH_keys_exchange_sign_,
+         &refund->h_contract_terms,
+         coin_pub,
+         &refund->merchant_pub,
+         refund->rtransaction_id,
+         &refund->refund_amount,
+         &pub,
+         &sig)))
   {
     return TALER_MHD_reply_with_ec (connection,
                                     ec,

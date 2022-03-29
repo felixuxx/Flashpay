@@ -48,18 +48,15 @@ reply_melt_success (struct MHD_Connection *connection,
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  struct TALER_RefreshMeltConfirmationPS body = {
-    .purpose.size = htonl (sizeof (body)),
-    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
-    .rc = *rc,
-    .noreveal_index = htonl (noreveal_index)
-  };
   enum TALER_ErrorCode ec;
 
   if (TALER_EC_NONE !=
-      (ec = TEH_keys_exchange_sign (&body,
-                                    &pub,
-                                    &sig)))
+      (ec = TALER_exchange_online_melt_confirmation_sign (
+         &TEH_keys_exchange_sign_,
+         rc,
+         noreveal_index,
+         &pub,
+         &sig)))
   {
     return TALER_MHD_reply_with_ec (connection,
                                     ec,

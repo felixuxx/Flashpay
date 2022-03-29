@@ -188,17 +188,18 @@ verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
                    const struct TALER_MasterSignatureP *master_sig)
 {
   if (GNUNET_OK !=
-      TALER_exchange_deposit_confirm_verify (h_contract_terms,
-                                             h_wire,
-                                             h_extensions,
-                                             exchange_timestamp,
-                                             wire_deadline,
-                                             refund_deadline,
-                                             amount_without_fee,
-                                             coin_pub,
-                                             merchant_pub,
-                                             exchange_pub,
-                                             exchange_sig))
+      TALER_exchange_online_deposit_confirmation_verify (
+        h_contract_terms,
+        h_wire,
+        h_extensions,
+        exchange_timestamp,
+        wire_deadline,
+        refund_deadline,
+        amount_without_fee,
+        coin_pub,
+        merchant_pub,
+        exchange_pub,
+        exchange_sig))
   {
     GNUNET_break_op (0);
     TALER_LOG_WARNING (

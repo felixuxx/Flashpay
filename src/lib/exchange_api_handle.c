@@ -1136,11 +1136,7 @@ decode_keys_json (const json_t *resp_obj,
 
   if (check_sig)
   {
-    struct TALER_ExchangeKeySetPS ks = {
-      .purpose.size = htonl (sizeof (ks)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
-      .list_issue_date = GNUNET_TIME_timestamp_hton (key_data->list_issue_date)
-    };
+    struct GNUNET_HashCode hc;
 
     /* If we had any age restricted denominations, add their hash to the end of
      * the normal denominations. */
@@ -1160,16 +1156,18 @@ decode_keys_json (const json_t *resp_obj,
     }
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                       &ks.hc);
+                                       &hc);
     hash_context = NULL;
     EXITIF (GNUNET_OK !=
             TALER_EXCHANGE_test_signing_key (key_data,
                                              &pub));
+
     EXITIF (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_KEY_SET,
-                                        &ks,
-                                        &sig.eddsa_signature,
-                                        &pub.eddsa_pub));
+            TALER_exchange_online_key_set_verify (
+              key_data->list_issue_date,
+              &hc,
+              &pub,
+              &sig));
   }
   return GNUNET_OK;
 EXITIF_exit:

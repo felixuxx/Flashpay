@@ -93,11 +93,11 @@ reply_transfer_details (struct MHD_Connection *connection,
                         const struct AggregatedDepositDetail *wdd_head)
 {
   json_t *deposits;
-  struct TALER_WireDepositDetailP dd;
   struct GNUNET_HashContext *hash_context;
-  struct TALER_WireDepositDataPS wdp;
+  struct GNUNET_HashCode h_details;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
+  struct TALER_PaytoHashP h_payto;
 
   deposits = json_array ();
   GNUNET_assert (NULL != deposits);
@@ -106,16 +106,12 @@ reply_transfer_details (struct MHD_Connection *connection,
        NULL != wdd_pos;
        wdd_pos = wdd_pos->next)
   {
-    dd.h_contract_terms = wdd_pos->h_contract_terms;
-    dd.execution_time = GNUNET_TIME_timestamp_hton (exec_time);
-    dd.coin_pub = wdd_pos->coin_pub;
-    TALER_amount_hton (&dd.deposit_value,
-                       &wdd_pos->deposit_value);
-    TALER_amount_hton (&dd.deposit_fee,
-                       &wdd_pos->deposit_fee);
-    GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &dd,
-                                     sizeof (struct TALER_WireDepositDetailP));
+    TALER_exchange_online_wire_deposit_append (hash_context,
+                                               &wdd_pos->h_contract_terms,
+                                               exec_time,
+                                               &wdd_pos->coin_pub,
+                                               &wdd_pos->deposit_value,
+                                               &wdd_pos->deposit_fee);
     if (0 !=
         json_array_append_new (
           deposits,
@@ -137,24 +133,21 @@ reply_transfer_details (struct MHD_Connection *connection,
                                          "json_array_append_new() failed");
     }
   }
-  wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
-  wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
-  TALER_amount_hton (&wdp.total,
-                     total);
-  TALER_amount_hton (&wdp.wire_fee,
-                     wire_fee);
-  wdp.merchant_pub = *merchant_pub;
-  TALER_payto_hash (payto_uri,
-                    &wdp.h_payto);
   GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                     &wdp.h_details);
+                                     &h_details);
   {
     enum TALER_ErrorCode ec;
 
     if (TALER_EC_NONE !=
-        (ec = TEH_keys_exchange_sign (&wdp,
-                                      &pub,
-                                      &sig)))
+        (ec = TALER_exchange_online_wire_deposit_sign (
+           &TEH_keys_exchange_sign_,
+           total,
+           wire_fee,
+           merchant_pub,
+           payto_uri,
+           &h_details,
+           &pub,
+           &sig)))
     {
       json_decref (deposits);
       return TALER_MHD_reply_with_ec (connection,
@@ -163,6 +156,8 @@ reply_transfer_details (struct MHD_Connection *connection,
     }
   }
 
+  TALER_payto_hash (payto_uri,
+                    &h_payto);
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -173,7 +168,7 @@ reply_transfer_details (struct MHD_Connection *connection,
     GNUNET_JSON_pack_data_auto ("merchant_pub",
                                 merchant_pub),
     GNUNET_JSON_pack_data_auto ("h_payto",
-                                &wdp.h_payto),
+                                &h_payto),
     GNUNET_JSON_pack_timestamp ("execution_time",
                                 exec_time),
     GNUNET_JSON_pack_array_steal ("deposits",

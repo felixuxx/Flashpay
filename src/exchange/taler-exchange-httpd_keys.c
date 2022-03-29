@@ -1797,19 +1797,17 @@ create_krd (struct TEH_KeyStateHandle *ksh,
               GNUNET_TIME_timestamp2s (last_cpd));
   /* Sign hash over denomination keys */
   {
-    struct TALER_ExchangeKeySetPS ks = {
-      .purpose.size = htonl (sizeof (ks)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
-      .list_issue_date = GNUNET_TIME_timestamp_hton (last_cpd),
-      .hc = *denom_keys_hash
-    };
     enum TALER_ErrorCode ec;
 
     if (TALER_EC_NONE !=
-        (ec = TEH_keys_exchange_sign2 (ksh,
-                                       &ks,
-                                       &exchange_pub,
-                                       &exchange_sig)))
+        (ec =
+           TALER_exchange_online_key_set_sign (
+             &TEH_keys_exchange_sign2_,
+             ksh,
+             last_cpd,
+             denom_keys_hash,
+             &exchange_pub,
+             &exchange_sig)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Could not create key response data: cannot sign (%s)\n",
@@ -2770,11 +2768,12 @@ TEH_keys_exchange_sign_ (
 
 enum TALER_ErrorCode
 TEH_keys_exchange_sign2_ (
-  struct TEH_KeyStateHandle *ksh,
+  void *cls,
   const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig)
 {
+  struct TEH_KeyStateHandle *ksh = cls;
   enum TALER_ErrorCode ec;
 
   TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_EDDSA]++;

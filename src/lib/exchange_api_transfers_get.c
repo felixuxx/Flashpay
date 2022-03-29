@@ -177,43 +177,29 @@ check_transfers_get_response_ok (
         return GNUNET_SYSERR;
       }
       /* build up big hash for signature checking later */
-      {
-        struct TALER_WireDepositDetailP dd;
-
-        dd.h_contract_terms = detail->h_contract_terms;
-        dd.execution_time = GNUNET_TIME_timestamp_hton (td.execution_time);
-        dd.coin_pub = detail->coin_pub;
-        TALER_amount_hton (&dd.deposit_value,
-                           &detail->coin_value);
-        TALER_amount_hton (&dd.deposit_fee,
-                           &detail->coin_fee);
-        GNUNET_CRYPTO_hash_context_read (hash_context,
-                                         &dd,
-                                         sizeof (dd));
-      }
+      TALER_exchange_online_wire_deposit_append (
+        hash_context,
+        &detail->h_contract_terms,
+        td.execution_time,
+        &detail->coin_pub,
+        &detail->coin_value,
+        &detail->coin_fee);
     }
     /* Check signature */
     {
-      struct TALER_WireDepositDataPS wdp = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT),
-        .purpose.size = htonl (sizeof (wdp)),
-        .merchant_pub = merchant_pub,
-        .h_payto = td.h_payto
-      };
+      struct GNUNET_HashCode h_details;
 
-      TALER_amount_hton (&wdp.total,
-                         &td.total_amount);
-      TALER_amount_hton (&wdp.wire_fee,
-                         &td.wire_fee);
       GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                         &wdp.h_details);
+                                         &h_details);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
-            &wdp,
-            &td.exchange_sig.eddsa_signature,
-            &td.exchange_pub.eddsa_pub))
+          TALER_exchange_online_wire_deposit_verify (
+            &td.total_amount,
+            &td.wire_fee,
+            &merchant_pub,
+            &td.h_payto,
+            &h_details,
+            &td.exchange_pub,
+            &td.exchange_sig))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
@@ -330,16 +316,6 @@ handle_transfers_get_finished (void *cls,
 }
 
 
-/**
- * Query the exchange about which transactions were combined
- * to create a wire transfer.
- *
- * @param exchange exchange to query
- * @param wtid raw wire transfer identifier to get information about
- * @param cb callback to call
- * @param cb_cls closure for @a cb
- * @return handle to cancel operation
- */
 struct TALER_EXCHANGE_TransfersGetHandle *
 TALER_EXCHANGE_transfers_get (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -369,8 +345,7 @@ TALER_EXCHANGE_transfers_get (
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (wtid,
-                                         sizeof (struct
-                                                 TALER_WireTransferIdentifierRawP),
+                                         sizeof (wtid),
                                          wtid_str,
                                          sizeof (wtid_str));
     *end = '\0';
