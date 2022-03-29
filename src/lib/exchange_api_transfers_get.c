@@ -345,7 +345,8 @@ TALER_EXCHANGE_transfers_get (
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (wtid,
-                                         sizeof (wtid),
+                                         sizeof (struct
+                                                 TALER_WireTransferIdentifierRawP),
                                          wtid_str,
                                          sizeof (wtid_str));
     *end = '\0';
