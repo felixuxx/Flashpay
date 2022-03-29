@@ -442,47 +442,6 @@ struct TALER_PaymentResponsePS
   struct TALER_PrivateContractHashP h_contract_terms;
 };
 
-/**
- * @brief Format used to generate the signature on a request to refund
- * a coin into the account of the customer.
- */
-struct TALER_RefundConfirmationPS
-{
-  /**
-   * Purpose must be #TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the proposal data to identify the contract
-   * which is being refunded.
-   */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
-
-  /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction or to inquire about the wire transfer identifier.
-   */
-  struct TALER_MerchantPublicKeyP merchant;
-
-  /**
-   * Merchant-generated transaction ID for the refund.
-   */
-  uint64_t rtransaction_id GNUNET_PACKED;
-
-  /**
-   * Amount to be refunded, including refund fee charged by the
-   * exchange to the customer.
-   */
-  struct TALER_AmountNBO refund_amount;
-};
-
 
 GNUNET_NETWORK_STRUCT_END
 
