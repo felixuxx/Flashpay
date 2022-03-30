@@ -1595,12 +1595,6 @@ then
     run_audit aggregator
 
     echo -n "Testing inconsistency detection... "
-    ROW=`jq -e .bad_sig_losses[0].row < test-audit-aggregation.json`
-    if test $ROW != "1"
-    then
-        exit_fail "Row wrong, got $ROW"
-    fi
-
     LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-aggregation.json`
     if test $LOSS == "TESTKUDOS:0"
     then
