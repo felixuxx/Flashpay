@@ -199,6 +199,49 @@ postgres_create_tables (void *cls)
 
 
 /**
+ * Create tables of a shard node with index idx
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param idx the shards index, will be appended as suffix to all tables
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+static enum GNUNET_GenericReturnValue
+postgres_create_shard_tables (void *cls,
+                              uint32_t idx)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_Context *conn;
+  enum GNUNET_GenericReturnValue ret;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint32 (&idx),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    GNUNET_PQ_make_prepare ("create_shard_tables",
+                            "SELECT"
+                            " setup_shard"
+                            " ($1);",
+                            1),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
+
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
+                                     "exchangedb-postgres",
+                                     "shard-",
+                                     NULL,
+                                     ps);
+  if (NULL == conn)
+    return GNUNET_SYSERR;
+  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
+                                              "create_shard_tables",
+                                              params))
+    ret = GNUNET_SYSERR;
+  GNUNET_PQ_disconnect (conn);
+  return ret;
+}
+
+
+/**
  * Setup partitions of already existing tables
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -207,7 +250,7 @@ postgres_create_tables (void *cls)
  */
 static enum GNUNET_GenericReturnValue
 postgres_setup_partitions (void *cls,
-                           const uint32_t num)
+                           uint32_t num)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
@@ -227,7 +270,7 @@ postgres_setup_partitions (void *cls,
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
-                                     "exchage-",
+                                     NULL,
                                      NULL,
                                      ps);
   if (NULL == conn)
@@ -243,15 +286,15 @@ postgres_setup_partitions (void *cls,
 
 
 /**
- * Setup shards for already existing tables
+ * Setup foreign servers (shards) for already existing tables
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param num the number of shard servers to create for each partitioned table
+ * @param num the number of foreign servers (shards) to create for each partitioned table
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 static enum GNUNET_GenericReturnValue
-postgres_setup_shards (void *cls,
-                       const uint32_t num)
+postgres_setup_foreign_servers (void *cls,
+                                uint32_t num)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
@@ -261,14 +304,9 @@ postgres_setup_shards (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare ("setup_shards",
+    GNUNET_PQ_make_prepare ("create_foreign_servers",
                             "SELECT"
-                            " master_prepare_sharding"
-                            " ();",
-                            0),
-    GNUNET_PQ_make_prepare ("create_shards",
-                            "SELECT"
-                            " create_shards"
+                            " create_foreign_servers"
                             " ($1);",
                             1),
     GNUNET_PQ_PREPARED_STATEMENT_END
@@ -276,18 +314,13 @@ postgres_setup_shards (void *cls,
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
-                                     "exchage-",
+                                     NULL,
                                      NULL,
                                      ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  ret = GNUNET_OK;
   if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-                                              "setup_shards",
-                                              NULL))
-    ret = GNUNET_SYSERR;
-  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-                                              "create_shards",
+                                              "create_foreign_servers",
                                               params))
     ret = GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
@@ -13114,8 +13147,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->cls = pg;
   plugin->drop_tables = &postgres_drop_tables;
   plugin->create_tables = &postgres_create_tables;
+  plugin->create_shard_tables = &postgres_create_shard_tables;
   plugin->setup_partitions = &postgres_setup_partitions;
-  plugin->setup_shards = &postgres_setup_shards;
+  plugin->setup_foreign_servers = &postgres_setup_foreign_servers;
   plugin->start = &postgres_start;
   plugin->start_read_committed = &postgres_start_read_committed;
   plugin->commit = &postgres_commit;

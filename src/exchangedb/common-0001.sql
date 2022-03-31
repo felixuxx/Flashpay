@@ -1484,6 +1484,7 @@ $$;
 --------------------- Sharding ---------------------------
 
 ---------------------- Shards ----------------------------
+
 CREATE OR REPLACE FUNCTION setup_shard(
   shard_suffix VARCHAR
 )
@@ -1553,6 +1554,7 @@ END
 $$;
 
 ------------------------------ Master ----------------------------------
+
 CREATE OR REPLACE FUNCTION create_foreign_table(
     source_table_name VARCHAR
     ,modulus INTEGER
@@ -1849,18 +1851,21 @@ COMMENT ON FUNCTION create_shard_server
   IS 'Create a shard server on the master
       node with all foreign tables and user mappings';
 
-CREATE OR REPLACE FUNCTION create_shards(
-  num_shards INTEGER
+CREATE OR REPLACE FUNCTION create_foreign_servers(
+  amount INTEGER
   ,domain VARCHAR DEFAULT 'perf.taler'
 )
   RETURNS VOID
   LANGUAGE plpgsql
 AS $$
 BEGIN
-  FOR i IN 1..num_shards LOOP
+
+  PERFORM master_prepare_sharding();
+
+  FOR i IN 1..amount LOOP
     PERFORM create_shard_server(
       i
-     ,num_shards
+     ,amount
      ,i
      ,'shard-' || i::varchar || '.' || domain
      ,'taler'
