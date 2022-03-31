@@ -26,6 +26,10 @@ BUILT_SOURCES = \
   shard-0001.sql \
   exchange-0001.sql
 
+CLEANFILES = \
+  shard-0001.sql \
+  exchange-0001.sql
+
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql
 	cat common-0001.sql exchange-0001-part.sql >$@
 

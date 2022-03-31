@@ -5,3 +5,5 @@ test-exchangedb-postgres
 test-exchangedb-signkeys
 test-perf-taler-exchangedb
 bench-db-postgres
+exchange-0001.sql
+shard-0001.sql
