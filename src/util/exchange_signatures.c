@@ -23,6 +23,8 @@
 #include "taler_signatures.h"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format used to generate the signature on a confirmation
  * from the exchange that a deposit request succeeded.
@@ -90,6 +92,8 @@ struct TALER_DepositConfirmationPS
   struct TALER_MerchantPublicKeyP merchant_pub;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -172,6 +176,8 @@ TALER_exchange_online_deposit_confirmation_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format used to generate the signature on a request to refund
  * a coin into the account of the customer.
@@ -212,6 +218,8 @@ struct TALER_RefundConfirmationPS
    */
   struct TALER_AmountNBO refund_amount;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -276,6 +284,8 @@ TALER_exchange_online_refund_confirmation_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format of the block signed by the Exchange in response to a successful
  * "/refresh/melt" request.  Hereby the exchange affirms that all of the
@@ -302,6 +312,8 @@ struct TALER_RefreshMeltConfirmationPS
   uint32_t noreveal_index GNUNET_PACKED;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -347,6 +359,8 @@ TALER_exchange_online_melt_confirmation_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange over the full set of keys, used
  * to detect cheating exchanges that give out different sets to
@@ -371,6 +385,8 @@ struct TALER_ExchangeKeySetPS
    */
   struct GNUNET_HashCode hc GNUNET_PACKED;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -418,6 +434,8 @@ TALER_exchange_online_key_set_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature by which an exchange affirms that an account
  * successfully passed the KYC checks.
@@ -441,6 +459,8 @@ struct TALER_ExchangeAccountSetupSuccessPS
    */
   struct GNUNET_TIME_TimestampNBO timestamp;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -490,6 +510,8 @@ TALER_exchange_online_account_setup_success_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format internally used for packing the detailed information
  * to generate the signature for /track/transfer signatures.
@@ -524,6 +546,8 @@ struct TALER_WireDepositDetailP
 
 };
 
+GNUNET_NETWORK_STRUCT_END
+
 
 void
 TALER_exchange_online_wire_deposit_append (
@@ -548,6 +572,8 @@ TALER_exchange_online_wire_deposit_append (
                                    sizeof (dd));
 }
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * @brief Format used to generate the signature for /wire/deposit
@@ -588,6 +614,8 @@ struct TALER_WireDepositDataPS
   struct GNUNET_HashCode h_details;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -650,6 +678,8 @@ TALER_exchange_online_wire_deposit_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Details affirmed by the exchange about a wire transfer the exchange
  * claims to have done with respect to a deposit operation.
@@ -697,6 +727,8 @@ struct TALER_ConfirmWirePS
   struct TALER_AmountNBO coin_contribution;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -761,6 +793,8 @@ TALER_exchange_online_confirm_wire_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which the exchange affirms that it will
  * refund a coin as part of the emergency /recoup
@@ -798,6 +832,8 @@ struct TALER_RecoupConfirmationPS
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -851,6 +887,8 @@ TALER_exchange_online_confirm_recoup_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which the exchange affirms that it will refund a refreshed coin
  * as part of the emergency /recoup protocol.  The recoup will go back to the
@@ -887,6 +925,8 @@ struct TALER_RecoupRefreshConfirmationPS
    */
   struct TALER_CoinSpendPublicKeyP old_coin_pub;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -945,6 +985,8 @@ TALER_exchange_online_confirm_recoup_refresh_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which the exchange affirms that it does not
  * currently know a denomination by the given hash.
@@ -967,6 +1009,8 @@ struct TALER_DenominationUnknownAffirmationPS
    */
   struct TALER_DenominationHashP h_denom_pub;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -1012,6 +1056,8 @@ TALER_exchange_online_denomination_unknown_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which the exchange affirms that it does not
  * currently consider the given denomination to be valid
@@ -1041,6 +1087,8 @@ struct TALER_DenominationExpiredAffirmationPS
   struct TALER_DenominationHashP h_denom_pub;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
@@ -1100,6 +1148,8 @@ TALER_exchange_online_denomination_expired_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which the exchange affirms that it has
  * closed a reserve and send back the funds.
@@ -1142,6 +1192,8 @@ struct TALER_ReserveCloseConfirmationPS
    */
   struct TALER_WireTransferIdentifierRawP wtid;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode

@@ -79,40 +79,37 @@ struct InsertDepositState
  * @param[out] issue information to initialize with "valid" data
  */
 static void
-fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
   struct GNUNET_TIME_Timestamp now;
 
   memset (issue,
           0,
-          sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
+          sizeof (*issue));
   now = GNUNET_TIME_timestamp_get ();
-  issue->properties.start
-    = GNUNET_TIME_timestamp_hton (now);
-  issue->properties.expire_withdraw
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MINUTES));
-  issue->properties.expire_deposit
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_HOURS));
-  issue->properties.expire_legal
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_DAYS));
+  issue->start
+    = now;
+  issue->expire_withdraw
+    = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MINUTES);
+  issue->expire_deposit
+    = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_HOURS);
+  issue->expire_legal
+    = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_DAYS);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount_nbo ("EUR:1",
-                                             &issue->properties.value));
+                 TALER_string_to_amount ("EUR:1",
+                                         &issue->value));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fees.withdraw));
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &issue->fees.withdraw));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fees.deposit));
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &issue->fees.deposit));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fees.refresh));
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &issue->fees.refresh));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount_nbo ("EUR:0.1",
-                                             &issue->properties.fees.refund));
+                 TALER_string_to_amount ("EUR:0.1",
+                                         &issue->fees.refund));
 }
 
 
@@ -131,7 +128,7 @@ insert_deposit_run (void *cls,
   struct InsertDepositState *ids = cls;
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_MerchantPrivateKeyP merchant_priv;
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
   struct TALER_DenominationPublicKey dpk;
   struct TALER_DenominationPrivateKey denom_priv;
 
@@ -144,7 +141,7 @@ insert_deposit_run (void *cls,
                                           TALER_DENOMINATION_RSA,
                                           1024));
   TALER_denom_pub_hash (&dpk,
-                        &issue.properties.denom_hash);
+                        &issue.denom_hash);
 
   if ( (GNUNET_OK !=
         ids->dbc->plugin->start (ids->dbc->plugin->cls,

@@ -102,7 +102,7 @@ TALER_ARL_report (json_t *array,
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
   const struct TALER_DenominationHashP *dh,
-  const struct TALER_DenominationKeyValidityPS **issue);
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue);
 
 
 /**
@@ -117,7 +117,7 @@ TALER_ARL_get_denomination_info_by_hash (
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info (
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_DenominationKeyValidityPS **issue,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue,
   struct TALER_DenominationHashP *dh);
 
 

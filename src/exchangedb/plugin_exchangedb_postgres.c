@@ -3550,27 +3550,26 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_info (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
   struct PostgresClosure *pg = cls;
   struct TALER_DenominationHashP denom_hash;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
+    GNUNET_PQ_query_param_auto_from_type (&issue->denom_hash),
     TALER_PQ_query_param_denom_pub (denom_pub),
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
-    GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.start),
-    GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.expire_withdraw),
-    GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.expire_deposit),
-    GNUNET_PQ_query_param_timestamp_nbo (&issue->properties.expire_legal),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.value),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.withdraw),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.deposit),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refresh),
-    TALER_PQ_query_param_amount_nbo (&issue->properties.fees.refund),
+    GNUNET_PQ_query_param_timestamp (&issue->start),
+    GNUNET_PQ_query_param_timestamp (&issue->expire_withdraw),
+    GNUNET_PQ_query_param_timestamp (&issue->expire_deposit),
+    GNUNET_PQ_query_param_timestamp (&issue->expire_legal),
+    TALER_PQ_query_param_amount (&issue->value),
+    TALER_PQ_query_param_amount (&issue->fees.withdraw),
+    TALER_PQ_query_param_amount (&issue->fees.deposit),
+    TALER_PQ_query_param_amount (&issue->fees.refresh),
+    TALER_PQ_query_param_amount (&issue->fees.refund),
     GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.bits),
     GNUNET_PQ_query_param_end
   };
-  struct TALER_DenomFeeSet fees;
 
   GNUNET_assert (denom_pub->age_mask.bits ==
                  issue->age_mask.bits);
@@ -3578,26 +3577,20 @@ postgres_insert_denomination_info (
                         &denom_hash);
   GNUNET_assert (0 ==
                  GNUNET_memcmp (&denom_hash,
-                                &issue->properties.denom_hash));
+                                &issue->denom_hash));
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   GNUNET_TIME_timestamp_ntoh (
-                     issue->properties.start).abs_time));
+                   issue->start.abs_time));
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   GNUNET_TIME_timestamp_ntoh (
-                     issue->properties.expire_withdraw).abs_time));
+                   issue->expire_withdraw.abs_time));
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   GNUNET_TIME_timestamp_ntoh (
-                     issue->properties.expire_deposit).abs_time));
+                   issue->expire_deposit.abs_time));
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   GNUNET_TIME_timestamp_ntoh (
-                     issue->properties.expire_legal).abs_time));
+                   issue->expire_legal.abs_time));
   /* check fees match denomination currency */
-  TALER_denom_fee_set_ntoh (&fees,
-                            &issue->properties.fees);
   GNUNET_assert (GNUNET_YES ==
                  TALER_denom_fee_check_currency (
-                   issue->properties.value.currency,
-                   &fees));
+                   issue->value.currency,
+                   &issue->fees));
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              params);
@@ -3616,7 +3609,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_info (
   void *cls,
   const struct TALER_DenominationHashP *denom_pub_hash,
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+  struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -3627,43 +3620,36 @@ postgres_get_denomination_info (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                           &issue->signature),
-    GNUNET_PQ_result_spec_timestamp_nbo ("valid_from",
-                                         &issue->properties.start),
-    GNUNET_PQ_result_spec_timestamp_nbo ("expire_withdraw",
-                                         &issue->properties.expire_withdraw),
-    GNUNET_PQ_result_spec_timestamp_nbo ("expire_deposit",
-                                         &issue->properties.expire_deposit),
-    GNUNET_PQ_result_spec_timestamp_nbo ("expire_legal",
-                                         &issue->properties.expire_legal),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin",
-                                     &issue->properties.value),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw",
-                                     &issue->properties.fees.withdraw),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit",
-                                     &issue->properties.fees.deposit),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refresh",
-                                     &issue->properties.fees.refresh),
-    TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
-                                     &issue->properties.fees.refund),
+    GNUNET_PQ_result_spec_timestamp ("valid_from",
+                                     &issue->start),
+    GNUNET_PQ_result_spec_timestamp ("expire_withdraw",
+                                     &issue->expire_withdraw),
+    GNUNET_PQ_result_spec_timestamp ("expire_deposit",
+                                     &issue->expire_deposit),
+    GNUNET_PQ_result_spec_timestamp ("expire_legal",
+                                     &issue->expire_legal),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                 &issue->value),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                 &issue->fees.withdraw),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 &issue->fees.deposit),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                 &issue->fees.refresh),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                 &issue->fees.refund),
     GNUNET_PQ_result_spec_uint32 ("age_mask",
                                   &issue->age_mask.bits),
     GNUNET_PQ_result_spec_end
   };
 
-  memset (&issue->properties.master,
-          0,
-          sizeof (issue->properties.master));
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "denomination_get",
                                                  params,
                                                  rs);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     return qs;
-  issue->properties.purpose.size
-    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
-  issue->properties.purpose.purpose = htonl (
-    TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  issue->properties.denom_hash = *denom_pub_hash;
+  issue->denom_hash = *denom_pub_hash;
   return qs;
 }
 
@@ -3708,7 +3694,7 @@ domination_cb_helper (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+    struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_DenominationHashP denom_hash;
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -3716,34 +3702,30 @@ domination_cb_helper (void *cls,
                                             &issue.signature),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &denom_hash),
-      GNUNET_PQ_result_spec_timestamp_nbo ("valid_from",
-                                           &issue.properties.start),
-      GNUNET_PQ_result_spec_timestamp_nbo ("expire_withdraw",
-                                           &issue.properties.expire_withdraw),
-      GNUNET_PQ_result_spec_timestamp_nbo ("expire_deposit",
-                                           &issue.properties.expire_deposit),
-      GNUNET_PQ_result_spec_timestamp_nbo ("expire_legal",
-                                           &issue.properties.expire_legal),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("coin",
-                                       &issue.properties.value),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_withdraw",
-                                       &issue.properties.fees.withdraw),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_deposit",
-                                       &issue.properties.fees.deposit),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refresh",
-                                       &issue.properties.fees.refresh),
-      TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
-                                       &issue.properties.fees.refund),
+      GNUNET_PQ_result_spec_timestamp ("valid_from",
+                                       &issue.start),
+      GNUNET_PQ_result_spec_timestamp ("expire_withdraw",
+                                       &issue.expire_withdraw),
+      GNUNET_PQ_result_spec_timestamp ("expire_deposit",
+                                       &issue.expire_deposit),
+      GNUNET_PQ_result_spec_timestamp ("expire_legal",
+                                       &issue.expire_legal),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                   &issue.value),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                   &issue.fees.withdraw),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                   &issue.fees.deposit),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                   &issue.fees.refresh),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                   &issue.fees.refund),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_uint32 ("age_mask",
                                     &issue.age_mask.bits),
       GNUNET_PQ_result_spec_end
     };
-
-    memset (&issue.properties.master,
-            0,
-            sizeof (issue.properties.master));
 
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
@@ -3756,18 +3738,13 @@ domination_cb_helper (void *cls,
 
     /* Unfortunately we have to carry the age mask in both, the
      * TALER_DenominationPublicKey and
-     * TALER_EXCHANGEDB_DenominationKeyInformationP at different times.
+     * TALER_EXCHANGEDB_DenominationKeyInformation at different times.
      * Here we use _both_ so let's make sure the values are the same. */
     denom_pub.age_mask = issue.age_mask;
-
-    issue.properties.purpose.size
-      = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
-    issue.properties.purpose.purpose
-      = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
     TALER_denom_pub_hash (&denom_pub,
-                          &issue.properties.denom_hash);
+                          &issue.denom_hash);
     if (0 !=
-        GNUNET_memcmp (&issue.properties.denom_hash,
+        GNUNET_memcmp (&issue.denom_hash,
                        &denom_hash))
     {
       GNUNET_break (0);

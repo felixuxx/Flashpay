@@ -275,7 +275,7 @@ create_denom_key_pair (unsigned int size,
 {
   struct DenomKeyPair *dkp;
   struct TALER_EXCHANGEDB_DenominationKey dki;
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
+  struct TALER_EXCHANGEDB_DenominationKeyInformation issue2;
 
   dkp = GNUNET_new (struct DenomKeyPair);
   GNUNET_assert (GNUNET_OK ==
@@ -289,38 +289,28 @@ create_denom_key_pair (unsigned int size,
           0,
           sizeof (struct TALER_EXCHANGEDB_DenominationKey));
   dki.denom_pub = dkp->pub;
-  dki.issue.properties.start = GNUNET_TIME_timestamp_hton (now);
-  dki.issue.properties.expire_withdraw
-    = GNUNET_TIME_timestamp_hton
-        (GNUNET_TIME_absolute_to_timestamp
-          (GNUNET_TIME_absolute_add (
-            now.abs_time,
-            GNUNET_TIME_UNIT_HOURS)));
-  dki.issue.properties.expire_deposit
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_absolute_to_timestamp
-          (GNUNET_TIME_absolute_add
-            (now.abs_time,
-            GNUNET_TIME_relative_multiply (
-              GNUNET_TIME_UNIT_HOURS, 2))));
-  dki.issue.properties.expire_legal
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_absolute_to_timestamp
-          (GNUNET_TIME_absolute_add
-            (now.abs_time,
-            GNUNET_TIME_relative_multiply (
-              GNUNET_TIME_UNIT_HOURS, 3))));
-  TALER_amount_hton (&dki.issue.properties.value,
-                     value);
-  TALER_denom_fee_set_hton (&dki.issue.properties.fees,
-                            fees);
+  dki.issue.start = now;
+  dki.issue.expire_withdraw
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (
+          now.abs_time,
+          GNUNET_TIME_UNIT_HOURS));
+  dki.issue.expire_deposit
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (
+          now.abs_time,
+          GNUNET_TIME_relative_multiply (
+            GNUNET_TIME_UNIT_HOURS, 2)));
+  dki.issue.expire_legal
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (
+          now.abs_time,
+          GNUNET_TIME_relative_multiply (
+            GNUNET_TIME_UNIT_HOURS, 3)));
+  dki.issue.value = *value;
+  dki.issue.fees = *fees;
   TALER_denom_pub_hash (&dkp->pub,
-                        &dki.issue.properties.denom_hash);
-
-  dki.issue.properties.purpose.size
-    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
-  dki.issue.properties.purpose.purpose = htonl (
-    TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+                        &dki.issue.denom_hash);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->insert_denomination_info (plugin->cls,
                                         &dki.denom_pub,
@@ -334,7 +324,7 @@ create_denom_key_pair (unsigned int size,
   plugin->commit (plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_denomination_info (plugin->cls,
-                                     &dki.issue.properties.denom_hash,
+                                     &dki.issue.denom_hash,
                                      &issue2))
   {
     GNUNET_break (0);
@@ -764,7 +754,7 @@ test_gc (void)
   struct DenomKeyPair *dkp;
   struct GNUNET_TIME_Timestamp now;
   struct GNUNET_TIME_Timestamp past;
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
+  struct TALER_EXCHANGEDB_DenominationKeyInformation issue2;
   struct TALER_DenominationHashP denom_hash;
 
   now = GNUNET_TIME_timestamp_get ();

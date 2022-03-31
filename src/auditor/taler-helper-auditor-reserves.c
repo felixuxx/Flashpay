@@ -501,12 +501,8 @@ handle_reserve_out (void *cls,
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
-  const struct TALER_DenominationKeyValidityPS *issue;
-  struct TALER_Amount withdraw_fee;
-  struct TALER_Amount auditor_value;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct TALER_Amount auditor_amount_with_fee;
-  struct GNUNET_TIME_Timestamp valid_start;
-  struct GNUNET_TIME_Timestamp expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_DenominationHashP h_denom_pub;
 
@@ -541,17 +537,15 @@ handle_reserve_out (void *cls,
   }
 
   /* check that execution date is within withdraw range for denom_pub  */
-  valid_start = GNUNET_TIME_timestamp_ntoh (issue->start);
-  expire_withdraw = GNUNET_TIME_timestamp_ntoh (issue->expire_withdraw);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking withdraw timing: %llu, expire: %llu, timing: %llu\n",
-              (unsigned long long) valid_start.abs_time.abs_value_us,
-              (unsigned long long) expire_withdraw.abs_time.abs_value_us,
+              (unsigned long long) issue->start.abs_time.abs_value_us,
+              (unsigned long long) issue->expire_withdraw.abs_time.abs_value_us,
               (unsigned long long) execution_date.abs_time.abs_value_us);
-  if (GNUNET_TIME_timestamp_cmp (valid_start,
+  if (GNUNET_TIME_timestamp_cmp (issue->start,
                                  >,
                                  execution_date) ||
-      GNUNET_TIME_timestamp_cmp (expire_withdraw,
+      GNUNET_TIME_timestamp_cmp (issue->expire_withdraw,
                                  <,
                                  execution_date))
   {
@@ -593,13 +587,9 @@ handle_reserve_out (void *cls,
     return GNUNET_OK;   /* exit function here, we cannot add this to the legitimate withdrawals */
   }
 
-  TALER_amount_ntoh (&withdraw_fee,
-                     &issue->fees.withdraw);
-  TALER_amount_ntoh (&auditor_value,
-                     &issue->value);
   TALER_ARL_amount_add (&auditor_amount_with_fee,
-                        &auditor_value,
-                        &withdraw_fee);
+                        &issue->value,
+                        &issue->fees.withdraw);
   if (0 !=
       TALER_amount_cmp (&auditor_amount_with_fee,
                         amount_with_fee))
@@ -652,10 +642,10 @@ handle_reserve_out (void *cls,
               TALER_amount2s (&auditor_amount_with_fee));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Increasing withdraw profits by fee %s\n",
-              TALER_amount2s (&withdraw_fee));
+              TALER_amount2s (&issue->fees.withdraw));
   TALER_ARL_amount_add (&rs->total_fee,
                         &rs->total_fee,
-                        &withdraw_fee);
+                        &issue->fees.withdraw);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;

@@ -27,38 +27,10 @@
 #include "taler_signatures.h"
 
 
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * @brief On disk format used for a exchange signing key.  Signing keys are used
- * by the exchange to affirm its messages, but not to create coins.
- * Includes the private key followed by the public information about
- * the signing key.
- */
-struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP
-{
-  /**
-   * Private key part of the exchange's signing key.
-   */
-  struct TALER_ExchangePrivateKeyP signkey_priv;
-
-  /**
-   * Signature over @e issue
-   */
-  struct TALER_MasterSignatureP master_sig;
-
-  /**
-   * Public information about a exchange signing key.
-   */
-  struct TALER_ExchangeSigningKeyValidityPS issue;
-
-};
-
-
 /**
  * Information about a denomination key.
  */
-struct TALER_EXCHANGEDB_DenominationKeyInformationP
+struct TALER_EXCHANGEDB_DenominationKeyInformation
 {
 
   /**
@@ -67,9 +39,60 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
   struct TALER_MasterSignatureP signature;
 
   /**
-   * Signed properties of the denomination key.
+   * Start time of the validity period for this key.
    */
-  struct TALER_DenominationKeyValidityPS properties;
+  struct GNUNET_TIME_Timestamp start;
+
+  /**
+   * The exchange will sign fresh coins between @e start and this time.
+   * @e expire_withdraw will be somewhat larger than @e start to
+   * ensure a sufficiently large anonymity set, while also allowing
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
+   * with high transaction volume.  The period may also differ between
+   * types of coins.  A exchange may also have a few denomination keys
+   * with the same value with overlapping validity periods, to address
+   * issues such as clock skew.
+   */
+  struct GNUNET_TIME_Timestamp expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * exchange will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.  @e expire_deposit must be
+   * significantly larger than @e expire_withdraw (by months or even
+   * years).
+   */
+  struct GNUNET_TIME_Timestamp expire_deposit;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_deposit (by a year or more).
+   */
+  struct GNUNET_TIME_Timestamp expire_legal;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_Amount value;
+
+  /**
+   * Fees for the coin.
+   */
+  struct TALER_DenomFeeSet fees;
+
+  /**
+   * Hash code of the denomination public key. (Used to avoid having
+   * the variable-size RSA key in this struct.)
+   */
+  struct TALER_DenominationHashP denom_hash;
 
   /**
    * If denomination was setup for age restriction, non-zero age mask.
@@ -78,6 +101,8 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
   struct TALER_AgeMask age_mask;
 };
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Signature of events signalling a reserve got funding.
@@ -474,7 +499,7 @@ struct TALER_EXCHANGEDB_DenominationKey
   /**
    * Signed public information about a denomination key.
    */
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
 };
 
 
@@ -2188,7 +2213,7 @@ typedef void
 (*TALER_EXCHANGEDB_DenominationCallback)(
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue);
 
 
 /**
@@ -2358,7 +2383,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_denomination_info)(
     void *cls,
     const struct TALER_DenominationPublicKey *denom_pub,
-    const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
+    const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue);
 
 
   /**
@@ -2373,7 +2398,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_denomination_info)(
     void *cls,
     const struct TALER_DenominationHashP *denom_pub_hash,
-    struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
+    struct TALER_EXCHANGEDB_DenominationKeyInformation *issue);
 
 
   /**

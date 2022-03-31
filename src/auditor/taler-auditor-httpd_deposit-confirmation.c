@@ -32,6 +32,50 @@
 #include "taler-auditor-httpd_deposit-confirmation.h"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Information about a signing key of the exchange.  Signing keys are used
+ * to sign exchange messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
+ */
+struct ExchangeSigningKeyDataP
+{
+
+  /**
+   * When does this signing key begin to be valid?
+   */
+  struct GNUNET_TIME_TimestampNBO start;
+
+  /**
+   * When does this signing key expire? Note: This is currently when
+   * the Exchange will definitively stop using it.  Signatures made with
+   * the key remain valid until @e end.  When checking validity periods,
+   * clients should allow for some overlap between keys and tolerate
+   * the use of either key during the overlap time (due to the
+   * possibility of clock skew).
+   */
+  struct GNUNET_TIME_TimestampNBO expire;
+
+  /**
+   * When do signatures with this signing key become invalid?  After
+   * this point, these signatures cannot be used in (legal) disputes
+   * anymore, as the Exchange is then allowed to destroy its side of the
+   * evidence.  @e end is expected to be significantly larger than @e
+   * expire (by a year or more).
+   */
+  struct GNUNET_TIME_TimestampNBO end;
+
+  /**
+   * The public online signing key that the exchange will use
+   * between @e start and @e expire.
+   */
+  struct TALER_ExchangePublicKeyP signkey_pub;
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
 /**
  * Cache of already verified exchange signing keys.  Maps the hash of the
  * `struct TALER_ExchangeSigningKeyValidityPS` to the (static) string
@@ -65,9 +109,7 @@ verify_and_execute_deposit_confirmation (
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_HashCode h;
   const char *cached;
-  struct TALER_ExchangeSigningKeyValidityPS skv = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
-    .purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS)),
+  struct ExchangeSigningKeyDataP skv = {
     .start = GNUNET_TIME_timestamp_hton (es->ep_start),
     .expire = GNUNET_TIME_timestamp_hton (es->ep_expire),
     .end = GNUNET_TIME_timestamp_hton (es->ep_end),

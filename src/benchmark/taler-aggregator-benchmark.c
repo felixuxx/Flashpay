@@ -144,29 +144,6 @@ make_amount (unsigned int val,
 
 
 /**
- * Initialize @a out with an amount given by @a val and
- * @a frac using the main "currency".
- *
- * @param val value to set
- * @param frac fraction to set
- * @param[out] out where to write the amount
- */
-static void
-make_amountN (unsigned int val,
-              unsigned int frac,
-              struct TALER_AmountNBO *out)
-{
-  struct TALER_Amount in;
-
-  make_amount (val,
-               frac,
-               &in);
-  TALER_amount_hton (out,
-                     &in);
-}
-
-
-/**
  * Create random-ish timestamp.
  *
  * @return time stamp between start and end
@@ -430,7 +407,7 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
 
   (void) cls;
   (void) args;
@@ -466,24 +443,18 @@ run (void *cls,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   RANDOMIZE (&issue.signature);
-  issue.properties.purpose.purpose = htonl (
-    TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  issue.properties.purpose.size = htonl (sizeof (issue.properties));
-  RANDOMIZE (&issue.properties.master);
-  issue.properties.start
-    = GNUNET_TIME_timestamp_hton (start);
-  issue.properties.expire_withdraw
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_absolute_to_timestamp (
-          GNUNET_TIME_absolute_add (start.abs_time,
-                                    GNUNET_TIME_UNIT_DAYS)));
-  issue.properties.expire_deposit
-    = GNUNET_TIME_timestamp_hton (end);
-  issue.properties.expire_legal
-    = GNUNET_TIME_timestamp_hton (
-        GNUNET_TIME_absolute_to_timestamp (
-          GNUNET_TIME_absolute_add (end.abs_time,
-                                    GNUNET_TIME_UNIT_YEARS)));
+  issue.start
+    = start;
+  issue.expire_withdraw
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (start.abs_time,
+                                  GNUNET_TIME_UNIT_DAYS));
+  issue.expire_deposit
+    = end;
+  issue.expire_legal
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (end.abs_time,
+                                  GNUNET_TIME_UNIT_YEARS));
   {
     struct TALER_DenominationPrivateKey pk;
     struct TALER_DenominationPublicKey denom_pub;
@@ -505,12 +476,12 @@ run (void *cls,
     alg_values.cipher = TALER_DENOMINATION_RSA;
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
-    make_amountN (2, 0, &issue.properties.value);
-    make_amountN (0, 5, &issue.properties.fees.withdraw);
-    make_amountN (0, 5, &issue.properties.fees.deposit);
-    make_amountN (0, 5, &issue.properties.fees.refresh);
-    make_amountN (0, 5, &issue.properties.fees.refund);
-    issue.properties.denom_hash = h_denom_pub;
+    make_amount (2, 0, &issue.value);
+    make_amount (0, 5, &issue.fees.withdraw);
+    make_amount (0, 5, &issue.fees.deposit);
+    make_amount (0, 5, &issue.fees.refresh);
+    make_amount (0, 5, &issue.fees.refund);
+    issue.denom_hash = h_denom_pub;
     if (0 >=
         plugin->insert_denomination_info (plugin->cls,
                                           &denom_pub,

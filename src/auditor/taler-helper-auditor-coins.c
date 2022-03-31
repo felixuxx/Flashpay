@@ -276,7 +276,7 @@ get_cached_history (const struct TALER_CoinSpendPublicKeyP *coin_pub)
  */
 static void
 report_emergency_by_amount (
-  const struct TALER_DenominationKeyValidityPS *issue,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
   const struct TALER_Amount *risk,
   const struct TALER_Amount *loss)
 {
@@ -293,12 +293,12 @@ report_emergency_by_amount (
                               risk),
       TALER_JSON_pack_amount ("denom_loss",
                               loss),
-      TALER_JSON_pack_time_abs_nbo_human ("start",
-                                          issue->start.abs_time_nbo),
-      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
-                                          issue->expire_deposit.abs_time_nbo),
-      TALER_JSON_pack_amount_nbo ("value",
-                                  &issue->value)));
+      TALER_JSON_pack_time_abs_human ("start",
+                                      issue->start.abs_time),
+      TALER_JSON_pack_time_abs_human ("deposit_end",
+                                      issue->expire_deposit.abs_time),
+      TALER_JSON_pack_amount ("value",
+                              &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_amount,
                         &reported_emergency_risk_by_amount,
                         risk);
@@ -324,13 +324,11 @@ report_emergency_by_amount (
  */
 static void
 report_emergency_by_count (
-  const struct TALER_DenominationKeyValidityPS *issue,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
   uint64_t num_issued,
   uint64_t num_known,
   const struct TALER_Amount *risk)
 {
-  struct TALER_Amount denom_value;
-
   TALER_ARL_report (
     report_emergencies_by_count,
     GNUNET_JSON_PACK (
@@ -342,21 +340,19 @@ report_emergency_by_count (
                                num_known),
       TALER_JSON_pack_amount ("denom_risk",
                               risk),
-      TALER_JSON_pack_time_abs_nbo_human ("start",
-                                          issue->start.abs_time_nbo),
-      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
-                                          issue->expire_deposit.abs_time_nbo),
-      TALER_JSON_pack_amount_nbo ("value",
-                                  &issue->value)));
+      TALER_JSON_pack_time_abs_human ("start",
+                                      issue->start.abs_time),
+      TALER_JSON_pack_time_abs_human ("deposit_end",
+                                      issue->expire_deposit.abs_time),
+      TALER_JSON_pack_amount ("value",
+                              &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_count,
                         &reported_emergency_risk_by_count,
                         risk);
-  TALER_amount_ntoh (&denom_value,
-                     &issue->value);
   for (uint64_t i = num_issued; i<num_known; i++)
     TALER_ARL_amount_add (&reported_emergency_loss_by_count,
                           &reported_emergency_loss_by_count,
-                          &denom_value);
+                          &issue->value);
 
 }
 
@@ -624,7 +620,7 @@ struct DenominationSummary
   /**
    * Denomination key information for this denomination.
    */
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
 
   /**
    * #GNUNET_YES if this record already existed in the DB.
@@ -759,7 +755,8 @@ init_denomination (const struct TALER_DenominationHashP *denom_hash,
  */
 static struct DenominationSummary *
 get_denomination_summary (struct CoinContext *cc,
-                          const struct TALER_DenominationKeyValidityPS *issue,
+                          const struct
+                          TALER_EXCHANGEDB_DenominationKeyInformation *issue,
                           const struct TALER_DenominationHashP *dh)
 {
   struct DenominationSummary *ds;
@@ -806,14 +803,14 @@ sync_denomination (void *cls,
     .hash = *denom_hash
   };
   struct DenominationSummary *ds = value;
-  const struct TALER_DenominationKeyValidityPS *issue = ds->issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue = ds->issue;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Timestamp expire_deposit;
   struct GNUNET_TIME_Absolute expire_deposit_grace;
   enum GNUNET_DB_QueryStatus qs;
 
   now = GNUNET_TIME_absolute_get ();
-  expire_deposit = GNUNET_TIME_timestamp_ntoh (issue->expire_deposit);
+  expire_deposit = issue->expire_deposit;
   /* add day grace period to deal with clocks not being perfectly synchronized */
   expire_deposit_grace = GNUNET_TIME_absolute_add (expire_deposit.abs_time,
                                                    DEPOSIT_GRACE_PERIOD);
@@ -973,8 +970,7 @@ withdraw_cb (void *cls,
   struct CoinContext *cc = cls;
   struct DenominationSummary *ds;
   struct TALER_DenominationHashP dh;
-  const struct TALER_DenominationKeyValidityPS *issue;
-  struct TALER_Amount value;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   enum GNUNET_DB_QueryStatus qs;
 
   /* Note: some optimization potential here: lots of fields we
@@ -1016,29 +1012,27 @@ withdraw_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == cc->qs);
     return GNUNET_SYSERR;
   }
-  TALER_amount_ntoh (&value,
-                     &issue->value);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Issued coin in denomination `%s' of total value %s\n",
               GNUNET_h2s (&dh.hash),
-              TALER_amount2s (&value));
+              TALER_amount2s (&issue->value));
   ds->num_issued++;
   TALER_ARL_amount_add (&ds->denom_balance,
                         &ds->denom_balance,
-                        &value);
+                        &issue->value);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' is %s\n",
               GNUNET_h2s (&dh.hash),
               TALER_amount2s (&ds->denom_balance));
   TALER_ARL_amount_add (&total_escrow_balance,
                         &total_escrow_balance,
-                        &value);
+                        &issue->value);
   TALER_ARL_amount_add (&total_risk,
                         &total_risk,
-                        &value);
+                        &issue->value);
   TALER_ARL_amount_add (&ds->denom_risk,
                         &ds->denom_risk,
-                        &value);
+                        &issue->value);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -1054,7 +1048,7 @@ struct RevealContext
   /**
    * Denomination public data of the new coins.
    */
-  const struct TALER_DenominationKeyValidityPS **new_issues;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **new_issues;
 
   /**
    * Set to the size of the @a new_issues array.
@@ -1071,7 +1065,7 @@ struct RevealContext
    * #GNUNET_NO if a denomination key was not found
    * #GNUNET_SYSERR if we had a database error.
    */
-  int err;
+  enum GNUNET_GenericReturnValue err;
 
   /**
    * Database error, if @e err is #GNUNET_SYSERR.
@@ -1097,7 +1091,7 @@ reveal_data_cb (void *cls,
   rctx->num_freshcoins = num_freshcoins;
   rctx->new_issues = GNUNET_new_array (
     num_freshcoins,
-    const struct TALER_DenominationKeyValidityPS *);
+    const struct TALER_EXCHANGEDB_DenominationKeyInformation *);
 
   /* Update outstanding amounts for all new coin's denominations */
   for (unsigned int i = 0; i<num_freshcoins; i++)
@@ -1141,7 +1135,8 @@ reveal_data_cb (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 check_known_coin (const char *operation,
-                  const struct TALER_DenominationKeyValidityPS *issue,
+                  const struct
+                  TALER_EXCHANGEDB_DenominationKeyInformation *issue,
                   uint64_t rowid,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const struct TALER_DenominationPublicKey *denom_pub,
@@ -1152,14 +1147,10 @@ check_known_coin (const char *operation,
 
   if (NULL == get_cached_history (coin_pub))
   {
-    struct TALER_Amount value;
-
-    TALER_amount_ntoh (&value,
-                       &issue->value);
     qs = check_coin_history (coin_pub,
                              rowid,
                              operation,
-                             &value);
+                             &issue->value);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1232,7 +1223,7 @@ refresh_session_cb (void *cls,
                     const struct TALER_RefreshCommitmentP *rc)
 {
   struct CoinContext *cc = cls;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount tmp;
@@ -1276,15 +1267,12 @@ refresh_session_cb (void *cls,
   /* verify melt signature */
   {
     struct TALER_DenominationHashP h_denom_pub;
-    struct TALER_Amount fee_refresh;
 
     TALER_denom_pub_hash (denom_pub,
                           &h_denom_pub);
-    TALER_amount_ntoh (&fee_refresh,
-                       &issue->fees.refresh);
     if (GNUNET_OK !=
         TALER_wallet_melt_verify (amount_with_fee,
-                                  &fee_refresh,
+                                  &issue->fees.refresh,
                                   rc,
                                   &h_denom_pub,
                                   h_age_commitment,
@@ -1370,46 +1358,36 @@ refresh_session_cb (void *cls,
                                           &refresh_cost));
     for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
     {
+      const struct TALER_EXCHANGEDB_DenominationKeyInformation *ni
+        = reveal_ctx.new_issues[i];
       /* update cost of refresh */
-      struct TALER_Amount fee;
-      struct TALER_Amount value;
 
-      TALER_amount_ntoh (&fee,
-                         &reveal_ctx.new_issues[i]->fees.withdraw);
-      TALER_amount_ntoh (&value,
-                         &reveal_ctx.new_issues[i]->value);
       TALER_ARL_amount_add (&refresh_cost,
                             &refresh_cost,
-                            &fee);
+                            &ni->fees.withdraw);
       TALER_ARL_amount_add (&refresh_cost,
                             &refresh_cost,
-                            &value);
+                            &ni->value);
     }
 
     /* compute contribution of old coin */
+    if (TALER_ARL_SR_POSITIVE !=
+        TALER_ARL_amount_subtract_neg (&amount_without_fee,
+                                       amount_with_fee,
+                                       &issue->fees.refresh))
     {
-      struct TALER_Amount melt_fee;
-
-      TALER_amount_ntoh (&melt_fee,
-                         &issue->fees.refresh);
-      if (TALER_ARL_SR_POSITIVE !=
-          TALER_ARL_amount_subtract_neg (&amount_without_fee,
-                                         amount_with_fee,
-                                         &melt_fee))
-      {
-        /* Melt fee higher than contribution of melted coin; this makes
-           no sense (exchange should never have accepted the operation) */
-        report_amount_arithmetic_inconsistency ("melt contribution vs. fee",
-                                                rowid,
-                                                amount_with_fee,
-                                                &melt_fee,
-                                                -1);
-        /* To continue, best assumption is the melted coin contributed
-           nothing (=> all withdrawal amounts will be counted as losses) */
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_set_zero (TALER_ARL_currency,
-                                              &amount_without_fee));
-      }
+      /* Melt fee higher than contribution of melted coin; this makes
+         no sense (exchange should never have accepted the operation) */
+      report_amount_arithmetic_inconsistency ("melt contribution vs. fee",
+                                              rowid,
+                                              amount_with_fee,
+                                              &issue->fees.refresh,
+                                              -1);
+      /* To continue, best assumption is the melted coin contributed
+         nothing (=> all withdrawal amounts will be counted as losses) */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (TALER_ARL_currency,
+                                            &amount_without_fee));
     }
 
     /* check old coin covers complete expenses (of withdraw operations) */
@@ -1427,12 +1405,13 @@ refresh_session_cb (void *cls,
     /* update outstanding denomination amounts for fresh coins withdrawn */
     for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
     {
+      const struct TALER_EXCHANGEDB_DenominationKeyInformation *ni
+        = reveal_ctx.new_issues[i];
       struct DenominationSummary *dsi;
-      struct TALER_Amount value;
 
       dsi = get_denomination_summary (cc,
-                                      reveal_ctx.new_issues[i],
-                                      &reveal_ctx.new_issues[i]->denom_hash);
+                                      ni,
+                                      &ni->denom_hash);
       if (NULL == dsi)
       {
         report_row_inconsistency ("refresh_reveal",
@@ -1441,29 +1420,27 @@ refresh_session_cb (void *cls,
       }
       else
       {
-        TALER_amount_ntoh (&value,
-                           &reveal_ctx.new_issues[i]->value);
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Created fresh coin in denomination `%s' of value %s\n",
-                    GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash.hash),
-                    TALER_amount2s (&value));
+                    GNUNET_h2s (&ni->denom_hash.hash),
+                    TALER_amount2s (&ni->value));
         dsi->num_issued++;
         TALER_ARL_amount_add (&dsi->denom_balance,
                               &dsi->denom_balance,
-                              &value);
+                              &ni->value);
         TALER_ARL_amount_add (&dsi->denom_risk,
                               &dsi->denom_risk,
-                              &value);
+                              &ni->value);
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "New balance of denomination `%s' is %s\n",
-                    GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash.hash),
+                    GNUNET_h2s (&ni->denom_hash.hash),
                     TALER_amount2s (&dsi->denom_balance));
         TALER_ARL_amount_add (&total_escrow_balance,
                               &total_escrow_balance,
-                              &value);
+                              &ni->value);
         TALER_ARL_amount_add (&total_risk,
                               &total_risk,
-                              &value);
+                              &ni->value);
       }
     }
     GNUNET_free (reveal_ctx.new_issues);
@@ -1524,15 +1501,9 @@ refresh_session_cb (void *cls,
   }
 
   /* update global melt fees */
-  {
-    struct TALER_Amount rfee;
-
-    TALER_amount_ntoh (&rfee,
-                       &issue->fees.refresh);
-    TALER_ARL_amount_add (&total_melt_fee_income,
-                          &total_melt_fee_income,
-                          &rfee);
-  }
+  TALER_ARL_amount_add (&total_melt_fee_income,
+                        &total_melt_fee_income,
+                        &issue->fees.refresh);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -1560,7 +1531,7 @@ deposit_cb (void *cls,
             bool done)
 {
   struct CoinContext *cc = cls;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *ds;
   enum GNUNET_DB_QueryStatus qs;
 
@@ -1613,21 +1584,18 @@ deposit_cb (void *cls,
   {
     struct TALER_MerchantWireHashP h_wire;
     struct TALER_DenominationHashP h_denom_pub;
-    struct TALER_Amount deposit_fee;
 
     TALER_denom_pub_hash (denom_pub,
                           &h_denom_pub);
     TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
                                         &deposit->wire_salt,
                                         &h_wire);
-    TALER_amount_ntoh (&deposit_fee,
-                       &issue->fees.deposit);
     /* NOTE: This is one of the operations we might eventually
        want to do in parallel in the background to improve
        auditor performance! */
     if (GNUNET_OK !=
         TALER_wallet_deposit_verify (&deposit->amount_with_fee,
-                                     &deposit_fee,
+                                     &issue->fees.deposit,
                                      &h_wire,
                                      &deposit->h_contract_terms,
                                      &deposit->coin.h_age_commitment,
@@ -1722,15 +1690,9 @@ deposit_cb (void *cls,
   }
 
   /* update global deposit fees */
-  {
-    struct TALER_Amount dfee;
-
-    TALER_amount_ntoh (&dfee,
-                       &issue->fees.deposit);
-    TALER_ARL_amount_add (&total_deposit_fee_income,
-                          &total_deposit_fee_income,
-                          &dfee);
-  }
+  TALER_ARL_amount_add (&total_deposit_fee_income,
+                        &total_deposit_fee_income,
+                        &issue->fees.deposit);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -1766,10 +1728,9 @@ refund_cb (void *cls,
            const struct TALER_Amount *amount_with_fee)
 {
   struct CoinContext *cc = cls;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *ds;
   struct TALER_Amount amount_without_fee;
-  struct TALER_Amount refund_fee;
   enum GNUNET_DB_QueryStatus qs;
 
   GNUNET_assert (rowid >= ppc.last_refund_serial_id); /* should be monotonically increasing */
@@ -1820,17 +1781,15 @@ refund_cb (void *cls,
     return GNUNET_OK;
   }
 
-  TALER_amount_ntoh (&refund_fee,
-                     &issue->fees.refund);
   if (TALER_ARL_SR_INVALID_NEGATIVE ==
       TALER_ARL_amount_subtract_neg (&amount_without_fee,
                                      amount_with_fee,
-                                     &refund_fee))
+                                     &issue->fees.refund))
   {
     report_amount_arithmetic_inconsistency ("refund (fee)",
                                             rowid,
                                             &amount_without_fee,
-                                            &refund_fee,
+                                            &issue->fees.refund,
                                             -1);
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
@@ -1875,7 +1834,7 @@ refund_cb (void *cls,
   /* update total refund fee balance */
   TALER_ARL_amount_add (&total_refund_fee_income,
                         &total_refund_fee_income,
-                        &refund_fee);
+                        &issue->fees.refund);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -1908,7 +1867,7 @@ check_recoup (struct CoinContext *cc,
 {
   struct DenominationSummary *ds;
   enum GNUNET_DB_QueryStatus qs;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
 
   if (GNUNET_OK !=
       TALER_test_coin_valid (coin,
@@ -2096,7 +2055,7 @@ recoup_refresh_cb (void *cls,
                    const union TALER_DenominationBlindingKeyP *coin_blind)
 {
   struct CoinContext *cc = cls;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) timestamp;
@@ -2195,24 +2154,13 @@ static void
 check_denomination (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
-  const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AuditorSignatureP auditor_sig;
-  struct TALER_Amount coin_value;
-  struct TALER_DenomFeeSet fees;
-  struct GNUNET_TIME_Timestamp start;
-  struct GNUNET_TIME_Timestamp end;
 
   (void) cls;
   (void) denom_pub;
-  TALER_amount_ntoh (&coin_value,
-                     &issue->value);
-  TALER_denom_fee_set_ntoh (&fees,
-                            &issue->fees);
-  start = GNUNET_TIME_timestamp_ntoh (issue->start);
-  end = GNUNET_TIME_timestamp_ntoh (issue->expire_legal);
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,
@@ -2227,10 +2175,10 @@ check_denomination (
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Encountered denomination `%s' (%s) valid from %s (%llu-%llu) that this auditor is not auditing!\n",
                 GNUNET_h2s (&issue->denom_hash.hash),
-                TALER_amount2s (&coin_value),
-                GNUNET_TIME_timestamp2s (start),
-                (unsigned long long) start.abs_time.abs_value_us,
-                (unsigned long long) end.abs_time.abs_value_us);
+                TALER_amount2s (&issue->value),
+                GNUNET_TIME_timestamp2s (issue->start),
+                (unsigned long long) issue->start.abs_time.abs_value_us,
+                (unsigned long long) issue->expire_legal.abs_time.abs_value_us);
     return; /* skip! */
   }
   if (GNUNET_OK !=
@@ -2238,12 +2186,12 @@ check_denomination (
         TALER_ARL_auditor_url,
         &issue->denom_hash,
         &TALER_ARL_master_pub,
-        start,
-        GNUNET_TIME_timestamp_ntoh (issue->expire_withdraw),
-        GNUNET_TIME_timestamp_ntoh (issue->expire_deposit),
-        end,
-        &coin_value,
-        &fees,
+        issue->start,
+        issue->expire_withdraw,
+        issue->expire_deposit,
+        issue->expire_legal,
+        &issue->value,
+        &issue->fees,
         &TALER_ARL_auditor_pub,
         &auditor_sig))
   {
@@ -2252,11 +2200,12 @@ check_denomination (
                         GNUNET_JSON_pack_data_auto ("denomination",
                                                     &issue->denom_hash),
                         TALER_JSON_pack_amount ("value",
-                                                &coin_value),
+                                                &issue->value),
                         TALER_JSON_pack_time_abs_human ("start_time",
-                                                        start.abs_time),
+                                                        issue->start.abs_time),
                         TALER_JSON_pack_time_abs_human ("end_time",
-                                                        end.abs_time)));
+                                                        issue->expire_legal.
+                                                        abs_time)));
   }
 }
 

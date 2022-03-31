@@ -23,6 +23,8 @@
 #include "taler_signatures.h"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange offline key over the information of
  * an auditor to be added to the exchange's set of auditors.
@@ -51,6 +53,7 @@ struct TALER_MasterAddAuditorPS
    */
   struct GNUNET_HashCode h_auditor_url GNUNET_PACKED;
 };
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -103,6 +106,8 @@ TALER_exchange_offline_auditor_add_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange offline key over the information of
  * an auditor to be removed from the exchange's set of auditors.
@@ -127,6 +132,7 @@ struct TALER_MasterDelAuditorPS
   struct TALER_AuditorPublicKeyP auditor_pub;
 
 };
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -171,6 +177,8 @@ TALER_exchange_offline_auditor_del_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Message confirming that a denomination key was revoked.
  */
@@ -187,6 +195,8 @@ struct TALER_MasterDenominationKeyRevocationPS
   struct TALER_DenominationHashP h_denom_pub;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -228,6 +238,8 @@ TALER_exchange_offline_denomination_revoke_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Message confirming that an exchange online signing key was revoked.
  */
@@ -244,6 +256,8 @@ struct TALER_MasterSigningKeyRevocationPS
   struct TALER_ExchangePublicKeyP exchange_pub;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -284,6 +298,55 @@ TALER_exchange_offline_signkey_revoke_verify (
     &master_sig->eddsa_signature,
     &master_pub->eddsa_pub);
 }
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Information about a signing key of the exchange.  Signing keys are used
+ * to sign exchange messages other than coins, i.e. to confirm that a
+ * deposit was successful or that a refresh was accepted.
+ */
+struct TALER_ExchangeSigningKeyValidityPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When does this signing key begin to be valid?
+   */
+  struct GNUNET_TIME_TimestampNBO start;
+
+  /**
+   * When does this signing key expire? Note: This is currently when
+   * the Exchange will definitively stop using it.  Signatures made with
+   * the key remain valid until @e end.  When checking validity periods,
+   * clients should allow for some overlap between keys and tolerate
+   * the use of either key during the overlap time (due to the
+   * possibility of clock skew).
+   */
+  struct GNUNET_TIME_TimestampNBO expire;
+
+  /**
+   * When do signatures with this signing key become invalid?  After
+   * this point, these signatures cannot be used in (legal) disputes
+   * anymore, as the Exchange is then allowed to destroy its side of the
+   * evidence.  @e end is expected to be significantly larger than @e
+   * expire (by a year or more).
+   */
+  struct GNUNET_TIME_TimestampNBO end;
+
+  /**
+   * The public online signing key that the exchange will use
+   * between @e start and @e expire.
+   */
+  struct TALER_ExchangePublicKeyP signkey_pub;
+};
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -337,6 +400,91 @@ TALER_exchange_offline_signkey_validity_verify (
     &master_sig->eddsa_signature,
     &master_pub->eddsa_pub);
 }
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Information about a denomination key. Denomination keys
+ * are used to sign coins of a certain value into existence.
+ *
+ * FIXME: remove this from the public API...
+ */
+struct TALER_DenominationKeyValidityPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The long-term offline master key of the exchange that was
+   * used to create @e signature.
+   *
+   * FIXME: remove this member?
+   */
+  struct TALER_MasterPublicKeyP master;
+
+  /**
+   * Start time of the validity period for this key.
+   */
+  struct GNUNET_TIME_TimestampNBO start;
+
+  /**
+   * The exchange will sign fresh coins between @e start and this time.
+   * @e expire_withdraw will be somewhat larger than @e start to
+   * ensure a sufficiently large anonymity set, while also allowing
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
+   * with high transaction volume.  The period may also differ between
+   * types of coins.  A exchange may also have a few denomination keys
+   * with the same value with overlapping validity periods, to address
+   * issues such as clock skew.
+   */
+  struct GNUNET_TIME_TimestampNBO expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * exchange will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.  @e expire_deposit must be
+   * significantly larger than @e expire_withdraw (by months or even
+   * years).
+   */
+  struct GNUNET_TIME_TimestampNBO expire_deposit;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_deposit (by a year or more).
+   */
+  struct GNUNET_TIME_TimestampNBO expire_legal;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_AmountNBO value;
+
+  /**
+   * Fees for the coin.
+   */
+  struct TALER_DenomFeeSetNBOP fees;
+
+  /**
+   * Hash code of the denomination public key. (Used to avoid having
+   * the variable-size RSA key in this struct.)
+   */
+  struct TALER_DenominationHashP denom_hash GNUNET_PACKED;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -412,6 +560,8 @@ TALER_exchange_offline_denom_validity_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange offline key over the information of
  * a payto:// URI to be added to the exchange's set of active wire accounts.
@@ -435,6 +585,8 @@ struct TALER_MasterAddWirePS
    */
   struct TALER_PaytoHashP h_payto GNUNET_PACKED;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -482,6 +634,8 @@ TALER_exchange_offline_wire_add_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange offline key over the information of
  * a  wire method to be removed to the exchange's set of active accounts.
@@ -506,6 +660,8 @@ struct TALER_MasterDelWirePS
   struct TALER_PaytoHashP h_payto GNUNET_PACKED;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -553,6 +709,8 @@ TALER_exchange_offline_wire_del_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Information signed by the exchange's master
  * key stating the wire fee to be paid per wire transfer.
@@ -589,6 +747,8 @@ struct TALER_MasterWireFeePS
   struct TALER_WireFeeSetNBOP fees;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -646,6 +806,8 @@ TALER_exchange_offline_wire_fee_verify (
                                 &master_pub->eddsa_pub);
 }
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Global fees charged by the exchange independent of
@@ -705,8 +867,9 @@ struct TALER_MasterGlobalFeePS
    */
   uint32_t purse_account_limit;
 
-
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -773,6 +936,8 @@ TALER_exchange_offline_global_fee_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Signature made by the exchange offline key over the
  * configuration of an extension.
@@ -790,6 +955,8 @@ struct TALER_MasterExtensionConfigurationPS
    */
   struct TALER_ExtensionConfigHashP h_config GNUNET_PACKED;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -829,6 +996,8 @@ TALER_exchange_offline_extension_config_hash_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Information signed by the exchange's master
  * key affirming the IBAN details for the exchange.
@@ -847,6 +1016,8 @@ struct TALER_MasterWireDetailsPS
   struct TALER_PaytoHashP h_wire_details GNUNET_PACKED;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum GNUNET_GenericReturnValue
@@ -888,6 +1059,8 @@ TALER_exchange_wire_signature_make (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Message signed by account to merge a purse into a reserve.
  */
@@ -905,6 +1078,8 @@ struct TALER_PartnerConfigurationPS
   struct TALER_AmountNBO wad_fee;
   struct GNUNET_HashCode h_url;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void

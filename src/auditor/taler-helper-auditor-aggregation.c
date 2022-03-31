@@ -390,7 +390,7 @@ check_transaction_history_for_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_DenominationKeyValidityPS *issue,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
   const struct TALER_EXCHANGEDB_TransactionList *tl_head,
   struct TALER_Amount *merchant_gain,
   struct TALER_Amount *deposit_gain)
@@ -461,23 +461,16 @@ check_transaction_history_for_deposit (
         deposit_fee = fee_claimed; /* We had a deposit, remember the fee, we may need it */
       }
       /* Check that the fees given in the transaction list and in dki match */
+      if (0 !=
+          TALER_amount_cmp (&issue->fees.deposit,
+                            fee_claimed))
       {
-        struct TALER_Amount fee_expected;
-
-        /* Fee according to denomination data of auditor */
-        TALER_amount_ntoh (&fee_expected,
-                           &issue->fees.deposit);
-        if (0 !=
-            TALER_amount_cmp (&fee_expected,
-                              fee_claimed))
-        {
-          /* Disagreement in fee structure between auditor and exchange DB! */
-          report_amount_arithmetic_inconsistency ("deposit fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &fee_expected,
-                                                  1);
-        }
+        /* Disagreement in fee structure between auditor and exchange DB! */
+        report_amount_arithmetic_inconsistency ("deposit fee",
+                                                0,
+                                                fee_claimed,
+                                                &issue->fees.deposit,
+                                                1);
       }
       break;
     case TALER_EXCHANGEDB_TT_MELT:
@@ -487,22 +480,16 @@ check_transaction_history_for_deposit (
                             &expenditures,
                             amount_with_fee);
       /* Check that the fees given in the transaction list and in dki match */
+      if (0 !=
+          TALER_amount_cmp (&issue->fees.refresh,
+                            fee_claimed))
       {
-        struct TALER_Amount fee_expected;
-
-        TALER_amount_ntoh (&fee_expected,
-                           &issue->fees.refresh);
-        if (0 !=
-            TALER_amount_cmp (&fee_expected,
-                              fee_claimed))
-        {
-          /* Disagreement in fee structure between exchange and auditor */
-          report_amount_arithmetic_inconsistency ("melt fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &fee_expected,
-                                                  1);
-        }
+        /* Disagreement in fee structure between exchange and auditor */
+        report_amount_arithmetic_inconsistency ("melt fee",
+                                                0,
+                                                fee_claimed,
+                                                &issue->fees.refresh,
+                                                1);
       }
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
@@ -531,22 +518,16 @@ check_transaction_history_for_deposit (
         refund_deposit_fee = GNUNET_YES;
       }
       /* Check that the fees given in the transaction list and in dki match */
+      if (0 !=
+          TALER_amount_cmp (&issue->fees.refund,
+                            fee_claimed))
       {
-        struct TALER_Amount fee_expected;
-
-        TALER_amount_ntoh (&fee_expected,
-                           &issue->fees.refund);
-        if (0 !=
-            TALER_amount_cmp (&fee_expected,
-                              fee_claimed))
-        {
-          /* Disagreement in fee structure between exchange and auditor! */
-          report_amount_arithmetic_inconsistency ("refund fee",
-                                                  0,
-                                                  fee_claimed,
-                                                  &fee_expected,
-                                                  1);
-        }
+        /* Disagreement in fee structure between exchange and auditor! */
+        report_amount_arithmetic_inconsistency ("refund fee",
+                                                0,
+                                                fee_claimed,
+                                                &issue->fees.refund,
+                                                1);
       }
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
@@ -641,18 +622,14 @@ check_transaction_history_for_deposit (
   else
   {
     /* Now check that 'spent' is less or equal than the total coin value */
-    struct TALER_Amount value;
-
-    TALER_amount_ntoh (&value,
-                       &issue->value);
     if (1 == TALER_amount_cmp (&spent,
-                               &value))
+                               &issue->value))
     {
       /* spent > value */
       report_coin_arithmetic_inconsistency ("spend",
                                             coin_pub,
                                             &spent,
-                                            &value,
+                                            &issue->value,
                                             -1);
     }
   }
@@ -703,7 +680,7 @@ wire_transfer_information_cb (
   const struct TALER_Amount *deposit_fee)
 {
   struct WireCheckContext *wcc = cls;
-  const struct TALER_DenominationKeyValidityPS *issue;
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct TALER_Amount computed_value;
   struct TALER_Amount total_deposit_without_refunds;
   struct TALER_EXCHANGEDB_TransactionList *tl;

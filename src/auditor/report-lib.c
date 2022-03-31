@@ -68,7 +68,7 @@ struct GNUNET_TIME_Absolute start_time;
 
 /**
  * Results about denominations, cached per-transaction, maps denomination pub hashes
- * to `struct TALER_DenominationKeyValidityPS`.
+ * to `const struct TALER_EXCHANGEDB_DenominationKeyInformation`.
  */
 static struct GNUNET_CONTAINER_MultiHashMap *denominations;
 
@@ -114,16 +114,14 @@ TALER_ARL_report (json_t *array,
  *
  * @param cls closure, NULL
  * @param denom_pub public key, sometimes NULL (!)
- * @param validity issuing information with value, fees and other info about the denomination.
+ * @param issue issuing information with value, fees and other info about the denomination.
  */
 static void
 add_denomination (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
 {
-  const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
-
   (void) cls;
   (void) denom_pub;
   if (NULL !=
@@ -132,35 +130,26 @@ add_denomination (
     return; /* value already known */
 #if GNUNET_EXTRA_LOGGING >= 1
   {
-    struct TALER_Amount value;
-
-    TALER_amount_ntoh (&value,
-                       &issue->value);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Tracking denomination `%s' (%s)\n",
                 GNUNET_h2s (&issue->denom_hash.hash),
-                TALER_amount2s (&value));
-    TALER_amount_ntoh (&value,
-                       &issue->fees.withdraw);
+                TALER_amount2s (&issue->value));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Withdraw fee is %s\n",
-                TALER_amount2s (&value));
+                TALER_amount2s (&issue->fees.withdraw));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Start time is %s\n",
-                GNUNET_TIME_timestamp2s
-                  (GNUNET_TIME_timestamp_ntoh (issue->start)));
+                GNUNET_TIME_timestamp2s (issue->start));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Expire deposit time is %s\n",
-                GNUNET_TIME_timestamp2s
-                  (GNUNET_TIME_timestamp_ntoh (issue->expire_deposit)));
+                GNUNET_TIME_timestamp2s (issue->expire_deposit));
   }
 #endif
   {
-    struct TALER_DenominationKeyValidityPS *i;
+    struct TALER_EXCHANGEDB_DenominationKeyInformation *i;
 
-    i = GNUNET_new (struct TALER_DenominationKeyValidityPS);
+    i = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKeyInformation);
     *i = *issue;
-    i->master = TALER_ARL_master_pub;
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CONTAINER_multihashmap_put (denominations,
                                                       &issue->denom_hash.hash,
@@ -173,7 +162,7 @@ add_denomination (
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
   const struct TALER_DenominationHashP *dh,
-  const struct TALER_DenominationKeyValidityPS **issue)
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue)
 {
   enum GNUNET_DB_QueryStatus qs;
 
@@ -192,7 +181,7 @@ TALER_ARL_get_denomination_info_by_hash (
     }
   }
   {
-    const struct TALER_DenominationKeyValidityPS *i;
+    const struct TALER_EXCHANGEDB_DenominationKeyInformation *i;
 
     i = GNUNET_CONTAINER_multihashmap_get (denominations,
                                            &dh->hash);
@@ -205,7 +194,7 @@ TALER_ARL_get_denomination_info_by_hash (
   }
   /* maybe database changed since we last iterated, give it one more shot */
   {
-    struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+    struct TALER_EXCHANGEDB_DenominationKeyInformation issue;
 
     qs = TALER_ARL_edb->get_denomination_info (TALER_ARL_edb->cls,
                                                dh,
@@ -224,7 +213,7 @@ TALER_ARL_get_denomination_info_by_hash (
                       &issue);
   }
   {
-    const struct TALER_DenominationKeyValidityPS *i;
+    const struct TALER_EXCHANGEDB_DenominationKeyInformation *i;
 
     i = GNUNET_CONTAINER_multihashmap_get (denominations,
                                            &dh->hash);
@@ -246,7 +235,7 @@ TALER_ARL_get_denomination_info_by_hash (
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info (
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_DenominationKeyValidityPS **issue,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation **issue,
   struct TALER_DenominationHashP *dh)
 {
   struct TALER_DenominationHashP hc;
