@@ -176,6 +176,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS 1044
 
+/**
+ * Signature by which the exchange affirms that a purse
+ * was created with a certain amount deposited into it.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_CREATION 1045
 
 /**********************/
 /* Auditor signatures */

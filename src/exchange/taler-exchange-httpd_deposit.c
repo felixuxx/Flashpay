@@ -178,7 +178,6 @@ deposit_transaction (void *cls,
   }
   if (in_conflict)
   {
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
@@ -188,7 +187,6 @@ deposit_transaction (void *cls,
   }
   if (! balance_ok)
   {
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
@@ -322,6 +320,16 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     {
       GNUNET_JSON_parse_free (spec);
       return mret;
+    }
+    if (0 > TALER_amount_cmp (&dk->meta.value,
+                              &deposit.amount_with_fee))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_AMOUNT_EXCEEDS_DENOMINATION_VALUE,
+                                         NULL);
     }
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
     {

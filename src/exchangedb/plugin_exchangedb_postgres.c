@@ -12668,6 +12668,10 @@ postgres_insert_partner (void *cls,
  * @param pub_ckey ephemeral key for DH used to encrypt the contract
  * @param econtract_size number of bytes in @a econtract
  * @param econtract the encrypted contract
+ * @param[out] in_conflict set to true if @a econtract
+ *             conflicts with an existing contract;
+ *             in this case, the return value will be
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -12675,7 +12679,8 @@ postgres_insert_contract (void *cls,
                           const struct TALER_PurseContractPublicKeyP *purse_pub,
                           const struct TALER_ContractDiffiePublicP *pub_ckey,
                           size_t econtract_size,
-                          const void *econtract)
+                          const void *econtract,
+                          bool *in_conflict)
 {
   GNUNET_break (0);
   return GNUNET_DB_STATUS_HARD_ERROR;
@@ -12715,6 +12720,10 @@ postgres_select_contract (void *cls,
  * @param age_limit age limit to enforce for payments into the purse
  * @param amount target amount (with fees) to be put into the purse
  * @param purse_sig signature with @a purse_pub's private key affirming the above
+ * @param[out] in_conflict set to true if the meta data
+ *             conflicts with an existing purse;
+ *             in this case, the return value will be
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -12726,7 +12735,8 @@ postgres_insert_purse_request (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   uint32_t age_limit,
   const struct TALER_Amount *amount,
-  const struct TALER_PurseContractSignatureP *purse_sig)
+  const struct TALER_PurseContractSignatureP *purse_sig,
+  bool *in_conflict)
 {
   GNUNET_break (0);
   return GNUNET_DB_STATUS_HARD_ERROR;
@@ -12806,6 +12816,11 @@ postgres_select_purse_by_merge_pub (
  * @param coin_pub coin to deposit (debit)
  * @param amount fraction of the coin's value to deposit
  * @param coin_sig signature affirming the operation
+ * @param amount_minus_fee amount to add to the purse
+ * @param[out] balance_ok set to false if the coin's
+ *        remaining balance is below @a amount;
+ *             in this case, the return value will be
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -12814,7 +12829,9 @@ postgres_do_purse_deposit (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *amount,
-  const struct TALER_CoinSpendSignatureP *coin_sig)
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_Amount *amount_minus_fee,
+  bool *balance_ok)
 {
   GNUNET_break (0);
   return GNUNET_DB_STATUS_HARD_ERROR;

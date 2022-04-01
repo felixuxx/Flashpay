@@ -183,7 +183,6 @@ melt_transaction (void *cls,
   if (rmc->zombie_required)
   {
     GNUNET_break_op (0);
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_EXCHANGE_MELT_COIN_EXPIRED_NO_ZOMBIE,
@@ -193,7 +192,6 @@ melt_transaction (void *cls,
   if (! balance_ok)
   {
     GNUNET_break_op (0);
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,

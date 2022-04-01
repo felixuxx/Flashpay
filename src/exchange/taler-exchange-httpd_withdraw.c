@@ -256,7 +256,6 @@ withdraw_transaction (void *cls,
     }
     if (! below_limit)
     {
-      TEH_plugin->rollback (TEH_plugin->cls);
       *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
         connection,
         MHD_HTTP_ACCEPTED,
