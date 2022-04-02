@@ -149,8 +149,9 @@ DROP FUNCTION IF EXISTS create_table_partition;
 DROP FUNCTION IF EXISTS create_partitions;
 DROP FUNCTION IF EXISTS detach_default_partitions;
 DROP FUNCTION IF EXISTS drop_default_partitions;
-DROP FUNCTION IF EXISTS master_prepare_sharding;
+DROP FUNCTION IF EXISTS prepare_sharding;
 DROP FUNCTION IF EXISTS create_foreign_table;
+DROP FUNCTION IF EXISTS create_foreign_servers;
 DROP FUNCTION IF EXISTS create_shard_server;
 
 

@@ -1583,7 +1583,7 @@ BEGIN
   );
 
   EXECUTE FORMAT(
-    'ALTER FOREIGN TABLE %I OWNER TO %L'
+    'ALTER FOREIGN TABLE %I OWNER TO %I'
     ,source_table_name || '_' || shard_suffix
     ,local_user
   );
@@ -1698,7 +1698,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
 
-  RAISE NOTICE 'Creating server %s', remote_host;
+  RAISE NOTICE 'Creating server %', remote_host;
 
   EXECUTE FORMAT(
     'CREATE SERVER IF NOT EXISTS %I '
@@ -1907,6 +1907,7 @@ BEGIN
      ,'taler-exchange-httpd'
     );  
   END LOOP;
+
 END
 $$;
 

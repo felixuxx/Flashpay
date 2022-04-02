@@ -121,7 +121,9 @@ run (void *cls,
   if (1 <
       num_partitions)
   {
-    if (GNUNET_OK != plugin->setup_partitions (plugin->cls, num_partitions))
+    if (GNUNET_OK !=
+        plugin->setup_partitions (plugin->cls,
+                                  num_partitions))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not setup partitions. Dropping default ones again\n");
@@ -139,8 +141,9 @@ run (void *cls,
   else if (1 <
            num_foreign_servers)
   {
-    if (GNUNET_OK != plugin->setup_foreign_servers (plugin->cls,
-                                                    num_foreign_servers))
+    if (GNUNET_OK !=
+        plugin->setup_foreign_servers (plugin->cls,
+                                       num_foreign_servers))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not setup shards. Aborting\n");
