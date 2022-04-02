@@ -611,7 +611,6 @@ BEGIN
       ',done BOOLEAN NOT NULL DEFAULT FALSE'
       ',extension_blocked BOOLEAN NOT NULL DEFAULT FALSE'
       ',extension_details_serial_id INT8' -- REFERENCES extension_details (extension_details_serial_id) ON DELETE CASCADE'
-      ',UNIQUE (coin_pub, merchant_pub, h_contract_terms)'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'
@@ -639,7 +638,9 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE deposits_' || partition_suffix || ' '
       'ADD CONSTRAINT deposits_' || partition_suffix || '_deposit_serial_id_pkey '
-        'PRIMARY KEY (deposit_serial_id)'
+        'PRIMARY KEY (deposit_serial_id) '
+      ',ADD CONSTRAINT deposits_' || partition_suffix || '_coin_pub_merchant_pub_h_contract_terms_key '
+        'UNIQUE (coin_pub, merchant_pub, h_contract_terms)'
   );
 END
 $$;
@@ -1644,7 +1645,7 @@ BEGIN
   ALTER TABLE IF EXISTS deposits
     DROP CONSTRAINT IF EXISTS deposits_pkey CASCADE
     ,DROP CONSTRAINT IF EXISTS deposits_extension_details_serial_id_fkey
-    ,DROP CONSTRAINT IF EXISTS deposits_shard_known_coin_id_merchant_pub_h_contract_terms_key CASCADE
+    ,DROP CONSTRAINT IF EXISTS deposits_coin_pub_merchant_pub_h_contract_terms_key CASCADE
   ;
 
   ALTER TABLE IF EXISTS refunds
@@ -1711,7 +1712,7 @@ BEGIN
 
   EXECUTE FORMAT(
     'CREATE USER MAPPING IF NOT EXISTS '
-      'FOR %s SERVER %I '
+      'FOR %I SERVER %I '
       'OPTIONS (user %L, password %L)'
     ,local_user
     ,shard_suffix
@@ -1722,7 +1723,7 @@ BEGIN
   EXECUTE FORMAT(
     'GRANT ALL PRIVILEGES '
       'ON FOREIGN SERVER %I '
-      'TO %L;'
+      'TO %I;'
     ,shard_suffix
     ,local_user
   );
