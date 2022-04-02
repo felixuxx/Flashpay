@@ -1632,7 +1632,7 @@ $$;
   
 
 CREATE OR REPLACE FUNCTION create_shard_server(
-    shard_idx VARCHAR
+    shard_suffix VARCHAR
     ,total_num_shards INTEGER
     ,current_shard_num INTEGER
     ,remote_host VARCHAR
