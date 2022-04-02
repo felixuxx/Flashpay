@@ -1895,7 +1895,7 @@ BEGIN
 
   FOR i IN 1..amount LOOP
     PERFORM create_shard_server(
-      i
+      i::varchar
      ,amount
      ,i
      ,'shard-' || i::varchar || '.' || domain
@@ -1904,7 +1904,7 @@ BEGIN
      ,'taler-exchange'
      ,'5432'
      ,'taler-exchange-httpd'
-    );
+    );  
   END LOOP;
 END
 $$;
