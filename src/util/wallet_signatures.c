@@ -1177,4 +1177,85 @@ TALER_wallet_account_close_verify (
 }
 
 
+/**
+ * Message signed by purse to associate an encrypted contract.
+ */
+struct TALER_PurseContractPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_PURSE_ECONTRACT
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the encrypted contract.
+   */
+  struct GNUNET_HashCode h_econtract;
+
+  /**
+   * Public key to decrypt the contract.
+   */
+  struct TALER_ContractDiffiePublicP contract_pub;
+};
+
+
+void
+TALER_wallet_econtract_upload_sign (
+  const void *econtract,
+  size_t econtract_size,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  struct TALER_PurseContractSignatureP *purse_sig)
+{
+  struct TALER_PurseContractPS pc = {
+    .purpose.size = htonl (sizeof (pc)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT),
+    .contract_pub = *contract_pub
+  };
+
+  GNUNET_CRYPTO_hash (econtract,
+                      econtract_size,
+                      &pc.h_econtract);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign_ (&purse_priv->eddsa_priv,
+                                            &pc.purpose,
+                                            &purse_sig->eddsa_signature));
+}
+
+
+/**
+ * Verify a signature over encrypted contract.
+ *
+ * @param econtract encrypted contract
+ * @param econtract_size number of bytes in @a econtract
+ * @param contract_pub public key for the DH-encryption
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_CREATE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_econtract_upload_verify (
+  const void *econtract,
+  size_t econtract_size,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig)
+{
+  struct TALER_PurseContractPS pc = {
+    .purpose.size = htonl (sizeof (pc)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT),
+    .contract_pub = *contract_pub
+  };
+
+  GNUNET_CRYPTO_hash (econtract,
+                      econtract_size,
+                      &pc.h_econtract);
+  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_RESERVE_CLOSE,
+                                      &pc.purpose,
+                                      &purse_sig->eddsa_signature,
+                                      &purse_pub->eddsa_pub);
+}
+
+
 /* end of wallet_signatures.c */

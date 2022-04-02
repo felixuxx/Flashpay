@@ -316,6 +316,10 @@
  */
 #define TALER_SIGNATURE_WALLET_RESERVE_CLOSE 1215
 
+/**
+ * Associates encrypted contract with a purse.
+ */
+#define TALER_SIGNATURE_WALLET_PURSE_ECONTRACT 1216
 
 /******************************/
 /* Security module signatures */

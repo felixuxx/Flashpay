@@ -2727,6 +2727,43 @@ TALER_wallet_purse_create_verify (
 
 
 /**
+ * Sign a request to upload an encrypted contract.
+ *
+ * @param econtract encrypted contract
+ * @param econtract_size number of bytes in @a econtract
+ * @param contract_pub public key for the DH-encryption
+ * @param purse_priv key identifying the purse
+ * @param[out] purse_sig resulting signature
+ */
+void
+TALER_wallet_econtract_upload_sign (
+  const void *econtract,
+  size_t econtract_size,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  struct TALER_PurseContractSignatureP *purse_sig);
+
+
+/**
+ * Verify a signature over encrypted contract.
+ *
+ * @param econtract encrypted contract
+ * @param econtract_size number of bytes in @a econtract
+ * @param contract_pub public key for the DH-encryption
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_CREATE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_econtract_upload_verify (
+  const void *econtract,
+  size_t econtract_size,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig);
+
+
+/**
  * Sign a request to inquire about a purse's status.
  *
  * @param purse_priv key identifying the purse
