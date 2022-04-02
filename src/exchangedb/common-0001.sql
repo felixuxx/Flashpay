@@ -1560,6 +1560,7 @@ CREATE OR REPLACE FUNCTION create_foreign_table(
     ,modulus INTEGER
     ,shard_suffix VARCHAR
     ,current_shard_num INTEGER
+    ,local_user VARCHAR DEFAULT 'taler-exchange-httpd'
   )
   RETURNS VOID
   LANGUAGE plpgsql
@@ -1581,14 +1582,15 @@ BEGIN
   );
 
   EXECUTE FORMAT(
-    'ALTER FOREIGN TABLE %I OWNER TO "taler-exchange-httpd"',
-    source_table_name || '_' || shard_suffix
+    'ALTER FOREIGN TABLE %I OWNER TO %L'
+    ,source_table_name || '_' || shard_suffix
+    ,local_user
   );
 
 END
 $$;
 
-CREATE OR REPLACE FUNCTION master_prepare_sharding()
+CREATE OR REPLACE FUNCTION prepare_sharding()
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
@@ -1717,131 +1719,160 @@ BEGIN
     ,remote_user_password
   );
 
+  EXECUTE FORMAT(
+    'GRANT ALL PRIVILEGES '
+      'ON FOREIGN SERVER %I '
+      'TO %L;'
+    ,shard_suffix
+    ,local_user
+  );
+
   PERFORM create_foreign_table(
     'wire_targets'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'reserves'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'reserves_in'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'reserves_out'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'reserves_close'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'known_coins'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'refresh_commitments'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'refresh_revealed_coins'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'refresh_transfer_keys'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'deposits'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
 --  PERFORM create_foreign_table(
 --    'deposits_by_ready'
 --    ,total_num_shards
 --    ,shard_suffix
 --    ,current_shard_num
+--    ,local_user
 --  );
 --  PERFORM create_foreign_table(
 --    'deposits_for_matching'
 --    ,total_num_shards
 --    ,shard_suffix
 --    ,current_shard_num
+--    ,local_user
 --  );
   PERFORM create_foreign_table(
     'refunds'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'wire_out'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'aggregation_tracking'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'recoup'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'recoup_by_reserve'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'reserves_out_by_reserve'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'recoup_refresh'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'prewire'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
   PERFORM create_foreign_table(
     'cs_nonce_locks'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
+    ,local_user
   );
 
 END
@@ -1860,7 +1891,7 @@ CREATE OR REPLACE FUNCTION create_foreign_servers(
 AS $$
 BEGIN
 
-  PERFORM master_prepare_sharding();
+  PERFORM prepare_sharding();
 
   FOR i IN 1..amount LOOP
     PERFORM create_shard_server(
