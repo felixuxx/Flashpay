@@ -453,6 +453,7 @@ run_aggregation (void *cls)
                 au_active.payto_uri);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
+    db_plugin->rollback (db_plugin->cls);
     release_shard (s);
     return;
   }
@@ -477,6 +478,7 @@ run_aggregation (void *cls)
                   GNUNET_TIME_timestamp2s (au_active.execution_time));
       global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
+      db_plugin->rollback (db_plugin->cls);
       release_shard (s);
       return;
     }
@@ -707,6 +709,7 @@ run_aggregation (void *cls)
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
+    db_plugin->rollback (db_plugin->cls); /* just in case */
     release_shard (s);
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -720,6 +723,7 @@ run_aggregation (void *cls)
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
+    db_plugin->rollback (db_plugin->cls); /* just in case */
     release_shard (s);
     return;
   }
