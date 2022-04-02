@@ -211,7 +211,7 @@ postgres_create_shard_tables (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint32 (&idx),
     GNUNET_PQ_query_param_end
@@ -254,7 +254,7 @@ postgres_setup_partitions (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint32 (&num),
     GNUNET_PQ_query_param_end
@@ -298,7 +298,7 @@ postgres_setup_foreign_servers (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint32 (&num),
     GNUNET_PQ_query_param_end
