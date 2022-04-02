@@ -19,8 +19,22 @@ sql_DATA = \
   benchmark-0001.sql \
   exchange-0000.sql \
   exchange-0001.sql \
-  partition-0001.sql \
+  shard-0001.sql \
   drop0001.sql
+
+BUILT_SOURCES = \
+  shard-0001.sql \
+  exchange-0001.sql
+
+CLEANFILES = \
+  shard-0001.sql \
+  exchange-0001.sql
+
+exchange-0001.sql: common-0001.sql exchange-0001-part.sql
+	cat common-0001.sql exchange-0001-part.sql >$@
+
+shard-0001.sql: common-0001.sql
+	cp common-0001.sql $@
 
 EXTRA_DIST = \
   exchangedb.conf \

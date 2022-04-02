@@ -49,6 +49,15 @@ static int gc_db;
  */
 static uint32_t num_partitions;
 
+/**
+ * -F option: setup a sharded database, i.e. create foreign tables/server
+ */
+static uint32_t num_foreign_servers;
+
+/**
+ * -S option: setup a database on a shard server, creates tables with suffix shard_idx
+ */
+static uint32_t shard_idx;
 
 /**
  * Main function that will be run.
@@ -85,6 +94,20 @@ run (void *cls,
                   "Could not drop tables as requested. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
     }
   }
+  if (1 <
+      shard_idx)
+  {
+    if (GNUNET_OK != plugin->create_shard_tables (plugin->cls, shard_idx))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not create shard database\n");
+      global_ret = EXIT_NOTINSTALLED;
+    }
+    /* We do not want to continue if we are on a shard */
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
+    return;
+  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -106,6 +129,25 @@ run (void *cls,
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Could not drop tables after failed partitioning, please delete the DB manually\n");
+      }
+      TALER_EXCHANGEDB_plugin_unload (plugin);
+      plugin = NULL;
+      global_ret = EXIT_NOTINSTALLED;
+      return;
+    }
+  }
+  else if (1 <
+           num_foreign_servers)
+  {
+    if (GNUNET_OK != plugin->setup_foreign_servers (plugin->cls,
+                                                    num_foreign_servers))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not setup shards. Aborting\n");
+      if (GNUNET_OK != plugin->drop_tables (plugin->cls))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Could not drop tables after failed shard setup, please delete the DB manually\n");
       }
       TALER_EXCHANGEDB_plugin_unload (plugin);
       plugin = NULL;
@@ -178,6 +220,16 @@ main (int argc,
                                "NUMBER",
                                "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node (NOTE: this is different from sharding)",
                                &num_partitions),
+    GNUNET_GETOPT_option_uint ('F',
+                               "foreign",
+                               "NUMBER",
+                               "Setup a sharded database whit N foreign servers (shards) / tables",
+                               &num_foreign_servers),
+    GNUNET_GETOPT_option_uint ('S',
+                               "shard",
+                               "INDEX",
+                               "Setup a shard server, creates tables with INDEX as suffix",
+                               &shard_idx),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

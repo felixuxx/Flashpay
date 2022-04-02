@@ -2255,6 +2255,17 @@ struct TALER_EXCHANGEDB_Plugin
   (*create_tables)(void *cls);
 
   /**
+   * Initialize the database of a shard node
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param idx the current shard index, will be appended to tables as suffix
+   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+   */
+  enum GNUNET_GenericReturnValue
+  (*create_shard_tables)(void *cls,
+                         uint32_t idx);
+
+  /**
    * Change already present tables of the database to num partitions
    * Only has an effect if there are default partitions only
    *
@@ -2264,7 +2275,23 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_GenericReturnValue
   (*setup_partitions)(void *cls,
-                      const uint32_t num);
+                      uint32_t num);
+
+  /**
+   * Change already present tables of the database to num foreign tables on
+   * num foreign servers (shards).
+   * Only has an effect if there are default partitions only
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param num the number of shard servers to create. The shard servers
+   *            must follow the numbering of 1-N, have the same user as
+   *            the master and have tables named <table>_n where n is the same
+   *            as the servers index of N.
+   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+   */
+  enum GNUNET_GenericReturnValue
+  (*setup_foreign_servers)(void *cls,
+                           uint32_t num);
 
   /**
    * Start a transaction.
