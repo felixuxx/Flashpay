@@ -17,6 +17,9 @@
 -- Everything in one big transaction
 BEGIN;
 
+-- Check patch versioning is in place.
+SELECT _v.register_patch('exchange-0001', NULL, NULL);
+
 -- ------------------------------ denominations ----------------------------------------
 
 CREATE TABLE IF NOT EXISTS denominations

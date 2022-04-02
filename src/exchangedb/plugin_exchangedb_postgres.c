@@ -175,6 +175,63 @@ postgres_drop_tables (void *cls)
 
 
 /**
+ * Drop all Taler shard tables.  This should only be used by testcases.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param old_idx the index which was used when the shard database was initialized
+ * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
+ */
+static enum GNUNET_GenericReturnValue
+postgres_drop_shard_tables (void *cls,
+                            uint32_t old_idx)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_Context *conn;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint32 (&old_idx),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    GNUNET_PQ_make_prepare ("drop_shard_tables",
+                            "SELECT"
+                            " drop_shard"
+                            " ($1);",
+                            1),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
+                                     "exchangedb-postgres",
+                                     NULL,
+                                     NULL,
+                                     ps);
+  if (NULL == conn)
+    return GNUNET_SYSERR;
+  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
+                                              "drop_shard_tables",
+                                              params))
+    ret = GNUNET_SYSERR;
+  GNUNET_PQ_disconnect (conn);
+
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
+                                     "exchangedb-postgres",
+                                     "shard-drop",
+                                     NULL,
+                                     NULL);
+  if (NULL == conn)
+    return GNUNET_SYSERR;
+  GNUNET_PQ_disconnect (conn);
+  if (NULL != pg->conn)
+  {
+    GNUNET_PQ_disconnect (pg->conn);
+    pg->conn = NULL;
+    pg->init = false;
+  }
+  return ret;
+}
+
+
+/**
  * Create the necessary tables if they are not present
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -13140,6 +13197,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
   plugin->drop_tables = &postgres_drop_tables;
+  plugin->drop_shard_tables = &postgres_drop_shard_tables;
   plugin->create_tables = &postgres_create_tables;
   plugin->create_shard_tables = &postgres_create_shard_tables;
   plugin->setup_partitions = &postgres_setup_partitions;

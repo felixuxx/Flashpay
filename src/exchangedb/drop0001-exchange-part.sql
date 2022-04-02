@@ -14,19 +14,13 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
 BEGIN;
-
--- This script DROPs all of the tables we create.
---
--- Unlike the other SQL files, it SHOULD be updated to reflect the
--- latest requirements for dropping tables.
-
 
 -- Unregister patch (exchange-0001.sql)
 SELECT _v.unregister_patch('exchange-0001');
 
--- Drops for exchange-0001.sql
+
+-- Drops for exchange-0001-part.sql
 DROP TRIGGER IF EXISTS reserves_out_on_insert ON reserves_out;
 DROP TRIGGER IF EXISTS reserves_out_on_delete ON reserves_out;
 DROP TRIGGER IF EXISTS deposits_on_insert ON deposits;
@@ -43,70 +37,32 @@ DROP TABLE IF EXISTS wire_accounts CASCADE;
 DROP TABLE IF EXISTS signkey_revocations CASCADE;
 DROP TABLE IF EXISTS work_shards CASCADE;
 DROP TABLE IF EXISTS prewire CASCADE;
-DROP FUNCTION IF EXISTS create_table_prewire;
 DROP TABLE IF EXISTS recoup CASCADE;
-DROP FUNCTION IF EXISTS create_table_recoup;
-DROP FUNCTION IF EXISTS add_constraints_to_recoup_partition;
 DROP TABLE IF EXISTS recoup_refresh CASCADE;
-DROP FUNCTION IF EXISTS create_table_recoup_refresh;
-DROP FUNCTION IF EXISTS add_constraints_to_recoup_refresh_partition;
 DROP TABLE IF EXISTS aggregation_transient CASCADE;
-DROP FUNCTION IF EXISTS create_table_aggregation_transient;
 DROP TABLE IF EXISTS aggregation_tracking CASCADE;
-DROP FUNCTION IF EXISTS create_table_aggregation_tracking;
-DROP FUNCTION IF EXISTS add_constraints_to_aggregation_tracking_partition;
 DROP TABLE IF EXISTS wire_out CASCADE;
-DROP FUNCTION IF EXISTS create_table_wire_out;
-DROP FUNCTION IF EXISTS add_constraints_to_wire_out_partition;
 DROP TABLE IF EXISTS wire_targets CASCADE;
-DROP FUNCTION IF EXISTS create_table_wire_targets;
-DROP FUNCTION IF EXISTS add_constraints_to_wire_targets_partition;
 DROP TABLE IF EXISTS wire_fee CASCADE;
 DROP TABLE IF EXISTS deposits CASCADE;
-DROP FUNCTION IF EXISTS create_table_deposits;
 DROP TABLE IF EXISTS deposits_by_ready CASCADE;
-DROP FUNCTION IF EXISTS create_table_deposits_by_ready;
 DROP TABLE IF EXISTS deposits_for_matching CASCADE;
-DROP FUNCTION IF EXISTS create_table_deposits_for_matching;
-DROP FUNCTION IF EXISTS add_constraints_to_deposits_partition;
 DROP TABLE IF EXISTS extension_details CASCADE;
 DROP TABLE IF EXISTS refunds CASCADE;
-DROP FUNCTION IF EXISTS create_table_refunds;
-DROP FUNCTION IF EXISTS add_constraints_to_refunds_partition;
 DROP TABLE IF EXISTS refresh_commitments CASCADE;
-DROP FUNCTION IF EXISTS create_table_refresh_commitments;
-DROP FUNCTION IF EXISTS add_constraints_to_refresh_commitments_partition;
 DROP TABLE IF EXISTS refresh_revealed_coins CASCADE;
-DROP FUNCTION IF EXISTS create_table_refresh_revealed_coins;
-DROP FUNCTION IF EXISTS add_constraints_to_refresh_revealed_coins_partition;
 DROP TABLE IF EXISTS refresh_transfer_keys CASCADE;
-DROP FUNCTION IF EXISTS create_table_refresh_transfer_keys;
-DROP FUNCTION IF EXISTS add_constraints_to_refresh_transfer_keys_partition;
 DROP TABLE IF EXISTS known_coins CASCADE;
-DROP FUNCTION IF EXISTS create_table_known_coins;
-DROP FUNCTION IF EXISTS add_constraints_to_known_coins_partition;
 DROP TABLE IF EXISTS reserves_close CASCADE;
-DROP FUNCTION IF EXISTS create_table_reserves_close;
-DROP FUNCTION IF EXISTS add_constraints_to_reserves_close_partition;
 DROP TABLE IF EXISTS reserves_out CASCADE;
-DROP FUNCTION IF EXISTS create_table_reserves_out;
 DROP TABLE IF EXISTS reserves_out_by_reserve CASCADE;
-DROP FUNCTION IF EXISTS create_table_reserves_out_by_reserve;
-DROP FUNCTION IF EXISTS add_constraints_to_reserves_out_partition;
 DROP TABLE IF EXISTS reserves_in CASCADE;
-DROP FUNCTION IF EXISTS create_table_reserves_in;
-DROP FUNCTION IF EXISTS add_constraints_to_reserves_in_partition;
 DROP TABLE IF EXISTS reserves CASCADE;
-DROP FUNCTION IF EXISTS create_table_reserves;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 DROP TABLE IF EXISTS cs_nonce_locks CASCADE;
-DROP FUNCTION IF EXISTS create_table_cs_nonce_locks;
-DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
-
 DROP TABLE IF EXISTS global_fee CASCADE;
 DROP TABLE IF EXISTS recoup_by_reserve CASCADE;
-DROP TABLE IF EXISTS aggregation_transient CASCADE;
 
 
 DROP TABLE IF EXISTS partners CASCADE;
@@ -143,17 +99,6 @@ DROP FUNCTION IF EXISTS exchange_do_purse_merge;
 DROP FUNCTION IF EXISTS exchange_do_account_merge;
 DROP FUNCTION IF EXISTS exchange_do_history_request;
 DROP FUNCTION IF EXISTS exchange_do_close_request;
-
-
-DROP FUNCTION IF EXISTS create_table_partition;
-DROP FUNCTION IF EXISTS create_partitions;
-DROP FUNCTION IF EXISTS detach_default_partitions;
-DROP FUNCTION IF EXISTS drop_default_partitions;
-DROP FUNCTION IF EXISTS prepare_sharding;
-DROP FUNCTION IF EXISTS create_foreign_table;
-DROP FUNCTION IF EXISTS create_foreign_servers;
-DROP FUNCTION IF EXISTS create_shard_server;
-
 
 -- And we're out of here...
 
