@@ -21,26 +21,37 @@ sql_DATA = \
   exchange-0001.sql \
   shard-0000.sql \
   shard-0001.sql \
+  shard-drop0001.sql \
   drop0001.sql
 
 BUILT_SOURCES = \
   shard-0000.sql \
   shard-0001.sql \
-  exchange-0001.sql
+  exchange-0001.sql \
+  drop0001.sql \
+  shard-drop0001.sql
 
 CLEANFILES = \
   shard-0000.sql \
   shard-0001.sql \
-  exchange-0001.sql
+  exchange-0001.sql \
+  drop0001.sql \
+  shard-drop0001.sql
 
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql
 	cat common-0001.sql exchange-0001-part.sql >$@
 
-shard-0001.sql: common-0001.sql
-	cp common-0001.sql $@
+shard-0001.sql: common-0001.sql shard-0001-part.sql
+	cat common-0001.sql shard-0001-part.sql >$@
 
 shard-0000.sql: exchange-0000.sql
 	cp exchange-0000.sql $@
+
+drop0001.sql: drop-common.sql drop0001-exchange-part.sql
+	cat drop-common.sql drop0001-exchange-part.sql >$@
+
+shard-drop0001.sql: drop-common.sql drop0001-shard-part.sql
+	cat drop-common.sql drop0001-shard-part.sql >$@
 
 EXTRA_DIST = \
   exchangedb.conf \

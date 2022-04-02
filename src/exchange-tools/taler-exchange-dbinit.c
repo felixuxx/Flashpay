@@ -60,6 +60,11 @@ static uint32_t num_foreign_servers;
 static uint32_t shard_idx;
 
 /**
+ * -R option: do full shard DB reset
+ */
+static uint32_t reset_shard_db;
+
+/**
  * Main function that will be run.
  *
  * @param cls closure
@@ -94,10 +99,25 @@ run (void *cls,
                   "Could not drop tables as requested. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
     }
   }
-  if (1 <
+  if (0 <
+      reset_shard_db)
+  {
+    if (GNUNET_OK != plugin->drop_shard_tables (plugin->cls, reset_shard_db))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not drop shard tables as requested. Either database was not yet initialized or permission denied. Consult the logs.\n");
+      global_ret = EXIT_FAILURE;
+      return;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Dropped shard database, please call taler-exchange-dbinit -S <N> to initialize a new shard database\n");
+    return;
+  }
+  if (0 <
       shard_idx)
   {
-    if (GNUNET_OK != plugin->create_shard_tables (plugin->cls, shard_idx))
+    if (GNUNET_OK != plugin->create_shard_tables (plugin->cls,
+                                                  shard_idx))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not create shard database\n");
@@ -226,13 +246,18 @@ main (int argc,
     GNUNET_GETOPT_option_uint ('F',
                                "foreign",
                                "NUMBER",
-                               "Setup a sharded database whit N foreign servers (shards) / tables",
+                               "Setup a sharded database whit N foreign servers (shards) / tables, must be called as DB superuser",
                                &num_foreign_servers),
     GNUNET_GETOPT_option_uint ('S',
                                "shard",
                                "INDEX",
                                "Setup a shard server, creates tables with INDEX as suffix",
                                &shard_idx),
+    GNUNET_GETOPT_option_uint ('R',
+                               "reset-shard",
+                               "OLD_SHARD_IDX",
+                               "reset a shard database, does not reinitialize i.e. call taler-exchange-dbinit -S afterwards (DANGEROUS: all existsing data is lost!)",
+                               &reset_shard_db),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

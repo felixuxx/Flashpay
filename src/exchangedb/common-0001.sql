@@ -17,9 +17,6 @@
 -- Everything in one big transaction
 BEGIN;
 
--- Check patch versioning is in place.
-SELECT _v.register_patch('exchange-0001', NULL, NULL);
-
 -------------------- Tables ----------------------------
 
 CREATE OR REPLACE FUNCTION create_partitioned_table(
@@ -833,7 +830,7 @@ DECLARE
   table_name VARCHAR DEFAULT 'aggregation_transient';
 BEGIN
 
-  EXECUTE FORMAT (
+  PERFORM create_partitioned_table(
     'CREATE TABLE IF NOT EXISTS %I '
       '(amount_val INT8 NOT NULL'
       ',amount_frac INT4 NOT NULL'
@@ -1141,7 +1138,7 @@ $$;
 
 ------------------------- Partitions ------------------------------
 
-CREATE OR REPLACE FUNCTION create_table_partition(
+CREATE OR REPLACE FUNCTION create_hash_partition(
     source_table_name VARCHAR
     ,modulus INTEGER
     ,partition_num INTEGER
@@ -1163,6 +1160,18 @@ BEGIN
     ,partition_num-1
   );
 
+END
+$$;
+
+CREATE OR REPLACE FUNCTION create_range_partition(
+  source_table_name VARCHAR
+  ,partition_num INTEGER
+)
+  RETURNS void
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE NOTICE 'TODO';
 END
 $$;
 
@@ -1303,75 +1312,75 @@ BEGIN
 
   LOOP
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'wire_targets'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_wire_targets_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'reserves'
       ,modulus
       ,num_partitions
     );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'reserves_in'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_reserves_in_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'reserves_close'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_reserves_close_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'reserves_out'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_reserves_out_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'reserves_out_by_reserve'
       ,modulus
       ,num_partitions
     );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'known_coins'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_known_coins_partition(num_partitions::varchar);
     
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'refresh_commitments'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_refresh_commitments_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'refresh_revealed_coins'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_refresh_revealed_coins_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'refresh_transfer_keys'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_refresh_transfer_keys_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'deposits'
       ,modulus
       ,num_partitions
@@ -1400,72 +1409,72 @@ BEGIN
 -- that is right now configurable via AGGREGATOR_SHIFT option.
 
 -- FIXME: range partitioning
---    PERFORM create_table_partition(
+--    PERFORM create_range_partition(
 --      'deposits_by_ready'
 --      ,modulus
 --      ,num_partitions
 --    );
 --
---    PERFORM create_table_partition(
+--    PERFORM create_range_partition(
 --      'deposits_for_matching'
 --      ,modulus
 --      ,num_partitions
 --    );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'refunds'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_refunds_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'wire_out'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_wire_out_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'aggregation_transient'
       ,modulus
       ,num_partitions
     );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'aggregation_tracking'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_aggregation_tracking_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'recoup'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_recoup_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'recoup_by_reserve'
       ,modulus
       ,num_partitions
     );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'recoup_refresh'
       ,modulus
       ,num_partitions
     );
     PERFORM add_constraints_to_recoup_refresh_partition(num_partitions::varchar);
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'prewire'
       ,modulus
       ,num_partitions
     );
 
-    PERFORM create_table_partition(
+    PERFORM create_hash_partition(
       'cs_nonce_locks'
       ,modulus
       ,num_partitions
@@ -1484,79 +1493,7 @@ $$;
 
 --------------------- Sharding ---------------------------
 
----------------------- Shards ----------------------------
-
-CREATE OR REPLACE FUNCTION setup_shard(
-  shard_suffix VARCHAR
-)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
-BEGIN
-
-  PERFORM create_table_wire_targets(shard_suffix);
-  PERFORM add_constraints_to_wire_targets_partition(shard_suffix);
-
-  PERFORM create_table_reserves(shard_suffix);
-
-  PERFORM create_table_reserves_in(shard_suffix);
-  PERFORM add_constraints_to_reserves_in_partition(shard_suffix);
-
-  PERFORM create_table_reserves_close(shard_suffix);
-
-  PERFORM create_table_reserves_out(shard_suffix);
-
-  PERFORM create_table_reserves_out_by_reserve(shard_suffix);
-
-  PERFORM create_table_known_coins(shard_suffix);
-  PERFORM add_constraints_to_known_coins_partition(shard_suffix);
-
-  PERFORM create_table_refresh_commitments(shard_suffix);
-  PERFORM add_constraints_to_refresh_commitments_partition(shard_suffix);
- 
-  PERFORM create_table_refresh_revealed_coins(shard_suffix);
-  PERFORM add_constraints_to_refresh_revealed_coins_partition(shard_suffix);
-  
-  PERFORM create_table_refresh_transfer_keys(shard_suffix);
-  PERFORM add_constraints_to_refresh_transfer_keys_partition(shard_suffix);
-  
-  PERFORM create_table_deposits(shard_suffix);
-  PERFORM add_constraints_to_deposits_partition(shard_suffix);
-
-  PERFORM create_table_deposits_by_ready(shard_suffix);
-
-  PERFORM create_table_deposits_for_matching(shard_suffix);
-  
-  PERFORM create_table_refunds(shard_suffix);
-  PERFORM add_constraints_to_refunds_partition(shard_suffix);
-  
-  PERFORM create_table_wire_out(shard_suffix);
-  PERFORM add_constraints_to_wire_out_partition(shard_suffix);
-  
-  PERFORM create_table_aggregation_transient(shard_suffix);
-
-  PERFORM create_table_aggregation_tracking(shard_suffix);
-  PERFORM add_constraints_to_aggregation_tracking_partition(shard_suffix);
-
-  PERFORM create_table_recoup(shard_suffix);
-  PERFORM add_constraints_to_recoup_partition(shard_suffix);
-
-  PERFORM create_table_recoup_by_reserve(shard_suffix);
-
-  PERFORM create_table_recoup_refresh(shard_suffix);
-  PERFORM add_constraints_to_recoup_refresh_partition(shard_suffix);
-
-  PERFORM create_table_prewire(shard_suffix);
-
-  PERFORM create_table_cs_nonce_locks(shard_suffix);
-  PERFORM add_constraints_to_cs_nonce_locks_partition(shard_suffix);
-
-END
-$$;
-
------------------------------- Master ----------------------------------
-
-CREATE OR REPLACE FUNCTION create_foreign_table(
+CREATE OR REPLACE FUNCTION create_foreign_hash_partition(
     source_table_name VARCHAR
     ,modulus INTEGER
     ,shard_suffix VARCHAR
@@ -1588,6 +1525,18 @@ BEGIN
     ,local_user
   );
 
+END
+$$;
+
+CREATE OR REPLACE FUNCTION create_foreign_range_partition(
+  source_table_name VARCHAR
+  ,partition_num INTEGER
+)
+  RETURNS VOID
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+   RAISE NOTICE 'TODO';
 END
 $$;
 
@@ -1728,147 +1677,154 @@ BEGIN
     ,local_user
   );
 
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'wire_targets'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'reserves'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'reserves_in'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'reserves_out'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
-    'reserves_close'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'known_coins'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'refresh_commitments'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'refresh_revealed_coins'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'refresh_transfer_keys'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'deposits'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
---  PERFORM create_foreign_table(
---    'deposits_by_ready'
---    ,total_num_shards
---    ,shard_suffix
---    ,current_shard_num
---    ,local_user
---  );
---  PERFORM create_foreign_table(
---    'deposits_for_matching'
---    ,total_num_shards
---    ,shard_suffix
---    ,current_shard_num
---    ,local_user
---  );
-  PERFORM create_foreign_table(
-    'refunds'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'wire_out'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'aggregation_tracking'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'recoup'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
-    'recoup_by_reserve'
-    ,total_num_shards
-    ,shard_suffix
-    ,current_shard_num
-    ,local_user
-  );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'reserves_out_by_reserve'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
+    'reserves_close'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'known_coins'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'refresh_commitments'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'refresh_revealed_coins'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'refresh_transfer_keys'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'deposits'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+--  PERFORM create_foreign_range_partition(
+--    'deposits_by_ready'
+--    ,total_num_shards
+--    ,shard_suffix
+--    ,current_shard_num
+--    ,local_user
+--  );
+--  PERFORM create_foreign_range_partition(
+--    'deposits_for_matching'
+--    ,total_num_shards
+--    ,shard_suffix
+--    ,current_shard_num
+--    ,local_user
+--  );
+  PERFORM create_foreign_hash_partition(
+    'refunds'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'wire_out'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'aggregation_transient'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'aggregation_tracking'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'recoup'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
+    'recoup_by_reserve'
+    ,total_num_shards
+    ,shard_suffix
+    ,current_shard_num
+    ,local_user
+  );
+  PERFORM create_foreign_hash_partition(
     'recoup_refresh'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'prewire'
     ,total_num_shards
     ,shard_suffix
     ,current_shard_num
     ,local_user
   );
-  PERFORM create_foreign_table(
+  PERFORM create_foreign_hash_partition(
     'cs_nonce_locks'
     ,total_num_shards
     ,shard_suffix
