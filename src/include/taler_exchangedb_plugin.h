@@ -4502,6 +4502,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] merge_pub public key representing the merge capability
    * @param[out] purse_expiration when would an unmerged purse expire
    * @param[out] h_contract_terms contract associated with the purse
+   * @param[out] age_limit the age limit for deposits into the purse
    * @param[out] target_amount amount to be put into the purse
    * @param[out] balance amount put so far into the purse
    * @param[out] purse_sig signature of the purse over the initialization data
@@ -4514,6 +4515,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_PurseMergePublicKeyP *merge_pub,
     struct GNUNET_TIME_Timestamp *purse_expiration,
     struct TALER_PrivateContractHashP *h_contract_terms,
+    uint32_t *age_limit,
     struct TALER_Amount *target_amount,
     struct TALER_Amount *balance,
     struct TALER_PurseContractSignatureP *purse_sig);
@@ -4528,6 +4530,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] purse_pub public key of the purse
    * @param[out] purse_expiration when would an unmerged purse expire
    * @param[out] h_contract_terms contract associated with the purse
+   * @param[out] age_limit the age limit for deposits into the purse
    * @param[out] target_amount amount to be put into the purse
    * @param[out] balance amount put so far into the purse
    * @param[out] purse_sig signature of the purse over the initialization data
@@ -4540,6 +4543,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_PurseContractPublicKeyP *purse_pub,
     struct GNUNET_TIME_Timestamp *purse_expiration,
     struct TALER_PrivateContractHashP *h_contract_terms,
+    uint32_t *age_limit,
     struct TALER_Amount *target_amount,
     struct TALER_Amount *balance,
     struct TALER_PurseContractSignatureP *purse_sig);
