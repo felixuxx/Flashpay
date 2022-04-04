@@ -3289,6 +3289,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT "
       " pub_ckey"
       ",e_contract"
+      // ",econtract_sig"
       " FROM contracts"
       "   WHERE purse_pub=$1;",
       1),
@@ -12811,6 +12812,7 @@ postgres_insert_partner (void *cls,
  * @param pub_ckey ephemeral key for DH used to encrypt the contract
  * @param econtract_size number of bytes in @a econtract
  * @param econtract the encrypted contract
+ * @param[out] econtract_sig set to the signature over the encrypted contract
  * @param[out] in_conflict set to true if @a econtract
  *             conflicts with an existing contract;
  *             in this case, the return value will be
@@ -12823,6 +12825,8 @@ postgres_insert_contract (void *cls,
                           const struct TALER_ContractDiffiePublicP *pub_ckey,
                           size_t econtract_size,
                           const void *econtract,
+                          const struct
+                          TALER_PurseContractSignatureP *econtract_sig,
                           bool *in_conflict)
 {
   GNUNET_break (0);
@@ -12836,6 +12840,7 @@ postgres_insert_contract (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub key to lookup the contract by
  * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
+ * @param[out] econtract_sig set to the signature over the encrypted contract
  * @param[out] econtract_size set to the number of bytes in @a econtract
  * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
  * @return transaction status code
@@ -12844,6 +12849,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_select_contract (void *cls,
                           const struct TALER_PurseContractPublicKeyP *purse_pub,
                           struct TALER_ContractDiffiePublicP *pub_ckey,
+                          struct TALER_PurseContractSignatureP *econtract_sig,
                           size_t *econtract_size,
                           void **econtract)
 {

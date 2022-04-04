@@ -112,6 +112,11 @@ struct PurseCreateContext
   struct TALER_PurseContractSignatureP purse_sig;
 
   /**
+   * Signature of the client affiming this encrypted contract.
+   */
+  struct TALER_PurseContractSignatureP econtract_sig;
+
+  /**
    * Hash of the contract terms of the purse.
    */
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -260,7 +265,7 @@ create_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret
-      =   return TALER_MHD_REPLY_JSON_PACK (
+      = TALER_MHD_REPLY_JSON_PACK (
           connection,
           MHD_HTTP_CONFLICT,
           TALER_JSON_pack_ec (
@@ -319,6 +324,7 @@ create_transaction (void *cls,
                                     &pcc->contract_pub,
                                     pcc->econtract_size,
                                     pcc->econtract,
+                                    &pcc->econtract_sig,
                                     &in_conflict);
   if (qs < 0)
   {
@@ -333,16 +339,45 @@ create_transaction (void *cls,
   }
   if (in_conflict)
   {
-    /* FIXME-DESIGN: we have no proof that the
-       client is at fault here!
-       => need 2nd client signature over the encrypted
-       contract (and ECDHE public key)!!! */
+    struct TALER_ContractDiffiePublicP pub_ckey;
+    struct TALER_PurseContractSignatureP econtract_sig;
+    size_t econtract_size;
+    void *econtract;
+    struct GNUNET_HashCode h_econtract;
+
+    qs = select_contract (cls,
+                          &pcc->purse_pub,
+                          &pub_ckey,
+                          &econtract_sig,
+                          &econtract_size,
+                          &econtract);
+    if (qs <= 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      TALER_LOG_WARNING (
+        "Failed to store fetch contract information from database\n");
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "select contract");
+      return qs;
+    }
+    GNUNET_CRYPTO_hash (econtract,
+                        econtract_size,
+                        &h_econtract);
     *mhd_ret
-      = TEH_RESPONSE_reply_with_error (
+      = TALER_MHD_REPLY_JSON_PACK (
           connection,
-          MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_EXCHANGE_PURSE_CREATE_CONFLICTING_CONTRACT_STORED,
-          NULL);
+          MHD_HTTP_CONFLICT,
+          TALER_JSON_pack_ec (
+            TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA),
+          GNUNET_JSON_pack_data_auto ("h_econtract",
+                                      &h_econtract),
+          GNUNET_JSON_pack_data_auto ("econtract_sig",
+                                      &econtract_sig),
+          GNUNET_JSON_pack_data_auto ("pub_ckey",
+                                      &pub_ckey));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -591,8 +626,12 @@ TEH_handler_purses_create (
       GNUNET_JSON_spec_var_size ("econtract",
                                  &pcc.econtract,
                                  &pcc.ecotract_size)),
-    GNUNET_JSON_spec_fixed_auto ("contract_pub",
-                                 &pcc.contract_pub),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("econtract_sig",
+                                   &pcc.econtract_sig)),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("contract_pub",
+                                   &pcc.contract_pub)),
     GNUNET_JSON_spec_fixed_auto ("merge_pub",
                                  &pcc.merge_pub),
     GNUNET_JSON_spec_fixed_auto ("purse_sig",
@@ -719,6 +758,23 @@ TEH_handler_purses_create (
                                        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
                                        NULL);
   }
+  if ( (NULL != pcc.econtract) &&
+       (GNUNET_OK !=
+        TALER_wallet_econtract_upload_verify (pcc.econtract,
+                                              pcc.econtract_size,
+                                              &pcc.contract_pub,
+                                              purse_pub,
+                                              &pcc.econtract_sig)) )
+  {
+    TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
+    GNUNET_JSON_parse_free (spec);
+    GNUNET_free (pcc.coins);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
+                                       NULL);
+  }
+
 
   if (GNUNET_SYSERR ==
       TEH_plugin->preflight (TEH_plugin->cls))
