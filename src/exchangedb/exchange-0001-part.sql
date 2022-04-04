@@ -183,7 +183,7 @@ BEGIN
     (NEW.reserve_uuid
     ,NEW.h_blind_ev);
   RETURN NEW;
-END $$;  
+END $$;
 COMMENT ON FUNCTION reserves_out_by_reserve_insert_trigger()
   IS 'Replicate reserve_out inserts into reserve_out_by_reserve table.';
 
@@ -200,7 +200,7 @@ BEGIN
   DELETE FROM reserves_out_by_reserve
    WHERE reserve_uuid = OLD.reserve_uuid;
   RETURN OLD;
-END $$;  
+END $$;
 COMMENT ON FUNCTION reserves_out_by_reserve_delete_trigger()
   IS 'Replicate reserve_out deletions into reserve_out_by_reserve table.';
 
@@ -457,7 +457,7 @@ COMMENT ON TABLE deposits_for_matching
 CREATE TABLE IF NOT EXISTS deposits_for_matching_default
   PARTITION OF deposits_for_matching
   DEFAULT;
-  
+
 
 CREATE OR REPLACE FUNCTION deposits_insert_trigger()
   RETURNS trigger
@@ -492,7 +492,7 @@ BEGIN
       ,NEW.deposit_serial_id);
   END IF;
   RETURN NEW;
-END $$;  
+END $$;
 COMMENT ON FUNCTION deposits_insert_trigger()
   IS 'Replicate deposit inserts into materialized indices.';
 
@@ -777,7 +777,7 @@ BEGIN
     (NEW.reserve_out_serial_id
     ,NEW.coin_pub);
   RETURN NEW;
-END $$;  
+END $$;
 COMMENT ON FUNCTION recoup_insert_trigger()
   IS 'Replicate recoup inserts into recoup_by_reserve table.';
 
@@ -795,7 +795,7 @@ BEGIN
    WHERE reserve_out_serial_id = OLD.reserve_out_serial_id
      AND coin_pub = OLD.coin_pub;
   RETURN OLD;
-END $$;  
+END $$;
 COMMENT ON FUNCTION recoup_delete_trigger()
   IS 'Replicate recoup deletions into recoup_by_reserve table.';
 
@@ -1068,6 +1068,8 @@ COMMENT ON TABLE contracts
   IS 'encrypted contracts associated with purses';
 COMMENT ON COLUMN contracts.purse_pub
   IS 'public key of the purse that the contract is associated with';
+COMMENT ON COLUMN contracts.contract_sig
+  IS 'signature over the encrypted contract by the purse contract key';
 COMMENT ON COLUMN contracts.pub_ckey
   IS 'Public ECDH key used to encrypt the contract, to be used with the purse private key for decryption';
 COMMENT ON COLUMN contracts.e_contract
