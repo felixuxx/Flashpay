@@ -61,6 +61,25 @@ DROP FUNCTION IF EXISTS create_table_reserves;
 DROP FUNCTION IF EXISTS create_table_cs_nonce_locks;
 DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 
+DROP FUNCTION IF EXISTS create_table_purse_requests;
+DROP FUNCTION IF EXISTS add_constraints_to_purse_requests_partition;
+DROP FUNCTION IF EXISTS create_table_purse_merges;
+DROP FUNCTION IF EXISTS add_constraints_to_purse_merges_partition;
+DROP FUNCTION IF EXISTS create_table_account_merges;
+DROP FUNCTION IF EXISTS add_constraints_to_account_merges_partition;
+DROP FUNCTION IF EXISTS create_table_contracts;
+DROP FUNCTION IF EXISTS add_constraints_to_contracts_partition;
+DROP FUNCTION IF EXISTS create_table_history_requests;
+DROP FUNCTION IF EXISTS create_table_close_requests;
+DROP FUNCTION IF EXISTS create_table_purse_deposits;
+DROP FUNCTION IF EXISTS add_constraints_to_purse_deposits_partition;
+DROP FUNCTION IF EXISTS create_table_wad_out_entries;
+DROP FUNCTION IF EXISTS add_constraints_to_wad_out_entries_partition;
+DROP FUNCTION IF EXISTS create_table_wads_in;
+DROP FUNCTION IF EXISTS add_constraints_to_wads_in_partition;
+DROP FUNCTION IF EXISTS create_table_wad_in_entries;
+DROP FUNCTION IF EXISTS add_constraints_to_wad_in_entries_partition;
+
 DROP FUNCTION IF EXISTS create_partitioned_table;
 DROP FUNCTION IF EXISTS create_hash_partition;
 DROP FUNCTION IF EXISTS create_range_partition;

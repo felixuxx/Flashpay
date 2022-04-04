@@ -89,6 +89,33 @@ BEGIN
   PERFORM create_table_cs_nonce_locks(shard_suffix);
   PERFORM add_constraints_to_cs_nonce_locks_partition(shard_suffix);
 
+  PERFORM create_table_purse_requests(shard_suffix);
+  PERFORM add_constraints_to_purse_requests_partition(shard_suffix);
+
+  PERFORM create_table_purse_merges(shard_suffix);
+  PERFORM add_constraints_to_purse_merges_partition(shard_suffix);
+
+  PERFORM create_table_account_merges(shard_suffix);
+  PERFORM add_constraints_to_account_merges_partition(shard_suffix);
+
+  PERFORM create_table_contracts(shard_suffix);
+  PERFORM add_constraints_to_contracts_partition(shard_suffix);
+
+  PERFORM create_table_history_requests(shard_suffix);
+
+  PERFORM create_table_close_requests(shard_suffix);
+
+  PERFORM create_table_purse_deposits(shard_suffix);
+  PERFORM add_constraints_to_purse_deposits_partition(shard_suffix);
+
+  PERFORM create_table_wad_out_entries(shard_suffix);
+  PERFORM add_constraints_to_wad_out_entries_partition(shard_suffix);
+
+  PERFORM create_table_wads_in(shard_suffix);
+  PERFORM add_constraints_to_wads_in_partition(shard_suffix);
+
+  PERFORM create_table_wad_in_entries(shard_suffix);
+  PERFORM add_constraints_to_wad_in_entries_partition(shard_suffix);
 END
 $$;
 
@@ -192,6 +219,46 @@ BEGIN
   EXECUTE FORMAT(
     'DROP TABLE IF EXISTS %I CASCADE'
     ,'cs_nonce_locks_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'purse_requests_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'purse_merges_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'account_merges_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'contracts_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'history_requests_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'close_requests_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'purse_deposits_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'wad_out_entries_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'wads_in_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'wad_in_entries_' || shard_suffix
   );
 END
 $$;
