@@ -128,11 +128,13 @@ handle_purse_create_deposit_finished (void *cls,
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_TIME_Timestamp etime;
       struct TALER_Amount total_deposited;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_ExchangePublicKeyP exchange_pub;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &pch->exchange_sig),
+                                     &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &pch->exchange_pub),
+                                     &exchange_pub),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &etime),
         TALER_JSON_spec_amount ("total_deposited",
@@ -158,26 +160,24 @@ handle_purse_create_deposit_finished (void *cls,
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
-        dr.hr.ec =
-          TALER_EC_EXCHANGE_PURSE_CREATE_WITH_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+        dr.hr.ec = TALER_EC_EXCHANGE_PURSE_CREATE_EXCHANGE_SIGNATURE_INVALID;
         break;
       }
       if (GNUNET_OK !=
           TALER_exchange_online_purse_created_verify (
             etime,
-            pcc->purse_expiration,
-            &pcc->purse_value_after_fees,
+            pch->purse_expiration,
+            &pch->purse_value_after_fees,
             &total_deposited,
-            &pcc->purse_pub,
-            &pcc->merge_pub,
-            &pcc->h_contract_terms,
+            &pch->purse_pub,
+            &pch->merge_pub,
+            &pch->h_contract_terms,
             &exchange_pub,
             &exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
-        dr.hr.ec =
-          TALER_EC_EXCHANGE_PURSE_CREATE_WITH_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+        dr.hr.ec = TALER_EC_EXCHANGE_PURSE_CREATE_EXCHANGE_SIGNATURE_INVALID;
         break;
       }
     }
@@ -257,7 +257,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   struct TALER_PurseContractSignatureP purse_sig;
   struct TALER_PurseContractSignatureP econtract_sig;
   struct TALER_ContractDiffiePublicP contract_pub;
-  char arg_str[sizeof (purse_pub) * 2 + 32];
+  char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *url;
   uint32_t min_age;
 
@@ -265,7 +265,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   pch->exchange = exchange;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
-  pcc->purse_expiration = purse_expiration;
+  pch->purse_expiration = purse_expiration;
   {
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_amount_any ("amount",
@@ -289,20 +289,20 @@ TALER_EXCHANGE_purse_create_with_deposit (
                  TEAH_handle_is_ready (exchange));
   if (GNUNET_OK !=
       TALER_JSON_contract_hash (contract_terms,
-                                &pcc->h_contract_terms))
+                                &pch->h_contract_terms))
   {
     GNUNET_break (0);
     return NULL;
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
-                                      &pcc->purse_pub.eddsa_pub);
+                                      &pch->purse_pub.eddsa_pub);
   {
-    char pub_str[sizeof (purse_pub) * 2];
+    char pub_str[sizeof (pch->purse_pub) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      &pcc->purse_pub,
-      sizeof (pcc->purse_pub),
+      &pch->purse_pub,
+      sizeof (pch->purse_pub),
       pub_str,
       sizeof (pub_str));
     *end = '\0';
@@ -314,7 +314,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
                                       &contract_pub.ecdhe_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
-                                      &pcc->merge_pub.eddsa_pub);
+                                      &pch->merge_pub.eddsa_pub);
   pch->url = TEAH_path_to_url (exchange,
                                arg_str);
   if (NULL == pch->url)
@@ -354,7 +354,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
 #endif
     TALER_wallet_purse_deposit_sign (
       url,
-      &pcc->purse_pub,
+      &pch->purse_pub,
       &deposit->amount,
       &deposit->coin_priv,
       &coin_sig);
@@ -381,10 +381,10 @@ TALER_EXCHANGE_purse_create_with_deposit (
   }
   GNUNET_free (url);
   TALER_wallet_purse_create_sign (purse_expiration,
-                                  &pcc->h_contract_terms,
-                                  &pcc->merge_pub,
+                                  &pch->h_contract_terms,
+                                  &pch->merge_pub,
                                   min_age,
-                                  &pcc->purse_value_after_fees,
+                                  &pch->purse_value_after_fees,
                                   purse_priv,
                                   &purse_sig);
   {
@@ -393,7 +393,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
 
     if (upload_contract)
     {
-      TALER_CRYPTO_contract_encrypt_for_merge (&purse_pub,
+      TALER_CRYPTO_contract_encrypt_for_merge (&pch->purse_pub,
                                                contract_priv,
                                                merge_priv,
                                                contract_terms,
@@ -407,7 +407,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
     }
     create_obj = GNUNET_JSON_PACK (
       TALER_JSON_pack_amount ("amount",
-                              &pcc->purse_value_after_fees),
+                              &pch->purse_value_after_fees),
       GNUNET_JSON_pack_uint64 ("min_age",
                                min_age),
       GNUNET_JSON_pack_allow_null (
@@ -429,9 +429,9 @@ TALER_EXCHANGE_purse_create_with_deposit (
       GNUNET_JSON_pack_data_auto ("purse_sig",
                                   &purse_sig),
       GNUNET_JSON_pack_data_auto ("merge_pub",
-                                  &pcc->merge_pub),
+                                  &pch->merge_pub),
       GNUNET_JSON_pack_data_auto ("h_contract_terms",
-                                  &pcc->h_contract_terms),
+                                  &pch->h_contract_terms),
       GNUNET_JSON_pack_timestamp ("purse_expiration",
                                   purse_expiration),
       GNUNET_JSON_pack_array_steal ("deposits",
