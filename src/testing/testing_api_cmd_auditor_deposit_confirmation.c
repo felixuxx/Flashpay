@@ -291,7 +291,8 @@ deposit_confirmation_run (void *cls,
                                   &timestamp),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_timestamp ("refund_deadline",
-                                    &refund_deadline)),
+                                    &refund_deadline),
+        NULL),
       GNUNET_JSON_spec_end ()
     };
 

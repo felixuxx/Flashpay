@@ -447,7 +447,8 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline = {0};
       struct TALER_CoinSpendSignatureP sig;
-      struct TALER_AgeCommitmentHash hac = {0};
+      struct TALER_AgeCommitmentHash hac;
+      bool no_hac;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
@@ -459,12 +460,14 @@ TALER_EXCHANGE_verify_coin_history (
                                      h_denom_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                       &hac)),
+                                       &hac),
+          &no_hac),
         GNUNET_JSON_spec_timestamp ("timestamp",
                                     &wallet_timestamp),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_timestamp ("refund_deadline",
-                                      &refund_deadline)),
+                                      &refund_deadline),
+          NULL),
         TALER_JSON_spec_amount_any ("deposit_fee",
                                     &fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
@@ -486,7 +489,7 @@ TALER_EXCHANGE_verify_coin_history (
             &fee,
             &h_wire,
             &h_contract_terms,
-            TALER_AgeCommitmentHash_isNullOrZero (&hac) ?  NULL : &hac,
+            no_hac ? NULL : &hac,
             NULL /* h_extensions! */,
             h_denom_pub,
             wallet_timestamp,
@@ -519,7 +522,8 @@ TALER_EXCHANGE_verify_coin_history (
     {
       struct TALER_CoinSpendSignatureP sig;
       struct TALER_RefreshCommitmentP rc;
-      struct TALER_AgeCommitmentHash h_age_commitment = {0};
+      struct TALER_AgeCommitmentHash h_age_commitment;
+      bool no_hac;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
@@ -529,7 +533,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      h_denom_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                       &h_age_commitment)),
+                                       &h_age_commitment),
+          &no_hac),
         TALER_JSON_spec_amount_any ("melt_fee",
                                     &fee),
         GNUNET_JSON_spec_end ()
@@ -566,8 +571,9 @@ TALER_EXCHANGE_verify_coin_history (
             &fee,
             &rc,
             h_denom_pub,
-            TALER_AgeCommitmentHash_isNullOrZero (&h_age_commitment) ?
-            NULL : &h_age_commitment,
+            no_hac
+            ? NULL
+            : &h_age_commitment,
             coin_pub,
             &sig))
       {

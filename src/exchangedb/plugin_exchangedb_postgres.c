@@ -799,6 +799,15 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_deposit"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);",
       17),
+    /* used in postgres_do_purse_deposit() */
+    GNUNET_PQ_make_prepare (
+      "call_purse_deposit",
+      "SELECT "
+      " out_balance_ok AS balance_ok"
+      ",out_conflict AS conflict"
+      " FROM exchange_do_purse_deposit"
+      " ($1,$2,$3,$4,$5,$6,$7,$8);",
+      8),
     /* Used in #postgres_do_melt() to melt a coin. */
     GNUNET_PQ_make_prepare (
       "call_melt",
@@ -3342,13 +3351,19 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM purse_requests"
       " WHERE merge_pub=$1;",
       1),
-    /* Used in #postgres_do_purse_deposit() */
+    /* Used in #postgres_get_purse_deposit */
     GNUNET_PQ_make_prepare (
-      "call_purse_deposit",
-      "SELECT 1"
-      " FROM exchange_do_purse_deposit"
-      "  ($1, $2, $3, $4, $5);",
-      5),
+      "select_purse_deposit_by_coin_pub",
+      "SELECT "
+      " coin_sig"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",partner_base_url"
+      " FROM purse_deposits"
+      " LEFT JOIN partners USING (partner_serial_id)"
+      " WHERE coin_pub=$2"
+      "   AND purse_pub=$1;",
+      2),
     /* Used in #postgres_do_purse_merge() */
     GNUNET_PQ_make_prepare (
       "call_purse_merge",
@@ -13181,10 +13196,79 @@ postgres_do_purse_deposit (
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *amount_minus_fee,
-  bool *balance_ok)
+  bool *balance_ok,
+  bool *conflict)
 {
-  GNUNET_break (0); // FIXME
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (0), /* FIXME: partner ID */
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (coin_sig),
+    TALER_PQ_query_param_amount (amount_minus_fee),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("balance_ok",
+                                balance_ok),
+    GNUNET_PQ_result_spec_bool ("conflict",
+                                conflict),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_purse_deposit",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Function called to obtain a coin deposit data from
+ * depositing the coin into a purse.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub purse to credit
+ * @param coin_pub coin to deposit (debit)
+ * @param[out] amount set fraction of the coin's value that was deposited (with fee)
+ * @param[out] coin_sig set to signature affirming the operation
+ * @param[out] partner_url set to the URL of the partner exchange, or NULL for ourselves, must be freed by caller
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_purse_deposit (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_Amount *amount,
+  struct TALER_CoinSpendSignatureP *coin_sig,
+  char **partner_url)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  bool is_null;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                          coin_sig),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                 amount),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("partner_base_url",
+                                    partner_url),
+      &is_null),
+    GNUNET_PQ_result_spec_end
+  };
+
+  *partner_url = NULL;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "select_purse_deposit_by_coin_pub",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -13589,6 +13673,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_purse_by_merge_pub;
   plugin->do_purse_deposit
     = &postgres_do_purse_deposit;
+  plugin->get_purse_deposit
+    = &postgres_get_purse_deposit;
   plugin->do_purse_merge
     = &postgres_do_purse_merge;
   plugin->select_purse_merge

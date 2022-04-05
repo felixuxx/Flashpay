@@ -132,9 +132,9 @@ struct RevealContext
   unsigned int num_fresh_coins;
 
   /**
-   * True if @e rms was provided.
+   * True if @e rms was not provided.
    */
-  bool have_rms;
+  bool no_rms;
 };
 
 
@@ -337,9 +337,9 @@ check_commitment (struct RevealContext *rctx,
     }
     TALER_refresh_get_commitment (&rc_expected,
                                   TALER_CNC_KAPPA,
-                                  rctx->have_rms
-                                  ? &rctx->rms
-                                  : NULL,
+                                  rctx->no_rms
+                                  ? NULL
+                                  : &rctx->rms,
                                   rctx->num_fresh_coins,
                                   rcs,
                                   &rctx->melt.session.coin.coin_pub,
@@ -484,7 +484,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (NULL == dks[i])
       return ret;
     if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&
-         (! rctx->have_rms) )
+         (rctx->no_rms) )
     {
       return TALER_MHD_reply_with_error (
         connection,
@@ -937,10 +937,12 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
                            &new_denoms_h),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("old_age_commitment",
-                             &old_age_commitment)),
+                             &old_age_commitment),
+      NULL),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("rms",
-                                   &rctx.rms)),
+                                   &rctx.rms),
+      &rctx.no_rms),
     GNUNET_JSON_spec_end ()
   };
 
@@ -981,8 +983,6 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
     }
   }
-  rctx.have_rms = (NULL != json_object_get (root,
-                                            "rms"));
 
   /* Check we got enough transfer private keys */
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */

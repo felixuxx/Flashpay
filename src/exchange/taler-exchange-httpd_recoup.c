@@ -403,10 +403,12 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                  &coin_sig),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                   &coin.h_age_commitment)),
+                                   &coin.h_age_commitment),
+      &coin.no_age_commitment),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("cs_nonce",
-                                   &nonce)),
+                                   &nonce),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 

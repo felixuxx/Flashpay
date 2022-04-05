@@ -224,14 +224,16 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.h_contract_terms),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                   &deposit.coin.h_age_commitment)),
+                                   &deposit.coin.h_age_commitment),
+      &deposit.coin.no_age_commitment),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &deposit.csig),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &deposit.timestamp),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_timestamp ("refund_deadline",
-                                  &deposit.refund_deadline)),
+                                  &deposit.refund_deadline),
+      NULL),
     GNUNET_JSON_spec_timestamp ("wire_transfer_deadline",
                                 &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()

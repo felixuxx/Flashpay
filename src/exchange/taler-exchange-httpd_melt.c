@@ -120,9 +120,9 @@ struct MeltContext
   bool coin_is_dirty;
 
   /**
-   * True if @e rms is set.
+   * True if @e rms is missing.
    */
-  bool have_rms;
+  bool no_rms;
 };
 
 
@@ -161,9 +161,9 @@ melt_transaction (void *cls,
 
   if (0 >
       (qs = TEH_plugin->do_melt (TEH_plugin->cls,
-                                 rmc->have_rms
-                                 ? &rmc->rms
-                                 : NULL,
+                                 rmc->no_rms
+                                 ? NULL
+                                 : &rmc->rms,
                                  &rmc->refresh_session,
                                  rmc->known_coin_id,
                                  &rmc->zombie_required,
@@ -443,7 +443,8 @@ TEH_handler_melt (struct MHD_Connection *connection,
                                  &rmc.refresh_session.coin.denom_pub_hash),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("age_commitment_hash",
-                                   &rmc.refresh_session.coin.h_age_commitment)),
+                                   &rmc.refresh_session.coin.h_age_commitment),
+      &rmc.refresh_session.coin.no_age_commitment),
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",
                                  &rmc.refresh_session.coin_sig),
     TALER_JSON_spec_amount ("value_with_fee",
@@ -453,7 +454,8 @@ TEH_handler_melt (struct MHD_Connection *connection,
                                  &rmc.refresh_session.rc),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("rms",
-                                   &rmc.rms)),
+                                   &rmc.rms),
+      &rmc.no_rms),
     GNUNET_JSON_spec_end ()
   };
 
@@ -468,9 +470,6 @@ TEH_handler_melt (struct MHD_Connection *connection,
     if (GNUNET_OK != ret)
       return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
   }
-
-  rmc.have_rms = (NULL != json_object_get (root,
-                                           "rms"));
 
   {
     MHD_RESULT res;

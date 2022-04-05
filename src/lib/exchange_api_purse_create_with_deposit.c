@@ -259,7 +259,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   struct TALER_ContractDiffiePublicP contract_pub;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *url;
-  uint32_t min_age;
+  uint32_t min_age = 0;
 
   pch = GNUNET_new (struct TALER_EXCHANGE_PurseCreateDepositHandle);
   pch->exchange = exchange;
@@ -272,7 +272,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
                                   &pch->purse_value_after_fees),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_uint32 ("minimum_age",
-                                 &min_age)),
+                                 &min_age),
+        NULL),
       GNUNET_JSON_spec_end ()
     };
 

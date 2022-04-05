@@ -750,7 +750,8 @@ decode_keys_json (const json_t *resp_obj,
                              &currency),
     GNUNET_JSON_spec_mark_optional (
       TALER_JSON_spec_amount_any ("wallet_balance_limit_without_kyc",
-                                  &key_data->wallet_balance_limit_without_kyc)),
+                                  &key_data->wallet_balance_limit_without_kyc),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 
@@ -895,11 +896,13 @@ decode_keys_json (const json_t *resp_obj,
     struct GNUNET_JSON_Specification ext_spec[] = {
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_json ("extensions",
-                               &extensions)),
+                               &extensions),
+        NULL),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_fixed_auto (
           "extensions_sig",
-          &extensions_sig)),
+          &extensions_sig),
+        NULL),
       GNUNET_JSON_spec_end ()
     };
 

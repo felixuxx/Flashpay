@@ -2469,22 +2469,108 @@ END $$;
 
 
 
-
-
-
-
 CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
+  IN in_partner_id INT8,
   IN in_purse_pub BYTEA,
   IN in_amount_with_fee_val INT8,
   IN in_amount_with_fee_frac INT4,
   IN in_coin_pub BYTEA,
   IN in_coin_sig BYTEA,
+  IN in_amount_without_fee_val INT8,
+  IN in_amount_without_fee_frac INT4,
   OUT out_balance_ok BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- FIXME
+
+-- Store the deposit request.
+INSERT INTO purse_deposits
+  (partner_serial_id
+  ,purse_pub
+  ,coin_pub
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,coin_sig)
+  VALUES
+  (in_partner_id
+  ,in_purse_pub
+  ,in_coin_pub
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_coin_sig)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: check if coin_sig is the same,
+  -- if so, success, otherwise conflict!
+  SELECT
+    1
+  FROM purse_deposits
+  WHERE coin_pub = in_coin_pub
+    AND purse_pub = in_purse_pub
+    AND coin_sig = in_cion_sig;
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but with differences. Not allowed.
+    out_balance_ok=FALSE;
+    out_conflict=TRUE;
+    RETURN;
+  END IF;
+END IF;
+
+
+-- Debit the coin
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_balance_ok=FALSE;
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+
+
+-- Credit the purse.
+UPDATE purse_requests
+  SET
+    balance_frac=balance_frac+in_amount_without_fee_frac
+       - CASE
+         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    balance_val=balance_val+in_amount_without_fee_val
+       + CASE
+         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE purse_pub=in_purse_pub;
+
+out_conflict=FALSE;
+out_balance_ok=TRUE;
+
 END $$;
 
 

@@ -63,6 +63,11 @@ struct Coin
    * Amount to be put into the purse from this coin.
    */
   struct TALER_Amount amount_minus_fee;
+
+  /**
+   * ID of the coin in known_coins.
+   */
+  uint64_t known_coin_id;
 };
 
 
@@ -141,6 +146,10 @@ struct PurseCreateContext
    */
   unsigned int num_coins;
 
+  /**
+   * Minimum age for deposits into this purse.
+   */
+  uint32_t min_age;
 };
 
 
@@ -165,7 +174,7 @@ reply_create_success (struct MHD_Connection *connection,
          pcc->exchange_timestamp,
          pcc->purse_expiration,
          &pcc->amount,
-         &pcc->total_deposited,
+         &pcc->deposit_total,
          pcc->purse_pub,
          &pcc->merge_pub,
          &pcc->h_contract_terms,
@@ -180,8 +189,8 @@ reply_create_success (struct MHD_Connection *connection,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_amount ("total_deposited",
-                             &pcc->deposit_total),
+    TALER_JSON_pack_amount ("total_deposited",
+                            &pcc->deposit_total),
     GNUNET_JSON_pack_timestamp ("exchange_timestamp",
                                 pcc->exchange_timestamp),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -215,7 +224,7 @@ create_transaction (void *cls,
 
   /* 1) create purse */
   qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
-                                         &pcc->purse_pub,
+                                         pcc->purse_pub,
                                          &pcc->merge_pub,
                                          pcc->purse_expiration,
                                          &pcc->h_contract_terms,
@@ -244,6 +253,7 @@ create_transaction (void *cls,
     struct TALER_Amount target_amount;
     struct TALER_Amount balance;
     struct TALER_PurseContractSignatureP purse_sig;
+    uint32_t min_age;
 
     TEH_plugin->rollback (TEH_plugin->cls);
     qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
@@ -251,6 +261,7 @@ create_transaction (void *cls,
                                            &merge_pub,
                                            &purse_expiration,
                                            &h_contract_terms,
+                                           &min_age,
                                            &target_amount,
                                            &balance,
                                            &purse_sig);
@@ -270,8 +281,10 @@ create_transaction (void *cls,
           MHD_HTTP_CONFLICT,
           TALER_JSON_pack_ec (
             TALER_EC_EXCHANGE_PURSE_CREATE_CONFLICTING_META_DATA),
-          GNUNET_JSON_pack_amount ("amount",
-                                   &amount),
+          TALER_JSON_pack_amount ("amount",
+                                  &target_amount),
+          GNUNET_JSON_pack_uint64 ("min_age",
+                                   min_age),
           GNUNET_JSON_pack_timestamp ("purse_expiration",
                                       purse_expiration),
           GNUNET_JSON_pack_data_auto ("purse_sig",
@@ -287,15 +300,17 @@ create_transaction (void *cls,
   {
     struct Coin *coin = &pcc->coins[i];
     bool balance_ok = false;
+    bool conflict = true;
 
     qs = TEH_plugin->do_purse_deposit (TEH_plugin->cls,
-                                       &pcc->purse_pub,
+                                       pcc->purse_pub,
                                        &coin->cpi.coin_pub,
                                        &coin->amount,
                                        &coin->coin_sig,
                                        &coin->amount_minus_fee,
-                                       &balance_ok);
-    if (qs < 0)
+                                       &balance_ok,
+                                       &conflict);
+    if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
@@ -313,14 +328,58 @@ create_transaction (void *cls,
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
             TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
-            &coin->pci.coin_pub);
+            &coin->cpi.coin_pub);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (conflict)
+    {
+      struct TALER_Amount amount;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      char *partner_url = NULL;
+
+      TEH_plugin->rollback (TEH_plugin->cls);
+      qs = TEH_plugin->get_purse_deposit (TEH_plugin->cls,
+                                          pcc->purse_pub,
+                                          &coin->cpi.coin_pub,
+                                          &amount,
+                                          &coin_sig,
+                                          &partner_url);
+      if (qs < 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        TALER_LOG_WARNING (
+          "Failed to fetch purse deposit information from database\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "get purse deposit");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_PURSE_DEPOSIT_CONFLICTING_META_DATA),
+            GNUNET_JSON_pack_data_auto ("coin_pub",
+                                        &coin_pub),
+            GNUNET_JSON_pack_data_auto ("coin_sig",
+                                        &coin_sig),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string ("partner_url",
+                                       partner_url)),
+            TALER_JSON_pack_amount ("amount",
+                                    &amount));
+      GNUNET_free (partner_url);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
   /* 3) if present, persist contract */
   in_conflict = true;
   qs = TEH_plugin->insert_contract (TEH_plugin->cls,
-                                    &pcc->purse_pub,
+                                    pcc->purse_pub,
                                     &pcc->contract_pub,
                                     pcc->econtract_size,
                                     pcc->econtract,
@@ -345,12 +404,12 @@ create_transaction (void *cls,
     void *econtract;
     struct GNUNET_HashCode h_econtract;
 
-    qs = select_contract (cls,
-                          &pcc->purse_pub,
-                          &pub_ckey,
-                          &econtract_sig,
-                          &econtract_size,
-                          &econtract);
+    qs = TEH_plugin->select_contract (TEH_plugin->cls,
+                                      pcc->purse_pub,
+                                      &pub_ckey,
+                                      &econtract_sig,
+                                      &econtract_size,
+                                      &econtract);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -411,8 +470,8 @@ parse_coin (struct MHD_Connection *connection,
                                &coin->cpi.denom_sig),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                   &coin->cpi.h_age_commitment)),
-    &coin->cpi.no_age_commitment),
+                                   &coin->cpi.h_age_commitment),
+      &coin->cpi.no_age_commitment),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin->coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -432,10 +491,10 @@ parse_coin (struct MHD_Connection *connection,
 
   if (GNUNET_OK !=
       TALER_wallet_purse_deposit_verify (TEH_base_url,
-                                         &pcc->purse_pub,
+                                         pcc->purse_pub,
                                          &pcc->amount,
-                                         &coin->coin_pub,
-                                         &coin->csig))
+                                         &coin->cpi.coin_pub,
+                                         &coin->coin_sig))
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
     GNUNET_JSON_parse_free (spec);
@@ -451,13 +510,13 @@ parse_coin (struct MHD_Connection *connection,
     struct TEH_DenominationKey *dk;
     MHD_RESULT mret;
 
-    dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
+    dk = TEH_keys_denomination_by_hash (&coin->cpi.denom_pub_hash,
                                         connection,
                                         &mret);
     if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
-      return (MHD_YES == mret) ? GNUNET_NO : GNUNET_SYSERR:
+      return (MHD_YES == mret) ? GNUNET_NO : GNUNET_SYSERR;
     }
     if (0 > TALER_amount_cmp (&dk->meta.value,
                               &coin->amount))
@@ -478,10 +537,10 @@ parse_coin (struct MHD_Connection *connection,
       return (MHD_YES ==
               TEH_RESPONSE_reply_expired_denom_pub_hash (
                 connection,
-                &coin->denom_pub_hash,
+                &coin->cpi.denom_pub_hash,
                 TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
                 "PURSE CREATE"))
-             ? GNUNET_NO : GNUNET_SYSERR:
+        ? GNUNET_NO : GNUNET_SYSERR;
     }
     if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
@@ -490,7 +549,7 @@ parse_coin (struct MHD_Connection *connection,
       return (MHD_YES ==
               TEH_RESPONSE_reply_expired_denom_pub_hash (
                 connection,
-                &coin->denom_pub_hash,
+                &coin->cpi.denom_pub_hash,
                 TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
                 "PURSE CREATE"))
              ? GNUNET_NO : GNUNET_SYSERR;
@@ -502,12 +561,12 @@ parse_coin (struct MHD_Connection *connection,
       return (MHD_YES ==
               TEH_RESPONSE_reply_expired_denom_pub_hash (
                 connection,
-                &deposit.coin.denom_pub_hash,
+                &coin->cpi.denom_pub_hash,
                 TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
                 "PURSE CREATE"))
              ? GNUNET_NO : GNUNET_SYSERR;
     }
-    if (dk->denom_pub.cipher != deposit.coin.denom_sig.cipher)
+    if (dk->denom_pub.cipher != coin->cpi.denom_sig.cipher)
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
@@ -531,9 +590,9 @@ parse_coin (struct MHD_Connection *connection,
                                          NULL);
     }
     GNUNET_assert (0 <=
-                   TALER_amount_subtact (&coin->amount_minus_fee,
-                                         &coin->amount,
-                                         &coin->deposit_fee));
+                   TALER_amount_subtract (&coin->amount_minus_fee,
+                                          &coin->amount,
+                                          &coin->deposit_fee));
     /* check coin signature */
     switch (dk->denom_pub.cipher)
     {
@@ -547,7 +606,7 @@ parse_coin (struct MHD_Connection *connection,
       break;
     }
     if (GNUNET_YES !=
-        TALER_test_coin_valid (&deposit.coin,
+        TALER_test_coin_valid (&coin->cpi,
                                &dk->denom_pub))
     {
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
@@ -578,9 +637,9 @@ parse_coin (struct MHD_Connection *connection,
     /* make sure coin is 'known' in database */
     for (unsigned int tries = 0; tries<MAX_TRANSACTION_COMMIT_RETRIES; tries++)
     {
-      qs = TEH_make_coin_known (&deposit.coin,
+      qs = TEH_make_coin_known (&coin->cpi,
                                 connection,
-                                &pcc.known_coin_id,
+                                &coin->known_coin_id,
                                 &mhd_ret);
       /* no transaction => no serialization failures should be possible */
       if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
@@ -611,7 +670,7 @@ TEH_handler_purses_create (
 {
   struct PurseCreateContext pcc = {
     .purse_pub = purse_pub,
-    .exchange_timestamp = GNUNET_TIME_timestamp_get ();
+    .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
   json_t *deposits;
   json_t *deposit;
@@ -623,15 +682,18 @@ TEH_handler_purses_create (
     GNUNET_JSON_spec_uint32 ("min_age",
                              &pcc.min_age),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_var_size ("econtract",
-                                 &pcc.econtract,
-                                 &pcc.ecotract_size)),
+      GNUNET_JSON_spec_varsize ("econtract",
+                                &pcc.econtract,
+                                &pcc.econtract_size),
+      NULL),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("econtract_sig",
-                                   &pcc.econtract_sig)),
+                                   &pcc.econtract_sig),
+      NULL),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("contract_pub",
-                                   &pcc.contract_pub)),
+                                   &pcc.contract_pub),
+      NULL),
     GNUNET_JSON_spec_fixed_auto ("merge_pub",
                                  &pcc.merge_pub),
     GNUNET_JSON_spec_fixed_auto ("purse_sig",
@@ -694,7 +756,7 @@ TEH_handler_purses_create (
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_PARAMETER_MALFORMED,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "deposits");
   }
   gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
@@ -709,8 +771,8 @@ TEH_handler_purses_create (
                                        NULL);
   }
   /* parse deposits */
-  pcc.coins = GNUNET_new_array (struct Coin,
-                                pcc.num_coins);
+  pcc.coins = GNUNET_new_array (pcc.num_coins,
+                                struct Coin);
   json_array_foreach (deposits, idx, deposit)
   {
     enum GNUNET_GenericReturnValue res;
@@ -742,12 +804,12 @@ TEH_handler_purses_create (
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
 
   if (GNUNET_OK !=
-      TALER_wallet_purse_create_verify (&pcc.purse_expiration,
+      TALER_wallet_purse_create_verify (pcc.purse_expiration,
                                         &pcc.h_contract_terms,
                                         &pcc.merge_pub,
                                         pcc.min_age,
                                         &pcc.amount,
-                                        &pcc.purse_pub,
+                                        pcc.purse_pub,
                                         &pcc.purse_sig))
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");

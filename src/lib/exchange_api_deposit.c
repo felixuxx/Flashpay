@@ -333,7 +333,8 @@ handle_deposit_finished (void *cls,
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
-                                   &dr.details.success.transaction_base_url)),
+                                   &dr.details.success.transaction_base_url),
+          NULL),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &dh->exchange_timestamp),
         GNUNET_JSON_spec_end ()

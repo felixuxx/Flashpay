@@ -4567,6 +4567,8 @@ struct TALER_EXCHANGEDB_Plugin
    *        remaining balance is below @a amount;
    *             in this case, the return value will be
    *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+   * @param[out] conflict the same coin was deposited into
+   *        this purse with a different amount already
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -4577,7 +4579,30 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_Amount *amount,
     const struct TALER_CoinSpendSignatureP *coin_sig,
     const struct TALER_Amount *amount_minus_fee,
-    bool *balance_ok);
+    bool *balance_ok,
+    bool *conflict);
+
+
+  /**
+   * Function called to obtain a coin deposit data from
+   * depositing the coin into a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub purse to credit
+   * @param coin_pub coin to deposit (debit)
+   * @param[out] amount set fraction of the coin's value that was deposited (with fee)
+   * @param[out] coin_sig set to signature affirming the operation
+   * @param[out] partner_url set to the URL of the partner exchange, or NULL for ourselves, must be freed by caller
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_purse_deposit)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    struct TALER_Amount *amount,
+    struct TALER_CoinSpendSignatureP *coin_sig,
+    char **partner_url);
 
 
   /**
