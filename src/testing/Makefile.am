@@ -54,6 +54,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_batch.c \
   testing_api_cmd_change_auth.c \
   testing_api_cmd_check_keys.c \
+  testing_api_cmd_common.c \
   testing_api_cmd_deposit.c \
   testing_api_cmd_deposits_get.c \
   testing_api_cmd_exec_aggregator.c \

@@ -333,50 +333,6 @@ reserve_withdraw_cb (void *cls,
 
 
 /**
- * Parser reference to a coin.
- *
- * @param coin_reference of format $LABEL['#' $INDEX]?
- * @param[out] cref where we return a copy of $LABEL
- * @param[out] idx where we set $INDEX
- * @return #GNUNET_SYSERR if $INDEX is present but not numeric
- */
-static enum GNUNET_GenericReturnValue
-parse_coin_reference (const char *coin_reference,
-                      char **cref,
-                      unsigned int *idx)
-{
-  const char *index;
-
-  /* We allow command references of the form "$LABEL#$INDEX" or
-     just "$LABEL", which implies the index is 0. Figure out
-     which one it is. */
-  index = strchr (coin_reference, '#');
-  if (NULL == index)
-  {
-    *idx = 0;
-    *cref = GNUNET_strdup (coin_reference);
-    return GNUNET_OK;
-  }
-  *cref = GNUNET_strndup (coin_reference,
-                          index - coin_reference);
-  if (1 != sscanf (index + 1,
-                   "%u",
-                   idx))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Numeric index (not `%s') required after `#' in command reference of command in %s:%u\n",
-                index,
-                __FILE__,
-                __LINE__);
-    GNUNET_free (*cref);
-    *cref = NULL;
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * Run the command.
  */
 static void
@@ -434,9 +390,10 @@ withdraw_run (void *cls,
     unsigned int index;
 
     GNUNET_assert (GNUNET_OK ==
-                   parse_coin_reference (ws->reuse_coin_key_ref,
-                                         &cstr,
-                                         &index));
+                   TALER_TESTING_parse_coin_reference (
+                     ws->reuse_coin_key_ref,
+                     &cstr,
+                     &index));
     cref = TALER_TESTING_interpreter_lookup_command (is,
                                                      cstr);
     GNUNET_assert (NULL != cref);

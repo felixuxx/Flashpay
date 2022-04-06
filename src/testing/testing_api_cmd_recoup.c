@@ -68,50 +68,6 @@ struct RecoupState
 
 
 /**
- * Parser reference to a coin.
- *
- * @param coin_reference of format $LABEL['#' $INDEX]?
- * @param[out] cref where we return a copy of $LABEL
- * @param[out] idx where we set $INDEX
- * @return #GNUNET_SYSERR if $INDEX is present but not numeric
- */
-static enum GNUNET_GenericReturnValue
-parse_coin_reference (const char *coin_reference,
-                      char **cref,
-                      unsigned int *idx)
-{
-  const char *index;
-
-  /* We allow command references of the form "$LABEL#$INDEX" or
-     just "$LABEL", which implies the index is 0. Figure out
-     which one it is. */
-  index = strchr (coin_reference, '#');
-  if (NULL == index)
-  {
-    *idx = 0;
-    *cref = GNUNET_strdup (coin_reference);
-    return GNUNET_OK;
-  }
-  *cref = GNUNET_strndup (coin_reference,
-                          index - coin_reference);
-  if (1 != sscanf (index + 1,
-                   "%u",
-                   idx))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Numeric index (not `%s') required after `#' in command reference of command in %s:%u\n",
-                index,
-                __FILE__,
-                __LINE__);
-    GNUNET_free (*cref);
-    *cref = NULL;
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
  * Check the result of the recoup request: checks whether
  * the HTTP response code is good, and that the coin that
  * was paid back belonged to the right reserve.
@@ -151,9 +107,10 @@ recoup_cb (void *cls,
   }
 
   if (GNUNET_OK !=
-      parse_coin_reference (ps->coin_reference,
-                            &cref,
-                            &idx))
+      TALER_TESTING_parse_coin_reference (
+        ps->coin_reference,
+        &cref,
+        &idx))
   {
     TALER_TESTING_interpreter_fail (is);
     return;
@@ -246,9 +203,10 @@ recoup_run (void *cls,
 
   ps->is = is;
   if (GNUNET_OK !=
-      parse_coin_reference (ps->coin_reference,
-                            &cref,
-                            &idx))
+      TALER_TESTING_parse_coin_reference (
+        ps->coin_reference,
+        &cref,
+        &idx))
   {
     TALER_TESTING_interpreter_fail (is);
     return;

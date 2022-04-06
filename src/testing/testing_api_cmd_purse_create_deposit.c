@@ -36,7 +36,7 @@ struct Coin
   /**
    * Reference to the respective command.
    */
-  const char *command_ref;
+  char *command_ref;
 
   /**
    * index of the specific coin in the traits of @e command_ref.
@@ -308,6 +308,8 @@ deposit_cleanup (void *cls,
     TALER_EXCHANGE_purse_create_with_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }
+  for (unsigned int i = 0; i<ds->num_coin_references; i++)
+    GNUNET_free (ds->coin_references[i].command_ref);
   json_decref (ds->contract_terms);
   GNUNET_free (ds->coin_references);
   GNUNET_free (ds);
@@ -376,7 +378,38 @@ TALER_TESTING_cmd_purse_create_with_deposit (
                 label);
     GNUNET_assert (0);
   }
-  // FIXME: parse varargs!
+  {
+    va_list ap;
+    unsigned int i;
+    const char *ref;
+    const char *val;
+
+    va_start (ap, purse_expiration);
+    while (NULL != (va_arg (ap, const char *)))
+      ds->num_coin_references++;
+    va_end (ap);
+    GNUNET_assert (0 == (ds->num_coin_references % 2));
+    ds->num_coin_references /= 2;
+    ds->coin_references = GNUNET_new_array (ds->num_coin_references,
+                                            struct Coin);
+    i = 0;
+    va_start (ap, purse_expiration);
+    while (NULL != (ref = va_arg (ap, const char *)))
+    {
+      struct Coin *c = &ds->coin_references[i++];
+
+      GNUNET_assert (NULL != (val = va_arg (ap, const char *)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_TESTING_parse_coin_reference (
+                       ref,
+                       &c->command_ref,
+                       &c->coin_index));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_string_to_amount (val,
+                                             &c->deposit_with_fee));
+    }
+    va_end (ap);
+  }
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (target_amount,
                                          &ds->target_amount));

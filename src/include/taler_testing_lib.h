@@ -941,6 +941,21 @@ TALER_TESTING_has_in_name (const char *prog,
                            const char *marker);
 
 
+/**
+ * Parse reference to a coin.
+ *
+ * @param coin_reference of format $LABEL['#' $INDEX]?
+ * @param[out] cref where we return a copy of $LABEL
+ * @param[out] idx where we set $INDEX
+ * @return #GNUNET_SYSERR if $INDEX is present but not numeric
+ */
+enum GNUNET_GenericReturnValue
+TALER_TESTING_parse_coin_reference (
+  const char *coin_reference,
+  char **cref,
+  unsigned int *idx);
+
+
 /* ************** Specific interpreter commands ************ */
 
 
