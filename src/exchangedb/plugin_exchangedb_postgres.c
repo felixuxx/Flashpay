@@ -749,6 +749,7 @@ prepare_statements (struct PostgresClosure *pg)
        for a reserve */
     GNUNET_PQ_make_prepare (
       "reserves_in_get_transactions",
+      /*
       "SELECT"
       " wire_reference"
       ",credit_val"
@@ -759,6 +760,24 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN wire_targets"
       "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_pub=$1;",
+      */
+      "WITH ri AS MATERIALIZED ( "
+      "  SELECT * "
+      "  FROM reserves_in "
+      "  WHERE reserve_pub = $1 "
+      ") "
+      "SELECT  "
+      "  wire_reference "
+      "  ,credit_val "
+      "  ,credit_frac "
+      "  ,execution_date "
+      "  ,payto_uri AS sender_account_details "
+      "FROM wire_targets "
+      "JOIN ri  "
+      "  ON (wire_target_h_payto = wire_source_h_payto) "
+      "WHERE wire_target_h_payto = ( "
+      "  SELECT wire_source_h_payto FROM ri "
+      "); ",
       1),
     /* Used in #postgres_do_withdraw() to store
        the signature of a blinded coin with the blinded coin's
@@ -879,6 +898,7 @@ prepare_statements (struct PostgresClosure *pg)
        demonstrate double-spending) */
     GNUNET_PQ_make_prepare (
       "get_reserves_out",
+      /*
       "SELECT"
       " ro.h_blind_ev"
       ",denom.denom_pub_hash"
@@ -897,6 +917,30 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN denominations denom"
       "   ON (ro.denominations_serial = denom.denominations_serial)"
       " WHERE res.reserve_pub=$1;",
+      */
+      "WITH robr AS MATERIALIZED ( "
+      "  SELECT h_blind_ev "
+      "  FROM reserves_out_by_reserve "
+      "  WHERE reserve_uuid= ( "
+      "    SELECT reserve_uuid "
+      "    FROM reserves "
+      "    WHERE reserve_pub = $1 "
+      "  ) "
+      ") SELECT "
+      "  ro.h_blind_ev "
+      "  ,denom.denom_pub_hash "
+      "  ,ro.denom_sig "
+      "  ,ro.reserve_sig "
+      "  ,ro.execution_date "
+      "  ,ro.amount_with_fee_val "
+      "  ,ro.amount_with_fee_frac "
+      "  ,denom.fee_withdraw_val "
+      "  ,denom.fee_withdraw_frac "
+      "FROM robr "
+      "JOIN reserves_out ro "
+      "  ON (ro.h_blind_ev = robr.h_blind_ev) "
+      "JOIN denominations denom "
+      "  ON (ro.denominations_serial = denom.denominations_serial); ",
       1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
 
@@ -1040,7 +1084,7 @@ prepare_statements (struct PostgresClosure *pg)
        high-level information about a melt operation */
     GNUNET_PQ_make_prepare (
       "get_melt",
-      "SELECT"
+      /* "SELECT"
       " denoms.denom_pub_hash"
       ",denoms.fee_refresh_val"
       ",denoms.fee_refresh_frac"
@@ -1056,7 +1100,33 @@ prepare_statements (struct PostgresClosure *pg)
       "     ON (old_coin_pub = kc.coin_pub)"
       "   JOIN denominations denoms"
       "     ON (kc.denominations_serial = denoms.denominations_serial)"
-      " WHERE rc=$1;",
+      " WHERE rc=$1;", */
+      "WITH rc AS MATERIALIZED ( "
+      " SELECT"
+      "  * FROM refresh_commitments"
+      " WHERE rc=$1"
+      ")"
+      "SELECT"
+      " denoms.denom_pub_hash"
+      ",denoms.fee_refresh_val"
+      ",denoms.fee_refresh_frac"
+      ",rc.old_coin_pub"
+      ",rc.old_coin_sig"
+      ",kc.age_commitment_hash"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",noreveal_index"
+      ",melt_serial_id "
+      "FROM ("
+      " SELECT"
+      "  * "
+      " FROM known_coins"
+      " WHERE coin_pub=(SELECT old_coin_pub from rc)"
+      ") kc "
+      "JOIN rc"
+      "  ON (kc.coin_pub=rc.old_coin_pub) "
+      "JOIN denominations denoms"
+      "  USING (denominations_serial);",
       1),
     /* Used in #postgres_select_refreshes_above_serial_id() to fetch
        refresh session with id '\geq' the given parameter */
@@ -1889,6 +1959,7 @@ prepare_statements (struct PostgresClosure *pg)
        BEGIN; SET LOCAL join_collapse_limit=1; query; COMMIT; */
     GNUNET_PQ_make_prepare (
       "recoup_by_reserve",
+      /*
       "SELECT"
       " recoup.coin_pub"
       ",recoup.coin_sig"
@@ -1913,6 +1984,42 @@ prepare_statements (struct PostgresClosure *pg)
       "       ON (reserves_out_by_reserve.h_blind_ev = reserves_out.h_blind_ev))"
       "     ON (recoup_by_reserve.reserve_out_serial_id = reserves_out.reserve_out_serial_id)"
       "     WHERE reserves.reserve_pub=$1);",
+      */
+      "WITH res AS MATERIALIZED ( "
+      "  SELECT * "
+      "  FROM reserves "
+      "  WHERE reserve_pub = $1 "
+      "), "
+      "coin_pub AS MATERIALIZED ( "
+      "  SELECT coin_pub "
+      "  FROM recoup_by_reserve "
+      "  JOIN (reserves_out "
+      "    JOIN ( "
+      "      SELECT * "
+      "      FROM reserves_out_by_reserve "
+      "      WHERE reserves_out_by_reserve.reserve_uuid = ( "
+      "        SELECT reserve_uuid FROM res "
+      "      ) "
+      "    ) reserves_out_by_reserve "
+      "    ON (reserves_out_by_reserve.h_blind_ev = reserves_out.h_blind_ev)) "
+      "  ON (recoup_by_reserve.reserve_out_serial_id = reserves_out.reserve_out_serial_id) "
+      ") "
+      "SELECT recoup.coin_pub "
+      "  ,recoup.coin_sig "
+      "  ,recoup.coin_blind "
+      "  ,recoup.amount_val "
+      "  ,recoup.amount_frac "
+      "  ,recoup.recoup_timestamp "
+      "  ,denominations.denom_pub_hash "
+      "  ,known_coins.denom_sig "
+      "FROM denominations "
+      "  JOIN (known_coins "
+      "    JOIN recoup "
+      "    ON (recoup.coin_pub = known_coins.coin_pub)) "
+      "  ON (known_coins.denominations_serial = denominations.denominations_serial) "
+      "WHERE recoup.coin_pub = ( "
+      "  SELECT coin_pub FROM coin_pub "
+      "); ",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        affecting old coins of refreshed coins */
@@ -1959,6 +2066,7 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare (
       "get_expired_reserves",
+      /*
       "SELECT"
       " expiration_date"
       ",payto_uri AS account_details"
@@ -1975,6 +2083,30 @@ prepare_statements (struct PostgresClosure *pg)
       "        OR current_balance_frac != 0)"
       " ORDER BY expiration_date ASC"
       " LIMIT 1;",
+      */
+      "WITH ed AS MATERIALIZED ( "
+      " SELECT * "
+      " FROM reserves "
+      " WHERE expiration_date <= $1 "
+      "   AND (current_balance_val != 0 OR current_balance_frac != 0) "
+      " ORDER BY expiration_date ASC "
+      " LIMIT 1 "
+      ") "
+      "SELECT "
+      " ed.expiration_date "
+      " ,payto_uri AS account_details "
+      " ,ed.reserve_pub "
+      " ,current_balance_val "
+      " ,current_balance_frac "
+      "FROM ( "
+      " SELECT "
+      "  * "
+      " FROM reserves_in "
+      " WHERE reserve_pub = ( "
+      "     SELECT reserve_pub FROM ed) "
+      " ) ri "
+      "JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto) "
+      "JOIN ed ON (ri.reserve_pub = ed.reserve_pub); ",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        for a coin */

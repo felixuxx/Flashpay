@@ -1466,17 +1466,33 @@ END IF;
 
 -- Obtain KYC status based on the last wire transfer into
 -- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
-SELECT
-   kyc_ok
-  ,wire_target_serial_id
-  INTO
-   kycok
-  ,account_uuid
-  FROM reserves_in
-  JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
- WHERE reserve_pub=rpub
- LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+-- SELECT
+--    kyc_ok
+--   ,wire_target_serial_id
+--   INTO
+--    kycok
+--   ,account_uuid
+--   FROM reserves_in
+--   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
+--  WHERE reserve_pub=rpub
+--  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
+WITH reserves_in AS materialized (
+  SELECT wire_source_h_payto 
+  FROM reserves_in WHERE 
+  reserve_pub=rpub
+)
+SELECT 
+  kyc_ok
+  ,wire_target_serial_id 
+INTO
+  kycok
+  ,account_uuid
+FROM wire_targets 
+  WHERE wire_target_h_payto = (
+    SELECT wire_source_h_payto 
+      FROM reserves_in
+  );
 
 END $$;
 
