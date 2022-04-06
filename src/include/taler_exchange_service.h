@@ -4216,11 +4216,18 @@ struct TALER_EXCHANGE_PurseCreateDepositResponse
      */
     struct
     {
+      /**
+       * Signing key used by the exchange to sign the
+       * purse create with deposit confirmation.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
 
       /**
-       * Private key that can be used to obtain the contract.
+       * Signature from the exchange on the
+       * purse create with deposit confirmation.
        */
-      struct TALER_ContractDiffiePrivateP contract_priv;
+      struct TALER_ExchangeSignatureP exchange_sig;
+
 
     } success;
 
@@ -4464,7 +4471,7 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * @param reserve_priv private key of the reserve
  * @param purse_priv private key of the purse
  * @param contract_terms contract the purse is about
- * @param min_age minimum age we need to prove for the purse
+ * @param upload_contract true to upload the contract
  * @param purse_expiration when will the unmerged purse expire
  * @paran merge_timestamp when should the merge happen (use current time)
  * @param purse_value_after_fees target amount in the purse
@@ -4479,7 +4486,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const json_t *contract_terms,
-  uint8_t min_age,
+  bool upload_contract,
   struct GNUNET_TIME_Timestamp purse_expiration,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_Amount *purse_value_after_fees,

@@ -2343,6 +2343,126 @@ TALER_TESTING_cmd_oauth (const char *label,
                          uint16_t port);
 
 
+/* ****************** P2P payment commands ****************** */
+
+
+/**
+ * Creates a purse with deposits.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param target_amount amount for the purse to be full, without fees
+ * @param contract_terms contract, JSON string
+ * @param upload_contract should we upload the contract
+ * @param purse_expiration how long until the purse expires
+ * @param ... NULL-terminated list of references to coins to be deposited
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_create_with_deposit (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *target_amount,
+  const char *contract_terms,
+  bool upload_contract,
+  struct GNUNET_TIME_Relative purse_expiration,
+  ...);
+
+
+/**
+ * Retrieve contract (also checks that the contract matches
+ * the upload command).
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param contract_ref reference to a command providing us with the contract private key
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_contract_get (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *contract_ref);
+
+
+/**
+ * Retrieve purse state by merge private key.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param merge_ref reference to a command providing us with the merge private key
+ * @param reserve_ref reference to a command providing us with a reserve private key; if NULL, we create a fresh reserve
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_merge (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *merge_ref,
+  const char *reserve_ref);
+
+
+/**
+ * Retrieve purse state by purse private key.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param purse_ref reference to a command providing us with the purse private key
+ * @param merge_to how long to wait for a merge
+ * @param deposit_to how long to wait for a deposit
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_get (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *purse_ref,
+  struct GNUNET_TIME_Relative merge_to,
+  struct GNUNET_TIME_Relative deposit_to);
+
+
+/**
+ * Creates a purse with reserve.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param target_amount amount for the purse to be full, without fees
+ * @param contract_terms contract, JSON string
+ * @param upload_contract should we upload the contract
+ * @param purse_expiration how long until the purse expires
+ * @param reserve_ref reference to reserve key, or NULL to create a new reserve
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_create_with_reserve (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *target_amount,
+  const char *contract_terms,
+  bool upload_contract,
+  struct GNUNET_TIME_Relative purse_expiration,
+  const char *reserve_ref);
+
+
+/**
+ * Deposit coins into a purse.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param min_age age restriction of the purse
+ * @param purse_ref reference to the purse
+ * @param ... NULL-terminated list of references to coins to be deposited
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_deposit_coins (
+  const char *label,
+  unsigned int expected_http_status,
+  uint8_t min_age,
+  const char *purse_ref,
+  ...);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 
@@ -2499,6 +2619,11 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
   op (bank_row, const uint64_t)                                    \
+  op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
+  op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
+  op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
+  op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
+  op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
   op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
   op (h_payto, const struct TALER_PaytoHashP)                      \
   op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \

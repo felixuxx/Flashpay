@@ -540,7 +540,7 @@ parse_coin (struct MHD_Connection *connection,
                 &coin->cpi.denom_pub_hash,
                 TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
                 "PURSE CREATE"))
-        ? GNUNET_NO : GNUNET_SYSERR;
+             ? GNUNET_NO : GNUNET_SYSERR;
     }
     if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
