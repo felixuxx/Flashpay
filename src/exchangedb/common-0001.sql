@@ -2292,19 +2292,48 @@ BEGIN
   ;
 
   ALTER TABLE IF EXISTS purse_requests
-    DROP CONSTRAINT IF EXISTS purse_requests_reserve_pub_request_timestamp_pkey
+    DROP CONSTRAINT IF EXISTS purse_requests_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS purse_merges
+    DROP CONSTRAINT IF EXISTS purse_merges_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS account_merges
+    DROP CONSTRAINT IF EXISTS account_merges_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS contracts
+    DROP CONSTRAINT IF EXISTS contracts_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS history_requests
+    DROP CONSTRAINT IF EXISTS history_requests_pkey CASCADE
   ;
 
   ALTER TABLE IF EXISTS close_requests
-    DROP CONSTRAINT IF EXISTS close_requests_reserve_pub_close_timestamp_pkey
+    DROP CONSTRAINT IF EXISTS close_requests_pkey CASCADE
   ;
 
   ALTER TABLE IF EXISTS purse_deposits
-    DROP CONSTRAINT IF EXISTS purse_deposits_purse_pub_coin_pub_pkey
+    DROP CONSTRAINT IF EXISTS purse_deposits_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS wads_out
+    DROP CONSTRAINT IF EXISTS wads_out_pkey CASCADE
+  ;
+
+  ALTER TABLE IF EXISTS wad_out_entries
+    DROP CONSTRAINT IF EXISTS wad_out_entries_pkey CASCADE
   ;
 
   ALTER TABLE IF EXISTS wads_in
-    DROP CONSTRAINT IF EXISTS wads_in_wad_id_origin_exchange_url_key CASCADE
+    DROP CONSTRAINT IF EXISTS wads_in_pkey CASCADE
+    ,DROP CONSTRAINT IF EXISTS wads_in_wad_id_origin_exchange_url_key
+  ;
+  
+  ALTER TABLE IF EXISTS wad_in_entries
+    DROP CONSTRAINT IF EXISTS wad_in_entries_pkey CASCADE
   ;
 
 END
