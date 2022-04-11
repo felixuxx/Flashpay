@@ -79,6 +79,7 @@ taler_exchange_transfer_LDADD = \
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
   taler-exchange-httpd_auditors.c taler-exchange-httpd_auditors.h \
+  taler-exchange-httpd_contract.c taler-exchange-httpd_contract.h \
   taler-exchange-httpd_csr.c taler-exchange-httpd_csr \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \

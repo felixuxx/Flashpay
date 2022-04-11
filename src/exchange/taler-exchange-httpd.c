@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2021 Taler Systems SA
+   Copyright (C) 2014-2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -30,6 +30,7 @@
 #include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
+#include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
@@ -1066,6 +1067,13 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_deposits_get,
       .nargs = 4
+    },
+    /* Getting purse contracts */
+    {
+      .url = "contracts",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_contracts_get,
+      .nargs = 1
     },
     /* KYC endpoints */
     {

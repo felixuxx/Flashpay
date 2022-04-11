@@ -404,12 +404,12 @@ create_transaction (void *cls,
     void *econtract;
     struct GNUNET_HashCode h_econtract;
 
-    qs = TEH_plugin->select_contract (TEH_plugin->cls,
-                                      pcc->purse_pub,
-                                      &pub_ckey,
-                                      &econtract_sig,
-                                      &econtract_size,
-                                      &econtract);
+    qs = TEH_plugin->select_contract_by_purse (TEH_plugin->cls,
+                                               pcc->purse_pub,
+                                               &pub_ckey,
+                                               &econtract_sig,
+                                               &econtract_size,
+                                               &econtract);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

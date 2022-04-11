@@ -4447,6 +4447,26 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to retrieve an encrypted contract.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param pub_ckey set to the ephemeral DH used to encrypt the contract, key used to lookup the contract by
+   * @param[out] purse_pub public key of the purse of the contract
+   * @param[out] econtract_sig set to the signature over the encrypted contract
+   * @param[out] econtract_size set to the number of bytes in @a econtract
+   * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_contract)(
+    void *cls,
+    const struct TALER_ContractDiffiePublicP *pub_ckey,
+    struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct TALER_PurseContractSignatureP *econtract_sig,
+    size_t *econtract_size,
+    void **econtract);
+
+  /**
+   * Function called to retrieve an encrypted contract.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
    * @param purse_pub key to lookup the contract by
    * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
    * @param[out] econtract_sig set to the signature over the encrypted contract
@@ -4455,12 +4475,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_contract)(void *cls,
-                     const struct TALER_PurseContractPublicKeyP *purse_pub,
-                     struct TALER_ContractDiffiePublicP *pub_ckey,
-                     struct TALER_PurseContractSignatureP *econtract_sig,
-                     size_t *econtract_size,
-                     void **econtract);
+  (*select_contract_by_purse)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct TALER_ContractDiffiePublicP *pub_ckey,
+    struct TALER_PurseContractSignatureP *econtract_sig,
+    size_t *econtract_size,
+    void **econtract);
 
 
   /**
