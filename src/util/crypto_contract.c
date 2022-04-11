@@ -25,6 +25,20 @@
 
 
 /**
+ * Different types of contracts supported.
+ */
+enum ContractFormats
+{
+  /**
+   * The encrypted contract represents a payment offer. The receiver
+   * can merge it into a reserve/account to accept the contract and
+   * obtain the payment.
+   */
+  TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER = 0
+};
+
+
+/**
  * Nonce used for encryption, 24 bytes.
  */
 struct NonceP

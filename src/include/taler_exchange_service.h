@@ -3999,57 +3999,19 @@ struct TALER_EXCHANGE_ContractGetResponse
     {
 
       /**
-       * What is the type of the transaction?
+       * Public key of the purse.
        */
-      enum
-      {
-        /**
-         * This is a request for payment.
-         */
-        TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST = 0,
-
-        /**
-         * This is a payment, the receiver needs to
-         * accepts the terms.
-         */
-        TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER = 1
-      } type;
+      struct TALER_PurseContractPublicKeyP purse_pub;
 
       /**
-       * Key material, depending on @e type.
+       * Private key of the merge capability.
        */
-      union
-      {
-        /**
-         * Set if @e type is #TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST.
-         */
-        struct TALER_PurseContractPublicKeyP purse_pub;
-
-        /**
-         * Set if @e type is #TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER.
-         */
-        struct TALER_PurseMergePrivateKeyP merge_priv;
-      } keys;
-
-      /**
-       * Total value of the contract/purse.
-       */
-      struct TALER_Amount amount;
+      struct TALER_PurseMergePrivateKeyP merge_priv;
 
       /**
        * Contract terms.
        */
-      json_t *contract_terms;
-
-      /**
-       * Minimum age required to pay for the contract.
-       */
-      uint8_t min_age;
-
-      /**
-       * When will the purse expire?
-       */
-      struct GNUNET_TIME_Timestamp purse_expiration;
+      const json_t *contract_terms;
 
     } success;
 

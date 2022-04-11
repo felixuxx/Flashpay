@@ -68,6 +68,11 @@ struct TALER_EXCHANGE_ContractsGetHandle
    */
   struct TALER_ContractDiffiePrivateP contract_priv;
 
+  /**
+   * Public key matching @e contract_priv.
+   */
+  struct TALER_ContractDiffiePublicP cpub;
+
 };
 
 
@@ -101,11 +106,11 @@ handle_contract_get_finished (void *cls,
     {
       void *econtract;
       size_t econtract_size;
-      struct TALER_PurseContractPublicKeyP purse_pub;
+      json_t *contract;
       struct TALER_PurseContractSignatureP econtract_sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("purse_pub",
-                                     &purse_pub),
+                                     &dr.details.success.purse_pub),
         GNUNET_JSON_spec_fixed_auto ("econtract_sig",
                                      &econtract_sig),
         GNUNET_JSON_spec_varsize ("econtract",
@@ -124,11 +129,38 @@ handle_contract_get_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      // FIXME: verify econtract_sig!
-      // FIXME: decrypt, build up 'dr'!
+      if (GNUNET_OK !=
+          TALER_wallet_econtract_upload_verify (
+            econtract,
+            econtract_size,
+            &cgh->cpub,
+            &dr.details.success.purse_pub,
+            &econtract_sig))
+      {
+        GNUNET_break (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_CONTRACTS_SIGNATURE_INVALID;
+        GNUNET_JSON_parse_free (spec);
+        break;
+      }
+      contract = TALER_CRYPTO_contract_decrypt_for_merge (
+        &cgh->contract_priv,
+        &dr.details.success.purse_pub,
+        econtract,
+        econtract_size,
+        &dr.details.success.merge_priv);
+      GNUNET_JSON_parse_free (spec);
+      if (NULL == contract)
+      {
+        GNUNET_break (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_CONTRACTS_DECRYPTION_FAILED;
+        break;
+      }
+      dr.details.success.contract_terms = contract;
       cgh->cb (cgh->cb_cls,
                &dr);
-      GNUNET_JSON_parse_free (spec);
+      json_decref (contract);
       TALER_EXCHANGE_contract_get_cancel (cgh);
       return;
     }
@@ -183,8 +215,7 @@ TALER_EXCHANGE_contract_get (
 {
   struct TALER_EXCHANGE_ContractsGetHandle *cgh;
   CURL *eh;
-  struct TALER_ContractDiffiePublicP cpub;
-  char arg_str[sizeof (cpub) * 2 + 48];
+  char arg_str[sizeof (cgh->cpub) * 2 + 48];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -192,14 +223,18 @@ TALER_EXCHANGE_contract_get (
     GNUNET_break (0);
     return NULL;
   }
+  cgh = GNUNET_new (struct TALER_EXCHANGE_ContractsGetHandle);
+  cgh->exchange = exchange;
+  cgh->cb = cb;
+  cgh->cb_cls = cb_cls;
   GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
-                                      &cpub.ecdhe_pub);
+                                      &cgh->cpub.ecdhe_pub);
   {
-    char cpub_str[sizeof (cpub) * 2];
+    char cpub_str[sizeof (cgh->cpub) * 2];
     char *end;
 
-    end = GNUNET_STRINGS_data_to_string (&cpub,
-                                         sizeof (cpub),
+    end = GNUNET_STRINGS_data_to_string (&cgh->cpub,
+                                         sizeof (cgh->cpub),
                                          cpub_str,
                                          sizeof (cpub_str));
     *end = '\0';
@@ -209,10 +244,6 @@ TALER_EXCHANGE_contract_get (
                      cpub_str);
   }
 
-  cgh = GNUNET_new (struct TALER_EXCHANGE_ContractsGetHandle);
-  cgh->exchange = exchange;
-  cgh->cb = cb;
-  cgh->cb_cls = cb_cls;
   cgh->url = TEAH_path_to_url (exchange,
                                arg_str);
   if (NULL == cgh->url)
