@@ -34,6 +34,20 @@ TEH_wire_done (void);
 
 
 /**
+ * Look up wire fee structure by @a ts.
+ *
+ * @param ts timestamp to lookup wire fees at
+ * @param method wire method to lookup fees for
+ * @return the wire fee details, or
+ *         NULL if none are configured for @a ts and @a method
+ */
+const struct TALER_WireFeeSet *
+TEH_wire_fees_by_time (
+  struct GNUNET_TIME_Timestamp ts,
+  const char *method);
+
+
+/**
  * Initialize wire subsystem.
  *
  * @return #GNUNET_OK on success

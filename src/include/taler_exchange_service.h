@@ -4383,12 +4383,14 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  * Inform the exchange that a purse should be merged
  * with a reserve.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange with the purse
+ * @param exchange the exchange hosting the purse
  * @param reserve_exchange_url base URL of the exchange with the reserve
  * @param reserve_priv private key of the reserve to merge into
  * @param purse_pub public key of the purse to merge
  * @param merge_priv private key granting us the right to merge
+ * @param h_contract_terms hash of the purses' contract
+ * @param min_age minimum age of deposits into the purse
+ * @param purse_value_after_fees amount that should be in the purse
  * @param merge_timestamp when is the merge happening (current time)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4396,12 +4398,14 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  */
 struct TALER_EXCHANGE_AccountMergeHandle *
 TALER_EXCHANGE_account_merge (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const char *reserve_exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  uint8_t min_age,
+  const struct TALER_Amount *purse_value_after_fees,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   TALER_EXCHANGE_AccountMergeCallback cb,
   void *cb_cls);
@@ -4466,8 +4470,7 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * Inform the exchange that a purse should be created
  * and merged with a reserve.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange the exchange hosting the reserve
  * @param reserve_priv private key of the reserve
  * @param purse_priv private key of the purse
  * @param contract_terms contract the purse is about
@@ -4481,8 +4484,7 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  */
 struct TALER_EXCHANGE_PurseCreateMergeHandle *
 TALER_EXCHANGE_purse_create_with_merge (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const json_t *contract_terms,
@@ -4553,8 +4555,7 @@ struct TALER_EXCHANGE_PurseDepositHandle;
  * Inform the exchange that a deposit should be made into
  * a purse.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange where we make the deposit
+ * @param exchange the exchange that issued the coins
  * @param purse_exchange_url base URL of the exchange hosting the purse
  * @param purse_pub public key of the purse to merge
  * @param min_age minimum age we need to prove for the purse
@@ -4566,8 +4567,7 @@ struct TALER_EXCHANGE_PurseDepositHandle;
  */
 struct TALER_EXCHANGE_PurseDepositHandle *
 TALER_EXCHANGE_purse_deposit (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const char *purse_exchange_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint8_t min_age,

@@ -158,11 +158,13 @@ make_ec_reply (enum TALER_ErrorCode ec,
                const char *detail)
 {
   return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_uint64 ("code", ec),
+    GNUNET_JSON_pack_uint64 ("code",
+                             ec),
     GNUNET_JSON_pack_string ("hint",
                              TALER_ErrorCode_get_hint (ec)),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("detail", detail)));
+      GNUNET_JSON_pack_string ("detail",
+                               detail)));
 }
 
 
@@ -418,6 +420,16 @@ TEH_handler_wire (struct TEH_RequestContext *rc,
   return TALER_MHD_reply_json (rc->connection,
                                wsh->wire_reply,
                                wsh->http_status);
+}
+
+
+const struct TALER_WireFeeSet *
+TEH_wire_fees_by_time (
+  struct GNUNET_TIME_Timestamp ts,
+  const char *method)
+{
+  GNUNET_break (0); // FIXME: implement!
+  return NULL;
 }
 
 

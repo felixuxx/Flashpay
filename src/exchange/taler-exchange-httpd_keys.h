@@ -318,8 +318,8 @@ TEH_keys_denomination_cs_r_pub_melt (
  * @param h_denom_pub hash of the public key to revoke
  */
 void
-TEH_keys_denomination_revoke (const struct
-                              TALER_DenominationHashP *h_denom_pub);
+TEH_keys_denomination_revoke (
+  const struct TALER_DenominationHashP *h_denom_pub);
 
 
 /**

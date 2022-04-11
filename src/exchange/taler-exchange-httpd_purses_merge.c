@@ -32,6 +32,7 @@
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
+#include "taler-exchange-httpd_wire.h"
 
 
 /**
@@ -58,6 +59,11 @@ struct PurseMergeContext
    * When should the purse expire.
    */
   struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
+   * When the client signed the merge.
+   */
+  struct GNUNET_TIME_Timestamp merge_timestamp;
 
   /**
    * Our current time.
@@ -92,7 +98,7 @@ struct PurseMergeContext
   /**
    * Fees that apply to this operation.
    */
-  const struct TEH_GlobalFee *gf;
+  const struct TALER_WireFeeSet *wf;
 
   /**
    * URI of the account the purse is to be merged into.
@@ -101,7 +107,7 @@ struct PurseMergeContext
   const char *payto_uri;
 
   /**
-   * Base URL of the exchange provider.
+   * Base URL of the exchange provider hosting the reserve.
    */
   char *provider_url;
 
@@ -138,10 +144,26 @@ reply_merge_success (struct MHD_Connection *connection,
       TALER_JSON_pack_amount ("balance",
                               &pcc->balance));
   }
-  // FIXME: check return value...
-  TALER_amount_subtract (&merge_amount,
-                         &pcc->target_amount,
-                         &gf->fees.merge);
+  if (0 == strcmp (pcc->provider_url,
+                   TEH_base_url))
+  {
+    /* wad fee is always zero if we stay at our own exchange */
+    merge_amount = pcc->target_amount;
+  }
+  else
+  {
+    if (0 >
+        TALER_amount_subtract (&merge_amount,
+                               &pcc->target_amount,
+                               &pcc->wf->wad))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_ec (
+        connection,
+        TALER_EC_EXCHANGE_PURSE_MERGE_WAD_FEE_EXCEEDS_PURSE_VALUE,
+        TALER_amount2s (&pcc->wf->wad));
+    }
+  }
   if (TALER_EC_NONE !=
       (ec = TALER_exchange_online_purse_merged_sign (
          &TEH_keys_exchange_sign_,
@@ -149,8 +171,9 @@ reply_merge_success (struct MHD_Connection *connection,
          pcc->purse_expiration,
          &merge_amount,
          pcc->purse_pub,
-         &pcc->merge_pub,
          &pcc->h_contract_terms,
+         &pcc->reserve_pub,
+         pcc->provider_url,
          &pub,
          &sig)))
   {
@@ -200,7 +223,7 @@ merge_transaction (void *cls,
                                    &pcc->merge_sig,
                                    pcc->merge_timestamp,
                                    pcc->provider_url,
-                                   &pcc.reserve_pub);
+                                   &pcc->reserve_pub);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -250,7 +273,7 @@ TEH_handler_purses_merge (
   };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
-                             &pcc.payt_uri),
+                             &pcc.payto_uri),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &pcc.reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("merge_sig",
@@ -281,9 +304,9 @@ TEH_handler_purses_merge (
     }
   }
 
-  pcc.gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
-                                        pcc.exchange_timestamp);
-  if (NULL == pcc.gf)
+  pcc.wf = TEH_wire_fees_by_time (pcc.exchange_timestamp,
+                                  "sepa"); // FIXME!
+  if (NULL == pcc.wf)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Cannot create purse: global fees not configured!\n");
@@ -294,13 +317,13 @@ TEH_handler_purses_merge (
   }
   /* Fetch purse details */
   qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
-                                         pcc->purse_pub,
-                                         &pcc->merge_pub,
-                                         &pcc->purse_expiration,
-                                         &pcc->h_contract_terms,
-                                         &pcc->min_age,
-                                         &pcc->target_amount,
-                                         &pcc->balance,
+                                         pcc.purse_pub,
+                                         &pcc.merge_pub,
+                                         &pcc.purse_expiration,
+                                         &pcc.h_contract_terms,
+                                         &pcc.min_age,
+                                         &pcc.target_amount,
+                                         &pcc.balance,
                                          &purse_sig);
   switch (qs)
   {
@@ -395,8 +418,9 @@ TEH_handler_purses_merge (
   /* check signatures */
   if (GNUNET_OK !=
       TALER_wallet_purse_merge_verify (
-        pcc.payto_url,
+        pcc.payto_uri,
         pcc.merge_timestamp,
+        pcc.purse_pub,
         &pcc.merge_pub,
         &pcc.merge_sig))
   {

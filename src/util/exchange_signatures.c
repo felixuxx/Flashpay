@@ -1338,6 +1338,10 @@ TALER_exchange_online_purse_created_sign (
     .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
   };
 
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
+  TALER_amount_hton (&dc.total_deposited,
+                     total_deposited);
   return scb (&dc.purpose,
               pub,
               sig);
@@ -1366,8 +1370,135 @@ TALER_exchange_online_purse_created_verify (
     .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
   };
 
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
+  TALER_amount_hton (&dc.total_deposited,
+                     total_deposited);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_CREATION,
+                                &dc,
+                                &sig->eddsa_signature,
+                                &pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Response by which the exchange affirms that it has
+ * merged a purse into a reserve.
+ */
+struct TALER_PurseMergedConfirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the exchange receive the deposits.
+   */
+  struct GNUNET_TIME_TimestampNBO exchange_time;
+
+  /**
+   * When will the purse expire?
+   */
+  struct GNUNET_TIME_TimestampNBO purse_expiration;
+
+  /**
+   * How much should the purse ultimately contain.
+   */
+  struct TALER_AmountNBO amount_without_fee;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Public key of the reserve.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Hash of the contract of the purse.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Hash of the provider URL hosting the reserve.
+   */
+  struct GNUNET_HashCode h_provider_url;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+enum TALER_ErrorCode
+TALER_exchange_online_purse_merged_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp exchange_time,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const char *exchange_url,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_PurseMergedConfirmationPS dc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED),
+    .purpose.size = htonl (sizeof (dc)),
+    .h_contract_terms = *h_contract_terms,
+    .purse_pub = *purse_pub,
+    .reserve_pub = *reserve_pub,
+    .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
+    .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
+  };
+
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
+  GNUNET_CRYPTO_hash (exchange_url,
+                      strlen (exchange_url) + 1,
+                      &dc.h_provider_url);
+  return scb (&dc.purpose,
+              pub,
+              sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_purse_merged_verify (
+  struct GNUNET_TIME_Timestamp exchange_time,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const char *exchange_url,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_PurseMergedConfirmationPS dc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED),
+    .purpose.size = htonl (sizeof (dc)),
+    .h_contract_terms = *h_contract_terms,
+    .purse_pub = *purse_pub,
+    .reserve_pub = *reserve_pub,
+    .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
+    .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
+  };
+
+  TALER_amount_hton (&dc.amount_without_fee,
+                     amount_without_fee);
+  GNUNET_CRYPTO_hash (exchange_url,
+                      strlen (exchange_url) + 1,
+                      &dc.h_provider_url);
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED,
                                 &dc,
                                 &sig->eddsa_signature,
                                 &pub->eddsa_pub);

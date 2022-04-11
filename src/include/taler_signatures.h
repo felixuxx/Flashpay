@@ -182,6 +182,13 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_CREATION 1045
 
+
+/**
+ * Signature by which the exchange affirms that a purse
+ * was merged into a reserve with a certain amount in it.
+ */
+#define TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED 1046
+
 /**********************/
 /* Auditor signatures */
 /**********************/
