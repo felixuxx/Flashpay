@@ -28,6 +28,77 @@
 #include "taler_mhd_lib.h"
 #include <jansson.h>
 
+/**
+ * Information we track about wire fees.
+ */
+struct WireFeeSet
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeSet *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeSet *prev;
+
+  /**
+   * Actual fees.
+   */
+  struct TALER_WireFeeSet fees;
+
+  /**
+   * Start date of fee validity (inclusive).
+   */
+  struct GNUNET_TIME_Timestamp start_date;
+
+  /**
+   * End date of fee validity (exclusive).
+   */
+  struct GNUNET_TIME_Timestamp end_date;
+
+  /**
+   * Wire method the fees apply to.
+   */
+  char *method;
+};
+
+
+/**
+ * State we keep per thread to cache the /wire response.
+ */
+struct WireStateHandle
+{
+  /**
+   * Cached JSON for /wire response.
+   */
+  json_t *wire_reply;
+
+  /**
+   * head of DLL of wire fees.
+   */
+  struct WireFeeSet *wfs_head;
+
+  /**
+   * Tail of DLL of wire fees.
+   */
+  struct WireFeeSet *wfs_tail;
+
+  /**
+   * For which (global) wire_generation was this data structure created?
+   * Used to check when we are outdated and need to be re-generated.
+   */
+  uint64_t wire_generation;
+
+  /**
+   * HTTP status to return with this response.
+   */
+  unsigned int http_status;
+
+};
+
 
 /**
  * Stores the latest generation of our wire response.
@@ -48,30 +119,6 @@ static uint64_t wire_generation;
 
 
 /**
- * State we keep per thread to cache the /wire response.
- */
-struct WireStateHandle
-{
-  /**
-   * Cached JSON for /wire response.
-   */
-  json_t *wire_reply;
-
-  /**
-   * For which (global) wire_generation was this data structure created?
-   * Used to check when we are outdated and need to be re-generated.
-   */
-  uint64_t wire_generation;
-
-  /**
-   * HTTP status to return with this response.
-   */
-  unsigned int http_status;
-
-};
-
-
-/**
  * Free memory associated with @a wsh
  *
  * @param[in] wsh wire state to destroy
@@ -79,6 +126,16 @@ struct WireStateHandle
 static void
 destroy_wire_state (struct WireStateHandle *wsh)
 {
+  struct WireFeeSet *wfs;
+
+  while (NULL != (wfs = wsh->wfs_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (wsh->wfs_head,
+                                 wsh->wfs_tail,
+                                 wfs);
+    GNUNET_free (wfs->method);
+    GNUNET_free (wfs);
+  }
   json_decref (wsh->wire_reply);
   GNUNET_free (wsh);
 }
@@ -199,9 +256,31 @@ add_wire_account (void *cls,
 
 
 /**
+ * Closure for #add_wire_fee().
+ */
+struct AddContext
+{
+  /**
+   * Wire method the fees are for.
+   */
+  char *wire_method;
+
+  /**
+   * Wire state we are building.
+   */
+  struct WireStateHandle *wsh;
+
+  /**
+   * Array to append the fee to.
+   */
+  json_t *a;
+};
+
+
+/**
  * Add information about a wire account to @a cls.
  *
- * @param cls a `json_t *` array to expand with wire account details
+ * @param cls a `struct AddContext`
  * @param fees the wire fees we charge
  * @param start_date from when are these fees valid (start date)
  * @param end_date until when are these fees valid (end date, exclusive)
@@ -215,11 +294,20 @@ add_wire_fee (void *cls,
               struct GNUNET_TIME_Timestamp end_date,
               const struct TALER_MasterSignatureP *master_sig)
 {
-  json_t *a = cls;
+  struct AddContext *ac = cls;
+  struct WireFeeSet *wfs;
 
+  wfs = GNUNET_new (struct WireFeeSet);
+  wfs->start_date = start_date;
+  wfs->end_date = end_date;
+  wfs->fees = *fees;
+  wfs->method = GNUNET_strdup (ac->wire_method);
+  GNUNET_CONTAINER_DLL_insert (ac->wsh->wfs_head,
+                               ac->wsh->wfs_tail,
+                               wfs);
   if (0 !=
       json_array_append_new (
-        a,
+        ac->a,
         GNUNET_JSON_PACK (
           TALER_JSON_pack_amount ("wire_fee",
                                   &fees->wire),
@@ -306,17 +394,21 @@ build_wire_state (void)
       if (NULL == json_object_get (wire_fee_object,
                                    wire_method))
       {
-        json_t *a = json_array ();
+        struct AddContext ac = {
+          .wire_method = wire_method,
+          .wsh = wsh,
+          .a = json_array ()
+        };
 
-        GNUNET_assert (NULL != a);
+        GNUNET_assert (NULL != ac.a);
         qs = TEH_plugin->get_wire_fees (TEH_plugin->cls,
                                         wire_method,
                                         &add_wire_fee,
-                                        a);
+                                        &ac);
         if (0 > qs)
         {
           GNUNET_break (0);
-          json_decref (a);
+          json_decref (ac.a);
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
           GNUNET_free (wire_method);
@@ -326,9 +418,9 @@ build_wire_state (void)
                              "get_wire_fees");
           return wsh;
         }
-        if (0 == json_array_size (a))
+        if (0 == json_array_size (ac.a))
         {
-          json_decref (a);
+          json_decref (ac.a);
           json_decref (wire_accounts_array);
           json_decref (wire_fee_object);
           wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
@@ -341,7 +433,7 @@ build_wire_state (void)
         GNUNET_assert (0 ==
                        json_object_set_new (wire_fee_object,
                                             wire_method,
-                                            a));
+                                            ac.a));
       }
       GNUNET_free (wire_method);
     }
@@ -428,7 +520,28 @@ TEH_wire_fees_by_time (
   struct GNUNET_TIME_Timestamp ts,
   const char *method)
 {
-  GNUNET_break (0); // FIXME: implement!
+  struct WireStateHandle *wsh = get_wire_state ();
+
+  for (struct WireFeeSet *wfs = wsh->wfs_head;
+       NULL != wfs;
+       wfs = wfs->next)
+  {
+    if (0 != strcmp (method,
+                     wfs->method))
+      continue;
+    if ( (GNUNET_TIME_timestamp_cmp (wfs->start_date,
+                                     >,
+                                     ts)) ||
+         (GNUNET_TIME_timestamp_cmp (ts,
+                                     >=,
+                                     wfs->end_date)) )
+      continue;
+    return &wfs->fees;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "No wire fees for method `%s' at %s configured\n",
+              method,
+              GNUNET_TIME_timestamp2s (ts));
   return NULL;
 }
 
