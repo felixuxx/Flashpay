@@ -4061,12 +4061,12 @@ struct TALER_EXCHANGE_ContractGetResponse
  * Function called with information about the a purse.
  *
  * @param cls closure
- * @param pgr HTTP response data
+ * @param cgr HTTP response data
  */
 typedef void
 (*TALER_EXCHANGE_ContractGetCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_ContractGetResponse *pgr);
+  const struct TALER_EXCHANGE_ContractGetResponse *cgr);
 
 
 /**
@@ -4078,8 +4078,7 @@ struct TALER_EXCHANGE_ContractsGetHandle;
 /**
  * Request information about a contract from the exchange.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange exchange handle
  * @param contract_priv private key of the contract
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4087,8 +4086,7 @@ struct TALER_EXCHANGE_ContractsGetHandle;
  */
 struct TALER_EXCHANGE_ContractGetHandle *
 TALER_EXCHANGE_contract_get (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   TALER_EXCHANGE_ContractGetCallback cb,
   void *cb_cls);
@@ -4165,8 +4163,7 @@ struct TALER_EXCHANGE_PurseGetHandle;
 /**
  * Request information about a purse from the exchange.
  *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange exchange handle
  * @param purse_priv private key of the purse
  * @param merge_timeout how long to wait for a merge to happen
  * @param deposit_timeout how long to wait for a deposit to happen
@@ -4176,8 +4173,7 @@ struct TALER_EXCHANGE_PurseGetHandle;
  */
 struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   struct GNUNET_TIME_Relative merge_timeout,
   struct GNUNET_TIME_Relative deposit_timeout,
