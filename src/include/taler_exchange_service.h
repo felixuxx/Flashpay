@@ -4084,7 +4084,7 @@ struct TALER_EXCHANGE_ContractsGetHandle;
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
  */
-struct TALER_EXCHANGE_ContractGetHandle *
+struct TALER_EXCHANGE_ContractsGetHandle *
 TALER_EXCHANGE_contract_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
@@ -4099,7 +4099,7 @@ TALER_EXCHANGE_contract_get (
  */
 void
 TALER_EXCHANGE_contract_get_cancel (
-  struct TALER_EXCHANGE_ContractGetHandle *cgh);
+  struct TALER_EXCHANGE_ContractsGetHandle *cgh);
 
 
 /**

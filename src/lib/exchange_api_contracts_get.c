@@ -129,7 +129,7 @@ handle_contract_get_finished (void *cls,
       cgh->cb (cgh->cb_cls,
                &dr);
       GNUNET_JSON_parse_free (spec);
-      TALER_EXCHANGE_contracts_get_cancel (cgh);
+      TALER_EXCHANGE_contract_get_cancel (cgh);
       return;
     }
   case MHD_HTTP_BAD_REQUEST:
@@ -170,11 +170,11 @@ handle_contract_get_finished (void *cls,
   }
   cgh->cb (cgh->cb_cls,
            &dr);
-  TALER_EXCHANGE_contracts_get_cancel (cgh);
+  TALER_EXCHANGE_contract_get_cancel (cgh);
 }
 
 
-struct TALER_EXCHANGE_ContractGetHandle *
+struct TALER_EXCHANGE_ContractsGetHandle *
 TALER_EXCHANGE_contract_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
@@ -239,8 +239,8 @@ TALER_EXCHANGE_contract_get (
 
 
 void
-TALER_EXCHANGE_contracts_get_cancel (struct
-                                     TALER_EXCHANGE_ContractsGetHandle *cgh)
+TALER_EXCHANGE_contract_get_cancel (
+  struct TALER_EXCHANGE_ContractsGetHandle *cgh)
 {
   if (NULL != cgh->job)
   {
