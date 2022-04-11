@@ -1,0 +1,280 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2022 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3, or (at your
+  option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
+  <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file testing/testing_api_cmd_contract_get.c
+ * @brief command for testing GET /contracts/$CPUB
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include "taler_json_lib.h"
+#include <gnunet/gnunet_curl_lib.h>
+#include "taler_testing_lib.h"
+#include "taler_signatures.h"
+#include "backoff.h"
+
+
+/**
+ * State for a "contract get" CMD.
+ */
+struct ContractGetState
+{
+
+  /**
+   * JSON string describing the resulting contract.
+   */
+  json_t *contract_terms;
+
+  /**
+   * Set to the returned merge key.
+   */
+  struct TALER_PurseMergePrivateKeyP merge_priv;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Reference to the command that uploaded the contract.
+   */
+  const char *contract_ref;
+
+  /**
+   * ContractGet handle while operation is running.
+   */
+  struct TALER_EXCHANGE_ContractsGetHandle *dh;
+
+  /**
+   * Interpreter state.
+   */
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * Expected HTTP response code.
+   */
+  unsigned int expected_response_code;
+
+};
+
+
+/**
+ * Callback to analyze the /contracts/$CPUB response, just used to check if
+ * the response code is acceptable.
+ *
+ * @param cls closure.
+ * @param dr get response details
+ */
+static void
+get_cb (void *cls,
+        const struct TALER_EXCHANGE_ContractGetResponse *dr)
+{
+  struct ContractGetState *ds = cls;
+  const struct TALER_TESTING_Command *ref;
+
+  ds->dh = NULL;
+  if (ds->expected_response_code != dr->hr.http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u to command %s in %s:%u\n",
+                dr->hr.http_status,
+                ds->is->commands[ds->is->ip].label,
+                __FILE__,
+                __LINE__);
+    json_dumpf (dr->hr.reply,
+                stderr,
+                0);
+    TALER_TESTING_interpreter_fail (ds->is);
+    return;
+  }
+  ref = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                  ds->contract_ref);
+  if (MHD_HTTP_OK == dr->hr.http_status)
+  {
+    const struct TALER_PurseMergePrivateKeyP *mp;
+    const json_t *ct;
+
+    /* check that we got what we expected to get! */
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_merge_priv (ref,
+                                            &mp))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_contract_terms (ref,
+                                                &ct))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    if (0 !=
+        GNUNET_memcmp (mp,
+                       &dr->details.success.merge_priv))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    if (1 != /* 1: equal, 0: not equal */
+        json_equal (ct,
+                    dr->details.success.contract_terms))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    ds->contract_terms = json_incref (
+      (json_t *) dr->details.success.contract_terms);
+    ds->merge_priv = dr->details.success.merge_priv;
+    ds->purse_pub = dr->details.success.purse_pub;
+  }
+  TALER_TESTING_interpreter_next (ds->is);
+}
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
+get_run (void *cls,
+         const struct TALER_TESTING_Command *cmd,
+         struct TALER_TESTING_Interpreter *is)
+{
+  struct ContractGetState *ds = cls;
+  const struct TALER_ContractDiffiePrivateP *contract_priv;
+  const struct TALER_TESTING_Command *ref;
+
+  (void) cmd;
+  ds->is = is;
+  ref = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                  ds->contract_ref);
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_contract_priv (ref,
+                                             &contract_priv))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (ds->is);
+    return;
+  }
+  ds->dh = TALER_EXCHANGE_contract_get (
+    is->exchange,
+    contract_priv,
+    &get_cb,
+    ds);
+  if (NULL == ds->dh)
+  {
+    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not GET contract\n");
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+}
+
+
+/**
+ * Free the state of a "get" CMD, and possibly cancel a
+ * pending operation thereof.
+ *
+ * @param cls closure, must be a `struct ContractGetState`.
+ * @param cmd the command which is being cleaned up.
+ */
+static void
+get_cleanup (void *cls,
+             const struct TALER_TESTING_Command *cmd)
+{
+  struct ContractGetState *ds = cls;
+
+  if (NULL != ds->dh)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Command %u (%s) did not complete\n",
+                ds->is->ip,
+                cmd->label);
+    TALER_EXCHANGE_contract_get_cancel (ds->dh);
+    ds->dh = NULL;
+  }
+  json_decref (ds->contract_terms);
+  GNUNET_free (ds);
+}
+
+
+/**
+ * Offer internal data from a "get" CMD, to other commands.
+ *
+ * @param cls closure.
+ * @param[out] ret result.
+ * @param trait name of the trait.
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success.
+ */
+static enum GNUNET_GenericReturnValue
+get_traits (void *cls,
+            const void **ret,
+            const char *trait,
+            unsigned int index)
+{
+  struct ContractGetState *ds = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_merge_priv (&ds->merge_priv),
+    TALER_TESTING_make_trait_purse_pub (&ds->purse_pub),
+    TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_contract_get (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *contract_ref)
+{
+  struct ContractGetState *ds;
+
+  ds = GNUNET_new (struct ContractGetState);
+  ds->expected_response_code = expected_http_status;
+  ds->contract_ref = contract_ref;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ds,
+      .label = label,
+      .run = &get_run,
+      .cleanup = &get_cleanup,
+      .traits = &get_traits
+    };
+
+    return cmd;
+  }
+}
+
+
+/* end of testing_api_cmd_contract_get.c */
