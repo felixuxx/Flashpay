@@ -4391,6 +4391,7 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  * @param h_contract_terms hash of the purses' contract
  * @param min_age minimum age of deposits into the purse
  * @param purse_value_after_fees amount that should be in the purse
+ * @paran purse_expiration when will the purse expire
  * @param merge_timestamp when is the merge happening (current time)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4406,6 +4407,7 @@ TALER_EXCHANGE_account_merge (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   uint8_t min_age,
   const struct TALER_Amount *purse_value_after_fees,
+  struct GNUNET_TIME_Timestamp purse_expiration,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   TALER_EXCHANGE_AccountMergeCallback cb,
   void *cb_cls);

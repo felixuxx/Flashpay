@@ -71,14 +71,19 @@ struct TALER_EXCHANGE_AccountMergeHandle
   void *cb_cls;
 
   /**
+   * Base URL of the provider hosting the @e reserve_pub.
+   */
+  char *provider_url;
+
+  /**
    * Expected value in the purse after fees.
    */
   struct TALER_Amount purse_value_after_fees;
 
   /**
-   * Public key of the merge capability.
+   * Public key of the reserve public key.
    */
-  struct TALER_AccountMergePublicKeyP merge_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Public key of the purse.
@@ -168,10 +173,10 @@ handle_purse_merge_finished (void *cls,
             etime,
             pch->purse_expiration,
             &pch->purse_value_after_fees,
-            &total_deposited,
             &pch->purse_pub,
-            &pch->merge_pub,
             &pch->h_contract_terms,
+            &pch->reserve_pub,
+            pch->provider_url,
             &exchange_pub,
             &exchange_sig))
       {
@@ -231,7 +236,7 @@ handle_purse_merge_finished (void *cls,
   }
   pch->cb (pch->cb_cls,
            &dr);
-  TALER_EXCHANGE_purse_merge_with_deposit_cancel (pch);
+  TALER_EXCHANGE_account_merge_cancel (pch);
 }
 
 
@@ -255,20 +260,22 @@ TALER_EXCHANGE_account_merge (
   json_t *merge_obj;
   CURL *eh;
   struct TALER_PurseMergeSignatureP merge_sig;
-  struct TALER_ReserveSignatureP account_sig;
+  struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
-  char *url;
   char *reserve_url;
 
   pch = GNUNET_new (struct TALER_EXCHANGE_AccountMergeHandle);
   pch->exchange = exchange;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
-  pch->merge_timestamp = merge_timestamp;
   pch->purse_pub = *purse_pub;
   pch->h_contract_terms = *h_contract_terms;
   pch->purse_expiration = purse_expiration;
   pch->purse_value_after_fees = *purse_value_after_fees;
+  pch->provider_url = GNUNET_strdup (reserve_exchange_url);
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                      &pch->reserve_pub.eddsa_pub);
+
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   {
@@ -287,18 +294,14 @@ TALER_EXCHANGE_account_merge (
                      pub_str);
   }
   {
-    struct TALER_ReservePublicKeyP reserve_pub;
-    char pub_str[sizeof (reserve_pub) * 2];
+    char pub_str[sizeof (pch->reserve_pub) * 2];
     char *end;
     const char *exchange_url;
     bool is_http;
 
-    GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                        &reserve_pub.eddsa_pub);
-
     end = GNUNET_STRINGS_data_to_string (
-      &reserve_pub,
-      sizeof (reserve_pub),
+      &pch->reserve_pub,
+      sizeof (pch->reserve_pub),
       pub_str,
       sizeof (pub_str));
     *end = '\0';
@@ -336,8 +339,6 @@ TALER_EXCHANGE_account_merge (
     GNUNET_free (pch);
     return NULL;
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
-                                      &pch->merge_pub.eddsa_pub);
   TALER_wallet_purse_merge_sign (reserve_url,
                                  merge_timestamp,
                                  purse_pub,
@@ -378,13 +379,13 @@ TALER_EXCHANGE_account_merge (
   }
   json_decref (merge_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "URL for purse merge with deposit: `%s'\n",
+              "URL for purse merge: `%s'\n",
               pch->url);
   ctx = TEAH_handle_to_context (exchange);
   pch->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    pch->ctx.headers,
-                                   &handle_purse_merge_deposit_finished,
+                                   &handle_purse_merge_finished,
                                    pch);
   return pch;
 }
@@ -400,6 +401,7 @@ TALER_EXCHANGE_account_merge_cancel (
     pch->job = NULL;
   }
   GNUNET_free (pch->url);
+  GNUNET_free (pch->provider_url);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);
 }
