@@ -304,17 +304,6 @@ TEH_handler_purses_merge (
     }
   }
 
-  pcc.wf = TEH_wire_fees_by_time (pcc.exchange_timestamp,
-                                  "sepa"); // FIXME!
-  if (NULL == pcc.wf)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Cannot create purse: global fees not configured!\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
-                                       NULL);
-  }
   /* Fetch purse details */
   qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
                                          pcc.purse_pub,
@@ -414,6 +403,28 @@ TEH_handler_purses_merge (
   {
     /* we use NULL to represent 'self' as the provider */
     GNUNET_free (pcc.provider_url);
+  }
+  else
+  {
+    char *method = GNUNET_strdup ("FIXME");
+
+    /* FIXME: lookup wire method by pcc.provider_url! */
+    pcc.wf = TEH_wire_fees_by_time (pcc.exchange_timestamp,
+                                    method);
+    if (NULL == pcc.wf)
+    {
+      MHD_RESULT res;
+
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Cannot merge purse: wire fees not configured!\n");
+      res = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_EXCHANGE_GENERIC_WIRE_FEES_MISSING,
+                                        method);
+      GNUNET_free (method);
+      return res;
+    }
+    GNUNET_free (method);
   }
   /* check signatures */
   if (GNUNET_OK !=
