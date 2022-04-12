@@ -453,7 +453,7 @@ TEH_handler_purses_merge (
   }
   else
   {
-    char *method = GNUNET_strdup ("FIXME");
+    char *method = GNUNET_strdup ("FIXME-WAD");
 
     /* FIXME: lookup wire method by pcc.provider_url! */
     pcc.wf = TEH_wire_fees_by_time (pcc.exchange_timestamp,

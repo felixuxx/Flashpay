@@ -265,6 +265,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   pch->exchange = exchange;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
+  // FIXME: get expiration from pay deadline of contract?
   pch->purse_expiration = purse_expiration;
   {
     struct GNUNET_JSON_Specification spec[] = {
