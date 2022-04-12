@@ -171,6 +171,7 @@ get_run (void *cls,
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->contract_ref);
+  GNUNET_assert (NULL != ref);
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_contract_priv (ref,
                                              &contract_priv))
