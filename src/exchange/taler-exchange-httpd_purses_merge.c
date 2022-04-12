@@ -157,7 +157,9 @@ reply_merge_success (struct MHD_Connection *connection,
                                &pcc->target_amount,
                                &pcc->wf->wad))
     {
-      GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Purse merged, balance of %s benefits exchange as it is below wad fee.\n",
+                  TALER_amount2s (&pcc->target_amount));
       return TALER_MHD_reply_with_ec (
         connection,
         TALER_EC_EXCHANGE_PURSE_MERGE_WAD_FEE_EXCEEDS_PURSE_VALUE,
@@ -217,13 +219,19 @@ merge_transaction (void *cls,
   struct PurseMergeContext *pcc = cls;
   enum GNUNET_DB_QueryStatus qs;
   bool in_conflict = true;
+  bool no_balance = true;
+  bool no_partner = true;
 
   qs = TEH_plugin->do_purse_merge (TEH_plugin->cls,
                                    pcc->purse_pub,
                                    &pcc->merge_sig,
                                    pcc->merge_timestamp,
+                                   &pcc->reserve_sig,
                                    pcc->provider_url,
-                                   &pcc->reserve_pub);
+                                   &pcc->reserve_pub,
+                                   &no_partner,
+                                   &no_balance,
+                                   &in_conflict);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -237,26 +245,65 @@ merge_transaction (void *cls,
                                   "purse merge");
     return qs;
   }
-
-
-  qs = TEH_plugin->do_account_merge (TEH_plugin->cls,
-                                     pcc->purse_pub,
-                                     &pcc->reserve_pub,
-                                     &pcc->reserve_sig);
-  if (qs < 0)
+  if (no_partner)
   {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    TALER_LOG_WARNING (
-      "Failed to store account purse information in database\n");
     *mhd_ret =
       TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                  TALER_EC_GENERIC_DB_STORE_FAILED,
-                                  "account merge");
-    return qs;
+                                  MHD_HTTP_BAD_REQUEST,
+                                  TALER_EC_EXCHANGE_MERGE_PURSE_PARTNER_UNKNOWN,
+                                  pcc->provider_url);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  if (no_balance)
+  {
+    *mhd_ret =
+      TALER_MHD_reply_with_error (connection,
+                                  MHD_HTTP_CONFLICT,
+                                  TALER_EC_EXCHANGE_PURSE_NOT_FULL,
+                                  NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (in_conflict)
+  {
+    struct TALER_PurseMergeSignatureP merge_sig;
+    struct GNUNET_TIME_Timestamp merge_timestamp;
+    char *partner_url = NULL;
+    struct TALER_ReservePublicKeyP reserve_pub;
 
+    qs = TEH_plugin->select_purse_merge (TEH_plugin->cls,
+                                         pcc->purse_pub,
+                                         &merge_sig,
+                                         &merge_timestamp,
+                                         &partner_url,
+                                         &reserve_pub);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      TALER_LOG_WARNING (
+        "Failed to fetch merge purse information from database\n");
+      *mhd_ret =
+        TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                    "select purse merge");
+      return qs;
+    }
+    *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_CONFLICT,
+      GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                  merge_timestamp),
+      GNUNET_JSON_pack_data_auto ("merge_sig",
+                                  &merge_sig),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("partner_base_url",
+                                 partner_url)),
+      GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                  &reserve_pub));
+    GNUNET_free (partner_url);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   return qs;
 }
 

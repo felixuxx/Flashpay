@@ -3509,16 +3509,18 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_do_purse_merge() */
     GNUNET_PQ_make_prepare (
       "call_purse_merge",
-      "SELECT 1"
+      "SELECT"
+      " out_no_partner AS no_partner"
+      ",out_no_balance AS no_balance"
+      ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5);",
-      5),
+      "  ($1, $2, $3, $4, $5, $6);",
+      6),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
       "SELECT "
       " reserve_pub"
-      ",purse_pub"
       ",merge_sig"
       ",merge_timestamp"
       ",partner_base_url"
@@ -13467,9 +13469,13 @@ postgres_get_purse_deposit (
  * @param purse_pub purse to merge
  * @param merge_sig signature affirming the merge
  * @param merge_timestamp time of the merge
+ * @param reserve_sig signature of the reserve affirming the merge
  * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
  * @param reserve_pub public key of the reserve to credit
- * @return transaction status code
+ * @param[out] no_partner set to true if @a partner_url is unknown
+ * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
+ * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
+  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_do_purse_merge (
@@ -13477,11 +13483,37 @@ postgres_do_purse_merge (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergeSignatureP *merge_sig,
   const struct GNUNET_TIME_Timestamp merge_timestamp,
+  const struct TALER_ReserveSignatureP *reserve_sig,
   const char *partner_url,
-  const struct TALER_ReservePublicKeyP *reserve_pub)
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  bool *no_partner,
+  bool *no_balance,
+  bool *in_conflict)
 {
-  GNUNET_break (0); // FIXME
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (merge_sig),
+    GNUNET_PQ_query_param_timestamp (&merge_timestamp),
+    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
+    GNUNET_PQ_query_param_string (partner_url),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("no_partner",
+                                no_partner),
+    GNUNET_PQ_result_spec_bool ("no_balance",
+                                no_balance),
+    GNUNET_PQ_result_spec_bool ("conflict",
+                                in_conflict),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_purse_merge",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -13506,8 +13538,31 @@ postgres_select_purse_merge (
   char **partner_url,
   struct TALER_ReservePublicKeyP *reserve_pub)
 {
-  GNUNET_break (0); // FIXME
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    GNUNET_PQ_query_param_end
+  };
+  bool is_null;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
+                                          merge_sig),
+    GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                          reserve_pub),
+    GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
+                                     merge_timestamp),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("partner_base_url",
+                                    partner_url),
+      &is_null),
+    GNUNET_PQ_result_spec_end
+  };
+
+  *partner_url = NULL;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "select_purse_merge",
+                                                   params,
+                                                   rs);
 }
 
 
