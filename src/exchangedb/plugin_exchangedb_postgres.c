@@ -3354,6 +3354,15 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY end_row DESC"
       " LIMIT 1;",
       1),
+    /* Used in #postgres_abort_shard() */
+    GNUNET_PQ_make_prepare (
+      "abort_shard",
+      "UPDATE work_shards"
+      "   SET last_attempt=0"
+      " WHERE job_name = $1 "
+      "    AND start_row = $2 "
+      "    AND end_row = $3;",
+      3),
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "claim_next_shard",
@@ -12587,6 +12596,35 @@ commit:
 
 
 /**
+ * Function called to abort work on a shard.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param job_name name of the operation to abort a word shard for
+ * @param start_row inclusive start row of the shard
+ * @param end_row exclusive end row of the shard
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_abort_shard (void *cls,
+                      const char *job_name,
+                      uint64_t start_row,
+                      uint64_t end_row)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (job_name),
+    GNUNET_PQ_query_param_uint64 (&start_row),
+    GNUNET_PQ_query_param_uint64 (&end_row),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "abort_shard",
+                                             params);
+}
+
+
+/**
  * Function called to persist that work on a shard was completed.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -13889,6 +13927,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_records_by_table;
   plugin->begin_shard
     = &postgres_begin_shard;
+  plugin->abort_shard
+    = &postgres_abort_shard;
   plugin->complete_shard
     = &postgres_complete_shard;
   plugin->begin_revolving_shard

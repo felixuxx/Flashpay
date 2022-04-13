@@ -4296,6 +4296,20 @@ struct TALER_EXCHANGEDB_Plugin
                  uint64_t *start_row,
                  uint64_t *end_row);
 
+  /**
+   * Function called to abort work on a shard.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param job_name name of the operation to abort a word shard for
+   * @param start_row inclusive start row of the shard
+   * @param end_row exclusive end row of the shard
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*abort_shard)(void *cls,
+                 const char *job_name,
+                 uint64_t start_row,
+                 uint64_t end_row);
 
   /**
    * Function called to persist that work on a shard was completed.

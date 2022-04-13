@@ -226,6 +226,8 @@ shutdown_task (void *cls)
 
     while (NULL != (wa = wa_head))
     {
+      enum GNUNET_DB_QueryStatus qs;
+
       if (NULL != wa->hh)
       {
         TALER_BANK_credit_history_cancel (wa->hh);
@@ -239,7 +241,13 @@ shutdown_task (void *cls)
         db_plugin->rollback (db_plugin->cls);
         wa->started_transaction = false;
       }
-      // FIXME: delete shard lock here (#7124)
+      qs = db_plugin->abort_shard (db_plugin->cls,
+                                   wa_pos->job_name,
+                                   wa_pos->shard_start,
+                                   wa_pos->shard_end);
+      if (qs <= 0)
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Failed to abort work shard on shutdown\n");
       GNUNET_free (wa->job_name);
       GNUNET_free (wa);
     }
