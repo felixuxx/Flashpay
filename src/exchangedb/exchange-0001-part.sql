@@ -1478,19 +1478,19 @@ END IF;
 --  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
 WITH reserves_in AS materialized (
-  SELECT wire_source_h_payto 
-  FROM reserves_in WHERE 
+  SELECT wire_source_h_payto
+  FROM reserves_in WHERE
   reserve_pub=rpub
 )
-SELECT 
+SELECT
   kyc_ok
-  ,wire_target_serial_id 
+  ,wire_target_serial_id
 INTO
   kycok
   ,account_uuid
-FROM wire_targets 
+FROM wire_targets
   WHERE wire_target_h_payto = (
-    SELECT wire_source_h_payto 
+    SELECT wire_source_h_payto
       FROM reserves_in
   );
 
@@ -2594,15 +2594,111 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_purse_pub BYTEA,
   IN in_merge_sig BYTEA,
   IN in_merge_timestamp INT8,
+  IN in_reserve_sig BYTEA,
   IN in_partner_url VARCHAR,
   IN in_reserve_pub BYTEA,
-  OUT out_balance_ok BOOLEAN,
+  OUT out_no_partner BOOLEAN,
+  OUT out_no_balance BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  my_partner_serial_id INT8;
 BEGIN
-  -- FIXME
+
+IF in_partner_url IS NULL
+THEN
+  my_partner_serial_id=0;
+ELSE
+  SELECT
+    partner_serial_id
+  INTO
+    my_partner_serial_id
+  FROM partners
+  WHERE partner_base_url=in_partner_url
+    AND start_date <= in_merge_timestamp
+    AND end_date > in_merge_timestamp;
+  IF NOT FOUND
+  THEN
+    out_no_partner=TRUE;
+    out_conflict=FALSE;
+    RETURN;
+  END IF;
+END IF;
+
+out_no_partner=FALSE;
+
+
+-- Check purse is 'full'.
+PERFORM
+  FROM purse_requests
+  WHERE purse_pub=in_purse_pub
+    AND balance_val >= amount_with_fee_val
+    AND ( (balance_frac >= amount_with_fee_frac) OR
+          (balance_val > amount_with_fee_val) );
+IF NOT FOUND
+THEN
+  out_no_balance=TRUE;
+  RETURN;
+END IF;
+out_no_balance=FALSE;
+
+
+
+-- Store purse merge signature, checks for purse_pub uniqueness
+INSERT INTO purse_merges
+    (partner_serial_id
+    ,reserve_pub
+    ,purse_pub
+    ,merge_sig
+    ,merge_timestamp)
+  VALUES
+    (my_partner_serial_id
+    ,in_reserve_pub
+    ,in_purse_pub
+    ,in_merge_sig
+    ,in_merge_timestamp)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'merge_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  PERFORM
+  FROM purse_merges
+  WHERE purse_pub=in_purse_pub
+     AND merge_sig=in_merge_sig;
+  IF NOT FOUND
+  THEN
+     -- Purse was merged, but to some other reserve. Not allowed.
+     out_conflict=TRUE;
+     RETURN;
+  END IF;
+
+  -- "success"
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+-- Store account merge signature.
+INSERT INTO account_merges
+  (reserve_pub
+  ,reserve_sig
+  ,purse_pub)
+  VALUES
+  (in_reserve_pub
+  ,in_reserve_sig
+  ,in_purse_pub);
+
+
+RETURN;
+
 END $$;
+
+-- COMMENT ON FUNCTION exchange_do_purse_merge()
+--  IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
 CREATE OR REPLACE FUNCTION exchange_do_account_merge(
