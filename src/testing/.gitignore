@@ -44,3 +44,5 @@ test_helper_rsa_home/test_exchange_api_twisted-cs
 test_exchange_api_twisted-rsa
 test_exchange_api_twisted_cs
 test_exchange_api_twisted_rsa
+test_exchange_p2p_cs
+test_exchange_p2p_rsa

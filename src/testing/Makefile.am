@@ -119,6 +119,11 @@ libtalertesting_la_LIBADD = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
+noinst_PROGRAMS = \
+  test_exchange_p2p_cs \
+  test_exchange_p2p_rsa 
+
+
 .NOTPARALLEL:
 check_PROGRAMS = \
   test_auditor_api_cs \
@@ -275,6 +280,41 @@ test_exchange_api_rsa_LDADD = \
   -ljansson \
   -ltalerextensions \
   $(XLIB)
+
+test_exchange_p2p_cs_SOURCES = \
+  test_exchange_api.c
+test_exchange_p2p_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunettesting \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  -ltalerextensions \
+  $(XLIB)
+
+test_exchange_p2p_rsa_SOURCES = \
+  test_exchange_p2p.c
+test_exchange_p2p_rsa_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunettesting \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  -ltalerextensions \
+  $(XLIB)
+
 
 test_exchange_api_keys_cherry_picking_cs_SOURCES = \
   test_exchange_api_keys_cherry_picking.c
