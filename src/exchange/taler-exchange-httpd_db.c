@@ -123,10 +123,12 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
              connection,
              mhd_ret);
     if (0 > qs)
+    {
       TEH_plugin->rollback (TEH_plugin->cls);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      return GNUNET_SYSERR;
-    if (0 <= qs)
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        return GNUNET_SYSERR;
+    }
+    else
     {
       qs = TEH_plugin->commit (TEH_plugin->cls);
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
