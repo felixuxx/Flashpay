@@ -395,8 +395,8 @@ TEH_handler_kyc_check (
     redirect_uri_encoded = TALER_urlencode (redirect_uri);
     GNUNET_free (redirect_uri);
     GNUNET_asprintf (&url,
-                     "%s/login?client_id=%s&redirect_uri=%s",
-                     TEH_kyc_config.details.oauth2.url,
+                     "%s?client_id=%s&redirect_uri=%s",
+                     TEH_kyc_config.details.oauth2.login_url,
                      TEH_kyc_config.details.oauth2.client_id,
                      redirect_uri_encoded);
     GNUNET_free (redirect_uri_encoded);

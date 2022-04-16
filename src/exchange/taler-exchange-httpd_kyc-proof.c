@@ -579,8 +579,8 @@ TEH_handler_kyc_proof (
                                            "curl_easy_init");
       }
       GNUNET_asprintf (&kpc->token_url,
-                       "%stoken",
-                       TEH_kyc_config.details.oauth2.url);
+                       "%s",
+                       TEH_kyc_config.details.oauth2.auth_url);
       GNUNET_assert (CURLE_OK ==
                      curl_easy_setopt (eh,
                                        CURLOPT_URL,
@@ -603,8 +603,8 @@ TEH_handler_kyc_proof (
           char *request_uri;
 
           GNUNET_asprintf (&request_uri,
-                           "%slogin?client_id=%s",
-                           TEH_kyc_config.details.oauth2.url,
+                           "%s?client_id=%s",
+                           TEH_kyc_config.details.oauth2.login_url,
                            TEH_kyc_config.details.oauth2.client_id);
           redirect_uri = curl_easy_escape (eh,
                                            request_uri,

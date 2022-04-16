@@ -432,7 +432,7 @@ run (void *cls,
     /* Try resolving a deposit's WTID, as we never triggered
      * execution of transactions, the answer should be that
      * the exchange knows about the deposit, but has no WTID yet.
-     *///
+     */
     TALER_TESTING_cmd_track_transaction ("deposit-wtid-found",
                                          "deposit-simple",
                                          0,
@@ -458,7 +458,7 @@ run (void *cls,
      * happen here, as each deposit operation is run with a
      * fresh merchant public key, so the aggregator will treat
      * them as "different" merchants and do the wire transfers
-     * individually. *///
+     * individually. */
     CMD_EXEC_AGGREGATOR ("run-aggregator"),
     /**
      * Check all the transfers took place.
