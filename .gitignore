@@ -140,7 +140,7 @@ src/testing/test_exchange_api_keys_cherry_picking
 src/testing/test_exchange_api_overlapping_keys_bug
 src/testing/test_exchange_api_revocation
 src/testing/test_exchange_management_api
-rc/wire-plugins/test_wire_plugin_legacy_taler_bank
+src/wire-plugins/test_wire_plugin_legacy_taler_bank
 uncrustify.cfg
 vgcore.*
 tags
