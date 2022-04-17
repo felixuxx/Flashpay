@@ -4573,6 +4573,34 @@ TALER_merchant_wire_signature_make (
   struct TALER_MerchantSignatureP *merch_sig);
 
 
+/**
+ * Sign a payment confirmation.
+ *
+ * @param h_contract_terms hash of the contact of the merchant with the customer
+ * @param merch_priv private key to sign with
+ * @param[out] merch_sig where to write the signature
+ */
+void
+TALER_merchant_pay_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct GNUNET_CRYPTO_EddsaSignature *merch_sig);
+
+/**
+ * Verify payment confirmation signature.
+ *
+ * @param h_contract_terms hash of the contact of the merchant with the customer
+ * @param merchant_pub public key of the merchant
+ * @param merchant_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_merchant_pay_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantSignatureP *merchant_sig);
+
+
 /* **************** /management/extensions offline signing **************** */
 
 /**

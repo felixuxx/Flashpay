@@ -440,24 +440,6 @@ struct TALER_ProposalDataPS
   struct TALER_PrivateContractHashP hash;
 };
 
-/**
- * Used by merchants to return signed responses to /pay requests.
- * Currently only used to return 200 OK signed responses.
- */
-struct TALER_PaymentResponsePS
-{
-  /**
-   * Set to #TALER_SIGNATURE_MERCHANT_PAYMENT_OK. Note that
-   * unsuccessful payments are usually proven by some exchange's signature.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the proposal data associated with this confirmation
-   */
-  struct TALER_PrivateContractHashP h_contract_terms;
-};
-
 
 GNUNET_NETWORK_STRUCT_END
 

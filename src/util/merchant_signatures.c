@@ -175,4 +175,58 @@ TALER_merchant_wire_signature_make (
 }
 
 
+/**
+ * Used by merchants to return signed responses to /pay requests.
+ * Currently only used to return 200 OK signed responses.
+ */
+struct TALER_PaymentResponsePS
+{
+  /**
+   * Set to #TALER_SIGNATURE_MERCHANT_PAYMENT_OK. Note that
+   * unsuccessful payments are usually proven by some exchange's signature.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the proposal data associated with this confirmation
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+};
+
+void
+TALER_merchant_pay_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct GNUNET_CRYPTO_EddsaSignature *merch_sig)
+{
+  struct TALER_PaymentResponsePS mr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_PAYMENT_OK),
+    .purpose.size = htonl (sizeof (mr)),
+    .h_contract_terms = *h_contract_terms
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&merch_priv->eddsa_priv,
+                            &mr,
+                            merch_sig);
+}
+
+enum GNUNET_GenericReturnValue
+TALER_merchant_pay_verify (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantSignatureP *merchant_sig)
+{
+  struct TALER_PaymentResponsePS pr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_PAYMENT_OK),
+    .purpose.size = htonl (sizeof (pr)),
+    .h_contract_terms = *h_contract_terms
+  };
+
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_PAYMENT_OK,
+                                &pr,
+                                &merchant_sig->eddsa_sig,
+                                &merchant_pub->eddsa_pub);
+}
+
 /* end of merchant_signatures.c */
