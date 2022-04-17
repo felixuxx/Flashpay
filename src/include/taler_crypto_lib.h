@@ -4601,6 +4601,20 @@ TALER_merchant_pay_verify (
   const struct TALER_MerchantSignatureP *merchant_sig);
 
 
+/**
+ * Sign contract sent by the merchant to the wallet.
+ *
+ * @param h_contract_terms hash of the contract terms
+ * @param merch_priv private key to sign with
+ * @param[out] merch_sig where to write the signature
+ */
+void
+TALER_merchant_contract_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct GNUNET_CRYPTO_EddsaSignature *merch_sig);
+
+
 /* **************** /management/extensions offline signing **************** */
 
 /**

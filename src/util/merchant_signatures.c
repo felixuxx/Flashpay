@@ -229,4 +229,42 @@ TALER_merchant_pay_verify (
                                 &merchant_pub->eddsa_pub);
 }
 
+
+/**
+ * The contract sent by the merchant to the wallet.
+ */
+struct TALER_ProposalDataPS
+{
+  /**
+   * Purpose header for the signature over the proposal data
+   * with purpose #TALER_SIGNATURE_MERCHANT_CONTRACT.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the JSON contract in UTF-8 including 0-termination,
+   * using JSON_COMPACT | JSON_SORT_KEYS
+   */
+  struct TALER_PrivateContractHashP hash;
+};
+
+void
+TALER_merchant_contract_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantPrivateKeyP *merch_priv,
+  struct GNUNET_CRYPTO_EddsaSignature *merch_sig)
+{
+  struct TALER_ProposalDataPS pdps = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_CONTRACT),
+    .purpose.size = htonl (sizeof (pdps)),
+    .hash = *h_contract_terms
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&merch_priv->eddsa_priv,
+                            &pdps,
+                            merch_sig);
+}
+
+// NB: "TALER_merchant_contract_verify" not (yet?) needed / not defined.
+
 /* end of merchant_signatures.c */

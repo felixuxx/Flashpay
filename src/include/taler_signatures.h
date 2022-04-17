@@ -422,25 +422,6 @@ struct TALER_DepositTrackPS
 };
 
 
-/**
- * The contract sent by the merchant to the wallet.
- */
-struct TALER_ProposalDataPS
-{
-  /**
-   * Purpose header for the signature over the proposal data
-   * with purpose #TALER_SIGNATURE_MERCHANT_CONTRACT.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash of the JSON contract in UTF-8 including 0-termination,
-   * using JSON_COMPACT | JSON_SORT_KEYS
-   */
-  struct TALER_PrivateContractHashP hash;
-};
-
-
 GNUNET_NETWORK_STRUCT_END
 
 #endif
