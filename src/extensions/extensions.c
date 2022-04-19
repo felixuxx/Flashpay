@@ -139,7 +139,7 @@ TALER_extensions_get_by_name (
        NULL != it;
        it = it->next)
   {
-    if (0 == strcmp (name, it->name))
+    if (0 == strcasecmp (name, it->name))
       return it;
   }
   /* No extension found. */
