@@ -2207,7 +2207,7 @@ TALER_CRYPTO_contract_encrypt_for_merge (
 
 
 /**
- * Encrypt contract for the party that will
+ * Decrypt contract for the party that will
  * merge it into a reserve.
  *
  * @param purse_pub public key of the purse
@@ -2224,6 +2224,40 @@ TALER_CRYPTO_contract_decrypt_for_merge (
   const void *econtract,
   size_t econtract_size,
   struct TALER_PurseMergePrivateKeyP *merge_priv);
+
+
+/**
+ * Encrypt contract for transmission to a party that will
+ * pay for it.
+ *
+ * @param purse_pub public key of the purse
+ * @param contract_priv private key of the contract
+ * @param contract_terms contract terms to encrypt
+ * @param[out] econtract set to encrypted contract
+ * @param[out] econtract_size set to number of bytes in @a econtract
+ */
+void
+TALER_CRYPTO_contract_encrypt_for_deposit (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const json_t *contract_terms,
+  void **econtract,
+  size_t *econtract_size);
+
+
+/**
+ * Decrypt contract for the party that will pay for it.
+ *
+ * @param contract_priv private key of the contract
+ * @param econtract encrypted contract
+ * @param econtract_size  number of bytes in @a econtract
+ * @return decrypted contract terms, or NULL on failure
+ */
+json_t *
+TALER_CRYPTO_contract_decrypt_for_deposit (
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const void *econtract,
+  size_t econtract_size);
 
 
 /* **************** Helper-based RSA operations **************** */

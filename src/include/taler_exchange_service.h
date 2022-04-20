@@ -4433,6 +4433,8 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * @param exchange the exchange hosting the reserve
  * @param reserve_priv private key of the reserve
  * @param purse_priv private key of the purse
+ * @param merge_priv private key of the merge capability
+ * @param contract_priv private key to get the contract
  * @param contract_terms contract the purse is about
  * @param upload_contract true to upload the contract
  * @param purse_expiration when will the unmerged purse expire
@@ -4447,6 +4449,8 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  const struct TALER_PurseMergePrivateKeyP *merge_priv,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   bool upload_contract,
   struct GNUNET_TIME_Timestamp purse_expiration,
@@ -4459,11 +4463,11 @@ TALER_EXCHANGE_purse_create_with_merge (
 /**
  * Cancel #TALER_EXCHANGE_purse_create_with_merge() operation.
  *
- * @param pch handle of the operation to cancel
+ * @param pcm handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_purse_create_with_merge_cancel (
-  struct TALER_EXCHANGE_PurseCreateMergeHandle *pch);
+  struct TALER_EXCHANGE_PurseCreateMergeHandle *pcm);
 
 
 /**

@@ -210,6 +210,7 @@ TALER_merchant_pay_sign (
                             merch_sig);
 }
 
+
 enum GNUNET_GenericReturnValue
 TALER_merchant_pay_verify (
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -264,6 +265,7 @@ TALER_merchant_contract_sign (
                             &pdps,
                             merch_sig);
 }
+
 
 // NB: "TALER_merchant_contract_verify" not (yet?) needed / not defined.
 

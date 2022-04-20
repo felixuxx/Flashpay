@@ -34,7 +34,12 @@ enum ContractFormats
    * can merge it into a reserve/account to accept the contract and
    * obtain the payment.
    */
-  TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER = 0
+  TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER = 0,
+
+  /**
+   * The encrypted contract represents a payment request.
+   */
+  TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST = 1
 };
 
 
@@ -192,7 +197,7 @@ contract_decrypt (const void *key,
 /**
  * Header for encrypted contracts.
  */
-struct ContractHeader
+struct ContractHeaderP
 {
   /**
    * Type of the contract, in NBO.
@@ -203,15 +208,23 @@ struct ContractHeader
    * Length of the encrypted contract, in NBO.
    */
   uint32_t clen;
+};
+
+
+/**
+ * Header for encrypted contracts.
+ */
+struct ContractHeaderMergeP
+{
+  /**
+   * Generic header.
+   */
+  struct ContractHeaderP header;
 
   /**
-   * Included key material, depending on @e ctype.
+   * Private key with the merge capability.
    */
-  union
-  {
-    struct TALER_PurseMergePrivateKeyP merge_priv;
-  } keys;
-
+  struct TALER_PurseMergePrivateKeyP merge_priv;
 };
 
 
@@ -234,7 +247,7 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   char *cstr;
   size_t clen;
   void *xbuf;
-  struct ContractHeader *hdr;
+  struct ContractHeaderMergeP *hdr;
   struct NonceP nonce;
   uLongf cbuf_size;
   int ret;
@@ -255,9 +268,9 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   GNUNET_assert (Z_OK == ret);
   free (cstr);
   hdr = GNUNET_malloc (sizeof (*hdr) + cbuf_size);
-  hdr->ctype = htonl (TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER);
-  hdr->clen = htonl ((uint32_t) clen);
-  hdr->keys.merge_priv = *merge_priv;
+  hdr->header.ctype = htonl (TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER);
+  hdr->header.clen = htonl ((uint32_t) clen);
+  hdr->merge_priv = *merge_priv;
   memcpy (&hdr[1],
           xbuf,
           cbuf_size);
@@ -288,7 +301,7 @@ TALER_CRYPTO_contract_decrypt_for_merge (
   struct GNUNET_HashCode key;
   void *xhdr;
   size_t hdr_size;
-  const struct ContractHeader *hdr;
+  const struct ContractHeaderMergeP *hdr;
   char *cstr;
   uLongf clen;
   json_error_t json_error;
@@ -321,6 +334,177 @@ TALER_CRYPTO_contract_decrypt_for_merge (
     return NULL;
   }
   hdr = xhdr;
+  if (TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER != ntohl (hdr->header.ctype))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  clen = ntohl (hdr->header.clen);
+  if (clen >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  cstr = GNUNET_malloc (clen + 1);
+  if (Z_OK !=
+      uncompress ((Bytef *) cstr,
+                  &clen,
+                  (const Bytef *) &hdr[1],
+                  hdr_size - sizeof (*hdr)))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (cstr);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  *merge_priv = hdr->merge_priv;
+  GNUNET_free (xhdr);
+  ret = json_loadb ((char *) cstr,
+                    clen,
+                    JSON_DECODE_ANY,
+                    &json_error);
+  if (NULL == ret)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (cstr);
+    return NULL;
+  }
+  GNUNET_free (cstr);
+  return ret;
+}
+
+
+/**
+ * Salt we use when encrypting contracts for merge.
+ */
+#define DEPOSIT_SALT "p2p-deposit-contract"
+
+
+void
+TALER_CRYPTO_contract_encrypt_for_deposit (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const json_t *contract_terms,
+  void **econtract,
+  size_t *econtract_size)
+{
+  struct GNUNET_HashCode key;
+  char *cstr;
+  size_t clen;
+  void *xbuf;
+  struct ContractHeaderP *hdr;
+  struct NonceP nonce;
+  uLongf cbuf_size;
+  int ret;
+  void *xecontract;
+  size_t xecontract_size;
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_ecdh_eddsa (&contract_priv->ecdhe_priv,
+                                           &purse_pub->eddsa_pub,
+                                           &key));
+  cstr = json_dumps (contract_terms,
+                     JSON_COMPACT | JSON_SORT_KEYS);
+  clen = strlen (cstr);
+  cbuf_size = compressBound (clen);
+  xbuf = GNUNET_malloc (cbuf_size);
+  ret = compress (xbuf,
+                  &cbuf_size,
+                  (const Bytef *) cstr,
+                  clen);
+  GNUNET_assert (Z_OK == ret);
+  free (cstr);
+  hdr = GNUNET_malloc (sizeof (*hdr) + cbuf_size);
+  hdr->ctype = htonl (TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST);
+  hdr->clen = htonl ((uint32_t) clen);
+  memcpy (&hdr[1],
+          xbuf,
+          cbuf_size);
+  GNUNET_free (xbuf);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &nonce,
+                              sizeof (nonce));
+  contract_encrypt (&nonce,
+                    &key,
+                    sizeof (key),
+                    hdr,
+                    sizeof (*hdr) + cbuf_size,
+                    DEPOSIT_SALT,
+                    &xecontract,
+                    &xecontract_size);
+  GNUNET_free (hdr);
+  /* prepend purse_pub */
+  *econtract = GNUNET_malloc (xecontract_size + sizeof (*purse_pub));
+  memcpy (*econtract,
+          purse_pub,
+          sizeof (*purse_pub));
+  memcpy (sizeof (*purse_pub) + *econtract,
+          xecontract,
+          xecontract_size);
+  *econtract_size = xecontract_size + sizeof (*purse_pub);
+  GNUNET_free (xecontract);
+}
+
+
+json_t *
+TALER_CRYPTO_contract_decrypt_for_deposit (
+  const struct TALER_ContractDiffiePrivateP *contract_priv,
+  const void *econtract,
+  size_t econtract_size)
+{
+  const struct TALER_PurseContractPublicKeyP *purse_pub = econtract;
+
+  if (econtract_size < sizeof (*purse_pub))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  struct GNUNET_HashCode key;
+  void *xhdr;
+  size_t hdr_size;
+  const struct ContractHeaderP *hdr;
+  char *cstr;
+  uLongf clen;
+  json_error_t json_error;
+  json_t *ret;
+
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_ecdh_eddsa (&contract_priv->ecdhe_priv,
+                                &purse_pub->eddsa_pub,
+                                &key))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  econtract += sizeof (*purse_pub);
+  econtract_size -= sizeof (*purse_pub);
+  if (GNUNET_OK !=
+      contract_decrypt (&key,
+                        sizeof (key),
+                        econtract,
+                        econtract_size,
+                        DEPOSIT_SALT,
+                        &xhdr,
+                        &hdr_size))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  if (hdr_size < sizeof (*hdr))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  hdr = xhdr;
+  if (TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST != ntohl (hdr->ctype))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
   clen = ntohl (hdr->clen);
   if (clen >= GNUNET_MAX_MALLOC_CHECKED)
   {
@@ -340,7 +524,6 @@ TALER_CRYPTO_contract_decrypt_for_merge (
     GNUNET_free (xhdr);
     return NULL;
   }
-  *merge_priv = hdr->keys.merge_priv;
   GNUNET_free (xhdr);
   ret = json_loadb ((char *) cstr,
                     clen,
