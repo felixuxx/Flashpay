@@ -32,66 +32,6 @@
 
 
 /**
- * A merchant asked for details about a deposit.  Provide
- * them. Generates the 200 reply.
- *
- * @param connection connection to the client
- * @param h_contract_terms hash of the contract
- * @param h_wire hash of wire account details
- * @param coin_pub public key of the coin
- * @param coin_contribution how much did the coin we asked about
- *        contribute to the total transfer value? (deposit value minus fee)
- * @param wtid raw wire transfer identifier
- * @param exec_time execution time of the wire transfer
- * @return MHD result code
- */
-static MHD_RESULT
-reply_deposit_details (
-  struct MHD_Connection *connection,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *coin_contribution,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  struct GNUNET_TIME_Timestamp exec_time)
-{
-  struct TALER_ExchangePublicKeyP pub;
-  struct TALER_ExchangeSignatureP sig;
-  enum TALER_ErrorCode ec;
-
-  if (TALER_EC_NONE !=
-      (ec = TALER_exchange_online_confirm_wire_sign (
-         &TEH_keys_exchange_sign_,
-         h_wire,
-         h_contract_terms,
-         wtid,
-         coin_pub,
-         exec_time,
-         coin_contribution,
-         &pub,
-         &sig)))
-  {
-    return TALER_MHD_reply_with_ec (connection,
-                                    ec,
-                                    NULL);
-  }
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_data_auto ("wtid",
-                                wtid),
-    GNUNET_JSON_pack_timestamp ("execution_time",
-                                exec_time),
-    TALER_JSON_pack_amount ("coin_contribution",
-                            coin_contribution),
-    GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                &sig),
-    GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                &pub));
-}
-
-
-/**
  * Closure for #handle_wtid_data.
  */
 struct DepositWtidContext
@@ -118,11 +58,6 @@ struct DepositWtidContext
    * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Public key of the merchant.
-   */
-  const struct TALER_MerchantPublicKeyP *merchant_pub;
 
   /**
    * Set by #handle_wtid data to the wire transfer ID.
@@ -165,6 +100,55 @@ struct DepositWtidContext
 
 
 /**
+ * A merchant asked for details about a deposit.  Provide
+ * them. Generates the 200 reply.
+ *
+ * @param connection connection to the client
+ * @param ctx details to respond with
+ * @return MHD result code
+ */
+static MHD_RESULT
+reply_deposit_details (
+  struct MHD_Connection *connection,
+  const struct DepositWtidContext *ctx)
+{
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+  enum TALER_ErrorCode ec;
+
+  if (TALER_EC_NONE !=
+      (ec = TALER_exchange_online_confirm_wire_sign (
+         &TEH_keys_exchange_sign_,
+         &ctx->h_wire,
+         &ctx->h_contract_terms,
+         &ctx->wtid,
+         &ctx->coin_pub,
+         ctx->execution_time,
+         &ctx->coin_delta,
+         &pub,
+         &sig)))
+  {
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
+  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_data_auto ("wtid",
+                                &ctx->wtid),
+    GNUNET_JSON_pack_timestamp ("execution_time",
+                                ctx->execution_time),
+    TALER_JSON_pack_amount ("coin_contribution",
+                            &ctx->coin_delta),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
+}
+
+
+/**
  * Execute a "deposits" GET.  Returns the transfer information
  * associated with the given deposit.
  *
@@ -194,7 +178,7 @@ deposits_get_transaction (void *cls,
                                                &ctx->h_contract_terms,
                                                &ctx->h_wire,
                                                &ctx->coin_pub,
-                                               ctx->merchant_pub,
+                                               &ctx->merchant,
                                                &pending,
                                                &ctx->wtid,
                                                &ctx->execution_time,
@@ -274,12 +258,7 @@ handle_track_transaction_request (
       GNUNET_JSON_pack_timestamp ("execution_time",
                                   ctx->execution_time));
   return reply_deposit_details (connection,
-                                &ctx->h_contract_terms,
-                                &ctx->h_wire,
-                                &ctx->coin_pub,
-                                &ctx->coin_delta,
-                                &ctx->wtid,
-                                ctx->execution_time);
+                                ctx);
 }
 
 
