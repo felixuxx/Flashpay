@@ -297,6 +297,31 @@ TALER_EXCHANGE_purse_create_with_merge (
                                       &contract_pub.ecdhe_pub);
 
   // FIXME: extract min_age from contract_terms!
+  {
+    // FIXME: extract amount from contract
+    // or pass explicitly? what about other
+    // args, like the purse expiration time?
+    struct GNUNET_JSON_Specification spec[] = {
+      TALER_JSON_spec_amount_any ("amount",
+                                  &pcm->purse_value_after_fees),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_uint32 ("minimum_age",
+                                 &min_age),
+        NULL),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (contract_terms,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break (0);
+      GNUNET_free (pcm);
+      return NULL;
+    }
+  }
+
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
