@@ -266,6 +266,8 @@ TALER_EXCHANGE_purse_create_with_merge (
   uint32_t min_age = 0;
   struct TALER_PurseMergePublicKeyP merge_pub;
   struct TALER_PurseMergeSignatureP merge_sig;
+  struct TALER_ContractDiffiePublicP contract_pub;
+  struct TALER_PurseContractSignatureP contract_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
 
@@ -291,6 +293,8 @@ TALER_EXCHANGE_purse_create_with_merge (
                                       &pcm->reserve_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
                                       &merge_pub.eddsa_pub);
+  GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
+                                      &contract_pub.ecdhe_pub);
 
   // FIXME: extract min_age from contract_terms!
 
@@ -347,26 +351,46 @@ TALER_EXCHANGE_purse_create_with_merge (
       contract_terms,
       &econtract,
       &econtract_size);
+    TALER_wallet_econtract_upload_sign (
+      econtract,
+      econtract_size,
+      &contract_pub,
+      purse_priv,
+      &contract_sig);
   }
   create_with_merge_obj = GNUNET_JSON_PACK (
+    TALER_JSON_pack_amount ("purse_value",
+                            purse_value_after_fees),
+    GNUNET_JSON_pack_data_uint64 ("min_age",
+                                  min_age),
     GNUNET_JSON_allow_null (
       GNUNET_JSON_pack_data_varsize ("econtract",
                                      econtract,
                                      econtract_size)),
+    GNUNET_JSON_allow_null (
+      upload_contract
+      ? GNUNET_JSON_pack_data_auto ("econtract_sig",
+                                    &contract_sig),
+      : GNUNET_JSON_pack_string ("dummy",
+                                 NULL)),
+    GNUNET_JSON_allow_null (
+      upload_contract
+      ? GNUNET_JSON_pack_data_auto ("contract_pub",
+                                    &contract_pub),
+      : GNUNET_JSON_pack_string ("dummy",
+                                 NULL)),
+    GNUNET_JSON_pack_data_auto ("merge_pub",
+                                &merge_pub),
     GNUNET_JSON_pack_data_auto ("merge_sig",
                                 &merge_sig),
     GNUNET_JSON_pack_data_auto ("reserve_sig",
                                 &reserve_sig),
-    GNUNET_JSON_pack_data_auto ("purse_sig",
-                                &purse_sig),
-    GNUNET_JSON_pack_data_auto ("merge_pub",
-                                &merge_pub),
     GNUNET_JSON_pack_data_auto ("purse_pub",
                                 &pcm->purse_pub),
+    GNUNET_JSON_pack_data_auto ("purse_sig",
+                                &purse_sig),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &pcm->h_contract_terms),
-    TALER_JSON_pack_amount ("purse_value",
-                            purse_value_after_fees),
     GNUNET_JSON_pack_timestamp ("merge_timestamp",
                                 merge_timestamp)
     GNUNET_JSON_pack_timestamp ("purse_expiration",
