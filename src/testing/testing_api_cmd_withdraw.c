@@ -578,19 +578,21 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
   {
     struct TALER_AgeCommitmentProof *acp;
     struct TALER_AgeCommitmentHash *hac;
-    uint32_t seed;
+    struct GNUNET_HashCode seed;
     struct TALER_AgeMask mask;
 
     acp = GNUNET_new (struct TALER_AgeCommitmentProof);
     hac = GNUNET_new (struct TALER_AgeCommitmentHash);
-    seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK, UINT64_MAX);
     mask = TALER_extensions_age_restriction_ageMask ();
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &seed,
+                                sizeof(seed));
 
     if (GNUNET_OK !=
         TALER_age_restriction_commit (
           &mask,
           age,
-          seed,
+          &seed,
           acp))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

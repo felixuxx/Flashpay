@@ -4756,7 +4756,7 @@ TALER_age_commitment_hash (
  *
  * @param mask The age mask the defines the age groups
  * @param age The actual age for which an age commitment is generated
- * @param salt The salt that goes into the key generation.  MUST be choosen uniformly random.
+ * @param seed The seed that goes into the key generation.  MUST be choosen uniformly random.
  * @param comm_proof[out] The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc on success
  * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
@@ -4764,7 +4764,7 @@ enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
-  const uint64_t salt,
+  const struct GNUNET_HashCode *seed,
   struct TALER_AgeCommitmentProof *comm_proof);
 
 

@@ -499,20 +499,21 @@ run (void *cls,
                                            &bks);
 
     {
-      uint64_t seed;
+      struct GNUNET_HashCode seed;
       struct TALER_AgeMask mask = {
         .bits = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
       };
       struct TALER_AgeCommitmentProof acp = {0};
 
-      seed = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                       UINT64_MAX);
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  &seed,
+                                  sizeof(seed));
 
       GNUNET_assert (GNUNET_OK ==
                      TALER_age_restriction_commit (
                        &mask,
                        13,
-                       seed,
+                       &seed,
                        &acp));
 
       TALER_age_commitment_hash (&acp.commitment, &hac);

@@ -85,9 +85,10 @@ enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
-  const uint64_t salt,
+  const struct GNUNET_HashCode *seed,
   struct TALER_AgeCommitmentProof *new)
 {
+  struct GNUNET_HashCode seed_i = *seed;
   uint8_t num_pub = __builtin_popcount (mask->bits) - 1;
   uint8_t num_priv = get_age_group (mask, age);
   size_t i;
@@ -118,21 +119,20 @@ TALER_age_restriction_commit (
    * elliptic curve, so we can't simply fill the struct with random values. */
   for (i = 0; i < num_pub; i++)
   {
-    uint64_t salti = salt + i;
     struct TALER_AgeCommitmentPrivateKeyP key = {0};
     struct TALER_AgeCommitmentPrivateKeyP *pkey = &key;
-
 
     /* Only save the private keys for age groups less than num_priv */
     if (i < num_priv)
       pkey = &new->proof.keys[i];
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
-    GNUNET_CRYPTO_edx25519_key_create_from_seed (&salti,
-                                                 sizeof(salti),
+    GNUNET_CRYPTO_edx25519_key_create_from_seed (&seed_i,
+                                                 sizeof(seed_i),
                                                  &pkey->priv);
     GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
                                            &new->commitment.keys[i].pub);
+    seed_i.bits[0] += 1;
   }
 
   return GNUNET_OK;
@@ -154,6 +154,7 @@ TALER_age_restriction_commit (
 
     GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
                                         &new->commitment.keys[i].pub);
+
   }
 
   return GNUNET_OK;
