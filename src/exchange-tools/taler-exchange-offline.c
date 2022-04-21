@@ -3967,8 +3967,6 @@ do_extensions_sign (char *const *args)
   struct TALER_MasterSignatureP sig;
   const struct TALER_Extension *it;
 
-  TALER_extensions_init ();
-
   if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -4202,7 +4200,9 @@ run (void *cls,
   }
 
   /* load age mask, if age restriction is enabled */
-  TALER_extensions_init ();
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_extension_age_restriction_register ());
+
   if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

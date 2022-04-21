@@ -143,7 +143,8 @@ extension_update_event_cb (void *cls,
 enum GNUNET_GenericReturnValue
 TEH_extensions_init ()
 {
-  TALER_extensions_init ();
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_extension_age_restriction_register ());
 
   /* Set the event handler for updates */
   struct GNUNET_DB_EventHeaderP ev = {

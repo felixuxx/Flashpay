@@ -71,9 +71,6 @@ struct TALER_Extension
  * Generic functions for extensions
  */
 
-void
-TALER_extensions_init ();
-
 /*
  * Sets the configuration of the extensions from the given TALER configuration
  *
@@ -198,6 +195,12 @@ TALER_extensions_verify_json_config_signature (
                                                           | 1 << 16 | 1 << 18 \
                                                           | 1 << 21)
 #define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
+
+/**
+ * @brief Registers the extension for age restriction to the list extensions
+ */
+enum GNUNET_GenericReturnValue
+TALER_extension_age_restriction_register ();
 
 /**
  * @brief Parses a string as a list of age groups.
