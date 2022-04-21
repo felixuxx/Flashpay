@@ -106,6 +106,7 @@ libtalertesting_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   -lgnunetcurl \
@@ -257,11 +258,11 @@ test_exchange_api_cs_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
-  -ltalerextensions \
   $(XLIB)
 
 test_exchange_api_rsa_SOURCES = \
@@ -274,11 +275,11 @@ test_exchange_api_rsa_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
-  -ltalerextensions \
   $(XLIB)
 
 test_exchange_p2p_cs_SOURCES = \
@@ -291,11 +292,11 @@ test_exchange_p2p_cs_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
-  -ltalerextensions \
   $(XLIB)
 
 test_exchange_p2p_rsa_SOURCES = \
@@ -308,11 +309,11 @@ test_exchange_p2p_rsa_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunettesting \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
-  -ltalerextensions \
   $(XLIB)
 
 
