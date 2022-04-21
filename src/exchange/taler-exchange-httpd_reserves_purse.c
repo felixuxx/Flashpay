@@ -272,7 +272,7 @@ purse_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* 2) merge purse with reserve (and debit reserve for purse creation!) */
+  /* 2) FIXME: merge purse with reserve (and debit reserve for purse creation!) */
 
 
   /* 3) if present, persist contract */
