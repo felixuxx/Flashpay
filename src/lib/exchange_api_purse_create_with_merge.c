@@ -237,7 +237,7 @@ handle_purse_create_with_merge_finished (void *cls,
   }
   pcm->cb (pcm->cb_cls,
            &dr);
-  TALER_EXCHANGE_account_create_with_merge_cancel (pcm);
+  TALER_EXCHANGE_purse_create_with_merge_cancel (pcm);
 }
 
 
@@ -260,7 +260,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct GNUNET_CURL_Context *ctx;
   json_t *create_with_merge_obj;
   CURL *eh;
-  struct TALER_PurseMergeSignatureP merge_sig;
   struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (pcm->reserve_pub) * 2 + 32];
   uint32_t min_age = 0;
@@ -268,6 +267,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct TALER_PurseMergeSignatureP merge_sig;
   struct TALER_ContractDiffiePublicP contract_pub;
   struct TALER_PurseContractSignatureP contract_sig;
+  struct TALER_PurseContractSignatureP purse_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
 
@@ -283,7 +283,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_free (pcm);
     return NULL;
   }
-  pcm->h_contract_terms = *h_contract_terms;
+  pcm->h_contract_terms = pcm->h_contract_terms;
   pcm->purse_expiration = purse_expiration;
   pcm->merge_timestamp = merge_timestamp;
   pcm->purse_value_after_fees = *purse_value_after_fees;
@@ -327,27 +327,27 @@ TALER_EXCHANGE_purse_create_with_merge (
                                   &pcm->h_contract_terms,
                                   &merge_pub,
                                   min_age,
-                                  &pcm->purse_value,
+                                  &pcm->purse_value_after_fees,
                                   purse_priv,
                                   &purse_sig);
-  TALER_wallet_purse_merge_sign (exchange_url,
+  TALER_wallet_purse_merge_sign (exchange->url,
                                  merge_timestamp,
-                                 &purse_pub,
-                                 &merge_priv,
+                                 &pcm->purse_pub,
+                                 merge_priv,
                                  &merge_sig);
   TALER_wallet_account_merge_sign (merge_timestamp,
                                    &pcm->purse_pub,
                                    purse_expiration,
                                    &pcm->h_contract_terms,
-                                   &pcm->purse_value,
+                                   &pcm->purse_value_after_fees,
                                    min_age,
                                    reserve_priv,
                                    &reserve_sig);
   if (upload_contract)
   {
     TALER_CRYPTO_contract_encrypt_for_deposit (
-      &purse_pub,
-      &contract_priv,
+      &pcm->purse_pub,
+      contract_priv,
       contract_terms,
       &econtract,
       &econtract_size);
@@ -361,22 +361,22 @@ TALER_EXCHANGE_purse_create_with_merge (
   create_with_merge_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("purse_value",
                             purse_value_after_fees),
-    GNUNET_JSON_pack_data_uint64 ("min_age",
-                                  min_age),
-    GNUNET_JSON_allow_null (
+    GNUNET_JSON_pack_uint64 ("min_age",
+                             min_age),
+    GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_data_varsize ("econtract",
                                      econtract,
                                      econtract_size)),
-    GNUNET_JSON_allow_null (
+    GNUNET_JSON_pack_allow_null (
       upload_contract
       ? GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                    &contract_sig),
+                                    &contract_sig)
       : GNUNET_JSON_pack_string ("dummy",
                                  NULL)),
-    GNUNET_JSON_allow_null (
+    GNUNET_JSON_pack_allow_null (
       upload_contract
       ? GNUNET_JSON_pack_data_auto ("contract_pub",
-                                    &contract_pub),
+                                    &contract_pub)
       : GNUNET_JSON_pack_string ("dummy",
                                  NULL)),
     GNUNET_JSON_pack_data_auto ("merge_pub",
@@ -392,7 +392,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &pcm->h_contract_terms),
     GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                merge_timestamp)
+                                merge_timestamp),
     GNUNET_JSON_pack_timestamp ("purse_expiration",
                                 purse_expiration));
   GNUNET_assert (NULL != create_with_merge_obj);
