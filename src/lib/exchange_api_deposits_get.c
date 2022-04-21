@@ -301,7 +301,7 @@ TALER_EXCHANGE_deposits_get (
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls)
 {
-  struct TALER_DepositTrackPS dtp;
+  struct TALER_MerchantPublicKeyP merchant;
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_EXCHANGE_DepositGetHandle *dwh;
   struct GNUNET_CURL_Context *ctx;
@@ -318,18 +318,14 @@ TALER_EXCHANGE_deposits_get (
     GNUNET_break (0);
     return NULL;
   }
-  // FIXME: move to helper!
-  dtp.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION);
-  dtp.purpose.size = htonl (sizeof (dtp));
-  dtp.h_contract_terms = *h_contract_terms;
-  dtp.h_wire = *h_wire;
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
-                                      &dtp.merchant.eddsa_pub);
-
-  dtp.coin_pub = *coin_pub;
-  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
-                            &dtp,
-                            &merchant_sig.eddsa_sig);
+                                      &merchant.eddsa_pub);
+  TALER_exchange_deposit_sign (h_contract_terms,
+                               h_wire,
+                               coin_pub,
+                               &merchant,
+                               merchant_priv,
+                               &merchant_sig);
   {
     char cpub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char mpub_str[sizeof (struct TALER_MerchantPublicKeyP) * 2];
@@ -343,8 +339,8 @@ TALER_EXCHANGE_deposits_get (
                                          whash_str,
                                          sizeof (whash_str));
     *end = '\0';
-    end = GNUNET_STRINGS_data_to_string (&dtp.merchant,
-                                         sizeof (dtp.merchant),
+    end = GNUNET_STRINGS_data_to_string (&merchant,
+                                         sizeof (merchant),
                                          mpub_str,
                                          sizeof (mpub_str));
     *end = '\0';

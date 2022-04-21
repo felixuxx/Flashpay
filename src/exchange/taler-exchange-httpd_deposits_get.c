@@ -328,20 +328,12 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
     return MHD_YES; /* parse error */
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   {
-    struct TALER_DepositTrackPS tps = {
-      .purpose.size = htonl (sizeof (tps)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION),
-      .merchant = ctx.merchant,
-      .coin_pub = ctx.coin_pub,
-      .h_contract_terms = ctx.h_contract_terms,
-      .h_wire = ctx.h_wire
-    };
-
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
-                                    &tps,
-                                    &merchant_sig.eddsa_sig,
-                                    &tps.merchant.eddsa_pub))
+        TALER_exchange_deposit_verify (&ctx.merchant,
+                                       &ctx.coin_pub,
+                                       &ctx.h_contract_terms,
+                                       &ctx.h_wire,
+                                       &merchant_sig))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,

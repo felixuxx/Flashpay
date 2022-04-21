@@ -3370,6 +3370,46 @@ TALER_merchant_refund_verify (
   const struct TALER_MerchantSignatureP *merchant_sig);
 
 
+/* ********************* exchange deposit signing ************************* */
+
+/**
+ * Sign a deposit.
+ *
+ * @param h_contract_terms hash of contract terms
+ * @param h_wire hash of the merchant account details
+ * @param coin_pub coin to be deposited
+ * @param merchant_pub merchant public key
+ * @param merchant_priv private key to sign with
+ * @param[out] merchant_sig where to write the signature
+ */
+void
+TALER_exchange_deposit_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  struct TALER_MerchantSignatureP *merchant_sig);
+
+/**
+ * Verify a deposit.
+ *
+ * @param merchant merchant public key
+ * @param public key of the deposited coin
+ * @param h_contract_terms hash of contract terms
+ * @param h_wire hash of the merchant account details
+ * @param merchant_sig signature of the merchant
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_deposit_verify (
+  const struct TALER_MerchantPublicKeyP *merchant,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_MerchantSignatureP *merchant_sig);
+
+
 /* ********************* exchange online signing ************************** */
 
 

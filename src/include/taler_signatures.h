@@ -386,42 +386,6 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 
-/**
- * @brief Format used to generate the signature on a request to obtain
- * the wire transfer identifier associated with a deposit.
- */
-struct TALER_DepositTrackPS
-{
-  /**
-   * Purpose must be #TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION.
-   */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
-
-  /**
-   * Hash over the proposal data of the contract for which this deposit is made.
-   */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
-
-  /**
-   * Hash over the wiring information of the merchant.
-   */
-  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
-
-  /**
-   * The Merchant's public key.  The deposit inquiry request is to be
-   * signed by the corresponding private key (using EdDSA).
-   */
-  struct TALER_MerchantPublicKeyP merchant;
-
-  /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-};
-
-
 GNUNET_NETWORK_STRUCT_END
 
 #endif
