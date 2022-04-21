@@ -427,7 +427,7 @@ TALER_EXCHANGE_purse_create_with_merge (
 
 
 void
-TALER_EXCHANGE_account_create_with_merge_cancel (
+TALER_EXCHANGE_purse_create_with_merge_cancel (
   struct TALER_EXCHANGE_PurseCreateMergeHandle *pcm)
 {
   if (NULL != pcm->job)

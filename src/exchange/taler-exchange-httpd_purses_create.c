@@ -500,7 +500,7 @@ parse_coin (struct MHD_Connection *connection,
     GNUNET_JSON_parse_free (spec);
     return (MHD_YES ==
             TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_UNAUTHORIZED,
+                                        MHD_HTTP_FORBIDDEN,
                                         TALER_EC_EXCHANGE_PURSE_CREATE_COIN_SIGNATURE_INVALID,
                                         TEH_base_url))
            ? GNUNET_NO : GNUNET_SYSERR;
@@ -613,7 +613,7 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return (MHD_YES ==
               TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_UNAUTHORIZED,
+                                          MHD_HTTP_FORBIDDEN,
                                           TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
                                           NULL))
              ? GNUNET_NO : GNUNET_SYSERR;
@@ -816,7 +816,7 @@ TEH_handler_purses_create (
     GNUNET_JSON_parse_free (spec);
     GNUNET_free (pcc.coins);
     return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
+                                       MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
                                        NULL);
   }
@@ -832,7 +832,7 @@ TEH_handler_purses_create (
     GNUNET_JSON_parse_free (spec);
     GNUNET_free (pcc.coins);
     return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
+                                       MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_PURSE_ECONTRACT_SIGNATURE_INVALID,
                                        NULL);
   }

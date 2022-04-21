@@ -393,7 +393,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_UNAUTHORIZED,
+                                         MHD_HTTP_FORBIDDEN,
                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
                                          NULL);
     }
@@ -427,7 +427,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_UNAUTHORIZED,
+                                       MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
                                        NULL);
   }

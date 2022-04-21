@@ -14,12 +14,12 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_purses_create.h
- * @brief Handle /purses/$PID/create requests
+ * @file taler-exchange-httpd_reserves_purse.h
+ * @brief Handle /reserves/$RID/purse requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_PURSES_CREATE_H
-#define TALER_EXCHANGE_HTTPD_PURSES_CREATE_H
+#ifndef TALER_EXCHANGE_HTTPD_RESERVES_PURSE_H
+#define TALER_EXCHANGE_HTTPD_RESERVES_PURSE_H
 
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -38,10 +38,9 @@
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_purses_create (
+TEH_handler_reserves_purse (
   struct MHD_Connection *connection,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root);
-
 
 #endif

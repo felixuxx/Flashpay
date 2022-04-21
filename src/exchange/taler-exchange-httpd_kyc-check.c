@@ -362,7 +362,7 @@ TEH_handler_kyc_check (
                 (unsigned long long) kyp->kyc.payment_target_uuid);
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_UNAUTHORIZED,
+                                       MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
                                        "h_payto");
   }
