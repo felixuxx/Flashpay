@@ -97,6 +97,16 @@ struct PurseDepositContext
   struct GNUNET_TIME_Timestamp purse_expiration;
 
   /**
+   * Key with the merge capability (needed for signing).
+   */
+  struct TALER_PurseMergePublicKeyP merge_pub;
+
+  /**
+   * Hash of the contract (needed for signing).
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
    * Our current time.
    */
   struct GNUNET_TIME_Timestamp exchange_timestamp;
@@ -134,13 +144,15 @@ reply_deposit_success (struct MHD_Connection *connection,
   enum TALER_ErrorCode ec;
 
   if (TALER_EC_NONE !=
-      (ec = TALER_exchange_online_purse_deposited_sign (
+      (ec = TALER_exchange_online_purse_created_sign (
          &TEH_keys_exchange_sign_,
          pcc->exchange_timestamp,
          pcc->purse_expiration,
          &pcc->amount,
          &pcc->deposit_total,
          pcc->purse_pub,
+         &pcc->merge_pub,
+         &pcc->h_contract_terms,
          &pub,
          &sig)))
   {
@@ -183,7 +195,6 @@ deposit_transaction (void *cls,
 {
   struct PurseDepositContext *pcc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  bool in_conflict = true;
 
   for (unsigned int i = 0; i<pcc->num_coins; i++)
   {
@@ -539,7 +550,8 @@ TEH_handler_purses_deposit (
                                        "deposits");
   }
   /* FIXME: fetch basic purse properties
-     (min age, purse_expiration, amount) from
+     (min age, purse_expiration, amount, merge_pub,
+     h_contract_terms) from
      DB. Generate 404 or 410 (Gone) replies if
      applicable. */
 
