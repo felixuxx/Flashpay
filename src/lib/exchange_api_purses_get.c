@@ -35,7 +35,7 @@
 /**
  * @brief A Contract Get Handle
  */
-struct TALER_EXCHANGE_PursesGetHandle
+struct TALER_EXCHANGE_PurseGetHandle
 {
 
   /**
@@ -70,7 +70,7 @@ struct TALER_EXCHANGE_PursesGetHandle
  * Function called when we're done processing the
  * HTTP /purses/$PID GET request.
  *
- * @param cls the `struct TALER_EXCHANGE_PursesGetHandle`
+ * @param cls the `struct TALER_EXCHANGE_PurseGetHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -79,14 +79,14 @@ handle_purse_get_finished (void *cls,
                            long response_code,
                            const void *response)
 {
-  struct TALER_EXCHANGE_PursesGetHandle *cgh = cls;
+  struct TALER_EXCHANGE_PurseGetHandle *pgh = cls;
   const json_t *j = response;
   struct TALER_EXCHANGE_PurseGetResponse dr = {
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
 
-  cgh->job = NULL;
+  pgh->job = NULL;
   switch (response_code)
   {
   case 0:
@@ -112,9 +112,9 @@ handle_purse_get_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      cgh->cb (cgh->cb_cls,
+      pgh->cb (pgh->cb_cls,
                &dr);
-      TALER_EXCHANGE_purse_get_cancel (cgh);
+      TALER_EXCHANGE_purse_get_cancel (pgh);
       return;
     }
   case MHD_HTTP_BAD_REQUEST:
@@ -153,13 +153,13 @@ handle_purse_get_finished (void *cls,
     GNUNET_break_op (0);
     break;
   }
-  cgh->cb (cgh->cb_cls,
+  pgh->cb (pgh->cb_cls,
            &dr);
-  TALER_EXCHANGE_purse_get_cancel (cgh);
+  TALER_EXCHANGE_purse_get_cancel (pgh);
 }
 
 
-struct TALER_EXCHANGE_PursesGetHandle *
+struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
@@ -168,7 +168,7 @@ TALER_EXCHANGE_purse_get (
   TALER_EXCHANGE_PurseGetCallback cb,
   void *cb_cls)
 {
-  struct TALER_EXCHANGE_PursesGetHandle *cgh;
+  struct TALER_EXCHANGE_PurseGetHandle *pgh;
   CURL *eh;
   struct TALER_PurseContractPublicKeyP purse_pub;
   char arg_str[sizeof (purse_pub) * 2 + 48];
@@ -179,12 +179,12 @@ TALER_EXCHANGE_purse_get (
     GNUNET_break (0);
     return NULL;
   }
-  cgh = GNUNET_new (struct TALER_EXCHANGE_PursesGetHandle);
-  cgh->exchange = exchange;
-  cgh->cb = cb;
-  cgh->cb_cls = cb_cls;
-  GNUNET_CRYPTO_ecdhe_key_get_public (&purse_priv->ecdhe_priv,
-                                      &purse_pub.ecdhe_pub);
+  pgh = GNUNET_new (struct TALER_EXCHANGE_PurseGetHandle);
+  pgh->exchange = exchange;
+  pgh->cb = cb;
+  pgh->cb_cls = cb_cls;
+  GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
+                                      &purse_pub.eddsa_pub);
   {
     char cpub_str[sizeof (purse_pub) * 2];
     char *end;
@@ -200,44 +200,44 @@ TALER_EXCHANGE_purse_get (
                      cpub_str);
   }
 
-  cgh->url = TEAH_path_to_url (exchange,
+  pgh->url = TEAH_path_to_url (exchange,
                                arg_str);
-  if (NULL == cgh->url)
+  if (NULL == pgh->url)
   {
-    GNUNET_free (cgh);
+    GNUNET_free (pgh);
     return NULL;
   }
-  eh = TALER_EXCHANGE_curl_easy_get_ (cgh->url);
+  eh = TALER_EXCHANGE_curl_easy_get_ (pgh->url);
   if (NULL == eh)
   {
     GNUNET_break (0);
-    GNUNET_free (cgh->url);
-    GNUNET_free (cgh);
+    GNUNET_free (pgh->url);
+    GNUNET_free (pgh);
     return NULL;
   }
   /* FIXME: add signature with purse_priv
      to authorize the GET request!? Or
      decide it is non-critical and only
      pass purse_pub? */
-  cgh->job = GNUNET_CURL_job_add (TEAH_handle_to_context (exchange),
+  pgh->job = GNUNET_CURL_job_add (TEAH_handle_to_context (exchange),
                                   eh,
                                   &handle_purse_get_finished,
-                                  cgh);
-  return cgh;
+                                  pgh);
+  return pgh;
 }
 
 
 void
 TALER_EXCHANGE_purse_get_cancel (
-  struct TALER_EXCHANGE_PursesGetHandle *cgh)
+  struct TALER_EXCHANGE_PurseGetHandle *pgh)
 {
-  if (NULL != cgh->job)
+  if (NULL != pgh->job)
   {
-    GNUNET_CURL_job_cancel (cgh->job);
-    cgh->job = NULL;
+    GNUNET_CURL_job_cancel (pgh->job);
+    pgh->job = NULL;
   }
-  GNUNET_free (cgh->url);
-  GNUNET_free (cgh);
+  GNUNET_free (pgh->url);
+  GNUNET_free (pgh);
 }
 
 
