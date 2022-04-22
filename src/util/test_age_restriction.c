@@ -148,12 +148,16 @@ test_attestation (void)
     struct TALER_AgeCommitmentProof acp[3] = {0};
     struct TALER_AgeAttestation at = {0};
     uint8_t age_group = get_age_group (&age_mask, age);
-    uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                              UINT64_MAX);
+    struct GNUNET_HashCode seed;
+
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &seed,
+                                sizeof(seed));
 
     ret = TALER_age_restriction_commit (&age_mask,
                                         age,
-                                        salt,
+                                        &seed,
                                         &acp[0]);
 
     printf (
@@ -166,8 +170,8 @@ test_attestation (void)
     /* Also derive two more commitments right away */
     for (uint8_t i = 0; i<2; i++)
     {
-      salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                       UINT64_MAX);
+      uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                                UINT64_MAX);
       GNUNET_assert (GNUNET_OK ==
                      TALER_age_commitment_derive (&acp[i],
                                                   salt,

@@ -88,17 +88,19 @@ TALER_age_restriction_commit (
   const struct GNUNET_HashCode *seed,
   struct TALER_AgeCommitmentProof *new)
 {
-  struct GNUNET_HashCode seed_i = *seed;
+  struct GNUNET_HashCode seed_i;
   uint8_t num_pub = __builtin_popcount (mask->bits) - 1;
   uint8_t num_priv = get_age_group (mask, age);
   size_t i;
 
+  GNUNET_assert (NULL != seed);
   GNUNET_assert (NULL != new);
   GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
   GNUNET_assert (0 <= num_priv);
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
 
+  seed_i = *seed;
   new->commitment.mask.bits = mask->bits;
   new->commitment.num = num_pub;
   new->proof.num = num_priv;

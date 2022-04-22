@@ -131,13 +131,16 @@ test_planchets_rsa (uint8_t age)
   {
     struct TALER_AgeCommitmentProof acp;
     struct TALER_AgeCommitmentHash ah = {0};
-    uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                              UINT64_MAX);
+    struct GNUNET_HashCode seed;
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &seed,
+                                sizeof(seed));
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_age_restriction_commit (&age_mask,
                                                  age,
-                                                 salt,
+                                                 &seed,
                                                  &acp));
     TALER_age_commitment_hash (&acp.commitment,
                                &ah);
@@ -260,13 +263,16 @@ test_planchets_cs (uint8_t age)
   {
     struct TALER_AgeCommitmentHash ah = {0};
     struct TALER_AgeCommitmentProof acp;
-    uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                              UINT64_MAX);
+    struct GNUNET_HashCode seed;
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &seed,
+                                sizeof(seed));
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_age_restriction_commit (&age_mask,
                                                  age,
-                                                 salt,
+                                                 &seed,
                                                  &acp));
     TALER_age_commitment_hash (&acp.commitment,
                                &ah);
