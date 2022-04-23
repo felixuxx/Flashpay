@@ -85,6 +85,7 @@ TALER_exchange_deposit_sign (
                             &merchant_sig->eddsa_sig);
 }
 
+
 enum GNUNET_GenericReturnValue
 TALER_exchange_deposit_verify (
   const struct TALER_MerchantPublicKeyP *merchant,
