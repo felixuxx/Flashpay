@@ -151,14 +151,25 @@ run (void *cls,
     /**
      * Spend the coin.
      */
-    TALER_TESTING_cmd_deposit ("deposit-simple",
-                               "withdraw-coin-1",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "withdraw-coin-1",
+      "EUR:1", /* FIXME: check amount vs. fees! */
+      NULL),
+    TALER_TESTING_cmd_contract_get (
+      "purse-get-contract",
+      MHD_HTTP_OK,
+      "purse-with-deposit"),
+    TALER_TESTING_cmd_purse_merge (
+      "purse-merge-into-reserve",
+      MHD_HTTP_OK,
+      "purse-get-contract",
+      "create-reserve-1"),
+    // FIXME: check reserve history!
     TALER_TESTING_cmd_end ()
   };
 

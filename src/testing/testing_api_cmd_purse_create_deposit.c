@@ -355,13 +355,13 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_purse_create_with_deposit (
   const char *label,
   unsigned int expected_http_status,
-  const char *target_amount,
   const char *contract_terms,
   bool upload_contract,
   struct GNUNET_TIME_Relative purse_expiration,
   ...)
 {
   struct PurseCreateDepositState *ds;
+  struct GNUNET_TIME_Timestamp pay_deadline;
 
   ds = GNUNET_new (struct PurseCreateDepositState);
   ds->rel_expiration = purse_expiration;
@@ -378,6 +378,14 @@ TALER_TESTING_cmd_purse_create_with_deposit (
                 label);
     GNUNET_assert (0);
   }
+  pay_deadline =
+    GNUNET_TIME_absolute_to_timestamp (
+      GNUNET_TIME_relative_to_absolute (purse_expiration));
+  GNUNET_assert (0 ==
+                 json_object_set_new (
+                   ds->contract_terms,
+                   "pay_deadline",
+                   GNUNET_JSON_from_timestamp (pay_deadline)));
   {
     va_list ap;
     unsigned int i;
@@ -410,9 +418,6 @@ TALER_TESTING_cmd_purse_create_with_deposit (
     }
     va_end (ap);
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (target_amount,
-                                         &ds->target_amount));
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

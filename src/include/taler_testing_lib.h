@@ -2366,7 +2366,6 @@ TALER_TESTING_cmd_oauth (const char *label,
  *
  * @param label command label
  * @param expected_http_status what HTTP status do we expect to get returned from the exchange
- * @param target_amount amount for the purse to be full, without fees
  * @param contract_terms contract, JSON string
  * @param upload_contract should we upload the contract
  * @param purse_expiration how long until the purse expires
@@ -2377,7 +2376,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_purse_create_with_deposit (
   const char *label,
   unsigned int expected_http_status,
-  const char *target_amount,
   const char *contract_terms,
   bool upload_contract,
   struct GNUNET_TIME_Relative purse_expiration,
