@@ -345,7 +345,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_free (pcm);
     return NULL;
   }
-  TALER_wallet_purse_create_sign (purse_expiration,
+  TALER_wallet_purse_create_sign (pcm->purse_expiration,
                                   &pcm->h_contract_terms,
                                   &merge_pub,
                                   min_age,
@@ -359,7 +359,7 @@ TALER_EXCHANGE_purse_create_with_merge (
                                  &merge_sig);
   TALER_wallet_account_merge_sign (merge_timestamp,
                                    &pcm->purse_pub,
-                                   purse_expiration,
+                                   pcm->purse_expiration,
                                    &pcm->h_contract_terms,
                                    &pcm->purse_value_after_fees,
                                    min_age,
@@ -416,7 +416,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_timestamp ("merge_timestamp",
                                 merge_timestamp),
     GNUNET_JSON_pack_timestamp ("purse_expiration",
-                                purse_expiration));
+                                pcm->purse_expiration));
   GNUNET_assert (NULL != create_with_merge_obj);
   GNUNET_free (econtract);
   eh = TALER_EXCHANGE_curl_easy_get_ (pcm->url);

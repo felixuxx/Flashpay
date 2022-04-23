@@ -99,7 +99,15 @@ COMMENT ON TABLE reserves
 COMMENT ON COLUMN reserves.reserve_pub
   IS 'EdDSA public key of the reserve. Knowledge of the private key implies ownership over the balance.';
 COMMENT ON COLUMN reserves.current_balance_val
-  IS 'Current balance remaining with the reserve';
+  IS 'Current balance remaining with the reserve.';
+COMMENT ON COLUMN reserves.purses_active
+  IS 'Number of purses that were created by this reserve that are not expired and not fully paid.';
+COMMENT ON COLUMN reserves.purses_allowed
+  IS 'Number of purses that this reserve is allowed to have active at most.';
+COMMENT ON COLUMN reserves.kyc_required
+  IS 'True if a KYC check must have been passed before withdrawing from this reserve. Set to true once a reserve received a P2P payment.';
+COMMENT ON COLUMN reserves.kyc_passed
+  IS 'True once KYC was passed for this reserve. The KYC details are then available via the wire_targets table under the key of wire_target_h_payto which is to be derived from the reserve_pub and the base URL of this exchange.';
 COMMENT ON COLUMN reserves.expiration_date
   IS 'Used to trigger closing of reserves that have not been drained after some time';
 COMMENT ON COLUMN reserves.gc_date

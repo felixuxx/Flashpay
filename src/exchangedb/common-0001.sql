@@ -106,6 +106,10 @@ BEGIN
       ',reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)'
       ',current_balance_val INT8 NOT NULL'
       ',current_balance_frac INT4 NOT NULL'
+      ',purses_active INT8 NOT NULL DEFAULT(0)'
+      ',purses_allowed INT8 NOT NULL DEFAULT(0)'
+      ',kyc_required BOOLEAN NOT NULL DEFAULT(FALSE)'
+      ',kyc_passed BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',expiration_date INT8 NOT NULL'
       ',gc_date INT8 NOT NULL'
     ') %s ;'
@@ -2331,7 +2335,7 @@ BEGIN
     DROP CONSTRAINT IF EXISTS wads_in_pkey CASCADE
     ,DROP CONSTRAINT IF EXISTS wads_in_wad_id_origin_exchange_url_key
   ;
-  
+
   ALTER TABLE IF EXISTS wad_in_entries
     DROP CONSTRAINT IF EXISTS wad_in_entries_pkey CASCADE
   ;
