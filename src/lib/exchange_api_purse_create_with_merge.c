@@ -250,9 +250,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   bool upload_contract,
-  struct GNUNET_TIME_Timestamp purse_expiration,
   struct GNUNET_TIME_Timestamp merge_timestamp,
-  const struct TALER_Amount *purse_value_after_fees,
   TALER_EXCHANGE_PurseCreateMergeCallback cb,
   void *cb_cls)
 {
@@ -270,6 +268,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct TALER_PurseContractSignatureP purse_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
+  struct TALER_Amount purse_value_after_fees;
 
   pcm = GNUNET_new (struct TALER_EXCHANGE_PurseCreateMergeHandle);
   pcm->exchange = exchange;
@@ -284,9 +283,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     return NULL;
   }
   pcm->h_contract_terms = pcm->h_contract_terms;
-  pcm->purse_expiration = purse_expiration;
   pcm->merge_timestamp = merge_timestamp;
-  pcm->purse_value_after_fees = *purse_value_after_fees;
   GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
                                       &pcm->purse_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
@@ -296,11 +293,8 @@ TALER_EXCHANGE_purse_create_with_merge (
   GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
                                       &contract_pub.ecdhe_pub);
 
-  // FIXME: extract min_age from contract_terms!
   {
-    // FIXME: extract amount from contract
-    // or pass explicitly? what about other
-    // args, like the purse expiration time?
+    // FIXME: get purse expiration time from contract?
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_amount_any ("amount",
                                   &pcm->purse_value_after_fees),
@@ -308,6 +302,9 @@ TALER_EXCHANGE_purse_create_with_merge (
         GNUNET_JSON_spec_uint32 ("minimum_age",
                                  &min_age),
         NULL),
+      // FIXME: correct field name?
+      GNUNET_JSON_spec_timestamp ("payment_deadline",
+                                  &pcm->purse_expiration),
       GNUNET_JSON_spec_end ()
     };
 
@@ -385,7 +382,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   }
   create_with_merge_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("purse_value",
-                            purse_value_after_fees),
+                            &purse_value_after_fees),
     GNUNET_JSON_pack_uint64 ("min_age",
                              min_age),
     GNUNET_JSON_pack_allow_null (

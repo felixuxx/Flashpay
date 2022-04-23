@@ -80,6 +80,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_refresh.c \
   testing_api_cmd_reserve_get.c \
   testing_api_cmd_reserve_history.c \
+  testing_api_cmd_reserve_purse.c \
   testing_api_cmd_reserve_status.c \
   testing_api_cmd_revoke.c \
   testing_api_cmd_revoke_denom_key.c \
@@ -122,7 +123,7 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 
 noinst_PROGRAMS = \
   test_exchange_p2p_cs \
-  test_exchange_p2p_rsa 
+  test_exchange_p2p_rsa
 
 
 .NOTPARALLEL:
