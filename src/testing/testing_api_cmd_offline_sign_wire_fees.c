@@ -18,7 +18,7 @@
 */
 
 /**
- * @file testing/testing_api_cmd_offline_sign_fees.c
+ * @file testing/testing_api_cmd_offline_sign_wire_fees.c
  * @brief run the taler-exchange-offline command to download, sign and upload wire fees
  * @author Marcello Stanisci
  * @author Christian Grothoff

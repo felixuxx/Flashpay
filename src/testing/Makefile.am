@@ -68,7 +68,8 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_kyc_proof.c \
   testing_api_cmd_kyc_wallet_get.c \
   testing_api_cmd_oauth.c \
-  testing_api_cmd_offline_sign_fees.c \
+  testing_api_cmd_offline_sign_global_fees.c \
+  testing_api_cmd_offline_sign_wire_fees.c \
   testing_api_cmd_offline_sign_keys.c \
   testing_api_cmd_offline_sign_extensions.c \
   testing_api_cmd_purse_create_deposit.c \

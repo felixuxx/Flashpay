@@ -2245,7 +2245,7 @@ TALER_TESTING_cmd_exec_offline_sign_keys (const char *label,
 
 
 /**
- * Sign a wire fee.
+ * Sign a wire fee structure.
  *
  * @param label command label.
  * @param config_filename configuration filename.
@@ -2260,6 +2260,35 @@ TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
                                           const char *wire_fee,
                                           const char *closing_fee,
                                           const char *wad_fee);
+
+
+/**
+ * Sign global fee structure.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param history_fee the history fee to charge (for the current year)
+ * @param kyc_fee the KYC fee to charge (for the current year)
+ * @param account_fee the account fee to charge (for the current year)
+ * @param purse_fee the purse fee to charge (for the current year)
+ * @param purse_timeout when do purses time out
+ * @param kyc_timeout when does the KYC time out
+ * @param history_expiration when does an account history expire
+ * @param num_purses number of (free) active purses per account
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_offline_sign_global_fees (
+  const char *label,
+  const char *config_filename,
+  const char *history_fee,
+  const char *kyc_fee,
+  const char *account_fee,
+  const char *purse_fee,
+  struct GNUNET_TIME_Relative purse_timeout,
+  struct GNUNET_TIME_Relative kyc_timeout,
+  struct GNUNET_TIME_Relative history_expiration,
+  unsigned int num_purses);
 
 
 /**
