@@ -496,7 +496,8 @@ parse_coin (struct MHD_Connection *connection,
                                          &coin->cpi.coin_pub,
                                          &coin->coin_sig))
   {
-    TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
+    TALER_LOG_WARNING (
+      "Invalid coin signature on /purses/$PID/create request\n");
     GNUNET_JSON_parse_free (spec);
     return (MHD_YES ==
             TALER_MHD_reply_with_error (connection,

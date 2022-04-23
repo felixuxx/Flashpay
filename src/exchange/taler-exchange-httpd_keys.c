@@ -2257,6 +2257,9 @@ global_fee_info_cb (
   struct TEH_KeyStateHandle *ksh = cls;
   struct TEH_GlobalFee *gf;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Found global fees with %u purses\n",
+              purse_account_limit);
   gf = GNUNET_new (struct TEH_GlobalFee);
   gf->start_date = start_date;
   gf->end_date = end_date;
@@ -2343,6 +2346,9 @@ build_key_state (struct HelperState *hs,
   qs = TEH_plugin->get_global_fees (TEH_plugin->cls,
                                     &global_fee_info_cb,
                                     ksh);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loading global fees from DB: %d\n",
+              qs);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);

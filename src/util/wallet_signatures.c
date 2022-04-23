@@ -1251,7 +1251,7 @@ TALER_wallet_econtract_upload_verify (
   GNUNET_CRYPTO_hash (econtract,
                       econtract_size,
                       &pc.h_econtract);
-  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_RESERVE_CLOSE,
+  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT,
                                       &pc.purpose,
                                       &purse_sig->eddsa_signature,
                                       &purse_pub->eddsa_pub);

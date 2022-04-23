@@ -329,11 +329,15 @@ TALER_EXCHANGE_purse_create_with_deposit (
   GNUNET_assert (NULL != deposit_arr);
   url = TEAH_path_to_url (exchange,
                           "/");
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Signing with URL `%s'\n",
+              url);
   for (unsigned int i = 0; i<num_deposits; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
     json_t *jdeposit;
     struct TALER_CoinSpendSignatureP coin_sig;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
 #if FIXME_OEC
     struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
@@ -354,6 +358,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
       return NULL;
     }
 #endif
+    GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
     TALER_wallet_purse_deposit_sign (
       url,
       &pch->purse_pub,
@@ -376,7 +382,9 @@ TALER_EXCHANGE_purse_create_with_deposit (
       TALER_JSON_pack_denom_sig ("ub_sig",
                                  &deposit->denom_sig),
       GNUNET_JSON_pack_data_auto ("coin_sig",
-                                  &coin_sig));
+                                  &coin_sig),
+      GNUNET_JSON_pack_data_auto ("coin_pub",
+                                  &coin_pub));
     GNUNET_assert (0 ==
                    json_array_append_new (deposit_arr,
                                           jdeposit));

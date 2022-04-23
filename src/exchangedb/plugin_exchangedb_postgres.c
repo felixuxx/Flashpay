@@ -8535,7 +8535,10 @@ postgres_get_global_fees (void *cls,
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp date
-    = GNUNET_TIME_timestamp_get ();
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_subtract (
+          GNUNET_TIME_absolute_get (),
+          GNUNET_TIME_UNIT_YEARS));
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&date),
     GNUNET_PQ_query_param_end
