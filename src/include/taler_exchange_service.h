@@ -4127,8 +4127,8 @@ struct TALER_EXCHANGE_PurseGetHandle;
  *
  * @param exchange exchange handle
  * @param purse_priv private key of the purse
- * @param merge_timeout how long to wait for a merge to happen
- * @param deposit_timeout how long to wait for a deposit to happen
+ * @param timeout how long to wait for a change to happen
+ * @param wait_for_merge true to wait for a merge event, otherwise wait for a deposit event
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -4137,8 +4137,8 @@ struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
-  struct GNUNET_TIME_Relative merge_timeout,
-  struct GNUNET_TIME_Relative deposit_timeout,
+  struct GNUNET_TIME_Relative timeout,
+  bool wait_for_merge,
   TALER_EXCHANGE_PurseGetCallback cb,
   void *cb_cls);
 

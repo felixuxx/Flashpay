@@ -122,6 +122,24 @@ struct TALER_ReserveEventP
 
 
 /**
+ * Signature of events signalling a purse changed its status.
+ */
+struct TALER_PurseEventP
+{
+  /**
+   * Of type #TALER_DBEVENT_EXCHANGE_PURSE_MERGED or
+   * #TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED.
+   */
+  struct GNUNET_DB_EventHeaderP header;
+
+  /**
+   * Public key of the purse the event is about.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+};
+
+
+/**
  * Signature of events signalling a KYC process was completed.
  */
 struct TALER_KycCompletedEventP

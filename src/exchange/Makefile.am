@@ -106,6 +106,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_purses_create.c taler-exchange-httpd_purses_create.h \
   taler-exchange-httpd_purses_deposit.c taler-exchange-httpd_purses_deposit.h \
+  taler-exchange-httpd_purses_get.c taler-exchange-httpd_purses_get.h \
   taler-exchange-httpd_purses_merge.c taler-exchange-httpd_purses_merge.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
   taler-exchange-httpd_recoup-refresh.c taler-exchange-httpd_recoup-refresh.h \

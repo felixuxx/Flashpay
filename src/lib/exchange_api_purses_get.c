@@ -94,6 +94,7 @@ handle_purse_get_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
+      // FIXME: check exchange signature!
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_timestamp ("merge_timestamp",
                                     &dr.details.success.merge_timestamp),
@@ -163,15 +164,15 @@ struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
-  struct GNUNET_TIME_Relative merge_timeout,
-  struct GNUNET_TIME_Relative deposit_timeout,
+  struct GNUNET_TIME_Relative timeout,
+  bool wait_for_merge,
   TALER_EXCHANGE_PurseGetCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_PurseGetHandle *pgh;
   CURL *eh;
   struct TALER_PurseContractPublicKeyP purse_pub;
-  char arg_str[sizeof (purse_pub) * 2 + 48];
+  char arg_str[sizeof (purse_pub) * 2 + 64];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -188,18 +189,33 @@ TALER_EXCHANGE_purse_get (
   {
     char cpub_str[sizeof (purse_pub) * 2];
     char *end;
+    char timeout_str[32];
 
     end = GNUNET_STRINGS_data_to_string (&purse_pub,
                                          sizeof (purse_pub),
                                          cpub_str,
                                          sizeof (cpub_str));
     *end = '\0';
-    GNUNET_snprintf (arg_str,
-                     sizeof (arg_str),
-                     "/purses/%s",
-                     cpub_str);
+    GNUNET_snprintf (timeout_str,
+                     sizeof (timeout_str),
+                     "%llu",
+                     (unsigned long long)
+                     (timeout.rel_value_us
+                      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
+    if (GNUNET_TIME_relative_is_zero (timeout))
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "/purses/%s/%s",
+                       cpub_str,
+                       wait_for_merge ? "merge" : "deposit");
+    else
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "/purses/%s/%s?timeout_ms=%s",
+                       cpub_str,
+                       wait_for_merge ? "merge" : "deposit",
+                       timeout_str);
   }
-
   pgh->url = TEAH_path_to_url (exchange,
                                arg_str);
   if (NULL == pgh->url)
