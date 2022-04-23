@@ -52,6 +52,11 @@ struct ReservePurseState
   struct TALER_PurseContractPrivateKeyP purse_priv;
 
   /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
    * Private key with the merge capability.
    */
   struct TALER_PurseMergePrivateKeyP merge_priv;
@@ -152,6 +157,8 @@ purse_run (void *cls,
   }
   ds->reserve_priv = *reserve_priv;
   GNUNET_CRYPTO_eddsa_key_create (&ds->purse_priv.eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&ds->purse_priv.eddsa_priv,
+                                      &ds->purse_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_create (&ds->merge_priv.eddsa_priv);
   GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
@@ -225,6 +232,7 @@ purse_traits (void *cls,
                                         &ds->merge_timestamp),
     TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
     TALER_TESTING_make_trait_purse_priv (&ds->purse_priv),
+    TALER_TESTING_make_trait_purse_pub (&ds->purse_pub),
     TALER_TESTING_make_trait_merge_priv (&ds->merge_priv),
     TALER_TESTING_make_trait_contract_priv (&ds->contract_priv),
     TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
