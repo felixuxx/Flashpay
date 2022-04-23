@@ -345,10 +345,11 @@ purse_transaction (void *cls,
 
 MHD_RESULT
 TEH_handler_reserves_purse (
-  struct MHD_Connection *connection,
+  struct TEH_RequestContext *rc,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root)
 {
+  struct MHD_Connection *connection = rc->connection;
   struct ReservePurseContext rpc = {
     .reserve_pub = reserve_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()

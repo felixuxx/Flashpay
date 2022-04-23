@@ -27,19 +27,19 @@
 
 
 /**
- * Handle a "/purses/$PURSE_PUB/create" request.  Parses the JSON, and, if
+ * Handle a "/reserves/$RESERVE_PUB/purse" request.  Parses the JSON, and, if
  * successful, passes the JSON data to #create_transaction() to further check
  * the details of the operation specified.  If everything checks out, this
  * will ultimately lead to the "purses create" being executed, or rejected.
  *
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param purse_pub public key of the purse
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_reserves_purse (
-  struct MHD_Connection *connection,
+  struct TEH_RequestContext *rc,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const json_t *root);
 

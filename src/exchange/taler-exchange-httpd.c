@@ -44,12 +44,17 @@
 #include "taler-exchange-httpd_melt.h"
 #include "taler-exchange-httpd_metrics.h"
 #include "taler-exchange-httpd_mhd.h"
+#include "taler-exchange-httpd_purses_create.h"
+#include "taler-exchange-httpd_purses_deposit.h"
+#include "taler-exchange-httpd_purses_get.h"
+#include "taler-exchange-httpd_purses_merge.h"
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_recoup-refresh.h"
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserves_get.h"
 #include "taler-exchange-httpd_reserves_history.h"
+#include "taler-exchange-httpd_reserves_purse.h"
 #include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
@@ -59,6 +64,12 @@
 #include "taler_exchangedb_plugin.h"
 #include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>
+
+/**
+ * Macro to enable P2P handlers. ON for debugging,
+ * FIXME: set to OFF for 0.9.0 release as the feature is not stable!
+ */
+#define WITH_P2P 1
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -215,19 +226,6 @@ typedef MHD_RESULT
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const json_t *root);
 
-/**
- * Signature of functions that handle operations on reserves.
- *
- * @param rc request context
- * @param reserve_pub the public key of the reserve
- * @param root uploaded JSON data
- * @return MHD result code
- */
-typedef MHD_RESULT
-(*ReserveOpHandler)(struct TEH_RequestContext *rc,
-                    const struct TALER_ReservePublicKeyP *reserve_pub,
-                    const json_t *root);
-
 
 /**
  * Generate a 404 "not found" reply on @a connection with
@@ -325,6 +323,20 @@ handle_post_coins (struct TEH_RequestContext *rc,
 
 
 /**
+ * Signature of functions that handle operations on reserves.
+ *
+ * @param rc request context
+ * @param reserve_pub the public key of the reserve
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*ReserveOpHandler)(struct TEH_RequestContext *rc,
+                    const struct TALER_ReservePublicKeyP *reserve_pub,
+                    const json_t *root);
+
+
+/**
  * Handle a "/reserves/$RESERVE_PUB/$OP" POST request.  Parses the "reserve_pub"
  * EdDSA key of the reserve and demultiplexes based on $OP.
  *
@@ -364,6 +376,12 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "history",
       .handler = &TEH_handler_reserves_history
     },
+#if WITH_P2P
+    {
+      .op = "purse",
+      .handler = &TEH_handler_reserves_purse
+    },
+#endif
     {
       .op = NULL,
       .handler = NULL
@@ -387,6 +405,91 @@ handle_post_reserves (struct TEH_RequestContext *rc,
                      args[1]))
       return h[i].handler (rc,
                            &reserve_pub,
+                           root);
+  return r404 (rc->connection,
+               args[1]);
+}
+
+
+/**
+ * Signature of functions that handle operations on purses.
+ *
+ * @param rc request context
+ * @param purse_pub the public key of the purse
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*PurseOpHandler)(struct MHD_Connection *connection,
+                  const struct TALER_PurseContractPublicKeyP *purse_pub,
+                  const json_t *root);
+
+
+/**
+ * Handle a "/purses/$RESERVE_PUB/$OP" POST request.  Parses the "purse_pub"
+ * EdDSA key of the purse and demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_purses (struct TEH_RequestContext *rc,
+                    const json_t *root,
+                    const char *const args[2])
+{
+  struct TALER_PurseContractPublicKeyP purse_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1])
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     */
+    PurseOpHandler handler;
+
+  } h[] = {
+#if WITH_P2P
+    {
+      .op = "create",
+      .handler = &TEH_handler_purses_create
+    },
+    {
+      .op = "deposit",
+      .handler = &TEH_handler_purses_deposit
+    },
+    {
+      .op = "merge",
+      .handler = &TEH_handler_purses_merge
+    },
+#endif
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &purse_pub,
+                                     sizeof (purse_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_PURSE_PUB_MALFORMED,
+                                       args[0]);
+  }
+  for (unsigned int i = 0; NULL != h[i].op; i++)
+    if (0 == strcmp (h[i].op,
+                     args[1]))
+      return h[i].handler (rc->connection,
+                           &purse_pub,
                            root);
   return r404 (rc->connection,
                args[1]);
@@ -1068,13 +1171,29 @@ handle_mhd_request (void *cls,
       .handler.get = &TEH_handler_deposits_get,
       .nargs = 4
     },
-    /* Getting purse contracts */
+    /* Operating on purses */
+    {
+      .url = "purses",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_purses,
+      .nargs = 2 // ??
+    },
+#if WITH_P2P
+    /* Getting purse status */
+    {
+      .url = "purses",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_purses_get,
+      .nargs = 2
+    },
+    /* Getting contracts */
     {
       .url = "contracts",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_contracts_get,
       .nargs = 1
     },
+#endif
     /* KYC endpoints */
     {
       .url = "kyc-check",
@@ -1954,6 +2073,7 @@ do_shutdown (void *cls)
   mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_reserves_get_cleanup ();
+  TEH_purses_get_cleanup ();
   TEH_kyc_check_cleanup ();
   TEH_kyc_proof_cleanup ();
   if (NULL != mhd)
