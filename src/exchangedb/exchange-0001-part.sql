@@ -2710,6 +2710,27 @@ END $$;
 --  IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
+CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
+  IN in_purse_pub BYTEA,
+  IN in_merge_sig BYTEA,
+  IN in_merge_timestamp INT8,
+  IN in_reserve_sig BYTEA,
+  IN in_purse_fee_val INT8,
+  IN in_purse_fee_frac INT8,
+  IN in_reserve_pub BYTEA,
+  OUT out_no_funds BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME: implement!
+  out_conflict=TRUE;
+  out_no_funds=TRUE;
+
+END $$;
+
+
+
 CREATE OR REPLACE FUNCTION exchange_do_account_merge(
   IN in_purse_pub BYTEA,
   IN in_reserve_pub BYTEA,

@@ -46,6 +46,11 @@ struct ReservePurseContext
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
   /**
+   * Fees for the operation.
+   */
+  const struct TEH_GlobalFee *gf;
+
+  /**
    * Signature of the reserve affirming the merge.
    */
   struct TALER_ReserveSignatureP reserve_sig;
@@ -194,151 +199,238 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  bool in_conflict = true;
 
-  /* 1) store purse */
-  qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
-                                         &rpc->purse_pub,
-                                         &rpc->merge_pub,
-                                         rpc->purse_expiration,
-                                         &rpc->h_contract_terms,
-                                         rpc->min_age,
-                                         &rpc->amount,
-                                         &rpc->purse_sig,
-                                         &in_conflict);
-  if (qs < 0)
   {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    TALER_LOG_WARNING (
-      "Failed to store purse purse information in database\n");
-    *mhd_ret =
-      TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                  TALER_EC_GENERIC_DB_STORE_FAILED,
-                                  "insert purse request");
-    return qs;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    return qs;
-  if (in_conflict)
-  {
-    struct TALER_PurseMergePublicKeyP merge_pub;
-    struct GNUNET_TIME_Timestamp purse_expiration;
-    struct TALER_PrivateContractHashP h_contract_terms;
-    struct TALER_Amount target_amount;
-    struct TALER_Amount balance;
-    struct TALER_PurseContractSignatureP purse_sig;
-    uint32_t min_age;
-
-    TEH_plugin->rollback (TEH_plugin->cls);
-    qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
+    bool in_conflict = true;
+    /* 1) store purse */
+    qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
                                            &rpc->purse_pub,
-                                           &merge_pub,
-                                           &purse_expiration,
-                                           &h_contract_terms,
-                                           &min_age,
-                                           &target_amount,
-                                           &balance,
-                                           &purse_sig);
+                                           &rpc->merge_pub,
+                                           rpc->purse_expiration,
+                                           &rpc->h_contract_terms,
+                                           rpc->min_age,
+                                           &rpc->amount,
+                                           &rpc->purse_sig,
+                                           &in_conflict);
     if (qs < 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
-      TALER_LOG_WARNING ("Failed to fetch purse information from database\n");
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "select purse request");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    *mhd_ret
-      = TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_CONFLICT,
-          TALER_JSON_pack_ec (
-            TALER_EC_EXCHANGE_PURSE_CREATE_CONFLICTING_META_DATA),
-          TALER_JSON_pack_amount ("amount",
-                                  &target_amount),
-          GNUNET_JSON_pack_uint64 ("min_age",
-                                   min_age),
-          GNUNET_JSON_pack_timestamp ("purse_expiration",
-                                      purse_expiration),
-          GNUNET_JSON_pack_data_auto ("purse_sig",
-                                      &purse_sig),
-          GNUNET_JSON_pack_data_auto ("h_contract_terms",
-                                      &h_contract_terms),
-          GNUNET_JSON_pack_data_auto ("merge_pub",
-                                      &merge_pub));
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  /* 2) FIXME: merge purse with reserve (and debit reserve for purse creation!) */
-
-
-  /* 3) if present, persist contract */
-  in_conflict = true;
-  qs = TEH_plugin->insert_contract (TEH_plugin->cls,
-                                    &rpc->purse_pub,
-                                    &rpc->contract_pub,
-                                    rpc->econtract_size,
-                                    rpc->econtract,
-                                    &rpc->econtract_sig,
-                                    &in_conflict);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    TALER_LOG_WARNING ("Failed to store purse information in database\n");
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           "purse purse contract");
-    return qs;
-  }
-  if (in_conflict)
-  {
-    struct TALER_ContractDiffiePublicP pub_ckey;
-    struct TALER_PurseContractSignatureP econtract_sig;
-    size_t econtract_size;
-    void *econtract;
-    struct GNUNET_HashCode h_econtract;
-
-    qs = TEH_plugin->select_contract_by_purse (TEH_plugin->cls,
-                                               &rpc->purse_pub,
-                                               &pub_ckey,
-                                               &econtract_sig,
-                                               &econtract_size,
-                                               &econtract);
-    if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
       TALER_LOG_WARNING (
-        "Failed to store fetch contract information from database\n");
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "select contract");
+        "Failed to store purse purse information in database\n");
+      *mhd_ret =
+        TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_STORE_FAILED,
+                                    "insert purse request");
       return qs;
     }
-    GNUNET_CRYPTO_hash (econtract,
-                        econtract_size,
-                        &h_econtract);
-    *mhd_ret
-      = TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_CONFLICT,
-          TALER_JSON_pack_ec (
-            TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA),
-          GNUNET_JSON_pack_data_auto ("h_econtract",
-                                      &h_econtract),
-          GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                      &econtract_sig),
-          GNUNET_JSON_pack_data_auto ("pub_ckey",
-                                      &pub_ckey));
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      return qs;
+    if (in_conflict)
+    {
+      struct TALER_PurseMergePublicKeyP merge_pub;
+      struct GNUNET_TIME_Timestamp purse_expiration;
+      struct TALER_PrivateContractHashP h_contract_terms;
+      struct TALER_Amount target_amount;
+      struct TALER_Amount balance;
+      struct TALER_PurseContractSignatureP purse_sig;
+      uint32_t min_age;
+
+      TEH_plugin->rollback (TEH_plugin->cls);
+      qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
+                                             &rpc->purse_pub,
+                                             &merge_pub,
+                                             &purse_expiration,
+                                             &h_contract_terms,
+                                             &min_age,
+                                             &target_amount,
+                                             &balance,
+                                             &purse_sig);
+      if (qs <= 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        TALER_LOG_WARNING ("Failed to fetch purse information from database\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select purse request");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_CONFLICTING_META_DATA),
+            TALER_JSON_pack_amount ("amount",
+                                    &target_amount),
+            GNUNET_JSON_pack_uint64 ("min_age",
+                                     min_age),
+            GNUNET_JSON_pack_timestamp ("purse_expiration",
+                                        purse_expiration),
+            GNUNET_JSON_pack_data_auto ("purse_sig",
+                                        &purse_sig),
+            GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                        &h_contract_terms),
+            GNUNET_JSON_pack_data_auto ("merge_pub",
+                                        &merge_pub));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
 
+  /* 2) create purse with reserve (and debit reserve for purse creation!) */
+  {
+    bool in_conflict = true;
+    bool insufficient_funds = true;
+
+    qs = TEH_plugin->do_reserve_purse (TEH_plugin->cls,
+                                       &rpc->purse_pub,
+                                       &rpc->merge_sig,
+                                       rpc->merge_timestamp,
+                                       &rpc->reserve_sig,
+                                       &rpc->gf->fees.purse,
+                                       rpc->reserve_pub,
+                                       &in_conflict,
+                                       &insufficient_funds);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      TALER_LOG_WARNING (
+        "Failed to store purse merge information in database\n");
+      *mhd_ret =
+        TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_STORE_FAILED,
+                                    "do reserve purse");
+      return qs;
+    }
+    if (in_conflict)
+    {
+      /* same purse already merged into a different reserve!? */
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PurseMergeSignatureP merge_sig;
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+      char *partner_url;
+      struct TALER_ReservePublicKeyP reserve_pub;
+
+      TEH_plugin->rollback (TEH_plugin->cls);
+      qs = TEH_plugin->select_purse_merge (
+        TEH_plugin->cls,
+        &purse_pub,
+        &merge_sig,
+        &merge_timestamp,
+        &partner_url,
+        &reserve_pub);
+      if (qs <= 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        TALER_LOG_WARNING (
+          "Failed to fetch purse merge information from database\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select purse merge");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_CONFLICTING_META_DATA),
+            GNUNET_JSON_pack_string ("partner_url",
+                                     NULL == partner_url
+                                     ? TEH_base_url
+                                     : partner_url),
+            GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                        merge_timestamp),
+            GNUNET_JSON_pack_data_auto ("merge_sig",
+                                        &merge_sig),
+            GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                        &reserve_pub));
+      GNUNET_free (partner_url);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (insufficient_funds)
+    {
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_INSUFFICIENT_FUNDS));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
+  /* 3) if present, persist contract */
+  if (NULL != rpc->econtract)
+  {
+    bool in_conflict = true;
+
+    qs = TEH_plugin->insert_contract (TEH_plugin->cls,
+                                      &rpc->purse_pub,
+                                      &rpc->contract_pub,
+                                      rpc->econtract_size,
+                                      rpc->econtract,
+                                      &rpc->econtract_sig,
+                                      &in_conflict);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      TALER_LOG_WARNING ("Failed to store purse information in database\n");
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "purse purse contract");
+      return qs;
+    }
+    if (in_conflict)
+    {
+      struct TALER_ContractDiffiePublicP pub_ckey;
+      struct TALER_PurseContractSignatureP econtract_sig;
+      size_t econtract_size;
+      void *econtract;
+      struct GNUNET_HashCode h_econtract;
+
+      qs = TEH_plugin->select_contract_by_purse (TEH_plugin->cls,
+                                                 &rpc->purse_pub,
+                                                 &pub_ckey,
+                                                 &econtract_sig,
+                                                 &econtract_size,
+                                                 &econtract);
+      if (qs <= 0)
+      {
+        if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+          return qs;
+        TALER_LOG_WARNING (
+          "Failed to store fetch contract information from database\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select contract");
+        return qs;
+      }
+      GNUNET_CRYPTO_hash (econtract,
+                          econtract_size,
+                          &h_econtract);
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA),
+            GNUNET_JSON_pack_data_auto ("h_econtract",
+                                        &h_econtract),
+            GNUNET_JSON_pack_data_auto ("econtract_sig",
+                                        &econtract_sig),
+            GNUNET_JSON_pack_data_auto ("pub_ckey",
+                                        &pub_ckey));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
   return qs;
 }
 
@@ -391,7 +483,6 @@ TEH_handler_reserves_purse (
                                 &rpc.purse_expiration),
     GNUNET_JSON_spec_end ()
   };
-  const struct TEH_GlobalFee *gf;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -433,9 +524,9 @@ TEH_handler_reserves_purse (
                                        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_IS_NEVER,
                                        NULL);
   }
-  gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
-                                    rpc.exchange_timestamp);
-  if (NULL == gf)
+  rpc.gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
+                                        rpc.exchange_timestamp);
+  if (NULL == rpc.gf)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Cannot purse purse: global fees not configured!\n");

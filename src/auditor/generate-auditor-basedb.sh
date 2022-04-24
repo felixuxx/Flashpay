@@ -186,7 +186,6 @@ for n in `seq 1 2`
 do
     echo -n "."
     OK=0
-    # bank
     wget --timeout=1 http://localhost:8081/keys -o /dev/null -O /dev/null >/dev/null || continue
     OK=1
     break
@@ -196,6 +195,9 @@ if [ 1 != $OK ]
 then
     exit_skip "Failed to setup keys"
 fi
+
+echo " DONE"
+echo -n "Adding auditor signatures ..."
 
 taler-auditor-offline -c $CONF \
   download sign upload &> taler-auditor-offline.log

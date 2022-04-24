@@ -521,13 +521,13 @@ parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
                   const struct TALER_EXCHANGE_Keys *key_data)
 {
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_timestamp ("start_time",
+    GNUNET_JSON_spec_timestamp ("start_date",
                                 &gf->start_date),
-    GNUNET_JSON_spec_timestamp ("end_time",
+    GNUNET_JSON_spec_timestamp ("end_date",
                                 &gf->end_date),
     GNUNET_JSON_spec_relative_time ("purse_timeout",
                                     &gf->purse_timeout),
-    GNUNET_JSON_spec_relative_time ("kyc_timeout",
+    GNUNET_JSON_spec_relative_time ("account_kyc_timeout",
                                     &gf->kyc_timeout),
     GNUNET_JSON_spec_relative_time ("history_expiration",
                                     &gf->history_expiration),

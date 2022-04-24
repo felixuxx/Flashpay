@@ -4690,6 +4690,35 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called insert request to merge a purse into a reserve by the
+   * respective purse merge key. The purse must not have been merged into a
+   * different reserve.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub purse to merge
+   * @param merge_sig signature affirming the merge
+   * @param merge_timestamp time of the merge
+   * @param reserve_sig signature of the reserve affirming the merge
+   * @param purse_fee amount to charge the reserve for the purse creation
+   * @param reserve_pub public key of the reserve to credit
+   * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
+   * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_reserve_purse)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_PurseMergeSignatureP *merge_sig,
+    const struct GNUNET_TIME_Timestamp merge_timestamp,
+    const struct TALER_ReserveSignatureP *reserve_sig,
+    const struct TALER_Amount *purse_fee,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    bool *in_conflict,
+    bool *insufficient_funds);
+
+
+  /**
    * Function called to approve merging of a purse with
    * an account, made by the receiving account.
    *

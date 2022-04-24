@@ -294,7 +294,6 @@ TALER_EXCHANGE_purse_create_with_merge (
                                       &contract_pub.ecdhe_pub);
 
   {
-    // FIXME: get purse expiration time from contract?
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_amount_any ("amount",
                                   &pcm->purse_value_after_fees),
@@ -302,8 +301,7 @@ TALER_EXCHANGE_purse_create_with_merge (
         GNUNET_JSON_spec_uint32 ("minimum_age",
                                  &min_age),
         NULL),
-      // FIXME: correct field name?
-      GNUNET_JSON_spec_timestamp ("payment_deadline",
+      GNUNET_JSON_spec_timestamp ("pay_deadline",
                                   &pcm->purse_expiration),
       GNUNET_JSON_spec_end ()
     };
