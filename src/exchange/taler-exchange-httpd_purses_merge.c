@@ -134,7 +134,7 @@ reply_merge_success (struct MHD_Connection *connection,
   enum TALER_ErrorCode ec;
   struct TALER_Amount merge_amount;
 
-  if (0 <=
+  if (0 <
       TALER_amount_cmp (&pcc->balance,
                         &pcc->target_amount))
   {
@@ -144,8 +144,9 @@ reply_merge_success (struct MHD_Connection *connection,
       TALER_JSON_pack_amount ("balance",
                               &pcc->balance));
   }
-  if (0 == strcmp (pcc->provider_url,
-                   TEH_base_url))
+  if ( (NULL == pcc->provider_url) ||
+       (0 == strcmp (pcc->provider_url,
+                     TEH_base_url)) )
   {
     /* wad fee is always zero if we stay at our own exchange */
     merge_amount = pcc->target_amount;
@@ -175,7 +176,9 @@ reply_merge_success (struct MHD_Connection *connection,
          pcc->purse_pub,
          &pcc->h_contract_terms,
          &pcc->reserve_pub,
-         pcc->provider_url,
+         (NULL != pcc->provider_url)
+         ? pcc->provider_url
+         : TEH_base_url,
          &pub,
          &sig)))
   {

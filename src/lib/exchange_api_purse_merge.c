@@ -142,7 +142,7 @@ handle_purse_merge_finished (void *cls,
                                      &exchange_pub),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &etime),
-        TALER_JSON_spec_amount ("total_deposited",
+        TALER_JSON_spec_amount ("merge_amount",
                                 pch->purse_value_after_fees.currency,
                                 &total_deposited),
         GNUNET_JSON_spec_end ()

@@ -492,7 +492,7 @@ parse_coin (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TALER_wallet_purse_deposit_verify (TEH_base_url,
                                          pcc->purse_pub,
-                                         &pcc->amount,
+                                         &coin->amount,
                                          &coin->cpi.coin_pub,
                                          &coin->coin_sig))
   {
