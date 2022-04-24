@@ -388,6 +388,9 @@ TEH_handler_purses_merge (
     break;
   }
   /* parse 'payto_uri' into pcc.reserve_pub and provider_url */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received payto: `%s'\n",
+              pcc.payto_uri);
   if ( (0 != strncmp (pcc.payto_uri,
                       "payto://taler/",
                       strlen ("payto://taler/"))) &&

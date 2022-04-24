@@ -158,7 +158,7 @@ run (void *cls,
       true, /* upload contract */
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "withdraw-coin-1",
-      "EUR:1", /* FIXME: check amount vs. fees! */
+      "EUR:1.01", /* FIXME: check amount vs. fees! */
       NULL),
     TALER_TESTING_cmd_contract_get (
       "purse-get-contract",

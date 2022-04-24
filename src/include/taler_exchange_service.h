@@ -4256,7 +4256,6 @@ struct TALER_EXCHANGE_PurseDeposit
  * @param merge_priv the merge credential
  * @param contract_priv key needed to obtain and decrypt the contract
  * @param contract_terms contract the purse is about
- * @param purse_expiration when will the unmerged purse expire
  * @param num_deposits length of the @a deposits array
  * @param deposits array of deposits to make into the purse
  * @param upload_contract true to upload the contract; must
@@ -4273,7 +4272,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
-  struct GNUNET_TIME_Timestamp purse_expiration,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
   bool upload_contract,

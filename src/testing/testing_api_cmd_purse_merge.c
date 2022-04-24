@@ -128,7 +128,7 @@ merge_run (void *cls,
   const struct TALER_PurseMergePrivateKeyP *merge_priv;
   const json_t *ct;
   struct TALER_PrivateContractHashP h_contract_terms;
-  uint32_t min_age;
+  uint32_t min_age = 0;
   struct TALER_Amount value_after_fees;
   struct GNUNET_TIME_Timestamp purse_expiration;
   const struct TALER_TESTING_Command *ref;
@@ -172,6 +172,8 @@ merge_run (void *cls,
   }
   {
     struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_timestamp ("pay_deadline",
+                                  &purse_expiration),
       TALER_JSON_spec_amount_any ("amount",
                                   &value_after_fees),
       GNUNET_JSON_spec_mark_optional (
@@ -192,9 +194,6 @@ merge_run (void *cls,
     }
   }
 
-  // FIXME: how to get purse_expiration nicely!?!?
-  // See create_with_deposit FIXME: from pay deadline?
-
   if (NULL == ds->reserve_ref)
   {
     GNUNET_CRYPTO_eddsa_key_create (&ds->reserve_priv.eddsa_priv);
@@ -204,7 +203,7 @@ merge_run (void *cls,
     const struct TALER_ReservePrivateKeyP *rp;
 
     ref = TALER_TESTING_interpreter_lookup_command (ds->is,
-                                                    ds->merge_ref);
+                                                    ds->reserve_ref);
     GNUNET_assert (NULL != ref);
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_priv (ref,

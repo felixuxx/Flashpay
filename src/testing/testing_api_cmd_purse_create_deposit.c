@@ -259,17 +259,23 @@ deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_create (&ds->purse_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_create (&ds->merge_priv.eddsa_priv);
   GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
-  ds->purse_expiration
-    = GNUNET_TIME_relative_to_timestamp (ds->rel_expiration);
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->purse_priv.eddsa_priv,
                                       &ds->purse_pub.eddsa_pub);
+
+  ds->purse_expiration =
+    GNUNET_TIME_absolute_to_timestamp (
+      GNUNET_TIME_relative_to_absolute (ds->rel_expiration));
+  GNUNET_assert (0 ==
+                 json_object_set_new (
+                   ds->contract_terms,
+                   "pay_deadline",
+                   GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->dh = TALER_EXCHANGE_purse_create_with_deposit (
     is->exchange,
     &ds->purse_priv,
     &ds->merge_priv,
     &ds->contract_priv,
     ds->contract_terms,
-    ds->purse_expiration,
     ds->num_coin_references,
     deposits,
     ds->upload_contract,
@@ -361,7 +367,6 @@ TALER_TESTING_cmd_purse_create_with_deposit (
   ...)
 {
   struct PurseCreateDepositState *ds;
-  struct GNUNET_TIME_Timestamp pay_deadline;
 
   ds = GNUNET_new (struct PurseCreateDepositState);
   ds->rel_expiration = purse_expiration;
@@ -378,14 +383,6 @@ TALER_TESTING_cmd_purse_create_with_deposit (
                 label);
     GNUNET_assert (0);
   }
-  pay_deadline =
-    GNUNET_TIME_absolute_to_timestamp (
-      GNUNET_TIME_relative_to_absolute (purse_expiration));
-  GNUNET_assert (0 ==
-                 json_object_set_new (
-                   ds->contract_terms,
-                   "pay_deadline",
-                   GNUNET_JSON_from_timestamp (pay_deadline)));
   {
     va_list ap;
     unsigned int i;

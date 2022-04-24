@@ -13066,7 +13066,7 @@ postgres_select_contract (void *cls,
                                           purse_pub),
     GNUNET_PQ_result_spec_auto_from_type ("contract_sig",
                                           econtract_sig),
-    GNUNET_PQ_result_spec_variable_size ("econtract",
+    GNUNET_PQ_result_spec_variable_size ("e_contract",
                                          econtract,
                                          econtract_size),
     GNUNET_PQ_result_spec_end
@@ -13111,7 +13111,7 @@ postgres_select_contract_by_purse (void *cls,
                                           pub_ckey),
     GNUNET_PQ_result_spec_auto_from_type ("contract_sig",
                                           econtract_sig),
-    GNUNET_PQ_result_spec_variable_size ("econtract",
+    GNUNET_PQ_result_spec_variable_size ("e_contract",
                                          econtract,
                                          econtract_size),
     GNUNET_PQ_result_spec_end
@@ -13430,8 +13430,9 @@ postgres_do_purse_deposit (
   bool *conflict)
 {
   struct PostgresClosure *pg = cls;
+  uint64_t partner_id = 0;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (0), /* FIXME: partner ID */
+    GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
@@ -13537,7 +13538,9 @@ postgres_do_purse_merge (
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
     GNUNET_PQ_query_param_timestamp (&merge_timestamp),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    GNUNET_PQ_query_param_string (partner_url),
+    (NULL == partner_url)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (partner_url),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_end
   };

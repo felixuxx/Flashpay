@@ -2647,6 +2647,7 @@ PERFORM
 IF NOT FOUND
 THEN
   out_no_balance=TRUE;
+  out_conflict=FALSE;
   RETURN;
 END IF;
 out_no_balance=FALSE;

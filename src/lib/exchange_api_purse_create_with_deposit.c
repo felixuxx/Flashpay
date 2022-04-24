@@ -242,7 +242,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
-  struct GNUNET_TIME_Timestamp purse_expiration,
   unsigned int num_deposits,
   const struct TALER_EXCHANGE_PurseDeposit *deposits,
   bool upload_contract,
@@ -265,10 +264,10 @@ TALER_EXCHANGE_purse_create_with_deposit (
   pch->exchange = exchange;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
-  // FIXME: get expiration from pay deadline of contract?
-  pch->purse_expiration = purse_expiration;
   {
     struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_timestamp ("pay_deadline",
+                                  &pch->purse_expiration),
       TALER_JSON_spec_amount_any ("amount",
                                   &pch->purse_value_after_fees),
       GNUNET_JSON_spec_mark_optional (
@@ -390,7 +389,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
                                           jdeposit));
   }
   GNUNET_free (url);
-  TALER_wallet_purse_create_sign (purse_expiration,
+  TALER_wallet_purse_create_sign (pch->purse_expiration,
                                   &pch->h_contract_terms,
                                   &pch->merge_pub,
                                   min_age,
@@ -443,7 +442,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
       GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                   &pch->h_contract_terms),
       GNUNET_JSON_pack_timestamp ("purse_expiration",
-                                  purse_expiration),
+                                  pch->purse_expiration),
       GNUNET_JSON_pack_array_steal ("deposits",
                                     deposit_arr));
     GNUNET_free (econtract);

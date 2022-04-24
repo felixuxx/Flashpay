@@ -1033,7 +1033,7 @@ TALER_wallet_purse_merge_verify (
   TALER_payto_hash (reserve_url,
                     &pm.h_payto);
   return GNUNET_CRYPTO_eddsa_verify (
-    TALER_SIGNATURE_WALLET_ACCOUNT_MERGE,
+    TALER_SIGNATURE_WALLET_PURSE_MERGE,
     &pm,
     &merge_sig->eddsa_signature,
     &merge_pub->eddsa_pub);

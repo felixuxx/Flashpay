@@ -272,7 +272,10 @@ TALER_EXCHANGE_account_merge (
   pch->h_contract_terms = *h_contract_terms;
   pch->purse_expiration = purse_expiration;
   pch->purse_value_after_fees = *purse_value_after_fees;
-  pch->provider_url = GNUNET_strdup (reserve_exchange_url);
+  if (NULL == reserve_exchange_url)
+    pch->provider_url = GNUNET_strdup (exchange->url);
+  else
+    pch->provider_url = GNUNET_strdup (reserve_exchange_url);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &pch->reserve_pub.eddsa_pub);
 
@@ -305,31 +308,33 @@ TALER_EXCHANGE_account_merge (
       pub_str,
       sizeof (pub_str));
     *end = '\0';
-    if (0 == strncmp (reserve_exchange_url,
+    if (0 == strncmp (pch->provider_url,
                       "http://",
                       strlen ("http://")))
     {
       is_http = true;
-      exchange_url = &reserve_exchange_url[strlen ("http://")];
+      exchange_url = &pch->provider_url[strlen ("http://")];
     }
-    else if (0 == strncmp (reserve_exchange_url,
+    else if (0 == strncmp (pch->provider_url,
                            "https://",
                            strlen ("https://")))
     {
       is_http = false;
-      exchange_url = &reserve_exchange_url[strlen ("https://")];
+      exchange_url = &pch->provider_url[strlen ("https://")];
     }
     else
     {
       GNUNET_break (0);
+      GNUNET_free (pch->provider_url);
       GNUNET_free (pch);
       return NULL;
     }
+    /* exchange_url includes trailing '/' */
     GNUNET_asprintf (&reserve_url,
-                     "payto://%s/%s/%s",
+                     "payto://%s/%s%s",
                      is_http ? "taler+http" : "taler",
-                     pub_str,
-                     exchange_url);
+                     exchange_url,
+                     pub_str);
   }
   pch->url = TEAH_path_to_url (exchange,
                                arg_str);
