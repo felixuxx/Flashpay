@@ -2722,10 +2722,130 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  my_purses_active INT8;
+DECLARE
+  my_purses_allowed INT8;
+DECLARE
+  my_balance_val INT8;
+DECLARE
+  my_balance_frac INT4;
+DECLARE
+  my_kyc_passed BOOLEAN;
 BEGIN
-  -- FIXME: implement!
-  out_conflict=TRUE;
+
+-- Store purse merge signature, checks for purse_pub uniqueness
+INSERT INTO purse_merges
+    (partner_serial_id
+    ,reserve_pub
+    ,purse_pub
+    ,merge_sig
+    ,merge_timestamp)
+  VALUES
+    (0
+    ,in_reserve_pub
+    ,in_purse_pub
+    ,in_merge_sig
+    ,in_merge_timestamp)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'merge_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  PERFORM
+  FROM purse_merges
+  WHERE purse_pub=in_purse_pub
+     AND merge_sig=in_merge_sig;
+  IF NOT FOUND
+  THEN
+     -- Purse was merged, but to some other reserve. Not allowed.
+     out_conflict=TRUE;
+     RETURN;
+  END IF;
+
+  -- "success"
+  out_conflict=FALSE;
+  out_no_funds=FALSE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+
+-- Charge reserve for purse creation.
+-- FIXME: Use different type of purse
+-- signature in this case, so that we
+-- can properly account for the purse
+-- fees when auditing!!!
+SELECT
+  purses_active
+ ,purses_allowed
+ ,kyc_passed
+ ,current_balance_val
+ ,current_balance_frac
+INTO
+  my_purses_active
+ ,my_purses_allowed
+ ,my_kyc_passed
+ ,my_balance_val
+ ,my_balance_frac
+FROM reserves
+WHERE reserve_pub=in_reserve_pub;
+
+IF NOT FOUND
+THEN
   out_no_funds=TRUE;
+  -- FIXME: be more specific in the returned
+  -- error that we don't know the reserve
+  -- (instead of merely saying it has no funds)
+  RETURN;
+END IF;
+
+IF NOT my_kyc_passed
+THEN
+  -- FIXME: might want to categorically disallow
+  -- purse creation without KYC (depending on
+  -- exchange settings => new argument?)
+END IF;
+
+IF ( (my_purses_active >= my_purses_allowed) AND
+     ( (my_balance_val < in_purse_fee_val) OR
+       ( (my_balance_val <= in_purse_fee_val) AND
+         (my_balance_frac < in_purse_fee_frac) ) ) )
+THEN
+  out_no_funds=TRUE;
+  RETURN;
+END IF;
+
+IF (my_purses_active < my_purses_allowed)
+THEN
+  my_purses_active = my_purses_active + 1;
+ELSE
+  -- FIXME: See above: we should probably have
+  -- very explicit wallet-approval in the
+  -- signature to charge the reserve!
+  my_balance_val = my_balance_val - in_purse_fee_val;
+  IF (my_balance_frac > in_purse_fee_frac)
+  THEN
+    my_balance_frac = my_balance_frac - in_purse_fee_frac;
+  ELSE
+    my_balance_val = my_balance_val - 1;
+    my_balance_frac = my_balance_frac + 100000000 - in_purse_fee_frac;
+  END IF;
+END IF;
+
+UPDATE reserves SET
+  gc_date=min_reserve_gc
+ ,current_balance_val=my_balance_val
+ ,current_balance_frac=my_balance_frac
+ ,purses_active=my_purses_active
+ ,kyc_required=TRUE
+WHERE
+  reserves.reserve_pub=rpub;
+
+out_no_funds=FALSE;
+
 
 END $$;
 
