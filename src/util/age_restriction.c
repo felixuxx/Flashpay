@@ -268,12 +268,12 @@ struct TALER_AgeAttestationPS
   /**
    * Purpose must be #TALER_SIGNATURE_WALLET_AGE_ATTESTATION.
    */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose GNUNET_PACKED;
 
   /**
    * Age mask that defines the underlying age groups
    */
-  struct TALER_AgeMaskNBO mask;
+  struct TALER_AgeMaskNBO mask GNUNET_PACKED;
 
   /**
    * The particular age that this attestation is for
@@ -325,7 +325,7 @@ TALER_age_commitment_attest (
     struct TALER_AgeAttestationPS at = {
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
-      .mask.bits_nbo = GNUNET_htonll (cp->commitment.mask.bits),
+      .mask.bits_nbo = htonl (cp->commitment.mask.bits),
       .age = age,
       .padding = { 0 },
     };
@@ -374,7 +374,7 @@ TALER_age_commitment_verify (
     struct TALER_AgeAttestationPS at = {
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
-      .mask.bits_nbo = GNUNET_htonll (comm->mask.bits),
+      .mask.bits_nbo = htonl (comm->mask.bits),
       .age = age,
       .padding = { 0 },
     };
