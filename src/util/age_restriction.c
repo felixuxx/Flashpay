@@ -250,6 +250,16 @@ TALER_age_commitment_derive (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Age group mask in network byte order.
+ */
+struct TALER_AgeMaskNBO
+{
+  uint32_t bits_nbo;
+};
+
 /**
  * Used for attestation of a particular age
  */
@@ -263,13 +273,23 @@ struct TALER_AgeAttestationPS
   /**
    * Age mask that defines the underlying age groups
    */
-  struct TALER_AgeMask mask;
+  struct TALER_AgeMaskNBO mask;
 
   /**
    * The particular age that this attestation is for
    */
   uint8_t age;
+
+  /**
+   * Pad to a total size of 16 bytes.
+   *
+   * (Strangly, the compiler leaves padding after the age
+   * field even with GNUNET_PACKED / GNUNET_NETWORK_STRUCT_BEGIN.
+   */
+  uint8_t padding[3];
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum GNUNET_GenericReturnValue
@@ -305,8 +325,9 @@ TALER_age_commitment_attest (
     struct TALER_AgeAttestationPS at = {
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
-      .mask = cp->commitment.mask,
-      .age = age
+      .mask.bits_nbo = GNUNET_htonll (cp->commitment.mask.bits),
+      .age = age,
+      .padding = { 0 },
     };
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
@@ -344,14 +365,18 @@ TALER_age_commitment_verify (
     return GNUNET_OK;
 
   if (group > comm->num)
+  {
+    GNUNET_break_op (0);
     return GNUNET_NO;
+  }
 
   {
     struct TALER_AgeAttestationPS at = {
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
-      .mask = comm->mask,
+      .mask.bits_nbo = GNUNET_htonll (comm->mask.bits),
       .age = age,
+      .padding = { 0 },
     };
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
