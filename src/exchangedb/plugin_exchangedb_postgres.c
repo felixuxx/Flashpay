@@ -13439,7 +13439,7 @@ postgres_do_purse_deposit (
   bool *conflict)
 {
   struct PostgresClosure *pg = cls;
-  uint64_t partner_id = 0;
+  uint64_t partner_id = 0; /* FIXME: WAD support... */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
@@ -13689,7 +13689,7 @@ postgres_do_account_merge (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
-  GNUNET_break (0); // FIXME
+  GNUNET_break (0); // FIXME: Function dead, eliminate? (DCE)
   return GNUNET_DB_STATUS_HARD_ERROR;
 }
 

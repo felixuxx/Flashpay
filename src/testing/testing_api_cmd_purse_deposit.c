@@ -215,7 +215,7 @@ deposit_run (void *cls,
 
   ds->dh = TALER_EXCHANGE_purse_deposit (
     is->exchange,
-    NULL, /* FIXME: purse exchange URL */
+    NULL, /* FIXME: WADs support: purse exchange URL */
     &ds->purse_pub,
     ds->min_age,
     ds->num_coin_references,
