@@ -2773,6 +2773,18 @@ END IF;
 out_conflict=FALSE;
 
 
+-- Store account merge signature.
+INSERT INTO account_merges
+  (reserve_pub
+  ,reserve_sig
+  ,purse_pub)
+  VALUES
+  (in_reserve_pub
+  ,in_reserve_sig
+  ,in_purse_pub);
+
+
+
 -- Charge reserve for purse creation.
 -- FIXME: Use different type of purse
 -- signature in this case, so that we
@@ -2860,7 +2872,7 @@ CREATE OR REPLACE FUNCTION exchange_do_account_merge(
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- FIXME
+  -- FIXME: function/API is dead! Do DCE?
 END $$;
 
 
