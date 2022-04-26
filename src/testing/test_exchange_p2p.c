@@ -147,10 +147,7 @@ run (void *cls,
                               MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
-  struct TALER_TESTING_Command spend[] = {
-    /**
-     * Spend the coin.
-     */
+  struct TALER_TESTING_Command push[] = {
     TALER_TESTING_cmd_purse_create_with_deposit (
       "purse-with-deposit",
       MHD_HTTP_OK,
@@ -158,17 +155,41 @@ run (void *cls,
       true, /* upload contract */
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "withdraw-coin-1",
-      "EUR:1.01", /* FIXME: check amount vs. fees! */
+      "EUR:1.01",
       NULL),
     TALER_TESTING_cmd_contract_get (
-      "purse-get-contract",
+      "push-get-contract",
       MHD_HTTP_OK,
       "purse-with-deposit"),
     TALER_TESTING_cmd_purse_merge (
       "purse-merge-into-reserve",
       MHD_HTTP_OK,
-      "purse-get-contract",
+      "push-get-contract",
       "create-reserve-1"),
+    // FIXME: long-poll purse status
+    // FIXME: check reserve history!
+    TALER_TESTING_cmd_end ()
+  };
+  struct TALER_TESTING_Command pull[] = {
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      "create-reserve-1"),
+    TALER_TESTING_cmd_contract_get (
+      "pull-get-contract",
+      MHD_HTTP_OK,
+      "purse-create-with-reserve"),
+    TALER_TESTING_cmd_purse_deposit_coins (
+      "purse-deposit-coins",
+      MHD_HTTP_OK,
+      0 /* min age */,
+      "purse-create-with-reserve",
+      "withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    // FIXME: long-poll purse status
     // FIXME: check reserve history!
     TALER_TESTING_cmd_end ()
   };
@@ -205,8 +226,10 @@ run (void *cls,
                                                 1),
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
-    TALER_TESTING_cmd_batch ("spend",
-                             spend),
+    TALER_TESTING_cmd_batch ("push",
+                             push),
+    TALER_TESTING_cmd_batch ("pull",
+                             pull),
     /* End the suite. */
     TALER_TESTING_cmd_end ()
   };
