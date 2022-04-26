@@ -267,8 +267,9 @@ struct TALER_AgeAttestationPS
 {
   /**
    * Purpose must be #TALER_SIGNATURE_WALLET_AGE_ATTESTATION.
+   * (no GNUNET_PACKED here because the struct is already packed)
    */
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose GNUNET_PACKED;
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
    * Age mask that defines the underlying age groups
@@ -276,17 +277,10 @@ struct TALER_AgeAttestationPS
   struct TALER_AgeMaskNBO mask GNUNET_PACKED;
 
   /**
-   * The particular age that this attestation is for
+   * The particular age that this attestation is for.
+   * We use uint32_t here for alignment.
    */
-  uint8_t age;
-
-  /**
-   * Pad to a total size of 16 bytes.
-   *
-   * (Strangly, the compiler leaves padding after the age
-   * field even with GNUNET_PACKED / GNUNET_NETWORK_STRUCT_BEGIN.
-   */
-  uint8_t padding[3];
+  uint32_t age GNUNET_PACKED;
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -326,8 +320,7 @@ TALER_age_commitment_attest (
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
       .mask.bits_nbo = htonl (cp->commitment.mask.bits),
-      .age = age,
-      .padding = { 0 },
+      .age = htonl (age),
     };
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
@@ -375,8 +368,7 @@ TALER_age_commitment_verify (
       .purpose.size = htonl (sizeof(at)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_AGE_ATTESTATION),
       .mask.bits_nbo = htonl (comm->mask.bits),
-      .age = age,
-      .padding = { 0 },
+      .age = htonl (age),
     };
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
