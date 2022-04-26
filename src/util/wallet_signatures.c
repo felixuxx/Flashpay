@@ -190,6 +190,7 @@ TALER_wallet_deposit_verify (
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
                      deposit_fee);
+
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr,

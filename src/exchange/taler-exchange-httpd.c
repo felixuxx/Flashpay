@@ -144,8 +144,7 @@ char *TEH_base_url;
 /**
  * Age restriction flags and mask
  */
-bool TEH_age_restriction_enabled = false;
-struct TALER_AgeMask TEH_age_mask = {0};
+bool TEH_age_restriction_enabled = true;
 
 /**
  * Default timeout in seconds for HTTP requests.

@@ -2060,7 +2060,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   /* If age restriction is enabled, initialize the array of age restricted
    denoms  and prepare a hash for them, separate from the others.  We will join
    those hashes afterwards.*/
-  if (TEH_age_restriction_enabled)
+  if (0)
   {
     age_restricted_denoms = json_array ();
     GNUNET_assert (NULL != age_restricted_denoms);
@@ -2146,7 +2146,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         /* Put the denom into the correct array depending on the settings and
          * the properties of the denomination.  Also, we build up the right
          * hash for the corresponding array. */
-        if (TEH_age_restriction_enabled &&
+        if (0 &&
             (0 != dk->denom_pub.age_mask.bits))
         {
           have_age_restricted_denoms = true;
@@ -2180,7 +2180,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     /* If age restriction is active and we had at least one denomination of
      * that sort, we simply add the hash of all age restricted denominations at
      * the end of the others. */
-    if (TEH_age_restriction_enabled && have_age_restricted_denoms)
+    if (0 && have_age_restricted_denoms)
     {
       struct GNUNET_HashCode hcr;
       GNUNET_CRYPTO_hash_context_finish (hash_context_restricted, &hcr);
@@ -2205,7 +2205,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                   "Failed to generate key response data for %s\n",
                   GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
-      if (TEH_age_restriction_enabled && NULL != age_restricted_denoms)
+      if (0 && NULL != age_restricted_denoms)
         json_decref (age_restricted_denoms);
       json_decref (sctx.signkeys);
       json_decref (recoup);

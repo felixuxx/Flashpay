@@ -196,7 +196,6 @@ extern char *TEH_currency;
  * Age restriction extension state
  */
 extern bool TEH_age_restriction_enabled;
-extern struct TALER_AgeMask TEH_age_mask;
 
 /**
  * Our (externally visible) base URL.
@@ -310,8 +309,8 @@ struct TEH_RequestHandler
      * @return MHD result code
      */
     MHD_RESULT
-    (*get)(struct TEH_RequestContext *rc,
-           const char *const args[]);
+      (*get)(struct TEH_RequestContext *rc,
+             const char *const args[]);
 
 
     /**

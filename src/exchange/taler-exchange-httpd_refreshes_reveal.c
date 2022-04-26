@@ -440,6 +440,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #TALER_MAX_FRESH_COINS, so this is safe */
   const struct TEH_DenominationKey *dks[num_fresh_coins];
+  const struct TEH_DenominationKey *old_dk;
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[num_fresh_coins];
   MHD_RESULT ret;
@@ -459,6 +460,53 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                        NULL);
   }
+
+  /* lookup old_coin_pub in database */
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+        (qs = TEH_plugin->get_melt (TEH_plugin->cls,
+                                    &rctx->rc,
+                                    &rctx->melt,
+                                    &melt_serial_id)))
+    {
+      switch (qs)
+      {
+      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+        ret = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          TALER_EC_EXCHANGE_REFRESHES_REVEAL_SESSION_UNKNOWN,
+                                          NULL);
+        break;
+      case GNUNET_DB_STATUS_HARD_ERROR:
+        ret = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "melt");
+        break;
+      case GNUNET_DB_STATUS_SOFT_ERROR:
+      default:
+        GNUNET_break (0);   /* should be impossible */
+        ret = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                          NULL);
+        break;
+      }
+      goto cleanup;
+    }
+    if (rctx->melt.session.noreveal_index >= TALER_CNC_KAPPA)
+    {
+      GNUNET_break (0);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                        "melt");
+      goto cleanup;
+    }
+  }
+
 
   /* Parse denomination key hashes */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
@@ -482,6 +530,13 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                              connection,
                                              &ret);
     if (NULL == dks[i])
+      return ret;
+    old_dk = TEH_keys_denomination_by_hash2 (ksh,
+                                             &rctx->melt.session.coin.
+                                             denom_pub_hash,
+                                             connection,
+                                             &ret);
+    if (NULL == old_dk)
       return ret;
     if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&
          (rctx->no_rms) )
@@ -548,52 +603,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                         &rrc->coin_envelope_hash);
   }
 
-  /* lookup old_coin_pub in database */
-  {
-    enum GNUNET_DB_QueryStatus qs;
-
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-        (qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                                    &rctx->rc,
-                                    &rctx->melt,
-                                    &melt_serial_id)))
-    {
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        ret = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_NOT_FOUND,
-                                          TALER_EC_EXCHANGE_REFRESHES_REVEAL_SESSION_UNKNOWN,
-                                          NULL);
-        break;
-      case GNUNET_DB_STATUS_HARD_ERROR:
-        ret = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                          "melt");
-        break;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-      default:
-        GNUNET_break (0);   /* should be impossible */
-        ret = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                          NULL);
-        break;
-      }
-      goto cleanup;
-    }
-    if (rctx->melt.session.noreveal_index >= TALER_CNC_KAPPA)
-    {
-      GNUNET_break (0);
-      ret = TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                        "melt");
-      goto cleanup;
-    }
-  }
-
   if (TEH_age_restriction_enabled &&
       ((NULL == old_age_commitment_json) !=
        TALER_AgeCommitmentHash_isNullOrZero (
@@ -619,7 +628,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 
     rctx->old_age_commitment = GNUNET_new (struct TALER_AgeCommitment);
     oac = rctx->old_age_commitment;
-    oac->mask  =  TEH_age_mask;
+    oac->mask = old_dk->meta.age_mask;
     oac->num = ng;
     oac->keys = GNUNET_new_array (ng, struct TALER_AgeCommitmentPublicKeyP);
 
