@@ -13352,6 +13352,74 @@ postgres_insert_purse_request (
 
 
 /**
+ * Function called to obtain information about a purse.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub public key of the new purse
+ * @param[out] purse_expiration set to time when the purse will expire
+ * @param[out] amount set to target amount (with fees) to be put into the purse
+ * @param[out] deposited set to actual amount put into the purse so far
+ * @param[out] h_contract_terms set to hash of the contract for the purse
+ * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
+ * @param[out] deposit_timestamp set to time when the deposited amount reached the target amount, or NEVER if not
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp *purse_expiration,
+  struct TALER_Amount *amount,
+  struct TALER_Amount *deposited,
+  struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp *merge_timestamp,
+  struct GNUNET_TIME_Timestamp *deposit_timestamp)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_timestamp ("purse_expiration",
+                                     purse_expiration),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                 amount),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                 deposited),
+    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                          h_contract_terms),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
+                                       merge_timestamp),
+      NULL),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_timestamp ("deposit_timestamp",
+                                       deposit_timestamp),
+      NULL),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  *merge_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
+  *deposit_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "select_purse_request",
+                                                 params,
+                                                 rs);
+  if ( (qs > 0) &&
+       (0 <
+        TALER_amount_cmp (amount,
+                          deposited)) )
+  {
+    /* not yet enough */
+    *deposit_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
+  }
+  return qs;
+}
+
+
+/**
  * Function called to return meta data about a purse by the
  * merge capability key.
  *
@@ -14021,6 +14089,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_purse_request;
   plugin->select_purse_request
     = &postgres_select_purse_request;
+  plugin->select_purse
+    = &postgres_select_purse;
   plugin->select_purse_by_merge_pub
     = &postgres_select_purse_by_merge_pub;
   plugin->do_purse_deposit

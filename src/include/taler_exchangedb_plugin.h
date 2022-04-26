@@ -4547,6 +4547,31 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called to obtain information about a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the new purse
+   * @param[out] purse_expiration set to time when the purse will expire
+   * @param[out] amount set to target amount (with fees) to be put into the purse
+   * @param[out] deposited set to actual amount put into the purse so far
+   * @param[out] h_contract_terms set to hash of the contract for the purse
+   * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
+   * @param[out] deposit_timestamp set to time when the deposited amount reached the target amount, or NEVER if not
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct GNUNET_TIME_Timestamp *purse_expiration,
+    struct TALER_Amount *amount,
+    struct TALER_Amount *deposited,
+    struct TALER_PrivateContractHashP *h_contract_terms,
+    struct GNUNET_TIME_Timestamp *merge_timestamp,
+    struct GNUNET_TIME_Timestamp *deposit_timestamp);
+
+
+  /**
    * Function called to reutrn meta data about a purse by the
    * purse public key.
    *

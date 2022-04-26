@@ -295,7 +295,6 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     }
   } /* end first-time initialization */
 
-#if FIXME
   {
     enum GNUNET_DB_QueryStatus qs;
 
@@ -324,21 +323,20 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_PURSE_UNKNOWN,
+                                         TALER_EC_EXCHANGE_GENERIC_PURSE_UNKNOWN,
                                          NULL);
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break; /* handled below */
     }
   }
-  if (GNUNET_TIME_absolute_is_past (gc->purse_expiration))
+  if (GNUNET_TIME_absolute_is_past (gc->purse_expiration.abs_time))
   {
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_GONE,
-                                       TALER_EC_EXCHANGE_PURSE_EXPIRED,
+                                       TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
                                        GNUNET_TIME_timestamp2s (
                                          gc->purse_expiration));
   }
-#endif
 
   // FIXME: compare amount to deposited amount;
   // if below, set 'deposit_timestamp' to zero!
