@@ -199,13 +199,21 @@ test_attestation (void)
           age_group,
           min_group);
 
+        GNUNET_break (GNUNET_OK == ret);
+
         if (min_group <= age_group &&
             GNUNET_OK != ret)
+        {
+          GNUNET_break (0);
           ret = GNUNET_SYSERR;
+        }
 
         if (min_group > age_group &&
             GNUNET_NO != ret)
+        {
+          GNUNET_break (0);
           ret = GNUNET_SYSERR;
+        }
 
         if (min_group > age_group)
           continue;
@@ -224,14 +232,20 @@ test_attestation (void)
           min_group);
 
         if (GNUNET_OK != ret)
+        {
+          GNUNET_break (0);
           break;
+        }
       }
 
       TALER_age_commitment_proof_free (&acp[i]);
     }
 
     if (GNUNET_SYSERR == ret)
+    {
+      GNUNET_break (0);
       return ret;
+    }
   }
   return GNUNET_OK;
 }
@@ -243,10 +257,16 @@ main (int argc,
 {
   (void) argc;
   (void) argv;
+  GNUNET_log_setup ("test-age-restriction",
+                    "INFO",
+                    NULL);
   if (GNUNET_OK != test_groups ())
     return 1;
   if (GNUNET_OK != test_attestation ())
+  {
+    GNUNET_break (0);
     return 2;
+  }
   return 0;
 }
 

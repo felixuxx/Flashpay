@@ -201,8 +201,8 @@ TALER_age_commitment_derive (
   {
     GNUNET_CRYPTO_edx25519_public_key_derive (
       &orig->commitment.keys[i].pub,
-      &salt,
-      sizeof(salt),
+      salt,
+      sizeof(*salt),
       &newacp->commitment.keys[i].pub);
   }
 
