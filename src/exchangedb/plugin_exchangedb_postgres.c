@@ -3470,6 +3470,22 @@ prepare_statements (struct PostgresClosure *pg)
       "  ($1, $2, $3, $4, $5, $6, $7, $8)"
       "  ON CONFLICT DO NOTHING;",
       8),
+    /* Used in #postgres_select_purse */
+    GNUNET_PQ_make_prepare (
+      "select_purse",
+      "SELECT "
+      " merge_pub"
+      ",purse_expiration"
+      ",h_contract_terms"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",balance_val"
+      ",balance_frac"
+      ",merge_timestamp"
+      " FROM purse_requests"
+      " WHERE purse_pub=$1"
+      " LEFT JOIN purse_merges ON (purse_pub);",
+      1),
     /* Used in #postgres_select_purse_request */
     GNUNET_PQ_make_prepare (
       "select_purse_request",
@@ -13361,7 +13377,6 @@ postgres_insert_purse_request (
  * @param[out] deposited set to actual amount put into the purse so far
  * @param[out] h_contract_terms set to hash of the contract for the purse
  * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
- * @param[out] deposit_timestamp set to time when the deposited amount reached the target amount, or NEVER if not
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -13372,8 +13387,7 @@ postgres_select_purse (
   struct TALER_Amount *amount,
   struct TALER_Amount *deposited,
   struct TALER_PrivateContractHashP *h_contract_terms,
-  struct GNUNET_TIME_Timestamp *merge_timestamp,
-  struct GNUNET_TIME_Timestamp *deposit_timestamp)
+  struct GNUNET_TIME_Timestamp *merge_timestamp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -13393,29 +13407,14 @@ postgres_select_purse (
       GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
                                        merge_timestamp),
       NULL),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_timestamp ("deposit_timestamp",
-                                       deposit_timestamp),
-      NULL),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
   *merge_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
-  *deposit_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "select_purse_request",
-                                                 params,
-                                                 rs);
-  if ( (qs > 0) &&
-       (0 <
-        TALER_amount_cmp (amount,
-                          deposited)) )
-  {
-    /* not yet enough */
-    *deposit_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
-  }
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "select_purse",
+                                                   params,
+                                                   rs);
 }
 
 

@@ -4556,7 +4556,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] deposited set to actual amount put into the purse so far
    * @param[out] h_contract_terms set to hash of the contract for the purse
    * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
-   * @param[out] deposit_timestamp set to time when the deposited amount reached the target amount, or NEVER if not
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -4567,8 +4566,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_Amount *amount,
     struct TALER_Amount *deposited,
     struct TALER_PrivateContractHashP *h_contract_terms,
-    struct GNUNET_TIME_Timestamp *merge_timestamp,
-    struct GNUNET_TIME_Timestamp *deposit_timestamp);
+    struct GNUNET_TIME_Timestamp *merge_timestamp);
 
 
   /**

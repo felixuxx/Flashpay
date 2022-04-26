@@ -72,11 +72,6 @@ struct GetContext
   struct GNUNET_TIME_Timestamp merge_timestamp;
 
   /**
-   * When was the full amount deposited into this purse?
-   */
-  struct GNUNET_TIME_Timestamp deposit_timestamp;
-
-  /**
    * How much is the purse (supposed) to be worth?
    */
   struct TALER_Amount amount;
@@ -304,8 +299,7 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                    &gc->amount,
                                    &gc->deposited,
                                    &gc->h_contract,
-                                   &gc->merge_timestamp,
-                                   &gc->deposit_timestamp);
+                                   &gc->merge_timestamp);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -343,9 +337,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
 
   if (GNUNET_TIME_absolute_is_future (gc->timeout) &&
       ( ((gc->wait_for_merge) &&
-         GNUNET_TIME_absolute_is_zero (gc->merge_timestamp.abs_time)) ||
+         GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time)) ||
         ((! gc->wait_for_merge) &&
-         GNUNET_TIME_absolute_is_zero (gc->deposit_timestamp.abs_time)) ))
+         (0 <
+          TALER_amount_cmp (&gc->amount,
+                            &gc->deposited))) ) )
   {
     gc->suspended = true;
     GNUNET_CONTAINER_DLL_insert (gc_head,
@@ -355,16 +351,24 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     return MHD_YES;
   }
 
-  // FIXME: add exchange signature!?
-  // FIXME: return amount?
-  res = TALER_MHD_REPLY_JSON_PACK (
-    rc->connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                gc->merge_timestamp),
-    GNUNET_JSON_pack_timestamp ("deposit_timestamp",
-                                gc->deposit_timestamp)
-    );
+  {
+    struct GNUNET_TIME_Timestamp dt = GNUNET_TIME_timestamp_get ();
+
+    if (GNUNET_TIME_timestamp_cmp (dt,
+                                   >,
+                                   gc->purse_expiration))
+      dt = gc->purse_expiration;
+    // FIXME: add exchange signature!?
+    // FIXME: return amount?
+    res = TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                  gc->merge_timestamp),
+      GNUNET_JSON_pack_timestamp ("deposit_timestamp",
+                                  dt)
+      );
+  }
   return res;
 }
 
