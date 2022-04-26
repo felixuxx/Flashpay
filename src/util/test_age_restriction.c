@@ -199,8 +199,6 @@ test_attestation (void)
           age_group,
           min_group);
 
-        GNUNET_break (GNUNET_OK == ret);
-
         if (min_group <= age_group &&
             GNUNET_OK != ret)
         {
