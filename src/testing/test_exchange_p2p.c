@@ -176,6 +176,7 @@ run (void *cls,
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-1"),
     TALER_TESTING_cmd_contract_get (
       "pull-get-contract",

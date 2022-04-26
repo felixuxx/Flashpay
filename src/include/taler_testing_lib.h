@@ -2470,6 +2470,7 @@ TALER_TESTING_cmd_purse_get (
  * @param expected_http_status what HTTP status do we expect to get returned from the exchange
  * @param contract_terms contract, JSON string
  * @param upload_contract should we upload the contract
+ * @param expiration when should the purse expire
  * @param reserve_ref reference to reserve key, or NULL to create a new reserve
  * @return the command
  */
@@ -2479,6 +2480,7 @@ TALER_TESTING_cmd_purse_create_with_reserve (
   unsigned int expected_http_status,
   const char *contract_terms,
   bool upload_contract,
+  struct GNUNET_TIME_Relative expiration,
   const char *reserve_ref);
 
 

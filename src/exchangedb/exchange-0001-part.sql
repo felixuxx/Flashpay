@@ -2734,6 +2734,14 @@ DECLARE
   my_kyc_passed BOOLEAN;
 BEGIN
 
+-- comment out for now
+IF TRUE
+THEN
+  out_no_funds=FALSE;
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+
 -- Store purse merge signature, checks for purse_pub uniqueness
 INSERT INTO purse_merges
     (partner_serial_id

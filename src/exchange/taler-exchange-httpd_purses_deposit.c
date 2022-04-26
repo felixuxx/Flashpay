@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_purses_create.c
+ * @file taler-exchange-httpd_purses_deposit.c
  * @brief Handle /purses/$PID/deposit requests; parses the POST and JSON and
  *        verifies the coin signature before handing things off
  *        to the database.

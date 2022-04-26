@@ -72,6 +72,16 @@ struct ReservePurseState
   struct TALER_EXCHANGE_PurseCreateMergeHandle *dh;
 
   /**
+   * When will the purse expire?
+   */
+  struct GNUNET_TIME_Relative expiration_rel;
+
+  /**
+   * When will the purse expire?
+   */
+  struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
    * Contract terms for the purse.
    */
   json_t *contract_terms;
@@ -161,6 +171,13 @@ purse_run (void *cls,
                                       &ds->purse_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_create (&ds->merge_priv.eddsa_priv);
   GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
+  ds->purse_expiration = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_relative_to_absolute (ds->expiration_rel));
+  GNUNET_assert (0 ==
+                 json_object_set_new (
+                   ds->contract_terms,
+                   "pay_deadline",
+                   GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
   ds->dh = TALER_EXCHANGE_purse_create_with_merge (
     is->exchange,
@@ -252,12 +269,14 @@ TALER_TESTING_cmd_purse_create_with_reserve (
   unsigned int expected_http_status,
   const char *contract_terms,
   bool upload_contract,
+  struct GNUNET_TIME_Relative expiration,
   const char *reserve_ref)
 {
   struct ReservePurseState *ds;
   json_error_t err;
 
   ds = GNUNET_new (struct ReservePurseState);
+  ds->expiration_rel = expiration;
   ds->contract_terms = json_loads (contract_terms,
                                    0 /* flags */,
                                    &err);

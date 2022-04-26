@@ -3483,8 +3483,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",balance_frac"
       ",merge_timestamp"
       " FROM purse_requests"
-      " WHERE purse_pub=$1"
-      " LEFT JOIN purse_merges ON (purse_pub);",
+      " LEFT JOIN purse_merges USING (purse_pub)"
+      " WHERE purse_pub=$1;",
       1),
     /* Used in #postgres_select_purse_request */
     GNUNET_PQ_make_prepare (

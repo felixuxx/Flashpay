@@ -268,7 +268,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct TALER_PurseContractSignatureP purse_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
-  struct TALER_Amount purse_value_after_fees;
 
   pcm = GNUNET_new (struct TALER_EXCHANGE_PurseCreateMergeHandle);
   pcm->exchange = exchange;
@@ -380,7 +379,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   }
   create_with_merge_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("purse_value",
-                            &purse_value_after_fees),
+                            &pcm->purse_value_after_fees),
     GNUNET_JSON_pack_uint64 ("min_age",
                              min_age),
     GNUNET_JSON_pack_allow_null (
