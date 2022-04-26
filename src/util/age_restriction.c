@@ -38,13 +38,6 @@ TALER_age_commitment_hash (
     return;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "popcount - 1: %d\n",
-              __builtin_popcount (commitment->mask.bits) - 1);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "commitment num: %d\n",
-              commitment->num);
-
   GNUNET_assert (__builtin_popcount (commitment->mask.bits) - 1 ==
                  commitment->num);
 
