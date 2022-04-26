@@ -173,7 +173,7 @@ FAIL:
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
   const struct TALER_AgeCommitmentProof *orig,
-  const uint64_t salt,
+  const struct GNUNET_HashCode *salt,
   struct TALER_AgeCommitmentProof *newacp)
 {
   GNUNET_assert (NULL != newacp);
@@ -211,8 +211,8 @@ TALER_age_commitment_derive (
   {
     GNUNET_CRYPTO_edx25519_private_key_derive (
       &orig->proof.keys[i].priv,
-      &salt,
-      sizeof(salt),
+      salt,
+      sizeof(*salt),
       &newacp->proof.keys[i].priv);
   }
 #else

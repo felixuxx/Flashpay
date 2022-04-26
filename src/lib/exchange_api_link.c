@@ -148,15 +148,13 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   /* Derive the age commitment and calculate the hash */
   if (NULL != lh->age_commitment_proof)
   {
-    uint64_t seed  = (uint64_t) secret.key.bits[0]
-                     | (uint64_t) secret.key.bits[1] << 32;
     lci->age_commitment_proof = GNUNET_new (struct TALER_AgeCommitmentProof);
     lci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_age_commitment_derive (
                      lh->age_commitment_proof,
-                     seed,
+                     &secret.key,
                      lci->age_commitment_proof));
 
     TALER_age_commitment_hash (

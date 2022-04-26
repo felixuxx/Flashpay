@@ -297,8 +297,6 @@ check_commitment (struct RevealContext *rctx,
            * the transfer_secret and the old age commitment. */
           if (NULL != rctx->old_age_commitment)
           {
-            uint64_t seed = (uint64_t) ts.key.bits[0]
-                            | (uint64_t) ts.key.bits[1] << 32;
             struct TALER_AgeCommitmentProof acp = {
               /* we only need the commitment, not the proof, for the call to
                * TALER_age_commitment_derive. */
@@ -310,7 +308,7 @@ check_commitment (struct RevealContext *rctx,
             GNUNET_assert (GNUNET_OK ==
                            TALER_age_commitment_derive (
                              &acp,
-                             seed,
+                             &ts.key,
                              &nacp));
 
             TALER_age_commitment_hash (&nacp.commitment, &h);

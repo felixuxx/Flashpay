@@ -170,11 +170,13 @@ test_attestation (void)
     /* Also derive two more commitments right away */
     for (uint8_t i = 0; i<2; i++)
     {
-      uint64_t salt = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                                UINT64_MAX);
+      struct GNUNET_HashCode salt;
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  &salt,
+                                  sizeof (salt));
       GNUNET_assert (GNUNET_OK ==
                      TALER_age_commitment_derive (&acp[i],
-                                                  salt,
+                                                  &salt,
                                                   &acp[i + 1]));
     }
 

@@ -185,11 +185,6 @@ TALER_EXCHANGE_get_melt_data_ (
       /* Handle age commitment, if present */
       if (NULL != md->melted_coin.age_commitment_proof)
       {
-        /* We use the first 8 bytes of the trans_sec to generate a new age
-         * commitment */
-        uint64_t age_seed = (uint64_t) trans_sec.key.bits[0]
-                            | (uint64_t) trans_sec.key.bits[1] << 32;
-
         fcd->age_commitment_proof[i] = GNUNET_new (struct
                                                    TALER_AgeCommitmentProof);
         ach = GNUNET_new (struct TALER_AgeCommitmentHash);
@@ -197,7 +192,7 @@ TALER_EXCHANGE_get_melt_data_ (
         GNUNET_assert (GNUNET_OK ==
                        TALER_age_commitment_derive (
                          md->melted_coin.age_commitment_proof,
-                         age_seed,
+                         &trans_sec.key,
                          fcd->age_commitment_proof[i]));
 
         TALER_age_commitment_hash (

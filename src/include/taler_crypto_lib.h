@@ -4819,7 +4819,7 @@ TALER_age_restriction_commit (
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_derive (
   const struct TALER_AgeCommitmentProof *orig,
-  const uint64_t salt,
+  const struct GNUNET_HashCode *salt,
   struct TALER_AgeCommitmentProof *derived);
 
 
