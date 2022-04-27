@@ -2417,6 +2417,7 @@ TALER_TESTING_cmd_purse_create_with_deposit (
  *
  * @param label command label
  * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param for_merge true if for merge, false if for deposit
  * @param contract_ref reference to a command providing us with the contract private key
  * @return the command
  */
@@ -2424,6 +2425,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_contract_get (
   const char *label,
   unsigned int expected_http_status,
+  bool for_merge,
   const char *contract_ref);
 
 

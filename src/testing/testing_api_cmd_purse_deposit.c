@@ -154,9 +154,23 @@ deposit_run (void *cls,
 {
   struct PurseDepositState *ds = cls;
   struct TALER_EXCHANGE_PurseDeposit deposits[ds->num_coin_references];
+  const struct TALER_PurseContractPublicKeyP *purse_pub;
+  const struct TALER_TESTING_Command *purse_cmd;
 
   (void) cmd;
   ds->is = is;
+
+  purse_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                        ds->purse_ref);
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_purse_pub (purse_cmd,
+                                         &purse_pub))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  ds->purse_pub = *purse_pub;
   for (unsigned int i = 0; i<ds->num_coin_references; i++)
   {
     const struct Coin *cr = &ds->coin_references[i];

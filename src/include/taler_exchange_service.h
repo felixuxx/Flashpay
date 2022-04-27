@@ -4004,14 +4004,14 @@ struct TALER_EXCHANGE_ContractGetResponse
       struct TALER_PurseContractPublicKeyP purse_pub;
 
       /**
-       * Private key of the merge capability.
+       * Encrypted contract.
        */
-      struct TALER_PurseMergePrivateKeyP merge_priv;
+      const void *econtract;
 
       /**
-       * Contract terms.
+       * Number of bytes in @e econtract.
        */
-      const json_t *contract_terms;
+      size_t econtract_size;
 
     } success;
 

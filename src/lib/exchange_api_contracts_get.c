@@ -106,7 +106,6 @@ handle_contract_get_finished (void *cls,
     {
       void *econtract;
       size_t econtract_size;
-      json_t *contract;
       struct TALER_PurseContractSignatureP econtract_sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("purse_pub",
@@ -143,24 +142,11 @@ handle_contract_get_finished (void *cls,
         GNUNET_JSON_parse_free (spec);
         break;
       }
-      contract = TALER_CRYPTO_contract_decrypt_for_merge (
-        &cgh->contract_priv,
-        &dr.details.success.purse_pub,
-        econtract,
-        econtract_size,
-        &dr.details.success.merge_priv);
-      GNUNET_JSON_parse_free (spec);
-      if (NULL == contract)
-      {
-        GNUNET_break (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_EXCHANGE_CONTRACTS_DECRYPTION_FAILED;
-        break;
-      }
-      dr.details.success.contract_terms = contract;
+      dr.details.success.econtract = econtract;
+      dr.details.success.econtract_size = econtract_size;
       cgh->cb (cgh->cb_cls,
                &dr);
-      json_decref (contract);
+      GNUNET_JSON_parse_free (spec);
       TALER_EXCHANGE_contract_get_cancel (cgh);
       return;
     }

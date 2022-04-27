@@ -160,6 +160,7 @@ run (void *cls,
     TALER_TESTING_cmd_contract_get (
       "push-get-contract",
       MHD_HTTP_OK,
+      true, /* for merge */
       "purse-with-deposit"),
     TALER_TESTING_cmd_purse_merge (
       "purse-merge-into-reserve",
@@ -181,6 +182,7 @@ run (void *cls,
     TALER_TESTING_cmd_contract_get (
       "pull-get-contract",
       MHD_HTTP_OK,
+      false, /* for deposit */
       "purse-create-with-reserve"),
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins",

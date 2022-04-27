@@ -438,6 +438,50 @@ test_merchant_sigs (void)
 }
 
 
+static int
+test_contracts (void)
+{
+  struct TALER_ContractDiffiePrivateP cpriv;
+  struct TALER_PurseContractPublicKeyP purse_pub;
+  struct TALER_PurseContractPrivateKeyP purse_priv;
+  void *econtract;
+  size_t econtract_size;
+  struct TALER_PurseMergePrivateKeyP mpriv_in;
+  struct TALER_PurseMergePrivateKeyP mpriv_out;
+  json_t *c;
+
+  GNUNET_CRYPTO_ecdhe_key_create (&cpriv.ecdhe_priv);
+  GNUNET_CRYPTO_eddsa_key_create (&purse_priv.eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv.eddsa_priv,
+                                      &purse_pub.eddsa_pub);
+  memset (&mpriv_in,
+          42,
+          sizeof (mpriv_in));
+  c = json_pack ("{s:s}", "test", "value");
+  GNUNET_assert (NULL != c);
+  TALER_CRYPTO_contract_encrypt_for_merge (&purse_pub,
+                                           &cpriv,
+                                           &mpriv_in,
+                                           c,
+                                           &econtract,
+                                           &econtract_size);
+  json_decref (c);
+  c = TALER_CRYPTO_contract_decrypt_for_merge (&cpriv,
+                                               &purse_pub,
+                                               econtract,
+                                               econtract_size,
+                                               &mpriv_out);
+  GNUNET_free (econtract);
+  if (NULL == c)
+    return 1;
+  json_decref (c);
+  if (0 != GNUNET_memcmp (&mpriv_in,
+                          &mpriv_out))
+    return 1;
+  return 0;
+}
+
+
 int
 main (int argc,
       const char *const argv[])
@@ -454,6 +498,8 @@ main (int argc,
     return 4;
   if (0 != test_merchant_sigs ())
     return 5;
+  if (0 != test_contracts ())
+    return 6;
   return 0;
 }
 

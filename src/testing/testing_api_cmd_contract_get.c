@@ -41,6 +41,11 @@ struct ContractGetState
   json_t *contract_terms;
 
   /**
+   * Private key to decrypt the contract.
+   */
+  struct TALER_ContractDiffiePrivateP contract_priv;
+
+  /**
    * Set to the returned merge key.
    */
   struct TALER_PurseMergePrivateKeyP merge_priv;
@@ -69,6 +74,12 @@ struct ContractGetState
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
+
+  /**
+   * True if this is for a 'merge' operation,
+   * 'false' if this is for a 'deposit' operation.
+   */
+  bool merge;
 
 };
 
@@ -109,10 +120,42 @@ get_cb (void *cls,
     const struct TALER_PurseMergePrivateKeyP *mp;
     const json_t *ct;
 
-    /* check that we got what we expected to get! */
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_merge_priv (ref,
-                                            &mp))
+    ds->purse_pub = dr->details.success.purse_pub;
+    if (ds->merge)
+    {
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_merge_priv (ref,
+                                              &mp))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+      ds->contract_terms =
+        TALER_CRYPTO_contract_decrypt_for_merge (
+          &ds->contract_priv,
+          &ds->purse_pub,
+          dr->details.success.econtract,
+          dr->details.success.econtract_size,
+          &ds->merge_priv);
+      if (0 !=
+          GNUNET_memcmp (mp,
+                         &ds->merge_priv))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+    }
+    else
+    {
+      ds->contract_terms =
+        TALER_CRYPTO_contract_decrypt_for_deposit (
+          &ds->contract_priv,
+          dr->details.success.econtract,
+          dr->details.success.econtract_size);
+    }
+    if (NULL == ds->contract_terms)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (ds->is);
@@ -126,26 +169,14 @@ get_cb (void *cls,
       TALER_TESTING_interpreter_fail (ds->is);
       return;
     }
-    if (0 !=
-        GNUNET_memcmp (mp,
-                       &dr->details.success.merge_priv))
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (ds->is);
-      return;
-    }
     if (1 != /* 1: equal, 0: not equal */
         json_equal (ct,
-                    dr->details.success.contract_terms))
+                    ds->contract_terms))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (ds->is);
       return;
     }
-    ds->contract_terms = json_incref (
-      (json_t *) dr->details.success.contract_terms);
-    ds->merge_priv = dr->details.success.merge_priv;
-    ds->purse_pub = dr->details.success.purse_pub;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -180,6 +211,7 @@ get_run (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
+  ds->contract_priv = *contract_priv;
   ds->dh = TALER_EXCHANGE_contract_get (
     is->exchange,
     contract_priv,
@@ -246,7 +278,8 @@ get_traits (void *cls,
     TALER_TESTING_trait_end ()
   };
 
-  return TALER_TESTING_get_trait (traits,
+  /* skip 'merge_priv' if we are in 'merge' mode */
+  return TALER_TESTING_get_trait (&traits[ds->merge ? 0 : 1],
                                   ret,
                                   trait,
                                   index);
@@ -257,6 +290,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_contract_get (
   const char *label,
   unsigned int expected_http_status,
+  bool for_merge,
   const char *contract_ref)
 {
   struct ContractGetState *ds;
@@ -264,6 +298,7 @@ TALER_TESTING_cmd_contract_get (
   ds = GNUNET_new (struct ContractGetState);
   ds->expected_response_code = expected_http_status;
   ds->contract_ref = contract_ref;
+  ds->merge = for_merge;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

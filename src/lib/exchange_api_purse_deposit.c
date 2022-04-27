@@ -281,6 +281,7 @@ TALER_EXCHANGE_purse_deposit (
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
     json_t *jdeposit;
     struct TALER_CoinSpendSignatureP coin_sig;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
 #if FIXME_OEC
     struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
@@ -300,6 +301,8 @@ TALER_EXCHANGE_purse_deposit (
       GNUNET_free (pch);
       return NULL;
     }
+    GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
+                                        &coin_pub.eddsa_pub);
 #endif
     TALER_wallet_purse_deposit_sign (
       url,
@@ -322,6 +325,8 @@ TALER_EXCHANGE_purse_deposit (
                                   &deposit->h_denom_pub),
       TALER_JSON_pack_denom_sig ("ub_sig",
                                  &deposit->denom_sig),
+      GNUNET_JSON_pack_data_auto ("coin_pub",
+                                  &coin_pub),
       GNUNET_JSON_pack_data_auto ("coin_sig",
                                   &coin_sig));
     GNUNET_assert (0 ==

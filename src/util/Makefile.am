@@ -147,8 +147,9 @@ test_amount_LDADD = \
 test_crypto_SOURCES = \
   test_crypto.c
 test_crypto_LDADD = \
+  libtalerutil.la \
   -lgnunetutil \
-  libtalerutil.la
+  -ljansson
 
 test_payto_SOURCES = \
   test_payto.c

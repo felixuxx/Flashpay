@@ -329,7 +329,7 @@ parse_coin (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TALER_wallet_purse_deposit_verify (TEH_base_url,
                                          pcc->purse_pub,
-                                         &pcc->amount,
+                                         &coin->amount,
                                          &coin->cpi.coin_pub,
                                          &coin->coin_sig))
   {
@@ -549,11 +549,49 @@ TEH_handler_purses_deposit (
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "deposits");
   }
-  /* FIXME: fetch basic purse properties
-     (min age, purse_expiration, amount, merge_pub,
-     h_contract_terms) from
-     DB. Generate 404 or 410 (Gone) replies if
-     applicable. */
+
+  {
+    enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_TIME_Timestamp merge_timestamp;
+
+    qs = TEH_plugin->select_purse (
+      TEH_plugin->cls,
+      pcc.purse_pub,
+      &pcc.purse_expiration,
+      &pcc.amount,
+      &pcc.deposit_total,
+      &pcc.h_contract_terms,
+      &merge_timestamp);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "select purse");
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "select purse");
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_EXCHANGE_GENERIC_PURSE_UNKNOWN,
+                                         NULL);
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break; /* handled below */
+    }
+    if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_GONE,
+                                         TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                         NULL);
+    }
+  }
 
   /* parse deposits */
   pcc.coins = GNUNET_new_array (pcc.num_coins,

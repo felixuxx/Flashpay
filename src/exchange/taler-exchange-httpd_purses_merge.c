@@ -384,7 +384,7 @@ TEH_handler_purses_merge (
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_NOT_FOUND,
-      TALER_EC_EXCHANGE_MERGE_PURSE_NOT_FOUND,
+      TALER_EC_EXCHANGE_GENERIC_PURSE_UNKNOWN,
       NULL);
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     /* continued below */
