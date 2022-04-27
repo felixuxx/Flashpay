@@ -71,11 +71,6 @@ struct TALER_EXCHANGE_PurseDepositHandle
   void *cb_cls;
 
   /**
-   * Expected value in the purse after fees.
-   */
-  struct TALER_Amount purse_value_after_fees;
-
-  /**
    * Public key of the purse.
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
@@ -102,8 +97,10 @@ handle_purse_deposit_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
+  const struct TALER_EXCHANGE_Keys *keys;
 
   pch->job = NULL;
+  keys = TALER_EXCHANGE_get_keys (pch->exchange);
   switch (response_code)
   {
   case 0:
@@ -124,7 +121,7 @@ handle_purse_deposit_finished (void *cls,
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &etime),
         TALER_JSON_spec_amount ("total_deposited",
-                                pch->purse_value_after_fees.currency,
+                                keys->currency,
                                 &total_deposited),
         GNUNET_JSON_spec_end ()
       };
@@ -242,6 +239,11 @@ TALER_EXCHANGE_purse_deposit (
   char *url;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
 
+  if (0 == num_deposits)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   pch = GNUNET_new (struct TALER_EXCHANGE_PurseDepositHandle);
@@ -301,9 +303,9 @@ TALER_EXCHANGE_purse_deposit (
       GNUNET_free (pch);
       return NULL;
     }
+#endif
     GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-#endif
     TALER_wallet_purse_deposit_sign (
       url,
       &pch->purse_pub,

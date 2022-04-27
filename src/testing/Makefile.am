@@ -286,7 +286,7 @@ test_exchange_api_rsa_LDADD = \
   $(XLIB)
 
 test_exchange_p2p_cs_SOURCES = \
-  test_exchange_api.c
+  test_exchange_p2p.c
 test_exchange_p2p_cs_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \

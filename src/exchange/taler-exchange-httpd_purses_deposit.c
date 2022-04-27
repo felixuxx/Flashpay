@@ -325,7 +325,6 @@ parse_coin (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
       return res;
   }
-
   if (GNUNET_OK !=
       TALER_wallet_purse_deposit_verify (TEH_base_url,
                                          pcc->purse_pub,

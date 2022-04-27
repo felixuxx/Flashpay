@@ -278,9 +278,6 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
                               sizeof (nonce));
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Encrypting with key %s\n",
-              TALER_B2S (&key));
   contract_encrypt (&nonce,
                     &key,
                     sizeof (key),
@@ -318,9 +315,6 @@ TALER_CRYPTO_contract_decrypt_for_merge (
     GNUNET_break (0);
     return NULL;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Decrypting with key %s\n",
-              TALER_B2S (&key));
   if (GNUNET_OK !=
       contract_decrypt (&key,
                         sizeof (key),
