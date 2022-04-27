@@ -99,6 +99,7 @@ DROP FUNCTION IF EXISTS exchange_do_purse_merge;
 DROP FUNCTION IF EXISTS exchange_do_account_merge;
 DROP FUNCTION IF EXISTS exchange_do_history_request;
 DROP FUNCTION IF EXISTS exchange_do_close_request;
+DROP FUNCTION IF EXISTS exchange_do_reserve_purse;
 
 -- And we're out of here...
 
