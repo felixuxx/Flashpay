@@ -243,7 +243,7 @@ create_transaction (void *cls,
                                   MHD_HTTP_INTERNAL_SERVER_ERROR,
                                   TALER_EC_GENERIC_DB_STORE_FAILED,
                                   "purse create");
-    return qs;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (in_conflict)
   {
@@ -314,13 +314,14 @@ create_transaction (void *cls,
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
+      GNUNET_break (0 != qs);
       TALER_LOG_WARNING (
         "Failed to store purse deposit information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_STORE_FAILED,
                                              "purse create deposit");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (! balance_ok)
     {
@@ -394,7 +395,7 @@ create_transaction (void *cls,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_GENERIC_DB_STORE_FAILED,
                                            "purse create contract");
-    return qs;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (in_conflict)
   {
@@ -414,13 +415,14 @@ create_transaction (void *cls,
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
+      GNUNET_break (0 != qs);
       TALER_LOG_WARNING (
         "Failed to store fetch contract information from database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_FETCH_FAILED,
                                              "select contract");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     GNUNET_CRYPTO_hash (econtract,
                         econtract_size,

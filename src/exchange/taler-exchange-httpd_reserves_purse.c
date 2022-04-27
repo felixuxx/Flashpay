@@ -223,7 +223,7 @@ purse_transaction (void *cls,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_STORE_FAILED,
                                     "insert purse request");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
       return qs;
@@ -250,6 +250,7 @@ purse_transaction (void *cls,
       if (qs <= 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        GNUNET_break (0 != qs);
         TALER_LOG_WARNING ("Failed to fetch purse information from database\n");
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -304,7 +305,7 @@ purse_transaction (void *cls,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_STORE_FAILED,
                                     "do reserve purse");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (in_conflict)
     {
@@ -326,6 +327,7 @@ purse_transaction (void *cls,
       if (qs <= 0)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        GNUNET_break (0 != qs);
         TALER_LOG_WARNING (
           "Failed to fetch purse merge information from database\n");
         *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -385,7 +387,7 @@ purse_transaction (void *cls,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_STORE_FAILED,
                                              "purse purse contract");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (in_conflict)
     {
@@ -405,13 +407,14 @@ purse_transaction (void *cls,
       {
         if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
           return qs;
+        GNUNET_break (0 != qs);
         TALER_LOG_WARNING (
           "Failed to store fetch contract information from database\n");
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
                                                "select contract");
-        return qs;
+        return GNUNET_DB_STATUS_HARD_ERROR;
       }
       GNUNET_CRYPTO_hash (econtract,
                           econtract_size,

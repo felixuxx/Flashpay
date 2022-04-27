@@ -2716,7 +2716,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_merge_timestamp INT8,
   IN in_reserve_sig BYTEA,
   IN in_purse_fee_val INT8,
-  IN in_purse_fee_frac INT8,
+  IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
   OUT out_no_funds BOOLEAN,
   OUT out_conflict BOOLEAN)
