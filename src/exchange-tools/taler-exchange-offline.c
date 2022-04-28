@@ -4143,7 +4143,7 @@ work (void *cls)
     {
       .name = "wire-fee",
       .help =
-        "sign wire fees for the given year (year, wire method, wire fee and closing fee must be given as arguments)",
+        "sign wire fees for the given year (year, wire method, wire fee, closing fee and wad fee must be given as arguments)",
       .cb = &do_set_wire_fee
     },
     {
