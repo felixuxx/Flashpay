@@ -332,9 +332,6 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                          gc->purse_expiration));
   }
 
-  // FIXME: compare amount to deposited amount;
-  // if below, set 'deposit_timestamp' to zero!
-
   if (GNUNET_TIME_absolute_is_future (gc->timeout) &&
       ( ((gc->wait_for_merge) &&
          GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time)) ||
@@ -358,6 +355,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                    >,
                                    gc->purse_expiration))
       dt = gc->purse_expiration;
+    if (0 <
+        TALER_amount_cmp (&gc->amount,
+                          &gc->deposited))
+      dt = GNUNET_TIME_UNIT_ZERO_TS;
+
     // FIXME: add exchange signature!?
     // FIXME: return amount?
     res = TALER_MHD_REPLY_JSON_PACK (

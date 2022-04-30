@@ -26,6 +26,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_dbevents.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_purses_deposit.h"
@@ -275,6 +276,20 @@ deposit_transaction (void *cls,
       GNUNET_free (partner_url);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+  }
+  {
+    struct TALER_PurseEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+      .purse_pub = *pcc->purse_pub
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Notifying about purse deposit\n");
+    TEH_plugin->event_notify (TEH_plugin->cls,
+                              &rep.header,
+                              NULL,
+                              0);
   }
   return qs;
 }
