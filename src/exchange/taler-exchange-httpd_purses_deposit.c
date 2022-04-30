@@ -277,20 +277,6 @@ deposit_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-  {
-    struct TALER_PurseEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
-      .purse_pub = *pcc->purse_pub
-    };
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Notifying about purse deposit\n");
-    TEH_plugin->event_notify (TEH_plugin->cls,
-                              &rep.header,
-                              NULL,
-                              0);
-  }
   return qs;
 }
 
@@ -655,6 +641,21 @@ TEH_handler_purses_deposit (
       GNUNET_free (pcc.coins);
       return mhd_ret;
     }
+  }
+  {
+    struct TALER_PurseEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+      .purse_pub = *pcc.purse_pub
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Notifying about purse deposit %s\n",
+                TALER_B2S (pcc.purse_pub));
+    TEH_plugin->event_notify (TEH_plugin->cls,
+                              &rep.header,
+                              NULL,
+                              0);
   }
 
   /* generate regular response */

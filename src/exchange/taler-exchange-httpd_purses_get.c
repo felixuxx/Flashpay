@@ -176,6 +176,11 @@ db_event_cb (void *cls,
 
   (void) extra;
   (void) extra_size;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Waking up on %p - %p - %s\n",
+              rc,
+              gc,
+              gc->suspended ? "suspended" : "active");
   if (NULL == gc)
     return; /* event triggered while main transaction
                was still running */
@@ -280,13 +285,19 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
       };
 
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Starting DB event listening\n");
+                  "Starting DB event listening on purse %s\n",
+                  TALER_B2S (&gc->purse_pub));
       gc->eh = TEH_plugin->event_listen (
         TEH_plugin->cls,
         GNUNET_TIME_absolute_get_remaining (gc->timeout),
         &rep.header,
         &db_event_cb,
         rc);
+      if (NULL == gc->eh)
+      {
+        GNUNET_break (0);
+        gc->timeout = GNUNET_TIME_UNIT_ZERO_ABS;
+      }
     }
   } /* end first-time initialization */
 
@@ -332,6 +343,9 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                          gc->purse_expiration));
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Deposited amount is %s\n",
+              TALER_amount2s (&gc->deposited));
   if (GNUNET_TIME_absolute_is_future (gc->timeout) &&
       ( ((gc->wait_for_merge) &&
          GNUNET_TIME_absolute_is_never (gc->merge_timestamp.abs_time)) ||

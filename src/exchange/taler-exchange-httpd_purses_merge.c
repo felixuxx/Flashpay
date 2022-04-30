@@ -308,22 +308,6 @@ merge_transaction (void *cls,
     GNUNET_free (partner_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-
-  {
-    struct TALER_PurseEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_MERGED),
-      .purse_pub = *pcc->purse_pub
-    };
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Notifying about purse merge\n");
-    TEH_plugin->event_notify (TEH_plugin->cls,
-                              &rep.header,
-                              NULL,
-                              0);
-  }
-
   return qs;
 }
 
@@ -548,6 +532,21 @@ TEH_handler_purses_merge (
       GNUNET_free (pcc.provider_url);
       return mhd_ret;
     }
+  }
+
+  {
+    struct TALER_PurseEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_MERGED),
+      .purse_pub = *pcc.purse_pub
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Notifying about purse merge\n");
+    TEH_plugin->event_notify (TEH_plugin->cls,
+                              &rep.header,
+                              NULL,
+                              0);
   }
 
   GNUNET_free (pcc.provider_url);
