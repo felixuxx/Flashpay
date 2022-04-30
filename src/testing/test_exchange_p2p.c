@@ -157,6 +157,13 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:1.01",
       NULL),
+    TALER_TESTING_cmd_purse_poll (
+      "poll-purse-before-merge",
+      MHD_HTTP_OK,
+      "purse-with-deposit",
+      "EUR:1",
+      true,
+      GNUNET_TIME_UNIT_MINUTES),
     TALER_TESTING_cmd_contract_get (
       "push-get-contract",
       MHD_HTTP_OK,
@@ -167,7 +174,13 @@ run (void *cls,
       MHD_HTTP_OK,
       "push-get-contract",
       "create-reserve-1"),
-    // FIXME: long-poll purse status
+    TALER_TESTING_cmd_purse_poll_finish (
+      "merge-purse-poll-finish",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        5),
+      "poll-purse-before-merge"),
+    // FIXME: trigger p2p job
     // FIXME: check reserve history!
     TALER_TESTING_cmd_end ()
   };
@@ -184,6 +197,13 @@ run (void *cls,
       MHD_HTTP_OK,
       false, /* for deposit */
       "purse-create-with-reserve"),
+    TALER_TESTING_cmd_purse_poll (
+      "poll-purse-before-deposit",
+      MHD_HTTP_OK,
+      "purse-create-with-reserve",
+      "EUR:1",
+      false,
+      GNUNET_TIME_UNIT_MINUTES),
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins",
       MHD_HTTP_OK,
@@ -192,7 +212,13 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:1.01",
       NULL),
-    // FIXME: long-poll purse status
+    TALER_TESTING_cmd_purse_poll_finish (
+      "deposit-purse-poll-finish",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        5),
+      "poll-purse-before-deposit"),
+    // FIXME: trigger p2p job
     // FIXME: check reserve history!
     TALER_TESTING_cmd_end ()
   };
