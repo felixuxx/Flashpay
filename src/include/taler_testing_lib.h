@@ -2447,22 +2447,38 @@ TALER_TESTING_cmd_purse_merge (
 
 
 /**
- * Retrieve purse state by purse private key.
+ * Retrieve purse state.
  *
  * @param label command label
  * @param expected_http_status what HTTP status do we expect to get returned from the exchange
  * @param purse_ref reference to a command providing us with the purse private key
- * @param merge_to how long to wait for a merge
- * @param deposit_to how long to wait for a deposit
+ * @param expected_balance how much should be in the purse
+ * @param wait_for_merge true to wait for a merge event, otherwise wait for a deposit event
+ * @param timeout how long to wait
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_purse_get (
+TALER_TESTING_cmd_purse_poll (
   const char *label,
   unsigned int expected_http_status,
   const char *purse_ref,
-  struct GNUNET_TIME_Relative merge_to,
-  struct GNUNET_TIME_Relative deposit_to);
+  const char *expected_balance,
+  bool wait_for_merge,
+  struct GNUNET_TIME_Relative timeout);
+
+
+/**
+ * Wait for the poll command to complete.
+ *
+ * @param label command label
+ * @param timeout how long to wait at most
+ * @param poll_reference which poll command to wait for
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_poll_finish (const char *label,
+                                     struct GNUNET_TIME_Relative timeout,
+                                     const char *poll_reference);
 
 
 /**
