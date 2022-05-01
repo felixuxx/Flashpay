@@ -30,6 +30,7 @@
 #include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
+#include "taler-exchange-httpd_batch-withdraw.h"
 #include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
 #include "taler-exchange-httpd_deposit.h"
@@ -70,6 +71,12 @@
  * FIXME: set to OFF for 0.9.0 release as the feature is not stable!
  */
 #define WITH_P2P 1
+
+/**
+ * Should the experimental batch withdraw be supported?
+ * ON for testing disable for 0.9.0 release!
+ */
+#define WITH_EXPERIMENTAL 1
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -367,6 +374,12 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "withdraw",
       .handler = &TEH_handler_withdraw
     },
+#if WITH_EXPERIMENTAL
+    {
+      .op = "batch-withdraw",
+      .handler = &TEH_handler_batch_withdraw
+    },
+#endif
     {
       .op = "status",
       .handler = &TEH_handler_reserves_status
