@@ -217,7 +217,7 @@ batch_withdraw_transaction (void *cls,
     /* The reserve does not have the required amount (actual
      * amount + withdraw fee) */
     qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          &wc->collectable.reserve_pub,
+                                          wc->reserve_pub,
                                           &balance,
                                           &rh);
     if (NULL == rh)
@@ -303,7 +303,7 @@ batch_withdraw_transaction (void *cls,
       : NULL;
     qs = TEH_plugin->do_batch_withdraw_insert (TEH_plugin->cls,
                                                nonce,
-                                               &wc->collectable,
+                                               &pc->collectable,
                                                now,
                                                ruuid,
                                                &denom_unknown,
@@ -334,7 +334,7 @@ batch_withdraw_transaction (void *cls,
                   "Idempotent coin in batch, not allowed. Aborting.\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_CONFLICT,
-                                             TALER_EC_EXCHANGE_BATCH_IDEMPOTENT_PLANCHET,
+                                             TALER_EC_EXCHANGE_WITHDRAW_BATCH_IDEMPOTENT_PLANCHET,
                                              NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -560,10 +560,9 @@ parse_planchets (struct TEH_RequestContext *rc,
                                       wc,
                                       &mret))
       {
-        GNUNET_JSON_parse_free (spec);
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
-          &wc->collectable.denom_pub_hash,
+          &pc->collectable.denom_pub_hash,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
           "WITHDRAW");
       }
@@ -575,7 +574,7 @@ parse_planchets (struct TEH_RequestContext *rc,
          for idempotency! */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
-        &wc->collectable.denom_pub_hash,
+        &pc->collectable.denom_pub_hash,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "WITHDRAW");
     }
@@ -588,13 +587,13 @@ parse_planchets (struct TEH_RequestContext *rc,
       {
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
-          &wc->collectable.denom_pub_hash,
+          &pc->collectable.denom_pub_hash,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
           "WITHDRAW");
       }
       return mret;
     }
-    if (dk->denom_pub.cipher != wc->blinded_planchet.cipher)
+    if (dk->denom_pub.cipher != pc->blinded_planchet.cipher)
     {
       /* denomination cipher and blinded planchet cipher not the same */
       return TALER_MHD_reply_with_error (rc->connection,
@@ -615,7 +614,7 @@ parse_planchets (struct TEH_RequestContext *rc,
     if (0 >
         TALER_amount_add (&wc->batch_total,
                           &wc->batch_total,
-                          pc->collectable.amount_with_fee))
+                          &pc->collectable.amount_with_fee))
     {
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -629,7 +628,6 @@ parse_planchets (struct TEH_RequestContext *rc,
                             &pc->collectable.h_coin_envelope))
     {
       GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
@@ -644,7 +642,6 @@ parse_planchets (struct TEH_RequestContext *rc,
                                       &pc->collectable.reserve_sig))
     {
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
@@ -720,7 +717,7 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
     /* Clean up */
     for (unsigned int i = 0; i<wc.planchets_length; i++)
     {
-      struct PlanchetContext *pc = &wc->planchets[i];
+      struct PlanchetContext *pc = &wc.planchets[i];
 
       // FIXME: Free more of memory in pc!
       TALER_blinded_denom_sig_free (&pc->collectable.sig);
