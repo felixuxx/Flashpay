@@ -2678,6 +2678,59 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Perform reserve update as part of a batch withdraw operation, checking
+   * for sufficient balance. Persisting the withdrawal details is done
+   * separately!
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param now current time (rounded)
+   * @param reserve_pub public key of the reserve to debit
+   * @param amount total amount to withdraw
+   * @param[out] found set to true if the reserve was found
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] kyc set to the KYC status of the reserve
+   * @param[out] ruuid set to the reserve's UUID (reserves table row)
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_batch_withdraw)(
+    void *cls,
+    struct GNUNET_TIME_Timestamp now,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_Amount *amount,
+    bool *found,
+    bool *balance_ok,
+    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
+    uint64_t *ruuid);
+
+
+  /**
+   * Perform insert as part of a batch withdraw operation, and persisting the
+   * withdrawal details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
+   * @param collectable corresponding collectable coin (blind signature)
+   * @param now current time (rounded)
+   * @param ruuid reserve UUID
+   * @param[out] denom_unknown set if the denomination is unknown in the DB
+   * @param[out] conflict if the envelope was already in the DB
+   * @param[out] nonce_reuse if @a nonce was non-NULL and reused
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_batch_withdraw_insert)(
+    void *cls,
+    const struct TALER_CsNonce *nonce,
+    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+    struct GNUNET_TIME_Timestamp now,
+    uint64_t ruuid,
+    bool *denom_unknown,
+    bool *conflict,
+    bool *nonce_reuse);
+
+
+  /**
    * Check that reserve remains below threshold for KYC
    * checks after withdraw operation.
    *

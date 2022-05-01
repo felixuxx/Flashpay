@@ -147,6 +147,10 @@ withdraw_transaction (void *cls,
     (TALER_DENOMINATION_CS == bp->cipher)
     ? &bp->details.cs_blinded_planchet.nonce
     : NULL;
+  // FIXME: what error is returned on nonce reuse?
+  // Should expand function to return this error
+  // specifically, and then we should return a
+  // TALER_EC_EXCHANGE_WITHDRAW_NONCE_REUSE,
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
                                 nonce,
                                 &wc->collectable,

@@ -797,6 +797,31 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_withdraw"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
       10),
+    /* Used in #postgres_do_batch_withdraw() to
+       update the reserve balance and check its status */
+    GNUNET_PQ_make_prepare (
+      "call_batch_withdraw",
+      "SELECT "
+      " reserve_found"
+      ",balance_ok"
+      ",kycok AS kyc_ok"
+      ",account_uuid AS payment_target_uuid"
+      ",ruuid"
+      " FROM exchange_do_batch_withdraw"
+      " ($1,$2,$3,$4,$5);",
+      5),
+    /* Used in #postgres_do_batch_withdraw_insert() to store
+       the signature of a blinded coin with the blinded coin's
+       details. */
+    GNUNET_PQ_make_prepare (
+      "call_batch_withdraw_insert",
+      "SELECT "
+      " out_denom_unknown AS denom_unknown"
+      ",out_conflict AS conflict"
+      ",out_nonce_reuse AS nonce_reuse"
+      " FROM exchange_do_batch_withdraw_insert"
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      9),
     /* Used in #postgres_do_withdraw_limit_check() to check
        if the withdrawals remain below the limit under which
        KYC is not required. */
@@ -5238,6 +5263,122 @@ postgres_do_withdraw (
   kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_withdraw",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Perform reserve update as part of a batch withdraw operation, checking
+ * for sufficient balance. Persisting the withdrawal details is done
+ * separately!
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param now current time (rounded)
+ * @param reserve_pub public key of the reserve to debit
+ * @param amount total amount to withdraw
+ * @param[out] found set to true if the reserve was found
+ * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] kyc set to the KYC status of the reserve
+ * @param[out] ruuid set to the reserve's UUID (reserves table row)
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_batch_withdraw (
+  void *cls,
+  struct GNUNET_TIME_Timestamp now,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *amount,
+  bool *found,
+  bool *balance_ok,
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  uint64_t *ruuid)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Timestamp gc;
+  struct GNUNET_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_timestamp (&now),
+    GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("reserve_found",
+                                found),
+    GNUNET_PQ_result_spec_bool ("balance_ok",
+                                balance_ok),
+    GNUNET_PQ_result_spec_bool ("kyc_ok",
+                                &kyc->ok),
+    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+                                  &kyc->payment_target_uuid),
+    GNUNET_PQ_result_spec_uint64 ("ruuid",
+                                  ruuid),
+    GNUNET_PQ_result_spec_end
+  };
+
+  gc = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (now.abs_time,
+                              pg->legal_reserve_expiration_time));
+  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_batch_withdraw",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Perform insert as part of a batch withdraw operation, and persisting the
+ * withdrawal details.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
+ * @param collectable corresponding collectable coin (blind signature)
+ * @param now current time (rounded)
+ * @param ruuid reserve UUID
+ * @param[out] denom_unknown set if the denomination is unknown in the DB
+ * @param[out] conflict if the envelope was already in the DB
+ * @param[out] nonce_reuse if @a nonce was non-NULL and reused
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_batch_withdraw_insert (
+  void *cls,
+  const struct TALER_CsNonce *nonce,
+  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+  struct GNUNET_TIME_Timestamp now,
+  uint64_t ruuid,
+  bool *denom_unknown,
+  bool *conflict,
+  bool *nonce_reuse)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    NULL == nonce
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_auto_from_type (nonce),
+    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
+    GNUNET_PQ_query_param_uint64 (&ruuid),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
+    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
+    GNUNET_PQ_query_param_timestamp (&now),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("denom_unknown",
+                                denom_unknown),
+    GNUNET_PQ_result_spec_bool ("conflict",
+                                conflict),
+    GNUNET_PQ_result_spec_bool ("nonce_reuse",
+                                nonce_reuse),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_batch_withdraw_insert",
                                                    params,
                                                    rs);
 }
@@ -13931,6 +14072,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
   plugin->do_withdraw = &postgres_do_withdraw;
+  plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
+  plugin->do_batch_withdraw_insert = &postgres_do_batch_withdraw_insert;
   plugin->do_withdraw_limit_check = &postgres_do_withdraw_limit_check;
   plugin->do_deposit = &postgres_do_deposit;
   plugin->do_melt = &postgres_do_melt;

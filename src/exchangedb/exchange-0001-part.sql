@@ -1509,6 +1509,245 @@ COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA,
 
 
 
+
+CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN rpub BYTEA,
+  IN now INT8,
+  IN min_reserve_gc INT8,
+  OUT reserve_found BOOLEAN,
+  OUT balance_ok BOOLEAN,
+  OUT kycok BOOLEAN,
+  OUT account_uuid INT8,
+  OUT ruuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_gc INT8;
+DECLARE
+  reserve_val INT8;
+DECLARE
+  reserve_frac INT4;
+BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by wih
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_h_payto
+
+SELECT
+   current_balance_val
+  ,current_balance_frac
+  ,gc_date
+  ,reserve_uuid
+ INTO
+   reserve_val
+  ,reserve_frac
+  ,reserve_gc
+  ,ruuid
+  FROM reserves
+ WHERE reserves.reserve_pub=rpub;
+
+IF NOT FOUND
+THEN
+  -- reserve unknown
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  kycok=FALSE;
+  account_uuid=0;
+  ruuid=2;
+  RETURN;
+END IF;
+
+-- Check reserve balance is sufficient.
+IF (reserve_val > amount_val)
+THEN
+  IF (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=reserve_val - amount_val;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_val=reserve_val - amount_val - 1;
+    reserve_frac=reserve_frac + 100000000 - amount_frac;
+  END IF;
+ELSE
+  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=0;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_found=TRUE;
+    balance_ok=FALSE;
+    kycok=FALSE; -- we do not really know or care
+    account_uuid=0;
+    RETURN;
+  END IF;
+END IF;
+
+-- Calculate new expiration dates.
+min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+
+-- Update reserve balance.
+UPDATE reserves SET
+  gc_date=min_reserve_gc
+ ,current_balance_val=reserve_val
+ ,current_balance_frac=reserve_frac
+WHERE
+  reserves.reserve_pub=rpub;
+
+reserve_found=TRUE;
+balance_ok=TRUE;
+
+
+-- Obtain KYC status based on the last wire transfer into
+-- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
+-- SELECT
+--    kyc_ok
+--   ,wire_target_serial_id
+--   INTO
+--    kycok
+--   ,account_uuid
+--   FROM reserves_in
+--   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
+--  WHERE reserve_pub=rpub
+--  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+
+WITH reserves_in AS materialized (
+  SELECT wire_source_h_payto
+  FROM reserves_in WHERE
+  reserve_pub=rpub
+)
+SELECT
+  kyc_ok
+  ,wire_target_serial_id
+INTO
+  kycok
+  ,account_uuid
+FROM wire_targets
+  WHERE wire_target_h_payto = (
+    SELECT wire_source_h_payto
+      FROM reserves_in
+  );
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_batch_withdraw(INT8, INT4, BYTEA, INT8, INT8)
+  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result. Excludes storing the planchets.';
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw_insert(
+  IN cs_nonce BYTEA,
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN h_denom_pub BYTEA,
+  IN ruuid INT8,
+  IN reserve_sig BYTEA,
+  IN h_coin_envelope BYTEA,
+  IN denom_sig BYTEA,
+  IN now INT8,
+  OUT out_denom_unknown BOOLEAN,
+  OUT out_nonce_reuse BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  denom_serial INT8;
+BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by wih
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_h_payto
+
+out_denom_unknown=TRUE;
+out_conflict=TRUE;
+out_nonce_reuse=TRUE;
+
+SELECT denominations_serial
+  INTO denom_serial
+  FROM denominations
+ WHERE denom_pub_hash=h_denom_pub;
+
+IF NOT FOUND
+THEN
+  -- denomination unknown, should be impossible!
+  out_denom_unknown=TRUE;
+  ASSERT false, 'denomination unknown';
+  RETURN;
+END IF;
+out_denom_unknown=FALSE;
+
+INSERT INTO reserves_out
+  (h_blind_ev
+  ,denominations_serial
+  ,denom_sig
+  ,reserve_uuid
+  ,reserve_sig
+  ,execution_date
+  ,amount_with_fee_val
+  ,amount_with_fee_frac)
+VALUES
+  (h_coin_envelope
+  ,denom_serial
+  ,denom_sig
+  ,ruuid
+  ,reserve_sig
+  ,now
+  ,amount_val
+  ,amount_frac)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  out_conflict=TRUE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+-- Special actions needed for a CS withdraw?
+out_nonce_reuse=FALSE;
+IF NOT NULL cs_nonce
+THEN
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_nonce
+    ,denom_serial
+    ,h_coin_envelope)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- See if the existing entry is identical.
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_nonce
+       AND op_hash=h_coin_envelope;
+    IF NOT FOUND
+    THEN
+      out_nonce_reuse=TRUE;
+      ASSERT false, 'nonce reuse attempted by client';
+      RETURN;
+    END IF;
+  END IF;
+END IF;
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, INT8, INT4, BYTEA, INT8, BYTEA, BYTEA, BYTEA, INT8)
+  IS 'Stores information about a planchet for a batch withdraw operation. Checks if the planchet already exists, and in that case indicates a conflict';
+
+
+
+
 CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
   IN ruuid INT8,
   IN start_time INT8,
