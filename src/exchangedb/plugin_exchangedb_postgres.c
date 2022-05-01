@@ -356,16 +356,61 @@ postgres_setup_foreign_servers (void *cls,
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
   enum GNUNET_GenericReturnValue ret = GNUNET_OK;
+  char *shard_domain = NULL;
+  char *remote_user = NULL;
+  char *remote_user_pw = NULL;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (pg->cfg,
+                                             "exchange",
+                                             "SHARD_DOMAIN",
+                                             &shard_domain))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "SHARD_DOMAIN");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (pg->cfg,
+                                             "exchangedb-postgres",
+                                             "SHARD_REMOTE_USER",
+                                             &remote_user))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb-postgres",
+                               "SHARD_REMOTE_USER");
+    GNUNET_free (shard_domain);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (pg->cfg,
+                                             "exchangedb-postgres",
+                                             "SHARD_REMOTE_USER_PW",
+                                             &remote_user_pw))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb-postgres",
+                               "SHARD_REMOTE_USER_PW");
+    GNUNET_free (shard_domain);
+    GNUNET_free (remote_user);
+    return GNUNET_SYSERR;
+  }
+
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint32 (&num),
+    GNUNET_PQ_query_param_string (shard_domain),
+    GNUNET_PQ_query_param_string (remote_user),
+    GNUNET_PQ_query_param_string (remote_user_pw),
     GNUNET_PQ_query_param_end
   };
+
   struct GNUNET_PQ_PreparedStatement ps[] = {
     GNUNET_PQ_make_prepare ("create_foreign_servers",
                             "SELECT"
                             " create_foreign_servers"
-                            " ($1);",
-                            1),
+                            " ($1, $2, $3, $4);",
+                            4),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -375,11 +420,18 @@ postgres_setup_foreign_servers (void *cls,
                                      NULL,
                                      ps);
   if (NULL == conn)
-    return GNUNET_SYSERR;
-  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-                                              "create_foreign_servers",
-                                              params))
+  {
     ret = GNUNET_SYSERR;
+  }
+  else if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
+                                                   "create_foreign_servers",
+                                                   params))
+  {
+    ret = GNUNET_SYSERR;
+  }
+  GNUNET_free (shard_domain);
+  GNUNET_free (remote_user);
+  GNUNET_free (remote_user_pw);
   GNUNET_PQ_disconnect (conn);
   return ret;
 }

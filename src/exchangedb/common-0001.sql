@@ -2627,7 +2627,9 @@ COMMENT ON FUNCTION create_shard_server
 
 CREATE OR REPLACE FUNCTION create_foreign_servers(
   amount INTEGER
-  ,domain VARCHAR DEFAULT 'perf.taler'
+  ,domain VARCHAR
+  ,remote_user VARCHAR DEFAULT 'taler'
+  ,remote_user_password VARCHAR DEFAULT 'taler'
 )
   RETURNS VOID
   LANGUAGE plpgsql
@@ -2642,13 +2644,15 @@ BEGIN
      ,amount
      ,i
      ,'shard-' || i::varchar || '.' || domain
-     ,'taler'
-     ,'taler'
+     ,remote_user
+     ,remote_user_password
      ,'taler-exchange'
      ,'5432'
      ,'taler-exchange-httpd'
     );
   END LOOP;
+
+  PERFORM drop_default_partitions();
 
 END
 $$;
