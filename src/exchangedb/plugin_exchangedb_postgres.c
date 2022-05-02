@@ -1371,7 +1371,7 @@ prepare_statements (struct PostgresClosure *pg)
       1),
 
     /* Store information about a /deposit the exchange is to execute.
-       Used in #postgres_insert_deposit(). */
+       Used in #postgres_insert_deposit().  Only used in test cases. */
     GNUNET_PQ_make_prepare (
       "insert_deposit",
       "INSERT INTO deposits "
@@ -1392,7 +1392,7 @@ prepare_statements (struct PostgresClosure *pg)
       ") SELECT known_coin_id, $1, $2, $3, $4, $5, $6, "
       " $7, $8, $9, $10, $11, $12, $13"
       "    FROM known_coins"
-      "   WHERE coin_pub=$1" // FIXME: maybe we know known_coin_id already in caller?
+      "   WHERE coin_pub=$1"
       " ON CONFLICT DO NOTHING;",
       13),
     /* Fetch an existing deposit request, used to ensure idempotency
@@ -4784,11 +4784,13 @@ postgres_select_kyc_status (void *cls,
 
 
 /**
- * Get the KYC status for a wallet. If the status is unknown,
- * inserts a new status record (hence INsertSELECT).
+ * Compute the hash of the @a payto_uri and use it to get the KYC status for a
+ * wallet. If the status is unknown, inserts a new status record (hence
+ * INsertSELECT).
  *
  * @param pg the plugin-specific state
  * @param payto_uri the payto URI to check
+ * @param[out] h_payto set to the hash of @a payto_uri
  * @param[out] kyc set to the KYC status of the wallet
  * @return transaction status
  */
@@ -4796,16 +4798,16 @@ static enum GNUNET_DB_QueryStatus
 inselect_account_kyc_status (
   struct PostgresClosure *pg,
   const char *payto_uri,
+  struct TALER_PaytoHashP *h_payto,
   struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-  struct TALER_PaytoHashP h_payto;
   enum GNUNET_DB_QueryStatus qs;
 
   TALER_payto_hash (payto_uri,
-                    &h_payto);
+                    h_payto);
   {
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&h_payto),
+      GNUNET_PQ_query_param_auto_from_type (h_payto),
       GNUNET_PQ_query_param_end
     };
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4823,7 +4825,7 @@ inselect_account_kyc_status (
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       struct GNUNET_PQ_QueryParam iparams[] = {
-        GNUNET_PQ_query_param_auto_from_type (&h_payto),
+        GNUNET_PQ_query_param_auto_from_type (h_payto),
         GNUNET_PQ_query_param_string (payto_uri),
         GNUNET_PQ_query_param_end
       };
@@ -4867,11 +4869,13 @@ postgres_inselect_wallet_kyc_status (
   struct PostgresClosure *pg = cls;
   char *payto_uri;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_PaytoHashP h_payto;
 
   payto_uri = TALER_payto_from_reserve (pg->exchange_url,
                                         reserve_pub);
   qs = inselect_account_kyc_status (pg,
                                     payto_uri,
+                                    &h_payto,
                                     kyc);
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "Wire account for `%s' is %llu\n",
@@ -5051,14 +5055,12 @@ postgres_reserves_in_insert (void *cls,
     enum GNUNET_DB_QueryStatus qs3;
     struct TALER_PaytoHashP h_payto;
 
-    TALER_payto_hash (sender_account_details,
-                      &h_payto);
     memset (&kyc,
             0,
             sizeof (kyc));
-    /* FIXME: inselect re-computes h_payto... */
     qs3 = inselect_account_kyc_status (pg,
                                        sender_account_details,
+                                       &h_payto,
                                        &kyc);
     if (qs3 <= 0)
     {
@@ -6954,11 +6956,9 @@ postgres_insert_deposit (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP h_payto;
 
-  TALER_payto_hash (deposit->receiver_wire_account,
-                    &h_payto);
-  /* FIXME: inselect re-computes h_payto... */
   qs = inselect_account_kyc_status (pg,
                                     deposit->receiver_wire_account,
+                                    &h_payto,
                                     &kyc);
   if (qs <= 0)
   {
@@ -9122,11 +9122,9 @@ postgres_insert_reserve_closed (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP h_payto;
 
-  TALER_payto_hash (receiver_account,
-                    &h_payto);
-  /* FIXME: inselect re-computes h_payto... */
   qs = inselect_account_kyc_status (pg,
                                     receiver_account,
+                                    &h_payto,
                                     &kyc);
   if (qs <= 0)
   {
