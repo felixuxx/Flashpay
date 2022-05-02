@@ -2198,10 +2198,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",recoup_timestamp"
       ",recoup_uuid"
-      " FROM recoup"
-      // FIXME: suboptimal sub-query here: crosses shards!
-      // MAYBE: replace reserve_out_serial_id with
-      // reserve_pub and use new reserve_out_by_reserve table?
+      " FROM recoup rcp"
+      /* NOTE: suboptimal JOIN follows: crosses shards!
+         Could theoretically be improved via a materialized
+         index. But likely not worth it (query is rare and
+         number of reserve shards might be limited) */
       " JOIN reserves_out ro"
       "   USING (reserve_out_serial_id)"
       " JOIN reserves"
