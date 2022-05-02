@@ -20,6 +20,7 @@ bin_PROGRAMS = \
   taler-exchange-aggregator \
   taler-exchange-closer \
   taler-exchange-httpd \
+  taler-exchange-router \
   taler-exchange-transfer \
   taler-exchange-wirewatch
 
@@ -50,9 +51,9 @@ taler_exchange_closer_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-taler_exchange_wirewatch_SOURCES = \
-  taler-exchange-wirewatch.c
-taler_exchange_wirewatch_LDADD = \
+taler_exchange_router_SOURCES = \
+  taler-exchange-router.c
+taler_exchange_router_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -75,6 +76,20 @@ taler_exchange_transfer_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   $(XLIB)
+
+taler_exchange_wirewatch_SOURCES = \
+  taler-exchange-wirewatch.c
+taler_exchange_wirewatch_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -ljansson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  $(XLIB)
+
 
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
