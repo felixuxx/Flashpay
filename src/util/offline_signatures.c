@@ -407,8 +407,6 @@ GNUNET_NETWORK_STRUCT_BEGIN
 /**
  * @brief Information about a denomination key. Denomination keys
  * are used to sign coins of a certain value into existence.
- *
- * FIXME: remove this from the public API...
  */
 struct TALER_DenominationKeyValidityPS
 {
@@ -422,7 +420,9 @@ struct TALER_DenominationKeyValidityPS
    * The long-term offline master key of the exchange that was
    * used to create @e signature.
    *
-   * FIXME: remove this member?
+   * Note: This member is not strictly required, but here for
+   * backwards-compatibility. If we ever again badly break
+   * compatibility, we might want to remove it.
    */
   struct TALER_MasterPublicKeyP master;
 
