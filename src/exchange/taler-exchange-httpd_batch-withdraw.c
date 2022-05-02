@@ -719,7 +719,7 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
     {
       struct PlanchetContext *pc = &wc.planchets[i];
 
-      // FIXME: Free more of memory in pc!
+      TALER_blinded_planchet_free (&pc->blinded_planchet);
       TALER_blinded_denom_sig_free (&pc->collectable.sig);
     }
     GNUNET_JSON_parse_free (spec);
