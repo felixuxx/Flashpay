@@ -377,7 +377,7 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                           &gc->deposited))
       dt = GNUNET_TIME_UNIT_ZERO_TS;
     if (TALER_EC_NONE !=
-        (ec = TALER_exchange_purse_status_sign (
+        (ec = TALER_exchange_online_purse_status_sign (
            &TEH_keys_exchange_sign_,
            gc->merge_timestamp,
            dt,

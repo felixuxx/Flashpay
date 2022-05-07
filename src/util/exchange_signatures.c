@@ -1541,7 +1541,7 @@ GNUNET_NETWORK_STRUCT_END
 
 
 enum TALER_ErrorCode
-TALER_exchange_purse_status_sign (
+TALER_exchange_online_purse_status_sign (
   TALER_ExchangeSignCallback scb,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   struct GNUNET_TIME_Timestamp deposit_timestamp,

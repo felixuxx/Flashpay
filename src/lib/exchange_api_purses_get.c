@@ -133,7 +133,7 @@ handle_purse_get_finished (void *cls,
         break;
       }
       if (GNUNET_OK !=
-          TALER_exchange_purse_status_verify (
+          TALER_exchange_online_purse_status_verify (
             dr.details.success.merge_timestamp,
             dr.details.success.deposit_timestamp,
             &dr.details.success.balance,
