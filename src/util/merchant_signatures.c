@@ -23,6 +23,94 @@
 #include "taler_signatures.h"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Format used to generate the signature on a request to obtain
+ * the wire transfer identifier associated with a deposit.
+ */
+struct TALER_DepositTrackPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the proposal data of the contract for which this deposit is made.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
+
+  /**
+   * The Merchant's public key.  The deposit inquiry request is to be
+   * signed by the corresponding private key (using EdDSA).
+   */
+  struct TALER_MerchantPublicKeyP merchant;
+
+  /**
+   * The coin's public key.  This is the value that must have been
+   * signed (blindly) by the Exchange.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_merchant_deposit_sign (
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  struct TALER_MerchantSignatureP *merchant_sig)
+{
+  struct TALER_DepositTrackPS dtp = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION),
+    .purpose.size = htonl (sizeof (dtp)),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .merchant = *merchant_pub,
+    .coin_pub = *coin_pub
+  };
+  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
+                            &dtp,
+                            &merchant_sig->eddsa_sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_merchant_deposit_verify (
+  const struct TALER_MerchantPublicKeyP *merchant,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_MerchantSignatureP *merchant_sig)
+{
+  struct TALER_DepositTrackPS tps = {
+    .purpose.size = htonl (sizeof (tps)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION),
+    .merchant = *merchant,
+    .coin_pub = *coin_pub,
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire
+  };
+
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
+                                &tps,
+                                &merchant_sig->eddsa_sig,
+                                &tps.merchant.eddsa_pub);
+}
+
+
 /**
  * @brief Format used to generate the signature on a request to refund
  * a coin into the account of the customer.

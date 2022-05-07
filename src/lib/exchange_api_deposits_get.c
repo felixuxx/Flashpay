@@ -320,7 +320,7 @@ TALER_EXCHANGE_deposits_get (
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant.eddsa_pub);
-  TALER_exchange_deposit_sign (h_contract_terms,
+  TALER_merchant_deposit_sign (h_contract_terms,
                                h_wire,
                                coin_pub,
                                &merchant,

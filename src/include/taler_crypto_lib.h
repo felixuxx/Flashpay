@@ -3383,7 +3383,7 @@ TALER_merchant_refund_verify (
  * @param[out] merchant_sig where to write the signature
  */
 void
-TALER_exchange_deposit_sign (
+TALER_merchant_deposit_sign (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -3402,7 +3402,7 @@ TALER_exchange_deposit_sign (
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_exchange_deposit_verify (
+TALER_merchant_deposit_verify (
   const struct TALER_MerchantPublicKeyP *merchant,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,

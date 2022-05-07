@@ -329,7 +329,7 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   {
     if (GNUNET_OK !=
-        TALER_exchange_deposit_verify (&ctx.merchant,
+        TALER_merchant_deposit_verify (&ctx.merchant,
                                        &ctx.coin_pub,
                                        &ctx.h_contract_terms,
                                        &ctx.h_wire,
