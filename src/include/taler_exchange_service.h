@@ -4097,6 +4097,12 @@ struct TALER_EXCHANGE_PurseGetResponse
        */
       struct GNUNET_TIME_Timestamp deposit_timestamp;
 
+      /**
+       * Reserve balance (how much was deposited in
+       * total into the reserve, minus deposit fees).
+       */
+      struct TALER_Amount balance;
+
     } success;
 
   } details;
@@ -4126,7 +4132,7 @@ struct TALER_EXCHANGE_PurseGetHandle;
  * Request information about a purse from the exchange.
  *
  * @param exchange exchange handle
- * @param purse_priv private key of the purse
+ * @param purse_pub public key of the purse
  * @param timeout how long to wait for a change to happen
  * @param wait_for_merge true to wait for a merge event, otherwise wait for a deposit event
  * @param cb function to call with the exchange's result
@@ -4136,7 +4142,7 @@ struct TALER_EXCHANGE_PurseGetHandle;
 struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct GNUNET_TIME_Relative timeout,
   bool wait_for_merge,
   TALER_EXCHANGE_PurseGetCallback cb,

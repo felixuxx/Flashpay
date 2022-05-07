@@ -364,6 +364,9 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
 
   {
     struct GNUNET_TIME_Timestamp dt = GNUNET_TIME_timestamp_get ();
+    struct TALER_ExchangePublicKeyP exchange_pub;
+    struct TALER_ExchangeSignatureP exchange_sig;
+    enum TALER_ErrorCode ec;
 
     if (GNUNET_TIME_timestamp_cmp (dt,
                                    >,
@@ -373,17 +376,32 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
         TALER_amount_cmp (&gc->amount,
                           &gc->deposited))
       dt = GNUNET_TIME_UNIT_ZERO_TS;
-
-    // FIXME: add exchange signature!?
-    // FIXME: return amount?
-    res = TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                  gc->merge_timestamp),
-      GNUNET_JSON_pack_timestamp ("deposit_timestamp",
-                                  dt)
-      );
+    if (TALER_EC_NONE !=
+        (ec = TALER_exchange_purse_status_sign (
+           &TEH_keys_exchange_sign_,
+           gc->merge_timestamp,
+           dt,
+           &gc->deposited,
+           &exchange_pub,
+           &exchange_sig)))
+      res = TALER_MHD_reply_with_ec (rc->connection,
+                                     ec,
+                                     NULL);
+    else
+      res = TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_OK,
+        TALER_JSON_pack_amount ("balance",
+                                &gc->deposited),
+        GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                    &exchange_sig),
+        GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                    &exchange_pub),
+        GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                    gc->merge_timestamp),
+        GNUNET_JSON_pack_timestamp ("deposit_timestamp",
+                                    dt)
+        );
   }
   return res;
 }

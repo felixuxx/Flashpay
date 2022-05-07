@@ -94,14 +94,22 @@ handle_purse_get_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      // FIXME: check exchange signature!
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_timestamp ("merge_timestamp",
                                     &dr.details.success.merge_timestamp),
         GNUNET_JSON_spec_timestamp ("deposit_timestamp",
                                     &dr.details.success.deposit_timestamp),
+        TALER_JSON_spec_amount_any ("balance",
+                                    &dr.details.success.balance),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &exchange_sig),
         GNUNET_JSON_spec_end ()
       };
+      const struct TALER_EXCHANGE_Keys *key_state;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -111,6 +119,30 @@ handle_purse_get_finished (void *cls,
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+
+      key_state = TALER_EXCHANGE_get_keys (pgh->exchange);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &exchange_pub))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_PURSES_GET_INVALID_SIGNATURE_BY_EXCHANGE;
+        break;
+      }
+      if (GNUNET_OK !=
+          TALER_exchange_purse_status_verify (
+            dr.details.success.merge_timestamp,
+            dr.details.success.deposit_timestamp,
+            &dr.details.success.balance,
+            &exchange_pub,
+            &exchange_sig))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_PURSES_GET_INVALID_SIGNATURE_BY_EXCHANGE;
         break;
       }
       pgh->cb (pgh->cb_cls,
@@ -163,7 +195,7 @@ handle_purse_get_finished (void *cls,
 struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct GNUNET_TIME_Relative timeout,
   bool wait_for_merge,
   TALER_EXCHANGE_PurseGetCallback cb,
@@ -171,8 +203,7 @@ TALER_EXCHANGE_purse_get (
 {
   struct TALER_EXCHANGE_PurseGetHandle *pgh;
   CURL *eh;
-  struct TALER_PurseContractPublicKeyP purse_pub;
-  char arg_str[sizeof (purse_pub) * 2 + 64];
+  char arg_str[sizeof (*purse_pub) * 2 + 64];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -184,15 +215,13 @@ TALER_EXCHANGE_purse_get (
   pgh->exchange = exchange;
   pgh->cb = cb;
   pgh->cb_cls = cb_cls;
-  GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
-                                      &purse_pub.eddsa_pub);
   {
-    char cpub_str[sizeof (purse_pub) * 2];
+    char cpub_str[sizeof (*purse_pub) * 2];
     char *end;
     char timeout_str[32];
 
-    end = GNUNET_STRINGS_data_to_string (&purse_pub,
-                                         sizeof (purse_pub),
+    end = GNUNET_STRINGS_data_to_string (purse_pub,
+                                         sizeof (*purse_pub),
                                          cpub_str,
                                          sizeof (cpub_str));
     *end = '\0';
@@ -231,10 +260,6 @@ TALER_EXCHANGE_purse_get (
     GNUNET_free (pgh);
     return NULL;
   }
-  /* FIXME: add signature with purse_priv
-     to authorize the GET request!? Or
-     decide it is non-critical and only
-     pass purse_pub? */
   pgh->job = GNUNET_CURL_job_add (TEAH_handle_to_context (exchange),
                                   eh,
                                   &handle_purse_get_finished,
