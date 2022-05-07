@@ -9,7 +9,7 @@ Generating a new Privacy Policy requires Sphinx, LaTeX with babel
 packages for all supported languages.  On Debian, you should
 at least install:
 
-$ apt install python3-sphinx sphinx-intl texlive-lang-german texlive-lang-english
+$ apt install python3-sphinx sphinx-intl texlive-lang-german texlive-lang-english latexmk texlive-latex-recommended texlive-latex-extra
 
 (NOTE: List may be incomplete.)
 
