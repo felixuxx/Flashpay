@@ -1149,6 +1149,7 @@ decode_keys_json (const json_t *resp_obj,
 
       GNUNET_CRYPTO_hash_context_finish (hash_context_restricted,
                                          &hcr);
+      hash_context_restricted = NULL;
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &hcr,
                                        sizeof(struct GNUNET_HashCode));
@@ -1156,6 +1157,7 @@ decode_keys_json (const json_t *resp_obj,
     else
     {
       GNUNET_CRYPTO_hash_context_abort (hash_context_restricted);
+      hash_context_restricted = NULL;
     }
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -1178,6 +1180,8 @@ EXITIF_exit:
   *vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   if (NULL != hash_context)
     GNUNET_CRYPTO_hash_context_abort (hash_context);
+  if (NULL != hash_context_restricted)
+    GNUNET_CRYPTO_hash_context_abort (hash_context_restricted);
   return GNUNET_SYSERR;
 }
 
@@ -1210,9 +1214,8 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
                      key_data->auditors_size,
                      0);
   GNUNET_free (key_data->version);
-  key_data->version = NULL;
   GNUNET_free (key_data->currency);
-  key_data->currency = NULL;
+  GNUNET_free (key_data->global_fees);
 }
 
 
