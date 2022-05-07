@@ -33,6 +33,9 @@
 #include "taler_bank_service.h"
 
 
+// FIXME: revisit how (and if) we do sharding!
+// Maybe use different helpers for wads than
+// for local purses?!
 /**
  * Work shard we are processing.
  */

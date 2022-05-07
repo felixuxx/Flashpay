@@ -973,6 +973,7 @@ CREATE TABLE IF NOT EXISTS partners
   ,partner_master_pub BYTEA NOT NULL CHECK(LENGTH(partner_master_pub)=32)
   ,start_date INT8 NOT NULL
   ,end_date INT8 NOT NULL
+  ,next_wad INT8 NOT NULL DEFAULT (0)
   ,wad_frequency INT8 NOT NULL
   ,wad_fee_val INT8 NOT NULL
   ,wad_fee_frac INT4 NOT NULL
@@ -987,6 +988,8 @@ COMMENT ON COLUMN partners.start_date
   IS 'starting date of the partnership';
 COMMENT ON COLUMN partners.end_date
   IS 'end date of the partnership';
+COMMENT ON COLUMN partners.next_wad
+  IS 'at what time should we do the next wad transfer to this partner (frequently updated); set to forever after the end_date';
 COMMENT ON COLUMN partners.wad_frequency
   IS 'how often do we promise to do wad transfers';
 COMMENT ON COLUMN partners.wad_fee_val
@@ -996,6 +999,8 @@ COMMENT ON COLUMN partners.partner_base_url
 COMMENT ON COLUMN partners.master_sig
   IS 'signature of our master public key affirming the partnership, of purpose TALER_SIGNATURE_MASTER_PARTNER_DETAILS';
 
+CREATE INDEX IF NOT EXISTS partner_by_wad_time
+  ON partners (next_wad ASC);
 
 -- ------------------------------ purse_requests ----------------------------------------
 
@@ -1005,12 +1010,24 @@ COMMENT ON TABLE purse_requests
   IS 'Requests establishing purses, associating them with a contract but without a target reserve';
 COMMENT ON COLUMN purse_requests.purse_pub
   IS 'Public key of the purse';
+COMMENT ON COLUMN purse_requests.purse_creation
+  IS 'Local time when the purse was created. Determines applicable purse fees.';
 COMMENT ON COLUMN purse_requests.purse_expiration
   IS 'When the purse is set to expire';
 COMMENT ON COLUMN purse_requests.h_contract_terms
   IS 'Hash of the contract the parties are to agree to';
+COMMENT ON COLUMN purse_requests.shard
+  IS 'for load distribution among router processes';
+COMMENT ON COLUMN purse_requests.finished
+  IS 'set to TRUE once the purse has been merged (into reserve or wad) or the coins were refunded (transfer aborted)';
+COMMENT ON COLUMN purse_requests.refunded
+  IS 'set to TRUE if the purse could not be merged and thus all deposited coins were refunded';
+COMMENT ON COLUMN purse_requests.in_reserve_quota
+  IS 'set to TRUE if this purse currently counts against the number of free purses in the respective reserve';
 COMMENT ON COLUMN purse_requests.amount_with_fee_val
   IS 'Total amount expected to be in the purse';
+COMMENT ON COLUMN purse_requests.purse_fee_val
+  IS 'Purse fee the client agreed to pay from the reserve (accepted by the exchange at the time the purse was created). Zero if in_reserve_quota is TRUE.';
 COMMENT ON COLUMN purse_requests.balance_val
   IS 'Total amount actually in the purse';
 COMMENT ON COLUMN purse_requests.purse_sig
@@ -1283,6 +1300,163 @@ COMMENT ON COLUMN partner_accounts.partner_master_sig
 COMMENT ON COLUMN partner_accounts.last_seen
   IS 'Last time we saw this account as being active at the partner exchange. Used to select the most recent entry, and to detect when we should check again.';
 
+
+----------------------- router helper table (not synchronzied) ------------------------
+
+CREATE TABLE IF NOT EXISTS purse_actions
+  (purse_pub BYTEA NOT NULL PRIMARY KEY CHECK(LENGTH(purse_pub)=32)
+  ,action_date INT8 NOT NULL
+  ,partner_serial_id INT8
+  );
+COMMENT ON TABLE purse_actions
+  IS 'purses awaiting some action by the router';
+COMMENT ON COLUMN purse_actions.purse_pub
+  IS 'public (contract) key of the purse';
+COMMENT ON COLUMN purse_action.action_date
+  IS 'when is the purse ready for action';
+COMMENT ON COLUMN purse_action.partner_serial_id
+  IS 'wad target of an outgoing wire transfer, 0 for local, NULL if the purse is unmerged and thus the target is still unknown';
+
+CREATE INDEX IF NOT EXISTS purse_action_by_target
+  ON purse_actions
+  (partner_serial_id,action_date);
+
+
+CREATE OR REPLACE FUNCTION purse_requests_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+BEGIN
+  INSERT INTO
+    purse_actions
+    (purse_pub
+    ,action_date)
+  VALUES
+    (NEW.purse_pub
+    ,NEW.purse_expiration);
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION purse_requests_insert_trigger()
+  IS 'When a purse is created, insert it into the purse_action table to take action when the purse expires.';
+
+CREATE TRIGGER purse_requests_on_insert
+  AFTER INSERT
+   ON purse_requests
+   FOR EACH ROW EXECUTE FUNCTION purse_requests_insert_trigger();
+COMMENT ON TRIGGER purse_requests_on_insert
+  IS 'Here we install an entry for the purse expiration.';
+
+
+CREATE OR REPLACE FUNCTION purse_merge_insert_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  bal_val INT8;
+DECLARE
+  bal_frac INT4;
+DECLARE
+  amount_val INT8;
+DECLARE
+  amount_frac INT4;
+DECLARE
+  was_paid BOOLEAN;
+BEGIN
+  SELECT balance_val
+        ,balance_frac
+        ,amount_with_fee_val
+        ,amount_with_fee_frac
+    INTO bal_val
+        ,bal_frac
+        ,amount_val
+        ,amount_frac
+    FROM purse_requests
+   WHERE purse_pub=NEW.purse_pub;
+  was_paid = (bal_val > NEW.amount_val) OR
+             ( (bal_val = NEW.amount_val) AND
+               (bal_frac >= NEW.amount_frac) );
+  IF (was_paid)
+  THEN
+    UPDATE purse_actions
+       SET action_date=0 --- "immediately"
+          ,partner_serial_id=NEW.partner_serial_id
+     WHERE purse_pub=NEW.purse_pub;
+  END IF;
+  RETURN NEW;
+END $$;
+COMMENT ON FUNCTION purse_merge_insert_trigger()
+  IS 'Triggers merge if purse is fully paid.';
+
+CREATE TRIGGER purse_merges_on_insert
+  AFTER INSERT
+   ON purse_merges
+   FOR EACH ROW EXECUTE FUNCTION purse_merge_insert_trigger();
+COMMENT ON TRIGGER purse_merges_on_insert
+  IS 'Here we install an entry that triggers the merge (if the purse is already full).';
+
+
+CREATE OR REPLACE FUNCTION purse_requests_on_update_trigger()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  AS $$
+DECLARE
+  was_merged BOOLEAN;
+DECLARE
+  psi INT8; -- partner's serial ID (set if merged)
+DECLARE
+  was_paid BOOLEAN;
+BEGIN
+  IF (NEW.finished)
+  THEN
+    -- If this purse counted against the reserve's
+    -- quota of purses, decrement the reserve accounting.
+    IF (NEW.in_reserve_quota)
+    THEN
+      UPDATE reserves
+         SET purses_active=purses_active-1
+       WHERE reserve_pub IN
+         (SELECT reserve_pub
+            FROM purse_merges
+           WHERE purse_pub=NEW.purse_pub
+           LIMIT 1);
+      NEW.in_reserve_quota=FALSE;
+    END IF;
+    -- Delete from the purse_actions table, we are done
+    -- with this purse for good.
+    DELETE FROM purse_actions
+          WHERE purse_pub=NEW.purse_pub;
+    RETURN NEW;
+  END IF;
+
+  -- Not finished, see if we need to update the
+  -- trigger time and partner.
+  SELECT partner_serial_id
+    INTO psi
+    FROM purse_merges
+   WHERE purse_pub=NEW.purse_pub;
+  was_merged = FOUND;
+  was_paid = (NEW.balance_val > NEW.amount_with_fee_val) OR
+             ( (NEW.balance_val = NEW.amount_with_fee_val) AND
+               (NEW.balance_frac >= NEW.amount_with_fee_frac) );
+  IF (was_merged AND was_paid)
+  THEN
+    UPDATE purse_actions
+       SET action_date=0 --- "immediately"
+          ,partner_serial_id=psi
+     WHERE purse_pub=NEW.purse_pub;
+  END IF;
+  RETURN NEW;
+END $$;
+
+COMMENT ON FUNCTION purse_requests_on_update_trigger
+  IS 'Trigger the router if the purse is ready. Also removes the entry from the router watchlist once the purse is fnished.';
+
+CREATE TRIGGER purse_requests_on_update
+  BEFORE UPDATE
+   ON purse_requests
+   FOR EACH ROW EXECUTE FUNCTION purse_requests_update_trigger();
+COMMENT ON TRIGGER purse_requests_on_update
+  IS 'This covers the case where a deposit is made into a purse, which inherently then changes the purse balance via an UPDATE. If the merge is already present and the balance matches the total, we trigger the router. Once the router sets the purse to finished, the trigger will remove the purse from the watchlist of the router.';
 
 ---------------------------------------------------------------------------
 --                      Stored procedures

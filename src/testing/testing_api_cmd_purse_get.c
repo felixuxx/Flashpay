@@ -89,9 +89,9 @@ struct StatusState
   const char *expected_balance;
 
   /**
-   * Private key of the purse being analyzed.
+   * Public key of the purse being analyzed.
    */
-  const struct TALER_PurseContractPrivateKeyP *purse_priv;
+  const struct TALER_PurseContractPublicKeyP *purse_pub;
 
   /**
    * Interpreter state.
@@ -198,16 +198,16 @@ status_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_purse_priv (create_purse,
-                                          &ss->purse_priv))
+      TALER_TESTING_get_trait_purse_pub (create_purse,
+                                         &ss->purse_pub))
   {
     GNUNET_break (0);
-    TALER_LOG_ERROR ("Failed to find purse_priv for status query\n");
+    TALER_LOG_ERROR ("Failed to find purse_pub for status query\n");
     TALER_TESTING_interpreter_fail (is);
     return;
   }
   ss->pgh = TALER_EXCHANGE_purse_get (is->exchange,
-                                      ss->purse_priv,
+                                      ss->purse_pub,
                                       ss->timeout,
                                       ss->wait_for_merge,
                                       &purse_status_cb,

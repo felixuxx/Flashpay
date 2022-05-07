@@ -3977,7 +3977,7 @@ TALER_exchange_online_purse_merged_verify (
 
 
 enum TALER_ErrorCode
-TALER_exchange_purse_status_sign (
+TALER_exchange_online_purse_status_sign (
   TALER_ExchangeSignCallback scb,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   struct GNUNET_TIME_Timestamp deposit_timestamp,
@@ -3987,7 +3987,7 @@ TALER_exchange_purse_status_sign (
 
 
 enum GNUNET_GenericReturnValue
-TALER_exchange_purse_status_verify (
+TALER_exchange_online_purse_status_verify (
   struct GNUNET_TIME_Timestamp merge_timestamp,
   struct GNUNET_TIME_Timestamp deposit_timestamp,
   const struct TALER_Amount *balance,
