@@ -1505,4 +1505,93 @@ TALER_exchange_online_purse_merged_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Format used to generate the signature on a purse status
+ * from the exchange.
+ */
+struct TALER_PurseStatusPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_EXCHANGE_PURSE_STATUS.  Signed
+   * by a `struct TALER_ExchangePublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time when the purse was merged, possibly 'never'.
+   */
+  struct GNUNET_TIME_TimestampNBO merge_timestamp;
+
+  /**
+   * Time when the purse was deposited last, possibly 'never'.
+   */
+  struct GNUNET_TIME_TimestampNBO deposit_timestamp;
+
+  /**
+   * Amount deposited in total in the purse without fees.
+   * May be possibly less than the target amount.
+   */
+  struct TALER_AmountNBO balance;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+enum TALER_ErrorCode
+TALER_exchange_purse_status_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct GNUNET_TIME_Timestamp deposit_timestamp,
+  const struct TALER_Amount *balance,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_PurseStatusPS dcs = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_PURSE_STATUS),
+    .purpose.size = htonl (sizeof (dcs)),
+    .merge_timestamp = GNUNET_TIME_timestamp_hton (merge_timestamp),
+    .deposit_timestamp = GNUNET_TIME_timestamp_hton (deposit_timestamp)
+  };
+
+  TALER_amount_hton (&dcs.balance,
+                     balance);
+  return scb (&dcs.purpose,
+              pub,
+              sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_purse_status_verify (
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct GNUNET_TIME_Timestamp deposit_timestamp,
+  const struct TALER_Amount *balance,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig)
+{
+  struct TALER_PurseStatusPS dcs = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_PURSE_STATUS),
+    .purpose.size = htonl (sizeof (dcs)),
+    .merge_timestamp = GNUNET_TIME_timestamp_hton (merge_timestamp),
+    .deposit_timestamp = GNUNET_TIME_timestamp_hton (deposit_timestamp)
+  };
+
+  TALER_amount_hton (&dcs.balance,
+                     balance);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_PURSE_STATUS,
+                                  &dcs,
+                                  &exchange_sig->eddsa_signature,
+                                  &exchange_pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /* end of exchange_signatures.c */

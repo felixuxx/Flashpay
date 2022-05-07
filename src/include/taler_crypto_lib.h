@@ -3976,6 +3976,25 @@ TALER_exchange_online_purse_merged_verify (
   const struct TALER_ExchangeSignatureP *sig);
 
 
+enum TALER_ErrorCode
+TALER_exchange_purse_status_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct GNUNET_TIME_Timestamp deposit_timestamp,
+  const struct TALER_Amount *balance,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_purse_status_verify (
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct GNUNET_TIME_Timestamp deposit_timestamp,
+  const struct TALER_Amount *balance,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig);
+
+
 /* ********************* offline signing ************************** */
 
 

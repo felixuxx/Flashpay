@@ -189,6 +189,13 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_MERGED 1046
 
+/**
+ * Purpose for the state of a purse, signed by the exchange's signing
+ * key.
+ */
+#define TALER_SIGNATURE_EXCHANGE_PURSE_STATUS 1047
+
+
 /**********************/
 /* Auditor signatures */
 /**********************/
@@ -381,7 +388,6 @@
  * EdDSA signature for a backup upload.
  */
 #define TALER_SIGNATURE_SYNC_BACKUP_UPLOAD 1450
-
 
 
 #endif
