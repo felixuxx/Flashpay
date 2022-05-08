@@ -297,15 +297,19 @@ purse_transaction (void *cls,
     bool in_conflict = true;
     bool insufficient_funds = true;
 
-    qs = TEH_plugin->do_reserve_purse (TEH_plugin->cls,
-                                       &rpc->purse_pub,
-                                       &rpc->merge_sig,
-                                       rpc->merge_timestamp,
-                                       &rpc->reserve_sig,
-                                       &rpc->gf->fees.purse,
-                                       rpc->reserve_pub,
-                                       &in_conflict,
-                                       &insufficient_funds);
+    qs = TEH_plugin->do_reserve_purse (
+      TEH_plugin->cls,
+      &rpc->purse_pub,
+      &rpc->merge_sig,
+      rpc->merge_timestamp,
+      &rpc->reserve_sig,
+      (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
+       == rpc->flags)
+      ? NULL
+      : &rpc->gf->fees.purse,
+      rpc->reserve_pub,
+      &in_conflict,
+      &insufficient_funds);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

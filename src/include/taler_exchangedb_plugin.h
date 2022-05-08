@@ -4779,7 +4779,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param merge_sig signature affirming the merge
    * @param merge_timestamp time of the merge
    * @param reserve_sig signature of the reserve affirming the merge
-   * @param purse_fee amount to charge the reserve for the purse creation
+   * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
    * @param reserve_pub public key of the reserve to credit
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
    * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse

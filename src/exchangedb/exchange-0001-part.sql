@@ -1327,6 +1327,7 @@ CREATE OR REPLACE FUNCTION purse_requests_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
+  ASSERT NOT NEW.finished,'Internal invariant violated';
   INSERT INTO
     purse_actions
     (purse_pub
@@ -1348,65 +1349,10 @@ COMMENT ON TRIGGER purse_requests_on_insert
   IS 'Here we install an entry for the purse expiration.';
 
 
-CREATE OR REPLACE FUNCTION purse_merge_insert_trigger()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  AS $$
-DECLARE
-  bal_val INT8;
-DECLARE
-  bal_frac INT4;
-DECLARE
-  amount_val INT8;
-DECLARE
-  amount_frac INT4;
-DECLARE
-  was_paid BOOLEAN;
-BEGIN
-  SELECT balance_val
-        ,balance_frac
-        ,amount_with_fee_val
-        ,amount_with_fee_frac
-    INTO bal_val
-        ,bal_frac
-        ,amount_val
-        ,amount_frac
-    FROM purse_requests
-   WHERE purse_pub=NEW.purse_pub;
-  was_paid = (bal_val > NEW.amount_val) OR
-             ( (bal_val = NEW.amount_val) AND
-               (bal_frac >= NEW.amount_frac) );
-  IF (was_paid)
-  THEN
-    UPDATE purse_actions
-       SET action_date=0 --- "immediately"
-          ,partner_serial_id=NEW.partner_serial_id
-     WHERE purse_pub=NEW.purse_pub;
-  END IF;
-  RETURN NEW;
-END $$;
-COMMENT ON FUNCTION purse_merge_insert_trigger()
-  IS 'Triggers merge if purse is fully paid.';
-
-CREATE TRIGGER purse_merges_on_insert
-  AFTER INSERT
-   ON purse_merges
-   FOR EACH ROW EXECUTE FUNCTION purse_merge_insert_trigger();
-COMMENT ON TRIGGER purse_merges_on_insert
-  ON purse_merges
-  IS 'Here we install an entry that triggers the merge (if the purse is already full).';
-
-
 CREATE OR REPLACE FUNCTION purse_requests_on_update_trigger()
   RETURNS trigger
   LANGUAGE plpgsql
   AS $$
-DECLARE
-  was_merged BOOLEAN;
-DECLARE
-  psi INT8; -- partner's serial ID (set if merged)
-DECLARE
-  was_paid BOOLEAN;
 BEGIN
   IF (NEW.finished)
   THEN
@@ -1430,27 +1376,6 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Not finished, see if we need to update the
-  -- trigger time and partner.
-  SELECT partner_serial_id
-    INTO psi
-    FROM purse_merges
-   WHERE purse_pub=NEW.purse_pub;
-  was_merged = FOUND;
-  was_paid = (NEW.balance_val > NEW.amount_with_fee_val) OR
-             ( (NEW.balance_val = NEW.amount_with_fee_val) AND
-               (NEW.balance_frac >= NEW.amount_with_fee_frac) );
-  IF (was_merged AND was_paid)
-  THEN
-    -- FIXME: If 0==psi, why not simply DO the merge here?
-    -- Adding up reserve balance + setting finished
-    -- is hardly doing much, and could be combined
-    -- with the reserve update above!
-    UPDATE purse_actions
-       SET action_date=0 --- "immediately"
-          ,partner_serial_id=psi
-     WHERE purse_pub=NEW.purse_pub;
-  END IF;
   RETURN NEW;
 END $$;
 
@@ -2912,7 +2837,6 @@ END $$;
 
 
 
-
 CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_partner_id INT8,
   IN in_purse_pub BYTEA,
@@ -2926,6 +2850,14 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  was_merged BOOLEAN;
+DECLARE
+  psi INT8; -- partner's serial ID (set if merged)
+DECLARE
+  was_paid BOOLEAN;
+DECLARE
+  my_reserve_pub BYTEA;
 BEGIN
 
 -- Store the deposit request.
@@ -3015,7 +2947,66 @@ UPDATE purse_requests
 out_conflict=FALSE;
 out_balance_ok=TRUE;
 
+-- See if we can finish the merge or need to update the trigger time and partner.
+SELECT partner_serial_id
+      ,reserve_pub
+  INTO psi
+      ,my_reserve_pub
+  FROM purse_merges
+ WHERE purse_pub=in_purse_pub;
+
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+SELECT
+  1
+  FROM purse_requests
+  WHERE (purse_pub=in_purse_pub)
+    AND ( ( ( (amount_with_fee_val <= balance_val)
+          AND (amount_with_fee_frac <= balance_frac) )
+         OR (amount_with_fee_val < balance_val) ) );
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+IF (0 != psi)
+THEN
+  -- The taler-exchange-router will take care of this.
+  UPDATE purse_actions
+     SET action_date=0 --- "immediately"
+        ,partner_serial_id=psi
+   WHERE purse_pub=in_purse_pub;
+ELSE
+  -- This is a local reserve, update balance immediately.
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+amount_frac
+       - CASE
+         WHEN current_balance_frac + amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+amount_val
+       + CASE
+         WHEN current_balance_frac + amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE reserve_pub=my_reserve_pub;
+
+  -- ... and mark purse as finished.
+  UPDATE purse_requests
+     SET finished=true
+  WHERE purse_pub=in_purse_pub;
+END IF;
+
+
 END $$;
+
+
 
 
 CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
@@ -3031,7 +3022,13 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
 LANGUAGE plpgsql
 AS $$
 DECLARE
+  amount_val INT8;
+DECLARE
+  amount_frac INT4;
+DECLARE
   my_partner_serial_id INT8;
+DECLARE
+  my_finished BOOLEAN;
 BEGIN
 
 IF in_partner_url IS NULL
@@ -3058,7 +3055,12 @@ out_no_partner=FALSE;
 
 
 -- Check purse is 'full'.
-PERFORM
+SELECT amount_with_fee_val
+      ,amount_with_fee_frac
+      ,finished
+  INTO amount_val
+      ,amount_frac
+      ,my_finished
   FROM purse_requests
   WHERE purse_pub=in_purse_pub
     AND balance_val >= amount_with_fee_val
@@ -3071,8 +3073,6 @@ THEN
   RETURN;
 END IF;
 out_no_balance=FALSE;
-
-
 
 -- Store purse merge signature, checks for purse_pub uniqueness
 INSERT INTO purse_merges
@@ -3111,6 +3111,8 @@ THEN
 END IF;
 out_conflict=FALSE;
 
+ASSERT NOT my_finished, 'internal invariant failed';
+
 -- Store account merge signature.
 INSERT INTO account_merges
   (reserve_pub
@@ -3121,13 +3123,45 @@ INSERT INTO account_merges
   ,in_reserve_sig
   ,in_purse_pub);
 
+-- If we need a wad transfer, mark purse ready for it.
+IF (0 != my_partner_serial_id)
+THEN
+  -- The taler-exchange-router will take care of this.
+  UPDATE purse_actions
+     SET action_date=0 --- "immediately"
+        ,partner_serial_id=NEW.partner_serial_id
+   WHERE purse_pub=NEW.purse_pub;
+ELSE
+  -- This is a local reserve, update balance immediately.
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+amount_frac
+       - CASE
+         WHEN current_balance_frac + amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+amount_val
+       + CASE
+         WHEN current_balance_frac + amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE reserve_pub=in_reserve_pub;
+
+  -- ... and mark purse as finished.
+  UPDATE purse_requests
+     SET finished=true
+  WHERE purse_pub=in_purse_pub;
+END IF;
+
 
 RETURN;
 
 END $$;
 
--- COMMENT ON FUNCTION exchange_do_purse_merge()
---  IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data. Caller MUST abort the transaction on failures so as to not persist data by accident.';
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA)
+  IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
 CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
@@ -3135,6 +3169,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_merge_sig BYTEA,
   IN in_merge_timestamp INT8,
   IN in_reserve_sig BYTEA,
+  IN in_reserve_quota BOOLEAN,
   IN in_purse_fee_val INT8,
   IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
@@ -3142,25 +3177,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  my_purses_active INT8;
-DECLARE
-  my_purses_allowed INT8;
-DECLARE
-  my_balance_val INT8;
-DECLARE
-  my_balance_frac INT4;
-DECLARE
-  my_kyc_passed BOOLEAN;
 BEGIN
-
--- comment out for now
-IF TRUE
-THEN
-  out_no_funds=FALSE;
-  out_conflict=FALSE;
-  RETURN;
-END IF;
 
 -- Store purse merge signature, checks for purse_pub uniqueness
 INSERT INTO purse_merges
@@ -3201,6 +3218,48 @@ END IF;
 out_conflict=FALSE;
 
 
+IF (in_reserve_quota)
+THEN
+  -- Increment active purses per reserve (and check this is allowed)
+  UPDATE reserves
+     SET purses_active=purses_active+1
+        ,kyc_required=TRUE
+   WHERE reserve_pub=in_reserve_pub
+     AND purses_active < purses_allowed;
+  IF NOT FOUND
+  THEN
+    out_no_funds=TRUE;
+  END IF;
+ELSE
+  --  UPDATE reserves balance (and check if balance is enough to pay the fee)
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac-in_purse_fee_frac
+       + CASE
+         WHEN current_balance_frac < in_purse_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val-in_purse_fee_val
+       - CASE
+         WHEN current_balance_frac < in_purse_fee_frac
+         THEN 1
+         ELSE 0
+         END
+    ,kyc_required=TRUE
+  WHERE reserve_pub=in_reserve_pub
+    AND ( (current_balance_val > in_purse_fee_val) OR
+          ( (current_balance_frac >= in_purse_fee_frac) AND
+            (current_balance_val >= in_purse_fee_val) ) );
+  IF NOT FOUND
+  THEN
+    out_no_funds=TRUE;
+  END IF;
+END IF;
+
+out_no_funds=FALSE;
+
+
 -- Store account merge signature.
 INSERT INTO account_merges
   (reserve_pub
@@ -3210,82 +3269,6 @@ INSERT INTO account_merges
   (in_reserve_pub
   ,in_reserve_sig
   ,in_purse_pub);
-
-
-
--- Charge reserve for purse creation.
--- FIXME: Use different type of purse
--- signature in this case, so that we
--- can properly account for the purse
--- fees when auditing!!!
-SELECT
-  purses_active
- ,purses_allowed
- ,kyc_passed
- ,current_balance_val
- ,current_balance_frac
-INTO
-  my_purses_active
- ,my_purses_allowed
- ,my_kyc_passed
- ,my_balance_val
- ,my_balance_frac
-FROM reserves
-WHERE reserve_pub=in_reserve_pub;
-
-IF NOT FOUND
-THEN
-  out_no_funds=TRUE;
-  -- FIXME: be more specific in the returned
-  -- error that we don't know the reserve
-  -- (instead of merely saying it has no funds)
-  RETURN;
-END IF;
-
-IF NOT my_kyc_passed
-THEN
-  -- FIXME: might want to categorically disallow
-  -- purse creation without KYC (depending on
-  -- exchange settings => new argument?)
-END IF;
-
-IF ( (my_purses_active >= my_purses_allowed) AND
-     ( (my_balance_val < in_purse_fee_val) OR
-       ( (my_balance_val <= in_purse_fee_val) AND
-         (my_balance_frac < in_purse_fee_frac) ) ) )
-THEN
-  out_no_funds=TRUE;
-  RETURN;
-END IF;
-
-IF (my_purses_active < my_purses_allowed)
-THEN
-  my_purses_active = my_purses_active + 1;
-ELSE
-  -- FIXME: See above: we should probably have
-  -- very explicit wallet-approval in the
-  -- signature to charge the reserve!
-  my_balance_val = my_balance_val - in_purse_fee_val;
-  IF (my_balance_frac > in_purse_fee_frac)
-  THEN
-    my_balance_frac = my_balance_frac - in_purse_fee_frac;
-  ELSE
-    my_balance_val = my_balance_val - 1;
-    my_balance_frac = my_balance_frac + 100000000 - in_purse_fee_frac;
-  END IF;
-END IF;
-
-UPDATE reserves SET
-  gc_date=min_reserve_gc
- ,current_balance_val=my_balance_val
- ,current_balance_frac=my_balance_frac
- ,purses_active=my_purses_active
- ,kyc_required=TRUE
-WHERE
-  reserves.reserve_pub=rpub;
-
-out_no_funds=FALSE;
-
 
 END $$;
 

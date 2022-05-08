@@ -3630,8 +3630,8 @@ prepare_statements (struct PostgresClosure *pg)
       " out_no_funds AS insufficient_funds"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7);",
-      7),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
@@ -13853,7 +13853,7 @@ postgres_do_purse_merge (
  * @param merge_sig signature affirming the merge
  * @param merge_timestamp time of the merge
  * @param reserve_sig signature of the reserve affirming the merge
- * @param purse_fee amount to charge the reserve for the purse creation
+ * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
  * @param reserve_pub public key of the reserve to credit
  * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
  * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
@@ -13872,12 +13872,16 @@ postgres_do_reserve_purse (
   bool *insufficient_funds)
 {
   struct PostgresClosure *pg = cls;
+  struct TALER_Amount zero_fee;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
     GNUNET_PQ_query_param_timestamp (&merge_timestamp),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount (purse_fee),
+    GNUNET_PQ_query_param_bool (NULL == purse_fee),
+    TALER_PQ_query_param_amount (NULL == purse_fee
+                                 ? &zero_fee
+                                 : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_end
   };
@@ -13889,6 +13893,8 @@ postgres_do_reserve_purse (
     GNUNET_PQ_result_spec_end
   };
 
+  TALER_amount_set_zero (pg->currency,
+                         &zero_fee);
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_reserve_purse",
                                                    params,
