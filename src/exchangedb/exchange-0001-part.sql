@@ -1016,8 +1016,8 @@ COMMENT ON COLUMN purse_requests.purse_expiration
   IS 'When the purse is set to expire';
 COMMENT ON COLUMN purse_requests.h_contract_terms
   IS 'Hash of the contract the parties are to agree to';
-COMMENT ON COLUMN purse_requests.shard
-  IS 'for load distribution among router processes';
+COMMENT ON COLUMN purse_requests.flags
+  IS 'see the enum TALER_WalletAccountMergeFlags';
 COMMENT ON COLUMN purse_requests.finished
   IS 'set to TRUE once the purse has been merged (into reserve or wad) or the coins were refunded (transfer aborted)';
 COMMENT ON COLUMN purse_requests.refunded
@@ -1312,9 +1312,9 @@ COMMENT ON TABLE purse_actions
   IS 'purses awaiting some action by the router';
 COMMENT ON COLUMN purse_actions.purse_pub
   IS 'public (contract) key of the purse';
-COMMENT ON COLUMN purse_action.action_date
+COMMENT ON COLUMN purse_actions.action_date
   IS 'when is the purse ready for action';
-COMMENT ON COLUMN purse_action.partner_serial_id
+COMMENT ON COLUMN purse_actions.partner_serial_id
   IS 'wad target of an outgoing wire transfer, 0 for local, NULL if the purse is unmerged and thus the target is still unknown';
 
 CREATE INDEX IF NOT EXISTS purse_action_by_target
@@ -1344,6 +1344,7 @@ CREATE TRIGGER purse_requests_on_insert
    ON purse_requests
    FOR EACH ROW EXECUTE FUNCTION purse_requests_insert_trigger();
 COMMENT ON TRIGGER purse_requests_on_insert
+        ON purse_requests
   IS 'Here we install an entry for the purse expiration.';
 
 
@@ -1392,6 +1393,7 @@ CREATE TRIGGER purse_merges_on_insert
    ON purse_merges
    FOR EACH ROW EXECUTE FUNCTION purse_merge_insert_trigger();
 COMMENT ON TRIGGER purse_merges_on_insert
+  ON purse_merges
   IS 'Here we install an entry that triggers the merge (if the purse is already full).';
 
 
@@ -1440,6 +1442,10 @@ BEGIN
                (NEW.balance_frac >= NEW.amount_with_fee_frac) );
   IF (was_merged AND was_paid)
   THEN
+    -- FIXME: If 0==psi, why not simply DO the merge here?
+    -- Adding up reserve balance + setting finished
+    -- is hardly doing much, and could be combined
+    -- with the reserve update above!
     UPDATE purse_actions
        SET action_date=0 --- "immediately"
           ,partner_serial_id=psi
@@ -1448,14 +1454,15 @@ BEGIN
   RETURN NEW;
 END $$;
 
-COMMENT ON FUNCTION purse_requests_on_update_trigger
-  IS 'Trigger the router if the purse is ready. Also removes the entry from the router watchlist once the purse is fnished.';
+COMMENT ON FUNCTION purse_requests_on_update_trigger()
+  IS 'Trigger the router if the purse is ready. Also removes the entry from the router watchlist once the purse is finished.';
 
 CREATE TRIGGER purse_requests_on_update
   BEFORE UPDATE
    ON purse_requests
-   FOR EACH ROW EXECUTE FUNCTION purse_requests_update_trigger();
+   FOR EACH ROW EXECUTE FUNCTION purse_requests_on_update_trigger();
 COMMENT ON TRIGGER purse_requests_on_update
+  ON purse_requests
   IS 'This covers the case where a deposit is made into a purse, which inherently then changes the purse balance via an UPDATE. If the merge is already present and the balance matches the total, we trigger the router. Once the router sets the purse to finished, the trigger will remove the purse from the watchlist of the router.';
 
 ---------------------------------------------------------------------------

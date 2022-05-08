@@ -4578,6 +4578,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param purse_expiration time when the purse will expire
    * @param h_contract_terms hash of the contract for the purse
    * @param age_limit age limit to enforce for payments into the purse
+   * @param flags flags for the operation
+   * @param purse_fee fee we are allowed to charge to the reserve (depending on @a flags)
    * @param amount target amount (with fees) to be put into the purse
    * @param purse_sig signature with @a purse_pub's private key affirming the above
    * @param[out] in_conflict set to true if the meta data
@@ -4594,6 +4596,8 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp purse_expiration,
     const struct TALER_PrivateContractHashP *h_contract_terms,
     uint32_t age_limit,
+    enum TALER_WalletAccountMergeFlags flags,
+    const struct TALER_Amount *purse_fee,
     const struct TALER_Amount *amount,
     const struct TALER_PurseContractSignatureP *purse_sig,
     bool *in_conflict);

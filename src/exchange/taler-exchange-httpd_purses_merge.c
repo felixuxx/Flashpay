@@ -497,24 +497,32 @@ TEH_handler_purses_merge (
       TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_MERGE_SIGNATURE,
       NULL);
   }
-  if (GNUNET_OK !=
-      TALER_wallet_account_merge_verify (
-        pcc.merge_timestamp,
-        pcc.purse_pub,
-        pcc.purse_expiration,
-        &pcc.h_contract_terms,
-        &pcc.target_amount,
-        pcc.min_age,
-        &pcc.reserve_pub,
-        &pcc.reserve_sig))
   {
-    GNUNET_break_op (0);
-    GNUNET_free (pcc.provider_url);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_RESERVE_SIGNATURE,
-      NULL);
+    struct TALER_Amount zero_purse_fee;
+
+    TALER_amount_set_zero (pcc.target_amount.currency,
+                           &zero_purse_fee);
+    if (GNUNET_OK !=
+        TALER_wallet_account_merge_verify (
+          pcc.merge_timestamp,
+          pcc.purse_pub,
+          pcc.purse_expiration,
+          &pcc.h_contract_terms,
+          &pcc.target_amount,
+          &zero_purse_fee,
+          pcc.min_age,
+          TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
+          &pcc.reserve_pub,
+          &pcc.reserve_sig))
+    {
+      GNUNET_break_op (0);
+      GNUNET_free (pcc.provider_url);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_RESERVE_SIGNATURE,
+        NULL);
+    }
   }
 
   /* execute transaction */

@@ -4441,6 +4441,7 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * @param contract_priv private key to get the contract
  * @param contract_terms contract the purse is about
  * @param upload_contract true to upload the contract
+ * @param pay_for_purse true to pay for purse creation
  * @paran merge_timestamp when should the merge happen (use current time)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4455,6 +4456,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   bool upload_contract,
+  bool pay_for_purse,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   TALER_EXCHANGE_PurseCreateMergeCallback cb,
   void *cb_cls);

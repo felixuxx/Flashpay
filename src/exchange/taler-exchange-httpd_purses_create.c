@@ -55,7 +55,7 @@ struct Coin
   struct TALER_Amount amount;
 
   /**
-   * Deposit fee applicable for this coin.
+   * Deposit fee applicable to this coin.
    */
   struct TALER_Amount deposit_fee;
 
@@ -220,8 +220,11 @@ create_transaction (void *cls,
 {
   struct PurseCreateContext *pcc = cls;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount purse_fee;
   bool in_conflict = true;
 
+  TALER_amount_set_zero (pcc->amount.currency,
+                         &purse_fee);
   /* 1) create purse */
   qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
                                          pcc->purse_pub,
@@ -229,7 +232,9 @@ create_transaction (void *cls,
                                          pcc->purse_expiration,
                                          &pcc->h_contract_terms,
                                          pcc->min_age,
+                                         TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
                                          &pcc->amount,
+                                         &purse_fee,
                                          &pcc->purse_sig,
                                          &in_conflict);
   if (qs < 0)

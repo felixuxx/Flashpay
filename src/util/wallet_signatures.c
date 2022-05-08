@@ -1063,6 +1063,12 @@ struct TALER_AccountMergePS
   struct TALER_AmountNBO purse_amount;
 
   /**
+   * Purse creation fee to be paid by the reserve for
+   * this operation.
+   */
+  struct TALER_AmountNBO purse_fee;
+
+  /**
    * Contract this purse pays for.
    */
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -1078,9 +1084,16 @@ struct TALER_AccountMergePS
   struct GNUNET_TIME_TimestampNBO merge_timestamp;
 
   /**
-   * Minimum age required for payments into this purse.
+   * Minimum age required for payments into this purse,
+   * in NBO.
    */
   uint32_t min_age GNUNET_PACKED;
+
+  /**
+   * Flags for the operation, in NBO. See
+   * `enum TALER_WalletAccountMergeFlags`.
+   */
+  uint32_t flags GNUNET_PACKED;
 };
 
 
@@ -1091,7 +1104,9 @@ TALER_wallet_account_merge_sign (
   struct GNUNET_TIME_Timestamp purse_expiration,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_Amount *amount,
+  const struct TALER_Amount *purse_fee,
   uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -1102,11 +1117,14 @@ TALER_wallet_account_merge_sign (
     .purse_pub = *purse_pub,
     .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
     .h_contract_terms = *h_contract_terms,
-    .min_age = htonl (min_age)
+    .min_age = htonl (min_age),
+    .flags = htonl ((uint32_t) flags)
   };
 
   TALER_amount_hton (&pm.purse_amount,
                      amount);
+  TALER_amount_hton (&pm.purse_fee,
+                     purse_fee);
   GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
                             &pm,
                             &reserve_sig->eddsa_signature);
@@ -1120,7 +1138,9 @@ TALER_wallet_account_merge_verify (
   struct GNUNET_TIME_Timestamp purse_expiration,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_Amount *amount,
+  const struct TALER_Amount *purse_fee,
   uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -1131,11 +1151,14 @@ TALER_wallet_account_merge_verify (
     .purse_pub = *purse_pub,
     .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
     .h_contract_terms = *h_contract_terms,
-    .min_age = htonl (min_age)
+    .min_age = htonl (min_age),
+    .flags = htonl ((uint32_t) flags)
   };
 
   TALER_amount_hton (&pm.purse_amount,
                      amount);
+  TALER_amount_hton (&pm.purse_fee,
+                     purse_fee);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_WALLET_ACCOUNT_MERGE,
     &pm,

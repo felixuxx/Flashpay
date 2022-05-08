@@ -250,6 +250,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   bool upload_contract,
+  bool pay_for_purse,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   TALER_EXCHANGE_PurseCreateMergeCallback cb,
   void *cb_cls)
@@ -268,6 +269,8 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct TALER_PurseContractSignatureP purse_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
+  struct TALER_Amount purse_fee;
+  enum TALER_WalletAccountMergeFlags flags;
 
   pcm = GNUNET_new (struct TALER_EXCHANGE_PurseCreateMergeHandle);
   pcm->exchange = exchange;
@@ -315,7 +318,22 @@ TALER_EXCHANGE_purse_create_with_merge (
       return NULL;
     }
   }
+  if (pay_for_purse)
+  {
+    const struct TALER_EXCHANGE_GlobalFee *gf;
 
+    gf = TALER_EXCHANGE_get_global_fee (
+      TALER_EXCHANGE_get_keys (exchange),
+      GNUNET_TIME_timestamp_get ());
+    purse_fee = gf->fees.purse;
+    flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
+  }
+  else
+  {
+    TALER_amount_set_zero (pcm->purse_value_after_fees.currency,
+                           &purse_fee);
+    flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
+  }
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -359,7 +377,9 @@ TALER_EXCHANGE_purse_create_with_merge (
                                    pcm->purse_expiration,
                                    &pcm->h_contract_terms,
                                    &pcm->purse_value_after_fees,
+                                   &purse_fee,
                                    min_age,
+                                   flags,
                                    reserve_priv,
                                    &reserve_sig);
   if (upload_contract)
@@ -397,6 +417,12 @@ TALER_EXCHANGE_purse_create_with_merge (
       ? GNUNET_JSON_pack_data_auto ("contract_pub",
                                     &contract_pub)
       : GNUNET_JSON_pack_string ("dummy",
+                                 NULL)),
+    GNUNET_JSON_pack_allow_null (
+      pay_for_purse
+      ? TALER_JSON_pack_amount ("purse_fee",
+                                &purse_fee)
+      : GNUNET_JSON_pack_string ("dummy2",
                                  NULL)),
     GNUNET_JSON_pack_data_auto ("merge_pub",
                                 &merge_pub),

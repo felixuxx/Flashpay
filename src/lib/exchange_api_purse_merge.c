@@ -349,14 +349,22 @@ TALER_EXCHANGE_account_merge (
                                  purse_pub,
                                  merge_priv,
                                  &merge_sig);
-  TALER_wallet_account_merge_sign (merge_timestamp,
-                                   purse_pub,
-                                   purse_expiration,
-                                   h_contract_terms,
-                                   purse_value_after_fees,
-                                   min_age,
-                                   reserve_priv,
-                                   &reserve_sig);
+  {
+    struct TALER_Amount zero_purse_fee;
+
+    TALER_amount_set_zero (purse_value_after_fees->currency,
+                           &zero_purse_fee);
+    TALER_wallet_account_merge_sign (merge_timestamp,
+                                     purse_pub,
+                                     purse_expiration,
+                                     h_contract_terms,
+                                     purse_value_after_fees,
+                                     &zero_purse_fee,
+                                     min_age,
+                                     TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
+                                     reserve_priv,
+                                     &reserve_sig);
+  }
   merge_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
                              reserve_url),

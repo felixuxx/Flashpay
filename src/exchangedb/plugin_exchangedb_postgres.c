@@ -3541,13 +3541,17 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,purse_expiration"
       "  ,h_contract_terms"
       "  ,age_limit"
+      "  ,flags"
+      "  ,in_reserve_quota"
       "  ,amount_with_fee_val"
       "  ,amount_with_fee_frac"
+      "  ,purse_fee_val"
+      "  ,purse_fee_frac"
       "  ,purse_sig"
       "  ) VALUES "
-      "  ($1, $2, $3, $4, $5, $6, $7, $8)"
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
       "  ON CONFLICT DO NOTHING;",
-      8),
+      12),
     /* Used in #postgres_select_purse */
     GNUNET_PQ_make_prepare (
       "select_purse",
@@ -13481,6 +13485,8 @@ postgres_select_purse_request (
  * @param purse_expiration time when the purse will expire
  * @param h_contract_terms hash of the contract for the purse
  * @param age_limit age limit to enforce for payments into the purse
+ * @param flags flags for the operation
+ * @param purse_fee fee we are allowed to charge to the reserve (depending on @a flags)
  * @param amount target amount (with fees) to be put into the purse
  * @param purse_sig signature with @a purse_pub's private key affirming the above
  * @param[out] in_conflict set to true if the meta data
@@ -13497,19 +13503,27 @@ postgres_insert_purse_request (
   struct GNUNET_TIME_Timestamp purse_expiration,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   uint32_t age_limit,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_Amount *purse_fee,
   const struct TALER_Amount *amount,
   const struct TALER_PurseContractSignatureP *purse_sig,
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
+  uint32_t flags32 = (uint32_t) flags;
+  bool in_reserve_quota = (TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE
+                           == (flags & TALER_WAMF_MERGE_MODE_MASK));
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_pub),
     GNUNET_PQ_query_param_timestamp (&purse_expiration),
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
     GNUNET_PQ_query_param_uint32 (&age_limit),
+    GNUNET_PQ_query_param_uint32 (&flags32),
+    GNUNET_PQ_query_param_bool (in_reserve_quota),
     TALER_PQ_query_param_amount (amount),
+    TALER_PQ_query_param_amount (purse_fee),
     GNUNET_PQ_query_param_auto_from_type (purse_sig),
     GNUNET_PQ_query_param_end
   };

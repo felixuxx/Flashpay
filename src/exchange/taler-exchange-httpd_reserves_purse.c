@@ -61,6 +61,11 @@ struct ReservePurseContext
   struct TALER_Amount amount;
 
   /**
+   * Purse fee the client is willing to pay.
+   */
+  struct TALER_Amount purse_fee;
+
+  /**
    * Total amount already put into the purse.
    */
   struct TALER_Amount deposit_total;
@@ -129,6 +134,11 @@ struct ReservePurseContext
    * Minimum age for deposits into this purse.
    */
   uint32_t min_age;
+
+  /**
+   * Flags for the operation.
+   */
+  enum TALER_WalletAccountMergeFlags flags;
 };
 
 
@@ -209,6 +219,8 @@ purse_transaction (void *cls,
                                            rpc->purse_expiration,
                                            &rpc->h_contract_terms,
                                            rpc->min_age,
+                                           rpc->flags,
+                                           &rpc->purse_fee,
                                            &rpc->amount,
                                            &rpc->purse_sig,
                                            &in_conflict);
@@ -449,12 +461,18 @@ TEH_handler_reserves_purse (
     .reserve_pub = reserve_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
+  bool no_purse_fee = true;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("purse_value",
                             TEH_currency,
                             &rpc.amount),
     GNUNET_JSON_spec_uint32 ("min_age",
                              &rpc.min_age),
+    GNUNET_JSON_spec_mark_optional (
+      TALER_JSON_spec_amount ("purse_fee",
+                              TEH_currency,
+                              &rpc.purse_fee),
+      &no_purse_fee),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_varsize ("econtract",
                                 &rpc.econtract,
@@ -538,7 +556,17 @@ TEH_handler_reserves_purse (
                                        TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
                                        NULL);
   }
-
+  if (no_purse_fee)
+  {
+    rpc.flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
+    TALER_amount_set_zero (TEH_currency,
+                           &rpc.purse_fee);
+  }
+  else
+  {
+    rpc.flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
+    // FIXME: check rpc.purse_fee is at or above gf.fees.purse!
+  }
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_purse_create_verify (rpc.purse_expiration,
@@ -578,7 +606,9 @@ TEH_handler_reserves_purse (
                                          rpc.purse_expiration,
                                          &rpc.h_contract_terms,
                                          &rpc.amount,
+                                         &rpc.purse_fee,
                                          rpc.min_age,
+                                         rpc.flags,
                                          rpc.reserve_pub,
                                          &rpc.reserve_sig))
   {

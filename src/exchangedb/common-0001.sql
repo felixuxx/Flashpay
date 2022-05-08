@@ -1165,6 +1165,7 @@ BEGIN
       ',purse_expiration INT8 NOT NULL'
       ',h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)'
       ',age_limit INT4 NOT NULL'
+      ',flags INT4 NOT NULL'
       ',refunded BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',finished BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',in_reserve_quota BOOLEAN NOT NULL DEFAULT(FALSE)'

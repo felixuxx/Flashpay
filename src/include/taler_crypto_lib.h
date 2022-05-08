@@ -2862,8 +2862,7 @@ TALER_wallet_purse_deposit_verify (
 /**
  * Sign a request by a purse to merge it into an account.
  *
- * @param reserve_url identifies the location of the reserve,
- *        included public key must match @e reserve_priv
+ * @param reserve_url identifies the location of the reserve
  * @param merge_timestamp time when the merge happened
  * @param purse_pub key identifying the purse
  * @param merge_priv key identifying the merge capability
@@ -2881,8 +2880,7 @@ TALER_wallet_purse_merge_sign (
 /**
  * Verify a purse merge request.
  *
- * @param reserve_url identifies the location of the reserve,
- *        included public key must match @e reserve_priv
+ * @param reserve_url identifies the location of the reserve
  * @param merge_timestamp time when the merge happened
  * @param purse_pub public key of the purse to merge
  * @param merge_pub public key of the merge capability
@@ -2899,6 +2897,42 @@ TALER_wallet_purse_merge_verify (
 
 
 /**
+ * Flags for a merge signature.
+ */
+enum TALER_WalletAccountMergeFlags
+{
+
+  /**
+   * A mode must be set. None is not a legal mode!
+   */
+  TALER_WAMF_MODE_NONE = 0,
+
+  /**
+   * We are merging a fully paid-up purse into a reserve.
+   */
+  TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE = 1,
+
+  /**
+   * We are creating a fresh purse, from the contingent
+   * of free purses that our account brings.
+   */
+  TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA = 2,
+
+  /**
+   * The account owner is willing to pay the purse_fee for the purse to be
+   * created from the account balance.
+   */
+  TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE = 3,
+
+  /**
+   * Bitmask to AND the full flags with to get the mode.
+   */
+  TALER_WAMF_MERGE_MODE_MASK = 3
+
+};
+
+
+/**
  * Sign a request by an account to merge a purse.
  *
  * @param merge_timestamp time when the merge happened
@@ -2906,7 +2940,10 @@ TALER_wallet_purse_merge_verify (
  * @param purse_expiration when should the purse expire
  * @param h_contract_terms contract the two parties agree on
  * @param amount total amount in the purse (including fees)
+ * @param purse_fee purse fee the reserve will pay,
+ *        only used if @a flags is #TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE
  * @param min_age age restriction to apply for deposits into the purse
+ * @param flags flags for the operation
  * @param reserve_priv key identifying the reserve
  * @param[out] reserve_sig resulting signature
  */
@@ -2917,7 +2954,9 @@ TALER_wallet_account_merge_sign (
   struct GNUNET_TIME_Timestamp purse_expiration,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_Amount *amount,
+  const struct TALER_Amount *purse_fee,
   uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -2930,7 +2969,10 @@ TALER_wallet_account_merge_sign (
  * @param purse_expiration when should the purse expire
  * @param h_contract_terms contract the two parties agree on
  * @param amount total amount in the purse (including fees)
+ * @param purse_fee purse fee the reserve will pay,
+ *        only used if @a flags is #TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE
  * @param min_age age restriction to apply for deposits into the purse
+ * @param flags flags for the operation
  * @param reserve_pub account’s public key
  * @param reserve_sig the signature made with purpose #TALER_SIGNATURE_WALLET_ACCOUNT_MERGE
  * @return #GNUNET_OK if the signature is valid
@@ -2942,7 +2984,9 @@ TALER_wallet_account_merge_verify (
   struct GNUNET_TIME_Timestamp purse_expiration,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_Amount *amount,
+  const struct TALER_Amount *purse_fee,
   uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 

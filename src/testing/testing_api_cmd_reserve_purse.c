@@ -187,6 +187,7 @@ purse_run (void *cls,
     &ds->contract_priv,
     ds->contract_terms,
     true /* upload contract */,
+    false /* do not pay purse fee -- FIXME: make this a choice to test this case! */,
     ds->merge_timestamp,
     &purse_cb,
     ds);
