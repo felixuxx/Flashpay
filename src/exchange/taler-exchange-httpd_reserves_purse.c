@@ -551,6 +551,7 @@ TEH_handler_reserves_purse (
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Cannot purse purse: global fees not configured!\n");
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_GLOBAL_FEES_MISSING,
@@ -565,7 +566,18 @@ TEH_handler_reserves_purse (
   else
   {
     rpc.flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
-    // FIXME: check rpc.purse_fee is at or above gf.fees.purse!
+    if (-1 ==
+        TALER_amount_cmp (&rpc.purse_fee,
+                          &rpc.gf->fees.purse))
+    {
+      /* rpc.purse_fee is below gf.fees.purse! */
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_RESERVES_PURSE_FEE_TOO_LOW,
+                                         TALER_amount2s (&rpc.gf->fees.purse));
+    }
   }
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=

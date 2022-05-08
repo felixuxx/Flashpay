@@ -159,13 +159,8 @@ reply_merge_success (struct MHD_Connection *connection,
                                &pcc->target_amount,
                                &pcc->wf->wad))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Purse merged, balance of %s benefits exchange as it is below wad fee.\n",
-                  TALER_amount2s (&pcc->target_amount));
-      return TALER_MHD_reply_with_ec (
-        connection,
-        TALER_EC_EXCHANGE_PURSE_MERGE_WAD_FEE_EXCEEDS_PURSE_VALUE,
-        TALER_amount2s (&pcc->wf->wad));
+      TALER_amount_set_zero (TEH_currency,
+                             &merge_amount);
     }
   }
   if (TALER_EC_NONE !=
