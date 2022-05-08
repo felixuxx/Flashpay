@@ -3538,6 +3538,7 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO purse_requests"
       "  (purse_pub"
       "  ,merge_pub"
+      "  ,purse_creation"
       "  ,purse_expiration"
       "  ,h_contract_terms"
       "  ,age_limit"
@@ -3549,9 +3550,9 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,purse_fee_frac"
       "  ,purse_sig"
       "  ) VALUES "
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
       "  ON CONFLICT DO NOTHING;",
-      12),
+      13),
     /* Used in #postgres_select_purse */
     GNUNET_PQ_make_prepare (
       "select_purse",
@@ -13511,12 +13512,14 @@ postgres_insert_purse_request (
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_TIME_Timestamp now = GNUNET_TIME_timestamp_get ();
   uint32_t flags32 = (uint32_t) flags;
   bool in_reserve_quota = (TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE
                            == (flags & TALER_WAMF_MERGE_MODE_MASK));
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_pub),
+    GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_timestamp (&purse_expiration),
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
     GNUNET_PQ_query_param_uint32 (&age_limit),

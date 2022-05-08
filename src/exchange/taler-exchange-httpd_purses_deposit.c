@@ -220,7 +220,7 @@ deposit_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_STORE_FAILED,
-                                             "purse deposit deposit");
+                                             "do purse deposit");
       return qs;
     }
     if (! balance_ok)

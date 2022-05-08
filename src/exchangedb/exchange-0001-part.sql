@@ -2855,6 +2855,10 @@ DECLARE
 DECLARE
   psi INT8; -- partner's serial ID (set if merged)
 DECLARE
+  my_amount_val INT8; -- total in purse
+DECLARE
+  my_amount_frac INT4; -- total in purse
+DECLARE
   was_paid BOOLEAN;
 DECLARE
   my_reserve_pub BYTEA;
@@ -2881,8 +2885,7 @@ IF NOT FOUND
 THEN
   -- Idempotency check: check if coin_sig is the same,
   -- if so, success, otherwise conflict!
-  SELECT
-    1
+  PERFORM
   FROM purse_deposits
   WHERE coin_pub = in_coin_pub
     AND purse_pub = in_purse_pub
@@ -2961,7 +2964,11 @@ THEN
 END IF;
 
 SELECT
-  1
+    amount_with_fee_val
+   ,amount_with_fee_frac
+  INTO
+    my_amount_val
+   ,my_amount_frac
   FROM purse_requests
   WHERE (purse_pub=in_purse_pub)
     AND ( ( ( (amount_with_fee_val <= balance_val)
@@ -2983,15 +2990,15 @@ ELSE
   -- This is a local reserve, update balance immediately.
   UPDATE reserves
   SET
-    current_balance_frac=current_balance_frac+amount_frac
+    current_balance_frac=current_balance_frac+my_amount_frac
        - CASE
-         WHEN current_balance_frac + amount_frac >= 100000000
+         WHEN current_balance_frac + my_amount_frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val+amount_val
+    current_balance_val=current_balance_val+my_amount_val
        + CASE
-         WHEN current_balance_frac + amount_frac >= 100000000
+         WHEN current_balance_frac + my_amount_frac >= 100000000
          THEN 1
          ELSE 0
          END

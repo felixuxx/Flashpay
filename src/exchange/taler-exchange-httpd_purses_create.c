@@ -233,8 +233,8 @@ create_transaction (void *cls,
                                          &pcc->h_contract_terms,
                                          pcc->min_age,
                                          TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
-                                         &pcc->amount,
                                          &purse_fee,
+                                         &pcc->amount,
                                          &pcc->purse_sig,
                                          &in_conflict);
   if (qs < 0)
