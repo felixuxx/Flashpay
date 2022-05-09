@@ -78,7 +78,7 @@ DROP TABLE IF EXISTS wad_out_entries CASCADE;
 DROP TABLE IF EXISTS wads_in CASCADE;
 DROP TABLE IF EXISTS wad_in_entries CASCADE;
 DROP TABLE IF EXISTS partner_accounts CASCADE;
-
+DROP TABLE IF EXISTS purse_actions CASCADE;
 
 DROP FUNCTION IF EXISTS exchange_do_withdraw;
 DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check;

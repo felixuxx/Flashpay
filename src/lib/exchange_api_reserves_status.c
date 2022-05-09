@@ -318,10 +318,11 @@ TALER_EXCHANGE_reserves_status (
     json_decref (status_obj);
   }
   ctx = TEAH_handle_to_context (exchange);
-  rsh->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  &handle_reserves_status_finished,
-                                  rsh);
+  rsh->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   rsh->post_ctx.headers,
+                                   &handle_reserves_status_finished,
+                                   rsh);
   return rsh;
 }
 

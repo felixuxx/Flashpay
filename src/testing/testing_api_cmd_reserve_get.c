@@ -144,8 +144,9 @@ reserve_status_cb (void *cls,
                                &rs->details.ok.balance))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected amount in reserve: %s\n",
-                  TALER_amount_to_string (&rs->details.ok.balance));
+                  "Unexpected amount %s in reserve, wanted %s\n",
+                  TALER_amount_to_string (&rs->details.ok.balance),
+                  ss->expected_balance);
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }

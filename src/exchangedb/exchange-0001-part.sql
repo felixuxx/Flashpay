@@ -3136,8 +3136,8 @@ THEN
   -- The taler-exchange-router will take care of this.
   UPDATE purse_actions
      SET action_date=0 --- "immediately"
-        ,partner_serial_id=NEW.partner_serial_id
-   WHERE purse_pub=NEW.purse_pub;
+        ,partner_serial_id=my_partner_serial_id
+   WHERE purse_pub=in_purse_pub;
 ELSE
   -- This is a local reserve, update balance immediately.
   UPDATE reserves

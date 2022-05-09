@@ -174,19 +174,15 @@ struct ReserveHistoryContext
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
-#ifndef MBOSS_DONE
-  /**
-   * History of the reserve, set in the callback.
-   * FIXME: get rid of this once benchmarking is done!
-   */
-  struct TALER_EXCHANGEDB_ReserveHistory *rh;
-#endif
-
   /**
    * Balance of the reserve, set in the callback.
    */
   struct TALER_Amount balance;
 
+  /**
+   * Set to true if we did not find the reserve.
+   */
+  bool not_found;
 };
 
 
@@ -214,16 +210,9 @@ reserve_balance_transaction (void *cls,
   struct ReserveHistoryContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-#ifdef MBOSS_DONE
   qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
                                         &rsc->reserve_pub,
                                         &rsc->balance);
-#else
-  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                        &rsc->reserve_pub,
-                                        &rsc->balance,
-                                        &rsc->rh);
-#endif
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -233,6 +222,10 @@ reserve_balance_transaction (void *cls,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
                                     "get_reserve_balance");
   }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    rsc->not_found = true;
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    rsc->not_found = false;
   return qs;
 }
 
@@ -242,7 +235,6 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                           const char *const args[1])
 {
   struct ReserveHistoryContext rsc;
-  MHD_RESULT mhd_ret;
   struct GNUNET_TIME_Relative timeout = GNUNET_TIME_UNIT_ZERO;
   struct GNUNET_DB_EventHandler *eh = NULL;
 
@@ -302,22 +294,25 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                                    &db_event_cb,
                                    rc);
   }
-  rsc.rh = NULL;
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (rc->connection,
-                              "get reserve balance",
-                              TEH_MT_REQUEST_OTHER,
-                              &mhd_ret,
-                              &reserve_balance_transaction,
-                              &rsc))
   {
-    if (NULL != eh)
-      TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                       eh);
-    return mhd_ret;
+    MHD_RESULT mhd_ret;
+
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (rc->connection,
+                                "get reserve balance",
+                                TEH_MT_REQUEST_OTHER,
+                                &mhd_ret,
+                                &reserve_balance_transaction,
+                                &rsc))
+    {
+      if (NULL != eh)
+        TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                         eh);
+      return mhd_ret;
+    }
   }
   /* generate proper response */
-  if (NULL == rsc.rh)
+  if (rsc.not_found)
   {
     struct ReservePoller *rp = rc->rh_ctx;
 
@@ -349,16 +344,11 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
   if (NULL != eh)
     TEH_plugin->event_listen_cancel (TEH_plugin->cls,
                                      eh);
-  mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+  return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     MHD_HTTP_OK,
     TALER_JSON_pack_amount ("balance",
                             &rsc.balance));
-#ifndef MBOSS_DONE
-  TEH_plugin->free_reserve_history (TEH_plugin->cls,
-                                    rsc.rh);
-#endif
-  return mhd_ret;
 }
 
 

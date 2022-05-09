@@ -158,7 +158,7 @@ run (void *cls,
       "EUR:1.01",
       NULL),
     TALER_TESTING_cmd_purse_poll (
-      "poll-purse-before-merge",
+      "push-poll-purse-before-merge",
       MHD_HTTP_OK,
       "purse-with-deposit",
       "EUR:1",
@@ -175,13 +175,24 @@ run (void *cls,
       "push-get-contract",
       "create-reserve-1"),
     TALER_TESTING_cmd_purse_poll_finish (
-      "merge-purse-poll-finish",
+      "push-merge-purse-poll-finish",
       GNUNET_TIME_relative_multiply (
         GNUNET_TIME_UNIT_SECONDS,
         5),
-      "poll-purse-before-merge"),
-    // FIXME: trigger p2p job
-    // FIXME: check reserve history!
+      "push-poll-purse-before-merge"),
+    TALER_TESTING_cmd_status (
+      "push-check-post-merge-reserve-balance-get",
+      "create-reserve-1",
+      "EUR:1",
+      MHD_HTTP_OK),
+#if FIXME
+    /* POST history doesn't yet support P2P transfers */
+    TALER_TESTING_cmd_reserves_status (
+      "push-check-post-merge-reserve-balance-post",
+      "create-reserve-1",
+      "EUR:1",
+      MHD_HTTP_OK),
+#endif
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command pull[] = {
@@ -198,7 +209,7 @@ run (void *cls,
       false, /* for deposit */
       "purse-create-with-reserve"),
     TALER_TESTING_cmd_purse_poll (
-      "poll-purse-before-deposit",
+      "pull-poll-purse-before-deposit",
       MHD_HTTP_OK,
       "purse-create-with-reserve",
       "EUR:1",
@@ -213,13 +224,24 @@ run (void *cls,
       "EUR:1.01",
       NULL),
     TALER_TESTING_cmd_purse_poll_finish (
-      "deposit-purse-poll-finish",
+      "pull-deposit-purse-poll-finish",
       GNUNET_TIME_relative_multiply (
         GNUNET_TIME_UNIT_SECONDS,
         5),
-      "poll-purse-before-deposit"),
-    // FIXME: trigger p2p job
-    // FIXME: check reserve history!
+      "pull-poll-purse-before-deposit"),
+    TALER_TESTING_cmd_status (
+      "pull-check-post-merge-reserve-balance-get",
+      "create-reserve-1",
+      "EUR:2",
+      MHD_HTTP_OK),
+#if FIXME
+    /* POST history doesn't yet support P2P transfers */
+    TALER_TESTING_cmd_reserves_status (
+      "push-check-post-merge-reserve-balance-post",
+      "create-reserve-1",
+      "EUR:2",
+      MHD_HTTP_OK),
+#endif
     TALER_TESTING_cmd_end ()
   };
 

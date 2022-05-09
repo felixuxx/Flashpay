@@ -141,7 +141,6 @@ purse_status_cb (void *cls,
   }
   if (MHD_HTTP_OK == ss->expected_response_code)
   {
-#if 0
     struct TALER_Amount eb;
 
     GNUNET_assert (GNUNET_OK ==
@@ -152,11 +151,10 @@ purse_status_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected amount in purse: %s\n",
-                  TALER_amount_to_string (&rs->details.ok.balance));
+                  TALER_amount_to_string (&rs->details.success.balance));
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }
-#endif
   }
   if (NULL != ss->ps)
   {
