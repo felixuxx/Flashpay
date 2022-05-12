@@ -100,7 +100,7 @@
 /**
  * Signature affirming a partner configuration for wads.
  */
-#define TALER_SIGNATURE_MASTER_PARTNER_DETAILS 1032
+#define TALER_SIGNATURE_MASTER_PARTNER_DETAILS 1048
 
 /*********************************************/
 /* Exchange online signatures (with signing key) */
