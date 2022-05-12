@@ -77,6 +77,11 @@ struct WireStateHandle
   struct MHD_Response *wire_reply;
 
   /**
+   * ETag for this response (if any).
+   */
+  char *etag;
+
+  /**
    * head of DLL of wire fees.
    */
   struct WireFeeSet *wfs_head;
@@ -85,6 +90,16 @@ struct WireStateHandle
    * Tail of DLL of wire fees.
    */
   struct WireFeeSet *wfs_tail;
+
+  /**
+   * Earliest timestamp of all the wire methods when we have no more fees.
+   */
+  struct GNUNET_TIME_Absolute cache_expiration;
+
+  /**
+   * @e cache_expiration time, formatted.
+   */
+  char dat[128];
 
   /**
    * For which (global) wire_generation was this data structure created?
@@ -336,7 +351,6 @@ build_wire_state (void)
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
   struct WireStateHandle *wsh;
-  struct GNUNET_TIME_Absolute cache_expiration;
   struct GNUNET_HashContext *hc;
 
   wsh = GNUNET_new (struct WireStateHandle);
@@ -367,7 +381,7 @@ build_wire_state (void)
   }
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
-  cache_expiration = GNUNET_TIME_UNIT_ZERO_ABS;
+  wsh->cache_expiration = GNUNET_TIME_UNIT_ZERO_ABS;
   hc = GNUNET_CRYPTO_hash_context_start ();
   {
     json_t *account;
@@ -434,8 +448,8 @@ build_wire_state (void)
           GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
-        cache_expiration = GNUNET_TIME_absolute_min (ac.max_seen,
-                                                     cache_expiration);
+        wsh->cache_expiration = GNUNET_TIME_absolute_min (ac.max_seen,
+                                                          wsh->cache_expiration);
         GNUNET_assert (0 ==
                        json_object_set_new (wire_fee_object,
                                             wire_method,
@@ -454,19 +468,18 @@ build_wire_state (void)
     GNUNET_JSON_pack_data_auto ("master_public_key",
                                 &TEH_master_public_key));
   {
-    char dat[128];
     struct GNUNET_TIME_Timestamp m;
 
-    m = GNUNET_TIME_absolute_to_timestamp (cache_expiration);
+    m = GNUNET_TIME_absolute_to_timestamp (wsh->cache_expiration);
     TALER_MHD_get_date_string (m.abs_time,
-                               dat);
+                               wsh->dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Setting 'Expires' header for '/wire' to '%s'\n",
-                dat);
+                wsh->dat);
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (wsh->wire_reply,
                                            MHD_HTTP_HEADER_EXPIRES,
-                                           dat));
+                                           wsh->dat));
   }
   TALER_MHD_add_global_headers (wsh->wire_reply);
   {
@@ -481,6 +494,7 @@ build_wire_state (void)
                                          etag,
                                          sizeof (etag));
     *end = '\0';
+    wsh->etag = GNUNET_strdup (etag);
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (wsh->wire_reply,
                                            MHD_HTTP_HEADER_ETAG,
@@ -550,6 +564,42 @@ TEH_handler_wire (struct TEH_RequestContext *rc,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        NULL);
+  {
+    const char *etag;
+
+    etag = MHD_lookup_connection_value (rc->connection,
+                                        MHD_HEADER_KIND,
+                                        MHD_HTTP_HEADER_IF_NONE_MATCH);
+    if ( (NULL != etag) &&
+         (MHD_HTTP_OK == wsh->http_status) &&
+         (NULL != wsh->etag) &&
+         (0 == strcmp (etag,
+                       wsh->etag)) )
+    {
+      MHD_RESULT ret;
+      struct MHD_Response *resp;
+
+      resp = MHD_create_response_from_buffer (0,
+                                              NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+      TALER_MHD_add_global_headers (resp);
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_EXPIRES,
+                                             wsh->dat));
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_ETAG,
+                                             wsh->etag));
+      ret = MHD_queue_response (rc->connection,
+                                MHD_HTTP_NOT_MODIFIED,
+                                resp);
+      GNUNET_break (MHD_YES == ret);
+      MHD_destroy_response (resp);
+      return ret;
+
+    }
+  }
   return MHD_queue_response (rc->connection,
                              wsh->http_status,
                              wsh->wire_reply);
