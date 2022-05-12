@@ -208,6 +208,18 @@ TALER_MHD_reply_with_ec (struct MHD_Connection *connection,
 
 
 /**
+ * Produce HTTP "Date:" header.
+ *
+ * @param at time to write to @a date
+ * @param[out] date where to write the header, with
+ *        at least 128 bytes available space.
+ */
+void
+TALER_MHD_get_date_string (struct GNUNET_TIME_Absolute at,
+                           char date[128]);
+
+
+/**
  * Make JSON response object.
  *
  * @param json the json object

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -72,9 +72,9 @@ struct WireFeeSet
 struct WireStateHandle
 {
   /**
-   * Cached JSON for /wire response.
+   * Cached reply for /wire response.
    */
-  json_t *wire_reply;
+  struct MHD_Response *wire_reply;
 
   /**
    * head of DLL of wire fees.
@@ -136,7 +136,7 @@ destroy_wire_state (struct WireStateHandle *wsh)
     GNUNET_free (wfs->method);
     GNUNET_free (wfs);
   }
-  json_decref (wsh->wire_reply);
+  MHD_destroy_response (wsh->wire_reply);
   GNUNET_free (wsh);
 }
 
@@ -204,28 +204,6 @@ TEH_wire_done ()
 
 
 /**
- * Create standard JSON response format using @a ec and @a detail.
- *
- * @param ec error code to return
- * @param detail optional detail text to return, can be NULL
- * @return JSON response
- */
-static json_t *
-make_ec_reply (enum TALER_ErrorCode ec,
-               const char *detail)
-{
-  return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_uint64 ("code",
-                             ec),
-    GNUNET_JSON_pack_string ("hint",
-                             TALER_ErrorCode_get_hint (ec)),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_string ("detail",
-                               detail)));
-}
-
-
-/**
  * Add information about a wire account to @a cls.
  *
  * @param cls a `json_t *` object to expand with wire account details
@@ -274,6 +252,18 @@ struct AddContext
    * Array to append the fee to.
    */
   json_t *a;
+
+  /**
+   * Context we hash "everything" we add into. This is used
+   * to compute the etag. Technically, we only hash the
+   * master_sigs, as they imply the rest.
+   */
+  struct GNUNET_HashContext *hc;
+
+  /**
+   * Set to the maximum end-date seen.
+   */
+  struct GNUNET_TIME_Absolute max_seen;
 };
 
 
@@ -297,6 +287,11 @@ add_wire_fee (void *cls,
   struct AddContext *ac = cls;
   struct WireFeeSet *wfs;
 
+  GNUNET_CRYPTO_hash_context_read (ac->hc,
+                                   master_sig,
+                                   sizeof (*master_sig));
+  ac->max_seen = GNUNET_TIME_absolute_max (ac->max_seen,
+                                           end_date.abs_time);
   wfs = GNUNET_new (struct WireFeeSet);
   wfs->start_date = start_date;
   wfs->end_date = end_date;
@@ -341,6 +336,8 @@ build_wire_state (void)
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
   struct WireStateHandle *wsh;
+  struct GNUNET_TIME_Absolute cache_expiration;
+  struct GNUNET_HashContext *hc;
 
   wsh = GNUNET_new (struct WireStateHandle);
   wsh->wire_generation = wg;
@@ -355,8 +352,8 @@ build_wire_state (void)
     json_decref (wire_accounts_array);
     wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wsh->wire_reply
-      = make_ec_reply (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                       "get_wire_accounts");
+      = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
+                              "get_wire_accounts");
     return wsh;
   }
   if (0 == json_array_size (wire_accounts_array))
@@ -364,12 +361,14 @@ build_wire_state (void)
     json_decref (wire_accounts_array);
     wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wsh->wire_reply
-      = make_ec_reply (TALER_EC_EXCHANGE_WIRE_NO_ACCOUNTS_CONFIGURED,
-                       NULL);
+      = TALER_MHD_make_error (TALER_EC_EXCHANGE_WIRE_NO_ACCOUNTS_CONFIGURED,
+                              NULL);
     return wsh;
   }
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
+  cache_expiration = GNUNET_TIME_UNIT_ZERO_ABS;
+  hc = GNUNET_CRYPTO_hash_context_start ();
   {
     json_t *account;
     size_t index;
@@ -385,10 +384,12 @@ build_wire_state (void)
       {
         wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
         wsh->wire_reply
-          = make_ec_reply (TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
-                           payto_uri);
+          = TALER_MHD_make_error (
+              TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
+              payto_uri);
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
+        GNUNET_CRYPTO_hash_context_abort (hc);
         return wsh;
       }
       if (NULL == json_object_get (wire_fee_object,
@@ -397,7 +398,8 @@ build_wire_state (void)
         struct AddContext ac = {
           .wire_method = wire_method,
           .wsh = wsh,
-          .a = json_array ()
+          .a = json_array (),
+          .hc = hc
         };
 
         GNUNET_assert (NULL != ac.a);
@@ -414,8 +416,9 @@ build_wire_state (void)
           GNUNET_free (wire_method);
           wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
           wsh->wire_reply
-            = make_ec_reply (TALER_EC_GENERIC_DB_FETCH_FAILED,
-                             "get_wire_fees");
+            = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                    "get_wire_fees");
+          GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
         if (0 == json_array_size (ac.a))
@@ -425,11 +428,14 @@ build_wire_state (void)
           json_decref (wire_fee_object);
           wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
           wsh->wire_reply
-            = make_ec_reply (TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
-                             wire_method);
+            = TALER_MHD_make_error (TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
+                                    wire_method);
           GNUNET_free (wire_method);
+          GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
+        cache_expiration = GNUNET_TIME_absolute_min (ac.max_seen,
+                                                     cache_expiration);
         GNUNET_assert (0 ==
                        json_object_set_new (wire_fee_object,
                                             wire_method,
@@ -438,13 +444,48 @@ build_wire_state (void)
       GNUNET_free (wire_method);
     }
   }
-  wsh->wire_reply = GNUNET_JSON_PACK (
+
+
+  wsh->wire_reply = TALER_MHD_MAKE_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("accounts",
                                   wire_accounts_array),
     GNUNET_JSON_pack_object_steal ("fees",
                                    wire_fee_object),
     GNUNET_JSON_pack_data_auto ("master_public_key",
                                 &TEH_master_public_key));
+  {
+    char dat[128];
+    struct GNUNET_TIME_Timestamp m;
+
+    m = GNUNET_TIME_absolute_to_timestamp (cache_expiration);
+    TALER_MHD_get_date_string (m.abs_time,
+                               dat);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Setting 'Expires' header for '/wire' to '%s'\n",
+                dat);
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (wsh->wire_reply,
+                                           MHD_HTTP_HEADER_EXPIRES,
+                                           dat));
+  }
+  TALER_MHD_add_global_headers (wsh->wire_reply);
+  {
+    struct GNUNET_HashCode h;
+    char etag[sizeof (h) * 2];
+    char *end;
+
+    GNUNET_CRYPTO_hash_context_finish (hc,
+                                       &h);
+    end = GNUNET_STRINGS_data_to_string (&h,
+                                         sizeof (h),
+                                         etag,
+                                         sizeof (etag));
+    *end = '\0';
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (wsh->wire_reply,
+                                           MHD_HTTP_HEADER_ETAG,
+                                           etag));
+  }
   wsh->http_status = MHD_HTTP_OK;
   return wsh;
 }
@@ -509,9 +550,9 @@ TEH_handler_wire (struct TEH_RequestContext *rc,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        NULL);
-  return TALER_MHD_reply_json (rc->connection,
-                               wsh->wire_reply,
-                               wsh->http_status);
+  return MHD_queue_response (rc->connection,
+                             wsh->http_status,
+                             wsh->wire_reply);
 }
 
 

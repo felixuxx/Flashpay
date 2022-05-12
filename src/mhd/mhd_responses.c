@@ -502,4 +502,49 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
 }
 
 
+void
+TALER_MHD_get_date_string (struct GNUNET_TIME_Absolute at,
+                           char date[128])
+{
+  static const char *const days[] =
+  { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  static const char *const mons[] =
+  { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    "Nov", "Dec"};
+  struct tm now;
+  time_t t;
+#if ! defined(HAVE_C11_GMTIME_S) && ! defined(HAVE_W32_GMTIME_S) && \
+  ! defined(HAVE_GMTIME_R)
+  struct tm*pNow;
+#endif
+
+  date[0] = 0;
+  t = (time_t) (at.abs_value_us / 1000LL / 1000LL);
+#if defined(HAVE_C11_GMTIME_S)
+  if (NULL == gmtime_s (&t, &now))
+    return;
+#elif defined(HAVE_W32_GMTIME_S)
+  if (0 != gmtime_s (&now, &t))
+    return;
+#elif defined(HAVE_GMTIME_R)
+  if (NULL == gmtime_r (&t, &now))
+    return;
+#else
+  pNow = gmtime (&t);
+  if (NULL == pNow)
+    return;
+  now = *pNow;
+#endif
+  sprintf (date,
+           "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
+           days[now.tm_wday % 7],
+           (unsigned int) now.tm_mday,
+           mons[now.tm_mon % 12],
+           (unsigned int) (1900 + now.tm_year),
+           (unsigned int) now.tm_hour,
+           (unsigned int) now.tm_min,
+           (unsigned int) now.tm_sec);
+}
+
+
 /* end of mhd_responses.c */

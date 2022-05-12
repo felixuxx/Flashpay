@@ -178,8 +178,8 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
 
   a = GNUNET_TIME_relative_to_absolute (MAX_TERMS_CACHING);
   m = GNUNET_TIME_absolute_to_timestamp (a);
-  get_date_string (m.abs_time,
-                   dat);
+  TALER_MHD_get_date_string (m.abs_time,
+                             dat);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Setting 'Expires' header to '%s'\n",
               dat);
