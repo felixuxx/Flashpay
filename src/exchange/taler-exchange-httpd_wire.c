@@ -152,6 +152,7 @@ destroy_wire_state (struct WireStateHandle *wsh)
     GNUNET_free (wfs);
   }
   MHD_destroy_response (wsh->wire_reply);
+  GNUNET_free (wsh->etag);
   GNUNET_free (wsh);
 }
 
