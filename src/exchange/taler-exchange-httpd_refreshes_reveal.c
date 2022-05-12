@@ -768,6 +768,7 @@ clean_age:
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
 
+  // FIXME: do all this (and the above) in ONE DB transaction!
   /* Persist operation result in DB */
   {
     enum GNUNET_DB_QueryStatus qs;
