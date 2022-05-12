@@ -299,8 +299,8 @@ batch_withdraw_transaction (void *cls,
     bool nonce_reuse = true;
 
     nonce = (TALER_DENOMINATION_CS == bp->cipher)
-      ? &bp->details.cs_blinded_planchet.nonce
-      : NULL;
+            ? &bp->details.cs_blinded_planchet.nonce
+            : NULL;
     qs = TEH_plugin->do_batch_withdraw_insert (TEH_plugin->cls,
                                                nonce,
                                                &pc->collectable,
@@ -472,6 +472,7 @@ prepare_transaction (struct TEH_RequestContext *rc,
               "ev_sig",
               &pc->collectable.sig))));
     }
+    TEH_METRICS_batch_withdraw_num_coins += wc->planchets_length;
     return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_OK,

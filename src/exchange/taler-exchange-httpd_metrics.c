@@ -31,6 +31,8 @@
 
 unsigned long long TEH_METRICS_num_requests[TEH_MT_REQUEST_COUNT];
 
+unsigned long long TEH_METRICS_batch_withdraw_num_coins;
+
 unsigned long long TEH_METRICS_num_conflict[TEH_MT_REQUEST_COUNT];
 
 unsigned long long TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_COUNT];
@@ -78,7 +80,11 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "# HELP taler_exchange_num_keyexchanges "
                    " number of key exchanges done by cipher\n"
                    "# TYPE taler_exchange_num_keyexchanges counter\n"
-                   "taler_exchange_num_keyexchanges{type=\"%s\"} %llu\n",
+                   "taler_exchange_num_keyexchanges{type=\"%s\"} %llu\n"
+                   "# HELP taler_exchange_batch_withdraw_num_coins "
+                   " number of coins withdrawn in a batch-withdraw request\n"
+                   "# TYPE taler_exchange_batch_withdraw_num_coins counter\n"
+                   "taler_exchange_batch_withdraw_num_coins{type=coins} %llu\n",
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_REQUEST_OTHER],
                    "deposit",
@@ -108,7 +114,8 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "eddsa",
                    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA],
                    "ecdh",
-                   TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_ECDH]);
+                   TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_ECDH],
+                   TEH_METRICS_batch_withdraw_num_coins);
   resp = MHD_create_response_from_buffer (strlen (reply),
                                           reply,
                                           MHD_RESPMEM_MUST_FREE);

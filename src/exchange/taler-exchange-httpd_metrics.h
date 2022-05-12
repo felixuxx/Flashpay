@@ -68,6 +68,11 @@ enum TEH_MetricTypeKeyX
 extern unsigned long long TEH_METRICS_num_requests[TEH_MT_REQUEST_COUNT];
 
 /**
+ * Number of coins withdrawn in a batch-withdraw request
+ */
+extern unsigned long long TEH_METRICS_batch_withdraw_num_coins;
+
+/**
  * Number of serialization errors encountered when
  * handling requests of the respective type.
  */
