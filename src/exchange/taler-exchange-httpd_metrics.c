@@ -84,7 +84,7 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "# HELP taler_exchange_batch_withdraw_num_coins "
                    " number of coins withdrawn in a batch-withdraw request\n"
                    "# TYPE taler_exchange_batch_withdraw_num_coins counter\n"
-                   "taler_exchange_batch_withdraw_num_coins{type=coins} %llu\n",
+                   "taler_exchange_batch_withdraw_num_coins{} %llu\n",
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_REQUEST_OTHER],
                    "deposit",
