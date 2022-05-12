@@ -27,6 +27,11 @@
 #include "taler_util.h"
 #include "taler_mhd_lib.h"
 
+/**
+ * How long should browsers/proxies cache the "legal" replies?
+ */
+#define MAX_TERMS_CACHING GNUNET_TIME_UNIT_DAYS
+
 
 /**
  * Entry in the terms-of-service array.
@@ -167,7 +172,17 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
 {
   struct MHD_Response *resp;
   struct Terms *t;
+  struct GNUNET_TIME_Absolute a;
+  struct GNUNET_TIME_Timestamp m;
+  char dat[128];
 
+  a = GNUNET_TIME_relative_to_absolute (MAX_TERMS_CACHING);
+  m = GNUNET_TIME_absolute_to_timestamp (a);
+  get_date_string (m.abs_time,
+                   dat);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Setting 'Expires' header to '%s'\n",
+              dat);
   if (NULL != legal)
   {
     const char *etag;
@@ -186,6 +201,15 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                                               NULL,
                                               MHD_RESPMEM_PERSISTENT);
       TALER_MHD_add_global_headers (resp);
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_EXPIRES,
+                                             dat));
+
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_ETAG,
+                                             legal->terms_etag));
       ret = MHD_queue_response (conn,
                                 MHD_HTTP_NOT_MODIFIED,
                                 resp);
@@ -278,6 +302,11 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                                             MHD_RESPMEM_PERSISTENT);
   }
   TALER_MHD_add_global_headers (resp);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_EXPIRES,
+                                         dat));
+
   if (NULL != legal)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
