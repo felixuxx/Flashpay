@@ -635,8 +635,8 @@ struct TALER_EXCHANGEDB_Reserve
 struct TALER_EXCHANGEDB_DenominationKeyMetaData
 {
   /**
- * Start time of the validity period for this key.
- */
+   * Start time of the validity period for this key.
+   */
   struct GNUNET_TIME_Timestamp start;
 
   /**

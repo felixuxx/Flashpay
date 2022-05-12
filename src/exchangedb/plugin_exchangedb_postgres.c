@@ -1263,7 +1263,8 @@ prepare_statements (struct PostgresClosure *pg)
       ") SELECT $1, $2, $3, "
       "         denominations_serial, $5, $6, $7, $8"
       "    FROM denominations"
-      "   WHERE denom_pub_hash=$4;",
+      "   WHERE denom_pub_hash=$4"
+      " ON CONFLICT DO NOTHING;",
       8),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
@@ -1293,7 +1294,8 @@ prepare_statements (struct PostgresClosure *pg)
       "(melt_serial_id"
       ",transfer_pub"
       ",transfer_privs"
-      ") VALUES ($1, $2, $3);",
+      ") VALUES ($1, $2, $3)"
+      " ON CONFLICT DO NOTHING;",
       3),
     /* Used in #postgres_insert_refund() to store refund information */
     GNUNET_PQ_make_prepare (

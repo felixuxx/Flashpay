@@ -444,6 +444,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
   uint64_t melt_serial_id;
+  enum GNUNET_DB_QueryStatus qs;
 
   memset (dks, 0, sizeof (dks));
   memset (rrcs, 0, sizeof (rrcs));
@@ -768,11 +769,20 @@ clean_age:
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
 
-  // FIXME: do all this (and the above) in ONE DB transaction!
-  /* Persist operation result in DB */
+  for (unsigned int r = 0; r<MAX_TRANSACTION_COMMIT_RETRIES; r++)
   {
-    enum GNUNET_DB_QueryStatus qs;
-
+    /* Persist operation result in DB */
+    if (GNUNET_OK !=
+        TEH_plugin->start (TEH_plugin->cls,
+                           "insert_refresh_reveal batch"))
+    {
+      GNUNET_break (0);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_START_FAILED,
+                                        NULL);
+      goto cleanup;
+    }
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
@@ -786,18 +796,47 @@ clean_age:
                                             TALER_CNC_KAPPA - 1,
                                             rctx->transfer_privs,
                                             &rctx->gamma_tp);
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+      continue;
+    }
     /* 0 == qs is ok, as we did not check for repeated requests */
-    if (0 > qs)
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
       ret = TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
                                         TALER_EC_GENERIC_DB_STORE_FAILED,
                                         "insert_refresh_reveal");
       goto cleanup;
     }
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (qs >= 0)
+      break;   /* success */
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                                        NULL);
+      goto cleanup;
+    }
+    TEH_plugin->rollback (TEH_plugin->cls);
   }
-
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    ret = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_SOFT_FAILURE,
+                                      NULL);
+    goto cleanup;
+  }
   /* Generate final (positive) response */
   ret = reply_refreshes_reveal_success (connection,
                                         num_fresh_coins,
