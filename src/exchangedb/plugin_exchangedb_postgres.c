@@ -1515,7 +1515,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    ,coin_pub"
       "    ,amount_with_fee_val AS amount_val"
       "    ,amount_with_fee_frac AS amount_frac)"
-      " ,ref AS (" /* find applicable refunds */
+      " ,ref AS (" /* find applicable refunds -- NOTE: may do a full join on the master, maybe find a left-join way to integrate with query above to push it to the shards? */
       "  SELECT"
       "    amount_with_fee_val AS refund_val"
       "   ,amount_with_fee_frac AS refund_frac"
@@ -1536,7 +1536,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   ,denom.fee_deposit_frac AS fee_frac"
       "   ,cs.deposit_serial_id" /* ensures we get the fee for each coin, not once per denomination */
       "    FROM coins_with_fees cs"
-      "    JOIN known_coins kc"
+      "    JOIN known_coins kc" /* NOTE: may do a full join on the master, maybe find a left-join way to integrate with query above to push it to the shards? */
       "      USING (coin_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial))"

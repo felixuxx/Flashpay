@@ -172,8 +172,8 @@ batch_withdraw_transaction (void *cls,
                                       now,
                                       wc->reserve_pub,
                                       &wc->batch_total,
-                                      &balance_ok,
                                       &found,
+                                      &balance_ok,
                                       &wc->kyc,
                                       &ruuid);
   if (0 > qs)
