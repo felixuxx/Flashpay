@@ -82,6 +82,7 @@ DROP TABLE IF EXISTS purse_actions CASCADE;
 
 DROP FUNCTION IF EXISTS exchange_do_withdraw;
 DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check;
+DROP FUNCTION IF EXISTS exchange_do_recoup_by_reserve;
 DROP FUNCTION IF EXISTS recoup_insert_trigger;
 DROP FUNCTION IF EXISTS recoup_delete_trigger;
 DROP FUNCTION IF EXISTS deposits_insert_trigger;

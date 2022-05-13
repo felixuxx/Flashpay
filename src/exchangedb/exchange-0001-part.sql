@@ -1915,6 +1915,72 @@ END IF;
 END $$;
 
 
+CREATE OR REPLACE FUNCTION exchange_do_recoup_by_reserve(
+  IN res_pub BYTEA
+)
+RETURNS TABLE
+(
+  denom_sig            BYTEA,
+  denominations_serial BIGINT,
+  coin_pub             BYTEA,
+  coin_sig             BYTEA,
+  coin_blind           BYTEA,
+  amount_val           BIGINT,
+  amount_frac          INTEGER,
+  recoup_timestamp     BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  res_uuid BIGINT;
+  blind_ev BYTEA;
+  c_pub    BYTEA;
+BEGIN
+  SELECT reserve_uuid
+  INTO res_uuid
+  FROM reserves
+  WHERE reserves.reserve_pub = res_pub;
+
+  FOR blind_ev IN
+    SELECT h_blind_ev
+      FROM reserves_out_by_reserve
+    WHERE reserves_out_by_reserve.reserve_uuid = res_uuid
+  LOOP
+    SELECT robr.coin_pub
+      INTO c_pub
+      FROM recoup_by_reserve robr
+    WHERE robr.reserve_out_serial_id = (
+      SELECT reserves_out.reserve_out_serial_id
+        FROM reserves_out
+      WHERE reserves_out.h_blind_ev = blind_ev
+    );
+    RETURN QUERY
+      SELECT kc.denom_sig,
+             kc.denominations_serial,
+             rc.coin_pub,
+             rc.coin_sig,
+             rc.coin_blind,
+             rc.amount_val,
+             rc.amount_frac,
+             rc.recoup_timestamp
+      FROM (
+        SELECT *
+        FROM known_coins
+        WHERE known_coins.coin_pub = c_pub
+      ) kc
+      JOIN (
+        SELECT *
+        FROM recoup
+        WHERE recoup.coin_pub = c_pub
+      ) rc USING (coin_pub);
+  END LOOP;
+END;
+$$;
+
+COMMENT ON FUNCTION exchange_do_recoup_by_reserve 
+  IS 'Recoup by reserve as a function to make sure we hit only the needed partition and not all when joining as joins on distributed tables fetch ALL rows from the shards';
+
+
 CREATE OR REPLACE FUNCTION exchange_do_deposit(
   IN in_amount_with_fee_val INT8,
   IN in_amount_with_fee_frac INT4,
