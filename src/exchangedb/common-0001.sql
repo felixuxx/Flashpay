@@ -110,6 +110,7 @@ BEGIN
       ',purses_allowed INT8 NOT NULL DEFAULT(0)'
       ',kyc_required BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',kyc_passed BOOLEAN NOT NULL DEFAULT(FALSE)'
+      ',max_age INT4 NOT NULL DEFAULT(120)'
       ',expiration_date INT8 NOT NULL'
       ',gc_date INT8 NOT NULL'
     ') %s ;'
