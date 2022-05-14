@@ -382,7 +382,7 @@ build_wire_state (void)
   }
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
-  wsh->cache_expiration = GNUNET_TIME_UNIT_ZERO_ABS;
+  wsh->cache_expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
   hc = GNUNET_CRYPTO_hash_context_start ();
   {
     json_t *account;
