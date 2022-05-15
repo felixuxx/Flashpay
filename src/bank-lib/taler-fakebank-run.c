@@ -185,14 +185,17 @@ main (int argc,
                                &num_threads),
     GNUNET_GETOPT_OPTION_END
   };
+  enum GNUNET_GenericReturnValue iret;
 
-  if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv,
-                          "taler-fakebank-run",
-                          "Runs the fakebank",
-                          options,
-                          &run,
-                          NULL))
+  iret = GNUNET_PROGRAM_run (argc, argv,
+                             "taler-fakebank-run",
+                             "Runs the fakebank",
+                             options,
+                             &run,
+                             NULL);
+  if (GNUNET_SYSERR == iret)
     return EXIT_INVALIDARGUMENT;
+  if (GNUNET_NO == iret)
+    return EXIT_SUCCESS;
   return ret;
 }
