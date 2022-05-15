@@ -2428,6 +2428,10 @@ handle_mhd_request (void *cls,
   MHD_RESULT ret;
 
   (void) version;
+  if (0 == strncmp (url,
+                    "/taler-wire-gateway/",
+                    strlen ("/taler-wire-gateway/")))
+    url += strlen ("/taler-wire-gateway");
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for `%s'\n",
               url);
