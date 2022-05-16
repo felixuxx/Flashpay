@@ -306,7 +306,18 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_EXPIRES,
                                          dat));
-
+  /* Set cache control headers: our response varies depending on these headers */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_VARY,
+                                         MHD_HTTP_HEADER_ACCEPT_LANGUAGE ","
+                                         MHD_HTTP_HEADER_ACCEPT ","
+                                         MHD_HTTP_HEADER_ACCEPT_ENCODING));
+  /* Information is always public, revalidate after 10 days */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "public max-age=864000"));
   if (NULL != legal)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,

@@ -1703,6 +1703,16 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
       = GNUNET_TIME_timestamp_min (m,
                                    ksh->signature_expires);
   }
+  /* Set cache control headers: our response varies depending on these headers */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_VARY,
+                                         MHD_HTTP_HEADER_ACCEPT_ENCODING));
+  /* Information is always public, revalidate after 1 hour */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "public,max-age=3600"));
   return GNUNET_OK;
 }
 

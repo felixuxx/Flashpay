@@ -483,6 +483,17 @@ build_wire_state (void)
                                            wsh->dat));
   }
   TALER_MHD_add_global_headers (wsh->wire_reply);
+  /* Set cache control headers: our response varies depending on these headers */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (wsh->wire_reply,
+                                         MHD_HTTP_HEADER_VARY,
+                                         MHD_HTTP_HEADER_ACCEPT_ENCODING));
+  /* Information is always public, revalidate after 1 day */
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (wsh->wire_reply,
+                                         MHD_HTTP_HEADER_CACHE_CONTROL,
+                                         "public,max-age=86400"));
+
   {
     struct GNUNET_HashCode h;
     char etag[sizeof (h) * 2];
