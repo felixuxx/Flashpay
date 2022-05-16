@@ -10,3 +10,4 @@ test_taler_exchange_httpd_home/.config/taler/account-1.json
 taler-exchange-closer
 taler-exchange-transfer
 taler-exchange-router
+taler-exchange-expire

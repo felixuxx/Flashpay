@@ -4604,6 +4604,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called to clean up one expired purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param start_time select purse expired after this time
+   * @param end_time select purse expired before this time
+   * @return transaction status code (#GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if no purse expired in the given time interval).
+   */
+  enum GNUNET_DB_QueryStatus
+  (*expire_purse)(
+    void *cls,
+    struct GNUNET_TIME_Absolute start_time,
+    struct GNUNET_TIME_Absolute end_time);
+
+
+  /**
    * Function called to obtain information about a purse.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

@@ -13555,6 +13555,25 @@ postgres_insert_purse_request (
 
 
 /**
+ * Function called to clean up one expired purse.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param start_time select purse expired after this time
+ * @param end_time select purse expired before this time
+ * @return transaction status code (#GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if no purse expired in the given time interval).
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_expire_purse (
+  void *cls,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Absolute end_time)
+{
+  GNUNET_break (0);
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Function called to obtain information about a purse.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -14283,6 +14302,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_purse_request;
   plugin->select_purse_request
     = &postgres_select_purse_request;
+  plugin->expire_purse
+    = &postgres_expire_purse;
   plugin->select_purse
     = &postgres_select_purse;
   plugin->select_purse_by_merge_pub
