@@ -3620,7 +3620,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",merge_timestamp"
       ",partner_base_url"
       " FROM purse_merges"
-      " JOIN partners USING (partner_serial_id)"
+      " LEFT JOIN partners USING (partner_serial_id)"
       " WHERE purse_pub=$1;",
       1),
     /* Used in #postgres_do_account_merge() */

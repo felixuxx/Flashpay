@@ -112,6 +112,8 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-2",
+                              "EUR:5.01"),
     TALER_TESTING_cmd_reserve_poll ("poll-reserve-1",
                                     "create-reserve-1",
                                     "EUR:5.01",
@@ -122,6 +124,11 @@ run (void *cls,
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-2",
+                                                 "EUR:5.01",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-2"),
     /**
      * Make a reserve exist, according to the previous
      * transfer.
@@ -193,6 +200,13 @@ run (void *cls,
       "EUR:1",
       MHD_HTTP_OK),
 #endif
+    /* Test conflicting merge */
+    TALER_TESTING_cmd_purse_merge (
+      "purse-merge-into-reserve",
+      MHD_HTTP_CONFLICT,
+      "push-get-contract",
+      "create-reserve-2"),
+
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command pull[] = {
@@ -241,6 +255,24 @@ run (void *cls,
       "create-reserve-1",
       "EUR:2",
       MHD_HTTP_OK),
+#endif
+    /* create 2nd purse for a deposit conflict */
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-2",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:4\",\"summary\":\"beer\"}",
+      true /* upload contract */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "create-reserve-1"),
+#if FIXME_RESERVE_HISTORY
+    TALER_TESTING_cmd_purse_deposit_coins (
+      "purse-deposit-coins-conflict",
+      MHD_HTTP_CONFLICT,
+      0 /* min age */,
+      "purse-create-with-reserve-2",
+      "withdraw-coin-1",
+      "EUR:4.01",
+      NULL),
 #endif
     TALER_TESTING_cmd_end ()
   };

@@ -566,6 +566,8 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
     connection,
     TALER_ErrorCode_get_http_status_safe (ec),
     TALER_JSON_pack_ec (ec),
+    GNUNET_JSON_pack_data_auto ("coin_pub",
+                                coin_pub),
     GNUNET_JSON_pack_array_steal ("history",
                                   history));
 }

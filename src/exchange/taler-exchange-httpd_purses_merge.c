@@ -275,7 +275,7 @@ merge_transaction (void *cls,
                                          &merge_timestamp,
                                          &partner_url,
                                          &reserve_pub);
-    if (qs < 0)
+    if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
