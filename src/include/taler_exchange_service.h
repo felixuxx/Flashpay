@@ -4493,6 +4493,31 @@ struct TALER_EXCHANGE_PurseDepositResponse
     struct
     {
 
+      /**
+       * When does the purse expire.
+       */
+      struct GNUNET_TIME_Timestamp purse_expiration;
+
+      /**
+       * How much was actually deposited into the purse.
+       */
+      struct TALER_Amount total_deposited;
+
+      /**
+       * How much should be in the purse in total in the end.
+       */
+      struct TALER_Amount purse_value_after_fees;
+
+      /**
+       * Hash of the contract (needed to verify signature).
+       */
+      struct TALER_PrivateContractHashP h_contract_terms;
+
+      /**
+       * Key with the merge capability (needed to verify signature).
+       */
+      struct TALER_PurseMergePublicKeyP merge_pub;
+
     } success;
   } details;
 

@@ -50,6 +50,11 @@ struct TALER_EXCHANGE_PurseDepositHandle
   char *url;
 
   /**
+   * The base url of the exchange we are talking to.
+   */
+  char *base_url;
+
+  /**
    * Context for #TEH_curl_easy_post(). Keeps the data that must
    * persist for Curl to make the upload.
    */
@@ -75,6 +80,15 @@ struct TALER_EXCHANGE_PurseDepositHandle
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
 
+  /**
+   * Array of @e num_deposits coins we are depositing.
+   */
+  struct TALER_CoinSpendPublicKeyP *coins;
+
+  /**
+   * Number of coins we are depositing.
+   */
+  unsigned int num_deposits;
 };
 
 
@@ -110,7 +124,6 @@ handle_purse_deposit_finished (void *cls,
     {
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_TIME_Timestamp etime;
-      struct TALER_Amount total_deposited;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct GNUNET_JSON_Specification spec[] = {
@@ -118,11 +131,20 @@ handle_purse_deposit_finished (void *cls,
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("merge_pub",
+                                     &dr.details.success.merge_pub),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &dr.details.success.h_contract_terms),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &etime),
+        GNUNET_JSON_spec_timestamp ("purse_expiration",
+                                    &dr.details.success.purse_expiration),
         TALER_JSON_spec_amount ("total_deposited",
                                 keys->currency,
-                                &total_deposited),
+                                &dr.details.success.total_deposited),
+        TALER_JSON_spec_amount ("purse_value_after_fees",
+                                keys->currency,
+                                &dr.details.success.purse_value_after_fees),
         GNUNET_JSON_spec_end ()
       };
 
@@ -146,16 +168,15 @@ handle_purse_deposit_finished (void *cls,
         dr.hr.ec = TALER_EC_EXCHANGE_PURSE_DEPOSIT_EXCHANGE_SIGNATURE_INVALID;
         break;
       }
-#if FIXME
       if (GNUNET_OK !=
           TALER_exchange_online_purse_created_verify (
             etime,
-            pch->purse_expiration,
-            &pch->purse_value_after_fees,
-            &total_deposited,
+            dr.details.success.purse_expiration,
+            &dr.details.success.purse_value_after_fees,
+            &dr.details.success.total_deposited,
             &pch->purse_pub,
-            &pch->merge_pub,
-            &pch->h_contract_terms,
+            &dr.details.success.merge_pub,
+            &dr.details.success.h_contract_terms,
             &exchange_pub,
             &exchange_sig))
       {
@@ -164,7 +185,6 @@ handle_purse_deposit_finished (void *cls,
         dr.hr.ec = TALER_EC_EXCHANGE_PURSE_DEPOSIT_EXCHANGE_SIGNATURE_INVALID;
         break;
       }
-#endif
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -187,7 +207,69 @@ handle_purse_deposit_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: check reply!
+    {
+      const char *partner_url = NULL;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_Amount amount;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                     &coin_sig),
+        GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                     &coin_pub),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("partner_url",
+                                   &partner_url),
+          NULL),
+        TALER_JSON_spec_amount ("amount",
+                                keys->currency,
+                                &amount),
+        GNUNET_JSON_spec_end ()
+      };
+      bool found = false;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      for (unsigned int i = 0; i<pch->num_deposits; i++)
+        if (0 == GNUNET_memcmp (&coin_pub,
+                                &pch->coins[i]))
+        {
+          found = true;
+          break;
+        }
+      if (! found)
+      {
+        /* proof is about a coin we did not even deposit */
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      if (NULL == partner_url)
+        partner_url = pch->base_url;
+      if (GNUNET_OK !=
+          TALER_wallet_purse_deposit_verify (
+            partner_url,
+            &pch->purse_pub,
+            &amount,
+            &coin_pub,
+            &coin_sig))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      /* conflict is real! */
+    }
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */
@@ -236,7 +318,6 @@ TALER_EXCHANGE_purse_deposit (
   json_t *create_obj;
   json_t *deposit_arr;
   CURL *eh;
-  char *url;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
 
   if (0 == num_deposits)
@@ -276,14 +357,17 @@ TALER_EXCHANGE_purse_deposit (
   }
   deposit_arr = json_array ();
   GNUNET_assert (NULL != deposit_arr);
-  url = TEAH_path_to_url (exchange,
-                          "/");
+  pch->base_url = TEAH_path_to_url (exchange,
+                                    "/");
+  pch->num_deposits = num_deposits;
+  pch->coins = GNUNET_new_array (num_deposits,
+                                 struct TALER_CoinSpendPublicKeyP);
   for (unsigned int i = 0; i<num_deposits; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
+    struct TALER_CoinSpendPublicKeyP *coin_pub = &pch->coins[i];
     json_t *jdeposit;
     struct TALER_CoinSpendSignatureP coin_sig;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
 #if FIXME_OEC
     struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
@@ -299,15 +383,16 @@ TALER_EXCHANGE_purse_deposit (
     {
       GNUNET_break (0);
       json_decref (deposit_arr);
-      GNUNET_free (url);
+      GNUNET_free (pch->base_url);
+      GNUNET_free (pch->coins);
       GNUNET_free (pch);
       return NULL;
     }
 #endif
     GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
-                                        &coin_pub.eddsa_pub);
+                                        &coin_pub->eddsa_pub);
     TALER_wallet_purse_deposit_sign (
-      url,
+      pch->base_url,
       &pch->purse_pub,
       &deposit->amount,
       &deposit->coin_priv,
@@ -328,14 +413,13 @@ TALER_EXCHANGE_purse_deposit (
       TALER_JSON_pack_denom_sig ("ub_sig",
                                  &deposit->denom_sig),
       GNUNET_JSON_pack_data_auto ("coin_pub",
-                                  &coin_pub),
+                                  coin_pub),
       GNUNET_JSON_pack_data_auto ("coin_sig",
                                   &coin_sig));
     GNUNET_assert (0 ==
                    json_array_append_new (deposit_arr,
                                           jdeposit));
   }
-  GNUNET_free (url);
   create_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("deposits",
                                   deposit_arr));
@@ -351,7 +435,9 @@ TALER_EXCHANGE_purse_deposit (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (create_obj);
+    GNUNET_free (pch->base_url);
     GNUNET_free (pch->url);
+    GNUNET_free (pch->coins);
     GNUNET_free (pch);
     return NULL;
   }
@@ -378,7 +464,9 @@ TALER_EXCHANGE_purse_deposit_cancel (
     GNUNET_CURL_job_cancel (pch->job);
     pch->job = NULL;
   }
+  GNUNET_free (pch->base_url);
   GNUNET_free (pch->url);
+  GNUNET_free (pch->coins);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);
 }
