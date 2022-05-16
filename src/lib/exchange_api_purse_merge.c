@@ -99,7 +99,56 @@ struct TALER_EXCHANGE_AccountMergeHandle
    * When does the purse expire.
    */
   struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
+   * Our merge key.
+   */
+  struct TALER_PurseMergePrivateKeyP merge_priv;
 };
+
+
+static char *
+make_payto (const char *exchange_url,
+            const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  char pub_str[sizeof (*reserve_pub) * 2];
+  char *end;
+  bool is_http;
+  char *reserve_url;
+
+  end = GNUNET_STRINGS_data_to_string (
+    reserve_pub,
+    sizeof (reserve_pub),
+    pub_str,
+    sizeof (pub_str));
+  *end = '\0';
+  if (0 == strncmp (exchange_url,
+                    "http://",
+                    strlen ("http://")))
+  {
+    is_http = true;
+    exchange_url = &exchange_url[strlen ("http://")];
+  }
+  else if (0 == strncmp (exchange_url,
+                         "https://",
+                         strlen ("https://")))
+  {
+    is_http = false;
+    exchange_url = &exchange_url[strlen ("https://")];
+  }
+  else
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  /* exchange_url includes trailing '/' */
+  GNUNET_asprintf (&reserve_url,
+                   "payto://%s/%s%s",
+                   is_http ? "taler+http" : "taler",
+                   exchange_url,
+                   pub_str);
+  return reserve_url;
+}
 
 
 /**
@@ -193,6 +242,11 @@ handle_purse_merge_finished (void *cls,
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    /* purse was not (yet) full */
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_FORBIDDEN:
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);
@@ -207,7 +261,60 @@ handle_purse_merge_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: check reply!
+    {
+      struct TALER_PurseMergeSignatureP merge_sig;
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+      const char *partner_url = NULL;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                     &reserve_pub),
+        GNUNET_JSON_spec_fixed_auto ("merge_sig",
+                                     &merge_sig),
+        GNUNET_JSON_spec_timestamp ("merge_timestamp",
+                                    &merge_timestamp),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("partner_base_url",
+                                   &partner_url),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+      struct TALER_PurseMergePublicKeyP merge_pub;
+      char *payto_uri;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      GNUNET_CRYPTO_eddsa_key_get_public (&pch->merge_priv.eddsa_priv,
+                                          &merge_pub.eddsa_pub);
+      if (NULL == partner_url)
+        partner_url = pch->provider_url;
+      payto_uri = make_payto (partner_url,
+                              &reserve_pub);
+      if (GNUNET_OK !=
+          TALER_wallet_purse_merge_verify (
+            payto_uri,
+            merge_timestamp,
+            &pch->purse_pub,
+            &merge_pub,
+            &merge_sig))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        GNUNET_free (payto_uri);
+        break;
+      }
+      GNUNET_free (payto_uri);
+      /* conflict is real */
+    }
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */
@@ -266,6 +373,7 @@ TALER_EXCHANGE_account_merge (
 
   pch = GNUNET_new (struct TALER_EXCHANGE_AccountMergeHandle);
   pch->exchange = exchange;
+  pch->merge_priv = *merge_priv;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
   pch->purse_pub = *purse_pub;
@@ -296,51 +404,22 @@ TALER_EXCHANGE_account_merge (
                      "/purses/%s/merge",
                      pub_str);
   }
+  reserve_url = make_payto (pch->provider_url,
+                            &pch->reserve_pub);
+  if (NULL == reserve_url)
   {
-    char pub_str[sizeof (pch->reserve_pub) * 2];
-    char *end;
-    const char *exchange_url;
-    bool is_http;
-
-    end = GNUNET_STRINGS_data_to_string (
-      &pch->reserve_pub,
-      sizeof (pch->reserve_pub),
-      pub_str,
-      sizeof (pub_str));
-    *end = '\0';
-    if (0 == strncmp (pch->provider_url,
-                      "http://",
-                      strlen ("http://")))
-    {
-      is_http = true;
-      exchange_url = &pch->provider_url[strlen ("http://")];
-    }
-    else if (0 == strncmp (pch->provider_url,
-                           "https://",
-                           strlen ("https://")))
-    {
-      is_http = false;
-      exchange_url = &pch->provider_url[strlen ("https://")];
-    }
-    else
-    {
-      GNUNET_break (0);
-      GNUNET_free (pch->provider_url);
-      GNUNET_free (pch);
-      return NULL;
-    }
-    /* exchange_url includes trailing '/' */
-    GNUNET_asprintf (&reserve_url,
-                     "payto://%s/%s%s",
-                     is_http ? "taler+http" : "taler",
-                     exchange_url,
-                     pub_str);
+    GNUNET_break (0);
+    GNUNET_free (pch->provider_url);
+    GNUNET_free (pch);
+    return NULL;
   }
   pch->url = TEAH_path_to_url (exchange,
                                arg_str);
   if (NULL == pch->url)
   {
     GNUNET_break (0);
+    GNUNET_free (reserve_url);
+    GNUNET_free (pch->provider_url);
     GNUNET_free (pch);
     return NULL;
   }
@@ -386,6 +465,7 @@ TALER_EXCHANGE_account_merge (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (merge_obj);
+    GNUNET_free (pch->provider_url);
     GNUNET_free (pch->url);
     GNUNET_free (pch);
     return NULL;

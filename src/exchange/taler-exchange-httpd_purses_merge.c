@@ -257,7 +257,7 @@ merge_transaction (void *cls,
   {
     *mhd_ret =
       TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_CONFLICT,
+                                  MHD_HTTP_PAYMENT_REQUIRED,
                                   TALER_EC_EXCHANGE_PURSE_NOT_FULL,
                                   NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
