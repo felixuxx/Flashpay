@@ -244,6 +244,11 @@ struct KeysResponseData
   struct MHD_Response *response_uncompressed;
 
   /**
+   * ETag for these responses.
+   */
+  char *etag;
+
+  /**
    * Cherry-picking timestamp the client must have set for this
    * response to be valid.  0 if this is the "full" response.
    * The client's request must include this date or a higher one
@@ -632,6 +637,7 @@ clear_response_cache (struct TEH_KeyStateHandle *ksh)
 
     MHD_destroy_response (krd->response_compressed);
     MHD_destroy_response (krd->response_uncompressed);
+    GNUNET_free (krd->etag);
   }
   GNUNET_array_grow (ksh->krd_array,
                      ksh->krd_array_length,
@@ -1980,6 +1986,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                   MHD_add_response_header (krd.response_compressed,
                                            MHD_HTTP_HEADER_ETAG,
                                            etag));
+    krd.etag = GNUNET_strdup (etag);
   }
   krd.cherry_pick_date = last_cpd;
   GNUNET_array_append (ksh->krd_array,
