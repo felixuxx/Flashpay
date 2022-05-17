@@ -2854,7 +2854,11 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
                       const char *const args[])
 {
   struct GNUNET_TIME_Timestamp last_issue_date;
+  const char *etag;
 
+  etag = MHD_lookup_connection_value (rc->connection,
+                                      MHD_HEADER_KIND,
+                                      MHD_HTTP_HEADER_IF_NONE_MATCH);
   (void) args;
   {
     const char *have_cherrypick;
@@ -2934,6 +2938,31 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
       /* Likely keys not ready *yet*.
          Wait until they are. */
       return suspend_request (rc->connection);
+    }
+    if ( (NULL != etag) &&
+         (0 == strcmp (etag,
+                       krd->etag)) )
+    {
+      MHD_RESULT ret;
+      struct MHD_Response *resp;
+
+      resp = MHD_create_response_from_buffer (0,
+                                              NULL,
+                                              MHD_RESPMEM_PERSISTENT);
+      TALER_MHD_add_global_headers (resp);
+      GNUNET_break (GNUNET_OK ==
+                    setup_general_response_headers (ksh,
+                                                    resp));
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (resp,
+                                             MHD_HTTP_HEADER_ETAG,
+                                             krd->etag));
+      ret = MHD_queue_response (rc->connection,
+                                MHD_HTTP_NOT_MODIFIED,
+                                resp);
+      GNUNET_break (MHD_YES == ret);
+      MHD_destroy_response (resp);
+      return ret;
     }
     return MHD_queue_response (rc->connection,
                                MHD_HTTP_OK,
