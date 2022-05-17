@@ -742,4 +742,91 @@ TEH_RESPONSE_compile_reserve_history (
 }
 
 
+/**
+ * Send reserve history information to client with the
+ * message that we have insufficient funds for the
+ * requested withdraw operation.
+ *
+ * @param connection connection to the client
+ * @param ebalance expected balance based on our database
+ * @param withdraw_amount amount that the client requested to withdraw
+ * @param rh reserve history to return
+ * @return MHD result code
+ */
+static MHD_RESULT
+reply_withdraw_insufficient_funds (
+  struct MHD_Connection *connection,
+  const struct TALER_Amount *ebalance,
+  const struct TALER_Amount *withdraw_amount,
+  const struct TALER_EXCHANGEDB_ReserveHistory *rh)
+{
+  json_t *json_history;
+
+  json_history = TEH_RESPONSE_compile_reserve_history (rh);
+  if (NULL == json_history)
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
+                                       NULL);
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_CONFLICT,
+    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
+    TALER_JSON_pack_amount ("balance",
+                            ebalance),
+    TALER_JSON_pack_amount ("requested_amount",
+                            withdraw_amount),
+    GNUNET_JSON_pack_array_steal ("history",
+                                  json_history));
+}
+
+
+MHD_RESULT
+TEH_RESPONSE_reply_reserve_insufficient_balance (
+  struct MHD_Connection *connection,
+  const struct TALER_Amount *balance_required,
+  const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  struct TALER_EXCHANGEDB_ReserveHistory *rh = NULL;
+  struct TALER_Amount balance;
+  enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT mhd_ret;
+
+  // FIXME: maybe start read-committed here?
+  if (GNUNET_OK !=
+      TEH_plugin->start (TEH_plugin->cls,
+                         "get_reserve_history on insufficient balance"))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_START_FAILED,
+                                       NULL);
+  }
+  /* The reserve does not have the required amount (actual
+   * amount + withdraw fee) */
+  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
+                                        reserve_pub,
+                                        &balance,
+                                        &rh);
+  TEH_plugin->rollback (TEH_plugin->cls);
+  if ( (qs < 0) ||
+       (NULL == rh) )
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                       "reserve history");
+  }
+  mhd_ret = reply_withdraw_insufficient_funds (
+    connection,
+    &balance,
+    balance_required,
+    rh);
+  TEH_plugin->free_reserve_history (TEH_plugin->cls,
+                                    rh);
+  return mhd_ret;
+}
+
+
 /* end of taler-exchange-httpd_responses.c */

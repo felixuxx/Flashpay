@@ -59,6 +59,22 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 
 
 /**
+ * Return error message indicating that a reserve had
+ * an insufficient balance for the given operation.
+ *
+ * @param connection connection to the client
+ * @param balance_required the balance required for the operation
+ * @param reserve_pub the reserve with insufficient balance
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_reserve_insufficient_balance (
+  struct MHD_Connection *connection,
+  const struct TALER_Amount *balance_required,
+  const struct TALER_ReservePublicKeyP *reserve_pub);
+
+
+/**
  * Send assertion that the given denomination key hash
  * is not usable (typically expired) at this time.
  *

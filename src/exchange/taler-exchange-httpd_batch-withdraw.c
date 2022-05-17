@@ -100,45 +100,6 @@ struct BatchWithdrawContext
 
 
 /**
- * Send reserve history information to client with the
- * message that we have insufficient funds for the
- * requested withdraw operation.
- *
- * @param connection connection to the client
- * @param ebalance expected balance based on our database
- * @param withdraw_amount amount that the client requested to withdraw
- * @param rh reserve history to return
- * @return MHD result code
- */
-static MHD_RESULT
-reply_withdraw_insufficient_funds (
-  struct MHD_Connection *connection,
-  const struct TALER_Amount *ebalance,
-  const struct TALER_Amount *withdraw_amount,
-  const struct TALER_EXCHANGEDB_ReserveHistory *rh)
-{
-  json_t *json_history;
-
-  json_history = TEH_RESPONSE_compile_reserve_history (rh);
-  if (NULL == json_history)
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
-                                       NULL);
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_CONFLICT,
-    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
-    TALER_JSON_pack_amount ("balance",
-                            ebalance),
-    TALER_JSON_pack_amount ("requested_amount",
-                            withdraw_amount),
-    GNUNET_JSON_pack_array_steal ("history",
-                                  json_history));
-}
-
-
-/**
  * Function implementing withdraw transaction.  Runs the
  * transaction logic; IF it returns a non-error code, the transaction
  * logic MUST NOT queue a MHD response.  IF it returns an hard error,
@@ -195,47 +156,11 @@ batch_withdraw_transaction (void *cls,
   }
   if (! balance_ok)
   {
-    /* FIXME: logic shared with normal withdraw
-       => refactor and move to new TEH_responses function! */
-    struct TALER_EXCHANGEDB_ReserveHistory *rh;
-    struct TALER_Amount balance;
-
     TEH_plugin->rollback (TEH_plugin->cls);
-    // FIXME: maybe start read-committed here?
-    if (GNUNET_OK !=
-        TEH_plugin->start (TEH_plugin->cls,
-                           "get_reserve_history on insufficient balance"))
-    {
-      GNUNET_break (0);
-      if (NULL != mhd_ret)
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_START_FAILED,
-                                               NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    /* The reserve does not have the required amount (actual
-     * amount + withdraw fee) */
-    qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          wc->reserve_pub,
-                                          &balance,
-                                          &rh);
-    if (NULL == rh)
-    {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "reserve history");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    *mhd_ret = reply_withdraw_insufficient_funds (
+    *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
       connection,
-      &balance,
       &wc->batch_total,
-      rh);
-    TEH_plugin->free_reserve_history (TEH_plugin->cls,
-                                      rh);
+      wc->reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
