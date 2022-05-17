@@ -20,6 +20,11 @@
  * @file testing/test_exchange_p2p.c
  * @brief testcase to test exchange's P2P payments
  * @author Christian Grothoff
+ *
+ * TODO:
+ * - Test setup with KYC where purse merge is only
+ *   allowed for reserves with KYC completed.
+ * - Test purse creation with reserve purse quota
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -325,7 +330,6 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:2.01",
       NULL),
-
     TALER_TESTING_cmd_sleep ("sleep",
                              2 /* seconds */),
     TALER_TESTING_cmd_exec_expire ("exec-expire",
@@ -356,9 +360,6 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:2.01",
       NULL),
-
-
-    // FIXME: check reserve purse capacity is back up!
     TALER_TESTING_cmd_end ()
   };
 
