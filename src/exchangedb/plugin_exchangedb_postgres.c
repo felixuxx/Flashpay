@@ -904,6 +904,14 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_purse_deposit"
       " ($1,$2,$3,$4,$5,$6,$7,$8);",
       8),
+    /* used in #postgres_expire_purse() */
+    GNUNET_PQ_make_prepare (
+      "call_expire_purse",
+      "SELECT "
+      " out_found AS found"
+      " FROM exchange_do_expire_purse"
+      " ($1,$2);",
+      2),
     /* Used in #postgres_do_melt() to melt a coin. */
     GNUNET_PQ_make_prepare (
       "call_melt",
@@ -13337,7 +13345,7 @@ postgres_select_contract_by_purse (void *cls,
  * @param[out] in_conflict set to true if @a econtract
  *             conflicts with an existing contract;
  *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -13568,8 +13576,30 @@ postgres_expire_purse (
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Absolute end_time)
 {
-  GNUNET_break (0);
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&start_time),
+    GNUNET_PQ_query_param_absolute_time (&end_time),
+    GNUNET_PQ_query_param_end
+  };
+  bool found = false;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("found",
+                                &found),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "call_expire_purse",
+                                                 params,
+                                                 rs);
+  if (qs < 0)
+    return qs;
+  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+  return found
+    ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+    : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 
 

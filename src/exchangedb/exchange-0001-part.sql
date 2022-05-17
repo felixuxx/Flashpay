@@ -1977,7 +1977,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION exchange_do_recoup_by_reserve 
+COMMENT ON FUNCTION exchange_do_recoup_by_reserve
   IS 'Recoup by reserve as a function to make sure we hit only the needed partition and not all when joining as joins on distributed tables fetch ALL rows from the shards';
 
 
@@ -2505,7 +2505,8 @@ UPDATE known_coins
          THEN 1
          ELSE 0
          END
-  WHERE coin_pub=in_coin_pub;
+  WHERE coin_pub=in_coin_pub
+  LIMIT 1; -- just to be extra safe
 
 
 out_conflict=FALSE;
@@ -3358,6 +3359,70 @@ AS $$
 BEGIN
   -- FIXME: function/API is dead! Do DCE?
 END $$;
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_expire_purse(
+  IN in_partner_id INT8,
+  IN in_start_time INT8,
+  IN in_end_time INT8,
+  OUT out_found BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  my_purse_pub BYTEA;
+DECLARE
+  my_deposit record;
+BEGIN
+
+UPDATE purse_requests
+ SET refunded=TRUE,
+     finished=TRUE
+ WHERE (purse_expiration >= in_start_time) AND
+       (purse_expiration < in_end_time) AND
+       (NOT finished) AND
+       (NOT refunded)
+ RETURNING purse_pub
+   ,in_reserve_quota
+   ,flags
+ INTO my_purse_pub
+   ,my_rq
+   ,my_flags;
+out_found = FOUND;
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+-- restore balance to each coin deposited into the purse
+FOR my_deposit IN
+  SELECT coin_pub
+        ,amount_with_fee_val
+        ,amount_with_fee_frac
+    FROM purse_deposits
+  WHERE purse_pub = my_purse_pub
+LOOP
+  UPDATE
+    remaining_frac=remaining_frac+my_deposit.amount_with_fee_frac
+     - CASE
+       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       THEN 100000000
+       ELSE 0
+       END,
+    remaining_val=remaining_val+my_deposit.amount_with_fee_val
+     + CASE
+       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       THEN 1
+       ELSE 0
+       END
+    FROM known_coins
+    WHERE coin_pub = my_deposit.coin_pub
+    LIMIT 1; -- just to be extra safe
+  END LOOP;
+END $$;
+
+COMMENT ON FUNCTION exchange_do_expire_purse(INT8,INT8)
+  IS 'Finds an expired purse in the given time range and refunds the coins (if any).';
 
 
 CREATE OR REPLACE FUNCTION exchange_do_history_request(
