@@ -556,7 +556,8 @@ test_kyc_api_LDADD = \
 # Distribution
 
 EXTRA_DIST = \
-  test_auditor_api.conf \
+  test_auditor_api-cs.conf \
+  test_auditor_api-rsa.conf \
   test_auditor_api_expire_reserve_now-cs.conf \
   test_auditor_api_expire_reserve_now-rsa.conf \
   test_bank_api_fakebank.conf \
