@@ -281,7 +281,7 @@ run (void *cls,
     TALER_TESTING_cmd_purse_create_with_reserve (
       "purse-create-with-reserve-expire",
       MHD_HTTP_OK,
-      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      "{\"amount\":\"EUR:2\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
       GNUNET_TIME_relative_multiply (
         GNUNET_TIME_UNIT_SECONDS,
@@ -312,6 +312,20 @@ run (void *cls,
       "EUR:1",
       true,
       GNUNET_TIME_UNIT_MINUTES),
+    /* This should fail, as too much of the coin
+       is already spend / in a purse */
+    TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit-overspending",
+      MHD_HTTP_CONFLICT,
+      "{\"amount\":\"EUR:2\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        1), /* expiration */
+      "withdraw-coin-1",
+      "EUR:2.01",
+      NULL),
+
     TALER_TESTING_cmd_sleep ("sleep",
                              2 /* seconds */),
     TALER_TESTING_cmd_exec_expire ("exec-expire",
@@ -328,7 +342,22 @@ run (void *cls,
         GNUNET_TIME_UNIT_SECONDS,
         15),
       "pull-poll-purse-before-expire"),
-    // FIXME: check coin was refunded
+    /* coin was refunded, so now this should be OK */
+    /* This should fail, as too much of the coin
+       is already spend / in a purse */
+    TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit-refunded",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:2\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        1), /* expiration */
+      "withdraw-coin-1",
+      "EUR:2.01",
+      NULL),
+
+
     // FIXME: check reserve purse capacity is back up!
     TALER_TESTING_cmd_end ()
   };

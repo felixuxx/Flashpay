@@ -392,13 +392,13 @@ run_shard (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (GNUNET_TIME_absolute_is_future (s->shard_start))
+  if (GNUNET_TIME_absolute_is_future (s->shard_end))
   {
+    abort_shard (s);
     GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_at (s->shard_start,
+    task = GNUNET_SCHEDULER_add_at (s->shard_end,
                                     &run_shard,
                                     NULL);
-    abort_shard (s);
     return;
   }
   /* If this is a first-time run, we immediately
