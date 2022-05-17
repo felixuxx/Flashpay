@@ -1918,6 +1918,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     void *keys_jsonz;
     size_t keys_jsonz_size;
     int comp;
+    char etag[sizeof (struct GNUNET_HashCode) * 2];
 
     /* Convert /keys response to UTF8-String */
     keys_json = json_dumps (keys,
@@ -1929,6 +1930,21 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     keys_jsonz = GNUNET_strdup (keys_json);
     keys_jsonz_size = strlen (keys_json);
 
+    /* hash to compute etag */
+    {
+      struct GNUNET_HashCode ehash;
+      char *end;
+
+      GNUNET_CRYPTO_hash (keys_jsonz,
+                          keys_jsonz_size,
+                          &ehash);
+      end = GNUNET_STRINGS_data_to_string (&ehash,
+                                           sizeof (ehash),
+                                           etag,
+                                           sizeof (etag));
+      *end = '\0';
+    }
+
     /* Create uncompressed response */
     krd.response_uncompressed
       = MHD_create_response_from_buffer (keys_jsonz_size,
@@ -1938,6 +1954,10 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_assert (GNUNET_OK ==
                    setup_general_response_headers (ksh,
                                                    krd.response_uncompressed));
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (krd.response_uncompressed,
+                                           MHD_HTTP_HEADER_ETAG,
+                                           etag));
     /* Also compute compressed version of /keys response */
     comp = TALER_MHD_body_compress (&keys_jsonz,
                                     &keys_jsonz_size);
@@ -1956,6 +1976,10 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_assert (GNUNET_OK ==
                    setup_general_response_headers (ksh,
                                                    krd.response_compressed));
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (krd.response_compressed,
+                                           MHD_HTTP_HEADER_ETAG,
+                                           etag));
   }
   krd.cherry_pick_date = last_cpd;
   GNUNET_array_append (ksh->krd_array,
