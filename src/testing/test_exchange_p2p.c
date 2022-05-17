@@ -277,6 +277,62 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  struct TALER_TESTING_Command expire[] = {
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-expire",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        1), /* expiration */
+      "create-reserve-1"),
+    TALER_TESTING_cmd_purse_poll (
+      "pull-poll-purse-before-expire",
+      MHD_HTTP_GONE,
+      "purse-create-with-reserve-expire",
+      "EUR:1",
+      false,
+      GNUNET_TIME_UNIT_MINUTES),
+    TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit-expire",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        1), /* expiration */
+      "withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    TALER_TESTING_cmd_purse_poll (
+      "push-poll-purse-before-expire",
+      MHD_HTTP_GONE,
+      "purse-with-deposit-expire",
+      "EUR:1",
+      true,
+      GNUNET_TIME_UNIT_MINUTES),
+    TALER_TESTING_cmd_sleep ("sleep",
+                             2 /* seconds */),
+    TALER_TESTING_cmd_exec_expire ("exec-expire",
+                                   config_file),
+    TALER_TESTING_cmd_purse_poll_finish (
+      "push-merge-purse-poll-finish-expire",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        15),
+      "push-poll-purse-before-expire"),
+    TALER_TESTING_cmd_purse_poll_finish (
+      "pull-deposit-purse-poll-expire-finish",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        15),
+      "pull-poll-purse-before-expire"),
+    // FIXME: check coin was refunded
+    // FIXME: check reserve purse capacity is back up!
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command commands[] = {
     /* setup exchange */
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
@@ -313,6 +369,8 @@ run (void *cls,
                              push),
     TALER_TESTING_cmd_batch ("pull",
                              pull),
+    TALER_TESTING_cmd_batch ("expire",
+                             expire),
     /* End the suite. */
     TALER_TESTING_cmd_end ()
   };

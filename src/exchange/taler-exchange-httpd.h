@@ -309,8 +309,8 @@ struct TEH_RequestHandler
      * @return MHD result code
      */
     MHD_RESULT
-      (*get)(struct TEH_RequestContext *rc,
-             const char *const args[]);
+    (*get)(struct TEH_RequestContext *rc,
+           const char *const args[]);
 
 
     /**

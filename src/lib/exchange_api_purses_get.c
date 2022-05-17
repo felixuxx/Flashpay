@@ -169,6 +169,11 @@ handle_purse_get_finished (void *cls,
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
     break;
+  case MHD_HTTP_GONE:
+    /* purse expired */
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);

@@ -333,6 +333,37 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break; /* handled below */
     }
+    if (GNUNET_TIME_absolute_cmp (gc->timeout,
+                                  >,
+                                  gc->purse_expiration.abs_time))
+    {
+      /* Timeout too high, need to replace event handler */
+      struct TALER_PurseEventP rep = {
+        .header.size = htons (sizeof (rep)),
+        .header.type = htons (
+          gc->wait_for_merge
+        ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
+        : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+        .purse_pub = gc->purse_pub
+      };
+      struct GNUNET_DB_EventHandler *eh2;
+
+      gc->timeout = gc->purse_expiration.abs_time;
+      eh2 = TEH_plugin->event_listen (
+        TEH_plugin->cls,
+        GNUNET_TIME_absolute_get_remaining (gc->timeout),
+        &rep.header,
+        &db_event_cb,
+        rc);
+      if (NULL == eh2)
+      {
+        GNUNET_break (0);
+        gc->timeout = GNUNET_TIME_UNIT_ZERO_ABS;
+      }
+      TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                       gc->eh);
+      gc->eh = eh2;
+    }
   }
   if (GNUNET_TIME_absolute_is_past (gc->purse_expiration.abs_time))
   {

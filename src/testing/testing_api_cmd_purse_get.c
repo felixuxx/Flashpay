@@ -261,6 +261,7 @@ TALER_TESTING_cmd_purse_poll (
   ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_http_status;
   ss->timeout = timeout;
+  ss->wait_for_merge = wait_for_merge;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ss,

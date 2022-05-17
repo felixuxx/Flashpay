@@ -95,6 +95,12 @@ static int global_ret;
  */
 static int test_mode;
 
+/**
+ * If this is a first-time run, we immediately
+ * try to catch up with the present.
+ */
+static bool jump_mode;
+
 
 /**
  * Select a shard to work on.
@@ -188,6 +194,7 @@ static void
 release_shard (struct Shard *s)
 {
   enum GNUNET_DB_QueryStatus qs;
+  unsigned long long wc = (unsigned long long) s->work_counter;
 
   qs = db_plugin->complete_shard (
     db_plugin->cls,
@@ -209,10 +216,14 @@ release_shard (struct Shard *s)
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Purse expiration shard completed with %llu purses\n",
-                (unsigned long long) s->work_counter);
+                wc);
     /* normal case */
     break;
   }
+  if ( (0 == wc) &&
+       (test_mode) &&
+       (! jump_mode) )
+    GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -262,13 +273,16 @@ run_expire (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database connection!\n");
+    abort_shard (s);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (db_plugin->start (db_plugin->cls,
+  if (GNUNET_OK !=
+      db_plugin->start (db_plugin->cls,
                         "expire-purse"))
   {
+    GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     db_plugin->rollback (db_plugin->cls);
     abort_shard (s);
@@ -290,6 +304,7 @@ run_expire (void *cls)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     db_plugin->rollback (db_plugin->cls);
     abort_shard (s);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_shard,
                                      NULL);
     return;
@@ -303,6 +318,7 @@ run_expire (void *cls)
     {
       release_shard (s);
     }
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_shard,
                                      NULL);
     return;
@@ -310,6 +326,7 @@ run_expire (void *cls)
     /* commit, and go again immediately */
     s->work_counter++;
     (void) commit_or_warn ();
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_expire,
                                      s);
   }
@@ -343,9 +360,15 @@ run_shard (void *cls)
   qs = db_plugin->begin_shard (db_plugin->cls,
                                "expire",
                                shard_size,
-                               shard_size.rel_value_us,
+                               jump_mode
+                               ? GNUNET_TIME_absolute_subtract (
+                                 GNUNET_TIME_absolute_get (),
+                                 shard_size).
+                               abs_value_us
+                               : shard_size.rel_value_us,
                                &s->shard_start.abs_value_us,
                                &s->shard_end.abs_value_us);
+  jump_mode = false;
   if (0 >= qs)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -355,6 +378,7 @@ run_shard (void *cls)
       GNUNET_free (s);
       delay = GNUNET_TIME_randomized_backoff (delay,
                                               GNUNET_TIME_UNIT_SECONDS);
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_delayed (delay,
                                            &run_shard,
                                            NULL);
@@ -368,9 +392,10 @@ run_shard (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (GNUNET_TIME_absolute_is_future (s->shard_end))
+  if (GNUNET_TIME_absolute_is_future (s->shard_start))
   {
-    task = GNUNET_SCHEDULER_add_at (s->shard_end,
+    GNUNET_assert (NULL == task);
+    task = GNUNET_SCHEDULER_add_at (s->shard_start,
                                     &run_shard,
                                     NULL);
     abort_shard (s);
@@ -379,12 +404,12 @@ run_shard (void *cls)
   /* If this is a first-time run, we immediately
      try to catch up with the present */
   if (GNUNET_TIME_absolute_is_zero (s->shard_start))
-    s->shard_end = GNUNET_TIME_absolute_get ();
-
+    jump_mode = true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting shard [%llu:%llu]!\n",
+              "Starting shard [%llu:%llu)!\n",
               (unsigned long long) s->shard_start.abs_value_us,
               (unsigned long long) s->shard_end.abs_value_us);
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&run_expire,
                                    s);
 }

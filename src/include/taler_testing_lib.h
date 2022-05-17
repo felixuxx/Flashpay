@@ -1212,6 +1212,30 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
 
 /**
+ * Make a "expire" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_expire (const char *label,
+                               const char *config_filename);
+
+
+/**
+ * Make a "router" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_router (const char *label,
+                               const char *config_filename);
+
+
+/**
  * Run a "taler-exchange-aggregator" CMD.
  *
  * @param label command label.

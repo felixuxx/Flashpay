@@ -1193,6 +1193,14 @@ BEGIN
     '(merge_pub);'
   );
 
+  -- FIXME: drop index on master (crosses shards)?
+  -- Or use materialized index? (needed?)
+  EXECUTE FORMAT (
+    'CREATE INDEX IF NOT EXISTS ' || table_name || '_purse_expiration '
+    'ON ' || table_name || ' '
+    '(purse_expiration);'
+  );
+
 END
 $$;
 

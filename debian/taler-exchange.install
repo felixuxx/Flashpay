@@ -1,7 +1,9 @@
 usr/bin/taler-exchange-aggregator
 usr/bin/taler-exchange-closer
 usr/bin/taler-exchange-dbinit
+usr/bin/taler-exchange-expire
 usr/bin/taler-exchange-httpd
+usr/bin/taler-exchange-router
 usr/bin/taler-exchange-secmod-cs
 usr/bin/taler-exchange-secmod-eddsa
 usr/bin/taler-exchange-secmod-rsa
@@ -11,7 +13,9 @@ usr/bin/taler-exchange-wire-gateway-client
 usr/share/man/man1/taler-exchange-aggregator*
 usr/share/man/man1/taler-exchange-closer*
 usr/share/man/man1/taler-exchange-dbinit*
+usr/share/man/man1/taler-exchange-expire*
 usr/share/man/man1/taler-exchange-httpd*
+usr/share/man/man1/taler-exchange-router*
 usr/share/man/man1/taler-exchange-secmod-eddsa*
 usr/share/man/man1/taler-exchange-secmod-rsa*
 usr/share/man/man1/taler-exchange-secmod-cs*

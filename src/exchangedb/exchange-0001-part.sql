@@ -2505,8 +2505,7 @@ UPDATE known_coins
          THEN 1
          ELSE 0
          END
-  WHERE coin_pub=in_coin_pub
-  LIMIT 1; -- just to be extra safe
+  WHERE coin_pub=in_coin_pub;
 
 
 out_conflict=FALSE;
@@ -3363,7 +3362,6 @@ END $$;
 
 
 CREATE OR REPLACE FUNCTION exchange_do_expire_purse(
-  IN in_partner_id INT8,
   IN in_start_time INT8,
   IN in_end_time INT8,
   OUT out_found BOOLEAN)
@@ -3375,24 +3373,25 @@ DECLARE
   my_deposit record;
 BEGIN
 
-UPDATE purse_requests
- SET refunded=TRUE,
-     finished=TRUE
+SELECT purse_pub
+  INTO my_purse_pub
+  FROM purse_requests
  WHERE (purse_expiration >= in_start_time) AND
        (purse_expiration < in_end_time) AND
        (NOT finished) AND
        (NOT refunded)
- RETURNING purse_pub
-   ,in_reserve_quota
-   ,flags
- INTO my_purse_pub
-   ,my_rq
-   ,my_flags;
+ ORDER BY purse_expiration ASC
+ LIMIT 1;
 out_found = FOUND;
 IF NOT FOUND
 THEN
   RETURN;
 END IF;
+
+UPDATE purse_requests
+ SET refunded=TRUE,
+     finished=TRUE
+ WHERE purse_pub=my_purse_pub;
 
 -- restore balance to each coin deposited into the purse
 FOR my_deposit IN
@@ -3402,7 +3401,7 @@ FOR my_deposit IN
     FROM purse_deposits
   WHERE purse_pub = my_purse_pub
 LOOP
-  UPDATE
+  UPDATE known_coins SET
     remaining_frac=remaining_frac+my_deposit.amount_with_fee_frac
      - CASE
        WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
@@ -3415,9 +3414,7 @@ LOOP
        THEN 1
        ELSE 0
        END
-    FROM known_coins
-    WHERE coin_pub = my_deposit.coin_pub
-    LIMIT 1; -- just to be extra safe
+    WHERE coin_pub = my_deposit.coin_pub;
   END LOOP;
 END $$;
 
