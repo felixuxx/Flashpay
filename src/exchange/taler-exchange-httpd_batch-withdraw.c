@@ -273,8 +273,44 @@ batch_withdraw_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Generates our final (successful) response.
+ *
+ * @param rc request context
+ * @param wc operation context
+ * @return MHD queue status
+ */
+static MHD_RESULT
+generate_reply_success (const struct TEH_RequestContext *rc,
+                        const struct BatchWithdrawContext *wc)
+{
+  json_t *sigs;
+
+  sigs = json_array ();
+  GNUNET_assert (NULL != sigs);
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
+  {
+    struct PlanchetContext *pc = &wc->planchets[i];
+
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        sigs,
+        GNUNET_JSON_PACK (
+          TALER_JSON_pack_blinded_denom_sig (
+            "ev_sig",
+            &pc->collectable.sig))));
+  }
+  TEH_METRICS_batch_withdraw_num_coins += wc->planchets_length;
+  return TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("ev_sigs",
+                                  sigs));
 }
 
 
@@ -284,47 +320,41 @@ batch_withdraw_transaction (void *cls,
  * HTTP response.
  *
  * @param rc request context
- * @param[in,out] wc parsed request data
+ * @param wc parsed request data
  * @param[out] mret HTTP status, set if we return true
  * @return true if the request is idempotent with an existing request
  *    false if we did not find the request in the DB and did not set @a mret
  */
 static bool
-check_request_idempotent (struct TEH_RequestContext *rc,
-                          struct BatchWithdrawContext *wc,
+check_request_idempotent (const struct TEH_RequestContext *rc,
+                          const struct BatchWithdrawContext *wc,
                           MHD_RESULT *mret)
 {
-  /* FIXME: Not yet supported. Do we want to, or simply
-     generate an error in this case? */
-#if FIXME
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      &wc->h_coin_envelope,
-                                      &wc->collectable);
-  if (0 > qs)
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mret = TALER_MHD_reply_with_error (rc->connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                          "get_withdraw_info");
-    return true; /* well, kind-of */
+    struct PlanchetContext *pc = &wc->planchets[i];
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
+                                        &pc->h_coin_envelope,
+                                        &pc->collectable);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mret = TALER_MHD_reply_with_error (rc->connection,
+                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "get_withdraw_info");
+      return true; /* well, kind-of */
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      return false;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    return false;
   /* generate idempotent reply */
-  *mret = TALER_MHD_REPLY_JSON_PACK (
-    rc->connection,
-    MHD_HTTP_OK,
-    TALER_JSON_pack_blinded_denom_sig ("ev_sig",
-                                       &wc->collectable.sig));
-  TALER_blinded_denom_sig_free (&wc->collectable.sig);
+  *mret = generate_reply_success (rc,
+                                  wc);
   return true;
-#else
-  return false;
-#endif
 }
 
 
@@ -337,7 +367,7 @@ check_request_idempotent (struct TEH_RequestContext *rc,
  * @return MHD result for the @a rc
  */
 static MHD_RESULT
-prepare_transaction (struct TEH_RequestContext *rc,
+prepare_transaction (const struct TEH_RequestContext *rc,
                      struct BatchWithdrawContext *wc)
 {
   /* Note: We could check the reserve balance here,
@@ -379,31 +409,8 @@ prepare_transaction (struct TEH_RequestContext *rc,
     }
   }
   /* return final positive response */
-  {
-    json_t *sigs;
-
-    sigs = json_array ();
-    GNUNET_assert (NULL != sigs);
-    for (unsigned int i = 0; i<wc->planchets_length; i++)
-    {
-      struct PlanchetContext *pc = &wc->planchets[i];
-
-      GNUNET_assert (
-        0 ==
-        json_array_append_new (
-          sigs,
-          GNUNET_JSON_PACK (
-            TALER_JSON_pack_blinded_denom_sig (
-              "ev_sig",
-              &pc->collectable.sig))));
-    }
-    TEH_METRICS_batch_withdraw_num_coins += wc->planchets_length;
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_array_steal ("ev_sigs",
-                                    sigs));
-  }
+  return generate_reply_success (rc,
+                                 wc);
 }
 
 
@@ -417,12 +424,38 @@ prepare_transaction (struct TEH_RequestContext *rc,
  * @return MHD result for the @a rc
  */
 static MHD_RESULT
-parse_planchets (struct TEH_RequestContext *rc,
+parse_planchets (const struct TEH_RequestContext *rc,
                  struct BatchWithdrawContext *wc,
                  const json_t *planchets)
 {
   struct TEH_KeyStateHandle *ksh;
   MHD_RESULT mret;
+
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
+  {
+    struct PlanchetContext *pc = &wc->planchets[i];
+    struct GNUNET_JSON_Specification ispec[] = {
+      GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                   &pc->collectable.reserve_sig),
+      GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                   &pc->collectable.denom_pub_hash),
+      TALER_JSON_spec_blinded_planchet ("coin_ev",
+                                        &pc->blinded_planchet),
+      GNUNET_JSON_spec_end ()
+    };
+
+    {
+      enum GNUNET_GenericReturnValue res;
+
+      res = TALER_MHD_parse_json_data (rc->connection,
+                                       json_array_get (planchets,
+                                                       i),
+                                       ispec);
+      if (GNUNET_OK != res)
+        return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+    }
+    pc->collectable.reserve_pub = *wc->reserve_pub;
+  }
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -441,28 +474,8 @@ parse_planchets (struct TEH_RequestContext *rc,
   for (unsigned int i = 0; i<wc->planchets_length; i++)
   {
     struct PlanchetContext *pc = &wc->planchets[i];
-    struct GNUNET_JSON_Specification ispec[] = {
-      GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                   &pc->collectable.reserve_sig),
-      GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
-                                   &pc->collectable.denom_pub_hash),
-      TALER_JSON_spec_blinded_planchet ("coin_ev",
-                                        &pc->blinded_planchet),
-      GNUNET_JSON_spec_end ()
-    };
     struct TEH_DenominationKey *dk;
 
-    {
-      enum GNUNET_GenericReturnValue res;
-
-      res = TALER_MHD_parse_json_data (rc->connection,
-                                       json_array_get (planchets,
-                                                       i),
-                                       ispec);
-      if (GNUNET_OK != res)
-        return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-    }
-    pc->collectable.reserve_pub = *wc->reserve_pub;
     dk = TEH_keys_denomination_by_hash2 (ksh,
                                          &pc->collectable.denom_pub_hash,
                                          NULL,
@@ -522,6 +535,7 @@ parse_planchets (struct TEH_RequestContext *rc,
     if (dk->denom_pub.cipher != pc->blinded_planchet.cipher)
     {
       /* denomination cipher and blinded planchet cipher not the same */
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
@@ -532,6 +546,7 @@ parse_planchets (struct TEH_RequestContext *rc,
                           &dk->meta.value,
                           &dk->meta.fees.withdraw))
     {
+      GNUNET_break (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
@@ -542,6 +557,7 @@ parse_planchets (struct TEH_RequestContext *rc,
                           &wc->batch_total,
                           &pc->collectable.amount_with_fee))
     {
+      GNUNET_break (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
