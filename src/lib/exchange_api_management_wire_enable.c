@@ -138,6 +138,18 @@ TALER_EXCHANGE_management_enable_wire (
   CURL *eh;
   json_t *body;
 
+  {
+    char *msg = TALER_payto_validate (payto_uri);
+
+    if (NULL != msg)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "payto URI is malformed: %s\n",
+                  msg);
+      GNUNET_free (msg);
+      return NULL;
+    }
+  }
   wh = GNUNET_new (struct TALER_EXCHANGE_ManagementWireEnableHandle);
   wh->cb = cb;
   wh->cb_cls = cb_cls;

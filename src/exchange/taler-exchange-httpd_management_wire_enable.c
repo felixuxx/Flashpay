@@ -166,6 +166,23 @@ TEH_handler_management_post_wire (
       return MHD_YES; /* failure */
   }
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+  {
+    char *msg = TALER_payto_validate (awc.payto_uri);
+
+    if (NULL != msg)
+    {
+      MHD_RESULT ret;
+
+      GNUNET_break_op (0);
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
+        msg);
+      GNUNET_free (msg);
+      return ret;
+    }
+  }
   if (GNUNET_OK !=
       TALER_exchange_offline_wire_add_verify (awc.payto_uri,
                                               awc.validity_start,
