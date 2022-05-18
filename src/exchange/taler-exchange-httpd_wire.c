@@ -609,7 +609,6 @@ TEH_handler_wire (struct TEH_RequestContext *rc,
       GNUNET_break (MHD_YES == ret);
       MHD_destroy_response (resp);
       return ret;
-
     }
   }
   return MHD_queue_response (rc->connection,

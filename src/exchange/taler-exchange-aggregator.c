@@ -360,7 +360,7 @@ run_aggregation (void *cls)
   struct AggregationUnit au_active;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount trans;
-  bool have_transient;
+  bool have_transient = true; /* squash compiler warning */
 
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
