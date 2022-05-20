@@ -578,7 +578,6 @@ history_cb (void *cls,
   }
   if (serial_id < wa->latest_row_off)
   {
-    /* we are done with the current shard, commit and stop this iteration! */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Serial ID %llu not monotonic (got %llu before). Failing!\n",
                 (unsigned long long) serial_id,
@@ -601,7 +600,7 @@ history_cb (void *cls,
                 "Serial ID %llu past shard end at %llu, ending iteration early!\n",
                 (unsigned long long) serial_id,
                 (unsigned long long) wa->shard_end);
-    wa->latest_row_off = serial_id - 1;
+    wa->latest_row_off = serial_id;
     if (wa->started_transaction)
     {
       do_commit (wa);
