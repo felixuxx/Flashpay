@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016--2021 Taler Systems SA
+  Copyright (C) 2016--2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -83,6 +83,13 @@ struct WireAccount
    * the new #batch_start upon commit.
    */
   uint64_t latest_row_off;
+
+  /**
+   * Maximum row offset this transaction may yield. If we got the
+   * maximum number of rows, we must not @e delay before running
+   * the next transaction.
+   */
+  uint64_t max_row_off;
 
   /**
    * Offset where our current shard begins (inclusive).
@@ -585,6 +592,8 @@ history_cb (void *cls,
     wa->hh = NULL;
     return GNUNET_SYSERR;
   }
+  if (serial_id >= wa->max_row_off)
+    wa->delay = false;
   if (serial_id > wa->shard_end)
   {
     /* we are done with the current shard, commit and stop this iteration! */
@@ -593,7 +602,6 @@ history_cb (void *cls,
                 (unsigned long long) serial_id,
                 (unsigned long long) wa->shard_end);
     wa->latest_row_off = serial_id - 1;
-    wa->delay = false;
     if (wa->started_transaction)
     {
       do_commit (wa);
@@ -660,7 +668,6 @@ history_cb (void *cls,
     /* normal case */
     break;
   }
-  wa->delay = false;
   wa->latest_row_off = serial_id;
   return GNUNET_OK;
 }
@@ -760,6 +767,7 @@ find_transfers (void *cls)
                       wa_pos->shard_end - wa_pos->batch_start);
   GNUNET_assert (NULL == wa_pos->hh);
   wa_pos->latest_row_off = wa_pos->batch_start;
+  wa_pos->max_row_off = wa_pos->batch_start + limit - 1;
   wa_pos->hh = TALER_BANK_credit_history (ctx,
                                           wa_pos->ai->auth,
                                           wa_pos->batch_start,
