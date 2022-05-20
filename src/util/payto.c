@@ -107,16 +107,25 @@ TALER_xtalerbank_account_from_payto (const char *payto)
   if (0 != strncasecmp (payto,
                         PAYTO "x-taler-bank/",
                         strlen (PAYTO "x-taler-bank/")))
+  {
+    GNUNET_break_op (0);
     return NULL;
+  }
   beg = strchr (&payto[strlen (PAYTO "x-taler-bank/")],
                 '/');
   if (NULL == beg)
+  {
+    GNUNET_break_op (0);
     return NULL;
+  }
   beg++; /* now points to $ACCOUNT */
   end = strchr (beg,
                 '?');
   if (NULL == end)
+  {
+    GNUNET_break_op (0);
     return GNUNET_strdup (beg); /* optional part is missing */
+  }
   return GNUNET_strndup (beg,
                          end - beg);
 }
