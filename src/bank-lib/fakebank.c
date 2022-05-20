@@ -1440,6 +1440,15 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
         NULL);
     }
     debit = TALER_xtalerbank_account_from_payto (debit_account);
+    if (NULL == debit)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
+        debit_account);
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s\n",
                 debit,
@@ -1560,6 +1569,15 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       int ret;
 
       credit = TALER_xtalerbank_account_from_payto (credit_account);
+      if (NULL == credit)
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_BAD_REQUEST,
+          TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
+          credit_account);
+      }
       ret = make_transfer (h,
                            account,
                            credit,
@@ -1649,7 +1667,7 @@ struct HistoryArgs
   uint64_t account_number;
 
   /**
-   * Index of the starting transaction.
+   * Index of the starting transaction, exclusive (!).
    */
   uint64_t start_idx;
 
