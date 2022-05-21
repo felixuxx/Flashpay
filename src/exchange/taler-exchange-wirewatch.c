@@ -481,6 +481,16 @@ mark_shard_done (struct WireAccount *wa)
 
 
 /**
+ * Continue with the credit history of the shard
+ * reserved as @a wa_pos.
+ *
+ * @param[in,out] wa_pos shard to continue processing
+ */
+static void
+continue_with_shard (struct WireAccount *wa_pos);
+
+
+/**
  * We are finished with the current transaction, try
  * to commit and then schedule the next iteration.
  *
@@ -490,9 +500,10 @@ static void
 do_commit (struct WireAccount *wa)
 {
   enum GNUNET_DB_QueryStatus qs;
+  bool shard_done;
 
   wa->started_transaction = false;
-  mark_shard_done (wa);
+  shard_done = mark_shard_done (wa);
   qs = db_plugin->commit (db_plugin->cls);
   switch (qs)
   {
@@ -509,7 +520,10 @@ do_commit (struct WireAccount *wa)
     /* normal case */
     break;
   }
-  shard_completed (wa);
+  if (shard_done)
+    shard_completed (wa);
+  else
+    continue_with_shard (wa);
 }
 
 
@@ -681,7 +695,6 @@ static void
 find_transfers (void *cls)
 {
   enum GNUNET_DB_QueryStatus qs;
-  unsigned int limit;
 
   (void) cls;
   task = NULL;
@@ -761,15 +774,23 @@ find_transfers (void *cls)
       break;
     }
   }
+  wa_pos->latest_row_off = wa_pos->batch_start;
+  continue_with_shard (wa_pos);
+}
+
+
+static void
+continue_with_shard (struct WireAccount *wa_pos)
+{
+  unsigned int limit;
 
   limit = GNUNET_MIN (wa_pos->batch_size,
-                      wa_pos->shard_end - wa_pos->batch_start);
+                      wa_pos->shard_end - wa_pos->latest_row_off);
   GNUNET_assert (NULL == wa_pos->hh);
-  wa_pos->latest_row_off = wa_pos->batch_start;
-  wa_pos->max_row_off = wa_pos->batch_start + limit - 1;
+  wa_pos->max_row_off = wa_pos->latest_row_off + limit - 1;
   wa_pos->hh = TALER_BANK_credit_history (ctx,
                                           wa_pos->ai->auth,
-                                          wa_pos->batch_start,
+                                          wa_pos->latest_row_off,
                                           limit,
                                           test_mode
                                           ? GNUNET_TIME_UNIT_ZERO
