@@ -669,11 +669,6 @@ struct CoinHistoryParseContext
   struct TALER_Amount rtotal;
 
   /**
-   * Where to sum up fees.
-   */
-  struct TALER_Amount fee;
-
-  /**
    * Total amount encountered.
    */
   struct TALER_Amount *total;
@@ -720,6 +715,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
   struct TALER_CoinSpendSignatureP sig;
   struct TALER_AgeCommitmentHash hac;
   bool no_hac;
+  struct TALER_Amount deposit_fee;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &sig),
@@ -740,7 +736,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
                                   &refund_deadline),
       NULL),
     TALER_JSON_spec_amount_any ("deposit_fee",
-                                &pc->fee),
+                                &deposit_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                  &merchant_pub),
     GNUNET_JSON_spec_end ()
@@ -757,7 +753,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
   if (GNUNET_OK !=
       TALER_wallet_deposit_verify (
         amount,
-        &pc->fee,
+        &deposit_fee,
         &h_wire,
         &h_contract_terms,
         no_hac ? NULL : &hac,
@@ -776,10 +772,10 @@ help_deposit (struct CoinHistoryParseContext *pc,
   {
     /* check that deposit fee matches our expectations from /keys! */
     if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&pc->fee,
+          TALER_amount_cmp_currency (&deposit_fee,
                                      &pc->dk->fees.deposit)) ||
          (0 !=
-          TALER_amount_cmp (&pc->fee,
+          TALER_amount_cmp (&deposit_fee,
                             &pc->dk->fees.deposit)) )
     {
       GNUNET_break_op (0);
@@ -808,6 +804,7 @@ help_melt (struct CoinHistoryParseContext *pc,
   struct TALER_RefreshCommitmentP rc;
   struct TALER_AgeCommitmentHash h_age_commitment;
   bool no_hac;
+  struct TALER_Amount melt_fee;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &sig),
@@ -820,7 +817,7 @@ help_melt (struct CoinHistoryParseContext *pc,
                                    &h_age_commitment),
       &no_hac),
     TALER_JSON_spec_amount_any ("melt_fee",
-                                &pc->fee),
+                                &melt_fee),
     GNUNET_JSON_spec_end ()
   };
 
@@ -837,10 +834,10 @@ help_melt (struct CoinHistoryParseContext *pc,
   {
     /* check that melt fee matches our expectations from /keys! */
     if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&pc->fee,
+          TALER_amount_cmp_currency (&melt_fee,
                                      &pc->dk->fees.refresh)) ||
          (0 !=
-          TALER_amount_cmp (&pc->fee,
+          TALER_amount_cmp (&melt_fee,
                             &pc->dk->fees.refresh)) )
     {
       GNUNET_break_op (0);
@@ -851,7 +848,7 @@ help_melt (struct CoinHistoryParseContext *pc,
   if (GNUNET_OK !=
       TALER_wallet_melt_verify (
         amount,
-        &pc->fee,
+        &melt_fee,
         &rc,
         pc->h_denom_pub,
         no_hac
@@ -1252,6 +1249,10 @@ TALER_EXCHANGE_verify_coin_history (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Operation of type %s with amount %s\n",
+                type,
+                TALER_amount2s (&amount));
     add = GNUNET_SYSERR;
     for (unsigned int i = 0; NULL != map[i].type; i++)
     {
@@ -1284,6 +1285,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      break;
     case GNUNET_NO:
       /* This amount should be subtracted from the total.
 
@@ -1300,9 +1302,9 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      break;
     } /* end of switch(add) */
   }
-
   /* Finally, subtract 'rtotal' from total to handle the subtractions */
   if (0 >
       TALER_amount_subtract (total,
@@ -1313,7 +1315,6 @@ TALER_EXCHANGE_verify_coin_history (
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   return GNUNET_OK;
 }
 
