@@ -983,6 +983,12 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
  */
 struct TALER_EXCHANGEDB_PurseMerge
 {
+
+  /**
+   * Public key of the reserve the coin was merged into.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
   /**
    * Amount in the purse, with fees.
    */
@@ -1036,6 +1042,11 @@ struct TALER_EXCHANGEDB_PurseMerge
  */
 struct TALER_EXCHANGEDB_HistoryRequest
 {
+  /**
+   * Public key of the reserve the history request was for.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
   /**
    * Fee paid for the request.
    */

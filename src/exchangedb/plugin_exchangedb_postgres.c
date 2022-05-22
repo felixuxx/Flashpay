@@ -6186,8 +6186,56 @@ add_p2p_merge (void *cls,
 
   while (0 < num_results)
   {
-    // FIXME!
-    GNUNET_break (0);
+    struct TALER_EXCHANGEDB_PurseMerge *merge;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    merge = GNUNET_new (struct TALER_EXCHANGEDB_PurseMerge);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
+                                     &merge->purse_fee),
+        TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                     &merge->amount_with_fee),
+        GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
+                                         &merge->merge_timestamp),
+        GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                              &merge->h_contract_terms),
+        GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
+                                              &merge->merge_pub),
+        GNUNET_PQ_result_spec_auto_from_type ("purse_sig",
+                                              &merge->purse_sig),
+        GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                              &merge->purse_pub),
+        GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
+                                              &merge->merge_sig),
+        GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                              &merge->reserve_sig),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    --num_results))
+      {
+        GNUNET_break (0);
+        GNUNET_free (merge);
+        rhc->status = GNUNET_SYSERR;
+        return;
+      }
+    }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &merge->amount_with_fee));
+    GNUNET_assert (0 <=
+                   TALER_amount_subtract (&rhc->balance_out,
+                                          &rhc->balance_out,
+                                          &merge->purse_fee));
+    merge->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_PURSE_MERGE;
+    tail->details.merge = merge;
   }
 }
 
@@ -6210,8 +6258,40 @@ add_history_requests (void *cls,
 
   while (0 < num_results)
   {
-    // FIXME!
-    GNUNET_break (0);
+    struct TALER_EXCHANGEDB_HistoryRequest *history;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    history = GNUNET_new (struct TALER_EXCHANGEDB_HistoryRequest);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
+                                     &history->history_fee),
+        GNUNET_PQ_result_spec_timestamp ("request_timestamp",
+                                         &history->request_timestamp),
+        GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                              &history->reserve_sig),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    --num_results))
+      {
+        GNUNET_break (0);
+        GNUNET_free (history);
+        rhc->status = GNUNET_SYSERR;
+        return;
+      }
+    }
+    GNUNET_assert (0 <=
+                   TALER_amount_subtract (&rhc->balance_out,
+                                          &rhc->balance_out,
+                                          &history->history_fee));
+    history->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_HISTORY_REQUEST;
+    tail->details.history = history;
   }
 }
 

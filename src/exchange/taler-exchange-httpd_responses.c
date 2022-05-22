@@ -735,6 +735,71 @@ TEH_RESPONSE_compile_reserve_history (
         }
       }
       break;
+    case TALER_EXCHANGEDB_RO_PURSE_MERGE:
+      {
+        const struct TALER_EXCHANGEDB_PurseMerge *merge =
+          pos->details.merge;
+        struct TALER_Amount amount;
+
+        GNUNET_assert (0 >=
+                       TALER_amount_subtract (&amount,
+                                              &merge->amount_with_fee,
+                                              &merge->purse_fee));
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "MERGE"),
+                GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                            &merge->h_contract_terms),
+                GNUNET_JSON_pack_data_auto ("merge_pub",
+                                            &merge->merge_pub),
+                GNUNET_JSON_pack_data_auto ("purse_sig",
+                                            &merge->purse_sig),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &merge->purse_pub),
+                GNUNET_JSON_pack_data_auto ("merge_sig",
+                                            &merge->merge_sig),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &merge->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                            merge->merge_timestamp),
+                TALER_JSON_pack_amount ("amount",
+                                        &amount),
+                TALER_JSON_pack_amount ("purse_fee",
+                                        &merge->purse_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+    case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_HistoryRequest *history =
+          pos->details.history;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "HISTORY"),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &history->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            history->request_timestamp),
+                TALER_JSON_pack_amount ("history_fee",
+                                        &history->history_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
     }
   }
 

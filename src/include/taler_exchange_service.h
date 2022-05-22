@@ -1318,7 +1318,17 @@ enum TALER_EXCHANGE_ReserveTransactionType
   /**
    * Reserve closed operation.
    */
-  TALER_EXCHANGE_RTT_CLOSE
+  TALER_EXCHANGE_RTT_CLOSE,
+
+  /**
+   * Reserve history request.
+   */
+  TALER_EXCHANGE_RTT_HISTORY,
+
+  /**
+   * Reserve purese merge operation.
+   */
+  TALER_EXCHANGE_RTT_MERGE
 
 };
 
@@ -1453,6 +1463,79 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       struct TALER_Amount fee;
 
     } close_details;
+
+    /**
+     * Information about a history operation of the reserve.
+     * @e type is #TALER_EXCHANGE_RTT_HISTORY.
+     */
+    struct
+    {
+
+      /**
+       * Fee paid for the request.
+       */
+      struct TALER_Amount history_fee;
+
+      /**
+       * When was the request made.
+       */
+      struct GNUNET_TIME_Timestamp request_timestamp;
+
+      /**
+       * Signature by the reserve approving the history request.
+       */
+      struct TALER_ReserveSignatureP reserve_sig;
+
+    } history_details;
+
+    /**
+     * Information about a merge operation on the reserve.
+     * @e type is #TALER_EXCHANGE_RTT_MERGE.
+     */
+    struct
+    {
+
+      /**
+       * Fee paid for the purse.
+       */
+      struct TALER_Amount purse_fee;
+
+      /**
+       * Hash over the contract.
+       */
+      struct TALER_PrivateContractHashP h_contract_terms;
+
+      /**
+       * Merge capability key.
+       */
+      struct TALER_PurseMergePublicKeyP merge_pub;
+
+      /**
+       * Purse signature.
+       */
+      struct TALER_PurseContractSignatureP purse_sig;
+
+      /**
+       * Purse public key.
+       */
+      struct TALER_PurseContractPublicKeyP purse_pub;
+
+      /**
+       * Merge signature.
+       */
+      struct TALER_PurseMergePublicKeyP merge_sig;
+
+      /**
+       * Signature by the reserve approving the merge.
+       */
+      struct TALER_ReserveSignatureP reserve_sig;
+
+      /**
+       * When was the merge made.
+       */
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+
+    } merge_details;
 
   } details;
 

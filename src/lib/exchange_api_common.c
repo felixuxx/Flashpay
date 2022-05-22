@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -26,6 +26,8 @@
 #include "taler_signatures.h"
 
 
+// FIXME: refactor, use switching table instead
+// of long if-then-else-else-else list!
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -340,6 +342,34 @@ TALER_EXCHANGE_parse_reserve_history (
       }
       /* end type==CLOSING */
     }
+    else if (0 == strcasecmp (type,
+                              "MERGE"))
+    {
+      GNUNET_break (0); // FIXME: implement!
+      if (0 >
+          TALER_amount_add (total_in,
+                            total_in,
+                            &rh->amount))
+      {
+        /* overflow in history already!? inconceivable! Bad exchange! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+    }
+    else if (0 == strcasecmp (type,
+                              "HISTORY"))
+    {
+      GNUNET_break (0); // FIXME: implement!
+      if (0 >
+          TALER_amount_add (total_out,
+                            total_out,
+                            &amount))
+      {
+        /* overflow in history already!? inconceivable! Bad exchange! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+    }
     else
     {
       /* unexpected 'type', protocol incompatibility, complain! */
@@ -368,6 +398,10 @@ TALER_EXCHANGE_free_reserve_history (
     case TALER_EXCHANGE_RTT_RECOUP:
       break;
     case TALER_EXCHANGE_RTT_CLOSE:
+      break;
+    case TALER_EXCHANGE_RTT_HISTORY:
+      break;
+    case TALER_EXCHANGE_RTT_MERGE:
       break;
     }
   }
