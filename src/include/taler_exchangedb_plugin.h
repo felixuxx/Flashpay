@@ -979,6 +979,81 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
 
 
 /**
+ * Details about a purse merge operation.
+ */
+struct TALER_EXCHANGEDB_PurseMerge
+{
+  /**
+   * Amount in the purse, with fees.
+   */
+  struct TALER_Amount amount_with_fee;
+
+  /**
+   * Fee paid for the purse.
+   */
+  struct TALER_Amount purse_fee;
+
+  /**
+   * Hash over the contract.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Merge capability key.
+   */
+  struct TALER_PurseMergePublicKeyP merge_pub;
+
+  /**
+   * Purse signature.
+   */
+  struct TALER_PurseContractSignatureP purse_sig;
+
+  /**
+   * Purse public key.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Merge signature.
+   */
+  struct TALER_PurseMergePublicKeyP merge_sig;
+
+  /**
+   * Signature by the reserve approving the merge.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
+   * When was the merge made.
+   */
+  struct GNUNET_TIME_Timestamp merge_timestamp;
+
+};
+
+
+/**
+ * Details about a (paid for) reserve history request.
+ */
+struct TALER_EXCHANGEDB_HistoryRequest
+{
+  /**
+   * Fee paid for the request.
+   */
+  struct TALER_Amount history_fee;
+
+  /**
+   * When was the request made.
+   */
+  struct GNUNET_TIME_Timestamp request_timestamp;
+
+  /**
+   * Signature by the reserve approving the history request.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+};
+
+
+/**
  * @brief Types of operations on a reserve.
  */
 enum TALER_EXCHANGEDB_ReserveOperation
@@ -1004,7 +1079,17 @@ enum TALER_EXCHANGEDB_ReserveOperation
    * customer's bank account.  This happens when the exchange
    * closes a reserve with a non-zero amount left in it.
    */
-  TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK = 3
+  TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK = 3,
+
+  /**
+   * Event where a purse was merged into a reserve.
+   */
+  TALER_EXCHANGEDB_RO_PURSE_MERGE = 4,
+
+  /**
+   * Event where a wallet paid for a full reserve history.
+   */
+  TALER_EXCHANGEDB_RO_HISTORY_REQUEST = 5
 };
 
 
@@ -1054,6 +1139,16 @@ struct TALER_EXCHANGEDB_ReserveHistory
      * was closed).
      */
     struct TALER_EXCHANGEDB_ClosingTransfer *closing;
+
+    /**
+     * Details about a purse merge operation.
+     */
+    struct TALER_EXCHANGEDB_PurseMerge *merge;
+
+    /**
+     * Details about a (paid for) reserve history request.
+     */
+    struct TALER_EXCHANGEDB_HistoryRequest *history;
 
   } details;
 

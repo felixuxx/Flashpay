@@ -3452,11 +3452,11 @@ BEGIN
   IF NOT FOUND
   THEN
     out_balance_ok=TRUE;
-    out_conflict=TRUE;
+    out_idempotent=TRUE;
     RETURN;
   END IF;
 
-  out_conflict=FALSE;
+  out_idempotent=FALSE;
 
   -- Update reserve balance.
   UPDATE reserves

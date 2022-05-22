@@ -1906,6 +1906,16 @@ run (void *cls)
                                        &fee_closing));
       }
       break;
+    case TALER_EXCHANGEDB_RO_PURSE_MERGE:
+      {
+        /* FIXME: not yet tested */
+        break;
+      }
+    case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
+      {
+        /* FIXME: not yet tested */
+        break;
+      }
     }
   }
   FAILIF (4 != cnt);

@@ -71,6 +71,20 @@ common_free_reserve_history (void *cls,
         GNUNET_free (closing);
         break;
       }
+    case TALER_EXCHANGEDB_RO_PURSE_MERGE:
+      {
+        struct TALER_EXCHANGEDB_PurseMerge *merge;
+
+        merge = rh->details.merge;
+        GNUNET_free (merge);
+      }
+    case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
+      {
+        struct TALER_EXCHANGEDB_HistoryRequest *history;
+
+        history = rh->details.history;
+        GNUNET_free (history);
+      }
     }
     {
       struct TALER_EXCHANGEDB_ReserveHistory *next;

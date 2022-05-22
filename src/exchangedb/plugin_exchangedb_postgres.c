@@ -2126,6 +2126,43 @@ prepare_statements (struct PostgresClosure *pg)
       "     USING (wire_target_h_payto)"
       " WHERE reserve_pub=$1;",
       1),
+    /* Used in #postgres_get_reserve_history() */
+    GNUNET_PQ_make_prepare (
+      "merge_by_reserve",
+      "SELECT"
+      " pr.amount_with_fee_val"
+      ",pr.amount_with_fee_frac"
+      ",pr.purse_fee_val"
+      ",pr.purse_fee_frac"
+      ",pr.h_contract_terms"
+      ",pr.merge_pub"
+      ",pr.purse_sig"
+      ",am.reserve_sig"
+      ",pm.purse_pub"
+      ",pm.merge_sig"
+      ",pm.merge_timestamp"
+      " FROM purse_merges pm"
+      "   JOIN purse_requests pr"
+      "     USING (purse_pub)"
+      "   JOIN account_merges am"
+      "     ON (am.purse_pub = pm.purse_pub AND"
+      "         am.reserve_pub = pm.reserve_pub)"
+      " WHERE pm.reserve_pub=$1"
+      "  AND pm.partner_serial_id=0" /* must be local! */
+      "  AND pr.finished"
+      "  AND NOT pr.refunded;",
+      1),
+    /* Used in #postgres_get_reserve_history() */
+    GNUNET_PQ_make_prepare (
+      "history_by_reserve",
+      "SELECT"
+      " history_fee_val"
+      ",history_fee_frac"
+      ",request_timestamp"
+      ",reserve_sig"
+      " FROM history_requests"
+      " WHERE reserve_pub=$1;",
+      1),
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare (
       "get_expired_reserves",
@@ -6132,6 +6169,54 @@ add_exchange_to_bank (void *cls,
 
 
 /**
+ * Add purse merge transfers to result set for
+ * #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_p2p_merge (void *cls,
+               PGresult *result,
+               unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  struct PostgresClosure *pg = rhc->pg;
+
+  while (0 < num_results)
+  {
+    // FIXME!
+    GNUNET_break (0);
+  }
+}
+
+
+/**
+ * Add paid for history requests to result set for
+ * #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_history_requests (void *cls,
+                      PGresult *result,
+                      unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  struct PostgresClosure *pg = rhc->pg;
+
+  while (0 < num_results)
+  {
+    // FIXME!
+    GNUNET_break (0);
+  }
+}
+
+
+/**
  * Get all of the transaction history associated with the specified
  * reserve.
  *
@@ -6163,7 +6248,6 @@ postgres_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE */
     { "reserves_in_get_transactions",
       add_bank_to_exchange },
-#ifndef GRID5K_MARCO_OPT
     /** #TALER_EXCHANGEDB_RO_WITHDRAW_COIN */
     { "get_reserves_out",
       &add_withdraw_coin },
@@ -6173,7 +6257,12 @@ postgres_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
     { "close_by_reserve",
       &add_exchange_to_bank },
-#endif
+    /** #TALER_EXCHANGEDB_RO_PURSE_MERGE */
+    { "merge_by_reserve",
+      &add_p2p_merge },
+    /** #TALER_EXCHANGEDB_RO_HISTORY_REQUEST */
+    { "history_by_reserve",
+      &add_history_requests },
     /* List terminator */
     { NULL,
       NULL }
