@@ -111,9 +111,9 @@ static char *cfg_filename;
 static int use_fakebank = 1;
 
 /**
- * Launch taler-exchange-wirewatch.
+ * Number of taler-exchange-wirewatchers to launch.
  */
-static int start_wirewatch;
+static unsigned int start_wirewatch;
 
 /**
  * Verbosity level.
@@ -265,8 +265,9 @@ run (void *cls,
 
   (void) cls;
   len = howmany_reserves + 2;
-  all_commands = GNUNET_new_array (len,
-                                   struct TALER_TESTING_Command);
+  all_commands = GNUNET_malloc_large (len
+                                      * sizeof (struct TALER_TESTING_Command));
+  GNUNET_assert (NULL != all_commands);
   GNUNET_asprintf (&total_reserve_amount,
                    "%s:5",
                    currency);
@@ -465,14 +466,17 @@ launch_fakebank (void *cls)
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parallel_benchmark (void)
 {
   enum GNUNET_GenericReturnValue result = GNUNET_OK;
   pid_t fakebank = -1;
   struct GNUNET_OS_Process *bankd = NULL;
-  struct GNUNET_OS_Process *wirewatch = NULL;
+  struct GNUNET_OS_Process *wirewatch[GNUNET_NZL (start_wirewatch)];
 
+  memset (wirewatch,
+          0,
+          sizeof (wirewatch));
   if ( (MODE_BANK == mode) ||
        (MODE_BOTH == mode) )
   {
@@ -560,19 +564,30 @@ parallel_benchmark (void)
                     GNUNET_OS_process_wait (dbinit));
       GNUNET_OS_process_destroy (dbinit);
     }
-    if (start_wirewatch)
+    /* start exchange wirewatch */
+    for (unsigned int w = 0; w<start_wirewatch; w++)
     {
-      /* start exchange wirewatch */
-      wirewatch = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                           NULL, NULL, NULL,
-                                           "taler-exchange-wirewatch",
-                                           "taler-exchange-wirewatch",
-                                           "-c", cfg_filename,
-                                           NULL);
-      if (NULL == wirewatch)
+      wirewatch[w] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                              NULL, NULL, NULL,
+                                              "taler-exchange-wirewatch",
+                                              "taler-exchange-wirewatch",
+                                              "-c", cfg_filename,
+                                              "-L", loglev,
+                                              NULL);
+      if (NULL == wirewatch[w])
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Failed to launch wirewatch, aborting benchmark\n");
+        for (unsigned int x = 0; x<w; x++)
+        {
+          GNUNET_break (0 ==
+                        GNUNET_OS_process_kill (wirewatch[x],
+                                                SIGTERM));
+          GNUNET_break (GNUNET_OK ==
+                        GNUNET_OS_process_wait (wirewatch[x]));
+          GNUNET_OS_process_destroy (wirewatch[x]);
+          wirewatch[x] = NULL;
+        }
         if (-1 != fakebank)
         {
           int wstatus;
@@ -618,17 +633,61 @@ parallel_benchmark (void)
   if ( (MODE_BANK == mode) ||
        (MODE_BOTH == mode) )
   {
-    if (NULL != wirewatch)
+    /* Ensure wirewatch runs to completion! */
+    if (0 != start_wirewatch)
     {
-      /* stop wirewatch */
+      /* replace ONE of the wirewatchers with one that is in test-mode */
       GNUNET_break (0 ==
-                    GNUNET_OS_process_kill (wirewatch,
+                    GNUNET_OS_process_kill (wirewatch[0],
                                             SIGTERM));
       GNUNET_break (GNUNET_OK ==
-                    GNUNET_OS_process_wait (wirewatch));
-      GNUNET_OS_process_destroy (wirewatch);
-      wirewatch = NULL;
+                    GNUNET_OS_process_wait (wirewatch[0]));
+      GNUNET_OS_process_destroy (wirewatch[0]);
+      wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                              NULL, NULL, NULL,
+                                              "taler-exchange-wirewatch",
+                                              "taler-exchange-wirewatch",
+                                              "-c", cfg_filename,
+                                              "-L", loglev,
+                                              "-t",
+                                              NULL);
+      /* wait for it to finish! */
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_OS_process_wait (wirewatch[0]));
+      GNUNET_OS_process_destroy (wirewatch[0]);
+      wirewatch[0] = NULL;
+      /* Then stop the rest, which should basically also be finished */
+      for (unsigned int w = 1; w<start_wirewatch; w++)
+      {
+        GNUNET_break (0 ==
+                      GNUNET_OS_process_kill (wirewatch[w],
+                                              SIGTERM));
+        GNUNET_break (GNUNET_OK ==
+                      GNUNET_OS_process_wait (wirewatch[w]));
+        GNUNET_OS_process_destroy (wirewatch[w]);
+      }
+
+      /* But be extra sure we did finish all shards by doing one more */
+      wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                              NULL, NULL, NULL,
+                                              "taler-exchange-wirewatch",
+                                              "taler-exchange-wirewatch",
+                                              "-c", cfg_filename,
+                                              "-L", loglev,
+                                              "-t",
+                                              NULL);
+      /* wait for it to finish! */
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_OS_process_wait (wirewatch[0]));
+      GNUNET_OS_process_destroy (wirewatch[0]);
+      wirewatch[0] = NULL;
     }
+
+    /* Now stop the time, if this was the right mode */
+    if ( (GNUNET_YES != linger) &&
+         (MODE_BANK != mode) )
+      duration = GNUNET_TIME_absolute_get_duration (start_time);
+
     /* stop fakebank */
     if (-1 != fakebank)
     {
@@ -727,9 +786,10 @@ main (int argc,
                                 &history_size),
     GNUNET_GETOPT_option_version (PACKAGE_VERSION " " VCS_VERSION),
     GNUNET_GETOPT_option_verbose (&verbose),
-    GNUNET_GETOPT_option_flag ('w',
+    GNUNET_GETOPT_option_uint ('w',
                                "wirewatch",
-                               "run taler-exchange-wirewatch",
+                               "NPROC",
+                               "run NPROC taler-exchange-wirewatch processes",
                                &start_wirewatch),
     GNUNET_GETOPT_OPTION_END
   };
@@ -858,14 +918,17 @@ main (int argc,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string (duration,
                                                      GNUNET_YES));
-    tps = ((unsigned long long) howmany_reserves) * howmany_clients * 1000LLU
-          / (duration.rel_value_us / 1000LL);
-    fprintf (stdout,
-             "RAW: %04u %04u %16llu (%llu TPS)\n",
-             howmany_reserves,
-             howmany_clients,
-             (unsigned long long) duration.rel_value_us,
-             tps);
+    if (! GNUNET_TIME_relative_is_zero (duration))
+    {
+      tps = ((unsigned long long) howmany_reserves) * howmany_clients * 1000LLU
+            / (duration.rel_value_us / 1000LL);
+      fprintf (stdout,
+               "RAW: %04u %04u %16llu (%llu TPS)\n",
+               howmany_reserves,
+               howmany_clients,
+               (unsigned long long) duration.rel_value_us,
+               tps);
+    }
     fprintf (stdout,
              "CPU time: sys %llu user %llu\n",                          \
              (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000

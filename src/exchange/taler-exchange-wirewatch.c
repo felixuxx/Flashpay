@@ -384,10 +384,10 @@ handle_soft_error (struct WireAccount *wa)
                 "Reduced batch size to %llu due to serialization issue\n",
                 (unsigned long long) wa->batch_size);
   }
-  GNUNET_assert (NULL == task);
   /* Reset to beginning of transaction, and go again
      from there. */
   wa->latest_row_off = wa->batch_start;
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
                                    wa);
 }
@@ -458,6 +458,7 @@ account_completed (struct WireAccount *wa)
       = GNUNET_TIME_relative_to_absolute (wirewatch_idle_sleep_interval);
     wa = wa->next;
   }
+  GNUNET_assert (NULL == task);
   schedule_transfers (wa);
 }
 
@@ -533,6 +534,7 @@ do_commit (struct WireAccount *wa)
   enum GNUNET_DB_QueryStatus qs;
   bool shard_done;
 
+  GNUNET_assert (NULL == task);
   shard_done = check_shard_done (wa);
   wa->started_transaction = false;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -563,7 +565,8 @@ do_commit (struct WireAccount *wa)
   if (shard_done)
     account_completed (wa);
   else
-    continue_with_shard (wa);
+    task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
+                                     wa);
 }
 
 
@@ -591,6 +594,7 @@ history_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   (void) json;
+  GNUNET_assert (NULL == task);
   if (NULL == details)
   {
     wa->hh = NULL;
@@ -660,14 +664,17 @@ history_cb (void *cls,
     wa->hh = NULL;
     if (wa->started_transaction)
     {
+      GNUNET_assert (NULL == task);
       do_commit (wa);
     }
     else
     {
+      GNUNET_assert (NULL == task);
       if (check_shard_done (wa))
         account_completed (wa);
       else
-        continue_with_shard (wa);
+        task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
+                                         wa);
     }
     return GNUNET_SYSERR;
   }
@@ -746,6 +753,7 @@ continue_with_shard (void *cls)
   struct WireAccount *wa = cls;
   unsigned int limit;
 
+  task = NULL;
   limit = GNUNET_MIN (wa->batch_size,
                       wa->shard_end - wa->latest_row_off);
   wa->max_row_off = wa->latest_row_off + limit;
@@ -816,15 +824,18 @@ lock_shard (void *cls)
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
-    GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Serialization error tying to obtain shard %s, will try again in %s!\n",
-                wa->job_name,
-                GNUNET_STRINGS_relative_time_to_string (
-                  wirewatch_idle_sleep_interval,
-                  GNUNET_YES));
-    wa->delayed_until = GNUNET_TIME_relative_to_absolute (
-      wirewatch_idle_sleep_interval);
+    {
+      struct GNUNET_TIME_Relative rdelay;
+
+      rdelay = GNUNET_TIME_randomize (wirewatch_idle_sleep_interval);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Serialization error tying to obtain shard %s, will try again in %s!\n",
+                  wa->job_name,
+                  GNUNET_STRINGS_relative_time_to_string (rdelay,
+                                                          GNUNET_YES));
+      wa->delayed_until = GNUNET_TIME_relative_to_absolute (rdelay);
+    }
+    GNUNET_assert (NULL == task);
     schedule_transfers (wa->next);
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -837,6 +848,7 @@ lock_shard (void *cls)
                   GNUNET_YES));
     wa->delayed_until = GNUNET_TIME_relative_to_absolute (
       wirewatch_idle_sleep_interval);
+    GNUNET_assert (NULL == task);
     schedule_transfers (wa->next);
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -854,7 +866,8 @@ lock_shard (void *cls)
                        we find out that we're really busy */
   wa->batch_start = wa->shard_start;
   wa->latest_row_off = wa->batch_start;
-  continue_with_shard (wa);
+  task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
+                                   wa);
 }
 
 
@@ -894,6 +907,7 @@ run (void *cls,
     return;
   }
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&lock_shard,
                                    wa_head);
 }
