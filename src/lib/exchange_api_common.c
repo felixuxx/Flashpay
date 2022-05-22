@@ -26,8 +26,468 @@
 #include "taler_signatures.h"
 
 
-// FIXME: refactor, use switching table instead
-// of long if-then-else-else-else list!
+/**
+ * UUID array for duplicate detection.
+ */
+struct HistoryParseContext
+{
+
+  /**
+   * Exchange we use.
+   */
+  struct TALER_EXCHANGE_Handle *exchange;
+
+  /**
+   * Our reserve public key.
+   */
+  const struct TALER_ReservePublicKeyP *reserve_pub;
+
+  /**
+   * Array of UUIDs.
+   */
+  struct GNUNET_HashCode *uuids;
+
+  /**
+   * Where to sum up total inbound amounts.
+   */
+  struct TALER_Amount *total_in;
+
+  /**
+   * Where to sum up total outbound amounts.
+   */
+  struct TALER_Amount *total_out;
+
+  /**
+   * Number of entries already used in @e uuids.
+   */
+  unsigned int uuid_off;
+};
+
+
+/**
+ * Type of a function called to parse a reserve history
+ * entry @a rh.
+ *
+ * @param[in,out] rh where to write the result
+ * @param[in,out] uc UUID context for duplicate detection
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+typedef enum GNUNET_GenericReturnValue
+(*ParseHelper)(struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+               struct HistoryParseContext *uc,
+               const json_t *transaction);
+
+
+/**
+ * Parse "credit" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_credit (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+              struct HistoryParseContext *uc,
+              const json_t *transaction)
+{
+  const char *wire_url;
+  uint64_t wire_reference;
+  struct GNUNET_TIME_Timestamp timestamp;
+  struct GNUNET_JSON_Specification withdraw_spec[] = {
+    GNUNET_JSON_spec_uint64 ("wire_reference",
+                             &wire_reference),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &timestamp),
+    GNUNET_JSON_spec_string ("sender_account_url",
+                             &wire_url),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_CREDIT;
+  if (0 >
+      TALER_amount_add (uc->total_in,
+                        uc->total_in,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         withdraw_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  rh->details.in_details.sender_url = GNUNET_strdup (wire_url);
+  rh->details.in_details.wire_reference = wire_reference;
+  rh->details.in_details.timestamp = timestamp;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "credit" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_withdraw (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+                struct HistoryParseContext *uc,
+                const json_t *transaction)
+{
+  struct TALER_ReserveSignatureP sig;
+  struct TALER_DenominationHashP h_denom_pub;
+  struct TALER_BlindedCoinHashP bch;
+  struct TALER_Amount withdraw_fee;
+  struct GNUNET_JSON_Specification withdraw_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &sig),
+    TALER_JSON_spec_amount_any ("withdraw_fee",
+                                &withdraw_fee),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 &h_denom_pub),
+    GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
+                                 &bch),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_WITHDRAWAL;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         withdraw_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* Check that the signature is a valid withdraw request */
+  if (GNUNET_OK !=
+      TALER_wallet_withdraw_verify (&h_denom_pub,
+                                    &rh->amount,
+                                    &bch,
+                                    uc->reserve_pub,
+                                    &sig))
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (withdraw_spec);
+    return GNUNET_SYSERR;
+  }
+  /* check that withdraw fee matches expectations! */
+  {
+    const struct TALER_EXCHANGE_Keys *key_state;
+    const struct TALER_EXCHANGE_DenomPublicKey *dki;
+
+    key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+    dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                       &h_denom_pub);
+    if ( (GNUNET_YES !=
+          TALER_amount_cmp_currency (&withdraw_fee,
+                                     &dki->fees.withdraw)) ||
+         (0 !=
+          TALER_amount_cmp (&withdraw_fee,
+                            &dki->fees.withdraw)) )
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (withdraw_spec);
+      return GNUNET_SYSERR;
+    }
+    rh->details.withdraw.fee = withdraw_fee;
+  }
+  rh->details.withdraw.out_authorization_sig
+    = json_object_get (transaction,
+                       "signature");
+  /* Check check that the same withdraw transaction
+       isn't listed twice by the exchange. We use the
+       "uuid" array to remember the hashes of all
+       signatures, and compare the hashes to find
+       duplicates. */
+  GNUNET_CRYPTO_hash (&sig,
+                      sizeof (sig),
+                      &uc->uuids[uc->uuid_off]);
+  for (unsigned int i = 0; i<uc->uuid_off; i++)
+  {
+    if (0 == GNUNET_memcmp (&uc->uuids[uc->uuid_off],
+                            &uc->uuids[i]))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (withdraw_spec);
+      return GNUNET_SYSERR;
+    }
+  }
+  uc->uuid_off++;
+
+  if (0 >
+      TALER_amount_add (uc->total_out,
+                        uc->total_out,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (withdraw_spec);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "recoup" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_recoup (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+              struct HistoryParseContext *uc,
+              const json_t *transaction)
+{
+  const struct TALER_EXCHANGE_Keys *key_state;
+  struct GNUNET_JSON_Specification recoup_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                 &rh->details.recoup_details.coin_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &rh->details.recoup_details.exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &rh->details.recoup_details.exchange_pub),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &rh->details.recoup_details.timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_RECOUP;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         recoup_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_test_signing_key (key_state,
+                                       &rh->details.
+                                       recoup_details.exchange_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_confirm_recoup_verify (
+        rh->details.recoup_details.timestamp,
+        &rh->amount,
+        &rh->details.recoup_details.coin_pub,
+        uc->reserve_pub,
+        &rh->details.recoup_details.exchange_pub,
+        &rh->details.recoup_details.exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 >
+      TALER_amount_add (uc->total_in,
+                        uc->total_in,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "closing" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+               struct HistoryParseContext *uc,
+               const json_t *transaction)
+{
+  const struct TALER_EXCHANGE_Keys *key_state;
+  struct GNUNET_JSON_Specification closing_spec[] = {
+    GNUNET_JSON_spec_string (
+      "receiver_account_details",
+      &rh->details.close_details.receiver_account_details),
+    GNUNET_JSON_spec_fixed_auto ("wtid",
+                                 &rh->details.close_details.wtid),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &rh->details.close_details.exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &rh->details.close_details.exchange_pub),
+    TALER_JSON_spec_amount_any ("closing_fee",
+                                &rh->details.close_details.fee),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &rh->details.close_details.timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_CLOSE;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         closing_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_test_signing_key (
+        key_state,
+        &rh->details.close_details.exchange_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_reserve_closed_verify (
+        rh->details.close_details.timestamp,
+        &rh->amount,
+        &rh->details.close_details.fee,
+        rh->details.close_details.receiver_account_details,
+        &rh->details.close_details.wtid,
+        uc->reserve_pub,
+        &rh->details.close_details.exchange_pub,
+        &rh->details.close_details.exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 >
+      TALER_amount_add (uc->total_out,
+                        uc->total_out,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "merge" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+             struct HistoryParseContext *uc,
+             const json_t *transaction)
+{
+  struct GNUNET_JSON_Specification merge_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                 &rh->details.merge_details.h_contract_terms),
+    GNUNET_JSON_spec_fixed_auto ("merge_pub",
+                                 &rh->details.merge_details.merge_pub),
+    GNUNET_JSON_spec_fixed_auto ("purse_sig",
+                                 &rh->details.merge_details.purse_sig),
+    GNUNET_JSON_spec_fixed_auto ("purse_pub",
+                                 &rh->details.merge_details.purse_pub),
+    GNUNET_JSON_spec_fixed_auto ("merge_sig",
+                                 &rh->details.merge_details.merge_sig),
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &rh->details.merge_details.reserve_sig),
+    TALER_JSON_spec_amount_any ("purse_fee",
+                                &rh->details.merge_details.purse_fee),
+    GNUNET_JSON_spec_timestamp ("merge_timestamp",
+                                &rh->details.merge_details.merge_timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_MERGE;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         merge_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  GNUNET_break (0);     // FIXME: verify signatures!
+  if (0 >
+      TALER_amount_add (uc->total_in,
+                        uc->total_in,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "history" reserve history entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_history (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+               struct HistoryParseContext *uc,
+               const json_t *transaction)
+{
+  struct GNUNET_JSON_Specification history_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &rh->details.history_details.reserve_sig),
+    TALER_JSON_spec_amount_any ("history_fee",
+                                &rh->details.history_details.history_fee),
+    GNUNET_JSON_spec_timestamp ("request_timestamp",
+                                &rh->details.history_details.request_timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_HISTORY;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         history_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  GNUNET_break (0);     // FIXME: verify signature!
+  if (0 >
+      TALER_amount_add (uc->total_out,
+                        uc->total_out,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -39,8 +499,27 @@ TALER_EXCHANGE_parse_reserve_history (
   unsigned int history_length,
   struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory)
 {
+  const struct
+  {
+    const char *type;
+    ParseHelper helper;
+  } map[] = {
+    { "CREDIT", &parse_credit },
+    { "WITHDRAW", &parse_withdraw },
+    { "RECOUP", &parse_recoup },
+    { "MERGE", &parse_merge },
+    { "CLOSING", &parse_closing },
+    { "HISTORY", &parse_history },
+    { NULL, NULL }
+  };
   struct GNUNET_HashCode uuid[history_length];
-  unsigned int uuid_off;
+  struct HistoryParseContext uc = {
+    .exchange = exchange,
+    .reserve_pub = reserve_pub,
+    .uuids = uuid,
+    .total_in = total_in,
+    .total_in = total_out
+  };
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (currency,
@@ -48,7 +527,6 @@ TALER_EXCHANGE_parse_reserve_history (
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (currency,
                                         total_out));
-  uuid_off = 0;
   for (unsigned int off = 0; off<history_length; off++)
   {
     struct TALER_EXCHANGE_ReserveHistoryEntry *rh = &rhistory[off];
@@ -63,6 +541,7 @@ TALER_EXCHANGE_parse_reserve_history (
       /* 'wire' and 'signature' are optional depending on 'type'! */
       GNUNET_JSON_spec_end ()
     };
+    bool found = false;
 
     transaction = json_array_get (history,
                                   off);
@@ -74,7 +553,7 @@ TALER_EXCHANGE_parse_reserve_history (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    rhistory[off].amount = amount;
+    rh->amount = amount;
     if (GNUNET_YES !=
         TALER_amount_cmp_currency (&amount,
                                    total_in))
@@ -82,295 +561,24 @@ TALER_EXCHANGE_parse_reserve_history (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    if (0 == strcasecmp (type,
-                         "CREDIT"))
+    for (unsigned int i = 0; NULL != map[i].type; i++)
     {
-      const char *wire_url;
-      uint64_t wire_reference;
-      struct GNUNET_TIME_Timestamp timestamp;
-      struct GNUNET_JSON_Specification withdraw_spec[] = {
-        GNUNET_JSON_spec_uint64 ("wire_reference",
-                                 &wire_reference),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
-        GNUNET_JSON_spec_string ("sender_account_url",
-                                 &wire_url),
-        GNUNET_JSON_spec_end ()
-      };
-
-      rh->type = TALER_EXCHANGE_RTT_CREDIT;
-      if (0 >
-          TALER_amount_add (total_in,
-                            total_in,
-                            &amount))
+      if (0 == strcasecmp (map[i].type,
+                           type))
       {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             withdraw_spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      rh->details.in_details.sender_url = GNUNET_strdup (wire_url);
-      rh->details.in_details.wire_reference = wire_reference;
-      rh->details.in_details.timestamp = timestamp;
-      /* end type==DEPOSIT */
-    }
-    else if (0 == strcasecmp (type,
-                              "WITHDRAW"))
-    {
-      struct TALER_ReserveSignatureP sig;
-      struct TALER_DenominationHashP h_denom_pub;
-      struct TALER_BlindedCoinHashP bch;
-      struct TALER_Amount withdraw_fee;
-      struct GNUNET_JSON_Specification withdraw_spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                     &sig),
-        TALER_JSON_spec_amount_any ("withdraw_fee",
-                                    &withdraw_fee),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &h_denom_pub),
-        GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
-                                     &bch),
-        GNUNET_JSON_spec_end ()
-      };
-
-      rh->type = TALER_EXCHANGE_RTT_WITHDRAWAL;
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             withdraw_spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-
-      /* Check that the signature is a valid withdraw request */
-      if (GNUNET_OK !=
-          TALER_wallet_withdraw_verify (&h_denom_pub,
-                                        &amount,
-                                        &bch,
-                                        reserve_pub,
-                                        &sig))
-      {
-        GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (withdraw_spec);
-        return GNUNET_SYSERR;
-      }
-      /* check that withdraw fee matches expectations! */
-      {
-        const struct TALER_EXCHANGE_Keys *key_state;
-        const struct TALER_EXCHANGE_DenomPublicKey *dki;
-
-        key_state = TALER_EXCHANGE_get_keys (exchange);
-        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                           &h_denom_pub);
-        if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&withdraw_fee,
-                                         &dki->fees.withdraw)) ||
-             (0 !=
-              TALER_amount_cmp (&withdraw_fee,
-                                &dki->fees.withdraw)) )
+        found = true;
+        if (GNUNET_OK !=
+            map[i].helper (rh,
+                           &uc,
+                           transaction))
         {
           GNUNET_break_op (0);
-          GNUNET_JSON_parse_free (withdraw_spec);
           return GNUNET_SYSERR;
         }
-        rh->details.withdraw.fee = withdraw_fee;
-      }
-      rh->details.withdraw.out_authorization_sig
-        = json_object_get (transaction,
-                           "signature");
-      /* Check check that the same withdraw transaction
-         isn't listed twice by the exchange. We use the
-         "uuid" array to remember the hashes of all
-         signatures, and compare the hashes to find
-         duplicates. */
-      GNUNET_CRYPTO_hash (&sig,
-                          sizeof (sig),
-                          &uuid[uuid_off]);
-      for (unsigned int i = 0; i<uuid_off; i++)
-      {
-        if (0 == GNUNET_memcmp (&uuid[uuid_off],
-                                &uuid[i]))
-        {
-          GNUNET_break_op (0);
-          GNUNET_JSON_parse_free (withdraw_spec);
-          return GNUNET_SYSERR;
-        }
-      }
-      uuid_off++;
-
-      if (0 >
-          TALER_amount_add (total_out,
-                            total_out,
-                            &amount))
-      {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (withdraw_spec);
-        return GNUNET_SYSERR;
-      }
-      /* end type==WITHDRAW */
-    }
-    else if (0 == strcasecmp (type,
-                              "RECOUP"))
-    {
-      const struct TALER_EXCHANGE_Keys *key_state;
-      struct GNUNET_JSON_Specification recoup_spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                     &rh->details.recoup_details.coin_pub),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &rh->details.recoup_details.exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &rh->details.recoup_details.exchange_pub),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &rh->details.recoup_details.timestamp),
-        GNUNET_JSON_spec_end ()
-      };
-
-      rh->type = TALER_EXCHANGE_RTT_RECOUP;
-      rh->amount = amount;
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             recoup_spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      key_state = TALER_EXCHANGE_get_keys (exchange);
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
-                                           &rh->details.
-                                           recoup_details.exchange_pub))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_exchange_online_confirm_recoup_verify (
-            rh->details.recoup_details.timestamp,
-            &amount,
-            &rh->details.recoup_details.coin_pub,
-            reserve_pub,
-            &rh->details.recoup_details.exchange_pub,
-            &rh->details.recoup_details.exchange_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (0 >
-          TALER_amount_add (total_in,
-                            total_in,
-                            &rh->amount))
-      {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      /* end type==RECOUP */
-    }
-    else if (0 == strcasecmp (type,
-                              "CLOSING"))
-    {
-      const struct TALER_EXCHANGE_Keys *key_state;
-      struct GNUNET_JSON_Specification closing_spec[] = {
-        GNUNET_JSON_spec_string (
-          "receiver_account_details",
-          &rh->details.close_details.receiver_account_details),
-        GNUNET_JSON_spec_fixed_auto ("wtid",
-                                     &rh->details.close_details.wtid),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &rh->details.close_details.exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &rh->details.close_details.exchange_pub),
-        TALER_JSON_spec_amount_any ("closing_fee",
-                                    &rh->details.close_details.fee),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &rh->details.close_details.timestamp),
-        GNUNET_JSON_spec_end ()
-      };
-
-      rh->type = TALER_EXCHANGE_RTT_CLOSE;
-      rh->amount = amount;
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             closing_spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-
-      key_state = TALER_EXCHANGE_get_keys (exchange);
-      if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (
-            key_state,
-            &rh->details.close_details.exchange_pub))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_exchange_online_reserve_closed_verify (
-            rh->details.close_details.timestamp,
-            &amount,
-            &rh->details.close_details.fee,
-            rh->details.close_details.receiver_account_details,
-            &rh->details.close_details.wtid,
-            reserve_pub,
-            &rh->details.close_details.exchange_pub,
-            &rh->details.close_details.exchange_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (0 >
-          TALER_amount_add (total_out,
-                            total_out,
-                            &rh->amount))
-      {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      /* end type==CLOSING */
-    }
-    else if (0 == strcasecmp (type,
-                              "MERGE"))
-    {
-      GNUNET_break (0); // FIXME: implement!
-      if (0 >
-          TALER_amount_add (total_in,
-                            total_in,
-                            &rh->amount))
-      {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        break;
       }
     }
-    else if (0 == strcasecmp (type,
-                              "HISTORY"))
-    {
-      GNUNET_break (0); // FIXME: implement!
-      if (0 >
-          TALER_amount_add (total_out,
-                            total_out,
-                            &amount))
-      {
-        /* overflow in history already!? inconceivable! Bad exchange! */
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-    }
-    else
+    if (! found)
     {
       /* unexpected 'type', protocol incompatibility, complain! */
       GNUNET_break_op (0);
@@ -409,6 +617,7 @@ TALER_EXCHANGE_free_reserve_history (
 }
 
 
+// FIMXE: also transform with helpers...
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
@@ -597,7 +806,6 @@ TALER_EXCHANGE_verify_coin_history (
           return GNUNET_SYSERR;
         }
       }
-
 
       if (GNUNET_OK !=
           TALER_wallet_melt_verify (
