@@ -3641,7 +3641,9 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_insert_history_request() */
     GNUNET_PQ_make_prepare (
       "call_history_request",
-      "SELECT 1"
+      "SELECT"
+      "  out_balance_ok AS balance_ok"
+      " ,out_idempotent AS idempotent"
       " FROM exchange_do_history_request"
       "  ($1, $2, $3, $4, $5)",
       5),
@@ -14014,6 +14016,9 @@ postgres_do_account_merge (
  * @param reserve_sig signature affirming the request
  * @param request_timestamp when was the request made
  * @param history_fee how much should the @a reserve_pub be charged for the request
+ * @param[out] balance_ok set to TRUE if the reserve balance
+ *         was sufficient
+ * @param[out] idempotent set to TRUE if the request is already in the DB
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -14021,11 +14026,31 @@ postgres_insert_history_request (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig,
-  struct GNUNET_TIME_Absolute request_timestamp,
-  const struct TALER_Amount *history)
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_Amount *history,
+  bool *balance_ok,
+  bool *idempotent)
 {
-  GNUNET_break (0); // FIXME
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
+    GNUNET_PQ_query_param_timestamp (&request_timestamp),
+    TALER_PQ_query_param_amount (history),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("balance_ok",
+                                balance_ok),
+    GNUNET_PQ_result_spec_bool ("idempotent",
+                                idempotent),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_history_request",
+                                                   params,
+                                                   rs);
 }
 
 

@@ -96,6 +96,8 @@ reply_reserve_history_success (struct MHD_Connection *connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        NULL);
+  /* FIXME: should set explicit cache control headers
+     for this response to enable caching! */
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -129,7 +131,45 @@ reserve_history_transaction (void *cls,
   struct ReserveHistoryContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  // FIXME: first deduct rsc->gf->fees.history from reserve balance (and persist the signature justifying this)
+  if (! TALER_amount_is_zero (&rsc->gf->fees.history))
+  {
+    bool balance_ok = false;
+    bool idempotent = true;
+
+    qs = TEH_plugin->insert_history_request (TEH_plugin->cls,
+                                             rsc->reserve_pub,
+                                             &rsc->reserve_sig,
+                                             rsc->timestamp,
+                                             &rsc->gf->fees.history,
+                                             &balance_ok,
+                                             &idempotent);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                      "get_reserve_history");
+    }
+    if (qs <= 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
+    if (! balance_ok)
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_CONFLICT,
+                                         TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
+                                         NULL);
+    }
+    if (idempotent)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Idempotent /reserves/history request observed. Is caching working?\n");
+    }
+  }
   qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                         rsc->reserve_pub,
                                         &rsc->balance,

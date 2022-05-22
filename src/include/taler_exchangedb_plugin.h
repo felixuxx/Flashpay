@@ -4864,6 +4864,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_sig signature affirming the request
    * @param request_timestamp when was the request made
    * @param history_fee how much should the @a reserve_pub be charged for the request
+   * @param[out] balance_ok set to TRUE if the reserve balance
+   *         was sufficient
+   * @param[out] idempotent set to TRUE if the request is already in the DB
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -4871,8 +4874,10 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_ReserveSignatureP *reserve_sig,
-    struct GNUNET_TIME_Absolute request_timestamp,
-    const struct TALER_Amount *history_fee);
+    struct GNUNET_TIME_Timestamp request_timestamp,
+    const struct TALER_Amount *history_fee,
+    bool *balance_ok,
+    bool *idempotent);
 
 
   /**
