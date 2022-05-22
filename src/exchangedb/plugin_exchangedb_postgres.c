@@ -3362,8 +3362,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_row"
       " FROM work_shards"
       " WHERE job_name=$1"
-      "   AND last_attempt<$2"
       "   AND completed=FALSE"
+      "   AND last_attempt<$2"
       " ORDER BY last_attempt ASC"
       " LIMIT 1;",
       2),
@@ -12626,7 +12626,7 @@ postgres_begin_shard (void *cls,
 {
   struct PostgresClosure *pg = cls;
 
-  for (unsigned int retries = 0; retries<3; retries++)
+  for (unsigned int retries = 0; retries<10; retries++)
   {
     if (GNUNET_OK !=
         postgres_start (pg,

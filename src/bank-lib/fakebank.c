@@ -497,9 +497,10 @@ lp_trigger (struct LongPoller *lp,
   GNUNET_free (lp);
   h->mhd_again = true;
 #ifdef __linux__
-  if (-1 != h->lp_event)
+  if (-1 == h->lp_event)
 #else
-  if (-1 != h->lp_event_in && -1 != h->lp_event_out)
+  if ( (-1 == h->lp_event_in) &&
+       (-1 == h->lp_event_out) )
 #endif
   {
     if (NULL != h->mhd_task)
@@ -2745,6 +2746,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
 #else
     {
       int pipefd[2];
+
       if (0 != pipe (pipefd))
       {
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,

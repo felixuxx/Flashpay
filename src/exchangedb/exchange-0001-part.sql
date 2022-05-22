@@ -925,7 +925,7 @@ CREATE INDEX IF NOT EXISTS work_shards_by_job_name_completed_last_attempt_index
   ON work_shards
   (job_name
   ,completed
-  ,last_attempt
+  ,last_attempt ASC
   );
 
 
