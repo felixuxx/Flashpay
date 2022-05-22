@@ -27,7 +27,7 @@
 
 
 /**
- * UUID array for duplicate detection.
+ * Context for history entry helpers.
  */
 struct HistoryParseContext
 {
@@ -543,7 +543,7 @@ TALER_EXCHANGE_parse_reserve_history (
     .reserve_pub = reserve_pub,
     .uuids = uuid,
     .total_in = total_in,
-    .total_in = total_out
+    .total_out = total_out
   };
 
   GNUNET_assert (GNUNET_OK ==
@@ -642,7 +642,537 @@ TALER_EXCHANGE_free_reserve_history (
 }
 
 
-// FIMXE: also transform with helpers...
+/**
+ * Context for coin helpers.
+ */
+struct CoinHistoryParseContext
+{
+
+  /**
+   * Denomination of the coin.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *dk;
+
+  /**
+   * Our coin public key.
+   */
+  const struct TALER_CoinSpendPublicKeyP *coin_pub;
+
+  /**
+   * Hash of @e dk, set from parsing.
+   */
+  struct TALER_DenominationHashP *h_denom_pub;
+
+  /**
+   * Where to sum up total refunds.
+   */
+  struct TALER_Amount rtotal;
+
+  /**
+   * Where to sum up fees.
+   */
+  struct TALER_Amount fee;
+
+  /**
+   * Total amount encountered.
+   */
+  struct TALER_Amount *total;
+
+};
+
+
+/**
+ * Signature of functions that operate on one of
+ * the coin's history entries.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+typedef enum GNUNET_GenericReturnValue
+(*CoinCheckHelper)(struct CoinHistoryParseContext *pc,
+                   const struct TALER_Amount *amount,
+                   json_t *transaction);
+
+
+/**
+ * Handle deposit entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_deposit (struct CoinHistoryParseContext *pc,
+              const struct TALER_Amount *amount,
+              json_t *transaction)
+{
+  struct TALER_MerchantWireHashP h_wire;
+  struct TALER_PrivateContractHashP h_contract_terms;
+  // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
+  struct GNUNET_TIME_Timestamp wallet_timestamp;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  struct GNUNET_TIME_Timestamp refund_deadline = {0};
+  struct TALER_CoinSpendSignatureP sig;
+  struct TALER_AgeCommitmentHash hac;
+  bool no_hac;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &sig),
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                 &h_contract_terms),
+    GNUNET_JSON_spec_fixed_auto ("h_wire",
+                                 &h_wire),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 pc->h_denom_pub),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                   &hac),
+      &no_hac),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &wallet_timestamp),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                  &refund_deadline),
+      NULL),
+    TALER_JSON_spec_amount_any ("deposit_fee",
+                                &pc->fee),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                 &merchant_pub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_deposit_verify (
+        amount,
+        &pc->fee,
+        &h_wire,
+        &h_contract_terms,
+        no_hac ? NULL : &hac,
+        NULL /* h_extensions! */,
+        pc->h_denom_pub,
+        wallet_timestamp,
+        &merchant_pub,
+        refund_deadline,
+        pc->coin_pub,
+        &sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (NULL != pc->dk)
+  {
+    /* check that deposit fee matches our expectations from /keys! */
+    if ( (GNUNET_YES !=
+          TALER_amount_cmp_currency (&pc->fee,
+                                     &pc->dk->fees.deposit)) ||
+         (0 !=
+          TALER_amount_cmp (&pc->fee,
+                            &pc->dk->fees.deposit)) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_YES;
+}
+
+
+/**
+ * Handle melt entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_melt (struct CoinHistoryParseContext *pc,
+           const struct TALER_Amount *amount,
+           json_t *transaction)
+{
+  struct TALER_CoinSpendSignatureP sig;
+  struct TALER_RefreshCommitmentP rc;
+  struct TALER_AgeCommitmentHash h_age_commitment;
+  bool no_hac;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &sig),
+    GNUNET_JSON_spec_fixed_auto ("rc",
+                                 &rc),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 pc->h_denom_pub),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                   &h_age_commitment),
+      &no_hac),
+    TALER_JSON_spec_amount_any ("melt_fee",
+                                &pc->fee),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (NULL != pc->dk)
+  {
+    /* check that melt fee matches our expectations from /keys! */
+    if ( (GNUNET_YES !=
+          TALER_amount_cmp_currency (&pc->fee,
+                                     &pc->dk->fees.refresh)) ||
+         (0 !=
+          TALER_amount_cmp (&pc->fee,
+                            &pc->dk->fees.refresh)) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  if (GNUNET_OK !=
+      TALER_wallet_melt_verify (
+        amount,
+        &pc->fee,
+        &rc,
+        pc->h_denom_pub,
+        no_hac
+            ? NULL
+            : &h_age_commitment,
+        pc->coin_pub,
+        &sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_YES;
+}
+
+
+/**
+ * Handle refund entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_refund (struct CoinHistoryParseContext *pc,
+             const struct TALER_Amount *amount,
+             json_t *transaction)
+{
+  struct TALER_PrivateContractHashP h_contract_terms;
+  struct TALER_MerchantPublicKeyP merchant_pub;
+  struct TALER_MerchantSignatureP sig;
+  struct TALER_Amount refund_fee;
+  struct TALER_Amount sig_amount;
+  uint64_t rtransaction_id;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount_any ("refund_fee",
+                                &refund_fee),
+    GNUNET_JSON_spec_fixed_auto ("merchant_sig",
+                                 &sig),
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                 &h_contract_terms),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                 &merchant_pub),
+    GNUNET_JSON_spec_uint64 ("rtransaction_id",
+                             &rtransaction_id),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 >
+      TALER_amount_add (&sig_amount,
+                        &refund_fee,
+                        amount))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_merchant_refund_verify (pc->coin_pub,
+                                    &h_contract_terms,
+                                    rtransaction_id,
+                                    &sig_amount,
+                                    &merchant_pub,
+                                    &sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  /* NOTE: theoretically, we could also check that the given
+       merchant_pub and h_contract_terms appear in the
+       history under deposits.  However, there is really no benefit
+       for the exchange to lie here, so not checking is probably OK
+       (an auditor ought to check, though). Then again, we similarly
+       had no reason to check the merchant's signature (other than a
+       well-formendess check). */
+
+  /* check that refund fee matches our expectations from /keys! */
+  if (NULL != pc->dk)
+  {
+    if ( (GNUNET_YES !=
+          TALER_amount_cmp_currency (&refund_fee,
+                                     &pc->dk->fees.refund)) ||
+         (0 !=
+          TALER_amount_cmp (&refund_fee,
+                            &pc->dk->fees.refund)) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Handle recoup entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_recoup (struct CoinHistoryParseContext *pc,
+             const struct TALER_Amount *amount,
+             json_t *transaction)
+{
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_TIME_Timestamp timestamp;
+  union TALER_DenominationBlindingKeyP coin_bks;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                 &reserve_pub),
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &coin_sig),
+    GNUNET_JSON_spec_fixed_auto ("coin_blind",
+                                 &coin_bks),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 pc->h_denom_pub),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_confirm_recoup_verify (
+        timestamp,
+        amount,
+        pc->coin_pub,
+        &reserve_pub,
+        &exchange_pub,
+        &exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_recoup_verify (pc->h_denom_pub,
+                                  &coin_bks,
+                                  pc->coin_pub,
+                                  &coin_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_YES;
+}
+
+
+/**
+ * Handle recoup-refresh entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_recoup_refresh (struct CoinHistoryParseContext *pc,
+                     const struct TALER_Amount *amount,
+                     json_t *transaction)
+{
+  /* This is the coin that was subjected to a recoup,
+       the value being credited to the old coin. */
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
+  union TALER_DenominationBlindingKeyP coin_bks;
+  struct GNUNET_TIME_Timestamp timestamp;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &coin_sig),
+    GNUNET_JSON_spec_fixed_auto ("old_coin_pub",
+                                 &old_coin_pub),
+    GNUNET_JSON_spec_fixed_auto ("coin_blind",
+                                 &coin_bks),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 pc->h_denom_pub),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_confirm_recoup_refresh_verify (
+        timestamp,
+        amount,
+        pc->coin_pub,
+        &old_coin_pub,
+        &exchange_pub,
+        &exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_recoup_verify (pc->h_denom_pub,
+                                  &coin_bks,
+                                  pc->coin_pub,
+                                  &coin_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_YES;
+}
+
+
+/**
+ * Handle old coin recoup entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_old_coin_recoup (struct CoinHistoryParseContext *pc,
+                      const struct TALER_Amount *amount,
+                      json_t *transaction)
+{
+  /* This is the coin that was credited in a recoup,
+       the value being credited to the this coin. */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_CoinSpendPublicKeyP new_coin_pub;
+  struct GNUNET_TIME_Timestamp timestamp;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                 &new_coin_pub),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_confirm_recoup_refresh_verify (
+        timestamp,
+        amount,
+        &new_coin_pub,
+        pc->coin_pub,
+        &exchange_pub,
+        &exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Handle purse deposit entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_purse_deposit (struct CoinHistoryParseContext *pc,
+                    const struct TALER_Amount *amount,
+                    json_t *transaction)
+{
+  GNUNET_break (0); // FIXME: implement!
+  return GNUNET_SYSERR;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
@@ -652,9 +1182,27 @@ TALER_EXCHANGE_verify_coin_history (
   struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_Amount *total)
 {
+  const struct
+  {
+    const char *type;
+    CoinCheckHelper helper;
+  } map[] = {
+    { "DEPOSIT", &help_deposit },
+    { "MELT", &help_melt },
+    { "REFUND", &help_refund },
+    { "RECOUP", &help_recoup },
+    { "RECOUP-REFRESH", &help_recoup_refresh },
+    { "OLD-COIN-RECOUP", &help_old_coin_recoup },
+    { "PURSE_DEPOSIT", &help_purse_deposit },
+    { NULL, NULL }
+  };
+  struct CoinHistoryParseContext pc = {
+    .dk = dk,
+    .coin_pub = coin_pub,
+    .total = total,
+    .h_denom_pub = h_denom_pub
+  };
   size_t len;
-  struct TALER_Amount rtotal;
-  struct TALER_Amount fee;
 
   if (NULL == history)
   {
@@ -672,10 +1220,10 @@ TALER_EXCHANGE_verify_coin_history (
                                         total));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (currency,
-                                        &rtotal));
+                                        &pc.rtotal));
   for (size_t off = 0; off<len; off++)
   {
-    int add;
+    enum GNUNET_GenericReturnValue add;
     json_t *transaction;
     struct TALER_Amount amount;
     const char *type;
@@ -699,416 +1247,33 @@ TALER_EXCHANGE_verify_coin_history (
     }
     if (GNUNET_YES !=
         TALER_amount_cmp_currency (&amount,
-                                   &rtotal))
+                                   &pc.rtotal))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
     add = GNUNET_SYSERR;
-    if (0 == strcasecmp (type,
-                         "DEPOSIT"))
+    for (unsigned int i = 0; NULL != map[i].type; i++)
     {
-      struct TALER_MerchantWireHashP h_wire;
-      struct TALER_PrivateContractHashP h_contract_terms;
-      // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
-      struct GNUNET_TIME_Timestamp wallet_timestamp;
-      struct TALER_MerchantPublicKeyP merchant_pub;
-      struct GNUNET_TIME_Timestamp refund_deadline = {0};
-      struct TALER_CoinSpendSignatureP sig;
-      struct TALER_AgeCommitmentHash hac;
-      bool no_hac;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                     &sig),
-        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &h_contract_terms),
-        GNUNET_JSON_spec_fixed_auto ("h_wire",
-                                     &h_wire),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     h_denom_pub),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                       &hac),
-          &no_hac),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &wallet_timestamp),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_timestamp ("refund_deadline",
-                                      &refund_deadline),
-          NULL),
-        TALER_JSON_spec_amount_any ("deposit_fee",
-                                    &fee),
-        GNUNET_JSON_spec_fixed_auto ("merchant_pub",
-                                     &merchant_pub),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
+      if (0 == strcasecmp (type,
+                           map[i].type))
       {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
+        add = map[i].helper (&pc,
+                             &amount,
+                             transaction);
+        break;
       }
-      if (GNUNET_OK !=
-          TALER_wallet_deposit_verify (
-            &amount,
-            &fee,
-            &h_wire,
-            &h_contract_terms,
-            no_hac ? NULL : &hac,
-            NULL /* h_extensions! */,
-            h_denom_pub,
-            wallet_timestamp,
-            &merchant_pub,
-            refund_deadline,
-            coin_pub,
-            &sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (NULL != dk)
-      {
-        /* check that deposit fee matches our expectations from /keys! */
-        if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&fee,
-                                         &dk->fees.deposit)) ||
-             (0 !=
-              TALER_amount_cmp (&fee,
-                                &dk->fees.deposit)) )
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
-      }
-      add = GNUNET_YES;
     }
-    else if (0 == strcasecmp (type,
-                              "MELT"))
+    switch (add)
     {
-      struct TALER_CoinSpendSignatureP sig;
-      struct TALER_RefreshCommitmentP rc;
-      struct TALER_AgeCommitmentHash h_age_commitment;
-      bool no_hac;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                     &sig),
-        GNUNET_JSON_spec_fixed_auto ("rc",
-                                     &rc),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     h_denom_pub),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                       &h_age_commitment),
-          &no_hac),
-        TALER_JSON_spec_amount_any ("melt_fee",
-                                    &fee),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-
-      if (NULL != dk)
-      {
-        /* check that melt fee matches our expectations from /keys! */
-        if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&fee,
-                                         &dk->fees.refresh)) ||
-             (0 !=
-              TALER_amount_cmp (&fee,
-                                &dk->fees.refresh)) )
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
-      }
-
-      if (GNUNET_OK !=
-          TALER_wallet_melt_verify (
-            &amount,
-            &fee,
-            &rc,
-            h_denom_pub,
-            no_hac
-            ? NULL
-            : &h_age_commitment,
-            coin_pub,
-            &sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      add = GNUNET_YES;
-    }
-    else if (0 == strcasecmp (type,
-                              "REFUND"))
-    {
-      struct TALER_PrivateContractHashP h_contract_terms;
-      struct TALER_MerchantPublicKeyP merchant_pub;
-      struct TALER_MerchantSignatureP sig;
-      struct TALER_Amount refund_fee;
-      struct TALER_Amount sig_amount;
-      uint64_t rtransaction_id;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_any ("refund_fee",
-                                    &refund_fee),
-        GNUNET_JSON_spec_fixed_auto ("merchant_sig",
-                                     &sig),
-        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &h_contract_terms),
-        GNUNET_JSON_spec_fixed_auto ("merchant_pub",
-                                     &merchant_pub),
-        GNUNET_JSON_spec_uint64 ("rtransaction_id",
-                                 &rtransaction_id),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (0 >
-          TALER_amount_add (&sig_amount,
-                            &refund_fee,
-                            &amount))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_merchant_refund_verify (coin_pub,
-                                        &h_contract_terms,
-                                        rtransaction_id,
-                                        &sig_amount,
-                                        &merchant_pub,
-                                        &sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      /* NOTE: theoretically, we could also check that the given
-         merchant_pub and h_contract_terms appear in the
-         history under deposits.  However, there is really no benefit
-         for the exchange to lie here, so not checking is probably OK
-         (an auditor ought to check, though). Then again, we similarly
-         had no reason to check the merchant's signature (other than a
-         well-formendess check). */
-
-      /* check that refund fee matches our expectations from /keys! */
-      if (NULL != dk)
-      {
-        if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&refund_fee,
-                                         &dk->fees.refund)) ||
-             (0 !=
-              TALER_amount_cmp (&refund_fee,
-                                &dk->fees.refund)) )
-        {
-          GNUNET_break_op (0);
-          return GNUNET_SYSERR;
-        }
-      }
-      add = GNUNET_NO;
-    }
-    else if (0 == strcasecmp (type,
-                              "RECOUP"))
-    {
-      struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_TIME_Timestamp timestamp;
-      union TALER_DenominationBlindingKeyP coin_bks;
-      struct TALER_ExchangePublicKeyP exchange_pub;
-      struct TALER_ExchangeSignatureP exchange_sig;
-      struct TALER_CoinSpendSignatureP coin_sig;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_any ("amount",
-                                    &amount),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &exchange_pub),
-        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                     &reserve_pub),
-        GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                     &coin_sig),
-        GNUNET_JSON_spec_fixed_auto ("coin_blind",
-                                     &coin_bks),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     h_denom_pub),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_exchange_online_confirm_recoup_verify (
-            timestamp,
-            &amount,
-            coin_pub,
-            &reserve_pub,
-            &exchange_pub,
-            &exchange_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_wallet_recoup_verify (h_denom_pub,
-                                      &coin_bks,
-                                      coin_pub,
-                                      &coin_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      add = GNUNET_YES;
-    }
-    else if (0 == strcasecmp (type,
-                              "RECOUP-REFRESH"))
-    {
-      /* This is the coin that was subjected to a recoup,
-         the value being credited to the old coin. */
-      struct TALER_CoinSpendPublicKeyP old_coin_pub;
-      union TALER_DenominationBlindingKeyP coin_bks;
-      struct TALER_Amount amount;
-      struct GNUNET_TIME_Timestamp timestamp;
-      struct TALER_ExchangePublicKeyP exchange_pub;
-      struct TALER_ExchangeSignatureP exchange_sig;
-      struct TALER_CoinSpendSignatureP coin_sig;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_any ("amount",
-                                    &amount),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &exchange_pub),
-        GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                     &coin_sig),
-        GNUNET_JSON_spec_fixed_auto ("old_coin_pub",
-                                     &old_coin_pub),
-        GNUNET_JSON_spec_fixed_auto ("coin_blind",
-                                     &coin_bks),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     h_denom_pub),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_exchange_online_confirm_recoup_refresh_verify (
-            timestamp,
-            &amount,
-            coin_pub,
-            &old_coin_pub,
-            &exchange_pub,
-            &exchange_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_wallet_recoup_verify (h_denom_pub,
-                                      &coin_bks,
-                                      coin_pub,
-                                      &coin_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      add = GNUNET_YES;
-    }
-    else if (0 == strcasecmp (type,
-                              "OLD-COIN-RECOUP"))
-    {
-      /* This is the coin that was credited in a recoup,
-         the value being credited to the this coin. */
-      struct TALER_ExchangePublicKeyP exchange_pub;
-      struct TALER_ExchangeSignatureP exchange_sig;
-      struct TALER_CoinSpendPublicKeyP new_coin_pub;
-      struct GNUNET_TIME_Timestamp timestamp;
-      struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_any ("amount",
-                                    &amount),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &exchange_pub),
-        GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                     &new_coin_pub),
-        GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (transaction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (GNUNET_OK !=
-          TALER_exchange_online_confirm_recoup_refresh_verify (
-            timestamp,
-            &amount,
-            &new_coin_pub,
-            coin_pub,
-            &exchange_pub,
-            &exchange_sig))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      add = GNUNET_NO;
-    }
-    else if (0 == strcasecmp (type,
-                              "LOCK_NONCE"))
-    {
-      GNUNET_break (0); // FIXME: implement!
-    }
-    else
-    {
-      /* signature not supported, new version on server? */
+    case GNUNET_SYSERR:
+      /* entry type not supported, new version on server? */
       GNUNET_break_op (0);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected type `%s' in response\n",
                   type);
-      GNUNET_assert (GNUNET_SYSERR == add);
       return GNUNET_SYSERR;
-    }
-
-    if (GNUNET_YES == add)
-    {
+    case GNUNET_YES:
       /* This amount should be added to the total */
       if (0 >
           TALER_amount_add (total,
@@ -1119,35 +1284,30 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-    }
-    else
-    {
+    case GNUNET_NO:
       /* This amount should be subtracted from the total.
 
          However, for the implementation, we first *add* up all of
          these negative amounts, as we might get refunds before
          deposits from a semi-evil exchange.  Then, at the end, we do
          the subtraction by calculating "total = total - rtotal" */
-      GNUNET_assert (GNUNET_NO == add);
       if (0 >
-          TALER_amount_add (&rtotal,
-                            &rtotal,
+          TALER_amount_add (&pc.rtotal,
+                            &pc.rtotal,
                             &amount))
       {
         /* overflow in refund history? inconceivable! Bad exchange! */
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-
-    }
+    } /* end of switch(add) */
   }
-
 
   /* Finally, subtract 'rtotal' from total to handle the subtractions */
   if (0 >
       TALER_amount_subtract (total,
                              total,
-                             &rtotal))
+                             &pc.rtotal))
   {
     /* underflow in history? inconceivable! Bad exchange! */
     GNUNET_break_op (0);
