@@ -397,17 +397,18 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
              struct HistoryParseContext *uc,
              const json_t *transaction)
 {
+  uint32_t flags32;
   struct GNUNET_JSON_Specification merge_spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &rh->details.merge_details.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("merge_pub",
                                  &rh->details.merge_details.merge_pub),
-    GNUNET_JSON_spec_fixed_auto ("purse_sig",
-                                 &rh->details.merge_details.purse_sig),
     GNUNET_JSON_spec_fixed_auto ("purse_pub",
                                  &rh->details.merge_details.purse_pub),
-    GNUNET_JSON_spec_fixed_auto ("merge_sig",
-                                 &rh->details.merge_details.merge_sig),
+    GNUNET_JSON_spec_uint32 ("min_age",
+                             &rh->details.merge_details.min_age),
+    GNUNET_JSON_spec_uint32 ("flags",
+                             &flags32),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &rh->details.merge_details.reserve_sig),
     TALER_JSON_spec_amount_any ("purse_fee",
@@ -426,8 +427,24 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-  GNUNET_break (0);     // FIXME: verify signatures!
+  rh->details.merge_details.flags =
+    (enum TALER_WalletAccountMergeFlags) flags32;
+  if (GNUNET_OK !=
+      TALER_wallet_account_merge_verify (
+        rh->details.merge_details.merge_timestamp,
+        &rh->details.merge_details.purse_pub,
+        rh->details.merge_details.purse_expiration,
+        &rh->details.merge_details.h_contract_terms,
+        &rh->amount,
+        &rh->details.merge_details.purse_fee,
+        rh->details.merge_details.min_age,
+        rh->details.merge_details.flags,
+        uc->reserve_pub,
+        &rh->details.merge_details.reserve_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   if (0 >
       TALER_amount_add (uc->total_in,
                         uc->total_in,
@@ -473,8 +490,16 @@ parse_history (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-  GNUNET_break (0);     // FIXME: verify signature!
+  if (GNUNET_OK !=
+      TALER_wallet_reserve_history_verify (
+        rh->details.history_details.request_timestamp,
+        &rh->details.history_details.history_fee,
+        uc->reserve_pub,
+        &rh->details.history_details.reserve_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   if (0 >
       TALER_amount_add (uc->total_out,
                         uc->total_out,

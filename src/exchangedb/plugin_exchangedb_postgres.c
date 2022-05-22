@@ -2136,11 +2136,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",pr.purse_fee_frac"
       ",pr.h_contract_terms"
       ",pr.merge_pub"
-      ",pr.purse_sig"
       ",am.reserve_sig"
       ",pm.purse_pub"
-      ",pm.merge_sig"
       ",pm.merge_timestamp"
+      ",pr.purse_expiration"
+      ",pr.age_limit"
+      ",pr.flags"
       " FROM purse_merges pm"
       "   JOIN purse_requests pr"
       "     USING (purse_pub)"
@@ -6191,6 +6192,7 @@ add_p2p_merge (void *cls,
 
     merge = GNUNET_new (struct TALER_EXCHANGEDB_PurseMerge);
     {
+      uint32_t flags32;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
                                      &merge->purse_fee),
@@ -6198,16 +6200,18 @@ add_p2p_merge (void *cls,
                                      &merge->amount_with_fee),
         GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
                                          &merge->merge_timestamp),
+        GNUNET_PQ_result_spec_timestamp ("purse_expiration",
+                                         &merge->purse_expiration),
+        GNUNET_PQ_result_spec_uint32 ("age_limit",
+                                      &merge->min_age),
+        GNUNET_PQ_result_spec_uint32 ("flags",
+                                      &flags32),
         GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                               &merge->h_contract_terms),
         GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
                                               &merge->merge_pub),
-        GNUNET_PQ_result_spec_auto_from_type ("purse_sig",
-                                              &merge->purse_sig),
         GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
                                               &merge->purse_pub),
-        GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
-                                              &merge->merge_sig),
         GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                               &merge->reserve_sig),
         GNUNET_PQ_result_spec_end
@@ -6223,6 +6227,7 @@ add_p2p_merge (void *cls,
         rhc->status = GNUNET_SYSERR;
         return;
       }
+      merge->flags = (enum TALER_WalletAccountMergeFlags) flags32;
     }
     GNUNET_assert (0 <=
                    TALER_amount_add (&rhc->balance_out,

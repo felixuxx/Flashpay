@@ -1010,19 +1010,9 @@ struct TALER_EXCHANGEDB_PurseMerge
   struct TALER_PurseMergePublicKeyP merge_pub;
 
   /**
-   * Purse signature.
-   */
-  struct TALER_PurseContractSignatureP purse_sig;
-
-  /**
    * Purse public key.
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
-
-  /**
-   * Merge signature.
-   */
-  struct TALER_PurseMergePublicKeyP merge_sig;
 
   /**
    * Signature by the reserve approving the merge.
@@ -1033,6 +1023,21 @@ struct TALER_EXCHANGEDB_PurseMerge
    * When was the merge made.
    */
   struct GNUNET_TIME_Timestamp merge_timestamp;
+
+  /**
+   * When was the purse set to expire.
+   */
+  struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
+   * Minimum age required for depositing into the purse.
+   */
+  uint32_t min_age;
+
+  /**
+   * Flags of the purse.
+   */
+  enum TALER_WalletAccountMergeFlags flags;
 
 };
 
