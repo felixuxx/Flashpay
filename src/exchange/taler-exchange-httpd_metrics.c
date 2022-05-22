@@ -65,6 +65,12 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "taler_exchange_received_requests{type=\"%s\"} %llu\n"
                    "taler_exchange_received_requests{type=\"%s\"} %llu\n"
                    "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_idempotent_requests{type=\"%s\"} %llu\n"
+#if NOT_YET_IMPLEMENTED
+                   "taler_exchange_idempotent_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_idempotent_requests{type=\"%s\"} %llu\n"
+#endif
+                   "taler_exchange_idempotent_requests{type=\"%s\"} %llu\n"
                    "# HELP taler_exchange_num_signatures "
                    " number of signatures created by cipher\n"
                    "# TYPE taler_exchange_num_signatures counter\n"
@@ -101,6 +107,17 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    TEH_METRICS_num_requests[TEH_MT_REQUEST_WITHDRAW],
                    "melt",
                    TEH_METRICS_num_requests[TEH_MT_REQUEST_MELT],
+                   "withdraw",
+                   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_WITHDRAW],
+#if NOT_YET_IMPLEMENTED
+                   "deposit",
+                   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_DEPOSIT],
+                   "melt",
+                   TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_MELT],
+#endif
+                   "batch-withdraw",
+                   TEH_METRICS_num_requests[
+                     TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW],
                    "rsa",
                    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA],
                    "cs",

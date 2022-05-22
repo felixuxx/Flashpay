@@ -352,6 +352,7 @@ check_request_idempotent (const struct TEH_RequestContext *rc,
       return false;
   }
   /* generate idempotent reply */
+  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
   *mret = generate_reply_success (rc,
                                   wc);
   return true;

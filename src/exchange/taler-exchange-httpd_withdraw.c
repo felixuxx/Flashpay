@@ -232,6 +232,7 @@ check_request_idempotent (struct TEH_RequestContext *rc,
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     return false;
   /* generate idempotent reply */
+  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_WITHDRAW]++;
   *mret = TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     MHD_HTTP_OK,
