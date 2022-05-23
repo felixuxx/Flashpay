@@ -391,8 +391,33 @@ TEH_RESPONSE_compile_transaction_history (
         }
         break;
       }
-    default:
-      GNUNET_assert (0);
+
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      {
+        struct TALER_EXCHANGEDB_PurseDepositListEntry *pd
+          = pos->details.purse_deposit;
+
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "PURSE-DEPOSIT"),
+                TALER_JSON_pack_amount ("amount",
+                                        &pd->amount),
+                GNUNET_JSON_pack_string ("exchange_base_url",
+                                         pd->exchange_base_url),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &pd->purse_pub),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &pd->coin_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
     }
   }
   return history;

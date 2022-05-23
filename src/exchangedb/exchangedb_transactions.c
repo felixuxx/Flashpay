@@ -119,6 +119,18 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
         return GNUNET_SYSERR;
       }
       break;
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      /* spent += pos->amount_with_fee */
+      if (0 >
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.purse_deposit->amount))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      deposit_fee = pos->details.purse_deposit->deposit_fee;
+      break;
     }
   }
   if (have_refund)

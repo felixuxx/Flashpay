@@ -150,6 +150,15 @@ common_free_coin_transaction_list (void *cls,
         GNUNET_free (rr);
         break;
       }
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      {
+        struct TALER_EXCHANGEDB_PurseDepositListEntry *deposit;
+
+        deposit = tl->details.purse_deposit;
+        GNUNET_free (deposit->exchange_base_url);
+        GNUNET_free (deposit);
+        break;
+      }
     }
     {
       struct TALER_EXCHANGEDB_TransactionList *next;

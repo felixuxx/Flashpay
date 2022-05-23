@@ -378,6 +378,7 @@ handle_purse_deposit_finished (void *cls,
           break;
         }
         /* everything OK, proof of double-spending was provided */
+        break;
       }
     case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
       {
@@ -455,6 +456,7 @@ handle_purse_deposit_finished (void *cls,
           break;
         }
         /* everything OK, proof of conflicting denomination was provided */
+        break;
       }
     default:
       GNUNET_break_op (0);

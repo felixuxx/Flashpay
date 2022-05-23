@@ -1537,6 +1537,40 @@ struct TALER_EXCHANGEDB_MeltListEntry
 
 
 /**
+ * Information about a /purses/$PID/deposit operation in a coin transaction history.
+ */
+struct TALER_EXCHANGEDB_PurseDepositListEntry
+{
+
+  /**
+   * Exchange hosting the purse, NULL for this exchange.
+   */
+  char *exchange_base_url;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Contribution of the coin to the purse, including
+   * deposit fee.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Depositing fee.
+   */
+  struct TALER_Amount deposit_fee;
+
+  /**
+   * Signature by the coin affirming the deposit.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+};
+
+/**
  * Information about a melt operation.
  */
 struct TALER_EXCHANGEDB_Melt
@@ -1639,7 +1673,12 @@ enum TALER_EXCHANGEDB_TransactionType
   /**
    * Recoup-refresh operation (on the new coin, eliminating its value)
    */
-  TALER_EXCHANGEDB_TT_RECOUP_REFRESH = 5
+  TALER_EXCHANGEDB_TT_RECOUP_REFRESH = 5,
+
+  /**
+   * Purse deposit operation.
+   */
+  TALER_EXCHANGEDB_TT_PURSE_DEPOSIT = 6
 
 };
 
@@ -1708,6 +1747,12 @@ struct TALER_EXCHANGEDB_TransactionList
      * (#TALER_EXCHANGEDB_TT_RECOUP_REFRESH)
      */
     struct TALER_EXCHANGEDB_RecoupRefreshListEntry *recoup_refresh;
+
+    /**
+     * Coin was deposited into a purse.
+     * (#TALER_EXCHANGEDB_TT_PURSE_DEPOSIT)
+     */
+    struct TALER_EXCHANGEDB_PurseDepositListEntry *purse_deposit;
 
   } details;
 

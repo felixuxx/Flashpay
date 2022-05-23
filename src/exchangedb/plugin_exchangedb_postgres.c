@@ -1235,7 +1235,8 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE melt_serial_id>=$1"
       " ORDER BY melt_serial_id ASC;",
       1),
-    /* Query the 'refresh_commitments' by coin public key */
+    /* Query the 'refresh_commitments' by coin public key,
+       used in #postgres_get_coin_transactions() */
     GNUNET_PQ_make_prepare (
       "get_refresh_session_by_coin",
       "SELECT"
@@ -1254,6 +1255,30 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN denominations denoms"
       "   USING (denominations_serial)"
       " WHERE old_coin_pub=$1;",
+      1),
+    /* Find purse deposits by coin,
+       used in #postgres_get_coin_transactions() */
+    GNUNET_PQ_make_prepare (
+      "get_purse_deposit_by_coin_pub",
+      "SELECT"
+      " partner_url"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denoms.fee_deposit_val"
+      ",denoms.fee_deposit_frac"
+      ",purse_pub"
+      ",coin_sig"
+      ",purse_deposit_serial_id"
+      " FROM purse_deposits pd"
+      " LEFT JOIN partners"
+      "   USING (partner_serial_id)"
+      " JOIN known_coins kc"
+      "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
+      " JOIN denominations denoms"
+      "   USING (denominations_serial)"
+      // FIXME: use to-be-created materialized index
+      // on coin_pub (query crosses partitions!)
+      " WHERE coin_pub=$1;",
       1),
     /* Store information about the desired denominations for a
        refresh operation, used in #postgres_insert_refresh_reveal() */
@@ -7950,6 +7975,70 @@ add_coin_deposit (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
+add_coin_purse_deposit (void *cls,
+                        PGresult *result,
+                        unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+  struct PostgresClosure *pg = chc->pg;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_PurseDepositListEntry *deposit;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+    uint64_t serial_id;
+
+    chc->have_deposit_or_melt = true;
+    deposit = GNUNET_new (struct TALER_EXCHANGEDB_PurseDepositListEntry);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                     &deposit->amount),
+        TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                     &deposit->deposit_fee),
+        GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                              &deposit->purse_pub),
+        GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
+                                      &serial_id),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_string ("partner_url",
+                                        &deposit->exchange_base_url),
+          NULL),
+        GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                              &deposit->coin_sig),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    i))
+      {
+        GNUNET_break (0);
+        GNUNET_free (deposit);
+        chc->failed = true;
+        return;
+      }
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_PURSE_DEPOSIT;
+    tl->details.purse_deposit = deposit;
+    tl->serial_id = serial_id;
+    chc->head = tl;
+  }
+}
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
 add_coin_melt (void *cls,
                PGresult *result,
                unsigned int num_results)
@@ -8309,6 +8398,9 @@ postgres_get_coin_transactions (
     /** #TALER_EXCHANGEDB_TT_MELT */
     { "get_refresh_session_by_coin",
       &add_coin_melt },
+    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
+    { "get_purse_deposit_by_coin_pub",
+      &add_coin_purse_deposit },
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },
@@ -8321,6 +8413,9 @@ postgres_get_coin_transactions (
     /** #TALER_EXCHANGEDB_TT_MELT */
     { "get_refresh_session_by_coin",
       &add_coin_melt },
+    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
+    { "get_purse_deposit_by_coin_pub",
+      &add_coin_purse_deposit },
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },

@@ -251,14 +251,12 @@ run (void *cls,
       "create-reserve-1",
       "EUR:2",
       MHD_HTTP_OK),
-#if 1
     /* POST history doesn't yet support P2P transfers */
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
       "EUR:2",
       MHD_HTTP_OK),
-#endif
     /* create 2nd purse for a deposit conflict */
     TALER_TESTING_cmd_purse_create_with_reserve (
       "purse-create-with-reserve-2",
@@ -267,7 +265,7 @@ run (void *cls,
       true /* upload contract */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-1"),
-#if FIXME_RESERVE_HISTORY
+#if 1
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins-conflict",
       MHD_HTTP_CONFLICT,
