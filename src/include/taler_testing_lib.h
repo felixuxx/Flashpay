@@ -964,10 +964,9 @@ TALER_TESTING_parse_coin_reference (
  * @return 0 if @a h1 and @a h2 are equal
  */
 int
-TALER_TESTING_history_entry_cmp (const struct
-                                 TALER_EXCHANGE_ReserveHistoryEntry *h1,
-                                 const struct
-                                 TALER_EXCHANGE_ReserveHistoryEntry *h2);
+TALER_TESTING_history_entry_cmp (
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h1,
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h2);
 
 
 /* ************** Specific interpreter commands ************ */
@@ -2721,6 +2720,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (merge_pub, const struct TALER_PurseMergePublicKeyP)          \
   op (contract_priv, const struct TALER_ContractDiffiePrivateP)    \
   op (reserve_priv, const struct TALER_ReservePrivateKeyP)         \
+  op (reserve_sig, const struct TALER_ReserveSignatureP)           \
   op (h_payto, const struct TALER_PaytoHashP)                      \
   op (planchet_secret, const struct TALER_PlanchetMasterSecretP)   \
   op (refresh_secret, const struct TALER_RefreshMasterSecretP)     \

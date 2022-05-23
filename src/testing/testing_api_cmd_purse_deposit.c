@@ -88,6 +88,12 @@ struct PurseDepositState
   const char *purse_ref;
 
   /**
+   * Reserve history entry that corresponds to this operation.
+   * Will be of type #TALER_EXCHANGE_RTT_MERGE.
+   * Only valid if @e purse_complete is true.
+   */
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
@@ -101,6 +107,11 @@ struct PurseDepositState
    * Minimum age to apply to all deposits.
    */
   uint8_t min_age;
+
+  /**
+   * Set to true if this deposit filled the purse.
+   */
+  bool purse_complete;
 };
 
 
@@ -134,7 +145,71 @@ deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    // FIXME: any data to keep from reply?
+    if (-1 !=
+        TALER_amount_cmp (&dr->details.success.total_deposited,
+                          &dr->details.success.purse_value_after_fees))
+    {
+      const struct TALER_TESTING_Command *purse_cmd;
+      const struct TALER_ReserveSignatureP *reserve_sig;
+      const struct GNUNET_TIME_Timestamp *merge_timestamp;
+
+      purse_cmd = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                            ds->purse_ref);
+
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_sig (purse_cmd,
+                                               &reserve_sig))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_timestamp (purse_cmd,
+                                             0,
+                                             &merge_timestamp))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+
+      /* Deposits complete, create trait! */
+      ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
+      ds->reserve_history.amount
+        = dr->details.success.purse_value_after_fees;
+#if 0
+      {
+        const struct TALER_EXCHANGE_Keys *keys;
+        const struct TALER_EXCHANGE_GlobalFee *gf;
+
+        keys = TALER_EXCHANGE_get_keys (ds->is->exchange);
+        GNUNET_assert (NULL != keys);
+        gf = TALER_EXCHANGE_get_global_fee (keys,
+                                            *merge_timestamp);
+        GNUNET_assert (NULL != gf);
+      }
+#endif
+      /* Note: change when flags below changes! */
+      TALER_amount_set_zero (
+        ds->reserve_history.amount.currency,
+        &ds->reserve_history.details.merge_details.purse_fee);
+      ds->reserve_history.details.merge_details.h_contract_terms
+        = dr->details.success.h_contract_terms;
+      ds->reserve_history.details.merge_details.merge_pub
+        = dr->details.success.merge_pub;
+      ds->reserve_history.details.merge_details.reserve_sig
+        = *reserve_sig;
+      ds->reserve_history.details.merge_details.merge_timestamp
+        = *merge_timestamp;
+      ds->reserve_history.details.merge_details.purse_expiration
+        = dr->details.success.purse_expiration;
+      ds->reserve_history.details.merge_details.min_age
+        = ds->min_age;
+      ds->reserve_history.details.merge_details.flags
+        = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
+      ds->purse_complete = true;
+    }
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -293,11 +368,15 @@ deposit_traits (void *cls,
 {
   struct PurseDepositState *ds = cls;
   struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    TALER_TESTING_make_trait_reserve_history (&ds->reserve_history),
     TALER_TESTING_make_trait_purse_pub (&ds->purse_pub),
     TALER_TESTING_trait_end ()
   };
 
-  return TALER_TESTING_get_trait (traits,
+  return TALER_TESTING_get_trait (ds->purse_complete
+                                  ? &traits[0]   /* we have reserve history */
+                                  : &traits[1],  /* skip reserve history */
                                   ret,
                                   trait,
                                   index);

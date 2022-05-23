@@ -81,6 +81,11 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
+   * Reserve signature affirming our merge.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
    * Public key of the purse.
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
@@ -119,7 +124,8 @@ handle_purse_create_with_merge_finished (void *cls,
   const json_t *j = response;
   struct TALER_EXCHANGE_PurseCreateMergeResponse dr = {
     .hr.reply = j,
-    .hr.http_status = (unsigned int) response_code
+    .hr.http_status = (unsigned int) response_code,
+    .reserve_sig = &pcm->reserve_sig
   };
 
   pcm->job = NULL;
@@ -259,7 +265,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   struct GNUNET_CURL_Context *ctx;
   json_t *create_with_merge_obj;
   CURL *eh;
-  struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (pcm->reserve_pub) * 2 + 32];
   uint32_t min_age = 0;
   struct TALER_PurseMergePublicKeyP merge_pub;
@@ -381,7 +386,7 @@ TALER_EXCHANGE_purse_create_with_merge (
                                    min_age,
                                    flags,
                                    reserve_priv,
-                                   &reserve_sig);
+                                   &pcm->reserve_sig);
   if (upload_contract)
   {
     TALER_CRYPTO_contract_encrypt_for_deposit (
@@ -429,7 +434,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_data_auto ("merge_sig",
                                 &merge_sig),
     GNUNET_JSON_pack_data_auto ("reserve_sig",
-                                &reserve_sig),
+                                &pcm->reserve_sig),
     GNUNET_JSON_pack_data_auto ("purse_pub",
                                 &pcm->purse_pub),
     GNUNET_JSON_pack_data_auto ("purse_sig",

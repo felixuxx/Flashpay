@@ -140,7 +140,7 @@ merge_cb (void *cls,
     gf = TALER_EXCHANGE_get_global_fee (keys,
                                         ds->merge_timestamp);
     GNUNET_assert (NULL != gf);
-    ds->reserve_history.amount = gf->fees.purse;
+    ds->reserve_history.amount = ds->value_after_fees;
     ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
     ds->reserve_history.details.merge_details.h_contract_terms
       = ds->h_contract_terms;

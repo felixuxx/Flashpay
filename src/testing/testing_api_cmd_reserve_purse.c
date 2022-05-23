@@ -47,6 +47,12 @@ struct ReservePurseState
   struct TALER_ReservePrivateKeyP reserve_priv;
 
   /**
+   * Reserve signature generated for the request
+   * (client-side).
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
    * Private key of the purse.
    */
   struct TALER_PurseContractPrivateKeyP purse_priv;
@@ -118,6 +124,7 @@ purse_cb (void *cls,
   struct ReservePurseState *ds = cls;
 
   ds->dh = NULL;
+  ds->reserve_sig = *dr->reserve_sig;
   if (ds->expected_response_code != dr->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -187,7 +194,7 @@ purse_run (void *cls,
     &ds->contract_priv,
     ds->contract_terms,
     true /* upload contract */,
-    false /* do not pay purse fee -- FIXME: make this a choice to test this case! */,
+    false /* do not pay purse fee -- FIXME: make this a choice to test this case; then update testing_api_cmd_purse_deposit flags logic to match! */,
     ds->merge_timestamp,
     &purse_cb,
     ds);
@@ -254,6 +261,7 @@ purse_traits (void *cls,
     TALER_TESTING_make_trait_merge_priv (&ds->merge_priv),
     TALER_TESTING_make_trait_contract_priv (&ds->contract_priv),
     TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
+    TALER_TESTING_make_trait_reserve_sig (&ds->reserve_sig),
     TALER_TESTING_trait_end ()
   };
 

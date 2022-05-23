@@ -4510,6 +4510,12 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
   struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
+   * Reserve signature generated for the request
+   * (client-side).
+   */
+  const struct TALER_ReserveSignatureP *reserve_sig;
+
+  /**
    * Details depending on the HTTP status.
    */
   union
