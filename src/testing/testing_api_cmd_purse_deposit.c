@@ -159,6 +159,7 @@ deposit_cb (void *cls,
       const struct TALER_ReserveSignatureP *reserve_sig;
       const struct TALER_ReservePublicKeyP *reserve_pub;
       const struct GNUNET_TIME_Timestamp *merge_timestamp;
+      const struct TALER_PurseMergePublicKeyP *merge_pub;
 
       purse_cmd = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                             ds->purse_ref);
@@ -174,6 +175,14 @@ deposit_cb (void *cls,
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_pub (purse_cmd,
                                                &reserve_pub))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_merge_pub (purse_cmd,
+                                             &merge_pub))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (ds->is);
@@ -213,7 +222,9 @@ deposit_cb (void *cls,
       ds->reserve_history.details.merge_details.h_contract_terms
         = dr->details.success.h_contract_terms;
       ds->reserve_history.details.merge_details.merge_pub
-        = dr->details.success.merge_pub;
+        = *merge_pub;
+      ds->reserve_history.details.merge_details.purse_pub
+        = ds->purse_pub;
       ds->reserve_history.details.merge_details.reserve_sig
         = *reserve_sig;
       ds->reserve_history.details.merge_details.merge_timestamp

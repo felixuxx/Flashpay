@@ -176,7 +176,6 @@ reply_create_success (struct MHD_Connection *connection,
          &pcc->amount,
          &pcc->deposit_total,
          pcc->purse_pub,
-         &pcc->merge_pub,
          &pcc->h_contract_terms,
          &pub,
          &sig)))

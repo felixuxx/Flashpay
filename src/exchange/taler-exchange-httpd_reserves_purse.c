@@ -165,7 +165,6 @@ reply_purse_success (struct MHD_Connection *connection,
          &rpc->amount,
          &rpc->deposit_total,
          &rpc->purse_pub,
-         &rpc->merge_pub,
          &rpc->h_contract_terms,
          &pub,
          &sig)))

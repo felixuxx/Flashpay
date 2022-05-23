@@ -170,7 +170,6 @@ handle_purse_create_deposit_finished (void *cls,
             &pch->purse_value_after_fees,
             &total_deposited,
             &pch->purse_pub,
-            &pch->merge_pub,
             &pch->h_contract_terms,
             &exchange_pub,
             &exchange_sig))

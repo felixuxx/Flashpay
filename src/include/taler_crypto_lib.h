@@ -3974,7 +3974,6 @@ TALER_exchange_online_purse_created_sign (
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_Amount *total_deposited,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);
@@ -3987,7 +3986,6 @@ TALER_exchange_online_purse_created_verify (
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_Amount *total_deposited,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);

@@ -26,10 +26,9 @@
 
 
 int
-TALER_TESTING_history_entry_cmp (const struct
-                                 TALER_EXCHANGE_ReserveHistoryEntry *h1,
-                                 const struct
-                                 TALER_EXCHANGE_ReserveHistoryEntry *h2)
+TALER_TESTING_history_entry_cmp (
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h1,
+  const struct TALER_EXCHANGE_ReserveHistoryEntry *h2)
 {
   if (h1->type != h2->type)
     return 1;

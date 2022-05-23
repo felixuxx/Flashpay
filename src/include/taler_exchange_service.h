@@ -4240,7 +4240,7 @@ TALER_EXCHANGE_purse_get (
 
 
 /**
- * Cancel #TALER_EXCHANGE_purse_deposit() operation.
+ * Cancel #TALER_EXCHANGE_purse_get() operation.
  *
  * @param pgh handle of the operation to cancel
  */
@@ -4627,11 +4627,6 @@ struct TALER_EXCHANGE_PurseDepositResponse
        * Hash of the contract (needed to verify signature).
        */
       struct TALER_PrivateContractHashP h_contract_terms;
-
-      /**
-       * Key with the merge capability (needed to verify signature).
-       */
-      struct TALER_PurseMergePublicKeyP merge_pub;
 
     } success;
   } details;

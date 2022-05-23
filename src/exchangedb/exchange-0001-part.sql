@@ -3071,6 +3071,7 @@ ELSE
   WHERE reserve_pub=my_reserve_pub;
 
   -- ... and mark purse as finished.
+  -- FIXME: combine with UPDATE above?
   UPDATE purse_requests
      SET finished=true
   WHERE purse_pub=in_purse_pub;

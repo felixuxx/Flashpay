@@ -98,11 +98,6 @@ struct PurseDepositContext
   struct GNUNET_TIME_Timestamp purse_expiration;
 
   /**
-   * Key with the merge capability (needed for signing).
-   */
-  struct TALER_PurseMergePublicKeyP merge_pub;
-
-  /**
    * Hash of the contract (needed for signing).
    */
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -152,7 +147,6 @@ reply_deposit_success (struct MHD_Connection *connection,
          &pcc->amount,
          &pcc->deposit_total,
          pcc->purse_pub,
-         &pcc->merge_pub,
          &pcc->h_contract_terms,
          &pub,
          &sig)))
@@ -175,8 +169,6 @@ reply_deposit_success (struct MHD_Connection *connection,
                                 pcc->purse_expiration),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &pcc->h_contract_terms),
-    GNUNET_JSON_pack_data_auto ("merge_pub",
-                                &pcc->merge_pub),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
                                 &sig),
     GNUNET_JSON_pack_data_auto ("exchange_pub",

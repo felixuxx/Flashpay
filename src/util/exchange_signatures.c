@@ -1301,11 +1301,6 @@ struct TALER_PurseCreateDepositConfirmationPS
   struct TALER_PurseContractPublicKeyP purse_pub;
 
   /**
-   * Public key of the merge capability.
-   */
-  struct TALER_PurseMergePublicKeyP merge_pub;
-
-  /**
    * Hash of the contract of the purse.
    */
   struct TALER_PrivateContractHashP h_contract_terms;
@@ -1323,7 +1318,6 @@ TALER_exchange_online_purse_created_sign (
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_Amount *total_deposited,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig)
@@ -1333,7 +1327,6 @@ TALER_exchange_online_purse_created_sign (
     .purpose.size = htonl (sizeof (dc)),
     .h_contract_terms = *h_contract_terms,
     .purse_pub = *purse_pub,
-    .merge_pub = *merge_pub,
     .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
     .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
   };
@@ -1355,7 +1348,6 @@ TALER_exchange_online_purse_created_verify (
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_Amount *total_deposited,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig)
@@ -1365,7 +1357,6 @@ TALER_exchange_online_purse_created_verify (
     .purpose.size = htonl (sizeof (dc)),
     .h_contract_terms = *h_contract_terms,
     .purse_pub = *purse_pub,
-    .merge_pub = *merge_pub,
     .purse_expiration = GNUNET_TIME_timestamp_hton (purse_expiration),
     .exchange_time = GNUNET_TIME_timestamp_hton (exchange_time)
   };

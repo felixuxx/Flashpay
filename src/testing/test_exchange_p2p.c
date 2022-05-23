@@ -251,9 +251,9 @@ run (void *cls,
       "create-reserve-1",
       "EUR:2",
       MHD_HTTP_OK),
-#if FIXME
+#if 1
     /* POST history doesn't yet support P2P transfers */
-    TALER_TESTING_cmd_reserves_status (
+    TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
       "EUR:2",
