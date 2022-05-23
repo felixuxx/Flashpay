@@ -433,13 +433,18 @@ withdraw_run (void *cls,
                                    &ws->amount,
                                    &ws->pk->fees.withdraw));
   ws->reserve_history.details.withdraw.fee = ws->pk->fees.withdraw;
-  ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
-                                     ws->pk,
-                                     rp,
-                                     &ws->ps,
-                                     ws->h_age_commitment,
-                                     &reserve_withdraw_cb,
-                                     ws);
+  {
+    struct TALER_EXCHANGE_WithdrawCoinInput wci = {
+      .pk = ws->pk,
+      .ps = &ws->ps,
+      .ach = ws->h_age_commitment
+    };
+    ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
+                                       rp,
+                                       &wci,
+                                       &reserve_withdraw_cb,
+                                       ws);
+  }
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);

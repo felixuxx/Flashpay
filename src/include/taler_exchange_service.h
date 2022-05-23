@@ -1883,6 +1883,29 @@ struct TALER_EXCHANGE_WithdrawHandle;
 
 
 /**
+ * Information input into the withdraw process per coin.
+ */
+struct TALER_EXCHANGE_WithdrawCoinInput
+{
+  /**
+   * Denomination of the coin.
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+
+  /**
+   * Master key material for the coin.
+   */
+  const struct TALER_PlanchetMasterSecretP *ps;
+
+  /**
+   * Age commitment for the coin.
+   */
+  const struct TALER_AgeCommitmentHash *ach;
+
+};
+
+
+/**
  * All the details about a coin that are generated during withdrawal and that
  * may be needed for future operations on the coin.
  */
@@ -1988,11 +2011,8 @@ typedef void
  * same arguments in case of failures.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk kind of coin to create
  * @param reserve_priv private key of the reserve to withdraw from
- * @param ps secrets of the planchet
- *        caller must have committed this value to disk before the call (with @a pk)
- * @param ach hash of the age commitment that should be bound to this coin. Maybe NULL.
+ * @param wci inputs that determine the planchet
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL
@@ -2002,10 +2022,8 @@ typedef void
 struct TALER_EXCHANGE_WithdrawHandle *
 TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_PlanchetMasterSecretP *ps,
-  const struct TALER_AgeCommitmentHash *ach,
+  const struct TALER_EXCHANGE_WithdrawCoinInput *wci,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls);
 
@@ -2018,6 +2036,130 @@ TALER_EXCHANGE_withdraw (
  */
 void
 TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh);
+
+
+/**
+ * @brief A /reserves/$RESERVE_PUB/batch-withdraw Handle
+ */
+struct TALER_EXCHANGE_BatchWithdrawHandle;
+
+
+/**
+ * Details about a response for a batch withdraw request.
+ */
+struct TALER_EXCHANGE_BatchWithdrawResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response.
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Array of coins returned by the batch withdraw operation.
+       */
+      struct TALER_EXCHANGE_PrivateCoinDetails *coins;
+
+      /**
+       * Length of the @e coins array.
+       */
+      unsigned int num_coins;
+    } success;
+
+    /**
+     * Details if the status is #MHD_HTTP_ACCEPTED.
+     */
+    struct
+    {
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } accepted;
+
+    /**
+     * Details if the status is #MHD_HTTP_CONFLICT.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } conflict;
+
+    /**
+     * Details if the status is #MHD_HTTP_GONE.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } gone;
+
+  } details;
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * batch withdraw request to a exchange.
+ *
+ * @param cls closure
+ * @param wr response details
+ */
+typedef void
+(*TALER_EXCHANGE_BatchWithdrawCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_BatchWithdrawResponse *wr);
+
+
+/**
+ * Withdraw multiple coins from the exchange using a /reserves/$RESERVE_PUB/batch-withdraw
+ * request.  This API is typically used by a wallet to withdraw many coins from a
+ * reserve.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to withdraw from
+ * @param wcis inputs that determine the planchets
+ * @param wci_length number of entries in @a wcis
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_BatchWithdrawHandle *
+TALER_EXCHANGE_batch_withdraw (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_EXCHANGE_WithdrawCoinInput *wcis,
+  unsigned int wci_length,
+  TALER_EXCHANGE_BatchWithdrawCallback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * Cancel a batch withdraw status request.  This function cannot be used on a
+ * request handle if a response is already served for it.
+ *
+ * @param wh the batch withdraw handle
+ */
+void
+TALER_EXCHANGE_batch_withdraw_cancel (
+  struct TALER_EXCHANGE_BatchWithdrawHandle *wh);
 
 
 /**
@@ -2080,6 +2222,74 @@ TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
  */
 void
 TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh);
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a batch
+ * withdraw request to a exchange without the (un)blinding factor.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ * @param blind_sigs array of blind signatures over the coins, NULL on error
+ * @param blind_sigs_length length of @a blind_sigs
+ */
+typedef void
+(*TALER_EXCHANGE_BatchWithdraw2Callback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr,
+  const struct TALER_BlindedDenominationSignature *blind_sigs,
+  unsigned int blind_sigs_length);
+
+
+/**
+ * @brief A /reserves/$RESERVE_PUB/batch-withdraw Handle, 2nd variant.
+ * This variant does not do the blinding/unblinding and only
+ * fetches the blind signatures on the already blinded planchets.
+ * Used internally by the `struct TALER_EXCHANGE_BatchWithdrawHandle`
+ * implementation as well as for the tipping logic of merchants.
+ */
+struct TALER_EXCHANGE_BatchWithdraw2Handle;
+
+
+/**
+ * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/batch-withdraw
+ * request.  This API is typically used by a merchant to withdraw a tip
+ * where the blinding factor is unknown to the merchant.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pds array of planchet details of the planchet to withdraw
+ * @param pds_length number of entries in the @a pds array
+ * @param reserve_priv private key of the reserve to withdraw from
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_BatchWithdraw2Handle *
+TALER_EXCHANGE_batch_withdraw2 (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_PlanchetDetail *pds,
+  unsigned int pds_length,
+  TALER_EXCHANGE_BatchWithdraw2Callback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * Cancel a batch withdraw request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param wh the withdraw handle
+ */
+void
+TALER_EXCHANGE_batch_withdraw2_cancel (
+  struct TALER_EXCHANGE_BatchWithdraw2Handle *wh);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */

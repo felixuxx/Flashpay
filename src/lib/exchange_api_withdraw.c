@@ -248,10 +248,8 @@ withdraw_cs_stage_two_callback (
 struct TALER_EXCHANGE_WithdrawHandle *
 TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_PlanchetMasterSecretP *ps,
-  const struct TALER_AgeCommitmentHash *ach,
+  const struct TALER_EXCHANGE_WithdrawCoinInput *wci,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls)
 {
@@ -262,25 +260,25 @@ TALER_EXCHANGE_withdraw (
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
-  wh->ps = *ps;
-  wh->ach = ach;
-  wh->pk = *pk;
+  wh->ps = *wci->ps;
+  wh->ach = wci->ach;
+  wh->pk = *wci->pk;
   TALER_denom_pub_deep_copy (&wh->pk.key,
-                             &pk->key);
+                             &wci->pk->key);
 
-  switch (pk->key.cipher)
+  switch (wci->pk->key.cipher)
   {
   case TALER_DENOMINATION_RSA:
     {
       wh->alg_values.cipher = TALER_DENOMINATION_RSA;
-      TALER_planchet_setup_coin_priv (ps,
+      TALER_planchet_setup_coin_priv (&wh->ps,
                                       &wh->alg_values,
                                       &wh->priv);
-      TALER_planchet_blinding_secret_create (ps,
+      TALER_planchet_blinding_secret_create (&wh->ps,
                                              &wh->alg_values,
                                              &wh->bks);
       if (GNUNET_OK !=
-          TALER_planchet_prepare (&pk->key,
+          TALER_planchet_prepare (&wh->pk.key,
                                   &wh->alg_values,
                                   &wh->bks,
                                   &wh->priv,
@@ -302,7 +300,7 @@ TALER_EXCHANGE_withdraw (
   case TALER_DENOMINATION_CS:
     {
       TALER_cs_withdraw_nonce_derive (
-        ps,
+        &wh->ps,
         &wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce);
       /* Note that we only initialize the first half
          of the blinded_planchet here; the other part
@@ -310,7 +308,7 @@ TALER_EXCHANGE_withdraw (
       wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       wh->csrh = TALER_EXCHANGE_csr_withdraw (
         exchange,
-        pk,
+        &wh->pk,
         &wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce,
         &withdraw_cs_stage_two_callback,
         wh);

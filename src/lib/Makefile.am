@@ -22,6 +22,8 @@ libtalerexchange_la_LDFLAGS = \
   -no-undefined
 libtalerexchange_la_SOURCES = \
   exchange_api_auditor_add_denomination.c \
+  exchange_api_batch_withdraw.c \
+  exchange_api_batch_withdraw2.c \
   exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
   exchange_api_common.c \
   exchange_api_contracts_get.c \
