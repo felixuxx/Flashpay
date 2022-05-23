@@ -1696,11 +1696,6 @@ struct TALER_EXCHANGE_ReserveStatus
        */
       bool kyc_ok;
 
-      /**
-       * KYC required to withdraw?
-       */
-      bool kyc_required;
-
     } ok;
 
   } details;

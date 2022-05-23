@@ -47,6 +47,11 @@ struct ReservePurseState
   struct TALER_ReservePrivateKeyP reserve_priv;
 
   /**
+   * Reserve public key.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
    * Reserve signature generated for the request
    * (client-side).
    */
@@ -176,6 +181,8 @@ purse_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_create (&ds->purse_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->purse_priv.eddsa_priv,
                                       &ds->purse_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&ds->reserve_priv.eddsa_priv,
+                                      &ds->reserve_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_create (&ds->merge_priv.eddsa_priv);
   GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
   ds->purse_expiration = GNUNET_TIME_absolute_to_timestamp (
@@ -261,6 +268,7 @@ purse_traits (void *cls,
     TALER_TESTING_make_trait_merge_priv (&ds->merge_priv),
     TALER_TESTING_make_trait_contract_priv (&ds->contract_priv),
     TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_reserve_sig (&ds->reserve_sig),
     TALER_TESTING_trait_end ()
   };

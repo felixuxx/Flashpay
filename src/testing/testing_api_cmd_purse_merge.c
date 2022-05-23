@@ -131,21 +131,16 @@ merge_cb (void *cls,
   ds->dh = NULL;
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    const struct TALER_EXCHANGE_Keys *keys;
-    const struct TALER_EXCHANGE_GlobalFee *gf;
-
     ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
-    keys = TALER_EXCHANGE_get_keys (ds->is->exchange);
-    GNUNET_assert (NULL != keys);
-    gf = TALER_EXCHANGE_get_global_fee (keys,
-                                        ds->merge_timestamp);
-    GNUNET_assert (NULL != gf);
     ds->reserve_history.amount = ds->value_after_fees;
-    ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
+    TALER_amount_set_zero (ds->value_after_fees.currency,
+                           &ds->reserve_history.details.merge_details.purse_fee);
     ds->reserve_history.details.merge_details.h_contract_terms
       = ds->h_contract_terms;
     ds->reserve_history.details.merge_details.merge_pub
       = ds->merge_pub;
+    ds->reserve_history.details.merge_details.purse_pub
+      = ds->purse_pub;
     ds->reserve_history.details.merge_details.reserve_sig
       = *dr->reserve_sig;
     ds->reserve_history.details.merge_details.merge_timestamp
@@ -356,6 +351,7 @@ merge_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
     TALER_TESTING_make_trait_reserve_history (&ds->reserve_history),
+    TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_timestamp (0,
                                         &ds->merge_timestamp),
     TALER_TESTING_trait_end ()

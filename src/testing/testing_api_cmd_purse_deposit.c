@@ -73,6 +73,12 @@ struct PurseDepositState
   struct TALER_PurseContractPublicKeyP purse_pub;
 
   /**
+   * The reserve we are being deposited into.
+   * Set as a trait once we know the reserve.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
    * PurseDeposit handle while operation is running.
    */
   struct TALER_EXCHANGE_PurseDepositHandle *dh;
@@ -151,6 +157,7 @@ deposit_cb (void *cls,
     {
       const struct TALER_TESTING_Command *purse_cmd;
       const struct TALER_ReserveSignatureP *reserve_sig;
+      const struct TALER_ReservePublicKeyP *reserve_pub;
       const struct GNUNET_TIME_Timestamp *merge_timestamp;
 
       purse_cmd = TALER_TESTING_interpreter_lookup_command (ds->is,
@@ -164,6 +171,15 @@ deposit_cb (void *cls,
         TALER_TESTING_interpreter_fail (ds->is);
         return;
       }
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_pub (purse_cmd,
+                                               &reserve_pub))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ds->is);
+        return;
+      }
+      ds->reserve_pub = *reserve_pub;
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_timestamp (purse_cmd,
                                              0,
@@ -370,6 +386,7 @@ deposit_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
     TALER_TESTING_make_trait_reserve_history (&ds->reserve_history),
+    TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_purse_pub (&ds->purse_pub),
     TALER_TESTING_trait_end ()
   };

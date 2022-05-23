@@ -122,7 +122,12 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                            history_length,
                            history,
                            found))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Entry for batch step `%s' missing in history\n",
+                    step->label);
         return GNUNET_SYSERR;
+      }
     }
     return GNUNET_OK;
   }
@@ -251,6 +256,9 @@ reserve_history_cb (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Entry for command `%s' missing in history\n",
                     cmd->label);
+        json_dumpf (rs->hr.reply,
+                    stderr,
+                    JSON_INDENT (2));
         TALER_TESTING_interpreter_fail (ss->is);
         return;
       }
@@ -262,6 +270,9 @@ reserve_history_cb (void *cls,
                     "History entry at index %u of type %d not justified by command history\n",
                     i,
                     rs->details.ok.history[i].type);
+        json_dumpf (rs->hr.reply,
+                    stderr,
+                    JSON_INDENT (2));
         TALER_TESTING_interpreter_fail (ss->is);
         return;
       }

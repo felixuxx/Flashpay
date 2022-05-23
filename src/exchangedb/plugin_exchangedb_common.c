@@ -77,6 +77,7 @@ common_free_reserve_history (void *cls,
 
         merge = rh->details.merge;
         GNUNET_free (merge);
+        break;
       }
     case TALER_EXCHANGEDB_RO_HISTORY_REQUEST:
       {
@@ -84,6 +85,7 @@ common_free_reserve_history (void *cls,
 
         history = rh->details.history;
         GNUNET_free (history);
+        break;
       }
     }
     {

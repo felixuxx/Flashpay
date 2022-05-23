@@ -741,7 +741,7 @@ TEH_RESPONSE_compile_reserve_history (
           pos->details.merge;
         struct TALER_Amount amount;
 
-        GNUNET_assert (0 >=
+        GNUNET_assert (0 <=
                        TALER_amount_subtract (&amount,
                                               &merge->amount_with_fee,
                                               &merge->purse_fee));

@@ -87,7 +87,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                  const struct TALER_TESTING_Command *cmd,
                  unsigned int history_length,
                  const struct TALER_EXCHANGE_ReserveHistoryEntry *history,
-                 int *found)
+                 bool *found)
 {
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
@@ -114,7 +114,12 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                            history_length,
                            history,
                            found))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Entry for batch step `%s' missing in history\n",
+                    step->label);
         return GNUNET_SYSERR;
+      }
     }
     return GNUNET_OK;
   }
@@ -186,7 +191,7 @@ reserve_status_cb (void *cls,
                 __LINE__);
     json_dumpf (rs->hr.reply,
                 stderr,
-                0);
+                JSON_INDENT (2));
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
@@ -209,7 +214,7 @@ reserve_status_cb (void *cls,
     return;
   }
   {
-    int found[rs->details.ok.history_len];
+    bool found[rs->details.ok.history_len];
 
     memset (found,
             0,
@@ -228,6 +233,9 @@ reserve_status_cb (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Entry for command `%s' missing in history\n",
                     cmd->label);
+        json_dumpf (rs->hr.reply,
+                    stderr,
+                    JSON_INDENT (2));
         TALER_TESTING_interpreter_fail (ss->is);
         return;
       }
@@ -239,6 +247,9 @@ reserve_status_cb (void *cls,
                     "History entry at index %u of type %d not justified by command status\n",
                     i,
                     rs->details.ok.history[i].type);
+        json_dumpf (rs->hr.reply,
+                    stderr,
+                    JSON_INDENT (2));
         TALER_TESTING_interpreter_fail (ss->is);
         return;
       }

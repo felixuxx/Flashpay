@@ -415,6 +415,8 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
                                 &rh->details.merge_details.purse_fee),
     GNUNET_JSON_spec_timestamp ("merge_timestamp",
                                 &rh->details.merge_details.merge_timestamp),
+    GNUNET_JSON_spec_timestamp ("purse_expiration",
+                                &rh->details.merge_details.purse_expiration),
     GNUNET_JSON_spec_end ()
   };
 

@@ -197,14 +197,12 @@ run (void *cls,
       "create-reserve-1",
       "EUR:1",
       MHD_HTTP_OK),
-#if FIXME
     /* POST history doesn't yet support P2P transfers */
-    TALER_TESTING_cmd_reserves_status (
+    TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
       "EUR:1",
       MHD_HTTP_OK),
-#endif
     /* Test conflicting merge */
     TALER_TESTING_cmd_purse_merge (
       "purse-merge-into-reserve",
@@ -374,8 +372,6 @@ run (void *cls,
                                 "payto://x-taler-bank/localhost/2",
                                 MHD_HTTP_NO_CONTENT,
                                 false),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_file),
     TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-wire-fees",
                                               config_file,
                                               "EUR:0.01",
@@ -391,6 +387,8 @@ run (void *cls,
                                                      GNUNET_TIME_UNIT_MINUTES,
                                                      GNUNET_TIME_UNIT_DAYS,
                                                      1),
+    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
     TALER_TESTING_cmd_batch ("withdraw",

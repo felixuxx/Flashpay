@@ -4909,7 +4909,7 @@ postgres_inselect_wallet_kyc_status (
                                     payto_uri,
                                     &h_payto,
                                     kyc);
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Wire account for `%s' is %llu\n",
               payto_uri,
               (unsigned long long) kyc->payment_target_uuid);
@@ -6230,8 +6230,8 @@ add_p2p_merge (void *cls,
       merge->flags = (enum TALER_WalletAccountMergeFlags) flags32;
     }
     GNUNET_assert (0 <=
-                   TALER_amount_add (&rhc->balance_out,
-                                     &rhc->balance_out,
+                   TALER_amount_add (&rhc->balance_in,
+                                     &rhc->balance_in,
                                      &merge->amount_with_fee));
     GNUNET_assert (0 <=
                    TALER_amount_subtract (&rhc->balance_out,
@@ -6443,6 +6443,12 @@ postgres_get_reserve_status (void *cls,
     /** #TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK */
     { "close_by_reserve",
       &add_exchange_to_bank },
+    /** #TALER_EXCHANGEDB_RO_PURSE_MERGE */
+    { "merge_by_reserve",
+      &add_p2p_merge },
+    /** #TALER_EXCHANGEDB_RO_HISTORY_REQUEST */
+    { "history_by_reserve",
+      &add_history_requests },
     /* List terminator */
     { NULL,
       NULL }
