@@ -1261,7 +1261,7 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_purse_deposit_by_coin_pub",
       "SELECT"
-      " partner_url"
+      " partner_base_url"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",denoms.fee_deposit_val"
@@ -1273,12 +1273,12 @@ prepare_statements (struct PostgresClosure *pg)
       " LEFT JOIN partners"
       "   USING (partner_serial_id)"
       " JOIN known_coins kc"
-      "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
+      "   ON (pd.coin_pub = kc.coin_pub)"
       " JOIN denominations denoms"
       "   USING (denominations_serial)"
       // FIXME: use to-be-created materialized index
       // on coin_pub (query crosses partitions!)
-      " WHERE coin_pub=$1;",
+      " WHERE pd.coin_pub=$1;",
       1),
     /* Store information about the desired denominations for a
        refresh operation, used in #postgres_insert_refresh_reveal() */
@@ -8001,7 +8001,7 @@ add_coin_purse_deposit (void *cls,
         GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_allow_null (
-          GNUNET_PQ_result_spec_string ("partner_url",
+          GNUNET_PQ_result_spec_string ("partner_base_url",
                                         &deposit->exchange_base_url),
           NULL),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",

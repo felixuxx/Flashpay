@@ -406,7 +406,9 @@ TEH_RESPONSE_compile_transaction_history (
                 TALER_JSON_pack_amount ("amount",
                                         &pd->amount),
                 GNUNET_JSON_pack_string ("exchange_base_url",
-                                         pd->exchange_base_url),
+                                         NULL == pd->exchange_base_url
+                                         ? TEH_base_url
+                                         : pd->exchange_base_url),
                 GNUNET_JSON_pack_data_auto ("purse_pub",
                                             &pd->purse_pub),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
