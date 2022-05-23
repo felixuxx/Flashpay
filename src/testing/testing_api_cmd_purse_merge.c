@@ -72,6 +72,42 @@ struct PurseMergeState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Reserve history entry that corresponds to this operation.
+   * Will be of type #TALER_EXCHANGE_RTT_MERGE.
+   */
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Public key of the merge capability.
+   */
+  struct TALER_PurseMergePublicKeyP merge_pub;
+
+  /**
+   * Contract value.
+   */
+  struct TALER_Amount value_after_fees;
+
+  /**
+   * Hash of the contract.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * When does the purse expire.
+   */
+  struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
+   * Minimum age of deposits into the purse.
+   */
+  uint32_t min_age;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
@@ -93,6 +129,36 @@ merge_cb (void *cls,
   struct PurseMergeState *ds = cls;
 
   ds->dh = NULL;
+  if (MHD_HTTP_OK == dr->hr.http_status)
+  {
+    const struct TALER_EXCHANGE_Keys *keys;
+    const struct TALER_EXCHANGE_GlobalFee *gf;
+
+    ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
+    keys = TALER_EXCHANGE_get_keys (ds->is->exchange);
+    GNUNET_assert (NULL != keys);
+    gf = TALER_EXCHANGE_get_global_fee (keys,
+                                        ds->merge_timestamp);
+    GNUNET_assert (NULL != gf);
+    ds->reserve_history.amount = gf->fees.purse;
+    ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
+    ds->reserve_history.details.merge_details.h_contract_terms
+      = ds->h_contract_terms;
+    ds->reserve_history.details.merge_details.merge_pub
+      = ds->merge_pub;
+    ds->reserve_history.details.merge_details.reserve_sig
+      = *dr->reserve_sig;
+    ds->reserve_history.details.merge_details.merge_timestamp
+      = ds->merge_timestamp;
+    ds->reserve_history.details.merge_details.purse_expiration
+      = ds->purse_expiration;
+    ds->reserve_history.details.merge_details.min_age
+      = ds->min_age;
+    ds->reserve_history.details.merge_details.flags
+      = TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE;
+  }
+
+
   if (ds->expected_response_code != dr->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -124,13 +190,8 @@ merge_run (void *cls,
            struct TALER_TESTING_Interpreter *is)
 {
   struct PurseMergeState *ds = cls;
-  const struct TALER_PurseContractPublicKeyP *purse_pub;
   const struct TALER_PurseMergePrivateKeyP *merge_priv;
   const json_t *ct;
-  struct TALER_PrivateContractHashP h_contract_terms;
-  uint32_t min_age = 0;
-  struct TALER_Amount value_after_fees;
-  struct GNUNET_TIME_Timestamp purse_expiration;
   const struct TALER_TESTING_Command *ref;
 
   (void) cmd;
@@ -146,14 +207,20 @@ merge_run (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
-  if (GNUNET_OK !=
-      TALER_TESTING_get_trait_purse_pub (ref,
-                                         &purse_pub))
   {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (ds->is);
-    return;
+    const struct TALER_PurseContractPublicKeyP *purse_pub;
+
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_purse_pub (ref,
+                                           &purse_pub))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    ds->purse_pub = *purse_pub;
   }
+
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_contract_terms (ref,
                                               &ct))
@@ -164,7 +231,7 @@ merge_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_JSON_contract_hash (ct,
-                                &h_contract_terms))
+                                &ds->h_contract_terms))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ds->is);
@@ -173,12 +240,12 @@ merge_run (void *cls,
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_timestamp ("pay_deadline",
-                                  &purse_expiration),
+                                  &ds->purse_expiration),
       TALER_JSON_spec_amount_any ("amount",
-                                  &value_after_fees),
+                                  &ds->value_after_fees),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_uint32 ("minimum_age",
-                                 &min_age),
+                                 &ds->min_age),
         NULL),
       GNUNET_JSON_spec_end ()
     };
@@ -217,17 +284,19 @@ merge_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->reserve_priv.eddsa_priv,
                                       &ds->reserve_pub.eddsa_pub);
+  GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
+                                      &ds->merge_pub.eddsa_pub);
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
   ds->dh = TALER_EXCHANGE_account_merge (
     is->exchange,
     NULL, /* no wad */
     &ds->reserve_priv,
-    purse_pub,
+    &ds->purse_pub,
     merge_priv,
-    &h_contract_terms,
-    min_age,
-    &value_after_fees,
-    purse_expiration,
+    &ds->h_contract_terms,
+    ds->min_age,
+    &ds->value_after_fees,
+    ds->purse_expiration,
     ds->merge_timestamp,
     &merge_cb,
     ds);
@@ -285,12 +354,16 @@ merge_traits (void *cls,
 {
   struct PurseMergeState *ds = cls;
   struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    TALER_TESTING_make_trait_reserve_history (&ds->reserve_history),
     TALER_TESTING_make_trait_timestamp (0,
                                         &ds->merge_timestamp),
     TALER_TESTING_trait_end ()
   };
 
-  return TALER_TESTING_get_trait (traits,
+  return TALER_TESTING_get_trait ((ds->expected_response_code == MHD_HTTP_OK)
+                                  ? &traits[0]   /* we have reserve history */
+                                  : &traits[1],  /* skip reserve history */
                                   ret,
                                   trait,
                                   index);

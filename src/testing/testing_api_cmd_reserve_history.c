@@ -32,6 +32,12 @@
  */
 struct HistoryState
 {
+
+  /**
+   * Public key of the reserve being analyzed.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
   /**
    * Label to the command which created the reserve to check,
    * needed to resort the reserve key.
@@ -54,19 +60,21 @@ struct HistoryState
   const struct TALER_ReservePrivateKeyP *reserve_priv;
 
   /**
-   * Public key of the reserve being analyzed.
+   * Interpreter state.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * Reserve history entry that corresponds to this operation.
+   * Will be of type #TALER_EXCHANGE_RTT_HISTORY.
+   */
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
   /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
 
-  /**
-   * Interpreter state.
-   */
-  struct TALER_TESTING_Interpreter *is;
 };
 
 
@@ -177,6 +185,21 @@ reserve_history_cb (void *cls,
   struct TALER_Amount eb;
 
   ss->rsh = NULL;
+  if (MHD_HTTP_OK == rs->hr.http_status)
+  {
+    const struct TALER_EXCHANGE_Keys *keys;
+    const struct TALER_EXCHANGE_GlobalFee *gf;
+
+    ss->reserve_history.type = TALER_EXCHANGE_RTT_HISTORY;
+    keys = TALER_EXCHANGE_get_keys (ss->is->exchange);
+    GNUNET_assert (NULL != keys);
+    gf = TALER_EXCHANGE_get_global_fee (keys,
+                                        rs->ts);
+    GNUNET_assert (NULL != gf);
+    ss->reserve_history.amount = gf->fees.history;
+    ss->reserve_history.details.history_details.request_timestamp = rs->ts;
+    ss->reserve_history.details.history_details.reserve_sig = *rs->reserve_sig;
+  }
   if (ss->expected_response_code != rs->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -291,6 +314,37 @@ history_run (void *cls,
 
 
 /**
+ * Offer internal data from a "history" CMD, to other commands.
+ *
+ * @param cls closure.
+ * @param[out] ret result.
+ * @param trait name of the trait.
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success.
+ */
+static enum GNUNET_GenericReturnValue
+history_traits (void *cls,
+                const void **ret,
+                const char *trait,
+                unsigned int index)
+{
+  struct HistoryState *hs = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    TALER_TESTING_make_trait_reserve_history (&hs->reserve_history),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait ((hs->expected_response_code == MHD_HTTP_OK)
+                                  ? &traits[0]   /* we have reserve history */
+                                  : &traits[1],  /* skip reserve history */
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+
+/**
  * Cleanup the state from a "reserve history" CMD, and possibly
  * cancel a pending operation thereof.
  *
@@ -334,7 +388,8 @@ TALER_TESTING_cmd_reserve_history (const char *label,
       .cls = ss,
       .label = label,
       .run = &history_run,
-      .cleanup = &history_cleanup
+      .cleanup = &history_cleanup,
+      .traits = &history_traits
     };
 
     return cmd;

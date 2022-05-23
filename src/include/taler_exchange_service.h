@@ -1768,6 +1768,18 @@ struct TALER_EXCHANGE_ReserveHistory
   struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
+   * Timestamp of when we made the history request
+   * (client-side).
+   */
+  struct GNUNET_TIME_Timestamp ts;
+
+  /**
+   * Reserve signature affirming the history request
+   * (generated as part of the request).
+   */
+  const struct TALER_ReserveSignatureP *reserve_sig;
+
+  /**
    * Details depending on @e hr.http_status.
    */
   union
@@ -4389,6 +4401,11 @@ struct TALER_EXCHANGE_AccountMergeResponse
   struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
+   * Reserve signature affirming the merge.
+   */
+  const struct TALER_ReserveSignatureP *reserve_sig;
+
+  /**
    * Details depending on the HTTP status.
    */
   union
@@ -4398,6 +4415,20 @@ struct TALER_EXCHANGE_AccountMergeResponse
      */
     struct
     {
+      /**
+       * Signature by the exchange affirming the merge.
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Online signing key used by the exchange.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * Timestamp of the exchange for @e exchange_sig.
+       */
+      struct GNUNET_TIME_Timestamp etime;
 
     } success;
 
