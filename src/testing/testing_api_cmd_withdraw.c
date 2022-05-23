@@ -555,18 +555,6 @@ withdraw_traits (void *cls,
 }
 
 
-/**
- * Create a withdraw command, letting the caller specify
- * the desired amount as string.
- *
- * @param label command label.
- * @param reserve_reference command providing us with a reserve to withdraw from
- * @param amount how much we withdraw.
- * @param age if > 0, age restriction is activated
- * @param expected_response_code which HTTP response code
- *        we expect from the exchange.
- * @return the withdraw command to be executed by the interpreter.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    const char *reserve_reference,
@@ -638,22 +626,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 }
 
 
-/**
- * Create a withdraw command, letting the caller specify
- * the desired amount as string and also re-using an existing
- * coin private key in the process (violating the specification,
- * which will result in an error when spending the coin!).
- *
- * @param label command label.
- * @param reserve_reference command providing us with a reserve to withdraw from
- * @param amount how much we withdraw.
- * @param age if > 0, age restriction is activated
- * @param coin_ref reference to (withdraw/reveal) command of a coin
- *        from which we should re-use the private key
- * @param expected_response_code which HTTP response code
- *        we expect from the exchange.
- * @return the withdraw command to be executed by the interpreter.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount_reuse_key (
   const char *label,
@@ -679,18 +651,6 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
 }
 
 
-/**
- * Create withdraw command, letting the caller specify the
- * amount by a denomination key.
- *
- * @param label command label.
- * @param reserve_reference reference to the reserve to withdraw
- *        from; will provide reserve priv to sign the request.
- * @param dk denomination public key.
- * @param expected_response_code expected HTTP response code.
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_denomination (
   const char *label,
@@ -725,14 +685,6 @@ TALER_TESTING_cmd_withdraw_denomination (
 }
 
 
-/**
- * Modify a withdraw command to enable retries when the
- * reserve is not yet full or we get other transient
- * errors from the exchange.
- *
- * @param cmd a withdraw command
- * @return the command with retries enabled
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd)
 {

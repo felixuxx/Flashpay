@@ -1,0 +1,537 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2018-2022 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3, or (at your
+  option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public
+  License along with TALER; see the file COPYING.  If not, see
+  <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file testing/testing_api_cmd_batch_withdraw.c
+ * @brief implements the batch withdraw command
+ * @author Christian Grothoff
+ * @author Marcello Stanisci
+ */
+#include "platform.h"
+#include "taler_json_lib.h"
+#include <microhttpd.h>
+#include <gnunet/gnunet_curl_lib.h>
+#include "taler_signatures.h"
+#include "taler_extensions.h"
+#include "taler_testing_lib.h"
+
+/**
+ * Information we track per withdrawn coin.
+ */
+struct CoinState
+{
+
+  /**
+   * String describing the denomination value we should withdraw.
+   * A corresponding denomination key must exist in the exchange's
+   * offerings.  Can be NULL if @e pk is set instead.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * If @e amount is NULL, this specifies the denomination key to
+   * use.  Otherwise, this will be set (by the interpreter) to the
+   * denomination PK matching @e amount.
+   */
+  struct TALER_EXCHANGE_DenomPublicKey *pk;
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Blinding key used during the operation.
+   */
+  union TALER_DenominationBlindingKeyP bks;
+
+  /**
+   * Values contributed from the exchange during the
+   * withdraw protocol.
+   */
+  struct TALER_ExchangeWithdrawValues exchange_vals;
+
+  /**
+   * Set (by the interpreter) to the exchange's signature over the
+   * coin's public key.
+   */
+  struct TALER_DenominationSignature sig;
+
+  /**
+   * Private key material of the coin, set by the interpreter.
+   */
+  struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * If age > 0, put here the corresponding age commitment with its proof and
+   * its hash, respectivelly, NULL otherwise.
+   */
+  struct TALER_AgeCommitmentProof *age_commitment_proof;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
+
+  /**
+   * Reserve history entry that corresponds to this coin.
+   * Will be of type #TALER_EXCHANGE_RTT_WITHDRAWAL.
+   *
+   * FIXME: how to export one per coin?
+   */
+  struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
+
+
+};
+
+
+/**
+ * State for a "batch withdraw" CMD.
+ */
+struct BatchWithdrawState
+{
+
+  /**
+   * Which reserve should we withdraw from?
+   */
+  const char *reserve_reference;
+
+  /**
+   * Exchange base URL.  Only used as offered trait.
+   */
+  char *exchange_url;
+
+  /**
+   * URI if the reserve we are withdrawing from.
+   */
+  char *reserve_payto_uri;
+
+  /**
+   * Private key of the reserve we are withdrawing from.
+   */
+  struct TALER_ReservePrivateKeyP reserve_priv;
+
+  /**
+   * Public key of the reserve we are withdrawing from.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Interpreter state (during command).
+   */
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * Withdraw handle (while operation is running).
+   */
+  struct TALER_EXCHANGE_BatchWithdrawHandle *wsh;
+
+  /**
+   * Array of coin states.
+   */
+  struct CoinState *coins;
+
+  /**
+   * Set to the KYC UUID *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t kyc_uuid;
+
+  /**
+   * Length of the @e coins array.
+   */
+  unsigned int num_coins;
+
+  /**
+   * Expected HTTP response code to the request.
+   */
+  unsigned int expected_response_code;
+
+  /**
+   * An age > 0 signifies age restriction is required.
+   * Same for all coins in the batch.
+   */
+  uint8_t age;
+};
+
+
+/**
+ * "batch withdraw" operation callback; checks that the
+ * response code is expected and store the exchange signature
+ * in the state.
+ *
+ * @param cls closure.
+ * @param wr withdraw response details
+ */
+static void
+reserve_batch_withdraw_cb (void *cls,
+                           const struct
+                           TALER_EXCHANGE_BatchWithdrawResponse *wr)
+{
+  struct BatchWithdrawState *ws = cls;
+  struct TALER_TESTING_Interpreter *is = ws->is;
+
+  ws->wsh = NULL;
+  if (ws->expected_response_code != wr->hr.http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                wr->hr.http_status,
+                (int) wr->hr.ec,
+                TALER_TESTING_interpreter_get_current_label (is),
+                __FILE__,
+                __LINE__);
+    json_dumpf (wr->hr.reply,
+                stderr,
+                0);
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  switch (wr->hr.http_status)
+  {
+  case MHD_HTTP_OK:
+    for (unsigned int i = 0; i<ws->num_coins; i++)
+    {
+      struct CoinState *cs = &ws->coins[i];
+      const struct TALER_EXCHANGE_PrivateCoinDetails *pcd
+        = &wr->details.success.coins[i];
+
+      TALER_denom_sig_deep_copy (&cs->sig,
+                                 &pcd->sig);
+      cs->coin_priv = pcd->coin_priv;
+      cs->bks = pcd->bks;
+      cs->exchange_vals = pcd->exchange_vals;
+    }
+    break;
+  case MHD_HTTP_ACCEPTED:
+    /* nothing to check */
+    ws->kyc_uuid = wr->details.accepted.payment_target_uuid;
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_CONFLICT:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_GONE:
+    /* theoretically could check that the key was actually */
+    break;
+  default:
+    /* Unsupported status code (by test harness) */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Batch withdraw test command does not support status code %u\n",
+                wr->hr.http_status);
+    GNUNET_break (0);
+    break;
+  }
+  TALER_TESTING_interpreter_next (is);
+}
+
+
+/**
+ * Run the command.
+ */
+static void
+batch_withdraw_run (void *cls,
+                    const struct TALER_TESTING_Command *cmd,
+                    struct TALER_TESTING_Interpreter *is)
+{
+  struct BatchWithdrawState *ws = cls;
+  const struct TALER_ReservePrivateKeyP *rp;
+  const struct TALER_TESTING_Command *create_reserve;
+  const struct TALER_EXCHANGE_DenomPublicKey *dpk;
+  struct TALER_EXCHANGE_WithdrawCoinInput wcis[ws->num_coins];
+
+  (void) cmd;
+  ws->is = is;
+  create_reserve
+    = TALER_TESTING_interpreter_lookup_command (
+        is,
+        ws->reserve_reference);
+
+  if (NULL == create_reserve)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_reserve_priv (create_reserve,
+                                            &rp))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  if (NULL == ws->exchange_url)
+    ws->exchange_url
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));
+  ws->reserve_priv = *rp;
+  GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
+                                      &ws->reserve_pub.eddsa_pub);
+  ws->reserve_payto_uri
+    = TALER_payto_from_reserve (ws->exchange_url,
+                                &ws->reserve_pub);
+
+  for (unsigned int i = 0; i<ws->num_coins; i++)
+  {
+    struct CoinState *cs = &ws->coins[i];
+    struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
+
+    TALER_planchet_master_setup_random (&cs->ps);
+    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+                                 &cs->amount,
+                                 ws->age > 0);
+    if (NULL == dpk)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to determine denomination key at %s\n",
+                  (NULL != cmd) ? cmd->label : "<retried command>");
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    /* We copy the denomination key, as re-querying /keys
+     * would free the old one. */
+    cs->pk = TALER_EXCHANGE_copy_denomination_key (dpk);
+    cs->reserve_history.type = TALER_EXCHANGE_RTT_WITHDRAWAL;
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&cs->reserve_history.amount,
+                                     &cs->amount,
+                                     &cs->pk->fees.withdraw));
+    cs->reserve_history.details.withdraw.fee = cs->pk->fees.withdraw;
+
+    wci->pk = cs->pk;
+    wci->ps = &cs->ps;
+    wci->ach = cs->h_age_commitment;
+  }
+  ws->wsh = TALER_EXCHANGE_batch_withdraw (is->exchange,
+                                           rp,
+                                           wcis,
+                                           ws->num_coins,
+                                           &reserve_batch_withdraw_cb,
+                                           ws);
+  if (NULL == ws->wsh)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+}
+
+
+/**
+ * Free the state of a "withdraw" CMD, and possibly cancel
+ * a pending operation thereof.
+ *
+ * @param cls closure.
+ * @param cmd the command being freed.
+ */
+static void
+batch_withdraw_cleanup (void *cls,
+                        const struct TALER_TESTING_Command *cmd)
+{
+  struct BatchWithdrawState *ws = cls;
+
+  if (NULL != ws->wsh)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Command %s did not complete\n",
+                cmd->label);
+    TALER_EXCHANGE_batch_withdraw_cancel (ws->wsh);
+    ws->wsh = NULL;
+  }
+  for (unsigned int i = 0; i<ws->num_coins; i++)
+  {
+    struct CoinState *cs = &ws->coins[i];
+
+    TALER_denom_sig_free (&cs->sig);
+    if (NULL != cs->pk)
+    {
+      TALER_EXCHANGE_destroy_denomination_key (cs->pk);
+      cs->pk = NULL;
+    }
+    if (NULL != cs->age_commitment_proof)
+    {
+      TALER_age_commitment_proof_free (cs->age_commitment_proof);
+      cs->age_commitment_proof = NULL;
+    }
+    if (NULL != cs->h_age_commitment)
+      GNUNET_free (cs->h_age_commitment);
+  }
+  GNUNET_free (ws->coins);
+  GNUNET_free (ws->exchange_url);
+  GNUNET_free (ws->reserve_payto_uri);
+  GNUNET_free (ws);
+}
+
+
+/**
+ * Offer internal data to a "withdraw" CMD state to other
+ * commands.
+ *
+ * @param cls closure
+ * @param[out] ret result (could be anything)
+ * @param trait name of the trait
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+batch_withdraw_traits (void *cls,
+                       const void **ret,
+                       const char *trait,
+                       unsigned int index)
+{
+  struct BatchWithdrawState *ws = cls;
+  struct CoinState *cs = &ws->coins[index];
+  struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    // FIXME: bug!
+    TALER_TESTING_make_trait_reserve_history (&cs->reserve_history),
+    TALER_TESTING_make_trait_coin_priv (index,
+                                        &cs->coin_priv),
+    TALER_TESTING_make_trait_planchet_secrets (index,
+                                               &cs->ps),
+    TALER_TESTING_make_trait_blinding_key (index,
+                                           &cs->bks),
+    TALER_TESTING_make_trait_exchange_wd_value (index,
+                                                &cs->exchange_vals),
+    TALER_TESTING_make_trait_denom_pub (index,
+                                        cs->pk),
+    TALER_TESTING_make_trait_denom_sig (index,
+                                        &cs->sig),
+    TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
+    TALER_TESTING_make_trait_amounts (index,
+                                      &cs->amount),
+    TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_payto_uri (
+      (const char **) &ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_exchange_url (
+      (const char **) &ws->exchange_url),
+    TALER_TESTING_make_trait_age_commitment_proof (index,
+                                                   cs->age_commitment_proof),
+    TALER_TESTING_make_trait_h_age_commitment (index,
+                                               cs->h_age_commitment),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
+                                  ? &traits[0]   /* we have reserve history */
+                                  : &traits[1],  /* skip reserve history */
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch_withdraw (const char *label,
+                                  const char *reserve_reference,
+                                  uint8_t age,
+                                  unsigned int expected_response_code,
+                                  const char *amount,
+                                  ...)
+{
+  struct BatchWithdrawState *ws;
+  unsigned int cnt;
+  va_list ap;
+
+  ws = GNUNET_new (struct BatchWithdrawState);
+  ws->age = age;
+  ws->reserve_reference = reserve_reference;
+  ws->expected_response_code = expected_response_code;
+
+  cnt = 1;
+  va_start (ap, amount);
+  while (NULL != (va_arg (ap, const char *)))
+    cnt++;
+  ws->num_coins = cnt;
+  ws->coins = GNUNET_new_array (cnt,
+                                struct CoinState);
+  va_end (ap);
+  va_start (ap, amount);
+  for (unsigned int i = 0; i<ws->num_coins; i++)
+  {
+    struct CoinState *cs = &ws->coins[i];
+
+    if (0 < age)
+    {
+      struct TALER_AgeCommitmentProof *acp;
+      struct TALER_AgeCommitmentHash *hac;
+      struct GNUNET_HashCode seed;
+      struct TALER_AgeMask mask;
+
+      acp = GNUNET_new (struct TALER_AgeCommitmentProof);
+      hac = GNUNET_new (struct TALER_AgeCommitmentHash);
+      mask = TALER_extensions_age_restriction_ageMask ();
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                  &seed,
+                                  sizeof(seed));
+
+      if (GNUNET_OK !=
+          TALER_age_restriction_commit (
+            &mask,
+            age,
+            &seed,
+            acp))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Failed to generate age commitment for age %d at %s\n",
+                    age,
+                    label);
+        GNUNET_assert (0);
+      }
+
+      TALER_age_commitment_hash (&acp->commitment,
+                                 hac);
+      cs->age_commitment_proof = acp;
+      cs->h_age_commitment = hac;
+    }
+
+    if (GNUNET_OK !=
+        TALER_string_to_amount (amount,
+                                &cs->amount))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to parse amount `%s' at %s\n",
+                  amount,
+                  label);
+      GNUNET_assert (0);
+    }
+    /* move on to next vararg! */
+    amount = va_arg (ap, const char *);
+  }
+  GNUNET_assert (NULL == amount);
+  va_end (ap);
+
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ws,
+      .label = label,
+      .run = &batch_withdraw_run,
+      .cleanup = &batch_withdraw_cleanup,
+      .traits = &batch_withdraw_traits
+    };
+
+    return cmd;
+  }
+}
+
+
+/* end of testing_api_cmd_batch_withdraw.c */

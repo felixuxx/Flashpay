@@ -1345,6 +1345,30 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
 
 /**
+ * Create a batch withdraw command, letting the caller specify
+ * the desired amounts as string.  Takes a variable, non-empty
+ * list of the denomination amounts via VARARGS, similar to
+ * #TALER_TESTING_cmd_withdraw_amount(), just using a batch withdraw.
+ *
+ * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
+ * @param age if > 0, age restriction applies (same for all coins)
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ * @param amount how much we withdraw for the first coin
+ * @param ... NULL-terminated list of additional amounts to withdraw (one per coin)
+ * @return the withdraw command to be executed by the interpreter.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch_withdraw (const char *label,
+                                  const char *reserve_reference,
+                                  uint8_t age,
+                                  unsigned int expected_response_code,
+                                  const char *amount,
+                                  ...);
+
+
+/**
  * Create a withdraw command, letting the caller specify
  * the desired amount as string and also re-using an existing
  * coin private key in the process (violating the specification,
@@ -2763,7 +2787,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_INDEXED_TRAITS(op)                               \
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
-  op (age_commitment, const struct TALER_AgeCommitment)                \
+  op (amounts, const struct TALER_Amount)                           \
+  op (age_commitment, const struct TALER_AgeCommitment)              \
   op (age_commitment_proof, const struct TALER_AgeCommitmentProof)     \
   op (h_age_commitment, const struct TALER_AgeCommitmentHash)          \
   op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)      \
