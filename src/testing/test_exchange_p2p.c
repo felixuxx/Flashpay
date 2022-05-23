@@ -265,7 +265,6 @@ run (void *cls,
       true /* upload contract */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-1"),
-#if 1
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins-conflict",
       MHD_HTTP_CONFLICT,
@@ -274,7 +273,6 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:4.01",
       NULL),
-#endif
     TALER_TESTING_cmd_end ()
   };
 
