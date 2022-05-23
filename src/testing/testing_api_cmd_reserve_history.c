@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -68,76 +68,6 @@ struct HistoryState
    */
   struct TALER_TESTING_Interpreter *is;
 };
-
-
-/**
- * Compare @a h1 and @a h2.
- *
- * @param h1 a history entry
- * @param h2 a history entry
- * @return 0 if @a h1 and @a h2 are equal
- */
-static int
-history_entry_cmp (const struct TALER_EXCHANGE_ReserveHistoryEntry *h1,
-                   const struct TALER_EXCHANGE_ReserveHistoryEntry *h2)
-{
-  if (h1->type != h2->type)
-    return 1;
-  switch (h1->type)
-  {
-  case TALER_EXCHANGE_RTT_CREDIT:
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 == strcasecmp (h1->details.in_details.sender_url,
-                           h2->details.in_details.sender_url)) &&
-         (h1->details.in_details.wire_reference ==
-          h2->details.in_details.wire_reference) &&
-         (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
-                                     ==,
-                                     h2->details.in_details.timestamp)) )
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_WITHDRAWAL:
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          TALER_amount_cmp (&h1->details.withdraw.fee,
-                            &h2->details.withdraw.fee)) )
-      /* testing_api_cmd_withdraw doesn't set the out_authorization_sig,
-         so we cannot test for it here. but if the amount matches,
-         that should be good enough. */
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_RECOUP:
-    /* exchange_sig, exchange_pub and timestamp are NOT available
-       from the original recoup response, hence here NOT check(able/ed) */
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          GNUNET_memcmp (&h1->details.recoup_details.coin_pub,
-                         &h2->details.recoup_details.coin_pub)) )
-      return 0;
-    return 1;
-  case TALER_EXCHANGE_RTT_CLOSE:
-    /* testing_api_cmd_exec_closer doesn't set the
-       receiver_account_details, exchange_sig, exchange_pub or wtid or timestamp
-       so we cannot test for it here. but if the amount matches,
-       that should be good enough. */
-    if ( (0 ==
-          TALER_amount_cmp (&h1->amount,
-                            &h2->amount)) &&
-         (0 ==
-          TALER_amount_cmp (&h1->details.close_details.fee,
-                            &h2->details.close_details.fee)) )
-      return 0;
-    return 1;
-  }
-  GNUNET_assert (0);
-  return 1;
-}
 
 
 /**
@@ -216,8 +146,8 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
       if (found[i])
         continue; /* already found, skip */
       if (0 ==
-          history_entry_cmp (he,
-                             &history[i]))
+          TALER_TESTING_history_entry_cmp (he,
+                                           &history[i]))
       {
         found[i] = GNUNET_YES;
         return GNUNET_OK;
@@ -336,7 +266,6 @@ history_run (void *cls,
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->reserve_reference);
-
   if (NULL == create_reserve)
   {
     GNUNET_break (0);

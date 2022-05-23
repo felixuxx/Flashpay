@@ -956,6 +956,20 @@ TALER_TESTING_parse_coin_reference (
   unsigned int *idx);
 
 
+/**
+ * Compare @a h1 and @a h2.
+ *
+ * @param h1 a history entry
+ * @param h2 a history entry
+ * @return 0 if @a h1 and @a h2 are equal
+ */
+int
+TALER_TESTING_history_entry_cmp (const struct
+                                 TALER_EXCHANGE_ReserveHistoryEntry *h1,
+                                 const struct
+                                 TALER_EXCHANGE_ReserveHistoryEntry *h2);
+
+
 /* ************** Specific interpreter commands ************ */
 
 

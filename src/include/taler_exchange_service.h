@@ -1472,11 +1472,6 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
     {
 
       /**
-       * Fee paid for the request.
-       */
-      struct TALER_Amount history_fee;
-
-      /**
        * When was the request made.
        */
       struct GNUNET_TIME_Timestamp request_timestamp;

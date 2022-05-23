@@ -25,6 +25,118 @@
 #include "taler_testing_lib.h"
 
 
+int
+TALER_TESTING_history_entry_cmp (const struct
+                                 TALER_EXCHANGE_ReserveHistoryEntry *h1,
+                                 const struct
+                                 TALER_EXCHANGE_ReserveHistoryEntry *h2)
+{
+  if (h1->type != h2->type)
+    return 1;
+  switch (h1->type)
+  {
+  case TALER_EXCHANGE_RTT_CREDIT:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 == strcasecmp (h1->details.in_details.sender_url,
+                           h2->details.in_details.sender_url)) &&
+         (h1->details.in_details.wire_reference ==
+          h2->details.in_details.wire_reference) &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
+                                     ==,
+                                     h2->details.in_details.timestamp)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_WITHDRAWAL:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.withdraw.fee,
+                            &h2->details.withdraw.fee)) )
+      /* testing_api_cmd_withdraw doesn't set the out_authorization_sig,
+         so we cannot test for it here. but if the amount matches,
+         that should be good enough. */
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_RECOUP:
+    /* exchange_sig, exchange_pub and timestamp are NOT available
+       from the original recoup response, hence here NOT check(able/ed) */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.recoup_details.coin_pub,
+                         &h2->details.recoup_details.coin_pub)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_CLOSE:
+    /* testing_api_cmd_exec_closer doesn't set the
+       receiver_account_details, exchange_sig, exchange_pub or wtid or timestamp
+       so we cannot test for it here. but if the amount matches,
+       that should be good enough. */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.close_details.fee,
+                            &h2->details.close_details.fee)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_HISTORY:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.history_details.request_timestamp,
+            ==,
+            h2->details.history_details.
+            request_timestamp)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.history_details.reserve_sig,
+                         &h2->details.history_details.reserve_sig)) )
+      return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_MERGE:
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.merge_details.purse_fee,
+                            &h2->details.merge_details.purse_fee)) &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.merge_details.merge_timestamp,
+                                     ==,
+                                     h2->details.merge_details.merge_timestamp))
+         &&
+         (GNUNET_TIME_timestamp_cmp (h1->details.merge_details.purse_expiration,
+                                     ==,
+                                     h2->details.merge_details.purse_expiration))
+         &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.merge_pub,
+                         &h2->details.merge_details.merge_pub)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.h_contract_terms,
+                         &h2->details.merge_details.h_contract_terms)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.purse_pub,
+                         &h2->details.merge_details.purse_pub)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.merge_details.reserve_sig,
+                         &h2->details.merge_details.reserve_sig)) &&
+         (h1->details.merge_details.min_age ==
+          h2->details.merge_details.min_age) &&
+         (h1->details.merge_details.flags ==
+          h2->details.merge_details.flags) )
+      return 0;
+    return 1;
+  }
+  GNUNET_assert (0);
+  return 1;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_TESTING_parse_coin_reference (
   const char *coin_reference,
