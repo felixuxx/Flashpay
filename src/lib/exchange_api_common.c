@@ -1167,8 +1167,39 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
                     const struct TALER_Amount *amount,
                     json_t *transaction)
 {
-  GNUNET_break (0); // FIXME: implement!
-  return GNUNET_SYSERR;
+  struct TALER_PurseContractPublicKeyP purse_pub;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  const char *exchange_base_url;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("purse_pub",
+                                 &purse_pub),
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &coin_sig),
+    GNUNET_JSON_spec_string ("exchange_base_url",
+                             &exchange_base_url),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_purse_deposit_verify (
+        exchange_base_url,
+        &purse_pub,
+        amount,
+        pc->coin_pub,
+        &coin_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_YES;
 }
 
 
@@ -1192,7 +1223,7 @@ TALER_EXCHANGE_verify_coin_history (
     { "RECOUP", &help_recoup },
     { "RECOUP-REFRESH", &help_recoup_refresh },
     { "OLD-COIN-RECOUP", &help_old_coin_recoup },
-    { "PURSE_DEPOSIT", &help_purse_deposit },
+    { "PURSE-DEPOSIT", &help_purse_deposit },
     { NULL, NULL }
   };
   struct CoinHistoryParseContext pc = {
