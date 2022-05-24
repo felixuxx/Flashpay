@@ -546,8 +546,6 @@ do_commit (struct WireAccount *wa)
   GNUNET_assert (NULL == task);
   shard_done = check_shard_done (wa);
   wa->started_transaction = false;
-  if (shard_done)
-    wa->shard_open = false;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Committing %s progress (%llu,%llu] at %llu\n (%s)",
               wa->job_name,
@@ -574,10 +572,15 @@ do_commit (struct WireAccount *wa)
     break;
   }
   if (shard_done)
+  {
+    wa->shard_open = false;
     account_completed (wa);
+  }
   else
+  {
     task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
                                      wa);
+  }
 }
 
 
