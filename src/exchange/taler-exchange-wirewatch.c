@@ -107,6 +107,11 @@ struct WireAccount
   struct GNUNET_TIME_Absolute shard_start_time;
 
   /**
+   * For how long did we lock the shard?
+   */
+  struct GNUNET_TIME_Absolute shard_end_time;
+
+  /**
    * How long did we take to finish the last shard
    * for this account?
    */
@@ -138,6 +143,10 @@ struct WireAccount
    */
   bool started_transaction;
 
+  /**
+   * Is this shard still open for processing.
+   */
+  bool shard_open;
 };
 
 
@@ -537,6 +546,8 @@ do_commit (struct WireAccount *wa)
   GNUNET_assert (NULL == task);
   shard_done = check_shard_done (wa);
   wa->started_transaction = false;
+  if (shard_done)
+    wa->shard_open = false;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Committing %s progress (%llu,%llu] at %llu\n (%s)",
               wa->job_name,
@@ -795,6 +806,16 @@ lock_shard (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  if ( (wa->shard_open) &&
+       (GNUNET_TIME_absolute_is_future (wa->shard_end_time)) )
+  {
+    wa->delay = true; /* default is to delay, unless
+                         we find out that we're really busy */
+    wa->batch_start = wa->latest_row_off;
+    task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
+                                     wa);
+    return;
+  }
   /* How long we lock a shard depends on the number of
      workers expected, and how long we usually took to
      process a shard. */
@@ -855,6 +876,8 @@ lock_shard (void *cls)
     /* continued below */
     break;
   }
+  wa->shard_end_time = GNUNET_TIME_relative_to_absolute (delay);
+  wa->shard_open = true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting with shard %s at (%llu,%llu] locked for %s\n",
               wa->job_name,
