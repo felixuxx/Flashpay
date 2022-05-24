@@ -12946,17 +12946,16 @@ postgres_begin_shard (void *cls,
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         {
           enum GNUNET_DB_QueryStatus qs;
-          struct GNUNET_TIME_Timestamp now;
+          struct GNUNET_TIME_Absolute now;
           struct GNUNET_PQ_QueryParam params[] = {
             GNUNET_PQ_query_param_string (job_name),
-            GNUNET_PQ_query_param_timestamp (&now),
+            GNUNET_PQ_query_param_absolute_time (&now),
             GNUNET_PQ_query_param_uint64 (start_row),
             GNUNET_PQ_query_param_uint64 (end_row),
             GNUNET_PQ_query_param_end
           };
 
-          now = GNUNET_TIME_absolute_to_timestamp (
-            GNUNET_TIME_relative_to_absolute (delay));
+          now = GNUNET_TIME_relative_to_absolute (delay);
           qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                    "reclaim_shard",
                                                    params);
@@ -13021,17 +13020,16 @@ postgres_begin_shard (void *cls,
     /* Claim fresh shard */
     {
       enum GNUNET_DB_QueryStatus qs;
-      struct GNUNET_TIME_Timestamp now;
+      struct GNUNET_TIME_Absolute now;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_string (job_name),
-        GNUNET_PQ_query_param_timestamp (&now),
+        GNUNET_PQ_query_param_absolute_time (&now),
         GNUNET_PQ_query_param_uint64 (start_row),
         GNUNET_PQ_query_param_uint64 (end_row),
         GNUNET_PQ_query_param_end
       };
 
-      now = GNUNET_TIME_absolute_to_timestamp (
-        GNUNET_TIME_relative_to_absolute (delay));
+      now = GNUNET_TIME_relative_to_absolute (delay);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Trying to claim shard (%llu-%llu]\n",
                   (unsigned long long) *start_row,
@@ -13222,10 +13220,10 @@ postgres_begin_revolving_shard (void *cls,
     {
       /* Claim fresh shard */
       enum GNUNET_DB_QueryStatus qs;
-      struct GNUNET_TIME_Timestamp now;
+      struct GNUNET_TIME_Absolute now;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_string (job_name),
-        GNUNET_PQ_query_param_timestamp (&now),
+        GNUNET_PQ_query_param_absolute_time (&now),
         GNUNET_PQ_query_param_uint32 (start_row),
         GNUNET_PQ_query_param_uint32 (end_row),
         GNUNET_PQ_query_param_end
@@ -13233,7 +13231,7 @@ postgres_begin_revolving_shard (void *cls,
 
       *end_row = GNUNET_MIN (shard_limit,
                              *start_row + shard_size - 1);
-      now = GNUNET_TIME_timestamp_get ();
+      now = GNUNET_TIME_absolute_get ();
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Trying to claim shard %llu-%llu\n",
                   (unsigned long long) *start_row,

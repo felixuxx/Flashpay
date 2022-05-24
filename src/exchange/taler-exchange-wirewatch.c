@@ -417,7 +417,7 @@ schedule_transfers (struct WireAccount *wa)
     wa = wa_head;
     GNUNET_assert (NULL != wa);
   }
-  if (shard_done)
+  if (wa->shard_open)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Will retry my shard (%llu,%llu] of %s in %s\n",
                 (unsigned long long) wa->shard_start,
@@ -527,14 +527,14 @@ check_shard_done (struct WireAccount *wa)
     break;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     /* normal case */
-    wa->shard_delay = GNUNET_TIME_absolute_get_duration (wa->shard_start_time);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Completed shard %s (%llu,%llu] after %s\n",
                 wa->job_name,
                 (unsigned long long) wa->shard_start,
                 (unsigned long long) wa->shard_end,
-                GNUNET_STRINGS_relative_time_to_string (wa->shard_delay,
-                                                        GNUNET_YES));
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_duration (wa->shard_start_time),
+                  GNUNET_YES));
     break;
   }
   return true;
@@ -583,6 +583,7 @@ do_commit (struct WireAccount *wa)
   }
   if (shard_done)
   {
+    wa->shard_delay = GNUNET_TIME_absolute_get_duration (wa->shard_start_time);
     wa->shard_open = false;
     account_completed (wa);
   }
@@ -829,6 +830,9 @@ lock_shard (void *cls)
                                      wa);
     return;
   }
+  if (wa->shard_open)
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Shard not completed in time, will try to re-acquire\n");
   /* How long we lock a shard depends on the number of
      workers expected, and how long we usually took to
      process a shard. */
