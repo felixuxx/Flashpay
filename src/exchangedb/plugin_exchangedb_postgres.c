@@ -12929,8 +12929,7 @@ postgres_begin_shard (void *cls,
         GNUNET_PQ_result_spec_end
       };
 
-      past = GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
-                                            delay);
+      past = GNUNET_TIME_absolute_get ();
       qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                      "get_open_shard",
                                                      params,
@@ -12956,7 +12955,8 @@ postgres_begin_shard (void *cls,
             GNUNET_PQ_query_param_end
           };
 
-          now = GNUNET_TIME_timestamp_get ();
+          now = GNUNET_TIME_absolute_to_timestamp (
+            GNUNET_TIME_relative_to_absolute (delay));
           qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                    "reclaim_shard",
                                                    params);
@@ -13030,9 +13030,10 @@ postgres_begin_shard (void *cls,
         GNUNET_PQ_query_param_end
       };
 
-      now = GNUNET_TIME_timestamp_get ();
+      now = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_relative_to_absolute (delay));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Trying to claim shard %llu-%llu\n",
+                  "Trying to claim shard (%llu-%llu]\n",
                   (unsigned long long) *start_row,
                   (unsigned long long) *end_row);
       qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,

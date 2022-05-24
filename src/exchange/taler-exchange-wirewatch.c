@@ -417,12 +417,22 @@ schedule_transfers (struct WireAccount *wa)
     wa = wa_head;
     GNUNET_assert (NULL != wa);
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Will try to lock next shard of %s in %s\n",
-              wa->job_name,
-              GNUNET_STRINGS_relative_time_to_string (
-                GNUNET_TIME_absolute_get_remaining (wa->delayed_until),
-                GNUNET_YES));
+  if (shard_done)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Will retry my shard (%llu,%llu] of %s in %s\n",
+                (unsigned long long) wa->shard_start,
+                (unsigned long long) wa->shard_end,
+                wa->job_name,
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_remaining (wa->delayed_until),
+                  GNUNET_YES));
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Will try to lock next shard of %s in %s\n",
+                wa->job_name,
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_remaining (wa->delayed_until),
+                  GNUNET_YES));
   GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_at (wa->delayed_until,
                                   &lock_shard,
