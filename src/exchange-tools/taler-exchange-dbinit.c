@@ -52,7 +52,12 @@ static uint32_t num_partitions;
 /**
  * -F option: setup a sharded database, i.e. create foreign tables/server
  */
-static uint32_t num_foreign_servers;
+static int shard_db;
+
+/**
+ * -f option: force partitions to be created when there is only one
+ */
+static int force_create_partitions;
 
 /**
  * -S option: setup a database on a shard server, creates tables with suffix shard_idx
@@ -139,11 +144,23 @@ run (void *cls,
     return;
   }
   if (1 <
-      num_partitions)
+      num_partitions
+      || (
+        1 == num_partitions
+        && force_create_partitions))
   {
-    if (GNUNET_OK !=
-        plugin->setup_partitions (plugin->cls,
-                                  num_partitions))
+    enum GNUNET_GenericReturnValue r = GNUNET_OK;
+    if (shard_db)
+    {
+      r = plugin->setup_foreign_servers (plugin->cls,
+                                         num_partitions);
+    }
+    else
+    {
+      r = plugin->setup_partitions (plugin->cls,
+                                    num_partitions);
+    }
+    if (GNUNET_OK != r)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not setup partitions. Dropping default ones again\n");
@@ -151,26 +168,6 @@ run (void *cls,
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Could not drop tables after failed partitioning, please delete the DB manually\n");
-      }
-      TALER_EXCHANGEDB_plugin_unload (plugin);
-      plugin = NULL;
-      global_ret = EXIT_NOTINSTALLED;
-      return;
-    }
-  }
-  else if (1 <
-           num_foreign_servers)
-  {
-    if (GNUNET_OK !=
-        plugin->setup_foreign_servers (plugin->cls,
-                                       num_foreign_servers))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup shards. Aborting\n");
-      if (GNUNET_OK != plugin->drop_tables (plugin->cls))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Could not drop tables after failed shard setup, please delete the DB manually\n");
       }
       TALER_EXCHANGEDB_plugin_unload (plugin);
       plugin = NULL;
@@ -241,13 +238,12 @@ main (int argc,
     GNUNET_GETOPT_option_uint ('P',
                                "partition",
                                "NUMBER",
-                               "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node (NOTE: this is different from sharding)",
+                               "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node (NOTE: sharding add -F for sharding)",
                                &num_partitions),
-    GNUNET_GETOPT_option_uint ('F',
+    GNUNET_GETOPT_option_flag ('F',
                                "foreign",
-                               "NUMBER",
-                               "Setup a sharded database whit N foreign servers (shards) / tables, must be called as DB superuser",
-                               &num_foreign_servers),
+                               "Setup a sharded database with foreign servers (shards) / tables rather than a partitioned one, must be called as DB superuser.",
+                               &shard_db),
     GNUNET_GETOPT_option_uint ('S',
                                "shard",
                                "INDEX",
@@ -258,6 +254,10 @@ main (int argc,
                                "OLD_SHARD_IDX",
                                "reset a shard database, does not reinitialize i.e. call taler-exchange-dbinit -S afterwards (DANGEROUS: all existsing data is lost!)",
                                &reset_shard_db),
+    GNUNET_GETOPT_option_flag ('f',
+                               "force",
+                               "Force partitions to be created if there is only one partition",
+                               &force_create_partitions),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
