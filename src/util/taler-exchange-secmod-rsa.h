@@ -24,14 +24,17 @@
 #define TALER_HELPER_RSA_MT_PURGE 1
 #define TALER_HELPER_RSA_MT_AVAIL 2
 
+#define TALER_HELPER_RSA_MT_REQ_BATCH_SIGN 3
 #define TALER_HELPER_RSA_MT_REQ_INIT 4
 #define TALER_HELPER_RSA_MT_REQ_SIGN 5
 #define TALER_HELPER_RSA_MT_REQ_REVOKE 6
 
 #define TALER_HELPER_RSA_MT_RES_SIGNATURE 7
 #define TALER_HELPER_RSA_MT_RES_SIGN_FAILURE 8
+#define TALER_HELPER_RSA_MT_RES_BATCH_FAILURE 9
 
-#define TALER_HELPER_RSA_SYNCED 9
+#define TALER_HELPER_RSA_SYNCED 10
+
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -129,6 +132,28 @@ struct TALER_CRYPTO_SignRequest
   struct TALER_RsaPubHashP h_rsa;
 
   /* followed by message to sign */
+};
+
+
+/**
+ * Message sent if a signature is requested.
+ */
+struct TALER_CRYPTO_BatchSignRequest
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_REQ_BATCH_SIGN.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * Number of signatures to create, in NBO.
+   */
+  uint32_t batch_size;
+
+  /*
+   * Followed by @e batch_size batch sign requests.
+   */
+
 };
 
 

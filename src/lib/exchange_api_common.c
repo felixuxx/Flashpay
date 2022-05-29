@@ -854,8 +854,8 @@ help_melt (struct CoinHistoryParseContext *pc,
         &rc,
         pc->h_denom_pub,
         no_hac
-            ? NULL
-            : &h_age_commitment,
+        ? NULL
+        : &h_age_commitment,
         pc->coin_pub,
         &sig))
   {

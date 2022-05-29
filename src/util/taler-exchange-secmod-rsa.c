@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -164,6 +164,128 @@ struct Denomination
 
 
 /**
+ * A semaphore.
+ */
+struct Semaphore
+{
+  /**
+   * Mutex for the semaphore.
+   */
+  pthread_mutex_t mutex;
+
+  /**
+   * Condition variable for the semaphore.
+   */
+  pthread_cond_t cv;
+
+  /**
+   * Counter of the semaphore.
+   */
+  unsigned int ctr;
+};
+
+
+/**
+ * Job in a batch sign request.
+ */
+struct BatchJob;
+
+/**
+ * Handle for a thread that does work in batch signing.
+ */
+struct Worker
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct Worker *prev;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct Worker *next;
+
+  /**
+   * Job this worker should do next.
+   */
+  struct BatchJob *job;
+
+  /**
+   * Semaphore to signal the worker that a job is available.
+   */
+  struct Semaphore sem;
+
+  /**
+   * Handle for this thread.
+   */
+  pthread_t pt;
+
+  /**
+   * Set to true if the worker should terminate.
+   */
+  bool do_shutdown;
+};
+
+
+/**
+ * Job in a batch sign request.
+ */
+struct BatchJob
+{
+  /**
+   * Request we are working on.
+   */
+  const struct TALER_CRYPTO_SignRequest *sr;
+
+  /**
+   * Thread doing the work.
+   */
+  struct Worker *worker;
+
+  /**
+   * Result with the signature.
+   */
+  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+
+  /**
+   * Semaphore to signal that the job is finished.
+   */
+  struct Semaphore sem;
+
+  /**
+   * Computation status.
+   */
+  enum TALER_ErrorCode ec;
+
+};
+
+
+/**
+ * Head of DLL of workers ready for more work.
+ */
+static struct Worker *worker_head;
+
+/**
+ * Tail of DLL of workers ready for more work.
+ */
+static struct Worker *worker_tail;
+
+/**
+ * Lock for manipulating the worker DLL.
+ */
+static pthread_mutex_t worker_lock;
+
+/**
+ * Total number of workers that were started.
+ */
+static unsigned int workers;
+
+/**
+ * Semaphore used to grab a worker.
+ */
+static struct Semaphore worker_sem;
+
+/**
  * Return value from main().
  */
 static int global_ret;
@@ -228,6 +350,12 @@ static pthread_mutex_t keys_lock;
  */
 static uint64_t key_gen;
 
+/**
+ * Number of workers to launch. Note that connections to
+ * exchanges are NOT workers.
+ */
+static unsigned int max_workers = 16;
+
 
 /**
  * Generate the announcement message for @a dk.
@@ -278,63 +406,49 @@ generate_response (struct DenominationKey *dk)
 
 
 /**
- * Handle @a client request @a sr to create signature. Create the
- * signature using the respective key and return the result to
- * the client.
+ * Do the actual signing work.
  *
- * @param client the client making the request
- * @param sr the request details
- * @return #GNUNET_OK on success
+ * @param h_rsa key to sign with
+ * @param blinded_msg message to sign
+ * @param blinded_msg_size number of bytes in @a blinded_msg
+ * @param[out] rsa_signaturep set to the RSA signature
+ * @return #TALER_EC_NONE on success
  */
-static enum GNUNET_GenericReturnValue
-handle_sign_request (struct TES_Client *client,
-                     const struct TALER_CRYPTO_SignRequest *sr)
+static enum TALER_ErrorCode
+do_sign (const struct TALER_RsaPubHashP *h_rsa,
+         const void *blinded_msg,
+         size_t blinded_msg_size,
+         struct GNUNET_CRYPTO_RsaSignature **rsa_signaturep)
 {
   struct DenominationKey *dk;
-  const void *blinded_msg = &sr[1];
-  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
   struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
-                                          &sr->h_rsa.hash);
+                                          &h_rsa->hash);
   if (NULL == dk)
   {
-    struct TALER_CRYPTO_SignFailure sf = {
-      .header.size = htons (sizeof (sr)),
-      .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
-    };
-
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing request failed, denomination key %s unknown\n",
-                GNUNET_h2s (&sr->h_rsa.hash));
-    return TES_transmit (client->csock,
-                         &sf.header);
+                GNUNET_h2s (&h_rsa->hash));
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
   }
   if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
   {
     /* it is too early */
-    struct TALER_CRYPTO_SignFailure sf = {
-      .header.size = htons (sizeof (sr)),
-      .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
-    };
-
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing request failed, denomination key %s is not yet valid\n",
-                GNUNET_h2s (&sr->h_rsa.hash));
-    return TES_transmit (client->csock,
-                         &sf.header);
+                GNUNET_h2s (&h_rsa->hash));
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to sign over %u bytes with key %s\n",
               (unsigned int) blinded_msg_size,
-              GNUNET_h2s (&sr->h_rsa.hash));
+              GNUNET_h2s (&h_rsa->hash));
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
@@ -348,51 +462,377 @@ handle_sign_request (struct TES_Client *client,
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   if (NULL == rsa_signature)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Signing request failed, worker failed to produce signature\n");
+    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Sending RSA signature after %s\n",
+              GNUNET_TIME_relative2s (
+                GNUNET_TIME_absolute_get_duration (now),
+                GNUNET_YES));
+  *rsa_signaturep = rsa_signature;
+  return TALER_EC_NONE;
+}
+
+
+/**
+ * Generate error response that signing failed.
+ *
+ * @param client client to send response to
+ * @param ec error code to include
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+fail_sign (struct TES_Client *client,
+           enum TALER_ErrorCode ec)
+{
+  struct TALER_CRYPTO_SignFailure sf = {
+    .header.size = htons (sizeof (sf)),
+    .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
+    .ec = htonl (ec)
+  };
+
+  return TES_transmit (client->csock,
+                       &sf.header);
+}
+
+
+/**
+ * Generate signature response.
+ *
+ * @param client client to send response to
+ * @param[in] rsa_signature signature to send, freed by this function
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+send_signature (struct TES_Client *client,
+                struct GNUNET_CRYPTO_RsaSignature *rsa_signature)
+{
+  struct TALER_CRYPTO_SignResponse *sr;
+  void *buf;
+  size_t buf_size;
+  size_t tsize;
+  enum GNUNET_GenericReturnValue ret;
+
+  buf_size = GNUNET_CRYPTO_rsa_signature_encode (rsa_signature,
+                                                 &buf);
+  GNUNET_CRYPTO_rsa_signature_free (rsa_signature);
+  tsize = sizeof (*sr) + buf_size;
+  GNUNET_assert (tsize < UINT16_MAX);
+  sr = GNUNET_malloc (tsize);
+  sr->header.size = htons (tsize);
+  sr->header.type = htons (TALER_HELPER_RSA_MT_RES_SIGNATURE);
+  memcpy (&sr[1],
+          buf,
+          buf_size);
+  GNUNET_free (buf);
+  ret = TES_transmit (client->csock,
+                      &sr->header);
+  GNUNET_free (sr);
+  return ret;
+}
+
+
+/**
+ * Handle @a client request @a sr to create signature. Create the
+ * signature using the respective key and return the result to
+ * the client.
+ *
+ * @param client the client making the request
+ * @param sr the request details
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+handle_sign_request (struct TES_Client *client,
+                     const struct TALER_CRYPTO_SignRequest *sr)
+{
+  const void *blinded_msg = &sr[1];
+  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
+  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+  enum TALER_ErrorCode ec;
+
+  ec = do_sign (&sr->h_rsa,
+                blinded_msg,
+                blinded_msg_size,
+                &rsa_signature);
+  if (TALER_EC_NONE != ec)
+  {
+    return fail_sign (client,
+                      ec);
+  }
+  return send_signature (client,
+                         rsa_signature);
+}
+
+
+/**
+ * Initialize a semaphore @a sem with a value of @a val.
+ *
+ * @param[out] sem semaphore to initialize
+ * @param val initial value of the semaphore
+ */
+static void
+sem_init (struct Semaphore *sem,
+          unsigned int val)
+{
+  GNUNET_assert (0 ==
+                 pthread_mutex_init (&sem->mutex,
+                                     NULL));
+  GNUNET_assert (0 ==
+                 pthread_cond_init (&sem->cv,
+                                    NULL));
+}
+
+
+/**
+ * Decrement semaphore, blocks until this is possible.
+ *
+ * @param[in,out] sem semaphore to decrement
+ */
+static void
+sem_down (struct Semaphore *sem)
+{
+  GNUNET_assert (0 == pthread_mutex_lock (&sem->mutex));
+  while (0 == sem->ctr)
+  {
+    pthread_cond_wait (&sem->cv,
+                       &sem->mutex);
+  }
+  sem->ctr--;
+  GNUNET_assert (0 == pthread_mutex_unlock (&sem->mutex));
+}
+
+
+/**
+ * Increment semaphore, blocks until this is possible.
+ *
+ * @param[in,out] sem semaphore to decrement
+ */
+static void
+sem_up (struct Semaphore *sem)
+{
+  GNUNET_assert (0 == pthread_mutex_lock (&sem->mutex));
+  sem->ctr++;
+  GNUNET_assert (0 == pthread_mutex_unlock (&sem->mutex));
+  pthread_cond_signal (&sem->cv);
+}
+
+
+/**
+ * Release resources used by @a sem.
+ *
+ * @param[in] sem semaphore to release (except the memory itself)
+ */
+static void
+sem_done (struct Semaphore *sem)
+{
+  pthread_cond_destroy (&sem->cv);
+  pthread_mutex_destroy (&sem->mutex);
+}
+
+
+/**
+ * Main logic of a worker thread. Grabs work, does it,
+ * grabs more work.
+ *
+ * @param cls a `struct Worker *`
+ * @returns cls
+ */
+static void *
+worker (void *cls)
+{
+  struct Worker *w = cls;
+
+  while (true)
+  {
+    GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+    GNUNET_CONTAINER_DLL_insert (worker_head,
+                                 worker_tail,
+                                 w);
+    GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+    sem_up (&worker_sem);
+    sem_down (&w->sem);
+    if (w->do_shutdown)
+      break;
+    {
+      struct BatchJob *bj = w->job;
+      const struct TALER_CRYPTO_SignRequest *sr = bj->sr;
+      const void *blinded_msg = &sr[1];
+      size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
+
+      bj->ec = do_sign (&sr->h_rsa,
+                        blinded_msg,
+                        blinded_msg_size,
+                        &bj->rsa_signature);
+      sem_up (&bj->sem);
+      w->job = NULL;
+    }
+  }
+  return w;
+}
+
+
+/**
+ * Start batch job @a bj to sign @a sr.
+ *
+ * @param sr signature request to answer
+ * @param[out] bj job data structure
+ */
+static void
+start_job (const struct TALER_CRYPTO_SignRequest *sr,
+           struct BatchJob *bj)
+{
+  sem_init (&bj->sem,
+            0);
+  bj->sr = sr;
+  sem_down (&worker_sem);
+  GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+  bj->worker = worker_head;
+  GNUNET_CONTAINER_DLL_remove (worker_head,
+                               worker_tail,
+                               bj->worker);
+  GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+  bj->worker->job = bj;
+  sem_up (&bj->worker->sem);
+}
+
+
+/**
+ * Finish a job @a bj for a @a client.
+ *
+ * @param client who made the request
+ * @param[in,out] bj job to finish
+ */
+static void
+finish_job (struct TES_Client *client,
+            struct BatchJob *bj)
+{
+  sem_down (&bj->sem);
+  sem_done (&bj->sem);
+  if (TALER_EC_NONE != bj->ec)
+  {
+    fail_sign (client,
+               bj->ec);
+    return;
+  }
+  GNUNET_assert (NULL != bj->rsa_signature);
+  send_signature (client,
+                  bj->rsa_signature);
+  bj->rsa_signature = NULL; /* freed in send_signature */
+}
+
+
+/**
+ * Handle @a client request @a sr to create a batch of signature. Creates the
+ * signatures using the respective key and return the results to the client.
+ *
+ * @param client the client making the request
+ * @param bsr the request details
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+handle_batch_sign_request (struct TES_Client *client,
+                           const struct TALER_CRYPTO_BatchSignRequest *bsr)
+{
+  uint32_t bs = ntohl (bsr->batch_size);
+  uint16_t size = ntohs (bsr->header.size) - sizeof (*bsr);
+  const void *off = (const void *) &bsr[1];
+  unsigned int idx = 0;
+  struct BatchJob jobs[bs];
+  bool failure = false;
+
+  while ( (bs > 0) &&
+          (size > sizeof (struct TALER_CRYPTO_SignRequest)) )
+  {
+    const struct TALER_CRYPTO_SignRequest *sr = off;
+    uint16_t s = ntohs (sr->header.size);
+
+    if (s > size)
+    {
+      failure = true;
+      bs = idx;
+      break;
+    }
+    start_job (sr,
+               &jobs[idx++]);
+    off += s;
+    size -= s;
+  }
+  for (unsigned int i = 0; i<bs; i++)
+    finish_job (client,
+                &jobs[i]);
+  if (failure)
+  {
     struct TALER_CRYPTO_SignFailure sf = {
       .header.size = htons (sizeof (sf)),
-      .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
+      .header.type = htons (TALER_HELPER_RSA_MT_RES_BATCH_FAILURE),
       .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
     };
 
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Signing request failed, worker failed to produce signature\n");
+    GNUNET_break (0);
     return TES_transmit (client->csock,
                          &sf.header);
   }
+  return GNUNET_OK;
+}
 
+
+/**
+ * Start worker thread for batch processing.
+ *
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+start_worker (void)
+{
+  struct Worker *w;
+
+  w = GNUNET_new (struct Worker);
+  sem_init (&w->sem,
+            0);
+  if (0 != pthread_create (&w->pt,
+                           NULL,
+                           &worker,
+                           w))
   {
-    struct TALER_CRYPTO_SignResponse *sr;
-    void *buf;
-    size_t buf_size;
-    size_t tsize;
-    enum GNUNET_GenericReturnValue ret;
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "pthread_create");
+    GNUNET_free (w);
+    return GNUNET_SYSERR;
+  }
+  workers++;
+  return GNUNET_OK;
+}
 
-    buf_size = GNUNET_CRYPTO_rsa_signature_encode (rsa_signature,
-                                                   &buf);
-    GNUNET_CRYPTO_rsa_signature_free (rsa_signature);
-    tsize = sizeof (*sr) + buf_size;
-    GNUNET_assert (tsize < UINT16_MAX);
-    sr = GNUNET_malloc (tsize);
-    sr->header.size = htons (tsize);
-    sr->header.type = htons (TALER_HELPER_RSA_MT_RES_SIGNATURE);
-    memcpy (&sr[1],
-            buf,
-            buf_size);
-    GNUNET_free (buf);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sending RSA signature after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    ret = TES_transmit (client->csock,
-                        &sr->header);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sent RSA signature after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    GNUNET_free (sr);
-    return ret;
+
+/**
+ * Stop all worker threads.
+ */
+static void
+stop_workers (void)
+{
+  while (workers > 0)
+  {
+    struct Worker *w;
+    void *result;
+
+    sem_down (&worker_sem);
+    GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+    w = worker_head;
+    GNUNET_CONTAINER_DLL_remove (worker_head,
+                                 worker_tail,
+                                 w);
+    GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+    w->do_shutdown = true;
+    sem_up (&w->sem);
+    pthread_join (w->pt,
+                  &result);
+    GNUNET_assert (result == w);
+    sem_done (&w->sem);
+    GNUNET_free (w);
+    workers--;
   }
 }
 
@@ -606,6 +1046,15 @@ rsa_work_dispatch (struct TES_Client *client,
     return handle_revoke_request (
       client,
       (const struct TALER_CRYPTO_RevokeRequest *) hdr);
+  case TALER_HELPER_RSA_MT_REQ_BATCH_SIGN:
+    if (msize <= sizeof (struct TALER_CRYPTO_BatchSignRequest))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return handle_batch_sign_request (
+      client,
+      (const struct TALER_CRYPTO_BatchSignRequest *) hdr);
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -1452,6 +1901,8 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (keygen_task);
     keygen_task = NULL;
   }
+  stop_workers ();
+  sem_done (&worker_sem);
 }
 
 
@@ -1511,8 +1962,19 @@ run (void *cls,
                                  &cb);
   if (0 != global_ret)
     return;
+  sem_init (&worker_sem,
+            0);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
+  if (0 == max_workers)
+    max_workers = 1; /* FIXME: or determine from CPU? */
+  for (unsigned int i = 0; i<max_workers; i++)
+    if (GNUNET_OK !=
+        start_worker ())
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   /* Load denominations */
   keys = GNUNET_CONTAINER_multihashmap_create (65536,
                                                GNUNET_YES);
@@ -1570,6 +2032,11 @@ main (int argc,
                                     "TIMESTAMP",
                                     "pretend it is a different time for the update",
                                     &now_tmp),
+    GNUNET_GETOPT_option_uint ('w',
+                               "workers",
+                               "COUNT",
+                               "use COUNT workers for parallel processing of batch requests",
+                               &max_workers),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

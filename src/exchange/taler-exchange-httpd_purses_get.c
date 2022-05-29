@@ -279,8 +279,8 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
         .header.size = htons (sizeof (rep)),
         .header.type = htons (
           gc->wait_for_merge
-        ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
-        : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+          ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
+          : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
         .purse_pub = gc->purse_pub
       };
 
@@ -342,8 +342,8 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
         .header.size = htons (sizeof (rep)),
         .header.type = htons (
           gc->wait_for_merge
-        ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
-        : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+          ? TALER_DBEVENT_EXCHANGE_PURSE_MERGED
+          : TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
         .purse_pub = gc->purse_pub
       };
       struct GNUNET_DB_EventHandler *eh2;
