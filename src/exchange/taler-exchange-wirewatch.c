@@ -623,17 +623,15 @@ history_cb (void *cls,
   if (NULL == details)
   {
     wa->hh = NULL;
-    if (TALER_EC_NONE != ec)
+    if ( (TALER_EC_NONE != ec) ||
+         (MHD_HTTP_OK != http_status) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Error fetching history: ec=%u, http_status=%u\n",
-                  (unsigned int) ec,
+                  "Error fetching history: %s (%u)\n",
+                  TALER_ErrorCode_get_hint (ec),
                   http_status);
-    }
-    else
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "History response complete\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_OK;
     }
     if (wa->started_transaction)
     {
@@ -656,6 +654,8 @@ history_cb (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_OK;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No transactions in history response, moving on.\n");
     account_completed (wa);
     return GNUNET_OK; /* will be ignored anyway */
   }
@@ -831,7 +831,7 @@ lock_shard (void *cls)
     return;
   }
   if (wa->shard_open)
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Shard not completed in time, will try to re-acquire\n");
   /* How long we lock a shard depends on the number of
      workers expected, and how long we usually took to

@@ -2326,8 +2326,30 @@ TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh);
 
 
 /**
- * Request helper @a dh to sign @a msg using the public key corresponding to
- * @a h_denom_pub.
+ * Information needed for an RSA signature request.
+ */
+struct TALER_CRYPTO_RsaSignRequest
+{
+  /**
+   * Hash of the RSA public key.
+   */
+  const struct TALER_RsaPubHashP *h_rsa;
+
+  /**
+   * Message to be (blindly) signed.
+   */
+  const void *msg;
+
+  /**
+   * Number of bytes in @e msg.
+   */
+  size_t msg_size;
+};
+
+
+/**
+ * Request helper @a dh to sign message in @a rsr using the public key
+ * corresponding to the key in @a rsr.
  *
  * This operation will block until the signature has been obtained.  Should
  * this process receive a signal (that is not ignored) while the operation is
@@ -2336,19 +2358,39 @@ TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh);
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper process connection
- * @param h_rsa hash of the RSA public key to use to sign
- * @param msg message to sign
- * @param msg_size number of bytes in @a msg
+ * @param rsr details about the requested signature
  * @param[out] bs set to the blind signature
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_rsa_sign (
   struct TALER_CRYPTO_RsaDenominationHelper *dh,
-  const struct TALER_RsaPubHashP *h_rsa,
-  const void *msg,
-  size_t msg_size,
+  const struct TALER_CRYPTO_RsaSignRequest *rsr,
   struct TALER_BlindedDenominationSignature *bs);
+
+
+/**
+ * Request helper @a dh to batch sign messages in @a rsrs using the public key
+ * corresponding to the keys in @a rsrs.
+ *
+ * This operation will block until all the signatures have been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper process connection
+ * @param rsrs array with details about the requested signatures
+ * @param rsrs_length length of the @a rsrs array
+ * @param[out] bss array set to the blind signatures, must be of length @a rsrs_length!
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_rsa_batch_sign (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_CRYPTO_RsaSignRequest *rsrs,
+  unsigned int rsrs_length,
+  struct TALER_BlindedDenominationSignature *bss);
 
 
 /**

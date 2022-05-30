@@ -2575,12 +2575,18 @@ TEH_keys_denomination_sign_withdraw (
   {
   case TALER_DENOMINATION_RSA:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
-    return TALER_CRYPTO_helper_rsa_sign (
-      ksh->helpers->rsadh,
-      &hd->h_details.h_rsa,
-      bp->details.rsa_blinded_planchet.blinded_msg,
-      bp->details.rsa_blinded_planchet.blinded_msg_size,
-      bs);
+    {
+      struct TALER_CRYPTO_RsaSignRequest rsr = {
+        .h_rsa = &hd->h_details.h_rsa,
+        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
+        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
+      };
+
+      return TALER_CRYPTO_helper_rsa_sign (
+        ksh->helpers->rsadh,
+        &rsr,
+        bs);
+    }
   case TALER_DENOMINATION_CS:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
     return TALER_CRYPTO_helper_cs_sign_withdraw (
@@ -2616,12 +2622,18 @@ TEH_keys_denomination_sign_melt (
   {
   case TALER_DENOMINATION_RSA:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
-    return TALER_CRYPTO_helper_rsa_sign (
-      ksh->helpers->rsadh,
-      &hd->h_details.h_rsa,
-      bp->details.rsa_blinded_planchet.blinded_msg,
-      bp->details.rsa_blinded_planchet.blinded_msg_size,
-      bs);
+    {
+      struct TALER_CRYPTO_RsaSignRequest rsr = {
+        .h_rsa = &hd->h_details.h_rsa,
+        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
+        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
+      };
+
+      return TALER_CRYPTO_helper_rsa_sign (
+        ksh->helpers->rsadh,
+        &rsr,
+        bs);
+    }
   case TALER_DENOMINATION_CS:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
     return TALER_CRYPTO_helper_cs_sign_melt (

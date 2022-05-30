@@ -292,8 +292,9 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     if (TALER_DENOMINATION_RSA != keys[i].denom_pub.cipher)
       continue;
     {
-      struct TALER_PlanchetDetail pd;
-      pd.blinded_planchet.cipher = TALER_DENOMINATION_RSA;
+      struct TALER_PlanchetDetail pd = {
+        .blinded_planchet.cipher = TALER_DENOMINATION_RSA
+      };
 
       GNUNET_assert (GNUNET_YES ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
@@ -303,19 +304,23 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
                                              &ach,
                                              &c_hash,
                                              &pd));
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Requesting signature over %u bytes with key %s\n",
-                  (unsigned
-                   int) pd.blinded_planchet.details.rsa_blinded_planchet.
-                  blinded_msg_size,
-                  GNUNET_h2s (&keys[i].h_rsa.hash));
-      ec = TALER_CRYPTO_helper_rsa_sign (dh,
-                                         &keys[i].h_rsa,
-                                         pd.blinded_planchet.details.
-                                         rsa_blinded_planchet.blinded_msg,
-                                         pd.blinded_planchet.details.
-                                         rsa_blinded_planchet.blinded_msg_size,
-                                         &ds);
+      {
+        struct TALER_CRYPTO_RsaSignRequest rsr = {
+          .h_rsa = &keys[i].h_rsa,
+          .msg =
+            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+          .msg_size =
+            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size
+        };
+
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Requesting signature over %u bytes with key %s\n",
+                    (unsigned int) rsr.msg_size,
+                    GNUNET_h2s (&rsr.h_rsa->hash));
+        ec = TALER_CRYPTO_helper_rsa_sign (dh,
+                                           &rsr,
+                                           &ds);
+      }
       TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
     switch (ec)
@@ -391,8 +396,10 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     default:
       /* unexpected error */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected error %d\n",
-                  ec);
+                  "Unexpected error %d at %s:%u\n",
+                  ec,
+                  __FILE__,
+                  __LINE__);
       return 7;
     }
   }
@@ -406,14 +413,17 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   /* check signing does not work if the key is unknown */
   {
     struct TALER_RsaPubHashP rnd;
+    struct TALER_CRYPTO_RsaSignRequest rsr = {
+      .h_rsa = &rnd,
+      .msg = "Hello",
+      .msg_size = strlen ("Hello")
+    };
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
                                 sizeof (rnd));
     ec = TALER_CRYPTO_helper_rsa_sign (dh,
-                                       &rnd,
-                                       "Hello",
-                                       strlen ("Hello"),
+                                       &rsr,
                                        &ds);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
@@ -493,14 +503,16 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
         {
           struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
           struct GNUNET_TIME_Relative delay;
+          struct TALER_CRYPTO_RsaSignRequest rsr = {
+            .h_rsa = &keys[i].h_rsa,
+            .msg =
+              pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+            .msg_size =
+              pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size
+          };
 
           ec = TALER_CRYPTO_helper_rsa_sign (dh,
-                                             &keys[i].h_rsa,
-                                             pd.blinded_planchet.details.
-                                             rsa_blinded_planchet.blinded_msg,
-                                             pd.blinded_planchet.details.
-                                             rsa_blinded_planchet.
-                                             blinded_msg_size,
+                                             &rsr,
                                              &ds);
           if (TALER_EC_NONE != ec)
             break;

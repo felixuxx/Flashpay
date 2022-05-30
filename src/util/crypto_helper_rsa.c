@@ -390,9 +390,7 @@ more:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_rsa_sign (
   struct TALER_CRYPTO_RsaDenominationHelper *dh,
-  const struct TALER_RsaPubHashP *h_rsa,
-  const void *msg,
-  size_t msg_size,
+  const struct TALER_CRYPTO_RsaSignRequest *rsr,
   struct TALER_BlindedDenominationSignature *bs)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
@@ -411,17 +409,17 @@ TALER_CRYPTO_helper_rsa_sign (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting signature\n");
   {
-    char buf[sizeof (struct TALER_CRYPTO_SignRequest) + msg_size];
+    char buf[sizeof (struct TALER_CRYPTO_SignRequest) + rsr->msg_size];
     struct TALER_CRYPTO_SignRequest *sr
       = (struct TALER_CRYPTO_SignRequest *) buf;
 
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_RSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
-    sr->h_rsa = *h_rsa;
+    sr->h_rsa = *rsr->h_rsa;
     memcpy (&sr[1],
-            msg,
-            msg_size);
+            rsr->msg,
+            rsr->msg_size);
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (dh->sock,
                                       buf,
@@ -593,6 +591,18 @@ end:
       TALER_blinded_denom_sig_free (bs);
     return ec;
   }
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_rsa_batch_sign (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_CRYPTO_RsaSignRequest *rsrs,
+  unsigned int rsrs_length,
+  struct TALER_BlindedDenominationSignature *bss)
+{
+  GNUNET_break (0);
+  return -1; /* FIXME: NOT IMPLEMENTED! */
 }
 
 

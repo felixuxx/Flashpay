@@ -2010,6 +2010,11 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       {
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
+        if (overflow)
+          return TALER_MHD_reply_with_ec (
+            connection,
+            TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
+            NULL);
         return TALER_MHD_REPLY_JSON_PACK (
           connection,
           MHD_HTTP_OK,
@@ -2213,14 +2218,19 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     if ( (NULL == t) ||
          overflow)
     {
+      GNUNET_free (credit_payto);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "No transactions available, suspending request\n");
-      GNUNET_free (credit_payto);
       if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
           (0 < ha.delta))
       {
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
+        if (overflow)
+          return TALER_MHD_reply_with_ec (
+            connection,
+            TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
+            NULL);
         return TALER_MHD_REPLY_JSON_PACK (connection,
                                           MHD_HTTP_OK,
                                           GNUNET_JSON_pack_array_steal (
