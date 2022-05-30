@@ -11,6 +11,7 @@ Arguments mandatory for long options are also mandatory for short options.
   -h, --help                 print this help
   -i, --internal             perform checks only applicable for
                                exchange-internal audits
+  -I, --ignore-not-found     ignore problems with the exchange bank account not existing
   -L, --log=LOGLEVEL         configure logging to use LOGLEVEL
   -l, --logfile=FILENAME     configure logging to write logs to FILENAME
   -m, --exchange-key=KEY     public key of the exchange (Crockford base32
@@ -28,7 +29,7 @@ EOF
 
 function optcheck {
 
-TEMP=`getopt -o c:hiL:l:m:T:v --long config:,help,internal,log:,logfile:exchange-key:,timetravel:,version -n 'taler-auditor' -- "$@"`
+TEMP=`getopt -o c:hiIL:l:m:T:v --long config:,help,internal,ignore-not-found,log:,logfile:exchange-key:,timetravel:,version -n 'taler-auditor' -- "$@"`
 
 if [ $? != 0 ] ;
 then
@@ -43,6 +44,7 @@ DEBUG=false
 MEMORY=
 DEBUGFILE=
 JAVA_MISC_OPT=
+INF=
 while true; do
   case "$1" in
     -c | --config ) shift 2 ;;
@@ -51,6 +53,7 @@ while true; do
         exit 0
         ;;
     -i | --internal ) shift ;;
+    -I | --ignore-not-found ) INF="-I"; shift ;;
     -L | --log ) shift 2;;
     -l | --logfile ) shift ;;
     -m | --exchange-key ) shift 2 ;;
@@ -74,15 +77,19 @@ done
 }
 # End of function 'optcheck'
 
-
 optcheck "$@"
 
+# Remove "-I" from $@ if present, store result in $ARGS.
+ARGS=("$@")
+ARGS=(${ARGS[@]/$INF})
 
 DIR=`mktemp -d reportXXXXXX`
-for n in aggregation coins deposits reserves wire
+for n in aggregation coins deposits reserves
 do
-  taler-helper-auditor-$n "$@" > ${DIR}/$n.json
+  taler-helper-auditor-$n ${ARGS[*]} > ${DIR}/$n.json
 done
+
+taler-helper-auditor-wire $INF ${ARGS[*]} > ${DIR}/wire.json
 
 taler-helper-auditor-render.py \
     ${DIR}/aggregation.json \

@@ -49,7 +49,7 @@ echo -n "Making wire transfer to exchange ..."
 taler-exchange-wire-gateway-client \
     -b http://localhost:8899/exchange/ \
     -S 0ZSX8SH0M30KHX8K3Y1DAMVGDQV82XEF9DG1HC4QMQ3QWYT4AF00 \
-    -D payto://x-taler-bank/localhost:8899/user \
+    -D payto://x-taler-bank/localhost:8899/user?receiver-name=user \
     -a TESTKUDOS:4 > /dev/null
 echo " OK"
 
@@ -64,8 +64,9 @@ echo -n "Making wire transfer from exchange..."
 ./taler-exchange-wire-gateway-client \
     -b http://localhost:8899/exchange/ \
     -S 0ZSX8SH0M30KHX8K3Y1DAMVGDQV82XEF9DG1HC4QMQ3QWYT4AF00 \
-    -C payto://x-taler-bank/localhost:8899/merchant \
-    -a TESTKUDOS:2 > /dev/null
+    -C payto://x-taler-bank/localhost:8899/merchant?receiver-name=merchant \
+    -a TESTKUDOS:2 \
+    -L DEBUG > /dev/null
 echo " OK"
 
 

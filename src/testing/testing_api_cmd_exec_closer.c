@@ -169,7 +169,8 @@ closer_traits (void *cls,
   struct TALER_TESTING_Trait xtraits[] = {
     TALER_TESTING_make_trait_process (&as->closer_proc),
     TALER_TESTING_make_trait_reserve_pub (&as->reserve_pub),
-    TALER_TESTING_make_trait_reserve_history (&as->reserve_history),
+    TALER_TESTING_make_trait_reserve_history (0,
+                                              &as->reserve_history),
     TALER_TESTING_trait_end ()
   };
 

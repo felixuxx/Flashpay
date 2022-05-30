@@ -243,7 +243,7 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2",
+                                "payto://x-taler-bank/localhost/2?receiver-name=2",
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",

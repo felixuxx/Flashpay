@@ -160,6 +160,11 @@ struct Account
   char *account_name;
 
   /**
+   * Receiver name for payto:// URIs.
+   */
+  char *receiver_name;
+
+  /**
    * Current account balance.
    */
   struct TALER_Amount balance;
@@ -618,11 +623,14 @@ lp_expiration_thread (void *cls)
  *
  * @param[in,out] h bank to lookup account at
  * @param name account name to resolve
- * @return account handle (never NULL)
+ * @param receiver_name receiver name in payto:// URI,
+ *         NULL if the account must already exist
+ * @return account handle, NULL if account does not yet exist
  */
 static struct Account *
 lookup_account (struct TALER_FAKEBANK_Handle *h,
-                const char *name)
+                const char *name,
+                const char *receiver_name)
 {
   struct GNUNET_HashCode hc;
   size_t slen;
@@ -641,8 +649,15 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
                                                &hc);
   if (NULL == account)
   {
+    if (NULL == receiver_name)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->accounts_lock));
+      return NULL;
+    }
     account = GNUNET_new (struct Account);
     account->account_name = GNUNET_strdup (name);
+    account->receiver_name = GNUNET_strdup (receiver_name);
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (h->currency,
                                           &account->balance));
@@ -724,9 +739,31 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                  strcasecmp (want_amount->currency,
                              h->currency));
   debit_account = lookup_account (h,
-                                  want_debit);
+                                  want_debit,
+                                  NULL);
   credit_account = lookup_account (h,
-                                   want_credit);
+                                   want_credit,
+                                   NULL);
+  if (NULL == debit_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "I wanted: %s->%s (%s) from exchange %s (DEBIT), but debit account does not even exist!\n",
+                want_debit,
+                want_credit,
+                TALER_amount2s (want_amount),
+                exchange_base_url);
+    return GNUNET_SYSERR;
+  }
+  if (NULL == credit_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "I wanted: %s->%s (%s) from exchange %s (DEBIT), but credit account does not even exist!\n",
+                want_debit,
+                want_credit,
+                TALER_amount2s (want_amount),
+                exchange_base_url);
+    return GNUNET_SYSERR;
+  }
   for (struct Transaction *t = debit_account->out_tail;
        NULL != t;
        t = t->prev_out)
@@ -770,9 +807,31 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
   GNUNET_assert (0 == strcasecmp (want_amount->currency,
                                   h->currency));
   debit_account = lookup_account (h,
-                                  want_debit);
+                                  want_debit,
+                                  NULL);
   credit_account = lookup_account (h,
-                                   want_credit);
+                                   want_credit,
+                                   NULL);
+  if (NULL == debit_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "I wanted:\n%s -> %s (%s) with subject %s (CREDIT) but debit account is unknown.\n",
+                want_debit,
+                want_credit,
+                TALER_amount2s (want_amount),
+                TALER_B2S (reserve_pub));
+    return GNUNET_SYSERR;
+  }
+  if (NULL == credit_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "I wanted:\n%s -> %s (%s) with subject %s (CREDIT) but credit account is unknown.\n",
+                want_debit,
+                want_credit,
+                TALER_amount2s (want_amount),
+                TALER_B2S (reserve_pub));
+    return GNUNET_SYSERR;
+  }
   for (struct Transaction *t = credit_account->in_tail;
        NULL != t;
        t = t->prev_in)
@@ -1012,8 +1071,10 @@ make_transfer (
   url_len = strlen (exchange_base_url);
   GNUNET_assert (url_len < MAX_URL_LEN);
   debit_acc = lookup_account (h,
+                              debit_account,
                               debit_account);
   credit_acc = lookup_account (h,
+                               credit_account,
                                credit_account);
   if (NULL != request_uid)
   {
@@ -1132,10 +1193,11 @@ make_admin_transfer (
                                   credit_account,
                                   strlen ("payto://")));
   debit_acc = lookup_account (h,
+                              debit_account,
                               debit_account);
   credit_acc = lookup_account (h,
+                               credit_account,
                                credit_account);
-
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->rpubs_lock));
   t = GNUNET_CONTAINER_multipeermap_get (h->rpubs,
@@ -1217,6 +1279,7 @@ free_account (void *cls,
   (void) key;
   GNUNET_assert (NULL == account->lp_head);
   GNUNET_free (account->account_name);
+  GNUNET_free (account->receiver_name);
   GNUNET_free (account);
   return GNUNET_OK;
 }
@@ -1567,7 +1630,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
     }
     {
-      int ret;
+      enum GNUNET_GenericReturnValue ret;
 
       credit = TALER_xtalerbank_account_from_payto (credit_account);
       if (NULL == credit)
@@ -1961,10 +2024,19 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   if (&special_ptr == *con_cls)
     ha.lp_timeout = GNUNET_TIME_UNIT_ZERO;
   acc = lookup_account (h,
-                        account);
+                        account,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account);
+  }
   GNUNET_asprintf (&debit_payto,
-                   "payto://x-taler-bank/localhost/%s",
-                   account);
+                   "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                   account,
+                   acc->receiver_name);
   history = json_array ();
   if (NULL == history)
   {
@@ -2085,8 +2157,10 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       continue;
     }
     GNUNET_asprintf (&credit_payto,
-                     "payto://x-taler-bank/localhost/%s",
-                     pos->credit_account->account_name);
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     pos->credit_account->account_name,
+                     pos->credit_account->receiver_name);
+
     trans = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),
@@ -2180,12 +2254,22 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     ha.lp_timeout = GNUNET_TIME_UNIT_ZERO;
   *con_cls = &special_ptr;
   acc = lookup_account (h,
-                        account);
+                        account,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account);
+  }
   history = json_array ();
   GNUNET_assert (NULL != history);
   GNUNET_asprintf (&credit_payto,
-                   "payto://x-taler-bank/localhost/%s",
-                   account);
+                   "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                   account,
+                   acc->receiver_name);
+
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
   if (! ha.have_start)
@@ -2289,8 +2373,9 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       continue;
     }
     GNUNET_asprintf (&debit_payto,
-                     "payto://x-taler-bank/localhost/%s",
-                     pos->debit_account->account_name);
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     pos->debit_account->account_name,
+                     pos->debit_account->receiver_name);
     trans = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),

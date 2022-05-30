@@ -95,7 +95,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                  const struct TALER_TESTING_Command *cmd,
                  unsigned int history_length,
                  const struct TALER_EXCHANGE_ReserveHistoryEntry *history,
-                 int *found)
+                 bool *found)
 {
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
@@ -134,7 +134,6 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
   else
   {
     const struct TALER_ReservePublicKeyP *rp;
-    const struct TALER_EXCHANGE_ReserveHistoryEntry *he;
 
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_pub (cmd,
@@ -144,32 +143,40 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
         GNUNET_memcmp (rp,
                        reserve_pub))
       return GNUNET_OK; /* command affects some _other_ reserve */
-    if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_history (cmd,
-                                                 &he))
+    for (unsigned int j = 0; true; j++)
     {
-      /* NOTE: only for debugging... */
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Command `%s' has the reserve_pub trait, but does not reserve history trait\n",
-                  cmd->label);
-      return GNUNET_OK; /* command does nothing for reserves */
-    }
-    for (unsigned int i = 0; i<history_length; i++)
-    {
-      if (found[i])
-        continue; /* already found, skip */
-      if (0 ==
-          TALER_TESTING_history_entry_cmp (he,
-                                           &history[i]))
+      const struct TALER_EXCHANGE_ReserveHistoryEntry *he;
+
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_history (cmd,
+                                                   j,
+                                                   &he))
       {
-        found[i] = GNUNET_YES;
-        return GNUNET_OK;
+        /* NOTE: only for debugging... */
+        if (0 == j)
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                      "Command `%s' has the reserve_pub trait, but does not reserve history trait\n",
+                      cmd->label);
+        return GNUNET_OK; /* command does nothing for reserves */
       }
+      for (unsigned int i = 0; i<history_length; i++)
+      {
+        if (found[i])
+          continue; /* already found, skip */
+        if (0 ==
+            TALER_TESTING_history_entry_cmp (he,
+                                             &history[i]))
+        {
+          found[i] = true;
+          return GNUNET_OK;
+        }
+      }
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Command `%s' reserve history entry #%u not found\n",
+                  cmd->label,
+                  j);
+      return GNUNET_SYSERR;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Command `%s' reserve history entry not found\n",
-                cmd->label);
-    return GNUNET_SYSERR;
   }
 }
 
@@ -237,7 +244,7 @@ reserve_history_cb (void *cls,
     return;
   }
   {
-    int found[rs->details.ok.history_len];
+    bool found[rs->details.ok.history_len];
 
     memset (found,
             0,
@@ -342,7 +349,8 @@ history_traits (void *cls,
   struct HistoryState *hs = cls;
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
-    TALER_TESTING_make_trait_reserve_history (&hs->reserve_history),
+    TALER_TESTING_make_trait_reserve_history (0,
+                                              &hs->reserve_history),
     TALER_TESTING_trait_end ()
   };
 

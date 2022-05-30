@@ -87,8 +87,6 @@ struct CoinState
   /**
    * Reserve history entry that corresponds to this coin.
    * Will be of type #TALER_EXCHANGE_RTT_WITHDRAWAL.
-   *
-   * FIXME: how to export one per coin?
    */
   struct TALER_EXCHANGE_ReserveHistoryEntry reserve_history;
 
@@ -401,8 +399,8 @@ batch_withdraw_traits (void *cls,
   struct CoinState *cs = &ws->coins[index];
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
-    // FIXME: bug!
-    TALER_TESTING_make_trait_reserve_history (&cs->reserve_history),
+    TALER_TESTING_make_trait_reserve_history (index,
+                                              &cs->reserve_history),
     TALER_TESTING_make_trait_coin_priv (index,
                                         &cs->coin_priv),
     TALER_TESTING_make_trait_planchet_secrets (index,

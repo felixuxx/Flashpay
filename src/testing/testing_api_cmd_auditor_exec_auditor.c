@@ -68,6 +68,7 @@ auditor_run (void *cls,
                                "taler-auditor",
                                "taler-auditor",
                                "-c", ks->config_filename,
+                               "-I",
                                NULL);
   if (NULL == ks->auditor_proc)
   {

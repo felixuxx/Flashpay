@@ -304,6 +304,12 @@ static struct GNUNET_CURL_RescheduleContext *rc;
  */
 static int internal_checks;
 
+/**
+ * Should we ignore if the bank does not know our bank
+ * account?
+ */
+static int ignore_account_404;
+
 /* *****************************   Shutdown   **************************** */
 
 /**
@@ -1166,7 +1172,7 @@ check_rc_matches (void *cls,
  * @param value the `struct ReserveOutInfo` to report
  * @return #GNUNET_OK
  */
-static int
+static enum GNUNET_GenericReturnValue
 complain_out_not_found (void *cls,
                         const struct GNUNET_HashCode *key,
                         void *value)
@@ -1275,7 +1281,7 @@ check_exchange_wire_out (struct WireAccount *wa)
  * @param json original response in JSON format
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 history_debit_cb (void *cls,
                   unsigned int http_status_code,
                   enum TALER_ErrorCode ec,
@@ -1291,7 +1297,9 @@ history_debit_cb (void *cls,
   if (NULL == details)
   {
     wa->dhh = NULL;
-    if (TALER_EC_NONE != ec)
+    if ( (TALER_EC_NONE != ec) &&
+         ( (! ignore_account_404) ||
+           (MHD_HTTP_NOT_FOUND != http_status_code) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching debit history of account %s: %u/%u!\n",
@@ -1584,7 +1592,9 @@ history_credit_cb (void *cls,
   if (NULL == details)
   {
     wa->chh = NULL;
-    if (TALER_EC_NONE != ec)
+    if ( (TALER_EC_NONE != ec) &&
+         ( (! ignore_account_404) ||
+           (MHD_HTTP_NOT_FOUND != http_status) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching credit history of account %s: %u/%s!\n",
@@ -2177,6 +2187,10 @@ main (int argc,
                                "internal",
                                "perform checks only applicable for exchange-internal audits",
                                &internal_checks),
+    GNUNET_GETOPT_option_flag ('I',
+                               "ignore-not-found",
+                               "continue, even if the bank account of the exchange was not found",
+                               &ignore_account_404),
     GNUNET_GETOPT_option_base32_auto ('m',
                                       "exchange-key",
                                       "KEY",

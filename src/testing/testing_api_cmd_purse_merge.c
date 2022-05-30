@@ -350,7 +350,8 @@ merge_traits (void *cls,
   struct PurseMergeState *ds = cls;
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
-    TALER_TESTING_make_trait_reserve_history (&ds->reserve_history),
+    TALER_TESTING_make_trait_reserve_history (0,
+                                              &ds->reserve_history),
     TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_timestamp (0,
                                         &ds->merge_timestamp),

@@ -391,6 +391,13 @@ history_cb (void *cls,
   if (NULL == details)
   {
     hs->hh = NULL;
+    if ( (MHD_HTTP_NOT_FOUND == http_status) &&
+         (0 == hs->total) )
+    {
+      /* not found is OK for empty history */
+      TALER_TESTING_interpreter_next (is);
+      return GNUNET_OK;
+    }
     if ( (hs->results_obtained != hs->total) ||
          (GNUNET_YES == hs->failed) ||
          (MHD_HTTP_NO_CONTENT != http_status) )
@@ -424,10 +431,11 @@ history_cb (void *cls,
   }
 
   /* check current element */
-  if (GNUNET_OK != check_result (hs->h,
-                                 hs->total,
-                                 hs->results_obtained,
-                                 details))
+  if (GNUNET_OK !=
+      check_result (hs->h,
+                    hs->total,
+                    hs->results_obtained,
+                    details))
   {
     char *acc;
 
@@ -441,6 +449,8 @@ history_cb (void *cls,
     if (NULL != acc)
       free (acc);
     hs->failed = GNUNET_YES;
+    hs->hh = NULL;
+    TALER_TESTING_interpreter_fail (is);
     return GNUNET_SYSERR;
   }
   hs->results_obtained++;

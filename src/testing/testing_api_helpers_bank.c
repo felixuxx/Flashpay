@@ -563,8 +563,8 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;
-  bc->user42_payto = "payto://x-taler-bank/localhost/42";
-  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  bc->user42_payto = "payto://x-taler-bank/localhost/42?receiver-name=42";
+  bc->user43_payto = "payto://x-taler-bank/localhost/43?receiver-name=43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Using pybank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
@@ -655,8 +655,8 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
    * don't have any auth. */
   bc->exchange_auth.method = TALER_BANK_AUTH_NONE;
   bc->exchange_payto = exchange_payto_uri;
-  bc->user42_payto = "payto://x-taler-bank/localhost/42";
-  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  bc->user42_payto = "payto://x-taler-bank/localhost/42?receiver-name=42";
+  bc->user43_payto = "payto://x-taler-bank/localhost/43?receiver-name=43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
               bc->exchange_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",

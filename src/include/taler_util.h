@@ -386,6 +386,16 @@ TALER_xtalerbank_account_from_payto (const char *payto);
 
 
 /**
+ * Obtain the receiver name from a payto URL.
+ *
+ * @param payto an x-taler-bank payto URL
+ * @return only the receiver name from the @a payto URL, NULL if not an x-taler-bank payto URL
+ */
+char *
+TALER_payto_get_receiver_name (const char *payto);
+
+
+/**
  * Extract the subject value from the URI parameters.
  *
  * @param payto_uri the URL to parse

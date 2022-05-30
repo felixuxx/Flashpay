@@ -2756,7 +2756,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (contract_terms, const json_t)                                \
   op (wire_details, const json_t)                                  \
   op (exchange_keys, const json_t)                                 \
-  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
   op (exchange_url, const char *)                                  \
   op (exchange_bank_account_url, const char *)                     \
   op (taler_uri, const char *)                                     \
@@ -2791,6 +2790,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (age_commitment, const struct TALER_AgeCommitment)              \
   op (age_commitment_proof, const struct TALER_AgeCommitmentProof)     \
   op (h_age_commitment, const struct TALER_AgeCommitmentHash)          \
+  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
   op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)      \
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \

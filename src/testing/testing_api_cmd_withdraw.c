@@ -521,7 +521,8 @@ withdraw_traits (void *cls,
   struct WithdrawState *ws = cls;
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
-    TALER_TESTING_make_trait_reserve_history (&ws->reserve_history),
+    TALER_TESTING_make_trait_reserve_history (0,
+                                              &ws->reserve_history),
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
                                         &ws->coin_priv),
     TALER_TESTING_make_trait_planchet_secret (&ws->ps),

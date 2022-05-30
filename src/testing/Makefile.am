@@ -139,7 +139,6 @@ check_PROGRAMS = \
   test_auditor_api_version_rsa \
   test_auditor_api_version_cs \
   test_bank_api_with_fakebank \
-  test_bank_api_with_pybank \
   test_bank_api_with_nexus \
   test_exchange_api_cs \
   test_exchange_api_rsa \
@@ -158,8 +157,7 @@ if HAVE_TWISTER
   check_PROGRAMS += \
     test_exchange_api_twisted_cs \
     test_exchange_api_twisted_rsa \
-    test_bank_api_with_fakebank_twisted \
-    test_bank_api_with_pybank_twisted
+    test_bank_api_with_fakebank_twisted
 endif
 
 
@@ -242,15 +240,6 @@ test_bank_api_with_fakebank_SOURCES = \
 test_bank_api_with_fakebank_LDADD = \
   libtalertesting.la \
   -ltalerexchange \
-  -lgnunetutil \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(XLIB)
-
-test_bank_api_with_pybank_SOURCES = \
-  test_bank_api.c
-test_bank_api_with_pybank_LDADD = \
-  libtalertesting.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
   -lgnunetutil \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(XLIB)
@@ -523,23 +512,6 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   -ljansson \
   $(XLIB)
 
-test_bank_api_with_pybank_twisted_SOURCES = \
-  test_bank_api_twisted.c
-test_bank_api_with_pybank_twisted_LDADD = \
-  libtalertesting.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  libtalertwistertesting.la \
-  -lgnunettesting \
-  -lgnunetjson \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson  \
-  $(XLIB)
-
-
 test_kyc_api_SOURCES = \
   test_kyc_api.c
 test_kyc_api_LDADD = \
@@ -565,8 +537,6 @@ EXTRA_DIST = \
   test_auditor_api_expire_reserve_now-rsa.conf \
   test_bank_api_fakebank.conf \
   test_bank_api_fakebank_twisted.conf \
-  test_bank_api_pybank.conf \
-  test_bank_api_pybank_twisted.conf \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \

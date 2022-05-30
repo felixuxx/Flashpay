@@ -623,8 +623,9 @@ history_cb (void *cls,
   if (NULL == details)
   {
     wa->hh = NULL;
-    if ( (TALER_EC_NONE != ec) ||
-         (MHD_HTTP_OK != http_status) )
+    if ( (MHD_HTTP_NO_CONTENT != http_status) &&
+         ( (TALER_EC_NONE != ec) ||
+           (MHD_HTTP_OK != http_status) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching history: %s (%u)\n",

@@ -230,7 +230,8 @@ insert_deposit_run (void *cls,
     TALER_blinded_denom_sig_free (&bds);
   }
   GNUNET_asprintf (&deposit.receiver_wire_account,
-                   "payto://x-taler-bank/localhost/%s",
+                   "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                   ids->merchant_account,
                    ids->merchant_account);
   memset (&deposit.wire_salt,
           46,

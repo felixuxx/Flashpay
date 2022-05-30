@@ -433,10 +433,12 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_exchange_bank_account_url (
         &fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
-      TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
+      TALER_TESTING_make_trait_timestamp (0,
+                                          &fts->timestamp),
       TALER_TESTING_make_trait_reserve_priv (&fts->reserve_priv),
       TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &fts->reserve_history),
       TALER_TESTING_trait_end ()
     };
 
@@ -457,7 +459,8 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
       TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &fts->reserve_history),
       TALER_TESTING_trait_end ()
     };
 

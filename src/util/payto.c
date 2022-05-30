@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019-2021 Taler Systems SA
+  Copyright (C) 2019-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -230,6 +230,26 @@ TALER_payto_validate (const char *payto_uri)
   /* Insert other bank account validation methods here later! */
 
   return NULL;
+}
+
+
+char *
+TALER_payto_get_receiver_name (const char *payto)
+{
+  char *err;
+
+  err = TALER_payto_validate (payto);
+  if (NULL != err)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Invalid payto://-URI `%s': %s\n",
+                payto,
+                err);
+    GNUNET_free (err);
+    return NULL;
+  }
+  return payto_get_key (payto,
+                        "receiver-name=");
 }
 
 

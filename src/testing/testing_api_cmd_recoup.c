@@ -328,7 +328,8 @@ recoup_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_reserve_pub (&ps->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (&ps->reserve_history),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &ps->reserve_history),
       TALER_TESTING_trait_end ()
     };
 

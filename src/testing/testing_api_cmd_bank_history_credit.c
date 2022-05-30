@@ -311,7 +311,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
  * @param details the expected transaction details.
  * @return #GNUNET_OK if the transaction is what we expect.
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_result (struct History *h,
               unsigned int total,
               unsigned int off,
@@ -389,6 +389,13 @@ history_cb (void *cls,
   if (NULL == details)
   {
     hs->hh = NULL;
+    if ( (MHD_HTTP_NOT_FOUND == http_status) &&
+         (0 == hs->total) )
+    {
+      /* not found is OK for empty history */
+      TALER_TESTING_interpreter_next (is);
+      return GNUNET_OK;
+    }
     if ( (hs->results_obtained != hs->total) ||
          (hs->failed) ||
          (MHD_HTTP_NO_CONTENT != http_status) )
@@ -422,10 +429,11 @@ history_cb (void *cls,
   }
 
   /* check current element */
-  if (GNUNET_OK != check_result (hs->h,
-                                 hs->total,
-                                 hs->results_obtained,
-                                 details))
+  if (GNUNET_OK !=
+      check_result (hs->h,
+                    hs->total,
+                    hs->results_obtained,
+                    details))
   {
     char *acc;
 
@@ -439,6 +447,8 @@ history_cb (void *cls,
     if (NULL != acc)
       free (acc);
     hs->failed = true;
+    hs->hh = NULL;
+    TALER_TESTING_interpreter_fail (is);
     return GNUNET_SYSERR;
   }
   hs->results_obtained++;
