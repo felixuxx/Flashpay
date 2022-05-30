@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020, 2021 Taler Systems SA
+   Copyright (C) 2020, 2021, 2022 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -150,7 +150,6 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.reserves.reserve_pub),
-    TALER_PQ_query_param_amount (&td->details.reserves.current_balance),
     GNUNET_PQ_query_param_timestamp (&td->details.reserves.expiration_date),
     GNUNET_PQ_query_param_timestamp (&td->details.reserves.gc_date),
     GNUNET_PQ_query_param_end
@@ -383,8 +382,6 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
       &td->details.known_coins.denom_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.known_coins.denominations_serial),
-    TALER_PQ_query_param_amount (
-      &td->details.known_coins.remaining),
     GNUNET_PQ_query_param_end
   };
 
@@ -526,7 +523,6 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.wire_target_h_payto),
-    GNUNET_PQ_query_param_bool (td->details.deposits.done),
     GNUNET_PQ_query_param_bool (td->details.deposits.extension_blocked),
     0 == td->details.deposits.extension_details_serial_id
     ? GNUNET_PQ_query_param_null ()
@@ -797,6 +793,303 @@ irbt_cb_table_extension_details (struct PostgresClosure *pg,
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_extension_details",
+                                             params);
+}
+
+
+/**
+ * Function called with purse_requests records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_purse_requests (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_requests.merge_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.purse_requests.purse_creation),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.purse_requests.purse_expiration),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_requests.h_contract_terms),
+    GNUNET_PQ_query_param_uint32 (&td->details.purse_requests.age_limit),
+    GNUNET_PQ_query_param_uint32 (&td->details.purse_requests.flags),
+    TALER_PQ_query_param_amount (&td->details.purse_requests.amount_with_fee),
+    TALER_PQ_query_param_amount (&td->details.purse_requests.purse_fee),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_requests.purse_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_purse_requests",
+                                             params);
+}
+
+
+/**
+ * Function called with purse_merges records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_purse_merges (struct PostgresClosure *pg,
+                            const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_merges.reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.purse_merges.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.purse_merges.merge_sig),
+    GNUNET_PQ_query_param_timestamp (&td->details.purse_merges.merge_timestamp),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_purse_merges",
+                                             params);
+}
+
+
+/**
+ * Function called with purse_deposits records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_purse_deposits (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_deposits.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.purse_deposits.coin_pub),
+    TALER_PQ_query_param_amount (&td->details.purse_deposits.amount_with_fee),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.purse_deposits.coin_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_purse_deposits",
+                                             params);
+}
+
+
+/**
+ * Function called with account_mergers records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_account_mergers (struct PostgresClosure *pg,
+                               const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.account_merges.reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.account_merges.reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.account_merges.purse_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_account_mergers",
+                                             params);
+}
+
+
+/**
+ * Function called with history_requests records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_history_requests (struct PostgresClosure *pg,
+                                const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.history_requests.reserve_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.history_requests.request_timestamp),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.history_requests.reserve_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_history_requests",
+                                             params);
+}
+
+
+/**
+ * Function called with close_requests records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_close_requests (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.close_requests.reserve_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.close_requests.close_timestamp),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.close_requests.reserve_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_close_requests",
+                                             params);
+}
+
+
+/**
+ * Function called with wads_out records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_wads_out (struct PostgresClosure *pg,
+                        const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.wads_out.wad_id),
+    TALER_PQ_query_param_amount (&td->details.wads_out.amount),
+    GNUNET_PQ_query_param_timestamp (&td->details.wads_out.execution_time),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_wads_out",
+                                             params);
+}
+
+
+/**
+ * Function called with wads_out_entries records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_wads_out_entries (struct PostgresClosure *pg,
+                                const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_out_entries.reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_out_entries.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_out_entries.h_contract),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.wads_out_entries.purse_expiration),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.wads_out_entries.merge_timestamp),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_out_entries.amount_with_fee),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_out_entries.deposit_fees),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_out_entries.reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_out_entries.purse_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_wads_out_entries",
+                                             params);
+}
+
+
+/**
+ * Function called with wads_in records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_wads_in (struct PostgresClosure *pg,
+                       const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.wads_in.wad_id),
+    GNUNET_PQ_query_param_string (td->details.wads_in.origin_exchange_url),
+    TALER_PQ_query_param_amount (&td->details.wads_in.amount),
+    GNUNET_PQ_query_param_timestamp (&td->details.wads_in.arrival_time),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_wads_in",
+                                             params);
+}
+
+
+/**
+ * Function called with wads_in_entries records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_wads_in_entries (struct PostgresClosure *pg,
+                               const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_in_entries.reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_in_entries.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_in_entries.h_contract),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.wads_in_entries.purse_expiration),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.wads_in_entries.merge_timestamp),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_in_entries.amount_with_fee),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_in_entries.wad_fee),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_in_entries.deposit_fees),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_in_entries.reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wads_in_entries.purse_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_wads_in_entries",
                                              params);
 }
 

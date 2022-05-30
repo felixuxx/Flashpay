@@ -1186,7 +1186,7 @@ BEGIN
 
   table_name = concat_ws('_', table_name, shard_suffix);
 
-  -- FIXME: change to materialized index by marge_pub!
+  -- FIXME: change to materialized index by merge_pub!
   EXECUTE FORMAT (
     'CREATE INDEX IF NOT EXISTS ' || table_name || '_merge_pub '
     'ON ' || table_name || ' '

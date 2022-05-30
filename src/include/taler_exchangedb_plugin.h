@@ -216,6 +216,16 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_RECOUP_REFRESH,
   TALER_EXCHANGEDB_RT_EXTENSIONS,
   TALER_EXCHANGEDB_RT_EXTENSION_DETAILS,
+  TALER_EXCHANGEDB_RT_PURSE_REQUESTS,
+  TALER_EXCHANGEDB_RT_PURSE_MERGES,
+  TALER_EXCHANGEDB_RT_PURSE_DEPOSITS,
+  TALER_EXCHANGEDB_RT_ACCOUNT_MERGES,
+  TALER_EXCHANGEDB_RT_HISTORY_REQUESTS,
+  TALER_EXCHANGEDB_RT_CLOSE_REQUESTS,
+  TALER_EXCHANGEDB_RT_WADS_OUT,
+  TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES,
+  TALER_EXCHANGEDB_RT_WADS_IN,
+  TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES,
 };
 
 
@@ -273,10 +283,6 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_ReservePublicKeyP reserve_pub;
-      /**
-       * Note: not useful for auditor, because not UPDATEd!
-       */
-      struct TALER_Amount current_balance;
       struct GNUNET_TIME_Timestamp expiration_date;
       struct GNUNET_TIME_Timestamp gc_date;
     } reserves;
@@ -347,7 +353,6 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_AgeCommitmentHash age_hash;
       uint64_t denominations_serial;
       struct TALER_DenominationSignature denom_sig;
-      struct TALER_Amount remaining;
     } known_coins;
 
     struct
@@ -394,7 +399,6 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_WireSaltP wire_salt;
       struct TALER_PaytoHashP wire_target_h_payto;
-      bool done;
       bool extension_blocked;
       uint64_t extension_details_serial_id;
     } deposits;
@@ -475,6 +479,106 @@ struct TALER_EXCHANGEDB_TableData
     {
       char *extension_options;
     } extension_details;
+
+    struct
+    {
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PurseMergePublicKeyP merge_pub;
+      struct GNUNET_TIME_Timestamp purse_creation;
+      struct GNUNET_TIME_Timestamp purse_expiration;
+      struct TALER_PrivateContractHashP h_contract_terms;
+      uint32_t age_limit;
+      uint32_t flags;
+      struct TALER_Amount amount_with_fee;
+      struct TALER_Amount purse_fee;
+      struct TALER_PurseContractSignatureP purse_sig;
+    } purse_requests;
+
+    struct
+    {
+      uint64_t partner_serial_id;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PurseMergeSignatureP merge_sig;
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+    } purse_merges;
+
+    struct
+    {
+      uint64_t partner_serial_id;
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_Amount amount_with_fee;
+      struct TALER_CoinSpendSignatureP coin_sig;
+    } purse_deposits;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_PurseContractPublicKeyP purse_pub;
+    } account_merges;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct GNUNET_TIME_Timestamp request_timestamp;
+      struct TALER_Amount history_fee;
+    } history_requests;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp close_timestamp;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_Amount close;
+    } close_requests;
+
+    struct
+    {
+      struct TALER_WadIdentifierP wad_id;
+      uint64_t partner_serial_id;
+      struct TALER_Amount amount;
+      struct GNUNET_TIME_Timestamp execution_time;
+    } wads_out;
+
+    struct
+    {
+      uint64_t wad_out_serial_id;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PrivateContractHashP h_contract;
+      struct GNUNET_TIME_Timestamp purse_expiration;
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+      struct TALER_Amount amount_with_fee;
+      struct TALER_Amount deposit_fees;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_PurseContractSignatureP purse_sig;
+    } wads_out_entries;
+
+    struct
+    {
+      struct TALER_WadIdentifierP wad_id;
+      char *origin_exchange_url;
+      struct TALER_Amount amount;
+      struct GNUNET_TIME_Timestamp arrival_time;
+    } wads_in;
+
+    struct
+    {
+      uint64_t wad_in_serial_id;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PrivateContractHashP h_contract;
+      struct GNUNET_TIME_Timestamp purse_expiration;
+      struct GNUNET_TIME_Timestamp merge_timestamp;
+      struct TALER_Amount amount_with_fee;
+      struct TALER_Amount wad_fee;
+      struct TALER_Amount deposit_fees;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_PurseContractSignatureP purse_sig;
+    } wads_in_entries;
 
   } details;
 

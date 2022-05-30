@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020, 2021 Taler Systems SA
+   Copyright (C) 2020, 2021, 2022 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -219,7 +219,6 @@ lrbt_cb_table_reserves (void *cls,
                         unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
-  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RESERVES
   };
@@ -231,8 +230,6 @@ lrbt_cb_table_reserves (void *cls,
                                     &td.serial),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &td.details.reserves.reserve_pub),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
-                                   &td.details.reserves.current_balance),
       GNUNET_PQ_result_spec_timestamp ("expiration_date",
                                        &td.details.reserves.expiration_date),
       GNUNET_PQ_result_spec_timestamp ("gc_date",
@@ -659,7 +656,6 @@ lrbt_cb_table_known_coins (void *cls,
                            unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
-  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_KNOWN_COINS
   };
@@ -679,9 +675,6 @@ lrbt_cb_table_known_coins (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
         &td.details.known_coins.denominations_serial),
-      TALER_PQ_RESULT_SPEC_AMOUNT (
-        "remaining",
-        &td.details.known_coins.remaining),
       GNUNET_PQ_result_spec_end
     };
 
@@ -953,9 +946,6 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "wire_target_h_payto",
         &td.details.deposits.wire_target_h_payto),
-      GNUNET_PQ_result_spec_bool (
-        "done",
-        &td.details.deposits.done),
       GNUNET_PQ_result_spec_auto_from_type (
         "extension_blocked",
         &td.details.deposits.extension_blocked),
@@ -1455,10 +1445,10 @@ lrbt_cb_table_extension_details (void *cls,
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_EXTENSION_DETAILS
   };
-  bool no_config = false;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
+    bool no_config = false;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("extension_details_serial_id",
                                     &td.serial),
@@ -1467,6 +1457,596 @@ lrbt_cb_table_extension_details (void *cls,
                                       &td.details.extension_details.
                                       extension_options),
         &no_config),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with purse_requests table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_purse_requests (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PURSE_REQUESTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.purse_requests.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "merge_pub",
+        &td.details.purse_requests.merge_pub),
+      GNUNET_PQ_result_spec_timestamp (
+        "purse_creation",
+        &td.details.purse_requests.purse_creation),
+      GNUNET_PQ_result_spec_timestamp (
+        "purse_expiration",
+        &td.details.purse_requests.purse_expiration),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_contract_terms",
+        &td.details.purse_requests.h_contract_terms),
+      GNUNET_PQ_result_spec_uint32 (
+        "age_limit",
+        &td.details.purse_requests.age_limit),
+      GNUNET_PQ_result_spec_uint32 (
+        "flags",
+        &td.details.purse_requests.flags),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.purse_requests.amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "purse_fee",
+        &td.details.purse_requests.purse_fee),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_sig",
+        &td.details.purse_requests.purse_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with purse_merges table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_purse_merges (void *cls,
+                            PGresult *result,
+                            unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PURSE_MERGES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.purse_merges.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.purse_merges.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "merge_sig",
+        &td.details.purse_merges.merge_sig),
+      GNUNET_PQ_result_spec_timestamp (
+        "purse_expiration",
+        &td.details.purse_merges.merge_timestamp),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with purse_deposits table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_purse_deposits (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PURSE_DEPOSITS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.purse_deposits.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.purse_deposits.coin_pub),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.purse_deposits.amount_with_fee),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_sig",
+        &td.details.purse_deposits.coin_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with account_merges table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_account_merges (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_ACCOUNT_MERGES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.account_merges.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.account_merges.reserve_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.account_merges.purse_pub),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with history_requests table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_history_requests (void *cls,
+                                PGresult *result,
+                                unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_HISTORY_REQUESTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.history_requests.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.history_requests.reserve_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "history_fee",
+        &td.details.history_requests.history_fee),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with close_requests table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_close_requests (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_CLOSE_REQUESTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.close_requests.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.close_requests.reserve_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "close",
+        &td.details.close_requests.close),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wads_out table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_wads_out (void *cls,
+                        PGresult *result,
+                        unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WADS_OUT
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wad_id",
+        &td.details.wads_out.wad_id),
+      GNUNET_PQ_result_spec_uint64 (
+        "partner_serial_id",
+        &td.details.wads_out.partner_serial_id),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount",
+        &td.details.wads_out.amount),
+      GNUNET_PQ_result_spec_timestamp (
+        "execution_time",
+        &td.details.wads_out.execution_time),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wads_out_entries table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_wads_out_entries (void *cls,
+                                PGresult *result,
+                                unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.wads_out_entries.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.wads_out_entries.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_contract",
+        &td.details.wads_out_entries.h_contract),
+      GNUNET_PQ_result_spec_timestamp (
+        "purse_expiration",
+        &td.details.wads_out_entries.purse_expiration),
+      GNUNET_PQ_result_spec_timestamp (
+        "merge_timestamp",
+        &td.details.wads_out_entries.merge_timestamp),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.wads_out_entries.amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "deposit_fees",
+        &td.details.wads_out_entries.deposit_fees),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.wads_out_entries.reserve_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_sig",
+        &td.details.wads_out_entries.purse_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wads_in table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_wads_in (void *cls,
+                       PGresult *result,
+                       unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WADS_IN
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wad_id",
+        &td.details.wads_in.wad_id),
+      GNUNET_PQ_result_spec_string (
+        "origin_exchange_url",
+        &td.details.wads_in.origin_exchange_url),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount",
+        &td.details.wads_in.amount),
+      GNUNET_PQ_result_spec_timestamp (
+        "arrival_time",
+        &td.details.wads_in.arrival_time),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wads_in_entries table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_wads_in_entries (void *cls,
+                               PGresult *result,
+                               unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.wads_in_entries.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.wads_in_entries.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_contract",
+        &td.details.wads_in_entries.h_contract),
+      GNUNET_PQ_result_spec_timestamp (
+        "purse_expiration",
+        &td.details.wads_in_entries.purse_expiration),
+      GNUNET_PQ_result_spec_timestamp (
+        "merge_timestamp",
+        &td.details.wads_in_entries.merge_timestamp),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.wads_in_entries.amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "wad_fee",
+        &td.details.wads_in_entries.wad_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "deposit_fees",
+        &td.details.wads_in_entries.deposit_fees),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.wads_in_entries.reserve_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_sig",
+        &td.details.wads_in_entries.purse_sig),
       GNUNET_PQ_result_spec_end
     };
 

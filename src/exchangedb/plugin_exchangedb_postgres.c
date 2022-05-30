@@ -12738,6 +12738,46 @@ postgres_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_extension_details";
     rh = &lrbt_cb_table_extension_details;
     break;
+  case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
+    statement = "select_above_serial_by_table_purse_requests";
+    rh = &lrbt_cb_table_purse_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_MERGES:
+    statement = "select_above_serial_by_table_purse_merges";
+    rh = &lrbt_cb_table_purse_merges;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
+    statement = "select_above_serial_by_table_purse_deposits";
+    rh = &lrbt_cb_table_purse_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
+    statement = "select_above_serial_by_table_account_merges";
+    rh = &lrbt_cb_table_account_merges;
+    break;
+  case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
+    statement = "select_above_serial_by_table_history_requests";
+    rh = &lrbt_cb_table_history_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
+    statement = "select_above_serial_by_table_close_requests";
+    rh = &lrbt_cb_table_close_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT:
+    statement = "select_above_serial_by_table_wads_out";
+    rh = &lrbt_cb_table_wads_out;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
+    statement = "select_above_serial_by_table_wads_out_entries";
+    rh = &lrbt_cb_table_wads_out_entries;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN:
+    statement = "select_above_serial_by_table_wads_in";
+    rh = &lrbt_cb_table_wads_in;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
+    statement = "select_above_serial_by_table_wads_in_entries";
+    rh = &lrbt_cb_table_wads_in_entries;
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -12871,6 +12911,36 @@ postgres_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
     rh = &irbt_cb_table_extension_details;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
+    rh = &irbt_cb_table_purse_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_MERGES:
+    rh = &irbt_cb_table_purse_merges;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
+    rh = &irbt_cb_table_purse_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
+    rh = &irbt_cb_table_account_mergers;
+    break;
+  case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
+    rh = &irbt_cb_table_history_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
+    rh = &irbt_cb_table_close_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT:
+    rh = &irbt_cb_table_wads_out;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
+    rh = &irbt_cb_table_wads_out_entries;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN:
+    rh = &irbt_cb_table_wads_in;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
+    rh = &irbt_cb_table_wads_in_entries;
     break;
   default:
     GNUNET_break (0);
