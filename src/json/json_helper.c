@@ -347,6 +347,7 @@ TALER_JSON_spec_denom_pub (const char *field,
     .ptr = pk
   };
 
+  pk->cipher = TALER_DENOMINATION_INVALID;
   return ret;
 }
 
@@ -463,6 +464,7 @@ TALER_JSON_spec_denom_sig (const char *field,
     .ptr = sig
   };
 
+  sig->cipher = TALER_DENOMINATION_INVALID;
   return ret;
 }
 
@@ -582,6 +584,7 @@ TALER_JSON_spec_blinded_denom_sig (
     .ptr = sig
   };
 
+  sig->cipher = TALER_DENOMINATION_INVALID;
   return ret;
 }
 
@@ -705,6 +708,7 @@ TALER_JSON_spec_blinded_planchet (const char *field,
     .ptr = blinded_planchet
   };
 
+  blinded_planchet->cipher = TALER_DENOMINATION_INVALID;
   return ret;
 }
 
@@ -780,9 +784,9 @@ parse_exchange_withdraw_values (void *cls,
 
 
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_exchange_withdraw_values (const char *field,
-                                          struct TALER_ExchangeWithdrawValues *
-                                          ewv)
+TALER_JSON_spec_exchange_withdraw_values (
+  const char *field,
+  struct TALER_ExchangeWithdrawValues *ewv)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_exchange_withdraw_values,
@@ -790,6 +794,7 @@ TALER_JSON_spec_exchange_withdraw_values (const char *field,
     .ptr = ewv
   };
 
+  ewv->cipher = TALER_DENOMINATION_INVALID;
   return ret;
 }
 

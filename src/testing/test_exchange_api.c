@@ -1037,7 +1037,7 @@ run (void *cls,
      * config, then withdraw two coin, partially spend one, and
      * then have the rest paid back.  Check deposit of other coin
      * fails.  Do not use EUR:5 here as the EUR:5 coin was
-     * revoked and we did not bother to create a new one... *///
+     * revoked and we did not bother to create a new one... */
     CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-2",
                               "EUR:2.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("ck-recoup-create-reserve-2",
@@ -1128,6 +1128,73 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  /**
+   * Test batch withdrawal plus spending.
+   */
+  struct TALER_TESTING_Command batch_withdraw[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-batch-reserve-1",
+                              "EUR:6.02"),
+    TALER_TESTING_cmd_reserve_poll ("poll-batch-reserve-1",
+                                    "create-batch-reserve-1",
+                                    "EUR:6.02",
+                                    GNUNET_TIME_UNIT_MINUTES,
+                                    MHD_HTTP_OK),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-batch-reserve-1",
+                                                 "EUR:6.02",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-batch-reserve-1"),
+    /*
+     * Make a reserve exist, according to the previous
+     * transfer.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-batch-1"),
+    TALER_TESTING_cmd_reserve_poll_finish ("finish-poll-batch-reserve-1",
+                                           GNUNET_TIME_UNIT_SECONDS,
+                                           "poll-batch-reserve-1"),
+    /**
+     * Withdraw EUR:5 AND EUR:1.
+     */
+    TALER_TESTING_cmd_batch_withdraw ("batch-withdraw-coin-1",
+                                      "create-batch-reserve-1",
+                                      0,  /* age restriction off */
+                                      MHD_HTTP_OK,
+                                      "EUR:5",
+                                      "EUR:1",
+                                      NULL),
+    /**
+     * Check the reserve is depleted.
+     */
+    TALER_TESTING_cmd_status ("status-batch-1",
+                              "create-batch-reserve-1",
+                              "EUR:0",
+                              MHD_HTTP_OK),
+    /**
+     * Spend the coins.
+     */
+    TALER_TESTING_cmd_deposit ("deposit-batch-simple-1",
+                               "batch-withdraw-coin-1",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":5}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:5",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("deposit-batch-simple-2",
+                               "batch-withdraw-coin-1",
+                               1,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
+
 #define RESERVE_OPEN_CLOSE_CHUNK 4
 #define RESERVE_OPEN_CLOSE_ITERATIONS 3
 
@@ -1204,6 +1271,8 @@ run (void *cls,
                                aggregation),
       TALER_TESTING_cmd_batch ("refund",
                                refund),
+      TALER_TESTING_cmd_batch ("batch-withdraw",
+                               batch_withdraw),
       TALER_TESTING_cmd_batch ("recoup",
                                recoup),
       TALER_TESTING_cmd_batch ("reserve-open-close",

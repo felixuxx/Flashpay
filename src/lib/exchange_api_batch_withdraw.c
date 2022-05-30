@@ -161,6 +161,9 @@ handle_reserve_batch_withdraw_finished (
   struct TALER_EXCHANGE_PrivateCoinDetails coins[wh->num_coins];
 
   wh->wh2 = NULL;
+  memset (coins,
+          0,
+          sizeof (coins));
   if (blind_sigs_length != wh->num_coins)
   {
     GNUNET_break_op (0);

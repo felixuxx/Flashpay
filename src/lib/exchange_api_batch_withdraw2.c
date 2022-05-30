@@ -129,7 +129,7 @@ reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
     };
 
     if (GNUNET_OK !=
-        GNUNET_JSON_parse (json,
+        GNUNET_JSON_parse (j,
                            spec,
                            NULL, NULL))
     {
