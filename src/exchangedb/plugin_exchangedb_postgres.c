@@ -6315,9 +6315,9 @@ add_history_requests (void *cls,
       }
     }
     GNUNET_assert (0 <=
-                   TALER_amount_subtract (&rhc->balance_out,
-                                          &rhc->balance_out,
-                                          &history->history_fee));
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &history->history_fee));
     history->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_HISTORY_REQUEST;

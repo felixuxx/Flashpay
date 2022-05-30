@@ -1814,16 +1814,6 @@ struct TALER_EXCHANGE_ReserveHistory
        */
       unsigned int history_len;
 
-      /**
-       * KYC passed?
-       */
-      bool kyc_ok;
-
-      /**
-       * KYC required to withdraw?
-       */
-      bool kyc_required;
-
     } ok;
 
   } details;

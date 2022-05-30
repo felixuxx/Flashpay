@@ -110,10 +110,6 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
                                 &rs.details.ok.balance),
-    GNUNET_JSON_spec_bool ("kyc_passed",
-                           &rs.details.ok.kyc_ok),
-    GNUNET_JSON_spec_bool ("kyc_required",
-                           &rs.details.ok.kyc_required),
     GNUNET_JSON_spec_json ("history",
                            &history),
     GNUNET_JSON_spec_end ()
@@ -197,6 +193,7 @@ handle_reserves_history_finished (void *cls,
         handle_reserves_history_ok (rsh,
                                     j))
     {
+      GNUNET_break_op (0);
       rs.hr.http_status = 0;
       rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
@@ -218,6 +215,11 @@ handle_reserves_history_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
+  case MHD_HTTP_CONFLICT:
+    /* Insufficient balance to inquire for reserve history */
     rs.hr.ec = TALER_JSON_get_error_code (j);
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
@@ -306,10 +308,22 @@ TALER_EXCHANGE_reserves_history (
     return NULL;
   }
   keys = TALER_EXCHANGE_get_keys (exchange);
-  GNUNET_assert (NULL != keys);
+  if (NULL == keys)
+  {
+    GNUNET_break (0);
+    GNUNET_free (rsh->url);
+    GNUNET_free (rsh);
+    return NULL;
+  }
   gf = TALER_EXCHANGE_get_global_fee (keys,
                                       rsh->ts);
-  GNUNET_assert (NULL != gf);
+  if (NULL == gf)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (rsh->url);
+    GNUNET_free (rsh);
+    return NULL;
+  }
   TALER_wallet_reserve_history_sign (rsh->ts,
                                      &gf->fees.history,
                                      reserve_priv,
@@ -336,10 +350,11 @@ TALER_EXCHANGE_reserves_history (
     json_decref (history_obj);
   }
   ctx = TEAH_handle_to_context (exchange);
-  rsh->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  &handle_reserves_history_finished,
-                                  rsh);
+  rsh->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   rsh->post_ctx.headers,
+                                   &handle_reserves_history_finished,
+                                   rsh);
   return rsh;
 }
 

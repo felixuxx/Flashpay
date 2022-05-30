@@ -820,7 +820,7 @@ TEH_RESPONSE_compile_reserve_history (
                                             &history->reserve_sig),
                 GNUNET_JSON_pack_timestamp ("request_timestamp",
                                             history->request_timestamp),
-                TALER_JSON_pack_amount ("history_fee",
+                TALER_JSON_pack_amount ("amount",
                                         &history->history_fee))))
         {
           GNUNET_break (0);

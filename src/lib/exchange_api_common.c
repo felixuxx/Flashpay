@@ -476,8 +476,6 @@ parse_history (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
   struct GNUNET_JSON_Specification history_spec[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &rh->details.history_details.reserve_sig),
-    TALER_JSON_spec_amount_any ("history_fee",
-                                &rh->amount),
     GNUNET_JSON_spec_timestamp ("request_timestamp",
                                 &rh->details.history_details.request_timestamp),
     GNUNET_JSON_spec_end ()
@@ -578,6 +576,9 @@ TALER_EXCHANGE_parse_reserve_history (
                            NULL, NULL))
     {
       GNUNET_break_op (0);
+      json_dumpf (transaction,
+                  stderr,
+                  JSON_INDENT (2));
       return GNUNET_SYSERR;
     }
     rh->amount = amount;

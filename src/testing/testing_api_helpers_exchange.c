@@ -184,6 +184,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
                                   "taler-exchange-dbinit",
                                   "taler-exchange-dbinit",
                                   "-c", config_filename,
+                                  "-L", "WARNING",
                                   "-r",
                                   NULL);
   if (NULL == proc)

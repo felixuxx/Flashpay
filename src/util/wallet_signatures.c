@@ -668,7 +668,7 @@ TALER_wallet_reserve_history_verify (
   TALER_amount_hton (&rhr.history_fee,
                      history_fee);
   return GNUNET_CRYPTO_eddsa_verify (
-    TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
+    TALER_SIGNATURE_WALLET_RESERVE_HISTORY,
     &rhr,
     &reserve_sig->eddsa_signature,
     &reserve_pub->eddsa_pub);

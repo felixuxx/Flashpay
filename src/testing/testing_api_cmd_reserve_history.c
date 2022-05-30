@@ -114,8 +114,6 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
     {
       struct TALER_TESTING_Command *step = &(*bcmd)[i];
 
-      if (step == cur)
-        break; /* if *we* are in a batch, make sure not to analyze commands past 'now' */
       if (GNUNET_OK !=
           analyze_command (reserve_pub,
                            step,
@@ -128,10 +126,12 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                     step->label);
         return GNUNET_SYSERR;
       }
+      if (step == cur)
+        break; /* if *we* are in a batch, make sure not to analyze commands past 'now' */
     }
     return GNUNET_OK;
   }
-  else
+
   {
     const struct TALER_ReservePublicKeyP *rp;
 
@@ -146,6 +146,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
     for (unsigned int j = 0; true; j++)
     {
       const struct TALER_EXCHANGE_ReserveHistoryEntry *he;
+      bool matched = false;
 
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_history (cmd,
@@ -168,14 +169,18 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                                              &history[i]))
         {
           found[i] = true;
-          return GNUNET_OK;
+          matched = true;
+          break;
         }
       }
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Command `%s' reserve history entry #%u not found\n",
-                  cmd->label,
-                  j);
-      return GNUNET_SYSERR;
+      if (! matched)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Command `%s' reserve history entry #%u not found\n",
+                    cmd->label,
+                    j);
+        return GNUNET_SYSERR;
+      }
     }
   }
 }
@@ -237,9 +242,13 @@ reserve_history_cb (void *cls,
   if (0 != TALER_amount_cmp (&eb,
                              &rs->details.ok.balance))
   {
+    GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected amount in reserve: %s\n",
                 TALER_amount_to_string (&rs->details.ok.balance));
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Expected balance of: %s\n",
+                TALER_amount_to_string (&eb));
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
@@ -351,6 +360,7 @@ history_traits (void *cls,
     /* history entry MUST be first due to response code logic below! */
     TALER_TESTING_make_trait_reserve_history (0,
                                               &hs->reserve_history),
+    TALER_TESTING_make_trait_reserve_pub (&hs->reserve_pub),
     TALER_TESTING_trait_end ()
   };
 

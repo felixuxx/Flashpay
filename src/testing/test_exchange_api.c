@@ -565,8 +565,8 @@ run (void *cls,
                                MHD_HTTP_OK),
     CMD_EXEC_AGGREGATOR ("aggregation-attempt"),
 
-    TALER_TESTING_cmd_check_bank_empty
-      ("far-future-aggregation-b"),
+    TALER_TESTING_cmd_check_bank_empty (
+      "far-future-aggregation-b"),
 
     TALER_TESTING_cmd_end ()
   };
@@ -1136,14 +1136,14 @@ run (void *cls,
      * Move money to the exchange's bank account.
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-batch-reserve-1",
-                              "EUR:6.02"),
+                              "EUR:6.03"),
     TALER_TESTING_cmd_reserve_poll ("poll-batch-reserve-1",
                                     "create-batch-reserve-1",
-                                    "EUR:6.02",
+                                    "EUR:6.03",
                                     GNUNET_TIME_UNIT_MINUTES,
                                     MHD_HTTP_OK),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-batch-reserve-1",
-                                                 "EUR:6.02",
+                                                 "EUR:6.03",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-batch-reserve-1"),
@@ -1166,11 +1166,19 @@ run (void *cls,
                                       "EUR:1",
                                       NULL),
     /**
-     * Check the reserve is depleted.
+     * Check the reserve is (almost) depleted.
      */
     TALER_TESTING_cmd_status ("status-batch-1",
                               "create-batch-reserve-1",
-                              "EUR:0",
+                              "EUR:0.01",
+                              MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_history ("history-batch-1",
+                                       "create-batch-reserve-1",
+                                       "EUR:0",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_status ("status-batch-2",
+                              "create-batch-reserve-1",
+                              "EUR:0.0",
                               MHD_HTTP_OK),
     /**
      * Spend the coins.
@@ -1240,6 +1248,17 @@ run (void *cls,
                                   "payto://x-taler-bank/localhost/2?receiver-name=2",
                                   MHD_HTTP_NO_CONTENT,
                                   false),
+      TALER_TESTING_cmd_exec_offline_sign_global_fees (
+        "offline-sign-global-fees",
+        config_file,
+        "EUR:0.01",
+        "EUR:0.01",
+        "EUR:0.01",
+        "EUR:0.01",
+        GNUNET_TIME_UNIT_MINUTES,
+        GNUNET_TIME_UNIT_MINUTES,
+        GNUNET_TIME_UNIT_DAYS,
+        1),
       TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                                 config_file),
       TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",

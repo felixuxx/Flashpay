@@ -429,6 +429,8 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_trait_end ()
   };
 
+  if (index >= ws->num_coins)
+    return GNUNET_NO;
   return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
                                   ? &traits[0]   /* we have reserve history */
                                   : &traits[1],  /* skip reserve history */
