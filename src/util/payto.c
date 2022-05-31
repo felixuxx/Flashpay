@@ -123,6 +123,9 @@ TALER_xtalerbank_account_from_payto (const char *payto)
                 '?');
   if (NULL == end)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Invalid payto URI `%s'\n",
+                payto);
     GNUNET_break_op (0);
     return GNUNET_strdup (beg); /* optional part is missing */
   }
