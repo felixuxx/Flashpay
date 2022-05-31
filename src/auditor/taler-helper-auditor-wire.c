@@ -1576,7 +1576,7 @@ process_credits (void *cls);
  * @param json raw response
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 history_credit_cb (void *cls,
                    unsigned int http_status,
                    enum TALER_ErrorCode ec,

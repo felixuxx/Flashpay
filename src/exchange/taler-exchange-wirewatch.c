@@ -213,6 +213,12 @@ static int global_ret;
 static int test_mode;
 
 /**
+ * Should we ignore if the bank does not know our bank
+ * account?
+ */
+static int ignore_account_404;
+
+/**
  * Current task waiting for execution, if any.
  */
 static struct GNUNET_SCHEDULER_Task *task;
@@ -623,9 +629,11 @@ history_cb (void *cls,
   if (NULL == details)
   {
     wa->hh = NULL;
-    if ( (MHD_HTTP_NO_CONTENT != http_status) &&
-         ( (TALER_EC_NONE != ec) ||
-           (MHD_HTTP_OK != http_status) ) )
+    if ( (! ( (MHD_HTTP_NOT_FOUND == http_status) &&
+              (ignore_account_404) ) ) &&
+         ( (MHD_HTTP_NO_CONTENT != http_status) &&
+           ( (TALER_EC_NONE != ec) ||
+             (MHD_HTTP_OK != http_status) ) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching history: %s (%u)\n",
@@ -966,6 +974,10 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('I',
+                               "ignore-not-found",
+                               "continue, even if the bank account of the exchange was not found",
+                               &ignore_account_404),
     GNUNET_GETOPT_option_uint ('S',
                                "size",
                                "SIZE",
