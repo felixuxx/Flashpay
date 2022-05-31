@@ -3860,10 +3860,9 @@ postgres_start (void *cls,
   if (GNUNET_SYSERR ==
       postgres_preflight (pg))
     return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction named %s on %p\n",
-              name,
-              pg->conn);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting transaction `%s'\n",
+              name);
   if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (pg->conn,
                                  es))
@@ -3898,10 +3897,9 @@ postgres_start_read_committed (void *cls,
   if (GNUNET_SYSERR ==
       postgres_preflight (pg))
     return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction named %s on %p\n",
-              name,
-              pg->conn);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting READ COMMITTED transaction `%s`\n",
+              name);
   if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (pg->conn,
                                  es))
@@ -9677,6 +9675,9 @@ postgres_start_deferred_wire_out (void *cls)
     return GNUNET_SYSERR;
   }
   pg->transaction_name = "deferred wire out";
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting READ COMMITTED DEFERRED transaction `%s'\n",
+              pg->transaction_name);
   return GNUNET_OK;
 }
 
