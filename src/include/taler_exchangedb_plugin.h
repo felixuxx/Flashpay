@@ -552,6 +552,7 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp purse_expiration;
       struct GNUNET_TIME_Timestamp merge_timestamp;
       struct TALER_Amount amount_with_fee;
+      struct TALER_Amount wad_fee;
       struct TALER_Amount deposit_fees;
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_PurseContractSignatureP purse_sig;

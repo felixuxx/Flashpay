@@ -844,6 +844,7 @@ irbt_cb_table_purse_merges (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.purse_merges.partner_serial_id),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.purse_merges.reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&td->details.purse_merges.purse_pub),
@@ -870,6 +871,8 @@ irbt_cb_table_purse_deposits (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.purse_deposits.partner_serial_id),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.purse_deposits.purse_pub),
     GNUNET_PQ_query_param_auto_from_type (&td->details.purse_deposits.coin_pub),
@@ -929,6 +932,8 @@ irbt_cb_table_history_requests (struct PostgresClosure *pg,
       &td->details.history_requests.request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.history_requests.reserve_sig),
+    TALER_PQ_query_param_amount (
+      &td->details.history_requests.history_fee),
     GNUNET_PQ_query_param_end
   };
 
@@ -956,6 +961,8 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
       &td->details.close_requests.close_timestamp),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.close_requests.reserve_sig),
+    TALER_PQ_query_param_amount (
+      &td->details.close_requests.close),
     GNUNET_PQ_query_param_end
   };
 
@@ -978,6 +985,7 @@ irbt_cb_table_wads_out (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wads_out.wad_id),
+    GNUNET_PQ_query_param_uint64 (&td->details.wads_out.partner_serial_id),
     TALER_PQ_query_param_amount (&td->details.wads_out.amount),
     GNUNET_PQ_query_param_timestamp (&td->details.wads_out.execution_time),
     GNUNET_PQ_query_param_end
@@ -1001,6 +1009,8 @@ irbt_cb_table_wads_out_entries (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.wads_out_entries.wad_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.wads_out_entries.reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (
@@ -1013,6 +1023,8 @@ irbt_cb_table_wads_out_entries (struct PostgresClosure *pg,
       &td->details.wads_out_entries.merge_timestamp),
     TALER_PQ_query_param_amount (
       &td->details.wads_out_entries.amount_with_fee),
+    TALER_PQ_query_param_amount (
+      &td->details.wads_out_entries.wad_fee),
     TALER_PQ_query_param_amount (
       &td->details.wads_out_entries.deposit_fees),
     GNUNET_PQ_query_param_auto_from_type (

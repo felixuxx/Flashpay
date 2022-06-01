@@ -1498,7 +1498,7 @@ lrbt_cb_table_purse_requests (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "purse_requests_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "purse_pub",
@@ -1570,8 +1570,11 @@ lrbt_cb_table_purse_merges (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "purse_merge_request_serial_id",
         &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "partner_serial_id",
+        &td.details.purse_merges.partner_serial_id),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
         &td.details.purse_merges.reserve_pub),
@@ -1582,7 +1585,7 @@ lrbt_cb_table_purse_merges (void *cls,
         "merge_sig",
         &td.details.purse_merges.merge_sig),
       GNUNET_PQ_result_spec_timestamp (
-        "purse_expiration",
+        "merge_timestamp",
         &td.details.purse_merges.merge_timestamp),
       GNUNET_PQ_result_spec_end
     };
@@ -1625,8 +1628,11 @@ lrbt_cb_table_purse_deposits (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "purse_deposit_serial_id",
         &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "partner_serial_id",
+        &td.details.purse_deposits.partner_serial_id),
       GNUNET_PQ_result_spec_auto_from_type (
         "purse_pub",
         &td.details.purse_deposits.purse_pub),
@@ -1679,7 +1685,7 @@ lrbt_cb_table_account_merges (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "account_merge_request_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
@@ -1731,7 +1737,7 @@ lrbt_cb_table_history_requests (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "history_request_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
@@ -1783,7 +1789,7 @@ lrbt_cb_table_close_requests (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "close_request_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
@@ -1835,7 +1841,7 @@ lrbt_cb_table_wads_out (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "wad_out_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "wad_id",
@@ -1890,7 +1896,7 @@ lrbt_cb_table_wads_out_entries (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "wad_out_entry_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
@@ -1910,6 +1916,9 @@ lrbt_cb_table_wads_out_entries (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount_with_fee",
         &td.details.wads_out_entries.amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "wad_fee",
+        &td.details.wads_out_entries.wad_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "deposit_fees",
         &td.details.wads_out_entries.deposit_fees),
@@ -1960,7 +1969,7 @@ lrbt_cb_table_wads_in (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "wad_in_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "wad_id",
@@ -2015,7 +2024,7 @@ lrbt_cb_table_wads_in_entries (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "extension_details_serial_id",
+        "wad_in_entry_serial_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",

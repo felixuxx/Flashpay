@@ -3087,6 +3087,160 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE recoup_refresh_uuid > $1"
       " ORDER BY recoup_refresh_uuid ASC;",
       1),
+
+
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_purse_requests",
+      "SELECT"
+      " purse_requests_serial_id"
+      ",purse_pub"
+      ",merge_pub"
+      ",purse_creation"
+      ",purse_expiration"
+      ",h_contract_terms"
+      ",age_limit"
+      ",flags"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",purse_fee_val"
+      ",purse_fee_frac"
+      ",purse_sig"
+      " FROM purse_requests"
+      " WHERE purse_requests_serial_id > $1"
+      " ORDER BY purse_requests_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_purse_merges",
+      "SELECT"
+      " purse_merge_request_serial_id"
+      ",partner_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",merge_sig"
+      ",merge_timestamp"
+      " FROM purse_merges"
+      " WHERE purse_merge_request_serial_id > $1"
+      " ORDER BY purse_merge_request_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_purse_deposits",
+      "SELECT"
+      " purse_deposit_serial_id"
+      ",partner_serial_id"
+      ",purse_pub"
+      ",coin_pub"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",coin_sig"
+      " FROM purse_deposits"
+      " WHERE purse_deposit_serial_id > $1"
+      " ORDER BY purse_deposit_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_account_merges",
+      "SELECT"
+      " account_merge_request_serial_id"
+      ",reserve_pub"
+      ",reserve_sig"
+      ",purse_pub"
+      " FROM account_merges"
+      " WHERE account_merge_request_serial_id > $1"
+      " ORDER BY account_merge_request_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_history_requests",
+      "SELECT"
+      " history_request_serial_id"
+      ",reserve_pub"
+      ",request_timestamp"
+      ",reserve_sig"
+      ",history_fee_val"
+      ",history_fee_frac"
+      " FROM history_requests"
+      " WHERE history_request_serial_id > $1"
+      " ORDER BY history_request_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_close_requests",
+      "SELECT"
+      " close_request_serial_id"
+      ",reserve_pub"
+      ",close_timestamp"
+      ",reserve_sig"
+      ",close_val"
+      ",close_frac"
+      " FROM close_requests"
+      " WHERE close_request_serial_id > $1"
+      " ORDER BY close_request_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wads_out",
+      "SELECT"
+      " wad_out_serial_id"
+      ",wad_id"
+      ",partner_serial_id"
+      ",amount_val"
+      ",amount_frac"
+      ",execution_time"
+      " FROM wads_out"
+      " WHERE wad_out_serial_id > $1"
+      " ORDER BY wad_out_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wads_out_entries",
+      "SELECT"
+      " wad_out_entry_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",h_contract"
+      ",purse_expiration"
+      ",merge_timestamp"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
+      ",deposit_fees_val"
+      ",deposit_fees_frac"
+      ",reserve_sig"
+      ",purse_sig"
+      " FROM wad_out_entries"
+      " WHERE wad_out_entry_serial_id > $1"
+      " ORDER BY wad_out_entry_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wads_in",
+      "SELECT"
+      " wad_in_serial_id"
+      ",wad_id"
+      ",origin_exchange_url"
+      ",amount_val"
+      ",amount_frac"
+      ",arrival_time"
+      " FROM wads_in"
+      " WHERE wad_in_serial_id > $1"
+      " ORDER BY wad_in_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wads_in_entries",
+      "SELECT"
+      " wad_in_entry_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",h_contract"
+      ",purse_expiration"
+      ",merge_timestamp"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
+      ",deposit_fees_val"
+      ",deposit_fees_frac"
+      ",reserve_sig"
+      ",purse_sig"
+      " FROM wad_in_entries"
+      " WHERE wad_in_entry_serial_id > $1"
+      " ORDER BY wad_in_entry_serial_id ASC;",
+      1),
     /* For postgres_insert_records_by_table */
     GNUNET_PQ_make_prepare (
       "insert_into_table_denominations",
@@ -3416,6 +3570,151 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2);",
       2),
+
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_purse_requests",
+      "INSERT INTO purse_requests"
+      "(purse_requests_serial_id"
+      ",purse_pub"
+      ",merge_pub"
+      ",purse_creation"
+      ",purse_expiration"
+      ",h_contract_terms"
+      ",age_limit"
+      ",flags"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",purse_fee_val"
+      ",purse_fee_frac"
+      ",purse_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);",
+      13),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_purse_merges",
+      "INSERT INTO purse_merges"
+      "(purse_merge_request_serial_id"
+      ",partner_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",merge_sig"
+      ",merge_timestamp"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_purse_deposits",
+      "INSERT INTO purse_deposits"
+      "(purse_deposit_serial_id"
+      ",partner_serial_id"
+      ",purse_pub"
+      ",coin_pub"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",coin_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7);",
+      7),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_account_merges",
+      "INSERT INTO account_merges"
+      "(account_merge_request_serial_id"
+      ",reserve_pub"
+      ",reserve_sig"
+      ",purse_pub"
+      ") VALUES "
+      "($1, $2, $3, $4);",
+      4),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_history_requests",
+      "INSERT INTO history_requests"
+      "(history_request_serial_id"
+      ",reserve_pub"
+      ",request_timestamp"
+      ",reserve_sig"
+      ",history_fee_val"
+      ",history_fee_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_close_requests",
+      "INSERT INTO close_requests"
+      "(close_request_serial_id"
+      ",reserve_pub"
+      ",close_timestamp"
+      ",reserve_sig"
+      ",close_val"
+      ",close_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wads_out",
+      "INSERT INTO wads_out"
+      "(wad_out_serial_id"
+      ",wad_id"
+      ",partner_serial_id"
+      ",amount_val"
+      ",amount_frac"
+      ",execution_time"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wad_out_entries",
+      "INSERT INTO wad_out_entries"
+      "(wad_out_entry_serial_id"
+      ",wad_out_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",h_contract"
+      ",purse_expiration"
+      ",merge_timestamp"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
+      ",deposit_fees_val"
+      ",deposit_fees_frac"
+      ",reserve_sig"
+      ",purse_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);",
+      15),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wads_in",
+      "INSERT INTO wads_in"
+      "(wad_in_serial_id"
+      ",wad_id"
+      ",origin_exchange_url"
+      ",amount_val"
+      ",amount_frac"
+      ",arrival_time"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wad_in_entries",
+      "INSERT INTO wad_in_entries"
+      "(wad_in_entry_serial_id"
+      ",wad_in_serial_id"
+      ",reserve_pub"
+      ",purse_pub"
+      ",h_contract"
+      ",purse_expiration"
+      ",merge_timestamp"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wad_fee_val"
+      ",wad_fee_frac"
+      ",deposit_fees_val"
+      ",deposit_fees_frac"
+      ",reserve_sig"
+      ",purse_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);",
+      3),
 
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
