@@ -310,6 +310,7 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &coin->cpi.h_age_commitment),
       &coin->cpi.no_age_commitment),
+    // FIXME-Oec: proof of age is missing!
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin->coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",

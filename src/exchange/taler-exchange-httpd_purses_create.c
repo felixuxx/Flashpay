@@ -225,17 +225,18 @@ create_transaction (void *cls,
   TALER_amount_set_zero (pcc->amount.currency,
                          &purse_fee);
   /* 1) create purse */
-  qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
-                                         pcc->purse_pub,
-                                         &pcc->merge_pub,
-                                         pcc->purse_expiration,
-                                         &pcc->h_contract_terms,
-                                         pcc->min_age,
-                                         TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
-                                         &purse_fee,
-                                         &pcc->amount,
-                                         &pcc->purse_sig,
-                                         &in_conflict);
+  qs = TEH_plugin->insert_purse_request (
+    TEH_plugin->cls,
+    pcc->purse_pub,
+    &pcc->merge_pub,
+    pcc->purse_expiration,
+    &pcc->h_contract_terms,
+    pcc->min_age,
+    TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE,
+    &purse_fee,
+    &pcc->amount,
+    &pcc->purse_sig,
+    &in_conflict);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -409,12 +410,13 @@ create_transaction (void *cls,
     void *econtract;
     struct GNUNET_HashCode h_econtract;
 
-    qs = TEH_plugin->select_contract_by_purse (TEH_plugin->cls,
-                                               pcc->purse_pub,
-                                               &pub_ckey,
-                                               &econtract_sig,
-                                               &econtract_size,
-                                               &econtract);
+    qs = TEH_plugin->select_contract_by_purse (
+      TEH_plugin->cls,
+      pcc->purse_pub,
+      &pub_ckey,
+      &econtract_sig,
+      &econtract_size,
+      &econtract);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -478,6 +480,7 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &coin->cpi.h_age_commitment),
       &coin->cpi.no_age_commitment),
+    // FIXME-Oec: proof of age is missing.
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin->coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",

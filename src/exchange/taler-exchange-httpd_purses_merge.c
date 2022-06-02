@@ -139,11 +139,14 @@ reply_merge_success (struct MHD_Connection *connection,
       TALER_amount_cmp (&pcc->balance,
                         &pcc->target_amount))
   {
+    GNUNET_break (0);
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
-      MHD_HTTP_ACCEPTED,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
       TALER_JSON_pack_amount ("balance",
-                              &pcc->balance));
+                              &pcc->balance),
+      TALER_JSON_pack_amount ("target_amount",
+                              &pcc->target_amount));
   }
   if ( (NULL == pcc->provider_url) ||
        (0 == strcmp (pcc->provider_url,
@@ -221,6 +224,7 @@ merge_transaction (void *cls,
   bool no_balance = true;
   bool no_partner = true;
 
+  // FIXME: add KYC-check logic!
   qs = TEH_plugin->do_purse_merge (TEH_plugin->cls,
                                    pcc->purse_pub,
                                    &pcc->merge_sig,
@@ -248,7 +252,7 @@ merge_transaction (void *cls,
   {
     *mhd_ret =
       TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_BAD_REQUEST,
+                                  MHD_HTTP_NOT_FOUND,
                                   TALER_EC_EXCHANGE_MERGE_PURSE_PARTNER_UNKNOWN,
                                   pcc->provider_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -303,6 +307,7 @@ merge_transaction (void *cls,
     GNUNET_free (partner_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  // FIXME: if ! kyc check, return 451!
   return qs;
 }
 
@@ -488,7 +493,7 @@ TEH_handler_purses_merge (
     GNUNET_free (pcc.provider_url);
     return TALER_MHD_reply_with_error (
       connection,
-      MHD_HTTP_BAD_REQUEST,
+      MHD_HTTP_FORBIDDEN,
       TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_MERGE_SIGNATURE,
       NULL);
   }
@@ -514,10 +519,15 @@ TEH_handler_purses_merge (
       GNUNET_free (pcc.provider_url);
       return TALER_MHD_reply_with_error (
         connection,
-        MHD_HTTP_BAD_REQUEST,
+        MHD_HTTP_FORBIDDEN,
         TALER_EC_EXCHANGE_PURSE_MERGE_INVALID_RESERVE_SIGNATURE,
         NULL);
     }
+  }
+
+  if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
+  {
+    // FIXME: idempotency check, otherwise generate 410!
   }
 
   /* execute transaction */

@@ -174,6 +174,7 @@ reply_purse_success (struct MHD_Connection *connection,
                                     ec,
                                     NULL);
   }
+  // FIXME: share logic with /purses/$PID/create API!
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -211,6 +212,9 @@ purse_transaction (void *cls,
 
   {
     bool in_conflict = true;
+
+    // FIXME: also check KYC state of the account
+    // FIXME: distinguish reserve-not-found!
     /* 1) store purse */
     qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
                                            &rpc->purse_pub,
@@ -289,6 +293,9 @@ purse_transaction (void *cls,
                                         &merge_pub));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+
+    // FIXME: return 404 if reserve-not-found!
+    // FIXME: if KYC check failed, generate 451 response!
   }
 
   /* 2) create purse with reserve (and debit reserve for purse creation!) */
