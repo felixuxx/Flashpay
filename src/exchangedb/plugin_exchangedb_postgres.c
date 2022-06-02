@@ -2157,6 +2157,8 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " pr.amount_with_fee_val"
       ",pr.amount_with_fee_frac"
+      ",pr.balance_val"
+      ",pr.balance_frac"
       ",pr.purse_fee_val"
       ",pr.purse_fee_frac"
       ",pr.h_contract_terms"
@@ -6515,9 +6517,12 @@ add_p2p_merge (void *cls,
     merge = GNUNET_new (struct TALER_EXCHANGEDB_PurseMerge);
     {
       uint32_t flags32;
+      struct TALER_Amount balance;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
                                      &merge->purse_fee),
+        TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                     &balance),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                      &merge->amount_with_fee),
         GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
@@ -6550,15 +6555,21 @@ add_p2p_merge (void *cls,
         return;
       }
       merge->flags = (enum TALER_WalletAccountMergeFlags) flags32;
+      if ( (! GNUNET_TIME_absolute_is_future (
+              merge->merge_timestamp.abs_time)) &&
+           (-1 != TALER_amount_cmp (&balance,
+                                    &merge->amount_with_fee)) )
+        merge->merged = true;
     }
+    if (merge->merged)
+      GNUNET_assert (0 <=
+                     TALER_amount_add (&rhc->balance_in,
+                                       &rhc->balance_in,
+                                       &merge->amount_with_fee));
     GNUNET_assert (0 <=
-                   TALER_amount_add (&rhc->balance_in,
-                                     &rhc->balance_in,
-                                     &merge->amount_with_fee));
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&rhc->balance_out,
-                                          &rhc->balance_out,
-                                          &merge->purse_fee));
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &merge->purse_fee));
     merge->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_PURSE_MERGE;

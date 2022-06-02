@@ -1144,6 +1144,12 @@ struct TALER_EXCHANGEDB_PurseMerge
    */
   enum TALER_WalletAccountMergeFlags flags;
 
+  /**
+   * true if the purse was actually successfully merged,
+   * false if the @e purse_fee was charged but the
+   * @e amount was not credited to the reserve.
+   */
+  bool merged;
 };
 
 

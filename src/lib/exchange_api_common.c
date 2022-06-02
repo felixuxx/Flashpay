@@ -417,6 +417,8 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
                                 &rh->details.merge_details.merge_timestamp),
     GNUNET_JSON_spec_timestamp ("purse_expiration",
                                 &rh->details.merge_details.purse_expiration),
+    GNUNET_JSON_spec_bool ("merged",
+                           &rh->details.merge_details.merged),
     GNUNET_JSON_spec_end ()
   };
 
@@ -447,10 +449,22 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if (rh->details.merge_details.merged)
+  {
+    if (0 >
+        TALER_amount_add (uc->total_in,
+                          uc->total_in,
+                          &rh->amount))
+    {
+      /* overflow in history already!? inconceivable! Bad exchange! */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
   if (0 >
-      TALER_amount_add (uc->total_in,
-                        uc->total_in,
-                        &rh->amount))
+      TALER_amount_add (uc->total_out,
+                        uc->total_out,
+                        &rh->details.merge_details.purse_fee))
   {
     /* overflow in history already!? inconceivable! Bad exchange! */
     GNUNET_break_op (0);

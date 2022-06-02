@@ -1535,6 +1535,12 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
        */
       enum TALER_WalletAccountMergeFlags flags;
 
+      /**
+       * True if the purse was actually merged, false
+       * if only the @e purse_fee was charged.
+       */
+      bool merged;
+
     } merge_details;
 
   } details;

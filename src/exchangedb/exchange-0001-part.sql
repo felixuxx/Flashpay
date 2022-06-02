@@ -3464,7 +3464,7 @@ BEGIN
    SET
     current_balance_frac=current_balance_frac-in_history_fee_frac
        + CASE
-         WHEN reserve_frac < in_history_fee_frac
+         WHEN current_balance_frac < in_history_fee_frac
          THEN 100000000
          ELSE 0
          END,
