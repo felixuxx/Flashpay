@@ -224,6 +224,11 @@ handle_purse_create_with_merge_finished (void *cls,
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* aka KYC required */
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);

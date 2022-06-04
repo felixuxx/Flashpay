@@ -150,7 +150,7 @@ batch_withdraw_transaction (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN,
+                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -171,7 +171,7 @@ batch_withdraw_transaction (void *cls,
     /* Wallet-to-wallet payments _always_ require KYC */
     *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
       connection,
-      MHD_HTTP_ACCEPTED,
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
       GNUNET_JSON_pack_uint64 ("payment_target_uuid",
                                wc->kyc.payment_target_uuid));
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -206,7 +206,7 @@ batch_withdraw_transaction (void *cls,
     {
       *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
         connection,
-        MHD_HTTP_ACCEPTED,
+        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
         GNUNET_JSON_pack_uint64 ("payment_target_uuid",
                                  wc->kyc.payment_target_uuid));
       return GNUNET_DB_STATUS_HARD_ERROR;

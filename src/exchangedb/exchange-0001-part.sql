@@ -3092,6 +3092,8 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_reserve_pub BYTEA,
   OUT out_no_partner BOOLEAN,
   OUT out_no_balance BOOLEAN,
+  OUT out_no_kyc BOOLEAN,
+  OUT out_no_reserve BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -3121,6 +3123,8 @@ ELSE
   THEN
     out_no_partner=TRUE;
     out_conflict=FALSE;
+    out_no_kyc=FALSE;
+    out_no_reserve=FALSE;
     RETURN;
   END IF;
 END IF;
@@ -3144,6 +3148,8 @@ IF NOT FOUND
 THEN
   out_no_balance=TRUE;
   out_conflict=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_no_balance=FALSE;
@@ -3176,16 +3182,48 @@ THEN
   THEN
      -- Purse was merged, but to some other reserve. Not allowed.
      out_conflict=TRUE;
+     out_no_kyc=FALSE;
+     out_no_reserve=FALSE;
      RETURN;
   END IF;
 
   -- "success"
   out_conflict=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_conflict=FALSE;
 
 ASSERT NOT my_finished, 'internal invariant failed';
+
+IF in_partner_url IS NULL
+THEN
+  -- Need to do KYC check.
+  SELECT NOT kyc_passed
+    INTO out_no_kyc
+    FROM reserves
+   WHERE reserve_pub=in_reserve_pub;
+
+  IF NOT FOUND
+  THEN
+    out_no_kyc=TRUE;
+    out_no_reserve=TRUE;
+    RETURN;
+  END IF;
+  out_no_reserve=FALSE;
+
+  IF (out_no_kyc)
+  THEN
+    RETURN;
+  END IF;
+ELSE
+  -- KYC is not our responsibility
+  out_no_reserve=FALSE;
+  out_no_kyc=FALSE;
+END IF;
+
+
 
 -- Store account merge signature.
 INSERT INTO account_merges
@@ -3248,6 +3286,8 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
   OUT out_no_funds BOOLEAN,
+  OUT out_no_kyc BOOLEAN,
+  OUT out_no_reserve BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -3281,16 +3321,40 @@ THEN
   THEN
      -- Purse was merged, but to some other reserve. Not allowed.
      out_conflict=TRUE;
+     out_no_kyc=FALSE;
+     out_no_reserve=FALSE;
+     out_no_funds=FALSE;
      RETURN;
   END IF;
 
   -- "success"
   out_conflict=FALSE;
   out_no_funds=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_conflict=FALSE;
 
+SELECT NOT kyc_passed
+  INTO out_no_kyc
+  FROM reserves
+ WHERE reserve_pub=in_reserve_pub;
+
+IF NOT FOUND
+THEN
+  out_no_kyc=TRUE;
+  out_no_reserve=TRUE;
+  out_no_funds=TRUE;
+  RETURN;
+END IF;
+out_no_reserve=FALSE;
+
+IF (out_no_kyc)
+THEN
+  out_no_funds=FALSE;
+  RETURN;
+END IF;
 
 IF (in_reserve_quota)
 THEN
@@ -3303,6 +3367,7 @@ THEN
   IF NOT FOUND
   THEN
     out_no_funds=TRUE;
+    RETURN;
   END IF;
 ELSE
   --  UPDATE reserves balance (and check if balance is enough to pay the fee)
@@ -3328,6 +3393,7 @@ ELSE
   IF NOT FOUND
   THEN
     out_no_funds=TRUE;
+    RETURN;
   END IF;
 END IF;
 

@@ -213,8 +213,6 @@ purse_transaction (void *cls,
   {
     bool in_conflict = true;
 
-    // FIXME: also check KYC state of the account
-    // FIXME: distinguish reserve-not-found!
     /* 1) store purse */
     qs = TEH_plugin->insert_purse_request (TEH_plugin->cls,
                                            &rpc->purse_pub,
@@ -294,14 +292,14 @@ purse_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
 
-    // FIXME: return 404 if reserve-not-found!
-    // FIXME: if KYC check failed, generate 451 response!
   }
 
   /* 2) create purse with reserve (and debit reserve for purse creation!) */
   {
     bool in_conflict = true;
     bool insufficient_funds = true;
+    bool no_reserve = true;
+    bool no_kyc = true;
 
     qs = TEH_plugin->do_reserve_purse (
       TEH_plugin->cls,
@@ -315,6 +313,8 @@ purse_transaction (void *cls,
       : &rpc->gf->fees.purse,
       rpc->reserve_pub,
       &in_conflict,
+      &no_reserve,
+      &no_kyc,
       &insufficient_funds);
     if (qs < 0)
     {
@@ -375,6 +375,26 @@ purse_transaction (void *cls,
             GNUNET_JSON_pack_data_auto ("reserve_pub",
                                         &reserve_pub));
       GNUNET_free (partner_url);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (no_reserve)
+    {
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_NOT_FOUND,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (no_kyc)
+    {
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (insufficient_funds)

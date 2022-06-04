@@ -157,7 +157,7 @@ handle_reserve_withdraw_finished (
       wr.details.success.exchange_vals = wh->alg_values;
       break;
     }
-  case MHD_HTTP_ACCEPTED:
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("payment_target_uuid",

@@ -5039,6 +5039,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_pub public key of the reserve to credit
    * @param[out] no_partner set to true if @a partner_url is unknown
    * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
+   * @param[out] no_reserve set to true if the @a reserve_pub is not known
+   * @param[out] no_kyc set to true if the @a reserve_pub lacks KYC
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
    * @return transaction status code
    */
@@ -5053,6 +5055,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReservePublicKeyP *reserve_pub,
     bool *no_partner,
     bool *no_balance,
+    bool *no_reserve,
+    bool *no_kyc,
     bool *in_conflict);
 
 
@@ -5069,6 +5073,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
    * @param reserve_pub public key of the reserve to credit
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
+   * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
+   * @param[out] no_kyc set to true if @a reserve_pub has not passed KYC checks
    * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
    * @return transaction status code
    */
@@ -5082,6 +5088,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_Amount *purse_fee,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     bool *in_conflict,
+    bool *no_reserve,
+    bool *no_kyc,
     bool *insufficient_funds);
 
 

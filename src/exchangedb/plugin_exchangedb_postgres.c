@@ -3973,6 +3973,8 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " out_no_partner AS no_partner"
       ",out_no_balance AS no_balance"
+      ",out_no_kyc AS no_kyc"
+      ",out_no_reserve AS no_reserve"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
       "  ($1, $2, $3, $4, $5, $6);",
@@ -3982,6 +3984,8 @@ prepare_statements (struct PostgresClosure *pg)
       "call_reserve_purse",
       "SELECT"
       " out_no_funds AS insufficient_funds"
+      ",out_no_reserve AS no_reserve"
+      ",out_no_kyc AS no_kyc"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
       "  ($1, $2, $3, $4, $5, $6, $7, $8);",
@@ -14490,6 +14494,8 @@ postgres_get_purse_deposit (
  * @param reserve_pub public key of the reserve to credit
  * @param[out] no_partner set to true if @a partner_url is unknown
  * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
+ * @param[out] no_reserve set to true if the @a reserve_pub is not known
+ * @param[out] no_kyc set to true if the @a reserve_pub lacks KYC
  * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
   * @return transaction status code
  */
@@ -14504,6 +14510,8 @@ postgres_do_purse_merge (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   bool *no_partner,
   bool *no_balance,
+  bool *no_reserve,
+  bool *no_kyc,
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
@@ -14523,6 +14531,10 @@ postgres_do_purse_merge (
                                 no_partner),
     GNUNET_PQ_result_spec_bool ("no_balance",
                                 no_balance),
+    GNUNET_PQ_result_spec_bool ("no_kyc",
+                                no_kyc),
+    GNUNET_PQ_result_spec_bool ("no_reserve",
+                                no_reserve),
     GNUNET_PQ_result_spec_bool ("conflict",
                                 in_conflict),
     GNUNET_PQ_result_spec_end
@@ -14561,6 +14573,8 @@ postgres_do_reserve_purse (
   const struct TALER_Amount *purse_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   bool *in_conflict,
+  bool *no_reserve,
+  bool *no_kyc,
   bool *insufficient_funds)
 {
   struct PostgresClosure *pg = cls;
@@ -14582,6 +14596,10 @@ postgres_do_reserve_purse (
                                 insufficient_funds),
     GNUNET_PQ_result_spec_bool ("conflict",
                                 in_conflict),
+    GNUNET_PQ_result_spec_bool ("no_kyc",
+                                no_kyc),
+    GNUNET_PQ_result_spec_bool ("no_reserve",
+                                no_reserve),
     GNUNET_PQ_result_spec_end
   };
 

@@ -223,6 +223,8 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
+  bool no_kyc = true;
+  bool no_reserve = true;
 
   // FIXME: add KYC-check logic!
   qs = TEH_plugin->do_purse_merge (TEH_plugin->cls,
@@ -234,6 +236,8 @@ merge_transaction (void *cls,
                                    &pcc->reserve_pub,
                                    &no_partner,
                                    &no_balance,
+                                   &no_reserve,
+                                   &no_kyc,
                                    &in_conflict);
   if (qs < 0)
   {
@@ -255,6 +259,25 @@ merge_transaction (void *cls,
                                   MHD_HTTP_NOT_FOUND,
                                   TALER_EC_EXCHANGE_MERGE_PURSE_PARTNER_UNKNOWN,
                                   pcc->provider_url);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (no_reserve)
+  {
+    *mhd_ret =
+      TALER_MHD_reply_with_error (connection,
+                                  MHD_HTTP_NOT_FOUND,
+                                  TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                  NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (no_kyc)
+  {
+    *mhd_ret
+      = TALER_MHD_REPLY_JSON_PACK (
+          connection,
+          MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+          TALER_JSON_pack_ec (
+            TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (no_balance)
