@@ -1,0 +1,6 @@
+
+
+/**
+ * {{Comment}}
+ */
+#define TALER_SIGNATURE_{{Name}} {{Number}}
