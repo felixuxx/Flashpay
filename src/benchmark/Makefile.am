@@ -63,5 +63,6 @@ taler_exchange_benchmark_LDADD = \
   $(XLIB)
 
 EXTRA_DIST = \
-  benchmark.conf \
+  benchmark-cs.conf \
+  benchmark-rsa.conf \
   exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv
