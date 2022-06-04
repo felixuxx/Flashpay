@@ -1414,4 +1414,232 @@ TALER_EXCHANGE_get_signing_key_info (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_purse_create_conflict_ (
+  const struct TALER_PurseContractSignatureP *cpurse_sig,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const json_t *proof)
+{
+  struct TALER_Amount amount;
+  uint32_t min_age;
+  struct GNUNET_TIME_Timestamp purse_expiration;
+  struct TALER_PurseContractSignatureP purse_sig;
+  struct TALER_PrivateContractHashP h_contract_terms;
+  struct TALER_PurseMergePublicKeyP merge_pub;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount_any ("amount",
+                                &amount),
+    GNUNET_JSON_spec_uint32 ("min_age",
+                             &min_age),
+    GNUNET_JSON_spec_timestamp ("purse_expiration",
+                                &purse_expiration),
+    GNUNET_JSON_spec_fixed_auto ("purse_sig",
+                                 &purse_sig),
+    GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                 &h_contract_terms),
+    GNUNET_JSON_spec_fixed_auto ("merge_pub",
+                                 &merge_pub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_purse_create_verify (purse_expiration,
+                                        &h_contract_terms,
+                                        &merge_pub,
+                                        min_age,
+                                        &amount,
+                                        purse_pub,
+                                        &purse_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 ==
+      GNUNET_memcmp (&purse_sig,
+                     cpurse_sig))
+  {
+    /* Must be the SAME data, not a conflict! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+static char *
+make_payto (const char *exchange_url,
+            const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  char pub_str[sizeof (*reserve_pub) * 2];
+  char *end;
+  bool is_http;
+  char *reserve_url;
+
+  end = GNUNET_STRINGS_data_to_string (
+    reserve_pub,
+    sizeof (*reserve_pub),
+    pub_str,
+    sizeof (pub_str));
+  *end = '\0';
+  if (0 == strncmp (exchange_url,
+                    "http://",
+                    strlen ("http://")))
+  {
+    is_http = true;
+    exchange_url = &exchange_url[strlen ("http://")];
+  }
+  else if (0 == strncmp (exchange_url,
+                         "https://",
+                         strlen ("https://")))
+  {
+    is_http = false;
+    exchange_url = &exchange_url[strlen ("https://")];
+  }
+  else
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  /* exchange_url includes trailing '/' */
+  GNUNET_asprintf (&reserve_url,
+                   "payto://%s/%s%s",
+                   is_http ? "taler+http" : "taler",
+                   exchange_url,
+                   pub_str);
+  return reserve_url;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_purse_merge_conflict_ (
+  const struct TALER_PurseMergeSignatureP *cmerge_sig,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const char *exchange_url,
+  const json_t *proof)
+{
+  struct TALER_PurseMergeSignatureP merge_sig;
+  struct GNUNET_TIME_Timestamp merge_timestamp;
+  const char *partner_url = exchange_url;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_mark_optional (
+      // FIXME: partner_url or partner_base_url?
+      GNUNET_JSON_spec_string ("partner_url",
+                               &partner_url),
+      NULL),
+    GNUNET_JSON_spec_timestamp ("merge_timestamp",
+                                &merge_timestamp),
+    GNUNET_JSON_spec_fixed_auto ("merge_sig",
+                                 &merge_sig),
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                 &reserve_pub),
+    GNUNET_JSON_spec_end ()
+  };
+  char *payto_uri;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  payto_uri = make_payto (partner_url,
+                          &reserve_pub);
+  if (GNUNET_OK !=
+      TALER_wallet_purse_merge_verify (
+        payto_uri,
+        merge_timestamp,
+        purse_pub,
+        merge_pub,
+        &merge_sig))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (payto_uri);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (payto_uri);
+  if (0 ==
+      GNUNET_memcmp (&merge_sig,
+                     cmerge_sig))
+  {
+    /* Must be the SAME data, not a conflict! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Check proof of a contract conflict.
+ *
+ * DESIGN-FIXME: this 'proof' doesn't really proof a conflict!
+ *
+ * @param ccontract_sig conflicting signature (must
+ *        not match the signature from the proof)
+ * @param purse_pub public key of the purse
+ * @param exchange_url the base URL of this exchange
+ * @param proof the proof to check
+ * @return #GNUNET_OK if the @a proof is OK for @a purse_pub and conflicts with @a purse_sig
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_purse_econtract_conflict_ (
+  const struct TALER_PurseContractSignatureP *ccontract_sig,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const json_t *proof)
+{
+  struct TALER_ContractDiffiePublicP contract_pub;
+  struct TALER_PurseContractSignatureP contract_sig;
+  struct GNUNET_HashCode h_econtract;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("h_econtract",
+                                 &h_econtract),
+    GNUNET_JSON_spec_fixed_auto ("econtract_sig",
+                                 &contract_sig),
+    GNUNET_JSON_spec_fixed_auto ("contract_pub",
+                                 &contract_pub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_econtract_upload_verify2 (
+        &h_econtract,
+        &contract_pub,
+        purse_pub,
+        &contract_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 ==
+      GNUNET_memcmp (&contract_sig,
+                     ccontract_sig))
+  {
+    /* Must be the SAME data, not a conflict! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /* end of exchange_api_common.c */

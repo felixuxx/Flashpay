@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
+#include "exchange_api_common.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
 
@@ -76,6 +77,11 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle
   struct TALER_Amount purse_value_after_fees;
 
   /**
+   * Our encryped contract (if we had any).
+   */
+  struct TALER_EncryptedContract econtract;
+
+  /**
    * Public key of the merge capability.
    */
   struct TALER_PurseMergePublicKeyP merge_pub;
@@ -86,7 +92,12 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle
   struct TALER_PurseContractPublicKeyP purse_pub;
 
   /**
-   * Hash over the purse's contrac terms.
+   * Signature with the purse key on the request.
+   */
+  struct TALER_PurseContractSignatureP purse_sig;
+
+  /**
+   * Hash over the purse's contract terms.
    */
   struct TALER_PrivateContractHashP h_contract_terms;
 
@@ -94,6 +105,7 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle
    * When does the purse expire.
    */
   struct GNUNET_TIME_Timestamp purse_expiration;
+
 };
 
 
@@ -201,7 +213,85 @@ handle_purse_create_deposit_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: check reply!
+    {
+      dr.hr.ec = TALER_JSON_get_error_code (j);
+      switch (dr.hr.ec)
+      {
+      case TALER_EC_EXCHANGE_PURSE_CREATE_CONFLICTING_META_DATA:
+        if (GNUNET_OK !=
+            TALER_EXCHANGE_check_purse_create_conflict_ (
+              &pch->purse_sig,
+              &pch->purse_pub,
+              j))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        break;
+      case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
+        {
+#if FIXME
+          struct TALER_Amount total;
+          struct TALER_DenominationHashP h_denom_pub;
+          const struct TALER_EXCHANGE_DenomPublicKey *dk = NULL;
+
+          // FIXME: parse coin_pub
+          // FIXME: lookup dk for that coin from our deposits array!
+
+          if (NULL == dk)
+          {
+            /* not one of our coins */
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          if (GNUNET_OK !=
+              TALER_EXCHANGE_verify_coin_history (dk,
+                                                  pch->exchange->currency,
+                                                  &coin_pub,
+                                                  history,
+                                                  &h_denom_pub,
+                                                  &total))
+          {
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          // FIXME: check total is too high for the request...
+#endif
+          break;
+        }
+      case TALER_EC_EXCHANGE_PURSE_DEPOSIT_CONFLICTING_META_DATA:
+        {
+          // FIXME!
+          break;
+        }
+      case TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA:
+        if (GNUNET_OK !=
+            TALER_EXCHANGE_check_purse_econtract_conflict_ (
+              &pch->econtract.econtract_sig,
+              &pch->purse_pub,
+              j))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        break;
+      default:
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Unexpected error code %d for conflcting deposit\n",
+                    dr.hr.ec);
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      }
+    }
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */
@@ -252,8 +342,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
   json_t *create_obj;
   json_t *deposit_arr;
   CURL *eh;
-  struct TALER_PurseContractSignatureP purse_sig;
-  struct TALER_EncryptedContract econtract;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *url;
   uint32_t min_age = 0;
@@ -391,22 +479,22 @@ TALER_EXCHANGE_purse_create_with_deposit (
                                   min_age,
                                   &pch->purse_value_after_fees,
                                   purse_priv,
-                                  &purse_sig);
+                                  &pch->purse_sig);
   if (upload_contract)
   {
     TALER_CRYPTO_contract_encrypt_for_merge (&pch->purse_pub,
                                              contract_priv,
                                              merge_priv,
                                              contract_terms,
-                                             &econtract.econtract,
-                                             &econtract.econtract_size);
+                                             &pch->econtract.econtract,
+                                             &pch->econtract.econtract_size);
     GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
-                                        &econtract.contract_pub.ecdhe_pub);
-    TALER_wallet_econtract_upload_sign (econtract.econtract,
-                                        econtract.econtract_size,
-                                        &econtract.contract_pub,
+                                        &pch->econtract.contract_pub.ecdhe_pub);
+    TALER_wallet_econtract_upload_sign (pch->econtract.econtract,
+                                        pch->econtract.econtract_size,
+                                        &pch->econtract.contract_pub,
                                         purse_priv,
-                                        &econtract.econtract_sig);
+                                        &pch->econtract.econtract_sig);
   }
   create_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("amount",
@@ -416,10 +504,10 @@ TALER_EXCHANGE_purse_create_with_deposit (
     GNUNET_JSON_pack_allow_null (
       TALER_JSON_pack_econtract ("econtract",
                                  upload_contract
-                                  ? &econtract
+                                  ? &pch->econtract
                                   : NULL)),
     GNUNET_JSON_pack_data_auto ("purse_sig",
-                                &purse_sig),
+                                &pch->purse_sig),
     GNUNET_JSON_pack_data_auto ("merge_pub",
                                 &pch->merge_pub),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
@@ -429,7 +517,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
     GNUNET_JSON_pack_array_steal ("deposits",
                                   deposit_arr));
   GNUNET_assert (NULL != create_obj);
-  GNUNET_free (econtract.econtract);
   eh = TALER_EXCHANGE_curl_easy_get_ (pch->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=
@@ -441,6 +528,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (create_obj);
+    GNUNET_free (pch->econtract.econtract);
     GNUNET_free (pch->url);
     GNUNET_free (pch);
     return NULL;
@@ -468,6 +556,7 @@ TALER_EXCHANGE_purse_create_with_deposit_cancel (
     GNUNET_CURL_job_cancel (pch->job);
     pch->job = NULL;
   }
+  GNUNET_free (pch->econtract.econtract);
   GNUNET_free (pch->url);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);

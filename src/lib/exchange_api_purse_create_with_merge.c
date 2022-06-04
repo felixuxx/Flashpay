@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
+#include "exchange_api_common.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
 
@@ -235,173 +236,48 @@ handle_purse_create_with_merge_finished (void *cls,
     switch (dr.hr.ec)
     {
     case TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_CONFLICTING_META_DATA:
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_purse_create_conflict_ (
+            &pcm->purse_sig,
+            &pcm->purse_pub,
+            j))
       {
-        struct TALER_Amount amount;
-        uint32_t min_age;
-        struct GNUNET_TIME_Timestamp purse_expiration;
-        struct TALER_PurseContractSignatureP purse_sig;
-        struct TALER_PrivateContractHashP h_contract_terms;
-        struct TALER_PurseMergePublicKeyP merge_pub;
-        struct GNUNET_JSON_Specification spec[] = {
-          TALER_JSON_spec_amount_any ("amount",
-                                      &amount),
-          GNUNET_JSON_spec_uint32 ("min_age",
-                                   &min_age),
-          GNUNET_JSON_spec_timestamp ("purse_expiration",
-                                      &purse_expiration),
-          GNUNET_JSON_spec_fixed_auto ("purse_sig",
-                                       &purse_sig),
-          GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                       &h_contract_terms),
-          GNUNET_JSON_spec_fixed_auto ("merge_pub",
-                                       &merge_pub),
-          GNUNET_JSON_spec_end ()
-        };
-
-        if (GNUNET_OK !=
-            GNUNET_JSON_parse (j,
-                               spec,
-                               NULL, NULL))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (GNUNET_OK !=
-            TALER_wallet_purse_create_verify (purse_expiration,
-                                              &h_contract_terms,
-                                              &merge_pub,
-                                              min_age,
-                                              &amount,
-                                              &pcm->purse_pub,
-                                              &purse_sig))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (0 ==
-            GNUNET_memcmp (&purse_sig,
-                           &pcm->purse_sig))
-        {
-          /* Must be the SAME data, not a conflict! */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      break;
     case TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_CONFLICTING_META_DATA:
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_purse_merge_conflict_ (
+            &pcm->merge_sig,
+            &pcm->merge_pub,
+            &pcm->purse_pub,
+            pcm->exchange->url,
+            j))
       {
-        struct TALER_PurseMergeSignatureP merge_sig;
-        struct GNUNET_TIME_Timestamp merge_timestamp;
-        const char *partner_url = pcm->exchange->url;
-        struct TALER_ReservePublicKeyP reserve_pub;
-        struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_mark_optional (
-            GNUNET_JSON_spec_string ("partner_url",
-                                     &partner_url),
-            NULL),
-          GNUNET_JSON_spec_timestamp ("merge_timestamp",
-                                      &merge_timestamp),
-          GNUNET_JSON_spec_fixed_auto ("merge_sig",
-                                       &merge_sig),
-          GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                       &reserve_pub),
-          GNUNET_JSON_spec_end ()
-        };
-
-        if (GNUNET_OK !=
-            GNUNET_JSON_parse (j,
-                               spec,
-                               NULL, NULL))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (GNUNET_OK !=
-            TALER_wallet_purse_merge_verify (
-              partner_url,
-              merge_timestamp,
-              &pcm->purse_pub,
-              &pcm->merge_pub,
-              &merge_sig))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (0 ==
-            GNUNET_memcmp (&merge_sig,
-                           &pcm->merge_sig))
-        {
-          /* Must be the SAME data, not a conflict! */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
       }
       break;
     case TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_INSUFFICIENT_FUNDS:
       /* nothing to verify */
       break;
     case TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA:
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_purse_econtract_conflict_ (
+            &pcm->econtract.econtract_sig,
+            &pcm->purse_pub,
+            j))
       {
-        struct TALER_ContractDiffiePublicP contract_pub;
-        struct TALER_PurseContractSignatureP contract_sig;
-        struct GNUNET_HashCode h_econtract;
-        struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_fixed_auto ("h_econtract",
-                                       &h_econtract),
-          GNUNET_JSON_spec_fixed_auto ("econtract_sig",
-                                       &contract_sig),
-          GNUNET_JSON_spec_fixed_auto ("contract_pub",
-                                       &contract_pub),
-          GNUNET_JSON_spec_end ()
-        };
-
-        if (GNUNET_OK !=
-            GNUNET_JSON_parse (j,
-                               spec,
-                               NULL, NULL))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (GNUNET_OK !=
-            TALER_wallet_econtract_upload_verify2 (
-              &h_econtract,
-              &contract_pub,
-              &pcm->purse_pub,
-              &contract_sig))
-        {
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        if (0 ==
-            GNUNET_memcmp (&contract_sig,
-                           &pcm->econtract.econtract_sig))
-        {
-          /* Must be the SAME data, not a conflict! */
-          GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      break;
     default:
       /* unexpected EC! */
       GNUNET_break_op (0);

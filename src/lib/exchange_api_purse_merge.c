@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "exchange_api_handle.h"
+#include "exchange_api_common.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
 
@@ -74,6 +75,11 @@ struct TALER_EXCHANGE_AccountMergeHandle
    * Base URL of the provider hosting the @e reserve_pub.
    */
   char *provider_url;
+
+  /**
+   * Signature for our operation.
+   */
+  struct TALER_PurseMergeSignatureP merge_sig;
 
   /**
    * Expected value in the purse after fees.
@@ -266,58 +272,25 @@ handle_purse_merge_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     {
-      struct TALER_PurseMergeSignatureP merge_sig;
-      struct GNUNET_TIME_Timestamp merge_timestamp;
-      const char *partner_url = NULL;
-      struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                     &reserve_pub),
-        GNUNET_JSON_spec_fixed_auto ("merge_sig",
-                                     &merge_sig),
-        GNUNET_JSON_spec_timestamp ("merge_timestamp",
-                                    &merge_timestamp),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("partner_base_url",
-                                   &partner_url),
-          NULL),
-        GNUNET_JSON_spec_end ()
-      };
       struct TALER_PurseMergePublicKeyP merge_pub;
-      char *payto_uri;
 
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        break;
-      }
       GNUNET_CRYPTO_eddsa_key_get_public (&pch->merge_priv.eddsa_priv,
                                           &merge_pub.eddsa_pub);
-      if (NULL == partner_url)
-        partner_url = pch->provider_url;
-      payto_uri = make_payto (partner_url,
-                              &reserve_pub);
+
       if (GNUNET_OK !=
-          TALER_wallet_purse_merge_verify (
-            payto_uri,
-            merge_timestamp,
-            &pch->purse_pub,
+          TALER_EXCHANGE_check_purse_merge_conflict_ (
+            &pch->merge_sig,
             &merge_pub,
-            &merge_sig))
+            &pch->purse_pub,
+            pch->provider_url,
+            j))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        GNUNET_free (payto_uri);
         break;
       }
-      GNUNET_free (payto_uri);
-      /* conflict is real */
+      break;
     }
     break;
   case MHD_HTTP_GONE:
@@ -370,7 +343,6 @@ TALER_EXCHANGE_account_merge (
   struct GNUNET_CURL_Context *ctx;
   json_t *merge_obj;
   CURL *eh;
-  struct TALER_PurseMergeSignatureP merge_sig;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *reserve_url;
 
@@ -430,7 +402,7 @@ TALER_EXCHANGE_account_merge (
                                  merge_timestamp,
                                  purse_pub,
                                  merge_priv,
-                                 &merge_sig);
+                                 &pch->merge_sig);
   {
     struct TALER_Amount zero_purse_fee;
 
@@ -451,7 +423,7 @@ TALER_EXCHANGE_account_merge (
     GNUNET_JSON_pack_string ("payto_uri",
                              reserve_url),
     GNUNET_JSON_pack_data_auto ("merge_sig",
-                                &merge_sig),
+                                &pch->merge_sig),
     GNUNET_JSON_pack_data_auto ("reserve_sig",
                                 &pch->reserve_sig),
     GNUNET_JSON_pack_timestamp ("merge_timestamp",

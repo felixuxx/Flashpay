@@ -19,7 +19,9 @@
  * @brief Internal interface to the handle part of the exchange's HTTP API
  * @author Christian Grothoff
  */
-#include "platform.h"
+#ifndef EXCHANGE_API_HANDLE_H
+#define EXCHANGE_API_HANDLE_H
+
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_auditor_service.h"
 #include "taler_exchange_service.h"
@@ -254,3 +256,4 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                   const char *path);
 
 /* end of exchange_api_handle.h */
+#endif

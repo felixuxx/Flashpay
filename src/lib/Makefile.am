@@ -25,7 +25,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_batch_withdraw.c \
   exchange_api_batch_withdraw2.c \
   exchange_api_curl_defaults.c exchange_api_curl_defaults.h \
-  exchange_api_common.c \
+  exchange_api_common.c exchange_api_common.h \
   exchange_api_contracts_get.c \
   exchange_api_csr_melt.c \
   exchange_api_csr_withdraw.c \
