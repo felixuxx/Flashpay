@@ -13959,21 +13959,14 @@ postgres_select_contract (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub key to lookup the contract by
- * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
- * @param[out] econtract_sig set to the signature over the encrypted contract
- * @param[out] econtract_size set to the number of bytes in @a econtract
  * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_contract_by_purse (void *cls,
-                                   const struct
-                                   TALER_PurseContractPublicKeyP *purse_pub,
-                                   struct TALER_ContractDiffiePublicP *pub_ckey,
-                                   struct TALER_PurseContractSignatureP *
-                                   econtract_sig,
-                                   size_t *econtract_size,
-                                   void **econtract)
+postgres_select_contract_by_purse (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_EncryptedContract *econtract)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -13982,12 +13975,12 @@ postgres_select_contract_by_purse (void *cls,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("pub_ckey",
-                                          pub_ckey),
+                                          &econtract->contract_pub),
     GNUNET_PQ_result_spec_auto_from_type ("contract_sig",
-                                          econtract_sig),
+                                          &econtract->econtract_sig),
     GNUNET_PQ_result_spec_variable_size ("e_contract",
-                                         econtract,
-                                         econtract_size),
+                                         &econtract->econtract,
+                                         &econtract->econtract_size),
     GNUNET_PQ_result_spec_end
   };
 
@@ -14004,10 +13997,7 @@ postgres_select_contract_by_purse (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub the purse the contract is associated with (must exist)
- * @param pub_ckey ephemeral key for DH used to encrypt the contract
- * @param econtract_size number of bytes in @a econtract
  * @param econtract the encrypted contract
- * @param[out] econtract_sig set to the signature over the encrypted contract
  * @param[out] in_conflict set to true if @a econtract
  *             conflicts with an existing contract;
  *             in this case, the return value will be
@@ -14018,20 +14008,17 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_contract (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_ContractDiffiePublicP *pub_ckey,
-  size_t econtract_size,
-  const void *econtract,
-  const struct TALER_PurseContractSignatureP *econtract_sig,
+  const struct TALER_EncryptedContract *econtract,
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (pub_ckey),
-    GNUNET_PQ_query_param_fixed_size (econtract,
-                                      econtract_size),
-    GNUNET_PQ_query_param_auto_from_type (econtract_sig),
+    GNUNET_PQ_query_param_auto_from_type (&econtract->contract_pub),
+    GNUNET_PQ_query_param_fixed_size (econtract->econtract,
+                                      econtract->econtract_size),
+    GNUNET_PQ_query_param_auto_from_type (&econtract->econtract_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -14042,31 +14029,28 @@ postgres_insert_contract (
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs)
     return qs;
   {
-    struct TALER_ContractDiffiePublicP pub_ckey2;
-    struct TALER_PurseContractSignatureP esig2;
-    size_t econtract_size2;
-    void *econtract2;
+    struct TALER_EncryptedContract econtract2;
 
     qs = postgres_select_contract_by_purse (pg,
                                             purse_pub,
-                                            &pub_ckey2,
-                                            &esig2,
-                                            &econtract_size2,
                                             &econtract2);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    if ( (0 == GNUNET_memcmp (&pub_ckey2,
-                              pub_ckey)) &&
-         (econtract_size2 == econtract_size) &&
-         (0 == memcmp (econtract2,
-                       econtract,
-                       econtract_size)) )
+    if ( (0 == GNUNET_memcmp (&econtract->contract_pub,
+                              &econtract2.contract_pub)) &&
+         (econtract2.econtract_size ==
+          econtract->econtract_size) &&
+         (0 == memcmp (econtract2.econtract,
+                       econtract->econtract,
+                       econtract->econtract_size)) )
     {
+      GNUNET_free (econtract2.econtract);
       return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     }
+    GNUNET_free (econtract2.econtract);
     *in_conflict = true;
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }

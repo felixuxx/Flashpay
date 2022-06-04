@@ -369,13 +369,9 @@ create_transaction (void *cls,
   }
   /* 3) if present, persist contract */
   in_conflict = true;
-  // FIXME: combine econtract arguments into one!
   qs = TEH_plugin->insert_contract (TEH_plugin->cls,
                                     pcc->purse_pub,
-                                    &pcc->econtract.contract_pub,
-                                    pcc->econtract.econtract_size,
-                                    pcc->econtract.econtract,
-                                    &pcc->econtract.econtract_sig,
+                                    &pcc->econtract,
                                     &in_conflict);
   if (qs < 0)
   {
@@ -393,14 +389,10 @@ create_transaction (void *cls,
     struct TALER_EncryptedContract econtract;
     struct GNUNET_HashCode h_econtract;
 
-    // FIXME: combine econtract arguments into one!
     qs = TEH_plugin->select_contract_by_purse (
       TEH_plugin->cls,
       pcc->purse_pub,
-      &econtract.contract_pub,
-      &econtract.econtract_sig,
-      &econtract.econtract_size,
-      &econtract.econtract);
+      &econtract);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

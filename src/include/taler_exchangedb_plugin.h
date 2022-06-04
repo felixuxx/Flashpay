@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_db_lib.h>
+#include "taler_json_lib.h"
 #include "taler_signatures.h"
 
 
@@ -4779,9 +4780,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to persist an encrypted contract associated with a reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param purse_pub the purse the contract is associated with (must exist)
-   * @param pub_ckey ephemeral key for DH used to encrypt the contract
-   * @param econtract_size number of bytes in @a econtract
    * @param econtract the encrypted contract
    * @param[out] econtract_sig set to the signature over the encrypted contract
    * @param[out] in_conflict set to true if @a econtract
@@ -4793,10 +4791,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_contract)(void *cls,
                      const struct TALER_PurseContractPublicKeyP *purse_pub,
-                     const struct TALER_ContractDiffiePublicP *pub_ckey,
-                     size_t econtract_size,
-                     const void *econtract,
-                     const struct TALER_PurseContractSignatureP *econtract_sig,
+                     const struct TALER_EncryptedContract *econtract,
                      bool *in_conflict);
 
 
@@ -4820,14 +4815,12 @@ struct TALER_EXCHANGEDB_Plugin
     size_t *econtract_size,
     void **econtract);
 
+
   /**
    * Function called to retrieve an encrypted contract.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param purse_pub key to lookup the contract by
-   * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
-   * @param[out] econtract_sig set to the signature over the encrypted contract
-   * @param[out] econtract_size set to the number of bytes in @a econtract
    * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
    * @return transaction status code
    */
@@ -4835,10 +4828,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_contract_by_purse)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
-    struct TALER_ContractDiffiePublicP *pub_ckey,
-    struct TALER_PurseContractSignatureP *econtract_sig,
-    size_t *econtract_size,
-    void **econtract);
+    struct TALER_EncryptedContract *econtract);
 
 
   /**

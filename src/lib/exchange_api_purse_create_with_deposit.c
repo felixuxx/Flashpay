@@ -254,7 +254,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
   CURL *eh;
   struct TALER_PurseContractSignatureP purse_sig;
   struct TALER_EncryptedContract econtract;
-  struct TALER_ContractDiffiePublicP contract_pub;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *url;
   uint32_t min_age = 0;
@@ -402,10 +401,10 @@ TALER_EXCHANGE_purse_create_with_deposit (
                                              &econtract.econtract,
                                              &econtract.econtract_size);
     GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
-                                        &contract_pub.ecdhe_pub);
+                                        &econtract.contract_pub.ecdhe_pub);
     TALER_wallet_econtract_upload_sign (econtract.econtract,
                                         econtract.econtract_size,
-                                        &contract_pub,
+                                        &econtract.contract_pub,
                                         purse_priv,
                                         &econtract.econtract_sig);
   }

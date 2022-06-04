@@ -411,13 +411,9 @@ purse_transaction (void *cls,
   {
     bool in_conflict = true;
 
-    // FIXME: combine econtract args!
     qs = TEH_plugin->insert_contract (TEH_plugin->cls,
                                       &rpc->purse_pub,
-                                      &rpc->econtract.contract_pub,
-                                      rpc->econtract.econtract_size,
-                                      rpc->econtract.econtract,
-                                      &rpc->econtract.econtract_sig,
+                                      &rpc->econtract,
                                       &in_conflict);
     if (qs < 0)
     {
@@ -435,15 +431,10 @@ purse_transaction (void *cls,
       struct TALER_EncryptedContract econtract;
       struct GNUNET_HashCode h_econtract;
 
-      /* FIXME: change API to only pass econtract
-         instead of all members! */
       qs = TEH_plugin->select_contract_by_purse (
         TEH_plugin->cls,
         &rpc->purse_pub,
-        &econtract.contract_pub,
-        &econtract.econtract_sig,
-        &econtract.econtract_size,
-        &econtract.econtract);
+        &econtract);
       if (qs <= 0)
       {
         if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
