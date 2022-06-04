@@ -3977,8 +3977,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_reserve AS no_reserve"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5, $6);",
-      6),
+      "  ($1, $2, $3, $4, $5, $6, $7);",
+      7),
     /* Used in #postgres_do_reserve_purse() */
     GNUNET_PQ_make_prepare (
       "call_reserve_purse",
@@ -3988,8 +3988,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_kyc AS no_kyc"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
@@ -14492,6 +14492,7 @@ postgres_get_purse_deposit (
  * @param reserve_sig signature of the reserve affirming the merge
  * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
  * @param reserve_pub public key of the reserve to credit
+ * @param require_kyc true if we should check for KYC
  * @param[out] no_partner set to true if @a partner_url is unknown
  * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
  * @param[out] no_reserve set to true if the @a reserve_pub is not known
@@ -14508,6 +14509,7 @@ postgres_do_purse_merge (
   const struct TALER_ReserveSignatureP *reserve_sig,
   const char *partner_url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  bool require_kyc,
   bool *no_partner,
   bool *no_balance,
   bool *no_reserve,
@@ -14524,6 +14526,7 @@ postgres_do_purse_merge (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_string (partner_url),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -14559,7 +14562,10 @@ postgres_do_purse_merge (
  * @param reserve_sig signature of the reserve affirming the merge
  * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
  * @param reserve_pub public key of the reserve to credit
+ * @param require_kyc true if we should check for KYC
  * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
+ * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
+ * @param[out] no_kyc set to true if @a reserve_pub has not passed KYC checks
  * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
  * @return transaction status code
  */
@@ -14572,6 +14578,7 @@ postgres_do_reserve_purse (
   const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_Amount *purse_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  bool require_kyc,
   bool *in_conflict,
   bool *no_reserve,
   bool *no_kyc,
@@ -14589,6 +14596,7 @@ postgres_do_reserve_purse (
                                  ? &zero_fee
                                  : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {

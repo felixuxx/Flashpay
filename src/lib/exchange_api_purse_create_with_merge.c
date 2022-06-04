@@ -86,9 +86,29 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle
   struct TALER_ReserveSignatureP reserve_sig;
 
   /**
+   * Merge capability key.
+   */
+  struct TALER_PurseMergePublicKeyP merge_pub;
+
+  /**
+   * Our merge signature (if any).
+   */
+  struct TALER_PurseMergeSignatureP merge_sig;
+
+  /**
+   * Our contract signature (if any).
+   */
+  struct TALER_PurseContractSignatureP contract_sig;
+
+  /**
    * Public key of the purse.
    */
   struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Request data we signed over.
+   */
+  struct TALER_PurseContractSignatureP purse_sig;
 
   /**
    * Hash over the purse's contrac terms.
@@ -136,13 +156,14 @@ handle_purse_create_with_merge_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-#if FIXME
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_TIME_Timestamp etime;
       struct TALER_Amount total_deposited;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount_any ("total_deposited",
+                                    &total_deposited),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
@@ -169,29 +190,25 @@ handle_purse_create_with_merge_finished (void *cls,
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
-        dr.hr.ec =
-          TALER_EC_EXCHANGE_PURSE_CREATE_WITH_MERGE_EXCHANGE_SIGNATURE_INVALID;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       if (GNUNET_OK !=
-          TALER_exchange_online_purse_create_with_merged_verify (
+          TALER_exchange_online_purse_created_verify (
             etime,
             pcm->purse_expiration,
             &pcm->purse_value_after_fees,
+            &total_deposited,
             &pcm->purse_pub,
             &pcm->h_contract_terms,
-            &pcm->reserve_pub,
-            pcm->provider_url,
             &exchange_pub,
             &exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
-        dr.hr.ec =
-          TALER_EC_EXCHANGE_PURSE_CREATE_WITH_MERGE_EXCHANGE_SIGNATURE_INVALID;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-#endif
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -214,7 +231,184 @@ handle_purse_create_with_merge_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: check reply!
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    switch (dr.hr.ec)
+    {
+    case TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_CONFLICTING_META_DATA:
+      {
+        struct TALER_Amount amount;
+        uint32_t min_age;
+        struct GNUNET_TIME_Timestamp purse_expiration;
+        struct TALER_PurseContractSignatureP purse_sig;
+        struct TALER_PrivateContractHashP h_contract_terms;
+        struct TALER_PurseMergePublicKeyP merge_pub;
+        struct GNUNET_JSON_Specification spec[] = {
+          TALER_JSON_spec_amount_any ("amount",
+                                      &amount),
+          GNUNET_JSON_spec_uint32 ("min_age",
+                                   &min_age),
+          GNUNET_JSON_spec_timestamp ("purse_expiration",
+                                      &purse_expiration),
+          GNUNET_JSON_spec_fixed_auto ("purse_sig",
+                                       &purse_sig),
+          GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                       &h_contract_terms),
+          GNUNET_JSON_spec_fixed_auto ("merge_pub",
+                                       &merge_pub),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (j,
+                               spec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (GNUNET_OK !=
+            TALER_wallet_purse_create_verify (purse_expiration,
+                                              &h_contract_terms,
+                                              &merge_pub,
+                                              min_age,
+                                              &amount,
+                                              &pcm->purse_pub,
+                                              &purse_sig))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (0 ==
+            GNUNET_memcmp (&purse_sig,
+                           &pcm->purse_sig))
+        {
+          /* Must be the SAME data, not a conflict! */
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        break;
+      }
+    case TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_CONFLICTING_META_DATA:
+      {
+        struct TALER_PurseMergeSignatureP merge_sig;
+        struct GNUNET_TIME_Timestamp merge_timestamp;
+        const char *partner_url = pcm->exchange->url;
+        struct TALER_ReservePublicKeyP reserve_pub;
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_mark_optional (
+            GNUNET_JSON_spec_string ("partner_url",
+                                     &partner_url),
+            NULL),
+          GNUNET_JSON_spec_timestamp ("merge_timestamp",
+                                      &merge_timestamp),
+          GNUNET_JSON_spec_fixed_auto ("merge_sig",
+                                       &merge_sig),
+          GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                       &reserve_pub),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (j,
+                               spec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (GNUNET_OK !=
+            TALER_wallet_purse_merge_verify (
+              partner_url,
+              merge_timestamp,
+              &pcm->purse_pub,
+              &pcm->merge_pub,
+              &merge_sig))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (0 ==
+            GNUNET_memcmp (&merge_sig,
+                           &pcm->merge_sig))
+        {
+          /* Must be the SAME data, not a conflict! */
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+      }
+      break;
+    case TALER_EC_EXCHANGE_RESERVES_PURSE_CREATE_INSUFFICIENT_FUNDS:
+      /* nothing to verify */
+      break;
+    case TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA:
+      {
+        struct TALER_ContractDiffiePublicP pub_ckey;
+        struct TALER_PurseContractSignatureP contract_sig;
+        struct GNUNET_HashCode h_econtract;
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_fixed_auto ("h_econtract",
+                                       &h_econtract),
+          GNUNET_JSON_spec_fixed_auto ("econtract_sig",
+                                       &contract_sig),
+          GNUNET_JSON_spec_fixed_auto ("pub_ckey",
+                                       &pub_ckey),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (j,
+                               spec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (GNUNET_OK !=
+            TALER_wallet_econtract_upload_verify2 (
+              &h_econtract,
+              &pub_ckey,
+              &pcm->purse_pub,
+              &contract_sig))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        if (0 ==
+            GNUNET_memcmp (&contract_sig,
+                           &pcm->contract_sig))
+        {
+          /* Must be the SAME data, not a conflict! */
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+
+        break;
+      }
+    default:
+      /* unexpected EC! */
+      GNUNET_break_op (0);
+      dr.hr.http_status = 0;
+      dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      break;
+    } /* end inner (EC) switch */
     break;
   case MHD_HTTP_GONE:
     /* could happen if denomination was revoked */
@@ -272,11 +466,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   CURL *eh;
   char arg_str[sizeof (pcm->reserve_pub) * 2 + 32];
   uint32_t min_age = 0;
-  struct TALER_PurseMergePublicKeyP merge_pub;
-  struct TALER_PurseMergeSignatureP merge_sig;
   struct TALER_ContractDiffiePublicP contract_pub;
-  struct TALER_PurseContractSignatureP contract_sig;
-  struct TALER_PurseContractSignatureP purse_sig;
   void *econtract = NULL;
   size_t econtract_size = 0;
   struct TALER_Amount purse_fee;
@@ -301,7 +491,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &pcm->reserve_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
-                                      &merge_pub.eddsa_pub);
+                                      &pcm->merge_pub.eddsa_pub);
   GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
                                       &contract_pub.ecdhe_pub);
 
@@ -372,16 +562,16 @@ TALER_EXCHANGE_purse_create_with_merge (
   }
   TALER_wallet_purse_create_sign (pcm->purse_expiration,
                                   &pcm->h_contract_terms,
-                                  &merge_pub,
+                                  &pcm->merge_pub,
                                   min_age,
                                   &pcm->purse_value_after_fees,
                                   purse_priv,
-                                  &purse_sig);
+                                  &pcm->purse_sig);
   TALER_wallet_purse_merge_sign (exchange->url,
                                  merge_timestamp,
                                  &pcm->purse_pub,
                                  merge_priv,
-                                 &merge_sig);
+                                 &pcm->merge_sig);
   TALER_wallet_account_merge_sign (merge_timestamp,
                                    &pcm->purse_pub,
                                    pcm->purse_expiration,
@@ -405,7 +595,7 @@ TALER_EXCHANGE_purse_create_with_merge (
       econtract_size,
       &contract_pub,
       purse_priv,
-      &contract_sig);
+      &pcm->contract_sig);
   }
   create_with_merge_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("purse_value",
@@ -419,7 +609,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_allow_null (
       upload_contract
       ? GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                    &contract_sig)
+                                    &pcm->contract_sig)
       : GNUNET_JSON_pack_string ("dummy",
                                  NULL)),
     GNUNET_JSON_pack_allow_null (
@@ -435,15 +625,15 @@ TALER_EXCHANGE_purse_create_with_merge (
       : GNUNET_JSON_pack_string ("dummy2",
                                  NULL)),
     GNUNET_JSON_pack_data_auto ("merge_pub",
-                                &merge_pub),
+                                &pcm->merge_pub),
     GNUNET_JSON_pack_data_auto ("merge_sig",
-                                &merge_sig),
+                                &pcm->merge_sig),
     GNUNET_JSON_pack_data_auto ("reserve_sig",
                                 &pcm->reserve_sig),
     GNUNET_JSON_pack_data_auto ("purse_pub",
                                 &pcm->purse_pub),
     GNUNET_JSON_pack_data_auto ("purse_sig",
-                                &purse_sig),
+                                &pcm->purse_sig),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &pcm->h_contract_terms),
     GNUNET_JSON_pack_timestamp ("merge_timestamp",

@@ -226,19 +226,20 @@ merge_transaction (void *cls,
   bool no_kyc = true;
   bool no_reserve = true;
 
-  // FIXME: add KYC-check logic!
-  qs = TEH_plugin->do_purse_merge (TEH_plugin->cls,
-                                   pcc->purse_pub,
-                                   &pcc->merge_sig,
-                                   pcc->merge_timestamp,
-                                   &pcc->reserve_sig,
-                                   pcc->provider_url,
-                                   &pcc->reserve_pub,
-                                   &no_partner,
-                                   &no_balance,
-                                   &no_reserve,
-                                   &no_kyc,
-                                   &in_conflict);
+  qs = TEH_plugin->do_purse_merge (
+    TEH_plugin->cls,
+    pcc->purse_pub,
+    &pcc->merge_sig,
+    pcc->merge_timestamp,
+    &pcc->reserve_sig,
+    pcc->provider_url,
+    &pcc->reserve_pub,
+    TEH_KYC_NONE != TEH_kyc_config.mode,
+    &no_partner,
+    &no_balance,
+    &no_reserve,
+    &no_kyc,
+    &in_conflict);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -270,7 +271,8 @@ merge_transaction (void *cls,
                                   NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (no_kyc)
+  if ( (no_kyc) &&
+       (TEH_KYC_NONE != TEH_kyc_config.mode) )
   {
     *mhd_ret
       = TALER_MHD_REPLY_JSON_PACK (

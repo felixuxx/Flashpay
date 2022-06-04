@@ -1248,16 +1248,27 @@ TALER_wallet_econtract_upload_sign (
 }
 
 
-/**
- * Verify a signature over encrypted contract.
- *
- * @param econtract encrypted contract
- * @param econtract_size number of bytes in @a econtract
- * @param contract_pub public key for the DH-encryption
- * @param purse_pub purse’s public key
- * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_CREATE
- * @return #GNUNET_OK if the signature is valid
- */
+enum GNUNET_GenericReturnValue
+TALER_wallet_econtract_upload_verify2 (
+  const struct GNUNET_HashCode *h_econtract,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig)
+{
+  struct TALER_PurseContractPS pc = {
+    .purpose.size = htonl (sizeof (pc)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT),
+    .contract_pub = *contract_pub,
+    .h_econtract = *h_econtract
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT,
+                                      &pc.purpose,
+                                      &purse_sig->eddsa_signature,
+                                      &purse_pub->eddsa_pub);
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_wallet_econtract_upload_verify (
   const void *econtract,
@@ -1266,19 +1277,15 @@ TALER_wallet_econtract_upload_verify (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseContractSignatureP *purse_sig)
 {
-  struct TALER_PurseContractPS pc = {
-    .purpose.size = htonl (sizeof (pc)),
-    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT),
-    .contract_pub = *contract_pub
-  };
+  struct GNUNET_HashCode h_econtract;
 
   GNUNET_CRYPTO_hash (econtract,
                       econtract_size,
-                      &pc.h_econtract);
-  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_PURSE_ECONTRACT,
-                                      &pc.purpose,
-                                      &purse_sig->eddsa_signature,
-                                      &purse_pub->eddsa_pub);
+                      &h_econtract);
+  return TALER_wallet_econtract_upload_verify2 (&h_econtract,
+                                                contract_pub,
+                                                purse_pub,
+                                                purse_sig);
 }
 
 

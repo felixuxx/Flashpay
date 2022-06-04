@@ -116,16 +116,16 @@ run (void *cls,
      * Move money to the exchange's bank account.
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
-                              "EUR:5.01"),
+                              "EUR:5.04"),
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-2",
                               "EUR:5.01"),
     TALER_TESTING_cmd_reserve_poll ("poll-reserve-1",
                                     "create-reserve-1",
-                                    "EUR:5.01",
+                                    "EUR:5.04",
                                     GNUNET_TIME_UNIT_MINUTES,
                                     MHD_HTTP_OK),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
-                                                 "EUR:5.01",
+                                                 "EUR:5.04",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-1"),
@@ -155,7 +155,7 @@ run (void *cls,
      */
     TALER_TESTING_cmd_status ("status-1",
                               "create-reserve-1",
-                              "EUR:0",
+                              "EUR:0.03",
                               MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
@@ -195,13 +195,13 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "push-check-post-merge-reserve-balance-get",
       "create-reserve-1",
-      "EUR:1",
+      "EUR:1.03",
       MHD_HTTP_OK),
     /* POST history doesn't yet support P2P transfers */
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
-      "EUR:1",
+      "EUR:1.03",
       MHD_HTTP_OK),
     /* Test conflicting merge */
     TALER_TESTING_cmd_purse_merge (
@@ -249,13 +249,13 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "pull-check-post-merge-reserve-balance-get",
       "create-reserve-1",
-      "EUR:2",
+      "EUR:2.02",
       MHD_HTTP_OK),
     /* POST history doesn't yet support P2P transfers */
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
-      "EUR:2",
+      "EUR:2.02",
       MHD_HTTP_OK),
     /* create 2nd purse for a deposit conflict */
     TALER_TESTING_cmd_purse_create_with_reserve (

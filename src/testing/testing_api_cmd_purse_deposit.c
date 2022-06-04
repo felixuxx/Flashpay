@@ -201,9 +201,6 @@ deposit_cb (void *cls,
 
       /* Deposits complete, create trait! */
       ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
-      ds->reserve_history.amount
-        = dr->details.success.purse_value_after_fees;
-#if 0
       {
         const struct TALER_EXCHANGE_Keys *keys;
         const struct TALER_EXCHANGE_GlobalFee *gf;
@@ -213,12 +210,26 @@ deposit_cb (void *cls,
         gf = TALER_EXCHANGE_get_global_fee (keys,
                                             *merge_timestamp);
         GNUNET_assert (NULL != gf);
+
+        /* Note: change when flags below changes! */
+        if (true)
+        {
+          /* If we paid a purse fee, we need to subtract the
+             purse fee from the reserve history amount */
+          TALER_amount_subtract (&ds->reserve_history.amount,
+                                 &dr->details.success.purse_value_after_fees,
+                                 &gf->fees.purse);
+          ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
+        }
+        else
+        {
+          ds->reserve_history.amount
+            = dr->details.success.purse_value_after_fees;
+          TALER_amount_set_zero (
+            ds->reserve_history.amount.currency,
+            &ds->reserve_history.details.merge_details.purse_fee);
+        }
       }
-#endif
-      /* Note: change when flags below changes! */
-      TALER_amount_set_zero (
-        ds->reserve_history.amount.currency,
-        &ds->reserve_history.details.merge_details.purse_fee);
       ds->reserve_history.details.merge_details.h_contract_terms
         = dr->details.success.h_contract_terms;
       ds->reserve_history.details.merge_details.merge_pub
@@ -234,7 +245,7 @@ deposit_cb (void *cls,
       ds->reserve_history.details.merge_details.min_age
         = ds->min_age;
       ds->reserve_history.details.merge_details.flags
-        = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
+        = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
       ds->purse_complete = true;
     }
   }

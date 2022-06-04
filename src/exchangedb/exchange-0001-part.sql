@@ -3090,6 +3090,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_reserve_sig BYTEA,
   IN in_partner_url VARCHAR,
   IN in_reserve_pub BYTEA,
+  IN in_require_kyc BOOLEAN,
   OUT out_no_partner BOOLEAN,
   OUT out_no_balance BOOLEAN,
   OUT out_no_kyc BOOLEAN,
@@ -3197,7 +3198,8 @@ out_conflict=FALSE;
 
 ASSERT NOT my_finished, 'internal invariant failed';
 
-IF in_partner_url IS NULL
+IF ( (in_partner_url IS NULL) AND
+     (in_require_kyc) )
 THEN
   -- Need to do KYC check.
   SELECT NOT kyc_passed
@@ -3272,7 +3274,7 @@ RETURN;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA)
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BOOLEAN)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
@@ -3285,6 +3287,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_purse_fee_val INT8,
   IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
+  IN in_require_kyc BOOLEAN,
   OUT out_no_funds BOOLEAN,
   OUT out_no_kyc BOOLEAN,
   OUT out_no_reserve BOOLEAN,
@@ -3350,7 +3353,7 @@ THEN
 END IF;
 out_no_reserve=FALSE;
 
-IF (out_no_kyc)
+IF (out_no_kyc AND in_require_kyc)
 THEN
   out_no_funds=FALSE;
   RETURN;
@@ -3411,6 +3414,12 @@ INSERT INTO account_merges
   ,in_purse_pub);
 
 END $$;
+
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BOOLEAN)
+  IS 'Create a purse for a reserve.';
+
+
+
 
 
 

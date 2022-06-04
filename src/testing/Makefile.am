@@ -127,10 +127,6 @@ libtalertesting_la_LIBADD = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
-noinst_PROGRAMS = \
-  test_exchange_p2p_cs \
-  test_exchange_p2p_rsa
-
 
 .NOTPARALLEL:
 check_PROGRAMS = \
@@ -152,7 +148,9 @@ check_PROGRAMS = \
   test_exchange_management_api_rsa \
   test_kyc_api \
   test_taler_exchange_aggregator-postgres \
-  test_taler_exchange_wirewatch-postgres
+  test_taler_exchange_wirewatch-postgres \
+  test_exchange_p2p_cs \
+  test_exchange_p2p_rsa
 if HAVE_TWISTER
   check_PROGRAMS += \
     test_exchange_api_twisted_cs \

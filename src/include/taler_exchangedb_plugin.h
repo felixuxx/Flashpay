@@ -5037,6 +5037,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_sig signature of the reserve affirming the merge
    * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
    * @param reserve_pub public key of the reserve to credit
+   * @param require_kyc true if we should check for KYC
    * @param[out] no_partner set to true if @a partner_url is unknown
    * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
    * @param[out] no_reserve set to true if the @a reserve_pub is not known
@@ -5053,6 +5054,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReserveSignatureP *reserve_sig,
     const char *partner_url,
     const struct TALER_ReservePublicKeyP *reserve_pub,
+    bool require_kyc,
     bool *no_partner,
     bool *no_balance,
     bool *no_reserve,
@@ -5072,6 +5074,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_sig signature of the reserve affirming the merge
    * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
    * @param reserve_pub public key of the reserve to credit
+   * @param require_kyc true if we should check for KYC
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
    * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
    * @param[out] no_kyc set to true if @a reserve_pub has not passed KYC checks
@@ -5087,6 +5090,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReserveSignatureP *reserve_sig,
     const struct TALER_Amount *purse_fee,
     const struct TALER_ReservePublicKeyP *reserve_pub,
+    bool require_kyc,
     bool *in_conflict,
     bool *no_reserve,
     bool *no_kyc,

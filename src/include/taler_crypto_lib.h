@@ -2840,6 +2840,23 @@ TALER_wallet_econtract_upload_verify (
 
 
 /**
+ * Verify a signature over encrypted contract.
+ *
+ * @param h_econtract hashed encrypted contract
+ * @param contract_pub public key for the DH-encryption
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_CREATE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_econtract_upload_verify2 (
+  const struct GNUNET_HashCode *h_econtract,
+  const struct TALER_ContractDiffiePublicP *contract_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig);
+
+
+/**
  * Sign a request to inquire about a purse's status.
  *
  * @param purse_priv key identifying the purse

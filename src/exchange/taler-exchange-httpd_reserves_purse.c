@@ -301,6 +301,9 @@ purse_transaction (void *cls,
     bool no_reserve = true;
     bool no_kyc = true;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Creating purse with flags %d\n",
+                rpc->flags);
     qs = TEH_plugin->do_reserve_purse (
       TEH_plugin->cls,
       &rpc->purse_pub,
@@ -312,6 +315,7 @@ purse_transaction (void *cls,
       ? NULL
       : &rpc->gf->fees.purse,
       rpc->reserve_pub,
+      TEH_KYC_NONE != TEH_kyc_config.mode,
       &in_conflict,
       &no_reserve,
       &no_kyc,
@@ -387,7 +391,8 @@ purse_transaction (void *cls,
               TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    if (no_kyc)
+    if ( (no_kyc) &&
+         (TEH_KYC_NONE != TEH_kyc_config.mode) )
     {
       *mhd_ret
         = TALER_MHD_REPLY_JSON_PACK (
