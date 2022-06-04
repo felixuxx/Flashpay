@@ -1269,9 +1269,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_pub"
       ",coin_sig"
       ",purse_deposit_serial_id"
+      ",pr.refunded"
       " FROM purse_deposits pd"
       " LEFT JOIN partners"
       "   USING (partner_serial_id)"
+      " JOIN purse_requests pr"
+      "   USING (purse_pub)"
       " JOIN known_coins kc"
       "   ON (pd.coin_pub = kc.coin_pub)"
       " JOIN denominations denoms"
@@ -8314,6 +8317,8 @@ add_coin_purse_deposit (void *cls,
           NULL),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->coin_sig),
+        GNUNET_PQ_result_spec_bool ("refunded",
+                                    &deposit->refunded),
         GNUNET_PQ_result_spec_end
       };
 

@@ -1679,6 +1679,11 @@ struct TALER_EXCHANGEDB_PurseDepositListEntry
    */
   struct TALER_CoinSpendSignatureP coin_sig;
 
+  /**
+   * Set to true if the coin was refunded.
+   */
+  bool refunded;
+
 };
 
 /**

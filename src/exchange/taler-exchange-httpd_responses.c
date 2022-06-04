@@ -411,6 +411,8 @@ TEH_RESPONSE_compile_transaction_history (
                                          : pd->exchange_base_url),
                 GNUNET_JSON_pack_data_auto ("purse_pub",
                                             &pd->purse_pub),
+                GNUNET_JSON_pack_bool ("refunded",
+                                       pd->refunded),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
                                             &pd->coin_sig))))
         {
@@ -420,56 +422,6 @@ TEH_RESPONSE_compile_transaction_history (
         }
         break;
       }
-
-#if FIXME_PURSE_REFUND
-    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
-      {
-        struct TALER_EXCHANGEDB_PurseRefundListEntry *pr
-          = pos->details.purse_refund;
-        struct TALER_ExchangePublicKeyP epub;
-        struct TALER_ExchangeSignatureP esig;
-
-        if (TALER_EC_NONE !=
-            TALER_exchange_online_purse_refund_sign (
-              &TEH_keys_exchange_sign_,
-              &pr->amount,
-              &pr->refund_fee,
-              &pr->purse_share_fee,
-              &pr->purse_pub,
-              coin_pub,
-              &epub,
-              &esig))
-        {
-          GNUNET_break (0);
-          json_decref (history);
-          return NULL;
-        }
-        if (0 !=
-            json_array_append_new (
-              history,
-              GNUNET_JSON_PACK (
-                GNUNET_JSON_pack_string ("type",
-                                         "PURSE-REFUND"),
-                TALER_JSON_pack_amount ("amount",
-                                        &pd->amount),
-                TALER_JSON_pack_amount ("refund_fee",
-                                        &pd->refund_fee),
-                TALER_JSON_pack_amount ("purse_share_fee",
-                                        &pd->purse_share_fee),
-                GNUNET_JSON_pack_data_auto ("purse_pub",
-                                            &pd->purse_pub),
-                GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                            &esig),
-                GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                            &epub))))
-        {
-          GNUNET_break (0);
-          json_decref (history);
-          return NULL;
-        }
-        break;
-      }
-#endif
     }
   }
   return history;

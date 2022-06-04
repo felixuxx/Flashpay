@@ -1185,6 +1185,7 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
   struct TALER_PurseContractPublicKeyP purse_pub;
   struct TALER_CoinSpendSignatureP coin_sig;
   const char *exchange_base_url;
+  bool refunded;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("purse_pub",
                                  &purse_pub),
@@ -1192,6 +1193,8 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
                                  &coin_sig),
     GNUNET_JSON_spec_string ("exchange_base_url",
                              &exchange_base_url),
+    GNUNET_JSON_spec_bool ("refunded",
+                           &refunded),
     GNUNET_JSON_spec_end ()
   };
 
@@ -1213,6 +1216,23 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
+  }
+  if (refunded)
+  {
+    /* We add the amount to refunds here, the original
+       deposit will be added to the balance later because
+       we still return GNUNET_YES, thus effectively
+       cancelling out this operation with respect to
+       the final balance. */
+    if (0 >
+        TALER_amount_add (&pc->rtotal,
+                          &pc->rtotal,
+                          amount))
+    {
+      /* overflow in refund history? inconceivable! Bad exchange! */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_YES;
 }
