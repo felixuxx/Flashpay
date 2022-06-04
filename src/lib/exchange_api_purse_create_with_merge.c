@@ -354,7 +354,7 @@ handle_purse_create_with_merge_finished (void *cls,
       break;
     case TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA:
       {
-        struct TALER_ContractDiffiePublicP pub_ckey;
+        struct TALER_ContractDiffiePublicP contract_pub;
         struct TALER_PurseContractSignatureP contract_sig;
         struct GNUNET_HashCode h_econtract;
         struct GNUNET_JSON_Specification spec[] = {
@@ -362,8 +362,8 @@ handle_purse_create_with_merge_finished (void *cls,
                                        &h_econtract),
           GNUNET_JSON_spec_fixed_auto ("econtract_sig",
                                        &contract_sig),
-          GNUNET_JSON_spec_fixed_auto ("pub_ckey",
-                                       &pub_ckey),
+          GNUNET_JSON_spec_fixed_auto ("contract_pub",
+                                       &contract_pub),
           GNUNET_JSON_spec_end ()
         };
 
@@ -380,7 +380,7 @@ handle_purse_create_with_merge_finished (void *cls,
         if (GNUNET_OK !=
             TALER_wallet_econtract_upload_verify2 (
               &h_econtract,
-              &pub_ckey,
+              &contract_pub,
               &pcm->purse_pub,
               &contract_sig))
         {

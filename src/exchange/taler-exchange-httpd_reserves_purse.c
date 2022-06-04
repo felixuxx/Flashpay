@@ -461,7 +461,7 @@ purse_transaction (void *cls,
                                         &h_econtract),
             GNUNET_JSON_pack_data_auto ("econtract_sig",
                                         &econtract.econtract_sig),
-            GNUNET_JSON_pack_data_auto ("pub_ckey",
+            GNUNET_JSON_pack_data_auto ("contract_pub",
                                         &econtract.contract_pub));
       GNUNET_free (econtract.econtract);
       return GNUNET_DB_STATUS_HARD_ERROR;
