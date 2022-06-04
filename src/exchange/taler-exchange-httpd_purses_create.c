@@ -107,19 +107,14 @@ struct PurseCreateContext
   struct TALER_PurseMergePublicKeyP merge_pub;
 
   /**
-   * Contract decryption key for the purse.
+   * Encrypted contract of for the purse.
    */
-  struct TALER_ContractDiffiePublicP contract_pub;
+  struct TALER_EncryptedContract econtract;
 
   /**
    * Signature of the client affiming this request.
    */
   struct TALER_PurseContractSignatureP purse_sig;
-
-  /**
-   * Signature of the client affiming this encrypted contract.
-   */
-  struct TALER_PurseContractSignatureP econtract_sig;
 
   /**
    * Hash of the contract terms of the purse.
@@ -130,16 +125,6 @@ struct PurseCreateContext
    * Array of coins being deposited.
    */
   struct Coin *coins;
-
-  /**
-   * Encrypted contract, can be NULL.
-   */
-  void *econtract;
-
-  /**
-   * Number of bytes in @e econtract.
-   */
-  size_t econtract_size;
 
   /**
    * Length of the @e coins array.
@@ -384,12 +369,13 @@ create_transaction (void *cls,
   }
   /* 3) if present, persist contract */
   in_conflict = true;
+  // FIXME: combine econtract arguments into one!
   qs = TEH_plugin->insert_contract (TEH_plugin->cls,
                                     pcc->purse_pub,
-                                    &pcc->contract_pub,
-                                    pcc->econtract_size,
-                                    pcc->econtract,
-                                    &pcc->econtract_sig,
+                                    &pcc->econtract.contract_pub,
+                                    pcc->econtract.econtract_size,
+                                    pcc->econtract.econtract,
+                                    &pcc->econtract.econtract_sig,
                                     &in_conflict);
   if (qs < 0)
   {
@@ -404,19 +390,17 @@ create_transaction (void *cls,
   }
   if (in_conflict)
   {
-    struct TALER_ContractDiffiePublicP pub_ckey;
-    struct TALER_PurseContractSignatureP econtract_sig;
-    size_t econtract_size;
-    void *econtract;
+    struct TALER_EncryptedContract econtract;
     struct GNUNET_HashCode h_econtract;
 
+    // FIXME: combine econtract arguments into one!
     qs = TEH_plugin->select_contract_by_purse (
       TEH_plugin->cls,
       pcc->purse_pub,
-      &pub_ckey,
-      &econtract_sig,
-      &econtract_size,
-      &econtract);
+      &econtract.contract_pub,
+      &econtract.econtract_sig,
+      &econtract.econtract_size,
+      &econtract.econtract);
     if (qs <= 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -430,8 +414,8 @@ create_transaction (void *cls,
                                              "select contract");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    GNUNET_CRYPTO_hash (econtract,
-                        econtract_size,
+    GNUNET_CRYPTO_hash (econtract.econtract,
+                        econtract.econtract_size,
                         &h_econtract);
     *mhd_ret
       = TALER_MHD_REPLY_JSON_PACK (
@@ -442,9 +426,10 @@ create_transaction (void *cls,
           GNUNET_JSON_pack_data_auto ("h_econtract",
                                       &h_econtract),
           GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                      &econtract_sig),
+                                      &econtract.econtract_sig),
           GNUNET_JSON_pack_data_auto ("pub_ckey",
-                                      &pub_ckey));
+                                      &econtract.contract_pub));
+    GNUNET_free (econtract.econtract);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -685,6 +670,7 @@ TEH_handler_purses_create (
   json_t *deposits;
   json_t *deposit;
   unsigned int idx;
+  bool no_econtract = true;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("amount",
                             TEH_currency,
@@ -692,18 +678,9 @@ TEH_handler_purses_create (
     GNUNET_JSON_spec_uint32 ("min_age",
                              &pcc.min_age),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_varsize ("econtract",
-                                &pcc.econtract,
-                                &pcc.econtract_size),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("econtract_sig",
-                                   &pcc.econtract_sig),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("contract_pub",
-                                   &pcc.contract_pub),
-      NULL),
+      TALER_JSON_spec_econtract ("econtract",
+                                 &pcc.econtract),
+      &no_econtract),
     GNUNET_JSON_spec_fixed_auto ("merge_pub",
                                  &pcc.merge_pub),
     GNUNET_JSON_spec_fixed_auto ("purse_sig",
@@ -830,13 +807,13 @@ TEH_handler_purses_create (
                                        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
                                        NULL);
   }
-  if ( (NULL != pcc.econtract) &&
+  if ( (! no_econtract) &&
        (GNUNET_OK !=
-        TALER_wallet_econtract_upload_verify (pcc.econtract,
-                                              pcc.econtract_size,
-                                              &pcc.contract_pub,
+        TALER_wallet_econtract_upload_verify (pcc.econtract.econtract,
+                                              pcc.econtract.econtract_size,
+                                              &pcc.econtract.contract_pub,
                                               purse_pub,
-                                              &pcc.econtract_sig)) )
+                                              &pcc.econtract.econtract_sig)) )
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
     GNUNET_JSON_parse_free (spec);

@@ -28,6 +28,37 @@
 #include "taler_util.h"
 #include "taler_error_codes.h"
 
+
+/**
+ * Details about an encrypted contract.
+ */
+struct TALER_EncryptedContract
+{
+
+  /**
+   * Signature of the client affiming this encrypted contract.
+   */
+  struct TALER_PurseContractSignatureP econtract_sig;
+
+  /**
+   * Contract decryption key for the purse.
+   */
+  struct TALER_ContractDiffiePublicP contract_pub;
+
+  /**
+   * Encrypted contract, can be NULL.
+   */
+  void *econtract;
+
+  /**
+   * Number of bytes in @e econtract.
+   */
+  size_t econtract_size;
+
+
+};
+
+
 /**
  * Print JSON parsing related error information
  * @deprecated
@@ -172,6 +203,20 @@ TALER_JSON_pack_amount_nbo (const char *name,
 
 
 /**
+ * Generate packer instruction for a JSON field of type
+ * encrypted contract.
+ *
+ * @param name name of the field to add to the object
+ * @param econtract the encrypted contract
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_econtract (
+  const char *name,
+  const struct TALER_EncryptedContract *econtract);
+
+
+/**
  * Convert a TALER amount to a JSON object.
  *
  * @param amount the amount
@@ -235,6 +280,18 @@ TALER_JSON_spec_amount_nbo (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_any (const char *name,
                             struct TALER_Amount *r_amount);
+
+
+/**
+ * Provide specification to parse given JSON object to an encrypted contract.
+ *
+ * @param name name of the amount field in the JSON
+ * @param[out] econtract where to store the encrypted contract
+ * @return spec for parsing an amount
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_econtract (const char *name,
+                           struct TALER_EncryptedContract *econtract);
 
 
 /**

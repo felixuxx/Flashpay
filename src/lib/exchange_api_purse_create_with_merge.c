@@ -71,6 +71,11 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle
   void *cb_cls;
 
   /**
+   * The encrypted contract (if any).
+   */
+  struct TALER_EncryptedContract econtract;
+
+  /**
    * Expected value in the purse after fees.
    */
   struct TALER_Amount purse_value_after_fees;
@@ -94,11 +99,6 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle
    * Our merge signature (if any).
    */
   struct TALER_PurseMergeSignatureP merge_sig;
-
-  /**
-   * Our contract signature (if any).
-   */
-  struct TALER_PurseContractSignatureP contract_sig;
 
   /**
    * Public key of the purse.
@@ -391,7 +391,7 @@ handle_purse_create_with_merge_finished (void *cls,
         }
         if (0 ==
             GNUNET_memcmp (&contract_sig,
-                           &pcm->contract_sig))
+                           &pcm->econtract.econtract_sig))
         {
           /* Must be the SAME data, not a conflict! */
           GNUNET_break_op (0);
@@ -466,9 +466,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   CURL *eh;
   char arg_str[sizeof (pcm->reserve_pub) * 2 + 32];
   uint32_t min_age = 0;
-  struct TALER_ContractDiffiePublicP contract_pub;
-  void *econtract = NULL;
-  size_t econtract_size = 0;
   struct TALER_Amount purse_fee;
   enum TALER_WalletAccountMergeFlags flags;
 
@@ -492,8 +489,6 @@ TALER_EXCHANGE_purse_create_with_merge (
                                       &pcm->reserve_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
                                       &pcm->merge_pub.eddsa_pub);
-  GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
-                                      &contract_pub.ecdhe_pub);
 
   {
     struct GNUNET_JSON_Specification spec[] = {
@@ -588,14 +583,16 @@ TALER_EXCHANGE_purse_create_with_merge (
       &pcm->purse_pub,
       contract_priv,
       contract_terms,
-      &econtract,
-      &econtract_size);
+      &pcm->econtract.econtract,
+      &pcm->econtract.econtract_size);
+    GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
+                                        &pcm->econtract.contract_pub.ecdhe_pub);
     TALER_wallet_econtract_upload_sign (
-      econtract,
-      econtract_size,
-      &contract_pub,
+      pcm->econtract.econtract,
+      pcm->econtract.econtract_size,
+      &pcm->econtract.contract_pub,
       purse_priv,
-      &pcm->contract_sig);
+      &pcm->econtract.econtract_sig);
   }
   create_with_merge_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("purse_value",
@@ -603,21 +600,10 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_uint64 ("min_age",
                              min_age),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_data_varsize ("econtract",
-                                     econtract,
-                                     econtract_size)),
-    GNUNET_JSON_pack_allow_null (
-      upload_contract
-      ? GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                    &pcm->contract_sig)
-      : GNUNET_JSON_pack_string ("dummy",
-                                 NULL)),
-    GNUNET_JSON_pack_allow_null (
-      upload_contract
-      ? GNUNET_JSON_pack_data_auto ("contract_pub",
-                                    &contract_pub)
-      : GNUNET_JSON_pack_string ("dummy",
-                                 NULL)),
+      TALER_JSON_pack_econtract ("econtract",
+                                 upload_contract
+                                  ? &pcm->econtract
+                                  : NULL)),
     GNUNET_JSON_pack_allow_null (
       pay_for_purse
       ? TALER_JSON_pack_amount ("purse_fee",
@@ -641,7 +627,6 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_timestamp ("purse_expiration",
                                 pcm->purse_expiration));
   GNUNET_assert (NULL != create_with_merge_obj);
-  GNUNET_free (econtract);
   eh = TALER_EXCHANGE_curl_easy_get_ (pcm->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=
@@ -653,6 +638,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (create_with_merge_obj);
+    GNUNET_free (pcm->econtract.econtract);
     GNUNET_free (pcm->url);
     GNUNET_free (pcm);
     return NULL;
@@ -682,6 +668,7 @@ TALER_EXCHANGE_purse_create_with_merge_cancel (
   }
   GNUNET_free (pcm->url);
   TALER_curl_easy_post_finished (&pcm->ctx);
+  GNUNET_free (pcm->econtract.econtract);
   GNUNET_free (pcm);
 }
 

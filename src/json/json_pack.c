@@ -48,6 +48,30 @@ TALER_JSON_pack_time_abs_nbo_human (const char *name,
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_econtract (
+  const char *name,
+  const struct TALER_EncryptedContract *econtract)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  if (NULL == econtract)
+    return ps;
+  ps.object
+    = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_varsize ("econtract",
+                                       econtract->econtract,
+                                       econtract->econtract_size),
+        GNUNET_JSON_pack_data_auto ("econtract_sig",
+                                    &econtract->econtract_sig),
+        GNUNET_JSON_pack_data_auto ("contract_pub",
+                                    &econtract->contract_pub));
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_denom_pub (
   const char *name,
   const struct TALER_DenominationPublicKey *pk)
@@ -56,6 +80,8 @@ TALER_JSON_pack_denom_pub (
     .field_name = name,
   };
 
+  if (NULL == pk)
+    return ps;
   switch (pk->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -95,6 +121,8 @@ TALER_JSON_pack_denom_sig (
     .field_name = name,
   };
 
+  if (NULL == sig)
+    return ps;
   switch (sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -129,6 +157,8 @@ TALER_JSON_pack_exchange_withdraw_values (
     .field_name = name,
   };
 
+  if (NULL == ewv)
+    return ps;
   switch (ewv->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -166,6 +196,8 @@ TALER_JSON_pack_blinded_denom_sig (
     .field_name = name,
   };
 
+  if (NULL == sig)
+    return ps;
   switch (sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -200,6 +232,8 @@ TALER_JSON_pack_blinded_planchet (
     .field_name = name,
   };
 
+  if (NULL == blinded_planchet)
+    return ps;
   switch (blinded_planchet->cipher)
   {
   case TALER_DENOMINATION_RSA:

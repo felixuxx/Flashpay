@@ -235,6 +235,82 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
 
 
 /**
+ * Parse given JSON object to an encrypted contract.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_econtract (void *cls,
+                 json_t *root,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_EncryptedContract *econtract = spec->ptr;
+  struct GNUNET_JSON_Specification ispec[] = {
+    GNUNET_JSON_spec_varsize ("econtract",
+                              &econtract->econtract,
+                              &econtract->econtract_size),
+    GNUNET_JSON_spec_fixed_auto ("econtract_sig",
+                                 &econtract->econtract_sig),
+    GNUNET_JSON_spec_fixed_auto ("contract_pub",
+                                 &econtract->contract_pub),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         ispec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Cleanup data left from parsing encrypted contract.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_econtract (void *cls,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_EncryptedContract *econtract = spec->ptr;
+
+  (void) cls;
+  GNUNET_free (econtract->econtract);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_econtract (const char *name,
+                           struct TALER_EncryptedContract *econtract)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_econtract,
+    .cleaner = &clean_econtract,
+    .cls = NULL,
+    .field = name,
+    .ptr = econtract,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+
+  return ret;
+}
+
+
+/**
  * Parse given JSON object to denomination public key.
  *
  * @param cls closure, NULL
