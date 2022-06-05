@@ -196,6 +196,7 @@ melt_transaction (void *cls,
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
           TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+          &rmc->refresh_session.coin.denom_pub_hash,
           &rmc->refresh_session.coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

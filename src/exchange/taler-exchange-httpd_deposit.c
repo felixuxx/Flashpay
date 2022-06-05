@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -178,10 +178,12 @@ deposit_transaction (void *cls,
   }
   if (in_conflict)
   {
+    /* FIXME: conficting contract != insufficient funds */
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
           TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
+          &dc->deposit->coin.denom_pub_hash,
           &dc->deposit->coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -191,6 +193,7 @@ deposit_transaction (void *cls,
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
           TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+          &dc->deposit->coin.denom_pub_hash,
           &dc->deposit->coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

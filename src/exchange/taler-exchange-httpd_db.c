@@ -61,15 +61,19 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                                     NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_DENOM_CONFLICT:
+    /* FIXME-Oec: insufficient_funds != denom conflict! */
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
+      &h_denom_pub,
       &coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT:
+    /* FIXME-Oec: insufficient_funds != Age conflict! */
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+      &h_denom_pub,
       &coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

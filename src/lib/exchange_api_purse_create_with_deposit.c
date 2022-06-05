@@ -35,6 +35,33 @@
 
 
 /**
+ * Information we track per deposited coin.
+ */
+struct Deposit
+{
+  /**
+   * Coin's public key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Signature made with the coin.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
+   * Coin's denomination.
+   */
+  struct TALER_DenominationHashP h_denom_pub;
+
+  /**
+   * How much did we say the coin contributed.
+   */
+  struct TALER_Amount contribution;
+};
+
+
+/**
  * @brief A purse create with deposit handle
  */
 struct TALER_EXCHANGE_PurseCreateDepositHandle
@@ -106,6 +133,16 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle
    */
   struct GNUNET_TIME_Timestamp purse_expiration;
 
+  /**
+   * Array of @e num_deposit deposits.
+   */
+  struct Deposit *deposits;
+
+  /**
+   * How many deposits did we make?
+   */
+  unsigned int num_deposits;
+
 };
 
 
@@ -128,8 +165,10 @@ handle_purse_create_deposit_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
+  const struct TALER_EXCHANGE_Keys *keys;
 
   pch->job = NULL;
+  keys = TALER_EXCHANGE_get_keys (pch->exchange);
   switch (response_code)
   {
   case 0:
@@ -232,43 +271,151 @@ handle_purse_create_deposit_finished (void *cls,
         break;
       case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
         {
-#if FIXME
-          struct TALER_Amount total;
-          struct TALER_DenominationHashP h_denom_pub;
-          const struct TALER_EXCHANGE_DenomPublicKey *dk = NULL;
+          struct TALER_Amount left;
+          struct TALER_CoinSpendPublicKeyP pcoin_pub;
+          bool found = false;
 
-          // FIXME: parse coin_pub
-          // FIXME: lookup dk for that coin from our deposits array!
-
-          if (NULL == dk)
-          {
-            /* not one of our coins */
-            GNUNET_break_op (0);
-            dr.hr.http_status = 0;
-            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
           if (GNUNET_OK !=
-              TALER_EXCHANGE_verify_coin_history (dk,
-                                                  pch->exchange->currency,
-                                                  &coin_pub,
-                                                  history,
-                                                  &h_denom_pub,
-                                                  &total))
+              TALER_EXCHANGE_check_coin_amount_conflict_ (
+                keys,
+                j,
+                &pcoin_pub,
+                &left))
           {
             GNUNET_break_op (0);
             dr.hr.http_status = 0;
             dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
             break;
           }
-          // FIXME: check total is too high for the request...
-#endif
+          for (unsigned int i = 0; i<pch->num_deposits; i++)
+          {
+            struct Deposit *deposit = &pch->deposits[i];
+
+            if (0 != GNUNET_memcmp (&pcoin_pub,
+                                    &deposit->coin_pub))
+              continue;
+            if (-1 !=
+                TALER_amount_cmp (&left,
+                                  &deposit->contribution))
+            {
+              /* Balance was sufficient after all; recoup MAY have still been possible */
+              GNUNET_break_op (0);
+              continue;
+            }
+            if (GNUNET_OK !=
+                TALER_EXCHANGE_check_coin_signature_conflict_ (
+                  j,
+                  &deposit->coin_sig))
+            {
+              GNUNET_break_op (0);
+              continue;
+            }
+            found = true;
+            break;
+          }
+          if (! found)
+          {
+            /* conflict is for a different coin! */
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          break;
+        }
+      case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
+        {
+          struct TALER_Amount left;
+          struct TALER_CoinSpendPublicKeyP pcoin_pub;
+          bool found = false;
+
+          if (GNUNET_OK !=
+              TALER_EXCHANGE_check_coin_amount_conflict_ (
+                keys,
+                j,
+                &pcoin_pub,
+                &left))
+          {
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          for (unsigned int i = 0; i<pch->num_deposits; i++)
+          {
+            struct Deposit *deposit = &pch->deposits[i];
+
+            if (0 !=
+                GNUNET_memcmp (&pcoin_pub,
+                               &deposit->coin_pub))
+              continue;
+            if (GNUNET_OK !=
+                TALER_EXCHANGE_check_coin_denomination_conflict_ (
+                  j,
+                  &deposit->h_denom_pub))
+            {
+              /* Eh, same denomination, hence no conflict */
+              GNUNET_break_op (0);
+              continue;
+            }
+            found = true;
+          }
+          if (! found)
+          {
+            /* conflict is for a different coin! */
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          /* meta data conflict is real! */
           break;
         }
       case TALER_EC_EXCHANGE_PURSE_DEPOSIT_CONFLICTING_META_DATA:
         {
-          // FIXME!
-          break;
+          struct TALER_CoinSpendPublicKeyP coin_pub;
+          struct TALER_CoinSpendSignatureP coin_sig;
+          bool found = false;
+
+          if (GNUNET_OK !=
+              TALER_EXCHANGE_check_purse_coin_conflict_ (
+                &pch->purse_pub,
+                pch->exchange->url,
+                j,
+                &coin_pub,
+                &coin_sig))
+          {
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
+          for (unsigned int i = 0; i<pch->num_deposits; i++)
+          {
+            struct Deposit *deposit = &pch->deposits[i];
+
+            if (0 !=
+                GNUNET_memcmp (&coin_pub,
+                               &deposit->coin_pub))
+              continue;
+            if (0 ==
+                GNUNET_memcmp (&coin_sig,
+                               &deposit->coin_sig))
+            {
+              GNUNET_break_op (0);
+              continue;
+            }
+            found = true;
+            break;
+          }
+          if (! found)
+          {
+            /* conflict is for a different coin! */
+            GNUNET_break_op (0);
+            dr.hr.http_status = 0;
+            dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+            break;
+          }
         }
       case TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA:
         if (GNUNET_OK !=
@@ -408,6 +555,9 @@ TALER_EXCHANGE_purse_create_with_deposit (
     GNUNET_free (pch);
     return NULL;
   }
+  pch->num_deposits = num_deposits;
+  pch->deposits = GNUNET_new_array (num_deposits,
+                                    struct Deposit);
   deposit_arr = json_array ();
   GNUNET_assert (NULL != deposit_arr);
   url = TEAH_path_to_url (exchange,
@@ -418,9 +568,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
   for (unsigned int i = 0; i<num_deposits; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
+    struct Deposit *d = &pch->deposits[i];
     json_t *jdeposit;
-    struct TALER_CoinSpendSignatureP coin_sig;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
 #if FIXME_OEC
     struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
@@ -441,14 +590,16 @@ TALER_EXCHANGE_purse_create_with_deposit (
       return NULL;
     }
 #endif
+    d->contribution = deposit->amount;
+    d->h_denom_pub = deposit->h_denom_pub;
     GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
-                                        &coin_pub.eddsa_pub);
+                                        &d->coin_pub.eddsa_pub);
     TALER_wallet_purse_deposit_sign (
       url,
       &pch->purse_pub,
       &deposit->amount,
       &deposit->coin_priv,
-      &coin_sig);
+      &d->coin_sig);
     jdeposit = GNUNET_JSON_PACK (
 #if FIXME_OEC
       GNUNET_JSON_pack_allow_null (
@@ -465,9 +616,9 @@ TALER_EXCHANGE_purse_create_with_deposit (
       TALER_JSON_pack_denom_sig ("ub_sig",
                                  &deposit->denom_sig),
       GNUNET_JSON_pack_data_auto ("coin_sig",
-                                  &coin_sig),
+                                  &d->coin_sig),
       GNUNET_JSON_pack_data_auto ("coin_pub",
-                                  &coin_pub));
+                                  &d->coin_pub));
     GNUNET_assert (0 ==
                    json_array_append_new (deposit_arr,
                                           jdeposit));
@@ -529,6 +680,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
       curl_easy_cleanup (eh);
     json_decref (create_obj);
     GNUNET_free (pch->econtract.econtract);
+    GNUNET_free (pch->deposits);
     GNUNET_free (pch->url);
     GNUNET_free (pch);
     return NULL;
@@ -558,6 +710,7 @@ TALER_EXCHANGE_purse_create_with_deposit_cancel (
   }
   GNUNET_free (pch->econtract.econtract);
   GNUNET_free (pch->url);
+  GNUNET_free (pch->deposits);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);
 }

@@ -2978,21 +2978,17 @@ TALER_EXCHANGE_deposits_get_cancel (
  * Convenience function.  Verifies a coin's transaction history as
  * returned by the exchange.
  *
- * @param dk fee structure for the coin, NULL to skip verifying fees
- * @param currency expected currency for the coin
+ * @param dk fee structure for the coin
  * @param coin_pub public key of the coin
  * @param history history of the coin in json encoding
- * @param[out] h_denom_pub set to the hash of the coin's denomination (if available)
  * @param[out] total how much of the coin has been spent according to @a history
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
-  const char *currency,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   json_t *history,
-  struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_Amount *total);
 
 

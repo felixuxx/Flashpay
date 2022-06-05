@@ -173,9 +173,12 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             const json_t *json)
 {
   json_t *history;
+  struct TALER_DenominationHashP h_denom_pub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("history",
                            &history),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 &h_denom_pub),
     GNUNET_JSON_spec_end ()
   };
   size_t len;
@@ -234,7 +237,6 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       struct TALER_AgeCommitmentHash h_age_commitment;
       bool no_hac;
       // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
-      struct TALER_DenominationHashP h_denom_pub;
       struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Timestamp refund_deadline;
@@ -246,8 +248,6 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                      &h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &h_wire),
-        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &h_denom_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                        &h_age_commitment),
@@ -429,23 +429,21 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     }
   }
 
+  if (have_refund)
   {
-    if (have_refund)
+    if (0 >
+        TALER_amount_add (&rtotal,
+                          &rtotal,
+                          &rh->refund_amount))
     {
-      if (0 >
-          TALER_amount_add (&rtotal,
-                            &rtotal,
-                            &rh->refund_amount))
-      {
-        GNUNET_break (0);
-        GNUNET_JSON_parse_free (spec);
-        return GNUNET_SYSERR;
-      }
+      GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
     }
-    else
-    {
-      rtotal = rh->refund_amount;
-    }
+  }
+  else
+  {
+    rtotal = rh->refund_amount;
   }
   if (-1 == TALER_amount_cmp (&dtotal,
                               &rtotal))

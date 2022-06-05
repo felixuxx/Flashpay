@@ -149,6 +149,7 @@ recoup_transaction (void *cls,
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+      &pc->coin->denom_pub_hash,
       &pc->coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

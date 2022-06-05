@@ -70,18 +70,19 @@ TEH_RESPONSE_compile_transaction_history (
         /* internal sanity check before we hand out a bogus sig... */
         TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
         if (GNUNET_OK !=
-            TALER_wallet_deposit_verify (&deposit->amount_with_fee,
-                                         &deposit->deposit_fee,
-                                         &h_wire,
-                                         &deposit->h_contract_terms,
-                                         &deposit->h_age_commitment,
-                                         NULL /* h_extensions! */,
-                                         &deposit->h_denom_pub,
-                                         deposit->timestamp,
-                                         &deposit->merchant_pub,
-                                         deposit->refund_deadline,
-                                         coin_pub,
-                                         &deposit->csig))
+            TALER_wallet_deposit_verify (
+              &deposit->amount_with_fee,
+              &deposit->deposit_fee,
+              &h_wire,
+              &deposit->h_contract_terms,
+              &deposit->h_age_commitment,
+              NULL /* h_extensions! */,
+              &deposit->h_denom_pub,
+              deposit->timestamp,
+              &deposit->merchant_pub,
+              deposit->refund_deadline,
+              coin_pub,
+              &deposit->csig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -109,8 +110,6 @@ TEH_RESPONSE_compile_transaction_history (
                                             &deposit->h_contract_terms),
                 GNUNET_JSON_pack_data_auto ("h_wire",
                                             &h_wire),
-                GNUNET_JSON_pack_data_auto ("h_denom_pub",
-                                            &deposit->h_denom_pub),
                 GNUNET_JSON_pack_allow_null (
                   deposit->no_age_commitment ?
                   GNUNET_JSON_pack_string (
@@ -135,13 +134,14 @@ TEH_RESPONSE_compile_transaction_history (
 #if ENABLE_SANITY_CHECKS
         TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
         if (GNUNET_OK !=
-            TALER_wallet_melt_verify (&melt->amount_with_fee,
-                                      &melt->melt_fee,
-                                      &melt->rc,
-                                      &melt->h_denom_pub,
-                                      &melt->h_age_commitment,
-                                      coin_pub,
-                                      &melt->coin_sig))
+            TALER_wallet_melt_verify (
+              &melt->amount_with_fee,
+              &melt->melt_fee,
+              &melt->rc,
+              &melt->h_denom_pub,
+              &melt->h_age_commitment,
+              coin_pub,
+              &melt->coin_sig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -166,8 +166,6 @@ TEH_RESPONSE_compile_transaction_history (
                                         &melt->melt_fee),
                 GNUNET_JSON_pack_data_auto ("rc",
                                             &melt->rc),
-                GNUNET_JSON_pack_data_auto ("h_denom_pub",
-                                            &melt->h_denom_pub),
                 GNUNET_JSON_pack_allow_null (
                   GNUNET_JSON_pack_data_auto ("h_age_commitment",
                                               phac)),
@@ -189,12 +187,13 @@ TEH_RESPONSE_compile_transaction_history (
 #if ENABLE_SANITY_CHECKS
         TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
         if (GNUNET_OK !=
-            TALER_merchant_refund_verify (coin_pub,
-                                          &refund->h_contract_terms,
-                                          refund->rtransaction_id,
-                                          &refund->refund_amount,
-                                          &refund->merchant_pub,
-                                          &refund->merchant_sig))
+            TALER_merchant_refund_verify (
+              coin_pub,
+              &refund->h_contract_terms,
+              refund->rtransaction_id,
+              &refund->refund_amount,
+              &refund->merchant_pub,
+              &refund->merchant_sig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -319,8 +318,6 @@ TEH_RESPONSE_compile_transaction_history (
                                             &epub),
                 GNUNET_JSON_pack_data_auto ("reserve_pub",
                                             &recoup->reserve_pub),
-                GNUNET_JSON_pack_data_auto ("h_denom_pub",
-                                            &recoup->h_denom_pub),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
                                             &recoup->coin_sig),
                 GNUNET_JSON_pack_data_auto ("coin_blind",
@@ -376,8 +373,6 @@ TEH_RESPONSE_compile_transaction_history (
                                             &epub),
                 GNUNET_JSON_pack_data_auto ("old_coin_pub",
                                             &pr->old_coin_pub),
-                GNUNET_JSON_pack_data_auto ("h_denom_pub",
-                                            &pr->coin.denom_pub_hash),
                 GNUNET_JSON_pack_data_auto ("coin_sig",
                                             &pr->coin_sig),
                 GNUNET_JSON_pack_data_auto ("coin_blind",
@@ -558,18 +553,31 @@ MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   struct TALER_EXCHANGEDB_TransactionList *tl;
   enum GNUNET_DB_QueryStatus qs;
   json_t *history;
 
-  // FIXME: maybe start read-committed transaction here?
-  // => check all callers (that they aborted already!)
+  TEH_plugin->rollback (TEH_plugin->cls);
+  // FIXME: maybe start read-only transaction here?
+  if (GNUNET_OK !=
+      TEH_plugin->start_read_committed (TEH_plugin->cls,
+                                        "get_coin_transactions"))
+  {
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_START_FAILED,
+      NULL);
+  }
+  // FIXME: simplify, 3rd arg is always 'true' now?
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           coin_pub,
-                                          GNUNET_NO,
+                                          true,
                                           &tl);
+  TEH_plugin->rollback (TEH_plugin->cls);
   if (0 > qs)
   {
     return TALER_MHD_reply_with_error (
@@ -597,6 +605,8 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
     TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_data_auto ("coin_pub",
                                 coin_pub),
+    GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                h_denom_pub),
     GNUNET_JSON_pack_array_steal ("history",
                                   history));
 }

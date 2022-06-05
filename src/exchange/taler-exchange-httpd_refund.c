@@ -158,10 +158,10 @@ refund_transaction (void *cls,
   }
   if (conflict)
   {
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT,
+      &refund->coin.denom_pub_hash,
       &refund->coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -175,10 +175,10 @@ refund_transaction (void *cls,
   }
   if (! refund_ok)
   {
-    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
+      &refund->coin.denom_pub_hash,
       &refund->coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -200,7 +200,6 @@ static MHD_RESULT
 verify_and_execute_refund (struct MHD_Connection *connection,
                            struct TALER_EXCHANGEDB_Refund *refund)
 {
-  struct TALER_DenominationHashP denom_hash;
   struct RefundContext rctx = {
     .refund = refund
   };
@@ -228,15 +227,16 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     qs = TEH_plugin->get_coin_denomination (TEH_plugin->cls,
                                             &refund->coin.coin_pub,
                                             &rctx.known_coin_id,
-                                            &denom_hash);
+                                            &refund->coin.denom_pub_hash);
     if (0 > qs)
     {
       MHD_RESULT res;
       char *dhs;
 
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-      dhs = GNUNET_STRINGS_data_to_string_alloc (&denom_hash,
-                                                 sizeof (denom_hash));
+      dhs = GNUNET_STRINGS_data_to_string_alloc (
+        &refund->coin.denom_pub_hash,
+        sizeof (refund->coin.denom_pub_hash));
       res = TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_NOT_FOUND,
                                         TALER_EC_EXCHANGE_REFUND_COIN_NOT_FOUND,
@@ -251,7 +251,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     struct TEH_DenominationKey *dk;
     MHD_RESULT mret;
 
-    dk = TEH_keys_denomination_by_hash (&denom_hash,
+    dk = TEH_keys_denomination_by_hash (&refund->coin.denom_pub_hash,
                                         connection,
                                         &mret);
     if (NULL == dk)

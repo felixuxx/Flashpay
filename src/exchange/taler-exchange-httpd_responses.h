@@ -113,6 +113,7 @@ TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
  *
  * @param connection connection to the client
  * @param ec error code to return
+ * @param h_denom_pub hash of the denomination of the coin
  * @param coin_pub public key of the coin
  * @return MHD result code
  */
@@ -120,6 +121,7 @@ MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
+  const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 

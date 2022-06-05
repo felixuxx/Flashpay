@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
+#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
@@ -100,6 +101,11 @@ struct TALER_EXCHANGE_MeltHandle
    * Public key of the coin being melted.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Signature affirming the melt.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * @brief Public information about the coin's denomination key
@@ -184,143 +190,6 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
 
 
 /**
- * Verify that the signatures on the "409 CONFLICT" response from the
- * exchange demonstrating customer denomination key differences
- * resulting from coin private key reuse are valid.
- *
- * @param mh melt handle
- * @param json json reply with the signature(s) and transaction history
- * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
- */
-static enum GNUNET_GenericReturnValue
-verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
-                                      const json_t *json)
-
-{
-  json_t *history;
-  struct TALER_Amount total;
-  struct TALER_DenominationHashP h_denom_pub;
-
-  memset (&h_denom_pub,
-          0,
-          sizeof (h_denom_pub));
-  history = json_object_get (json,
-                             "history");
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (mh->dki,
-                                          mh->dki->value.currency,
-                                          &mh->coin_pub,
-                                          history,
-                                          &h_denom_pub,
-                                          &total))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (0 != GNUNET_memcmp (&mh->dki->h_key,
-                          &h_denom_pub))
-    return GNUNET_OK; /* indeed, proof with different denomination key provided */
-  /* invalid proof provided */
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Verify that the signatures on the "409 CONFLICT" response from the
- * exchange demonstrating customer double-spending are valid.
- *
- * @param mh melt handle
- * @param json json reply with the signature(s) and transaction history
- * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
- */
-static enum GNUNET_GenericReturnValue
-verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
-                                      const json_t *json)
-{
-  json_t *history;
-  struct TALER_Amount total;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("history",
-                           &history),
-    GNUNET_JSON_spec_end ()
-  };
-  const struct MeltedCoin *mc;
-  enum TALER_ErrorCode ec;
-  struct TALER_DenominationHashP h_denom_pub;
-
-  /* parse JSON reply */
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-
-  /* Find out which coin was deemed problematic by the exchange */
-  mc = &mh->md.melted_coin;
-  /* verify coin history */
-  memset (&h_denom_pub,
-          0,
-          sizeof (h_denom_pub));
-  history = json_object_get (json,
-                             "history");
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (mh->dki,
-                                          mc->original_value.currency,
-                                          &mh->coin_pub,
-                                          history,
-                                          &h_denom_pub,
-                                          &total))
-  {
-    GNUNET_break_op (0);
-    json_decref (history);
-    return GNUNET_SYSERR;
-  }
-  json_decref (history);
-
-  ec = TALER_JSON_get_error_code (json);
-  switch (ec)
-  {
-  case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-    /* check if melt operation was really too expensive given history */
-    if (0 >
-        TALER_amount_add (&total,
-                          &total,
-                          &mc->melt_amount_with_fee))
-    {
-      /* clearly not OK if our transaction would have caused
-         the overflow... */
-      return GNUNET_OK;
-    }
-
-    if (0 >= TALER_amount_cmp (&total,
-                               &mc->original_value))
-    {
-      /* transaction should have still fit */
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-
-    /* everything OK, valid proof of double-spending was provided */
-    return GNUNET_OK;
-  case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-    if (0 != GNUNET_memcmp (&mh->dki->h_key,
-                            &h_denom_pub))
-      return GNUNET_OK; /* indeed, proof with different denomination key provided */
-    /* invalid proof provided */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  default:
-    /* unexpected error code */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /coins/$COIN_PUB/melt request.
  *
@@ -339,8 +208,10 @@ handle_melt_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
+  const struct TALER_EXCHANGE_Keys *keys;
 
   mh->job = NULL;
+  keys = TALER_EXCHANGE_get_keys (mh->exchange);
   switch (response_code)
   {
   case 0:
@@ -372,36 +243,19 @@ handle_melt_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     mr.hr.ec = TALER_JSON_get_error_code (j);
-    switch (mr.hr.ec)
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
+    if (GNUNET_OK !=
+        TALER_EXCHANGE_check_coin_conflict_ (
+          keys,
+          j,
+          mh->dki,
+          &mh->coin_pub,
+          &mh->coin_sig,
+          &mh->md.melted_coin.melt_amount_with_fee))
     {
-    case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-      /* Double spending; check signatures on transaction history */
-      if (GNUNET_OK !=
-          verify_melt_signature_spend_conflict (mh,
-                                                j))
-      {
-        GNUNET_break_op (0);
-        mr.hr.http_status = 0;
-        mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-        mr.hr.hint = TALER_JSON_get_error_hint (j);
-      }
-      break;
-    case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-      if (GNUNET_OK !=
-          verify_melt_signature_denom_conflict (mh,
-                                                j))
-      {
-        GNUNET_break_op (0);
-        mr.hr.http_status = 0;
-        mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-        mr.hr.hint = TALER_JSON_get_error_hint (j);
-      }
-      break;
-    default:
       GNUNET_break_op (0);
       mr.hr.http_status = 0;
-      mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-      mr.hr.hint = TALER_JSON_get_error_hint (j);
+      mr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
     break;
@@ -456,7 +310,6 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   json_t *melt_obj;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
-  struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
   struct TALER_DenominationHashP h_denom_pub;
   struct TALER_ExchangeWithdrawValues alg_values[mh->rd->fresh_pks_len];
@@ -480,7 +333,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
                           &h_denom_pub,
                           mh->md.melted_coin.h_age_commitment,
                           &mh->md.melted_coin.coin_priv,
-                          &confirm_sig);
+                          &mh->coin_sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&mh->md.melted_coin.coin_priv.eddsa_priv,
                                       &mh->coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
@@ -489,7 +342,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
     TALER_JSON_pack_denom_sig ("denom_sig",
                                &mh->md.melted_coin.sig),
     GNUNET_JSON_pack_data_auto ("confirm_sig",
-                                &confirm_sig),
+                                &mh->coin_sig),
     TALER_JSON_pack_amount ("value_with_fee",
                             &mh->md.melted_coin.melt_amount_with_fee),
     GNUNET_JSON_pack_data_auto ("rc",

@@ -3620,7 +3620,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_coin_transactions)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           int include_recoup,
+                           bool include_recoup,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

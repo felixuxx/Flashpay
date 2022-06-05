@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2021 Taler Systems SA
+  Copyright (C) 2017-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
+#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
@@ -58,6 +59,11 @@ struct TALER_EXCHANGE_RecoupHandle
    * Denomination key of the coin.
    */
   struct TALER_EXCHANGE_DenomPublicKey pk;
+
+  /**
+   * Our signature requesting the recoup.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
    * Handle for the request.
@@ -139,8 +145,10 @@ handle_recoup_finished (void *cls,
     .reply = j,
     .http_status = (unsigned int) response_code
   };
+  const struct TALER_EXCHANGE_Keys *keys;
 
   ph->job = NULL;
+  keys = TALER_EXCHANGE_get_keys (ph->exchange);
   switch (response_code)
   {
   case 0:
@@ -166,76 +174,34 @@ handle_recoup_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     {
-      /* Insufficient funds, proof attached */
-      json_t *history;
-      struct TALER_Amount total;
-      struct TALER_DenominationHashP h_denom_pub;
-      const struct TALER_EXCHANGE_DenomPublicKey *dki;
-      enum TALER_ErrorCode ec;
+      struct TALER_Amount min_key;
 
-      dki = &ph->pk;
-      history = json_object_get (j,
-                                 "history");
+      hr.ec = TALER_JSON_get_error_code (j);
+      hr.hint = TALER_JSON_get_error_hint (j);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_verify_coin_history (dki,
-                                              dki->fees.deposit.currency,
-                                              &ph->coin_pub,
-                                              history,
-                                              &h_denom_pub,
-                                              &total))
+          TALER_EXCHANGE_get_min_denomination_ (keys,
+                                                &min_key))
       {
-        GNUNET_break_op (0);
-        hr.http_status = 0;
+        GNUNET_break (0);
         hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      }
-      else
-      {
-        hr.ec = TALER_JSON_get_error_code (j);
-        hr.hint = TALER_JSON_get_error_hint (j);
-      }
-      ec = TALER_JSON_get_error_code (j);
-      switch (ec)
-      {
-      case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-        if (0 > TALER_amount_cmp (&total,
-                                  &dki->value))
-        {
-          /* recoup MAY have still been possible */
-          /* FIXME: This code may falsely complain, as we do not
-             know that the smallest denomination offered by the
-             exchange is here. We should look at the key
-             structure of ph->exchange, and find the smallest
-             _currently withdrawable_ denomination and check
-             if the value remaining would suffice... */
-          GNUNET_break_op (0);
-          hr.http_status = 0;
-          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        break;
-      case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-        if (0 == GNUNET_memcmp (&ph->pk.h_key,
-                                &h_denom_pub))
-        {
-          /* invalid proof provided */
-          GNUNET_break_op (0);
-          hr.http_status = 0;
-          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
-        /* valid error from exchange */
-        break;
-      default:
-        GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      ph->cb (ph->cb_cls,
-              &hr,
-              NULL);
-      TALER_EXCHANGE_recoup_cancel (ph);
-      return;
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_conflict_ (
+            keys,
+            j,
+            &ph->pk,
+            &ph->coin_pub,
+            &ph->coin_sig,
+            &min_key))
+      {
+        GNUNET_break (0);
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        hr.http_status = 0;
+        break;
+      }
+      break;
     }
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
@@ -291,8 +257,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
 {
   struct TALER_EXCHANGE_RecoupHandle *ph;
   struct GNUNET_CURL_Context *ctx;
-  struct TALER_CoinSpendSignatureP coin_sig;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_DenominationHashP h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
@@ -302,7 +266,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-
+  ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
   TALER_planchet_setup_coin_priv (ps,
                                   exchange_vals,
                                   &coin_priv);
@@ -310,13 +274,13 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                          exchange_vals,
                                          &bks);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
-                                      &coin_pub.eddsa_pub);
+                                      &ph->coin_pub.eddsa_pub);
   TALER_denom_pub_hash (&pk->key,
                         &h_denom_pub);
   TALER_wallet_recoup_sign (&h_denom_pub,
                             &bks,
                             &coin_priv,
-                            &coin_sig);
+                            &ph->coin_sig);
   recoup_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &h_denom_pub),
@@ -325,7 +289,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     TALER_JSON_pack_exchange_withdraw_values ("ewv",
                                               exchange_vals),
     GNUNET_JSON_pack_data_auto ("coin_sig",
-                                &coin_sig),
+                                &ph->coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
                                 &bks));
   if (TALER_DENOMINATION_CS == denom_sig->cipher)
@@ -352,7 +316,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      &coin_pub,
+      &ph->coin_pub,
       sizeof (struct TALER_CoinSpendPublicKeyP),
       pub_str,
       sizeof (pub_str));
@@ -363,8 +327,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                      pub_str);
   }
 
-  ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
-  ph->coin_pub = coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
   memset (&ph->pk.key,

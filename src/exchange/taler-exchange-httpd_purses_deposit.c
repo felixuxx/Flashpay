@@ -229,6 +229,7 @@ deposit_transaction (void *cls,
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
             TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+            &coin->cpi.denom_pub_hash,
             &coin->cpi.coin_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }

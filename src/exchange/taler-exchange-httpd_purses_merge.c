@@ -325,14 +325,13 @@ merge_transaction (void *cls,
       GNUNET_JSON_pack_data_auto ("merge_sig",
                                   &merge_sig),
       GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string ("partner_base_url",
+        GNUNET_JSON_pack_string ("partner_url",
                                  partner_url)),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
                                   &reserve_pub));
     GNUNET_free (partner_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  // FIXME: if ! kyc check, return 451!
   return qs;
 }
 

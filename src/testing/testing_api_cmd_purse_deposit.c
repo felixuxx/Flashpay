@@ -145,7 +145,7 @@ deposit_cb (void *cls,
                 __LINE__);
     json_dumpf (dr->hr.reply,
                 stderr,
-                0);
+                JSON_INDENT (2));
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }

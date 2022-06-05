@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_auditor_service.h"
 #include "taler_exchange_service.h"
+#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
@@ -129,6 +130,11 @@ struct TALER_EXCHANGE_DepositHandle
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
+   * Our signature for the deposit operation.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
    * The Merchant's public key.  Allows the merchant to later refund
    * the transaction or to inquire about the wire transfer identifier.
    */
@@ -227,77 +233,6 @@ auditor_cb (void *cls,
 
 
 /**
- * Verify that the signatures on the "403 FORBIDDEN" response from the
- * exchange demonstrating customer double-spending are valid.
- *
- * @param dh deposit handle
- * @param json json reply with the signature(s) and transaction history
- * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
- */
-static enum GNUNET_GenericReturnValue
-verify_deposit_signature_conflict (
-  const struct TALER_EXCHANGE_DepositHandle *dh,
-  const json_t *json)
-{
-  json_t *history;
-  struct TALER_Amount total;
-  enum TALER_ErrorCode ec;
-  struct TALER_DenominationHashP h_denom_pub;
-
-  memset (&h_denom_pub,
-          0,
-          sizeof (h_denom_pub));
-  history = json_object_get (json,
-                             "history");
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (&dh->dki,
-                                          dh->dki.value.currency,
-                                          &dh->coin_pub,
-                                          history,
-                                          &h_denom_pub,
-                                          &total))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  ec = TALER_JSON_get_error_code (json);
-  switch (ec)
-  {
-  case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
-    if (0 >
-        TALER_amount_add (&total,
-                          &total,
-                          &dh->amount_with_fee))
-    {
-      /* clearly not OK if our transaction would have caused
-         the overflow... */
-      return GNUNET_OK;
-    }
-
-    if (0 >= TALER_amount_cmp (&total,
-                               &dh->dki.value))
-    {
-      /* transaction should have still fit */
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    /* everything OK, proof of double-spending was provided */
-    return GNUNET_OK;
-  case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-    if (0 != GNUNET_memcmp (&dh->dki.h_key,
-                            &h_denom_pub))
-      return GNUNET_OK; /* indeed, proof with different denomination key provided */
-    /* invalid proof provided */
-    return GNUNET_SYSERR;
-  default:
-    /* unexpected error code */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /deposit request.
  *
@@ -316,8 +251,10 @@ handle_deposit_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
+  const struct TALER_EXCHANGE_Keys *keys;
 
   dh->job = NULL;
+  keys = TALER_EXCHANGE_get_keys (dh->exchange);
   switch (response_code)
   {
   case 0:
@@ -409,19 +346,21 @@ handle_deposit_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    /* Double spending; check signatures on transaction history */
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     if (GNUNET_OK !=
-        verify_deposit_signature_conflict (dh,
-                                           j))
+        TALER_EXCHANGE_check_coin_conflict_ (
+          keys,
+          j,
+          &dh->dki,
+          &dh->coin_pub,
+          &dh->coin_sig,
+          &dh->amount_with_fee))
     {
       GNUNET_break_op (0);
       dr.hr.http_status = 0;
-      dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
-    }
-    else
-    {
-      dr.hr.ec = TALER_JSON_get_error_code (j);
-      dr.hr.hint = TALER_JSON_get_error_hint (j);
+      dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      break;
     }
     break;
   case MHD_HTTP_GONE:
@@ -692,6 +631,8 @@ TALER_EXCHANGE_deposit (
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
+  dh->coin_sig = *coin_sig;
+  dh->coin_pub = *coin_pub;
   dh->url = TEAH_path_to_url (exchange,
                               arg_str);
   if (NULL == dh->url)

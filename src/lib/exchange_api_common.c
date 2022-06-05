@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
+#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 
@@ -685,11 +686,6 @@ struct CoinHistoryParseContext
   const struct TALER_CoinSpendPublicKeyP *coin_pub;
 
   /**
-   * Hash of @e dk, set from parsing.
-   */
-  struct TALER_DenominationHashP *h_denom_pub;
-
-  /**
    * Where to sum up total refunds.
    */
   struct TALER_Amount rtotal;
@@ -749,8 +745,6 @@ help_deposit (struct CoinHistoryParseContext *pc,
                                  &h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire",
                                  &h_wire),
-    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                 pc->h_denom_pub),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &hac),
@@ -784,7 +778,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
         &h_contract_terms,
         no_hac ? NULL : &hac,
         NULL /* h_extensions! */,
-        pc->h_denom_pub,
+        &pc->dk->h_key,
         wallet_timestamp,
         &merchant_pub,
         refund_deadline,
@@ -836,8 +830,6 @@ help_melt (struct CoinHistoryParseContext *pc,
                                  &sig),
     GNUNET_JSON_spec_fixed_auto ("rc",
                                  &rc),
-    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                 pc->h_denom_pub),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &h_age_commitment),
@@ -876,7 +868,7 @@ help_melt (struct CoinHistoryParseContext *pc,
         amount,
         &melt_fee,
         &rc,
-        pc->h_denom_pub,
+        &pc->dk->h_key,
         no_hac
         ? NULL
         : &h_age_commitment,
@@ -1008,8 +1000,6 @@ help_recoup (struct CoinHistoryParseContext *pc,
                                  &coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_blind",
                                  &coin_bks),
-    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                 pc->h_denom_pub),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &timestamp),
     GNUNET_JSON_spec_end ()
@@ -1036,7 +1026,7 @@ help_recoup (struct CoinHistoryParseContext *pc,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_wallet_recoup_verify (pc->h_denom_pub,
+      TALER_wallet_recoup_verify (&pc->dk->h_key,
                                   &coin_bks,
                                   pc->coin_pub,
                                   &coin_sig))
@@ -1081,8 +1071,6 @@ help_recoup_refresh (struct CoinHistoryParseContext *pc,
                                  &old_coin_pub),
     GNUNET_JSON_spec_fixed_auto ("coin_blind",
                                  &coin_bks),
-    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                 pc->h_denom_pub),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &timestamp),
     GNUNET_JSON_spec_end ()
@@ -1109,7 +1097,7 @@ help_recoup_refresh (struct CoinHistoryParseContext *pc,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_wallet_recoup_verify (pc->h_denom_pub,
+      TALER_wallet_recoup_verify (&pc->dk->h_key,
                                   &coin_bks,
                                   pc->coin_pub,
                                   &coin_sig))
@@ -1250,12 +1238,11 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
-  const char *currency,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   json_t *history,
-  struct TALER_DenominationHashP *h_denom_pub,
   struct TALER_Amount *total)
 {
+  const char *currency = dk->value.currency;
   const struct
   {
     const char *type;
@@ -1273,8 +1260,7 @@ TALER_EXCHANGE_verify_coin_history (
   struct CoinHistoryParseContext pc = {
     .dk = dk,
     .coin_pub = coin_pub,
-    .total = total,
-    .h_denom_pub = h_denom_pub
+    .total = total
   };
   size_t len;
 
@@ -1528,11 +1514,10 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
 {
   struct TALER_PurseMergeSignatureP merge_sig;
   struct GNUNET_TIME_Timestamp merge_timestamp;
-  const char *partner_url = exchange_url;
+  const char *partner_url = NULL;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_mark_optional (
-      // FIXME: partner_url or partner_base_url?
       GNUNET_JSON_spec_string ("partner_url",
                                &partner_url),
       NULL),
@@ -1554,6 +1539,8 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if (NULL == partner_url)
+    partner_url = exchange_url;
   payto_uri = make_payto (partner_url,
                           &reserve_pub);
   if (GNUNET_OK !=
@@ -1581,18 +1568,55 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
 }
 
 
-/**
- * Check proof of a contract conflict.
- *
- * DESIGN-FIXME: this 'proof' doesn't really proof a conflict!
- *
- * @param ccontract_sig conflicting signature (must
- *        not match the signature from the proof)
- * @param purse_pub public key of the purse
- * @param exchange_url the base URL of this exchange
- * @param proof the proof to check
- * @return #GNUNET_OK if the @a proof is OK for @a purse_pub and conflicts with @a purse_sig
- */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_purse_coin_conflict_ (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const char *exchange_url,
+  const json_t *proof,
+  struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  const char *partner_url = NULL;
+  struct TALER_Amount amount;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 coin_sig),
+    GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                 coin_pub),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("partner_url",
+                               &partner_url),
+      NULL),
+    TALER_JSON_spec_amount_any ("amount",
+                                &amount),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (NULL == partner_url)
+    partner_url = exchange_url;
+  if (GNUNET_OK !=
+      TALER_wallet_purse_deposit_verify (
+        partner_url,
+        purse_pub,
+        &amount,
+        coin_pub,
+        coin_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_check_purse_econtract_conflict_ (
   const struct TALER_PurseContractSignatureP *ccontract_sig,
@@ -1636,6 +1660,280 @@ TALER_EXCHANGE_check_purse_econtract_conflict_ (
   {
     /* Must be the SAME data, not a conflict! */
     GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_coin_amount_conflict_ (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const json_t *proof,
+  struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct TALER_Amount *remaining)
+{
+  json_t *history;
+  struct TALER_Amount total;
+  struct TALER_DenominationHashP h_denom_pub;
+  const struct TALER_EXCHANGE_DenomPublicKey *dki;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                 coin_pub),
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 &h_denom_pub),
+    GNUNET_JSON_spec_json ("history",
+                           &history),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  dki = TALER_EXCHANGE_get_denomination_key_by_hash (
+    keys,
+    &h_denom_pub);
+  if (NULL == dki)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_verify_coin_history (dki,
+                                          coin_pub,
+                                          history,
+                                          &total))
+  {
+    GNUNET_break_op (0);
+    json_decref (history);
+    return GNUNET_SYSERR;
+  }
+  json_decref (history);
+  if (0 >
+      TALER_amount_subtract (remaining,
+                             &dki->value,
+                             &total))
+  {
+    /* Strange 'proof': coin was double-spent
+       before our transaction?! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Verify that @a coin_sig does NOT appear in
+ * the history of @a proof and thus whatever transaction
+ * is authorized by @a coin_sig is a conflict with
+ * @a proof.
+ *
+ * @param proof a proof to check
+ * @param coin_sig signature that must not be in @a proof
+ * @return #GNUNET_OK if @a coin_sig is not in @a proof
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_coin_signature_conflict_ (
+  const json_t *proof,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  json_t *history;
+  size_t off;
+  json_t *entry;
+
+  history = json_object_get (proof,
+                             "history");
+  if (NULL == history)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  json_array_foreach (history, off, entry)
+  {
+    struct TALER_CoinSpendSignatureP cs;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                   &cs),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (entry,
+                           spec,
+                           NULL, NULL))
+      continue; /* entry without coin signature */
+    if (0 ==
+        GNUNET_memcmp (&cs,
+                       coin_sig))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_coin_denomination_conflict_ (
+  const json_t *proof,
+  const struct TALER_DenominationHashP *ch_denom_pub)
+{
+  struct TALER_DenominationHashP h_denom_pub;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 &h_denom_pub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (proof,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 ==
+      GNUNET_memcmp (ch_denom_pub,
+                     &h_denom_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_OK;
+  }
+  /* indeed, proof with different denomination key provided */
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_check_coin_conflict_ (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const json_t *proof,
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_Amount *required)
+{
+  enum TALER_ErrorCode ec;
+
+  ec = TALER_JSON_get_error_code (proof);
+  switch (ec)
+  {
+  case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
+    {
+      struct TALER_Amount left;
+      struct TALER_CoinSpendPublicKeyP pcoin_pub;
+
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_amount_conflict_ (
+            keys,
+            proof,
+            &pcoin_pub,
+            &left))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (0 !=
+          GNUNET_memcmp (&pcoin_pub,
+                         coin_pub))
+      {
+        /* conflict is for a different coin! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (-1 !=
+          TALER_amount_cmp (&left,
+                            required))
+      {
+        /* Balance was sufficient after all; recoup MAY have still been possible */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_signature_conflict_ (
+            proof,
+            coin_sig))
+      {
+        /* Not a conflicting transaction: ours is included! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    }
+  case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
+    {
+      struct TALER_Amount left;
+      struct TALER_CoinSpendPublicKeyP pcoin_pub;
+
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_amount_conflict_ (
+            keys,
+            proof,
+            &pcoin_pub,
+            &left))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (0 !=
+          GNUNET_memcmp (&pcoin_pub,
+                         coin_pub))
+      {
+        /* conflict is for a different coin! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_denomination_conflict_ (
+            proof,
+            &dk->h_key))
+      {
+        /* Eh, same denomination, hence no conflict */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      break;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_get_min_denomination_ (
+  const struct TALER_EXCHANGE_Keys *keys,
+  struct TALER_Amount *min)
+{
+  bool have_min = false;
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
+  {
+    const struct TALER_EXCHANGE_DenomPublicKey *dk = &keys->denom_keys[i];
+
+    if (! have_min)
+    {
+      *min = dk->value;
+      have_min = true;
+      continue;
+    }
+    if (1 != TALER_amount_cmp (min,
+                               &dk->value))
+      continue;
+    *min = dk->value;
+  }
+  if (! have_min)
+  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
