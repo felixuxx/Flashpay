@@ -14149,7 +14149,7 @@ postgres_insert_purse_request (
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp now = GNUNET_TIME_timestamp_get ();
   uint32_t flags32 = (uint32_t) flags;
-  bool in_reserve_quota = (TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE
+  bool in_reserve_quota = (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
                            == (flags & TALER_WAMF_MERGE_MODE_MASK));
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),

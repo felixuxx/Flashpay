@@ -1354,7 +1354,7 @@ CREATE OR REPLACE FUNCTION purse_requests_on_update_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  IF (NEW.finished)
+  IF (NEW.finished AND NOT OLD.finished)
   THEN
     -- If this purse counted against the reserve's
     -- quota of purses, decrement the reserve accounting.
@@ -3099,9 +3099,13 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  amount_val INT8;
+  my_amount_val INT8;
 DECLARE
-  amount_frac INT4;
+  my_amount_frac INT4;
+DECLARE
+  my_purse_fee_val INT8;
+DECLARE
+  my_purse_fee_frac INT4;
 DECLARE
   my_partner_serial_id INT8;
 DECLARE
@@ -3136,9 +3140,13 @@ out_no_partner=FALSE;
 -- Check purse is 'full'.
 SELECT amount_with_fee_val
       ,amount_with_fee_frac
+      ,purse_fee_val
+      ,purse_fee_frac
       ,finished
-  INTO amount_val
-      ,amount_frac
+  INTO my_amount_val
+      ,my_amount_frac
+      ,my_purse_fee_val
+      ,my_purse_fee_frac
       ,my_finished
   FROM purse_requests
   WHERE purse_pub=in_purse_pub
@@ -3246,18 +3254,26 @@ THEN
         ,partner_serial_id=my_partner_serial_id
    WHERE purse_pub=in_purse_pub;
 ELSE
-  -- This is a local reserve, update balance immediately.
+  -- This is a local reserve, update reserve balance immediately.
+
+  -- Refund the purse fee, by adding it to the purse value:
+  my_amount_val = my_amount_val + my_purse_fee_val;
+  my_amount_frac = my_amount_frac + my_purse_fee_frac;
+  -- normalize result
+  my_amount_val = my_amount_val + my_amount_frac / 100000000;
+  my_amount_frac = my_amount_frac % 100000000;
+
   UPDATE reserves
   SET
-    current_balance_frac=current_balance_frac+amount_frac
+    current_balance_frac=current_balance_frac+my_amount_frac
        - CASE
-         WHEN current_balance_frac + amount_frac >= 100000000
+         WHEN current_balance_frac + my_amount_frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val+amount_val
+    current_balance_val=current_balance_val+my_amount_val
        + CASE
-         WHEN current_balance_frac + amount_frac >= 100000000
+         WHEN current_balance_frac + my_amount_frac >= 100000000
          THEN 1
          ELSE 0
          END

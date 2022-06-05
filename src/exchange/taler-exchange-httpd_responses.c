@@ -778,12 +778,7 @@ TEH_RESPONSE_compile_reserve_history (
       {
         const struct TALER_EXCHANGEDB_PurseMerge *merge =
           pos->details.merge;
-        struct TALER_Amount amount;
 
-        GNUNET_assert (0 <=
-                       TALER_amount_subtract (&amount,
-                                              &merge->amount_with_fee,
-                                              &merge->purse_fee));
         if (0 !=
             json_array_append_new (
               json_history,
@@ -807,7 +802,7 @@ TEH_RESPONSE_compile_reserve_history (
                 GNUNET_JSON_pack_timestamp ("purse_expiration",
                                             merge->purse_expiration),
                 TALER_JSON_pack_amount ("amount",
-                                        &amount),
+                                        &merge->amount_with_fee),
                 TALER_JSON_pack_amount ("purse_fee",
                                         &merge->purse_fee),
                 GNUNET_JSON_pack_bool ("merged",

@@ -399,7 +399,6 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
              const json_t *transaction)
 {
   uint32_t flags32;
-  struct TALER_Amount total;
   struct GNUNET_JSON_Specification merge_spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &rh->details.merge_details.h_contract_terms),
@@ -435,21 +434,13 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
   }
   rh->details.merge_details.flags =
     (enum TALER_WalletAccountMergeFlags) flags32;
-  if (0 >
-      TALER_amount_add (&total,
-                        &rh->amount,
-                        &rh->details.merge_details.purse_fee))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
   if (GNUNET_OK !=
       TALER_wallet_account_merge_verify (
         rh->details.merge_details.merge_timestamp,
         &rh->details.merge_details.purse_pub,
         rh->details.merge_details.purse_expiration,
         &rh->details.merge_details.h_contract_terms,
-        &total,
+        &rh->amount,
         &rh->details.merge_details.purse_fee,
         rh->details.merge_details.min_age,
         rh->details.merge_details.flags,
@@ -471,14 +462,17 @@ parse_merge (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
       return GNUNET_SYSERR;
     }
   }
-  if (0 >
-      TALER_amount_add (uc->total_out,
-                        uc->total_out,
-                        &rh->details.merge_details.purse_fee))
+  else
   {
-    /* overflow in history already!? inconceivable! Bad exchange! */
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    if (0 >
+        TALER_amount_add (uc->total_out,
+                          uc->total_out,
+                          &rh->details.merge_details.purse_fee))
+    {
+      /* overflow in history already!? inconceivable! Bad exchange! */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }

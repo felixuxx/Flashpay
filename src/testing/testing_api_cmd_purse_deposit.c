@@ -212,19 +212,14 @@ deposit_cb (void *cls,
         GNUNET_assert (NULL != gf);
 
         /* Note: change when flags below changes! */
+        ds->reserve_history.amount
+          = dr->details.success.purse_value_after_fees;
         if (true)
         {
-          /* If we paid a purse fee, we need to subtract the
-             purse fee from the reserve history amount */
-          TALER_amount_subtract (&ds->reserve_history.amount,
-                                 &dr->details.success.purse_value_after_fees,
-                                 &gf->fees.purse);
           ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
         }
         else
         {
-          ds->reserve_history.amount
-            = dr->details.success.purse_value_after_fees;
           TALER_amount_set_zero (
             ds->reserve_history.amount.currency,
             &ds->reserve_history.details.merge_details.purse_fee);
