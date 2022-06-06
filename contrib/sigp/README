@@ -1,3 +1,9 @@
 This directory contains bootstrap code to extract info from the
 Signature Purposes database (registry) and format it in various ways.
 It is a peer of ${top_srcdir}/contrib/gana/ (q.v.).
+
+NB: New database entries MUST have field "Package: GNU Taler" if
+    you want them to be visible to the Makefile in this directory.
+
+Don't make changes to registry.rec here (it is a symlink, after all).
+Instead, make them in ../gana/gnunet-signatures/ (commit from there, too).
