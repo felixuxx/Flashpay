@@ -6,4 +6,5 @@ NB: New database entries MUST have field "Package: GNU Taler" if
     you want them to be visible to the Makefile in this directory.
 
 Don't make changes to registry.rec here (it is a symlink, after all).
-Instead, make them in ../gana/gnunet-signatures/ (commit from there, too).
+Instead, make them in ../gana/gnunet-signatures/ or from a separate
+checkout of the GANA Git repo (commit from there, too).
