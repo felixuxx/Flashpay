@@ -32,3 +32,6 @@ ensure taler_error_codes.h gana/gnu-taler-error-codes src/include
 
 domake                  gana/gnu-taler-db-events
 ensure taler_dbevents.h gana/gnu-taler-db-events src/include
+
+domake                    sigp
+ensure taler_signatures.h sigp src/include
