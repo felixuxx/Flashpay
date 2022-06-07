@@ -163,16 +163,17 @@ TALER_EXCHANGE_management_enable_auditor (
     GNUNET_JSON_pack_timestamp ("validity_start",
                                 validity_start));
   eh = TALER_EXCHANGE_curl_easy_get_ (ah->url);
-  GNUNET_assert (NULL != eh);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&ah->post_ctx,
-                            eh,
-                            body))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&ah->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
     json_decref (body);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     GNUNET_free (ah->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);

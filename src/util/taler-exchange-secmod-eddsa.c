@@ -918,6 +918,7 @@ import_key (void *cls,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "stat",
                               filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (! S_ISREG (sbuf.st_mode))
@@ -925,6 +926,7 @@ import_key (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "File `%s' is not a regular file, which is not allowed for private keys!\n",
                 filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (0 != (sbuf.st_mode & (S_IWUSR | S_IRWXG | S_IRWXO)))

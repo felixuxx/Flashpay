@@ -1215,7 +1215,6 @@ import_key (void *cls,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "open",
                               filename);
-    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (0 != fstat (fd,
@@ -1224,6 +1223,7 @@ import_key (void *cls,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "stat",
                               filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (! S_ISREG (sbuf.st_mode))

@@ -628,8 +628,8 @@ sem_up (struct Semaphore *sem)
 static void
 sem_done (struct Semaphore *sem)
 {
-  pthread_cond_destroy (&sem->cv);
-  pthread_mutex_destroy (&sem->mutex);
+  GNUNET_break (0 == pthread_cond_destroy (&sem->cv));
+  GNUNET_break (0 == pthread_mutex_destroy (&sem->mutex));
 }
 
 
@@ -1625,6 +1625,7 @@ import_key (void *cls,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "stat",
                               filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (! S_ISREG (sbuf.st_mode))

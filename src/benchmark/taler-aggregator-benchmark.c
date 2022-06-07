@@ -283,6 +283,9 @@ add_deposit (const struct Merchant *m)
   d.coin.denom_pub_hash = h_denom_pub;
   d.coin.denom_sig = denom_sig;
   RANDOMIZE (&d.h_contract_terms);
+  memset (&d.coin.h_age_commitment,
+          0,
+          sizeof (d.coin.h_age_commitment));
 
   if (0 >=
       plugin->ensure_coin_known (plugin->cls,

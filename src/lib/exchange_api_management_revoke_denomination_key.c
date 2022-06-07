@@ -175,15 +175,17 @@ TALER_EXCHANGE_management_revoke_denomination_key (
     return NULL;
   }
   eh = TALER_EXCHANGE_curl_easy_get_ (rh->url);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&rh->post_ctx,
-                            eh,
-                            body))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&rh->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (rh->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);

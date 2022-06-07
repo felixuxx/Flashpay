@@ -23,6 +23,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_extensions.h"
+#include "exchange_api_curl_defaults.h"
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
@@ -154,26 +155,24 @@ TALER_EXCHANGE_management_post_extensions (
     GNUNET_JSON_pack_data_auto ("extensions_sig",
                                 &ped->extensions_sig));
 
-  eh = curl_easy_init ();
-  GNUNET_assert (NULL != eh);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&ph->post_ctx,
-                            eh,
-                            body))
+  eh = TALER_EXCHANGE_curl_easy_get_ (ph->url);
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&ph->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (ph->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting URL '%s'\n",
               ph->url);
-  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
-                                               CURLOPT_URL,
-                                               ph->url));
   ph->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   ph->post_ctx.headers,

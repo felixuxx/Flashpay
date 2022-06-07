@@ -191,16 +191,17 @@ TALER_EXCHANGE_post_management_keys (
     GNUNET_JSON_pack_array_steal ("signkey_sigs",
                                   signkey_sigs));
   eh = TALER_EXCHANGE_curl_easy_get_ (ph->url);
-  GNUNET_assert (NULL != eh);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&ph->post_ctx,
-                            eh,
-                            body))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&ph->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (ph->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);

@@ -133,8 +133,10 @@ merge_cb (void *cls,
   {
     ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
     ds->reserve_history.amount = ds->value_after_fees;
-    TALER_amount_set_zero (ds->value_after_fees.currency,
-                           &ds->reserve_history.details.merge_details.purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (
+                     ds->value_after_fees.currency,
+                     &ds->reserve_history.details.merge_details.purse_fee));
     ds->reserve_history.details.merge_details.h_contract_terms
       = ds->h_contract_terms;
     ds->reserve_history.details.merge_details.merge_pub

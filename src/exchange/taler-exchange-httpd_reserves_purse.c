@@ -557,8 +557,22 @@ TEH_handler_reserves_purse (
                                        TALER_EC_EXCHANGE_RESERVES_PURSE_EXPIRATION_IS_NEVER,
                                        NULL);
   }
-  rpc.gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
-                                        rpc.exchange_timestamp);
+  {
+    struct TEH_KeyStateHandle *keys;
+
+    keys = TEH_keys_get_state ();
+    if (NULL == keys)
+    {
+      GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                         NULL);
+    }
+    rpc.gf = TEH_keys_global_fee_by_time (keys,
+                                          rpc.exchange_timestamp);
+  }
   if (NULL == rpc.gf)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

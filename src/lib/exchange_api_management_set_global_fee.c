@@ -179,16 +179,17 @@ TALER_EXCHANGE_management_set_global_fees (
     GNUNET_JSON_pack_uint64 ("purse_account_limit",
                              purse_account_limit));
   eh = TALER_EXCHANGE_curl_easy_get_ (sgfh->url);
-  GNUNET_assert (NULL != eh);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&sgfh->post_ctx,
-                            eh,
-                            body))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&sgfh->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (sgfh->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);

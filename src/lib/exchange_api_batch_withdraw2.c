@@ -414,8 +414,9 @@ TALER_EXCHANGE_batch_withdraw2 (
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   wh->num_coins = pds_length;
-  TALER_amount_set_zero (keys->currency,
-                         &wh->requested_amount);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (keys->currency,
+                                        &wh->requested_amount));
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &wh->reserve_pub.eddsa_pub);
   {

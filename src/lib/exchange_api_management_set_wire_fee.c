@@ -168,16 +168,17 @@ TALER_EXCHANGE_management_set_wire_fees (
     TALER_JSON_pack_amount ("wire_fee",
                             &fees->wire));
   eh = TALER_EXCHANGE_curl_easy_get_ (swfh->url);
-  GNUNET_assert (NULL != eh);
-  if (GNUNET_OK !=
-      TALER_curl_easy_post (&swfh->post_ctx,
-                            eh,
-                            body))
+  if ( (NULL == eh) ||
+       (GNUNET_OK !=
+        TALER_curl_easy_post (&swfh->post_ctx,
+                              eh,
+                              body)) )
   {
     GNUNET_break (0);
+    if (NULL != eh)
+      curl_easy_cleanup (eh);
     json_decref (body);
     GNUNET_free (swfh->url);
-    GNUNET_free (eh);
     return NULL;
   }
   json_decref (body);

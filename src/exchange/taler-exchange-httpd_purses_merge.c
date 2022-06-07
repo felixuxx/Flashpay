@@ -162,8 +162,9 @@ reply_merge_success (struct MHD_Connection *connection,
                                &pcc->target_amount,
                                &pcc->wf->wad))
     {
-      TALER_amount_set_zero (TEH_currency,
-                             &merge_amount);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (TEH_currency,
+                                            &merge_amount));
     }
   }
   if (TALER_EC_NONE !=
@@ -524,8 +525,9 @@ TEH_handler_purses_merge (
   {
     struct TALER_Amount zero_purse_fee;
 
-    TALER_amount_set_zero (pcc.target_amount.currency,
-                           &zero_purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (pcc.target_amount.currency,
+                                          &zero_purse_fee));
     if (GNUNET_OK !=
         TALER_wallet_account_merge_verify (
           pcc.merge_timestamp,

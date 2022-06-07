@@ -423,7 +423,6 @@ struct TALER_EXCHANGE_HttpResponse
    * reply (too big, invalid JSON).
    */
   const json_t *reply;
-
   /**
    * Set to the human-readable 'hint' that is optionally
    * provided by the exchange together with errors. NULL

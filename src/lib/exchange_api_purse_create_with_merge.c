@@ -357,7 +357,6 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_free (pcm);
     return NULL;
   }
-  pcm->h_contract_terms = pcm->h_contract_terms;
   pcm->merge_timestamp = merge_timestamp;
   GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
                                       &pcm->purse_pub.eddsa_pub);
@@ -401,8 +400,9 @@ TALER_EXCHANGE_purse_create_with_merge (
   }
   else
   {
-    TALER_amount_set_zero (pcm->purse_value_after_fees.currency,
-                           &purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (pcm->purse_value_after_fees.currency,
+                                          &purse_fee));
     flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
   }
 

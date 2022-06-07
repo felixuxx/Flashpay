@@ -270,25 +270,27 @@ run (void *cls,
                                   &msg_size),
         GNUNET_JSON_spec_end ()
       };
-      if (GNUNET_OK != GNUNET_JSON_parse (args,
-                                          eddsa_sign_spec,
-                                          NULL,
-                                          NULL))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (args,
+                             eddsa_sign_spec,
+                             NULL,
+                             NULL))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "malformed op args\n");
         global_ret = 1;
         return;
       }
-      GNUNET_CRYPTO_eddsa_sign_ (
-        &priv,
-        msg,
-        &sig
-        );
+      GNUNET_assert (GNUNET_OK ==
+                     GNUNET_CRYPTO_eddsa_sign_ (
+                       &priv,
+                       msg,
+                       &sig));
       resp = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("sig", &sig)
         );
-      json_dumpf (resp, stdout, JSON_COMPACT);
+      json_dumpf (resp, stdout,
+                  JSON_COMPACT);
       printf ("\n");
       fflush (stdout);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,

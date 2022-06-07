@@ -628,8 +628,9 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
   memset (&wc,
           0,
           sizeof (wc));
-  TALER_amount_set_zero (TEH_currency,
-                         &wc.batch_total);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &wc.batch_total));
   wc.reserve_pub = reserve_pub;
 
   {

@@ -232,8 +232,22 @@ TEH_handler_reserves_history (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
                                        NULL);
   }
-  rsc.gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
-                                        rsc.timestamp);
+  {
+    struct TEH_KeyStateHandle *keys;
+
+    keys = TEH_keys_get_state ();
+    if (NULL == keys)
+    {
+      GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                         NULL);
+    }
+    rsc.gf = TEH_keys_global_fee_by_time (keys,
+                                          rsc.timestamp);
+  }
   if (NULL == rsc.gf)
   {
     GNUNET_break (0);

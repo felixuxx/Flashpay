@@ -207,8 +207,9 @@ create_transaction (void *cls,
   struct TALER_Amount purse_fee;
   bool in_conflict = true;
 
-  TALER_amount_set_zero (pcc->amount.currency,
-                         &purse_fee);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pcc->amount.currency,
+                                        &purse_fee));
   /* 1) create purse */
   qs = TEH_plugin->insert_purse_request (
     TEH_plugin->cls,
@@ -739,8 +740,22 @@ TEH_handler_purses_create (
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "deposits");
   }
-  gf = TEH_keys_global_fee_by_time (TEH_keys_get_state (),
-                                    pcc.exchange_timestamp);
+  {
+    struct TEH_KeyStateHandle *keys;
+
+    keys = TEH_keys_get_state ();
+    if (NULL == keys)
+    {
+      GNUNET_break (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                         NULL);
+    }
+    gf = TEH_keys_global_fee_by_time (keys,
+                                      pcc.exchange_timestamp);
+  }
   if (NULL == gf)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

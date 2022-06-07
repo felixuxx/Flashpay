@@ -14594,8 +14594,9 @@ postgres_do_reserve_purse (
     GNUNET_PQ_result_spec_end
   };
 
-  TALER_amount_set_zero (pg->currency,
-                         &zero_fee);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        &zero_fee));
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_reserve_purse",
                                                    params,
