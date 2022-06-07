@@ -824,6 +824,8 @@ cs_update_client_keys (struct TES_Client *client)
         memcpy (&buf[obs],
                 &pn,
                 sizeof (pn));
+        GNUNET_assert (obs + sizeof (pn)
+                       > obs);
         obs += sizeof (pn);
       }
       else
@@ -831,6 +833,8 @@ cs_update_client_keys (struct TES_Client *client)
         memcpy (&buf[obs],
                 key->an,
                 ntohs (key->an->header.size));
+        GNUNET_assert (obs + ntohs (key->an->header.size)
+                       > obs);
         obs += ntohs (key->an->header.size);
       }
     }

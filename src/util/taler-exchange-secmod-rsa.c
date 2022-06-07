@@ -743,6 +743,11 @@ handle_batch_sign_request (struct TES_Client *client,
   struct BatchJob jobs[bs];
   bool failure = false;
 
+  if (bs > TALER_MAX_FRESH_COINS)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   while ( (bs > 0) &&
           (size > sizeof (struct TALER_CRYPTO_SignRequest)) )
   {
@@ -1087,6 +1092,8 @@ rsa_client_init (struct TES_Client *client)
          NULL != dk;
          dk = dk->next)
     {
+      GNUNET_assert (obs + ntohs (dk->an->header.size)
+                     > obs);
       obs += ntohs (dk->an->header.size);
     }
   }
@@ -1103,6 +1110,8 @@ rsa_client_init (struct TES_Client *client)
       memcpy (&buf[obs],
               dk->an,
               ntohs (dk->an->header.size));
+      GNUNET_assert (obs + ntohs (dk->an->header.size)
+                     > obs);
       obs += ntohs (dk->an->header.size);
     }
   }
@@ -1202,6 +1211,8 @@ rsa_update_client_keys (struct TES_Client *client)
         memcpy (&buf[obs],
                 &pn,
                 sizeof (pn));
+        GNUNET_assert (obs + sizeof (pn)
+                       > obs);
         obs += sizeof (pn);
       }
       else
@@ -1209,6 +1220,8 @@ rsa_update_client_keys (struct TES_Client *client)
         memcpy (&buf[obs],
                 key->an,
                 ntohs (key->an->header.size));
+        GNUNET_assert (obs + ntohs (key->an->header.size)
+                       > obs);
         obs += ntohs (key->an->header.size);
       }
     }
