@@ -4165,6 +4165,7 @@ postgres_start (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  GNUNET_assert (NULL != name);
   if (GNUNET_SYSERR ==
       postgres_preflight (pg))
     return GNUNET_SYSERR;
@@ -4202,6 +4203,7 @@ postgres_start_read_committed (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  GNUNET_assert (NULL != name);
   if (GNUNET_SYSERR ==
       postgres_preflight (pg))
     return GNUNET_SYSERR;
@@ -4235,9 +4237,14 @@ postgres_rollback (void *cls)
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  if (NULL == pg->transaction_name)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Skipping rollback, no transaction active\n");
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Rolling back transaction on %p\n",
-              pg->conn);
+              "Rolling back transaction\n");
   GNUNET_break (GNUNET_OK ==
                 GNUNET_PQ_exec_statements (pg->conn,
                                            es));
@@ -4260,6 +4267,10 @@ postgres_commit (void *cls)
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_break (NULL != pg->transaction_name);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Committing transaction `%s'\n",
+              pg->transaction_name);
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "do_commit",
                                            params);
