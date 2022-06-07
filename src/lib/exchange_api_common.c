@@ -842,21 +842,17 @@ help_melt (struct CoinHistoryParseContext *pc,
     return GNUNET_SYSERR;
   }
 
-  if (NULL != pc->dk)
+  /* check that melt fee matches our expectations from /keys! */
+  if ( (GNUNET_YES !=
+        TALER_amount_cmp_currency (&melt_fee,
+                                   &pc->dk->fees.refresh)) ||
+       (0 !=
+        TALER_amount_cmp (&melt_fee,
+                          &pc->dk->fees.refresh)) )
   {
-    /* check that melt fee matches our expectations from /keys! */
-    if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&melt_fee,
-                                     &pc->dk->fees.refresh)) ||
-         (0 !=
-          TALER_amount_cmp (&melt_fee,
-                            &pc->dk->fees.refresh)) )
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
-
   if (GNUNET_OK !=
       TALER_wallet_melt_verify (
         amount,
@@ -938,26 +934,23 @@ help_refund (struct CoinHistoryParseContext *pc,
     return GNUNET_SYSERR;
   }
   /* NOTE: theoretically, we could also check that the given
-       merchant_pub and h_contract_terms appear in the
-       history under deposits.  However, there is really no benefit
-       for the exchange to lie here, so not checking is probably OK
-       (an auditor ought to check, though). Then again, we similarly
-       had no reason to check the merchant's signature (other than a
-       well-formendess check). */
+     merchant_pub and h_contract_terms appear in the
+     history under deposits.  However, there is really no benefit
+     for the exchange to lie here, so not checking is probably OK
+     (an auditor ought to check, though). Then again, we similarly
+     had no reason to check the merchant's signature (other than a
+     well-formendess check). */
 
   /* check that refund fee matches our expectations from /keys! */
-  if (NULL != pc->dk)
+  if ( (GNUNET_YES !=
+        TALER_amount_cmp_currency (&refund_fee,
+                                   &pc->dk->fees.refund)) ||
+       (0 !=
+        TALER_amount_cmp (&refund_fee,
+                          &pc->dk->fees.refund)) )
   {
-    if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&refund_fee,
-                                     &pc->dk->fees.refund)) ||
-         (0 !=
-          TALER_amount_cmp (&refund_fee,
-                            &pc->dk->fees.refund)) )
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
   return GNUNET_NO;
 }

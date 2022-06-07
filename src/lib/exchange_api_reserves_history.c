@@ -311,6 +311,7 @@ TALER_EXCHANGE_reserves_history (
   if (NULL == keys)
   {
     GNUNET_break (0);
+    curl_easy_cleanup (eh);
     GNUNET_free (rsh->url);
     GNUNET_free (rsh);
     return NULL;
@@ -320,6 +321,7 @@ TALER_EXCHANGE_reserves_history (
   if (NULL == gf)
   {
     GNUNET_break_op (0);
+    curl_easy_cleanup (eh);
     GNUNET_free (rsh->url);
     GNUNET_free (rsh);
     return NULL;

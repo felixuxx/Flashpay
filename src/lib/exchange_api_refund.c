@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -445,17 +445,30 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   {
     rtotal = rh->refund_amount;
   }
-  if (-1 == TALER_amount_cmp (&dtotal,
+  if ( (have_refund) && (! have_deposit) )
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  if (! (have_refund && have_deposit))
+  {
+    /* need both for a refund-deposit conflict proof */
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  if (-1 != TALER_amount_cmp (&dtotal,
                               &rtotal))
   {
-    /* dtotal < rtotal: good! */
+    /* rtotal <= dtotal is fine, no conflict! */
+    GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return GNUNET_OK;
+    return GNUNET_SYSERR;
   }
-  /* this fails to prove a conflict */
-  GNUNET_break_op (0);
+  /* dtotal < rtotal: that's a conflict! */
   GNUNET_JSON_parse_free (spec);
-  return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 

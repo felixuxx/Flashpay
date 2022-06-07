@@ -406,8 +406,9 @@ TALER_EXCHANGE_account_merge (
   {
     struct TALER_Amount zero_purse_fee;
 
-    TALER_amount_set_zero (purse_value_after_fees->currency,
-                           &zero_purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (purse_value_after_fees->currency,
+                                          &zero_purse_fee));
     TALER_wallet_account_merge_sign (merge_timestamp,
                                      purse_pub,
                                      purse_expiration,

@@ -164,14 +164,16 @@ insert_deposit_run (void *cls,
           0,
           sizeof (deposit));
 
-  GNUNET_CRYPTO_kdf (&merchant_priv,
-                     sizeof (struct TALER_MerchantPrivateKeyP),
-                     "merchant-priv",
-                     strlen ("merchant-priv"),
-                     ids->merchant_name,
-                     strlen (ids->merchant_name),
-                     NULL,
-                     0);
+  GNUNET_assert (
+    GNUNET_YES ==
+    GNUNET_CRYPTO_kdf (&merchant_priv,
+                       sizeof (struct TALER_MerchantPrivateKeyP),
+                       "merchant-priv",
+                       strlen ("merchant-priv"),
+                       ids->merchant_name,
+                       strlen (ids->merchant_name),
+                       NULL,
+                       0));
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
                                       &deposit.merchant_pub.eddsa_pub);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
