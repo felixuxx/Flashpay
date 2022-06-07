@@ -157,6 +157,12 @@ deposit_transaction (void *cls,
   bool balance_ok;
   bool in_conflict;
 
+  qs = TEH_make_coin_known (&dc->deposit->coin,
+                            connection,
+                            &dc->known_coin_id,
+                            mhd_ret);
+  if (qs < 0)
+    return qs;
   qs = TEH_plugin->do_deposit (TEH_plugin->cls,
                                dc->deposit,
                                dc->known_coin_id,
@@ -445,6 +451,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        "preflight failure");
   }
 
+#if NOT_MOVED
   {
     MHD_RESULT mhd_ret = MHD_NO;
     enum GNUNET_DB_QueryStatus qs;
@@ -471,7 +478,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (qs < 0)
       return mhd_ret;
   }
-
+#endif
 
   /* execute transaction */
   {
