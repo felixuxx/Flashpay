@@ -444,16 +444,10 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   else
   {
     rtotal = rh->refund_amount;
+    have_refund = true;
   }
-  if ( (have_refund) && (! have_deposit) )
+  if (! have_deposit)
   {
-    GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
-    return GNUNET_SYSERR;
-  }
-  if (! (have_refund && have_deposit))
-  {
-    /* need both for a refund-deposit conflict proof */
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
@@ -649,6 +643,9 @@ handle_refund_finished (void *cls,
                                     j))
     {
       GNUNET_break (0);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
       hr.http_status = 0;
       hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
       hr.hint = "conflict information provided by exchange is invalid";
