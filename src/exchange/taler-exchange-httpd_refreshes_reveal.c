@@ -428,12 +428,13 @@ check_commitment (struct RevealContext *rctx,
  * @return MHD result code
  */
 static MHD_RESULT
-resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
-                                        struct RevealContext *rctx,
-                                        const json_t *link_sigs_json,
-                                        const json_t *new_denoms_h_json,
-                                        const json_t *old_age_commitment_json,
-                                        const json_t *coin_evs)
+resolve_refreshes_reveal_denominations (
+  struct MHD_Connection *connection,
+  struct RevealContext *rctx,
+  const json_t *link_sigs_json,
+  const json_t *new_denoms_h_json,
+  const json_t *old_age_commitment_json,
+  const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #TALER_MAX_FRESH_COINS, so this is safe */
@@ -771,6 +772,8 @@ clean_age:
 
   for (unsigned int r = 0; r<MAX_TRANSACTION_COMMIT_RETRIES; r++)
   {
+    bool changed;
+
     /* Persist operation result in DB */
     if (GNUNET_OK !=
         TEH_plugin->start (TEH_plugin->cls,
@@ -789,13 +792,14 @@ clean_age:
 
       rrc->blinded_planchet = rcds[i].blinded_planchet;
     }
-    qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
-                                            melt_serial_id,
-                                            num_fresh_coins,
-                                            rrcs,
-                                            TALER_CNC_KAPPA - 1,
-                                            rctx->transfer_privs,
-                                            &rctx->gamma_tp);
+    qs = TEH_plugin->insert_refresh_reveal (
+      TEH_plugin->cls,
+      melt_serial_id,
+      num_fresh_coins,
+      rrcs,
+      TALER_CNC_KAPPA - 1,
+      rctx->transfer_privs,
+      &rctx->gamma_tp);
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       TEH_plugin->rollback (TEH_plugin->cls);
@@ -812,9 +816,14 @@ clean_age:
                                         "insert_refresh_reveal");
       goto cleanup;
     }
+    changed = (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
     qs = TEH_plugin->commit (TEH_plugin->cls);
     if (qs >= 0)
+    {
+      if (changed)
+        TEH_METRICS_num_success[TEH_MT_SUCCESS_REFRESH_REVEAL]++;
       break;   /* success */
+    }
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);

@@ -203,6 +203,7 @@ deposit_transaction (void *cls,
           &dc->deposit->coin.coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  TEH_METRICS_num_success[TEH_MT_SUCCESS_DEPOSIT]++;
   return qs;
 }
 

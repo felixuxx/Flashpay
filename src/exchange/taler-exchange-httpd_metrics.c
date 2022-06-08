@@ -41,6 +41,9 @@ unsigned long long TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_COUNT];
 
 unsigned long long TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_COUNT];
 
+unsigned long long TEH_METRICS_num_success[TEH_MT_SUCCESS_COUNT];
+
+
 MHD_RESULT
 TEH_handler_metrics (struct TEH_RequestContext *rc,
                      const char *const args[])
@@ -51,6 +54,11 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
 
   (void) args;
   GNUNET_asprintf (&reply,
+                   "taler_exchange_success_transactions{type=\"%s\"} %llu\n"
+                   "taler_exchange_success_transactions{type=\"%s\"} %llu\n"
+                   "taler_exchange_success_transactions{type=\"%s\"} %llu\n"
+                   "taler_exchange_success_transactions{type=\"%s\"} %llu\n"
+                   "taler_exchange_success_transactions{type=\"%s\"} %llu\n"
                    "# HELP taler_exchange_serialization_failures "
                    " number of database serialization errors by type\n"
                    "# TYPE taler_exchange_serialization_failures counter\n"
@@ -91,6 +99,16 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    " number of coins withdrawn in a batch-withdraw request\n"
                    "# TYPE taler_exchange_batch_withdraw_num_coins counter\n"
                    "taler_exchange_batch_withdraw_num_coins{} %llu\n",
+                   "deposit",
+                   TEH_METRICS_num_success[TEH_MT_SUCCESS_DEPOSIT],
+                   "withdraw",
+                   TEH_METRICS_num_success[TEH_MT_SUCCESS_WITHDRAW],
+                   "batch-withdraw",
+                   TEH_METRICS_num_success[TEH_MT_SUCCESS_BATCH_WITHDRAW],
+                   "melt",
+                   TEH_METRICS_num_success[TEH_MT_SUCCESS_MELT],
+                   "refresh-reveal",
+                   TEH_METRICS_num_success[TEH_MT_SUCCESS_REFRESH_REVEAL],
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_REQUEST_OTHER],
                    "deposit",

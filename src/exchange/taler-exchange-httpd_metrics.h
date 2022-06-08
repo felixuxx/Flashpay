@@ -47,6 +47,19 @@ enum TEH_MetricTypeRequest
 };
 
 /**
+ * Success types for which we collect metrics.
+ */
+enum TEH_MetricTypeSuccess
+{
+  TEH_MT_SUCCESS_DEPOSIT = 0,
+  TEH_MT_SUCCESS_WITHDRAW = 1,
+  TEH_MT_SUCCESS_BATCH_WITHDRAW = 2,
+  TEH_MT_SUCCESS_MELT = 3,
+  TEH_MT_SUCCESS_REFRESH_REVEAL = 4,
+  TEH_MT_SUCCESS_COUNT = 5 /* MUST BE LAST! */
+};
+
+/**
  * Cipher types for which we collect signature metrics.
  */
 enum TEH_MetricTypeSignature
@@ -70,6 +83,11 @@ enum TEH_MetricTypeKeyX
  * Number of requests handled of the respective type.
  */
 extern unsigned long long TEH_METRICS_num_requests[TEH_MT_REQUEST_COUNT];
+
+/**
+ * Number of successful requests handled of the respective type.
+ */
+extern unsigned long long TEH_METRICS_num_success[TEH_MT_SUCCESS_COUNT];
 
 /**
  * Number of coins withdrawn in a batch-withdraw request

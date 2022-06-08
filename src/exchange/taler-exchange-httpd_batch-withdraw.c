@@ -273,6 +273,7 @@ batch_withdraw_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
+  TEH_METRICS_num_success[TEH_MT_SUCCESS_BATCH_WITHDRAW]++;
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
