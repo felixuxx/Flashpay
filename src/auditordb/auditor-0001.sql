@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   ,last_reserve_out_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_purse_merges_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_account_merges_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_history_requests_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_close_requests_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
 COMMENT ON TABLE auditor_progress_reserve
@@ -82,6 +86,7 @@ CREATE TABLE IF NOT EXISTS auditor_progress_coin
   ,last_refund_serial_id INT8 NOT NULL DEFAULT 0
   ,last_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_recoup_refresh_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_purse_deposits_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
 COMMENT ON TABLE auditor_progress_coin

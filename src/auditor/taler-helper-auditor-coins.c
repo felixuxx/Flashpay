@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2021 Taler Systems SA
+  Copyright (C) 2016-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -471,11 +471,11 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_Amount spent;
   struct TALER_Amount refunded;
   struct TALER_Amount deposit_fee;
-  int have_refund;
+  bool have_refund;
 
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
-                                             GNUNET_YES,
+                                             true,
                                              &tl);
   if (0 >= qs)
     return qs;
@@ -489,7 +489,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (value->currency,
                                         &deposit_fee));
-  have_refund = GNUNET_NO;
+  have_refund = false;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -517,7 +517,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       TALER_ARL_amount_add (&spent,
                             &spent,
                             &pos->details.refund->refund_fee);
-      have_refund = GNUNET_YES;
+      have_refund = true;
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
       /* refunded += pos->value */
@@ -536,6 +536,11 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
       TALER_ARL_amount_add (&spent,
                             &spent,
                             &pos->details.recoup_refresh->value);
+      break;
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      TALER_ARL_amount_add (&spent,
+                            &spent,
+                            &pos->details.purse_deposit->amount);
       break;
     }
   }
@@ -754,10 +759,10 @@ init_denomination (const struct TALER_DenominationHashP *denom_hash,
  * @return NULL on error
  */
 static struct DenominationSummary *
-get_denomination_summary (struct CoinContext *cc,
-                          const struct
-                          TALER_EXCHANGEDB_DenominationKeyInformation *issue,
-                          const struct TALER_DenominationHashP *dh)
+get_denomination_summary (
+  struct CoinContext *cc,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue,
+  const struct TALER_DenominationHashP *dh)
 {
   struct DenominationSummary *ds;
 
@@ -839,7 +844,7 @@ sync_denomination (void *cls,
          This is really, really bad (auditor-internal invariant
          would be violated). Hence we can "safely" assert.  If
          this assertion fails, well, good luck: there is a bug
-         in the auditor _or_ the auditor's database is corrupt. *///
+         in the auditor _or_ the auditor's database is corrupt. */
     }
     if ( (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs) &&
          ( (0 != ds->denom_balance.value) ||
@@ -1211,7 +1216,7 @@ check_known_coin (const char *operation,
  * @param rc what is the refresh commitment
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 refresh_session_cb (void *cls,
                     uint64_t rowid,
                     const struct TALER_DenominationPublicKey *denom_pub,
@@ -1480,7 +1485,7 @@ refresh_session_cb (void *cls,
          accepted a forged coin (i.e. emergency situation after
          private key compromise). In that case, we cannot even
          subtract the profit we make from the fee from the escrow
-         balance. Tested as part of test-auditor.sh, case #18 *///
+         balance. Tested as part of test-auditor.sh, case #18 */
       report_amount_arithmetic_inconsistency (
         "subtracting refresh fee from escrow balance",
         rowid,
@@ -1668,7 +1673,7 @@ deposit_cb (void *cls,
          accepted a forged coin (i.e. emergency situation after
          private key compromise). In that case, we cannot even
          subtract the profit we make from the fee from the escrow
-         balance. Tested as part of test-auditor.sh, case #18 *///
+         balance. Tested as part of test-auditor.sh, case #18 */
       report_amount_arithmetic_inconsistency (
         "subtracting deposit fee from escrow balance",
         rowid,

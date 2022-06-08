@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -157,6 +157,30 @@ struct TALER_AUDITORDB_ProgressPointReserve
    */
   uint64_t last_reserve_close_serial_id;
 
+  /**
+   * serial ID of the last purse_merges
+   * entry the auditor processed.
+   */
+  uint64_t last_purse_merges_serial_id;
+
+  /**
+   * serial ID of the last account_merges
+   * entry the auditor processed.
+   */
+  uint64_t last_account_merges_serial_id;
+
+  /**
+   * serial ID of the last history_requests
+   * entry the auditor processed.
+   */
+  uint64_t last_history_requests_serial_id;
+
+  /**
+   * serial ID of the last close_requests
+   * entry the auditor processed.
+   */
+  uint64_t last_close_requests_serial_id;
+
 };
 
 
@@ -223,6 +247,11 @@ struct TALER_AUDITORDB_ProgressPointCoin
    * Serial ID of the last recoup-of-refresh operation the auditor processed.
    */
   uint64_t last_recoup_refresh_serial_id;
+
+  /**
+   * Serial ID of the last purse_deposits operation the auditor processed.
+   */
+  uint64_t last_purse_deposits_serial_id;
 
 };
 
