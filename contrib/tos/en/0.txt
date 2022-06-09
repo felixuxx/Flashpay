@@ -1,12 +1,24 @@
 Terms Of Service
 ****************
 
-Last Updated: 12.4.2019
+Last Updated: 09.06.2022
 
-Welcome! Taler Systems SA (“we,” “our,” or “us”) provides a payment
-service through our Internet presence (collectively the “Services”).
-Before using our Services, please read the Terms of Service (the
-“Terms” or the “Agreement”) carefully.
+Welcome! The ICE research center of the Bern University of Applied
+Sciences in Switzerland (“we,” “our,” or “us”) provides an
+experimental payment service through our Internet presence
+(collectively the “Services”). Before using our Services, please read
+the Terms of Service (the “Terms” or the “Agreement”) carefully.
+
+
+This is research
+================
+
+This is a research experiment. Any funds wired to our Bitcoin address
+are considered a donation to our research group. We may use them to
+enable payments following the GNU Taler protocol, or simply keep them
+at our discretion.  The service is experimental and may also be
+discontinued at any time, in which case all remaining funds will
+definitively be kept by the research group.
 
 
 Overview
@@ -28,11 +40,13 @@ Highlights:
      all times under your control. Any losses arising from you not
      being in control of your private information are your problem.
 
-   * We will try to transfer funds we hold in escrow for our users to
-     any legal recipient to the best of our ability within the
-     limitations of the law and our implementation. However, the
-     Services offered today are highly experimental and the set of
-     recipients of funds is severely restricted.
+   * We may transfer funds we receive from our users to any legal
+     recipient to the best of our ability within the limitations of
+     the law and our implementation. However, the Services offered
+     today are highly experimental and the set of recipients of funds
+     is severely restricted. Again, we stress this is a research
+     experiment and technically all funds held by the exchange are
+     owned by the research group of the university.
 
    * For our Services, we may charge transaction fees. The specific
      fee structure is provided based on the Taler protocol and should
@@ -45,19 +59,18 @@ Highlights:
      issues in our services.
 
    * We cannot be held accountable for our Services not being
-     available due to circumstances beyond our control. If we modify
-     or terminate our services, we will try to give you the
-     opportunity to recover your funds. However, given the
-     experimental state of the Services today, this may not be
-     possible. You are strongly advised to limit your use of the
-     Service to small-scale experiments expecting total loss of all
-     funds.
+     available due to any circumstances. If we modify or terminate our
+     services, we may give you the opportunity to recover your funds.
+     However, given the experimental state of the Services today, this
+     may not be possible. You are strongly advised to limit your use
+     of the Service to small-scale experiments expecting total loss of
+     all funds.
 
 These terms outline approved uses of our Services. The Services and
 these Terms are still at an experimental stage. If you have any
 questions or comments related to this Agreement, please send us a
-message to legal@taler-systems.com. If you do not agree to this
-Agreement, you must not use our Services.
+message to ice@bfh.ch. If you do not agree to this Agreement, you must
+not use our Services.
 
 
 How you accept this policy
@@ -80,26 +93,25 @@ since you have last reviewed these Terms.
 Services
 ========
 
-We will try to transfer funds that we hold in escrow for our users to
-any legal recipient to the best of our ability and within the
-limitations of the law and our implementation. However, the Services
-offered today are highly experimental and the set of recipients of
-funds is severely restricted.  The Taler Wallet can be loaded by
-exchanging fiat currencies against electronic coins. We are providing
-this exchange service. Once your Taler Wallet is loaded with
-electronic coins they can be spent for purchases if the seller is
-accepting Taler as a means of payment. We are not guaranteeing that
-any seller is accepting Taler at all or a particular seller.  The
-seller or recipient of deposits of electronic coins must specify the
-target account, as per the design of the Taler protocol. They are
-responsible for following the protocol and specifying the correct bank
-account, and are solely liable for any losses that may arise from
-specifying the wrong account. We will allow the government to link
-wire transfers to the underlying contract hash. It is the
-responsibility of recipients to preserve the full contracts and to pay
-whatever taxes and charges may be applicable. Technical issues may
-lead to situations where we are unable to make transfers at all or
-lead to incorrect transfers that cannot be reversed. We will only
+We will try to transfer funds that we receive from users to any legal
+recipient to the best of our ability and within the limitations of the
+law. However, the Services offered today are highly experimental and
+the set of recipients of funds is severely restricted.  The Taler
+Wallet can be loaded by exchanging fiat or cryptocurrencies against
+electronic coins. We are providing this exchange service. Once your
+Taler Wallet is loaded with electronic coins they can be spent for
+purchases if the seller is accepting Taler as a means of payment. We
+are not guaranteeing that any seller is accepting Taler at all or a
+particular seller.  The seller or recipient of deposits of electronic
+coins must specify the target account, as per the design of the Taler
+protocol. They are responsible for following the protocol and
+specifying the correct bank account, and are solely liable for any
+losses that may arise from specifying the wrong account. We may allow
+the government to link wire transfers to the underlying contract hash.
+It is the responsibility of recipients to preserve the full contracts
+and to pay whatever taxes and charges may be applicable. Technical
+issues may lead to situations where we are unable to make transfers at
+all or lead to incorrect transfers that cannot be reversed. We may
 refuse to execute transfers if the transfers are prohibited by a
 competent legal authority and we are ordered to do so.
 
@@ -306,7 +318,7 @@ No matter where you’re located, the laws of Switzerland will govern
 these Terms. If any provisions of these Terms are inconsistent with
 any applicable law, those provisions will be superseded or modified
 only to the extent such provisions are inconsistent. The parties agree
-to submit to the ordinary courts in Zurich, Switzerland for exclusive
+to submit to the ordinary courts in Bern, Switzerland for exclusive
 jurisdiction of any dispute arising out of or related to your use of
 the Services or your breach of these Terms.
 

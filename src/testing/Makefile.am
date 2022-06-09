@@ -538,11 +538,9 @@ EXTRA_DIST = \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_exchange_api_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test_exchange_api_keys_cherry_picking_home/.config/taler/x-taler-bank.json \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \
   test_exchange_api_twisted-cs.conf \
@@ -554,7 +552,6 @@ EXTRA_DIST = \
   test_taler_exchange_httpd_home/.config/taler/account-1.json \
   test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/master.priv \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test-taler-exchange-aggregator-postgres.conf \
   test-taler-exchange-wirewatch-postgres.conf \
   test_kyc_api.conf

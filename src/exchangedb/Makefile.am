@@ -22,6 +22,7 @@ sql_DATA = \
   shard-0000.sql \
   shard-0001.sql \
   shard-drop0001.sql \
+  common0001.sql \
   drop0001.sql
 
 BUILT_SOURCES = \
