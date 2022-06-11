@@ -200,6 +200,10 @@ static unsigned int shard_size = MAXIMUM_BATCH_SIZE;
  */
 static unsigned int max_workers = 16;
 
+/**
+ * -e command-line option: exit on errors talking to the bank?
+ */
+static int exit_on_error;
 
 /**
  * Value to return from main(). 0 on success, non-zero on
@@ -639,6 +643,11 @@ history_cb (void *cls,
                   "Error fetching history: %s (%u)\n",
                   TALER_ErrorCode_get_hint (ec),
                   http_status);
+      if (! exit_on_error)
+      {
+        account_completed (wa);
+        return GNUNET_OK;
+      }
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_OK;
     }
@@ -974,6 +983,10 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('e',
+                               "exit-on-error",
+                               "terminate wirewatch if we failed to download information from the bank",
+                               &exit_on_error),
     GNUNET_GETOPT_option_flag ('I',
                                "ignore-not-found",
                                "continue, even if the bank account of the exchange was not found",
