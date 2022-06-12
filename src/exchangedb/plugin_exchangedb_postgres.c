@@ -2770,6 +2770,86 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY extension_details_serial_id DESC"
       " LIMIT 1;",
       0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_purse_requests",
+      "SELECT"
+      " purse_requests_serial_id AS serial"
+      " FROM purse_requests"
+      " ORDER BY purse_requests_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_purse_merges",
+      "SELECT"
+      " purse_merge_request_serial_id AS serial"
+      " FROM purse_merges"
+      " ORDER BY purse_merge_request_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_purse_deposits",
+      "SELECT"
+      " purse_deposit_serial_id AS serial"
+      " FROM purse_deposits"
+      " ORDER BY purse_deposit_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_account_merges",
+      "SELECT"
+      " account_merge_request_serial_id AS serial"
+      " FROM account_merges"
+      " ORDER BY account_merge_request_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_history_requests",
+      "SELECT"
+      " history_request_serial_id AS serial"
+      " FROM history_requests"
+      " ORDER BY history_request_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_close_requests",
+      "SELECT"
+      " close_request_serial_id AS serial"
+      " FROM close_requests"
+      " ORDER BY close_request_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wads_out",
+      "SELECT"
+      " wad_out_serial_id AS serial"
+      " FROM wads_out"
+      " ORDER BY wad_out_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wads_out_entries",
+      "SELECT"
+      " wad_out_entry_serial_id AS serial"
+      " FROM wad_out_entries"
+      " ORDER BY wad_out_entry_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wads_in",
+      "SELECT"
+      " wad_in_serial_id AS serial"
+      " FROM wads_in"
+      " ORDER BY wad_in_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wads_in_entries",
+      "SELECT"
+      " wad_in_entry_serial_id AS serial"
+      " FROM wad_in_entries"
+      " ORDER BY wad_in_entry_serial_id DESC"
+      " LIMIT 1;",
+      0),
     /* For postgres_lookup_records_by_table */
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_denominations",
@@ -2823,8 +2903,6 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " reserve_uuid AS serial"
       ",reserve_pub"
-      ",current_balance_val"
-      ",current_balance_frac"
       ",expiration_date"
       ",gc_date"
       " FROM reserves"
@@ -2933,8 +3011,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_pub"
       ",denom_sig"
       ",denominations_serial"
-      ",remaining_val"
-      ",remaining_frac"
       " FROM known_coins"
       " WHERE known_coin_id > $1"
       " ORDER BY known_coin_id ASC;",
@@ -3321,13 +3397,11 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO reserves"
       "(reserve_uuid"
       ",reserve_pub"
-      ",current_balance_val"
-      ",current_balance_frac"
       ",expiration_date"
       ",gc_date"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6);",
-      6),
+      "($1, $2, $3, $4);",
+      4),
     GNUNET_PQ_make_prepare (
       "insert_into_table_reserves_in",
       "INSERT INTO reserves_in"
@@ -3422,11 +3496,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_pub"
       ",denom_sig"
       ",denominations_serial"
-      ",remaining_val"
-      ",remaining_frac"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6);",
-      6),
+      "($1, $2, $3, $4);",
+      4),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refresh_commitments",
       "INSERT INTO refresh_commitments"
@@ -3483,13 +3555,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_sig"
       ",wire_salt"
       ",wire_target_h_payto"
-      ",done"
       ",extension_blocked"
       ",extension_details_serial_id"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18);",
-      18),
+      " $11, $12, $13, $14, $15, $16, $17);",
+      17),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refunds",
       "INSERT INTO refunds"
@@ -13054,6 +13125,36 @@ postgres_lookup_serial_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
     statement = "select_serial_by_table_extension_details";
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
+    statement = "select_serial_by_table_purse_requests";
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_MERGES:
+    statement = "select_serial_by_table_purse_merges";
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
+    statement = "select_serial_by_table_purse_deposits";
+    break;
+  case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
+    statement = "select_serial_by_table_account_merges";
+    break;
+  case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
+    statement = "select_serial_by_table_history_requests";
+    break;
+  case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
+    statement = "select_serial_by_table_close_requests";
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT:
+    statement = "select_serial_by_table_wads_out";
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
+    statement = "select_serial_by_table_wads_out_entries";
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN:
+    statement = "select_serial_by_table_wads_in";
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
+    statement = "select_serial_by_table_wads_in_entries";
     break;
   default:
     GNUNET_break (0);
