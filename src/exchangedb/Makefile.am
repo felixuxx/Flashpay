@@ -18,12 +18,12 @@ sql_DATA = \
   benchmark-0000.sql \
   benchmark-0001.sql \
   exchange-0000.sql \
-  exchange-0001.sql \
-  shard-0000.sql \
-  shard-0001.sql \
-  shard-drop0001.sql \
+  exchange-0001-part.sql \
+  shard-0001-part.sql \
   common-0001.sql \
-  drop0001.sql
+  drop-common.sql \
+  drop0001-exchange-part.sql \
+  drop0001-shard-part.sql
 
 BUILT_SOURCES = \
   shard-0000.sql \
