@@ -2216,6 +2216,30 @@ check_denomination (
 
 
 /**
+ * Function called with details about purse deposits that have been made, with
+ * the goal of auditing the deposit's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param deposit deposit details
+ * @param denom_pub denomination public key of @a coin_pub
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static enum GNUNET_GenericReturnValue
+purse_deposit_cb (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
+  const struct TALER_DenominationPublicKey *denom_pub)
+{
+  struct CoinContext *cc = cls;
+
+  GNUNET_break (0); // FIXME: not implemented!
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Analyze the exchange's processing of coins.
  *
  * @param cls closure
@@ -2259,12 +2283,13 @@ analyze_coins (void *cls)
   {
     ppc_start = ppc;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Resuming coin audit at %llu/%llu/%llu/%llu/%llu\n",
+                "Resuming coin audit at %llu/%llu/%llu/%llu/%llu/%llu\n",
                 (unsigned long long) ppc.last_deposit_serial_id,
                 (unsigned long long) ppc.last_melt_serial_id,
                 (unsigned long long) ppc.last_refund_serial_id,
                 (unsigned long long) ppc.last_withdraw_serial_id,
-                (unsigned long long) ppc.last_recoup_refresh_serial_id);
+                (unsigned long long) ppc.last_recoup_refresh_serial_id,
+                (unsigned long long) ppc.last_purse_deposits_serial_id);
   }
 
   /* setup 'cc' */
@@ -2368,6 +2393,20 @@ analyze_coins (void *cls)
   if (0 > cc.qs)
     return cc.qs;
 
+  /* process purse_deposits */
+  if (0 >
+      (qs = TALER_ARL_edb->select_purse_deposits_above_serial_id (
+         TALER_ARL_edb->cls,
+         ppc.last_purse_deposits_serial_id,
+         &purse_deposit_cb,
+         &cc)))
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  if (0 > cc.qs)
+    return cc.qs;
+
   /* sync 'cc' back to disk */
   cc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   GNUNET_CONTAINER_multihashmap_iterate (cc.denom_summaries,
@@ -2421,12 +2460,13 @@ analyze_coins (void *cls)
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Concluded coin audit step at %llu/%llu/%llu/%llu/%llu\n",
+              "Concluded coin audit step at %llu/%llu/%llu/%llu/%llu/%llu\n",
               (unsigned long long) ppc.last_deposit_serial_id,
               (unsigned long long) ppc.last_melt_serial_id,
               (unsigned long long) ppc.last_refund_serial_id,
               (unsigned long long) ppc.last_withdraw_serial_id,
-              (unsigned long long) ppc.last_recoup_refresh_serial_id);
+              (unsigned long long) ppc.last_recoup_refresh_serial_id,
+              (unsigned long long) ppc.last_purse_deposits_serial_id);
   return qs;
 }
 

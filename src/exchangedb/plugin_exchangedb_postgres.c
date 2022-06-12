@@ -1482,9 +1482,31 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN known_coins kc USING (coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE ("
-      "  (deposit_serial_id>=$1)" // FIXME: also select by shard!?
+      "  (deposit_serial_id>=$1)"
       " )"
       " ORDER BY deposit_serial_id ASC;",
+      1),
+    /* Fetch purse deposits with rowid '\geq' the given parameter */
+    GNUNET_PQ_make_prepare (
+      "audit_get_purse_deposits_incr",
+      "SELECT"
+      " amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",purse_pub"
+      ",coin_sig"
+      ",partner_base_url"
+      ",denom.denom_pub"
+      ",kc.coin_pub"
+      ",kc.age_commitment_hash"
+      ",purse_deposit_serial_id"
+      " FROM purse_deposits"
+      " LEFT JOIN partners USING (partner_serial_id)"
+      "    JOIN known_coins kc USING (coin_pub)"
+      "    JOIN denominations denom USING (denominations_serial)"
+      " WHERE ("
+      "  (purse_deposit_serial_id>=$1)"
+      " )"
+      " ORDER BY purse_deposit_serial_id ASC;",
       1),
     /* Fetch an existing deposit request.
        Used in #postgres_lookup_transfer_by_deposit(). */
@@ -10131,7 +10153,7 @@ struct DepositSerialContext
   /**
    * Status code, set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -10193,7 +10215,7 @@ deposit_serial_helper_cb (void *cls,
                                     &rowid),
       GNUNET_PQ_result_spec_end
     };
-    int ret;
+    enum GNUNET_GenericReturnValue ret;
 
     memset (&deposit,
             0,
@@ -10254,6 +10276,148 @@ postgres_select_deposits_above_serial_id (
                                              "audit_get_deposits_incr",
                                              params,
                                              &deposit_serial_helper_cb,
+                                             &dsc);
+  if (GNUNET_OK != dsc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Closure for #purse_deposit_serial_helper_cb().
+ */
+struct PurseDepositSerialContext
+{
+
+  /**
+   * Callback to call.
+   */
+  TALER_EXCHANGEDB_PurseDepositCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on hard errors.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Helper function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct DepositSerialContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+purse_deposit_serial_helper_cb (void *cls,
+                                PGresult *result,
+                                unsigned int num_results)
+{
+  struct PurseDepositSerialContext *dsc = cls;
+  struct PostgresClosure *pg = dsc->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_PurseDeposit deposit = {
+      .exchange_base_url = NULL
+    };
+    struct TALER_DenominationPublicKey denom_pub;
+    uint64_t rowid;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &deposit.amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee",
+                                   &deposit.deposit_fee),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("partner_base_url",
+                                      &deposit.exchange_base_url),
+        NULL),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                            &deposit.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                            &deposit.coin_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                            &deposit.coin_pub),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                              &deposit.h_age_commitment),
+        &deposit.no_age_commitment),
+      GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
+                                    &rowid),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    memset (&deposit,
+            0,
+            sizeof (deposit));
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      dsc->status = GNUNET_SYSERR;
+      return;
+    }
+    ret = dsc->cb (dsc->cb_cls,
+                   rowid,
+                   &deposit,
+                   &denom_pub);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+}
+
+
+/**
+ * Select deposits above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse_deposits_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_PurseDepositCallback cb,
+  void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct PurseDepositSerialContext dsc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "audit_get_purse_deposits_incr",
+                                             params,
+                                             &purse_deposit_serial_helper_cb,
                                              &dsc);
   if (GNUNET_OK != dsc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -14936,6 +15100,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->gc = &postgres_gc;
   plugin->select_deposits_above_serial_id
     = &postgres_select_deposits_above_serial_id;
+  plugin->select_purse_deposits_above_serial_id
+    = &postgres_select_purse_deposits_above_serial_id;
   plugin->select_refreshes_above_serial_id
     = &postgres_select_refreshes_above_serial_id;
   plugin->select_refunds_above_serial_id

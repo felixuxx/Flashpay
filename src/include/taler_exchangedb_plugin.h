@@ -1681,9 +1681,71 @@ struct TALER_EXCHANGEDB_PurseDepositListEntry
   struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
+   * FIXME-Oec: probably needed here, not yet used
+   * anywhere!
+   *
+   * Hash of the age commitment used to sign the coin, if age restriction was
+   * applicable to the denomination.  May be all zeroes if no age restriction
+   * applies.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment_FIXME;
+
+  /**
    * Set to true if the coin was refunded.
    */
   bool refunded;
+
+};
+
+
+/**
+ * Information about a /purses/$PID/deposit operation.
+ */
+struct TALER_EXCHANGEDB_PurseDeposit
+{
+
+  /**
+   * Exchange hosting the purse, NULL for this exchange.
+   */
+  char *exchange_base_url;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Contribution of the coin to the purse, including
+   * deposit fee.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Depositing fee.
+   */
+  struct TALER_Amount deposit_fee;
+
+  /**
+   * Signature by the coin affirming the deposit.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Hash of the age commitment used to sign the coin, if age restriction was
+   * applicable to the denomination.  May be all zeroes if no age restriction
+   * applies.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
+   * Set to true if @e h_age_commitment is not available.
+   */
+  bool no_age_commitment;
 
 };
 
@@ -1913,6 +1975,24 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_EXCHANGEDB_Deposit *deposit,
   const struct TALER_DenominationPublicKey *denom_pub,
   bool done);
+
+
+/**
+ * Function called with details about purse deposits that have been made, with
+ * the goal of auditing the deposit's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param deposit deposit details
+ * @param denom_pub denomination public key of @a coin_pub
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_PurseDepositCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
+  const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -3959,6 +4039,24 @@ struct TALER_EXCHANGEDB_Plugin
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_DepositCallback cb,
                                      void *cb_cls);
+
+  /**
+   * Select purse deposits above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_deposits_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_PurseDepositCallback cb,
+    void *cb_cls);
+
 
   /**
    * Select refresh sessions above @a serial_id in monotonically increasing
