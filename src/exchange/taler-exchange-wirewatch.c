@@ -643,7 +643,7 @@ history_cb (void *cls,
                   "Error fetching history: %s (%u)\n",
                   TALER_ErrorCode_get_hint (ec),
                   http_status);
-      if (! exit_on_error)
+      if (! (exit_on_error || test_mode) )
       {
         account_completed (wa);
         return GNUNET_OK;
