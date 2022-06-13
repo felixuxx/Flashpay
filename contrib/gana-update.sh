@@ -23,6 +23,7 @@ ensure ()
     if ! diff $src/$fn $dst/$fn > /dev/null
     then
         cp $src/$fn $dst/$fn
+        chmod -w $dst/$fn
     fi
 }
 
