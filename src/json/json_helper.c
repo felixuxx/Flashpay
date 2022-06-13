@@ -106,6 +106,11 @@ parse_amount (void *cls,
                     r_amount->currency)) )
   {
     GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Expected currency `%s', but amount used currency `%s' in field `%s'\n",
+                currency,
+                r_amount->currency,
+                spec->field);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
