@@ -62,6 +62,11 @@ struct TALER_AuditorPublicKeyP TALER_ARL_auditor_pub;
 char *TALER_ARL_auditor_url;
 
 /**
+ * REST API endpoint of the exchange.
+ */
+char *TALER_ARL_exchange_url;
+
+/**
  * At what time did the auditor process start?
  */
 struct GNUNET_TIME_Absolute start_time;
@@ -371,10 +376,13 @@ test_master_present (void *cls,
 {
   int *found = cls;
 
-  (void) exchange_url;
   if (0 == GNUNET_memcmp (mpub,
                           &TALER_ARL_master_pub))
+  {
     *found = GNUNET_YES;
+    GNUNET_free (TALER_ARL_exchange_url);
+    TALER_ARL_exchange_url = GNUNET_strdup (exchange_url);
+  }
 }
 
 
@@ -765,6 +773,7 @@ TALER_ARL_done (json_t *report)
                 JSON_INDENT (2));
     json_decref (report);
   }
+  GNUNET_free (TALER_ARL_exchange_url);
   GNUNET_free (TALER_ARL_auditor_url);
 }
 

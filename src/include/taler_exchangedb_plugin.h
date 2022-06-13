@@ -218,6 +218,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_EXTENSIONS,
   TALER_EXCHANGEDB_RT_EXTENSION_DETAILS,
   TALER_EXCHANGEDB_RT_PURSE_REQUESTS,
+  TALER_EXCHANGEDB_RT_PURSE_REFUNDS,
   TALER_EXCHANGEDB_RT_PURSE_MERGES,
   TALER_EXCHANGEDB_RT_PURSE_DEPOSITS,
   TALER_EXCHANGEDB_RT_ACCOUNT_MERGES,
@@ -494,6 +495,11 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_Amount purse_fee;
       struct TALER_PurseContractSignatureP purse_sig;
     } purse_requests;
+
+    struct
+    {
+      struct TALER_PurseContractPublicKeyP purse_pub;
+    } purse_refunds;
 
     struct
     {
@@ -1996,6 +2002,40 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
+ * Function called with details about purse refunds that have been made, with
+ * the goal of auditing the purse refund's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param purse_pub public key of the refunded purse
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_PurseRefundCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_PurseContractPublicKeyP *purse_pub);
+
+
+/**
+ * Function called with details about purse refunds that have been made, with
+ * the goal of auditing the purse refund's execution.
+ *
+ * @param cls closure
+ * @param amount_with_fee amount of the deposit into the purse
+ * @param coin_pub coin that is to be refunded the @a given amount_with_fee
+ * @param denom_pub denomination of @a coin_pub
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_PurseRefundCoinCallback)(
+  void *cls,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
  * Function called with details about coins that were melted,
  * with the goal of auditing the refresh's execution.
  *
@@ -2198,6 +2238,7 @@ typedef void
  * @param merchant_sig signature of the merchant
  * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param rtransaction_id refund transaction ID chosen by the merchant
+ * @param full_refund true if the refunds total up to the entire value of the deposit
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -2211,6 +2252,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_MerchantSignatureP *merchant_sig,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   uint64_t rtransaction_id,
+  bool full_refund,
   const struct TALER_Amount *amount_with_fee);
 
 
@@ -4055,6 +4097,41 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t serial_id,
     TALER_EXCHANGEDB_PurseDepositCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select purse refunds above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_refunds_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_PurseRefundCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select coins deposited into a purse.
+   *
+   * @param cls closure
+   * @param purse_pub public key of the purse
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_deposits_by_purse)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    TALER_EXCHANGEDB_PurseRefundCoinCallback cb,
     void *cb_cls);
 
 

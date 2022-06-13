@@ -253,6 +253,11 @@ struct TALER_AUDITORDB_ProgressPointCoin
    */
   uint64_t last_purse_deposits_serial_id;
 
+  /**
+   * Serial ID of the last purse_refunds operation the auditor processed.
+   */
+  uint64_t last_purse_refunds_serial_id;
+
 };
 
 

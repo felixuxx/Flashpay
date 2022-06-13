@@ -314,8 +314,9 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id=$5"
                             ",last_recoup_refresh_serial_id=$6"
                             ",last_purse_deposits_serial_id=$7"
-                            " WHERE master_pub=$8",
-                            8),
+                            ",last_purse_refunds_serial_id=$8"
+                            " WHERE master_pub=$9",
+                            9),
     /* Used in #postgres_get_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
                             "SELECT"
@@ -326,6 +327,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id"
                             ",last_recoup_refresh_serial_id"
                             ",last_purse_deposits_serial_id"
+                            ",last_purse_refunds_serial_id"
                             " FROM auditor_progress_coin"
                             " WHERE master_pub=$1;",
                             1),
@@ -340,8 +342,9 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id"
                             ",last_recoup_refresh_serial_id"
                             ",last_purse_deposits_serial_id"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-                            8),
+                            ",last_purse_refunds_serial_id"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+                            9),
     /* Used in #postgres_insert_wire_auditor_account_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_account_progress_insert",
                             "INSERT INTO wire_auditor_account_progress "
@@ -1535,6 +1538,7 @@ postgres_insert_auditor_progress_coin (
     GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_purse_refunds_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -1568,6 +1572,7 @@ postgres_update_auditor_progress_coin (
     GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppc->last_purse_refunds_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -1612,6 +1617,8 @@ postgres_get_auditor_progress_coin (
                                   &ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_purse_deposits_serial_id",
                                   &ppc->last_purse_deposits_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_refunds_serial_id",
+                                  &ppc->last_purse_refunds_serial_id),
     GNUNET_PQ_result_spec_end
   };
 

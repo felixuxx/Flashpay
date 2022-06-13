@@ -63,6 +63,8 @@ DROP FUNCTION IF EXISTS add_constraints_to_cs_nonce_locks_partition;
 
 DROP FUNCTION IF EXISTS create_table_purse_requests;
 DROP FUNCTION IF EXISTS add_constraints_to_purse_requests_partition;
+DROP FUNCTION IF EXISTS create_table_purse_refunds;
+DROP FUNCTION IF EXISTS add_constraints_to_purse_refunds_partition;
 DROP FUNCTION IF EXISTS create_table_purse_merges;
 DROP FUNCTION IF EXISTS add_constraints_to_purse_merges_partition;
 DROP FUNCTION IF EXISTS create_table_account_merges;

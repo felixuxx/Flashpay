@@ -1040,6 +1040,21 @@ CREATE TABLE IF NOT EXISTS purse_requests_default
 SELECT add_constraints_to_purse_requests_partition('default');
 
 
+-- ------------------------------ purse_refunds ----------------------------------------
+
+SELECT create_table_purse_refunds();
+
+COMMENT ON TABLE purse_refunds
+  IS 'Purses that were refunded due to expiration';
+COMMENT ON COLUMN purse_refunds.purse_pub
+  IS 'Public key of the purse';
+
+CREATE TABLE IF NOT EXISTS purse_refunds_default
+  PARTITION OF purse_refunds
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_purse_refunds_partition('default');
+
 
 -- ------------------------------ purse_merges ----------------------------------------
 
@@ -3484,6 +3499,11 @@ UPDATE purse_requests
  SET refunded=TRUE,
      finished=TRUE
  WHERE purse_pub=my_purse_pub;
+
+INSERT INTO purse_refunds
+ (purse_pub)
+ VALUES
+ (my_purse_pub);
 
 -- restore balance to each coin deposited into the purse
 FOR my_deposit IN

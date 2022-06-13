@@ -810,6 +810,8 @@ irbt_cb_table_purse_requests (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_requests.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (
       &td->details.purse_requests.merge_pub),
     GNUNET_PQ_query_param_timestamp (
       &td->details.purse_requests.purse_creation),
@@ -828,6 +830,29 @@ irbt_cb_table_purse_requests (struct PostgresClosure *pg,
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_purse_requests",
+                                             params);
+}
+
+
+/**
+ * Function called with purse_refunds records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_purse_refunds (struct PostgresClosure *pg,
+                             const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_refunds.purse_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_purse_refunds",
                                              params);
 }
 

@@ -646,6 +646,7 @@ audit_deposit_cb (void *cls,
  * @param h_contract_terms hash of the proposal data in
  *                        the contract between merchant and customer
  * @param rtransaction_id refund transaction ID chosen by the merchant
+ * @param full_refund the deposit
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -658,6 +659,7 @@ audit_refund_cb (void *cls,
                  const struct TALER_MerchantSignatureP *merchant_sig,
                  const struct TALER_PrivateContractHashP *h_contract_terms,
                  uint64_t rtransaction_id,
+                 bool full_refund,
                  const struct TALER_Amount *amount_with_fee)
 {
   (void) cls;
@@ -669,6 +671,7 @@ audit_refund_cb (void *cls,
   (void) h_contract_terms;
   (void) rtransaction_id;
   (void) amount_with_fee;
+  (void) full_refund;
   auditor_row_cnt++;
   return GNUNET_OK;
 }

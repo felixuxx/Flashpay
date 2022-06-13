@@ -1550,6 +1550,51 @@ lrbt_cb_table_purse_requests (void *cls,
 
 
 /**
+ * Function called with purse_refunds table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_purse_refunds (void *cls,
+                             PGresult *result,
+                             unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PURSE_REFUNDS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "purse_refunds_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.purse_refunds.purse_pub),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
  * Function called with purse_merges table entries.
  *
  * @param cls closure

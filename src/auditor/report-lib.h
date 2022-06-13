@@ -75,6 +75,11 @@ extern struct TALER_AuditorPublicKeyP TALER_ARL_auditor_pub;
 extern char *TALER_ARL_auditor_url;
 
 /**
+ * REST API endpoint of the exchange.
+ */
+extern char *TALER_ARL_exchange_url;
+
+/**
  * At what time did the auditor process start?
  */
 extern struct GNUNET_TIME_Absolute start_time;

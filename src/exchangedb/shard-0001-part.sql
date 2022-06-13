@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION setup_shard(
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
-DECLARE 
+DECLARE
   shard_suffix VARCHAR;
 BEGIN
 
@@ -51,26 +51,26 @@ BEGIN
 
   PERFORM create_table_refresh_commitments(shard_suffix);
   PERFORM add_constraints_to_refresh_commitments_partition(shard_suffix);
- 
+
   PERFORM create_table_refresh_revealed_coins(shard_suffix);
   PERFORM add_constraints_to_refresh_revealed_coins_partition(shard_suffix);
-  
+
   PERFORM create_table_refresh_transfer_keys(shard_suffix);
   PERFORM add_constraints_to_refresh_transfer_keys_partition(shard_suffix);
-  
+
   PERFORM create_table_deposits(shard_suffix);
   PERFORM add_constraints_to_deposits_partition(shard_suffix);
 
   PERFORM create_table_deposits_by_ready(shard_suffix);
 
   PERFORM create_table_deposits_for_matching(shard_suffix);
-  
+
   PERFORM create_table_refunds(shard_suffix);
   PERFORM add_constraints_to_refunds_partition(shard_suffix);
-  
+
   PERFORM create_table_wire_out(shard_suffix);
   PERFORM add_constraints_to_wire_out_partition(shard_suffix);
-  
+
   PERFORM create_table_aggregation_transient(shard_suffix);
 
   PERFORM create_table_aggregation_tracking(shard_suffix);
@@ -91,6 +91,9 @@ BEGIN
 
   PERFORM create_table_purse_requests(shard_suffix);
   PERFORM add_constraints_to_purse_requests_partition(shard_suffix);
+
+  PERFORM create_table_purse_refunds(shard_suffix);
+  PERFORM add_constraints_to_purse_refunds_partition(shard_suffix);
 
   PERFORM create_table_purse_merges(shard_suffix);
   PERFORM add_constraints_to_purse_merges_partition(shard_suffix);
@@ -121,15 +124,15 @@ $$;
 
 
 CREATE OR REPLACE FUNCTION drop_shard(
-  shard_idx INTEGER 
+  shard_idx INTEGER
 )
   RETURNS VOID
   LANGUAGE plpgsql
 AS $$
-DECLARE 
+DECLARE
   shard_suffix VARCHAR;
 BEGIN
- 
+
   shard_suffix = shard_idx::varchar;
 
   EXECUTE FORMAT(
@@ -223,6 +226,10 @@ BEGIN
   EXECUTE FORMAT(
     'DROP TABLE IF EXISTS %I CASCADE'
     ,'purse_requests_' || shard_suffix
+  );
+  EXECUTE FORMAT(
+    'DROP TABLE IF EXISTS %I CASCADE'
+    ,'purse_refunds_' || shard_suffix
   );
   EXECUTE FORMAT(
     'DROP TABLE IF EXISTS %I CASCADE'

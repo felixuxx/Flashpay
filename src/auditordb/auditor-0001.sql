@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS auditor_progress_coin
   ,last_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_recoup_refresh_serial_id INT8 NOT NULL DEFAULT 0
   ,last_purse_deposits_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_purse_refunds_serial_id INT8 NOT NULL DEFAULT 0
   ,PRIMARY KEY (master_pub)
   );
 COMMENT ON TABLE auditor_progress_coin
