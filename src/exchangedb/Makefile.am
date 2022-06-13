@@ -41,18 +41,23 @@ CLEANFILES = \
 
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql
 	cat common-0001.sql exchange-0001-part.sql >$@
+	chmod -w $@
 
 shard-0001.sql: common-0001.sql shard-0001-part.sql
 	cat common-0001.sql shard-0001-part.sql >$@
+	chmod -w $@
 
 shard-0000.sql: exchange-0000.sql
 	cp exchange-0000.sql $@
+	chmod -w $@
 
 drop0001.sql: drop-common.sql drop0001-exchange-part.sql
 	cat drop-common.sql drop0001-exchange-part.sql >$@
+	chmod -w $@
 
 shard-drop0001.sql: drop-common.sql drop0001-shard-part.sql
 	cat drop-common.sql drop0001-shard-part.sql >$@
+	chmod -w $@
 
 EXTRA_DIST = \
   exchangedb.conf \
