@@ -2030,6 +2030,7 @@ typedef enum GNUNET_GenericReturnValue
 typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_PurseRefundCoinCallback)(
   void *cls,
+  uint64_t rowid,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationPublicKey *denom_pub);

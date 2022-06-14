@@ -1859,6 +1859,7 @@ refund_cb (void *cls,
  * the goal of auditing the purse refund's execution.
  *
  * @param cls closure
+ * @param rowid row of the purse-refund
  * @param amount_with_fee amount of the deposit into the purse
  * @param coin_pub coin that is to be refunded the @a given amount_with_fee
  * @param denom_pub denomination of @a coin_pub
@@ -1867,16 +1868,14 @@ refund_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 purse_refund_coin_cb (
   void *cls,
+  uint64_t rowid,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct CoinContext *cc = cls;
-
-#if FIXME
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *ds;
-  struct TALER_Amount amount_without_fee;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TALER_ARL_get_denomination_info (denom_pub,
@@ -1896,24 +1895,8 @@ purse_refund_coin_cb (
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return GNUNET_SYSERR;
   }
-
-  if (TALER_ARL_SR_INVALID_NEGATIVE ==
-      TALER_ARL_amount_subtract_neg (&amount_without_fee,
-                                     amount_with_fee,
-                                     &issue->fees.refund))
-  {
-    report_amount_arithmetic_inconsistency ("refund (fee)",
-                                            rowid,
-                                            &amount_without_fee,
-                                            &issue->fees.refund,
-                                            -1);
-    if (TALER_ARL_do_abort ())
-      return GNUNET_SYSERR;
-    return GNUNET_OK;
-  }
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Refunding coin %s in denomination `%s' value %s\n",
+              "Aborted purse-deposit of coin %s in denomination `%s' value %s\n",
               TALER_B2S (coin_pub),
               GNUNET_h2s (&issue->denom_hash.hash),
               TALER_amount2s (amount_with_fee));
@@ -1924,38 +1907,34 @@ purse_refund_coin_cb (
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    report_row_inconsistency ("refund",
+    report_row_inconsistency ("purse-refund",
                               rowid,
-                              "denomination key for refunded coin unknown to auditor");
+                              "denomination key for purse-refunded coin unknown to auditor");
   }
   else
   {
     TALER_ARL_amount_add (&ds->denom_balance,
                           &ds->denom_balance,
-                          &amount_without_fee);
+                          amount_with_fee);
     TALER_ARL_amount_add (&ds->denom_risk,
                           &ds->denom_risk,
-                          &amount_without_fee);
+                          amount_with_fee);
     TALER_ARL_amount_add (&total_escrow_balance,
                           &total_escrow_balance,
-                          &amount_without_fee);
+                          amount_with_fee);
     TALER_ARL_amount_add (&total_risk,
                           &total_risk,
-                          &amount_without_fee);
+                          amount_with_fee);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "New balance of denomination `%s' after refund is %s\n",
+                "New balance of denomination `%s' after purse-refund is %s\n",
                 GNUNET_h2s (&issue->denom_hash.hash),
                 TALER_amount2s (&ds->denom_balance));
   }
-  /* update total refund fee balance */
-  TALER_ARL_amount_add (&total_refund_fee_income,
-                        &total_refund_fee_income,
-                        &issue->fees.refund);
+  /* update total deposit fee balance */
   TALER_ARL_amount_subtract (&total_deposit_fee_income,
                              &total_deposit_fee_income,
                              &issue->fees.deposit);
 
-#endif
   return GNUNET_OK;
 }
 

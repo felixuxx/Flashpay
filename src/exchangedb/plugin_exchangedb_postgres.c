@@ -1524,7 +1524,8 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "audit_get_purse_deposits_by_purse",
       "SELECT"
-      " pd.amount_with_fee_val"
+      " pd.purse_deposit_serial_id"
+      ",pd.amount_with_fee_val"
       ",pd.amount_with_fee_frac"
       ",pd.coin_pub"
       ",denom.denom_pub"
@@ -10722,6 +10723,7 @@ purse_refund_coin_helper_cb (void *cls,
     struct TALER_Amount amount_with_fee;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_DenominationPublicKey denom_pub;
+    uint64_t rowid;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
@@ -10729,6 +10731,8 @@ purse_refund_coin_helper_cb (void *cls,
                                    &amount_with_fee),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin_pub),
+      GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
+                                    &rowid),
       GNUNET_PQ_result_spec_end
     };
     enum GNUNET_GenericReturnValue ret;
@@ -10743,6 +10747,7 @@ purse_refund_coin_helper_cb (void *cls,
       return;
     }
     ret = dsc->cb (dsc->cb_cls,
+                   rowid,
                    &amount_with_fee,
                    &coin_pub,
                    &denom_pub);

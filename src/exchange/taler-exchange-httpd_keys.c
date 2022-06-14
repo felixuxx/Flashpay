@@ -177,10 +177,9 @@ struct HelperSignkey
 
 
 /**
- * State associated with the crypto helpers / security modules.
- * Created per-thread, but NOT updated when the #key_generation
- * is updated (instead constantly kept in sync whenever
- * #TEH_keys_get_state() is called).
+ * State associated with the crypto helpers / security modules.  NOT updated
+ * when the #key_generation is updated (instead constantly kept in sync
+ * whenever #TEH_keys_get_state() is called).
  */
 struct HelperState
 {
@@ -413,7 +412,7 @@ static struct TEH_KeyStateHandle *key_state;
 
 /**
  * Counter incremented whenever we have a reason to re-build the keys because
- * something external changed (in another thread).  See #TEH_keys_get_state() and
+ * something external changed.  See #TEH_keys_get_state() and
  * #TEH_keys_update_states() for uses of this variable.
  */
 static uint64_t key_generation;
@@ -2424,7 +2423,7 @@ TEH_keys_update_states ()
 
 
 /**
- * Obtain the key state for the current thread. Should ONLY be used
+ * Obtain the key state. Should ONLY be used
  * directly if @a management_only is true. Otherwise use #TEH_keys_get_state().
  *
  * @param management_only if we should NOT run 'finish_keys_response()'
