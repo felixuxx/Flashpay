@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   ,last_reserve_recoup_serial_id INT8 NOT NULL DEFAULT 0
   ,last_reserve_close_serial_id INT8 NOT NULL DEFAULT 0
   ,last_purse_merges_serial_id INT8 NOT NULL DEFAULT 0
+  ,last_purse_deposits_serial_id INT8 NOT NULL DEFAULT 0
   ,last_account_merges_serial_id INT8 NOT NULL DEFAULT 0
   ,last_history_requests_serial_id INT8 NOT NULL DEFAULT 0
   ,last_close_requests_serial_id INT8 NOT NULL DEFAULT 0
@@ -142,6 +143,10 @@ CREATE TABLE IF NOT EXISTS auditor_reserve_balance
   ,reserve_balance_frac INT4 NOT NULL
   ,withdraw_fee_balance_val INT8 NOT NULL
   ,withdraw_fee_balance_frac INT4 NOT NULL
+  ,purse_fee_balance_val INT8 NOT NULL
+  ,purse_fee_balance_frac INT4 NOT NULL
+  ,history_fee_balance_val INT8 NOT NULL
+  ,history_fee_balance_frac INT4 NOT NULL
   );
 COMMENT ON TABLE auditor_reserve_balance
   IS 'sum of the balances of all customer reserves (by exchange master public key)';

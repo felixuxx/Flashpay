@@ -164,6 +164,12 @@ struct TALER_AUDITORDB_ProgressPointReserve
   uint64_t last_purse_merges_serial_id;
 
   /**
+   * Serial ID of the last purse_deposits
+   * entry the auditor processed.
+   */
+  uint64_t last_purse_deposits_serial_id;
+
+  /**
    * serial ID of the last account_merges
    * entry the auditor processed.
    */
@@ -979,14 +985,17 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master public key of the exchange
    * @param reserve_balance amount stored in the reserve
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param purse_fee_balance amount the exchange gained in purse fees
+   * @param history_fee_balance amount the exchange gained in history fees
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*insert_reserve_summary)(void *cls,
                             const struct TALER_MasterPublicKeyP *master_pub,
                             const struct TALER_Amount *reserve_balance,
-                            const struct TALER_Amount *withdraw_fee_balance);
+                            const struct TALER_Amount *withdraw_fee_balance,
+                            const struct TALER_Amount *purse_fee_balance,
+                            const struct TALER_Amount *history_fee_balance);
 
 
   /**
@@ -997,14 +1006,17 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master public key of the exchange
    * @param reserve_balance amount stored in the reserve
    * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param purse_fee_balance amount the exchange gained in purse fees
+   * @param history_fee_balance amount the exchange gained in history fees
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*update_reserve_summary)(void *cls,
                             const struct TALER_MasterPublicKeyP *master_pub,
                             const struct TALER_Amount *reserve_balance,
-                            const struct TALER_Amount *withdraw_fee_balance);
+                            const struct TALER_Amount *withdraw_fee_balance,
+                            const struct TALER_Amount *purse_fee_balance,
+                            const struct TALER_Amount *history_fee_balance);
 
 
   /**
@@ -1012,16 +1024,19 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master public key of the exchange
-   * @param[out] reserve_balance amount stored in the reserve
+   * @param[out] reserve_balance amount stored in reserves
    * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param[out] purse_fee_balance amount the exchange gained in purse fees
+   * @param[out] history_fee_balance amount the exchange gained in history fees
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_summary)(void *cls,
                          const struct TALER_MasterPublicKeyP *master_pub,
                          struct TALER_Amount *reserve_balance,
-                         struct TALER_Amount *withdraw_fee_balance);
+                         struct TALER_Amount *withdraw_fee_balance,
+                         struct TALER_Amount *purse_fee_balance,
+                         struct TALER_Amount *history_fee_balance);
 
 
   /**

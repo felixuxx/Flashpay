@@ -231,11 +231,12 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_reserve_recoup_serial_id=$3"
                             ",last_reserve_close_serial_id=$4"
                             ",last_purse_merges_serial_id=$5"
-                            ",last_account_merges_serial_id=$6"
-                            ",last_history_requests_serial_id=$7"
-                            ",last_close_requests_serial_id=$8"
-                            " WHERE master_pub=$9",
-                            9),
+                            ",last_purse_deposits_serial_id=$6"
+                            ",last_account_merges_serial_id=$7"
+                            ",last_history_requests_serial_id=$8"
+                            ",last_close_requests_serial_id=$9"
+                            " WHERE master_pub=$10",
+                            10),
     /* Used in #postgres_get_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_reserve",
                             "SELECT"
@@ -244,6 +245,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_reserve_recoup_serial_id"
                             ",last_reserve_close_serial_id"
                             ",last_purse_merges_serial_id"
+                            ",last_purse_deposits_serial_id"
                             ",last_account_merges_serial_id"
                             ",last_history_requests_serial_id"
                             ",last_close_requests_serial_id"
@@ -259,11 +261,12 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_reserve_recoup_serial_id"
                             ",last_reserve_close_serial_id"
                             ",last_purse_merges_serial_id"
+                            ",last_purse_deposits_serial_id"
                             ",last_account_merges_serial_id"
                             ",last_history_requests_serial_id"
                             ",last_close_requests_serial_id"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-                            9),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
+                            10),
     /* Used in #postgres_update_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_aggregation",
                             "UPDATE auditor_progress_aggregation SET "
@@ -448,8 +451,12 @@ setup_connection (struct PostgresClosure *pg)
                             ",reserve_balance_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
-                            ") VALUES ($1,$2,$3,$4,$5)",
-                            5),
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",history_fee_balance_val"
+                            ",history_fee_balance_frac"
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+                            9),
     /* Used in #postgres_update_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_update",
                             "UPDATE auditor_reserve_balance SET"
@@ -457,8 +464,12 @@ setup_connection (struct PostgresClosure *pg)
                             ",reserve_balance_frac=$2"
                             ",withdraw_fee_balance_val=$3"
                             ",withdraw_fee_balance_frac=$4"
-                            " WHERE master_pub=$5;",
-                            5),
+                            ",purse_fee_balance_val=$5"
+                            ",purse_fee_balance_frac=$6"
+                            ",history_fee_balance_val=$7"
+                            ",history_fee_balance_frac=$8"
+                            " WHERE master_pub=$9;",
+                            9),
     /* Used in #postgres_get_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_select",
                             "SELECT"
@@ -466,6 +477,10 @@ setup_connection (struct PostgresClosure *pg)
                             ",reserve_balance_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",history_fee_balance_val"
+                            ",history_fee_balance_frac"
                             " FROM auditor_reserve_balance"
                             " WHERE master_pub=$1;",
                             1),
@@ -1244,6 +1259,7 @@ postgres_insert_auditor_progress_reserve (
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_purse_merges_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_deposits_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_account_merges_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_history_requests_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_close_requests_serial_id),
@@ -1278,6 +1294,7 @@ postgres_update_auditor_progress_reserve (
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_purse_merges_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_deposits_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_account_merges_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_history_requests_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_close_requests_serial_id),
@@ -1321,6 +1338,8 @@ postgres_get_auditor_progress_reserve (
                                   &ppr->last_reserve_close_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_purse_merges_serial_id",
                                   &ppr->last_purse_merges_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_deposits_serial_id",
+                                  &ppr->last_purse_deposits_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_account_merges_serial_id",
                                   &ppr->last_account_merges_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_history_requests_serial_id",
@@ -2007,7 +2026,8 @@ postgres_get_reserve_info (void *cls,
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
+ * @param purse_fee_balance amount the exchange gained in purse fees
+ * @param history_fee_balance amount the exchange gained in history fees
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -2015,13 +2035,17 @@ postgres_insert_reserve_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *reserve_balance,
-  const struct TALER_Amount *withdraw_fee_balance)
+  const struct TALER_Amount *withdraw_fee_balance,
+  const struct TALER_Amount *purse_fee_balance,
+  const struct TALER_Amount *history_fee_balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
+    TALER_PQ_query_param_amount (purse_fee_balance),
+    TALER_PQ_query_param_amount (history_fee_balance),
     GNUNET_PQ_query_param_end
   };
 
@@ -2051,12 +2075,16 @@ postgres_update_reserve_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *reserve_balance,
-  const struct TALER_Amount *withdraw_fee_balance)
+  const struct TALER_Amount *withdraw_fee_balance,
+  const struct TALER_Amount *purse_fee_balance,
+  const struct TALER_Amount *history_fee_balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
+    TALER_PQ_query_param_amount (purse_fee_balance),
+    TALER_PQ_query_param_amount (history_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2072,16 +2100,19 @@ postgres_update_reserve_summary (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master public key of the exchange
- * @param[out] reserve_balance amount stored in the reserve
+ * @param[out] reserve_balance amount stored in reserves
  * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
+ * @param[out] purse_fee_balance amount the exchange gained in purse fees
+ * @param[out] history_fee_balance amount the exchange gained in history fees
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_summary (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               struct TALER_Amount *reserve_balance,
-                              struct TALER_Amount *withdraw_fee_balance)
+                              struct TALER_Amount *withdraw_fee_balance,
+                              struct TALER_Amount *purse_fee_balance,
+                              struct TALER_Amount *history_fee_balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2091,7 +2122,8 @@ postgres_get_reserve_summary (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
     TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
-
+    TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance", purse_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee_balance", history_fee_balance),
     GNUNET_PQ_result_spec_end
   };
 
