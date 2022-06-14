@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2021 Taler Systems SA
+  Copyright (C) 2016-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -400,7 +400,7 @@ check_transaction_history_for_deposit (
   struct TALER_Amount spent;
   struct TALER_Amount merchant_loss;
   const struct TALER_Amount *deposit_fee;
-  int refund_deposit_fee;
+  bool refund_deposit_fee;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -421,8 +421,8 @@ check_transaction_history_for_deposit (
      to reconstruct the order of the events, so instead of subtracting we
      compute positive (deposit, melt) and negative (refund) values separately
      here, and then subtract the negative from the positive at the end (after
-     the loops). *///
-  refund_deposit_fee = GNUNET_NO;
+     the loops). */
+  refund_deposit_fee = false;
   deposit_fee = NULL;
   for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;
        NULL != tl;
@@ -515,7 +515,9 @@ check_transaction_history_for_deposit (
                               &merchant_loss,
                               amount_with_fee);
         /* If there is a refund, we give back the deposit fee */
-        refund_deposit_fee = GNUNET_YES;
+        /* FIXME: wrong: only if this is a FULL
+           refund we refund the deposit fee! */
+        refund_deposit_fee = true;
       }
       /* Check that the fees given in the transaction list and in dki match */
       if (0 !=
@@ -555,6 +557,13 @@ check_transaction_history_for_deposit (
                             &expenditures,
                             amount_with_fee);
       break;
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      amount_with_fee = &tl->details.purse_deposit->amount;
+      if (! tl->details.purse_deposit->refunded)
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              amount_with_fee);
+      break;
     }
   } /* for 'tl' */
 
@@ -565,11 +574,14 @@ check_transaction_history_for_deposit (
               "Aggregation loss due to refunds is %s\n",
               TALER_amount2s (&merchant_loss));
   *deposit_gain = *merchant_gain;
-  if ( (GNUNET_YES == refund_deposit_fee) &&
+  if ( (refund_deposit_fee) &&
        (NULL != deposit_fee) )
   {
     /* We had a /deposit operation AND a /refund operation,
        and should thus not charge the merchant the /deposit fee */
+    /* FIXME: this is wrong, the merchant never pays either
+       fee, the deposit fee is simply not charged to the coin
+       IF there is a full refund. */
     TALER_ARL_amount_add (merchant_gain,
                           merchant_gain,
                           deposit_fee);
