@@ -1381,7 +1381,7 @@ handle_account_merged (
   enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_Amount *purse_fee,
   struct GNUNET_TIME_Timestamp merge_timestamp,
-  struct TALER_ReserveSignatureP *reserve_sig)
+  const struct TALER_ReserveSignatureP *reserve_sig)
 {
   GNUNET_break (0); // FIXME
   /* Debit purse fee */

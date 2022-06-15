@@ -1523,7 +1523,7 @@ prepare_statements (struct PostgresClosure *pg)
       1),
 
     GNUNET_PQ_make_prepare (
-      "audit_get_account_merges_incr",
+      "audit_get_account_merge_incr",
       "SELECT"
       " am.account_merge_request_serial_id"
       ",am.reserve_pub"
@@ -1548,7 +1548,7 @@ prepare_statements (struct PostgresClosure *pg)
       1),
 
     GNUNET_PQ_make_prepare (
-      "audit_get_purse_merges_incr",
+      "audit_get_purse_merge_incr",
       "SELECT"
       " pm.purse_merge_request_serial_id"
       ",partner_base_url"
@@ -10624,6 +10624,120 @@ postgres_select_purse_deposits_above_serial_id (
 
 
 /**
+ * Closure for #account_merge_serial_helper_cb().
+ */
+struct AccountMergeSerialContext
+{
+
+  /**
+   * Callback to call.
+   */
+  TALER_EXCHANGEDB_AccountMergeCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on hard errors.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Helper function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct AccountMergeSerialContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+account_merge_serial_helper_cb (void *cls,
+                                PGresult *result,
+                                unsigned int num_results)
+{
+  struct AccountMergeSerialContext *dsc = cls;
+  struct PostgresClosure *pg = dsc->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_PurseContractPublicKeyP purse_pub;
+    struct TALER_PrivateContractHashP h_contract_terms;
+    struct GNUNET_TIME_Timestamp purse_expiration;
+    struct TALER_Amount amount;
+    uint32_t min_age;
+    uint32_t flags32;
+    enum TALER_WalletAccountMergeFlags flags;
+    struct TALER_Amount purse_fee;
+    struct GNUNET_TIME_Timestamp merge_timestamp;
+    struct TALER_ReserveSignatureP reserve_sig;
+    uint64_t rowid;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
+                                   &purse_fee),
+      GNUNET_PQ_result_spec_uint32 ("flags",
+                                    &flags32),
+      GNUNET_PQ_result_spec_uint32 ("age_limit",
+                                    &min_age),
+      GNUNET_PQ_result_spec_timestamp ("purse_expiration",
+                                       &purse_expiration),
+      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
+                                       &merge_timestamp),
+      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
+                                            &h_contract_terms),
+      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                            &purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                            &reserve_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_uint64 ("account_merge_request_serial_id",
+                                    &rowid),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      dsc->status = GNUNET_SYSERR;
+      return;
+    }
+    flags = (enum TALER_WalletAccountMergeFlags) flags32;
+    ret = dsc->cb (dsc->cb_cls,
+                   rowid,
+                   &reserve_pub,
+                   &purse_pub,
+                   &h_contract_terms,
+                   purse_expiration,
+                   &amount,
+                   min_age,
+                   flags,
+                   &purse_fee,
+                   merge_timestamp,
+                   &reserve_sig);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+}
+
+
+/**
  * Select account merges above @a serial_id in monotonically increasing
  * order.
  *
@@ -10640,8 +10754,135 @@ postgres_select_account_merges_above_serial_id (
   TALER_EXCHANGEDB_AccountMergeCallback cb,
   void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct AccountMergeSerialContext dsc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "audit_get_account_merge_incr",
+                                             params,
+                                             &account_merge_serial_helper_cb,
+                                             &dsc);
+  if (GNUNET_OK != dsc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Closure for #purse_deposit_serial_helper_cb().
+ */
+struct PurseMergeSerialContext
+{
+
+  /**
+   * Callback to call.
+   */
+  TALER_EXCHANGEDB_PurseMergeCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on hard errors.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Helper function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct PurseMergeSerialContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+purse_merges_serial_helper_cb (void *cls,
+                               PGresult *result,
+                               unsigned int num_results)
+{
+  struct PurseMergeSerialContext *dsc = cls;
+  struct PostgresClosure *pg = dsc->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    uint64_t rowid;
+    char *partner_base_url = NULL;
+    struct TALER_Amount amount;
+    uint32_t flags32;
+    enum TALER_WalletAccountMergeFlags flags;
+    struct TALER_PurseMergePublicKeyP merge_pub;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_PurseMergeSignatureP merge_sig;
+    struct TALER_PurseContractPublicKeyP purse_pub;
+    struct GNUNET_TIME_Timestamp merge_timestamp;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &amount),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("partner_base_url",
+                                      &partner_base_url),
+        NULL),
+      GNUNET_PQ_result_spec_uint32 ("flags",
+                                    &flags32),
+      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
+                                       &merge_timestamp),
+      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                            &purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
+                                            &merge_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
+                                            &merge_pub),
+      GNUNET_PQ_result_spec_uint64 ("purse_merge_request_serial_id",
+                                    &rowid),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    flags = (enum TALER_WalletAccountMergeFlags) flags;
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      dsc->status = GNUNET_SYSERR;
+      return;
+    }
+    ret = dsc->cb (dsc->cb_cls,
+                   rowid,
+                   partner_base_url,
+                   &amount,
+                   flags,
+                   &merge_pub,
+                   &reserve_pub,
+                   &merge_sig,
+                   &purse_pub,
+                   merge_timestamp);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
 }
 
 
@@ -10662,8 +10903,115 @@ postgres_select_purse_merges_above_serial_id (
   TALER_EXCHANGEDB_PurseMergeCallback cb,
   void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct PurseMergeSerialContext dsc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "audit_get_purse_merge_incr",
+                                             params,
+                                             &purse_merges_serial_helper_cb,
+                                             &dsc);
+  if (GNUNET_OK != dsc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Closure for #purse_deposit_serial_helper_cb().
+ */
+struct HistoryRequestSerialContext
+{
+
+  /**
+   * Callback to call.
+   */
+  TALER_EXCHANGEDB_HistoryRequestCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on hard errors.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Helper function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct HistoryRequestSerialContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+history_request_serial_helper_cb (void *cls,
+                                  PGresult *result,
+                                  unsigned int num_results)
+{
+  struct HistoryRequestSerialContext *dsc = cls;
+  struct PostgresClosure *pg = dsc->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    uint64_t rowid;
+    struct TALER_Amount history_fee;
+    struct GNUNET_TIME_Timestamp ts;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    struct TALER_ReserveSignatureP reserve_sig;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
+                                   &history_fee),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                            &reserve_sig),
+      GNUNET_PQ_result_spec_uint64 ("history_request_serial_id",
+                                    &rowid),
+      GNUNET_PQ_result_spec_timestamp ("request_timestamp",
+                                       &ts),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      dsc->status = GNUNET_SYSERR;
+      return;
+    }
+    ret = dsc->cb (dsc->cb_cls,
+                   rowid,
+                   &history_fee,
+                   ts,
+                   &reserve_pub,
+                   &reserve_sig);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
 }
 
 
@@ -10684,8 +11032,27 @@ postgres_select_history_requests_above_serial_id (
   TALER_EXCHANGEDB_HistoryRequestCallback cb,
   void *cb_cls)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct HistoryRequestSerialContext dsc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "audit_get_history_requests_incr",
+                                             params,
+                                             &history_request_serial_helper_cb,
+                                             &dsc);
+  if (GNUNET_OK != dsc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
 }
 
 
