@@ -2002,6 +2002,73 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
+ * Function called with details about
+ * account merge requests that have been made, with
+ * the goal of auditing the account merge execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_AccountMergeCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *amount,
+  uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_Amount *purse_fee,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Function called with details about purse
+ * merges that have been made, with
+ * the goal of auditing the purse merge execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_PurseMergeCallback)(
+  void *cls,
+  uint64_t rowid,
+  const char *partner_base_url,
+  const struct TALER_Amount *amount,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_PurseMergeSignatureP *merge_sig,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp merge_timestamp);
+
+
+/**
+ * Function called with details about
+ * history requests that have been made, with
+ * the goal of auditing the history request execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_HistoryRequestCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_Amount *history_fee,
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
  * Function called with details about purse refunds that have been made, with
  * the goal of auditing the purse refund's execution.
  *
@@ -4098,6 +4165,60 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t serial_id,
     TALER_EXCHANGEDB_PurseDepositCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select account merges above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_account_merges_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_AccountMergeCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select purse merges deposits above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_merges_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_PurseMergeCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select history requests above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_history_requests_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_HistoryRequestCallback cb,
     void *cb_cls);
 
 

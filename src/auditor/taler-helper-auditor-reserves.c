@@ -1309,6 +1309,111 @@ verify_reserve_balance (void *cls,
 
 
 /**
+ * Function called with details about purse deposits that have been made, with
+ * the goal of auditing the deposit's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param deposit deposit details
+ * @param denom_pub denomination public key of @a coin_pub
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static enum GNUNET_GenericReturnValue
+handle_purse_deposits (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
+  const struct TALER_DenominationPublicKey *denom_pub)
+{
+  GNUNET_break (0); // FIXME
+  /* Credit purse value (if last op)! */
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called with details about purse
+ * merges that have been made, with
+ * the goal of auditing the purse merge execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static enum GNUNET_GenericReturnValue
+handle_purse_merged (
+  void *cls,
+  uint64_t rowid,
+  const char *partner_base_url,
+  const struct TALER_Amount *amount,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_PurseMergeSignatureP *merge_sig,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp merge_timestamp)
+{
+  GNUNET_break (0); // FIXME
+  /* Credit purse value (if last op)! */
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called with details about
+ * account merge requests that have been made, with
+ * the goal of auditing the account merge execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static enum GNUNET_GenericReturnValue
+handle_account_merged (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_Amount *amount,
+  uint32_t min_age,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_Amount *purse_fee,
+  struct GNUNET_TIME_Timestamp merge_timestamp,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  GNUNET_break (0); // FIXME
+  /* Debit purse fee */
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called with details about
+ * history requests that have been made, with
+ * the goal of auditing the history request execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+static enum GNUNET_GenericReturnValue
+handle_history_request (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_Amount *history_fee,
+  const struct GNUNET_TIME_Timestamp ts,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  GNUNET_break (0); // FIXME
+  /* Debit purse fee */
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Analyze reserves for being well-formed.
  *
  * @param cls NULL
@@ -1410,10 +1515,10 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-#if FIXME
+  /* Credit purse value (if last op)! */
   qs = TALER_ARL_edb->select_purse_merges_above_serial_id (
     TALER_ARL_edb->cls,
-    ppr.last_purse_merge_serial_id,
+    ppr.last_purse_merges_serial_id,
     &handle_purse_merged,
     &rc);
   if (qs < 0)
@@ -1421,7 +1526,6 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-
   qs = TALER_ARL_edb->select_purse_deposits_above_serial_id (
     TALER_ARL_edb->cls,
     ppr.last_purse_deposits_serial_id,
@@ -1432,9 +1536,10 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  /* Charge purse fee! */
   qs = TALER_ARL_edb->select_account_merges_above_serial_id (
     TALER_ARL_edb->cls,
-    ppr.last_account_merge_serial_id,
+    ppr.last_account_merges_serial_id,
     &handle_account_merged,
     &rc);
   if (qs < 0)
@@ -1442,6 +1547,7 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+  /* Charge history fee! */
   qs = TALER_ARL_edb->select_history_requests_above_serial_id (
     TALER_ARL_edb->cls,
     ppr.last_history_requests_serial_id,
@@ -1452,6 +1558,8 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
+#if FIXME
+  /* TODO: do we even care about these? */
   qs = TALER_ARL_edb->select_close_requests_above_serial_id (
     TALER_ARL_edb->cls,
     ppr.last_close_requests_serial_id,

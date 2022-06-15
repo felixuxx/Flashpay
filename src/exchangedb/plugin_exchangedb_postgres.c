@@ -1521,6 +1521,71 @@ prepare_statements (struct PostgresClosure *pg)
       " )"
       " ORDER BY purse_deposit_serial_id ASC;",
       1),
+
+    GNUNET_PQ_make_prepare (
+      "audit_get_account_merges_incr",
+      "SELECT"
+      " am.account_merge_request_serial_id"
+      ",am.reserve_pub"
+      ",am.purse_pub"
+      ",pr.h_contract_terms"
+      ",pr.purse_expiration"
+      ",pr.amount_with_fee_val"
+      ",pr.amount_with_fee_frac"
+      ",pr.age_limit"
+      ",pr.flags"
+      ",pr.purse_fee_val"
+      ",pr.purse_fee_frac"
+      ",pm.merge_timestamp"
+      ",am.reserve_sig"
+      " FROM account_merges am"
+      " JOIN purse_requests pr USING (purse_pub)"
+      " JOIN purse_merges pm USING (purse_pub)"
+      " WHERE ("
+      "  (account_merge_request_serial_id>=$1)"
+      " )"
+      " ORDER BY account_merge_request_serial_id ASC;",
+      1),
+
+    GNUNET_PQ_make_prepare (
+      "audit_get_purse_merges_incr",
+      "SELECT"
+      " pm.purse_merge_request_serial_id"
+      ",partner_base_url"
+      ",pr.amount_with_fee_val"
+      ",pr.amount_with_fee_frac"
+      ",pr.flags"
+      ",pr.merge_pub"
+      ",pm.reserve_pub"
+      ",pm.merge_sig"
+      ",pm.purse_pub"
+      ",pm.merge_timestamp"
+      " FROM purse_merges pm"
+      " JOIN purse_requests pr USING (purse_pub)"
+      " LEFT JOIN partners USING (partner_serial_id)"
+      " WHERE ("
+      "  (purse_merge_request_serial_id>=$1)"
+      " )"
+      " ORDER BY purse_merge_request_serial_id ASC;",
+      1),
+
+    GNUNET_PQ_make_prepare (
+      "audit_get_history_requests_incr",
+      "SELECT"
+      " history_request_serial_id"
+      ",history_fee_val"
+      ",history_fee_frac"
+      ",request_timestamp"
+      ",reserve_pub"
+      ",reserve_sig"
+      " FROM history_requests"
+      " WHERE ("
+      "  (history_request_serial_id>=$1)"
+      " )"
+      " ORDER BY history_request_serial_id ASC;",
+      1),
+
+
     GNUNET_PQ_make_prepare (
       "audit_get_purse_deposits_by_purse",
       "SELECT"
@@ -10559,6 +10624,72 @@ postgres_select_purse_deposits_above_serial_id (
 
 
 /**
+ * Select account merges above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_account_merges_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_AccountMergeCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Select purse merges deposits above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_purse_merges_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_PurseMergeCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Select history requests above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_history_requests_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_HistoryRequestCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Closure for #purse_refund_serial_helper_cb().
  */
 struct PurseRefundSerialContext
@@ -15553,6 +15684,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_deposits_above_serial_id;
   plugin->select_purse_deposits_above_serial_id
     = &postgres_select_purse_deposits_above_serial_id;
+  plugin->select_account_merges_above_serial_id
+    = &postgres_select_account_merges_above_serial_id;
+  plugin->select_purse_merges_above_serial_id
+    = &postgres_select_purse_merges_above_serial_id;
+  plugin->select_history_requests_above_serial_id
+    = &postgres_select_history_requests_above_serial_id;
   plugin->select_purse_refunds_above_serial_id
     = &postgres_select_purse_refunds_above_serial_id;
   plugin->select_purse_deposits_by_purse
