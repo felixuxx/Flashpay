@@ -400,6 +400,54 @@ struct ReserveContext
 
 
 /**
+ * Create a new reserve for @a reserve_pub in @a rc.
+ *
+ * @param[in,out] rc context to update
+ * @param reserve_pub key for which to create a reserve
+ * @return NULL on error
+ */
+static struct ReserveSummary *
+setup_reserve (struct ReserveContext *rc,
+               const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  struct ReserveSummary *rs;
+  struct GNUNET_HashCode key;
+  enum GNUNET_DB_QueryStatus qs;
+
+  GNUNET_CRYPTO_hash (reserve_pub,
+                      sizeof (*reserve_pub),
+                      &key);
+  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
+                                          &key);
+  if (NULL != rs)
+    return rs;
+  rs = GNUNET_new (struct ReserveSummary);
+  rs->reserve_pub = *reserve_pub;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &rs->total_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &rs->total_out));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &rs->total_fee));
+  if (0 > (qs = load_auditor_reserve_summary (rs)))
+  {
+    GNUNET_free (rs);
+    rc->qs = qs;
+    return NULL;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CONTAINER_multihashmap_put (rc->reserves,
+                                                    &key,
+                                                    rs,
+                                                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  return rs;
+}
+
+
+/**
  * Function called with details about incoming wire transfers.
  *
  * @param cls our `struct ReserveContext`
@@ -421,54 +469,26 @@ handle_reserve_in (void *cls,
                    struct GNUNET_TIME_Timestamp execution_date)
 {
   struct ReserveContext *rc = cls;
-  struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Timestamp expiry;
-  enum GNUNET_DB_QueryStatus qs;
 
   (void) wire_reference;
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_in_serial_id);
   ppr.last_reserve_in_serial_id = rowid + 1;
 
-  GNUNET_CRYPTO_hash (reserve_pub,
-                      sizeof (*reserve_pub),
-                      &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
-                                          &key);
+  rs = setup_reserve (rc,
+                      reserve_pub);
   if (NULL == rs)
   {
-    rs = GNUNET_new (struct ReserveSummary);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_ARL_amount_add (&rs->total_in,
+                        &rs->total_in,
+                        credit);
+  if (NULL == rs->sender_account)
     rs->sender_account = GNUNET_strdup (sender_account_details);
-    rs->reserve_pub = *reserve_pub;
-    rs->total_in = *credit;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (credit->currency,
-                                          &rs->total_out));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (credit->currency,
-                                          &rs->total_fee));
-    if (0 > (qs = load_auditor_reserve_summary (rs)))
-    {
-      GNUNET_break (0);
-      GNUNET_free (rs);
-      rc->qs = qs;
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
-                                                      &key,
-                                                      rs,
-                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-  }
-  else
-  {
-    TALER_ARL_amount_add (&rs->total_in,
-                          &rs->total_in,
-                          credit);
-    if (NULL == rs->sender_account)
-      rs->sender_account = GNUNET_strdup (sender_account_details);
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional incoming wire transfer for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
@@ -509,7 +529,6 @@ handle_reserve_out (void *cls,
                     const struct TALER_Amount *amount_with_fee)
 {
   struct ReserveContext *rc = cls;
-  struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct TALER_Amount auditor_amount_with_fee;
@@ -608,44 +627,16 @@ handle_reserve_out (void *cls,
                               rowid,
                               "amount with fee from exchange does not match denomination value plus fee");
   }
-
-
-  GNUNET_CRYPTO_hash (reserve_pub,
-                      sizeof (*reserve_pub),
-                      &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
-                                          &key);
+  rs = setup_reserve (rc,
+                      reserve_pub);
   if (NULL == rs)
   {
-    rs = GNUNET_new (struct ReserveSummary);
-    rs->reserve_pub = *reserve_pub;
-    rs->total_out = auditor_amount_with_fee;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (amount_with_fee->currency,
-                                          &rs->total_in));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (amount_with_fee->currency,
-                                          &rs->total_fee));
-    qs = load_auditor_reserve_summary (rs);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      GNUNET_free (rs);
-      rc->qs = qs;
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
-                                                      &key,
-                                                      rs,
-                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  else
-  {
-    TALER_ARL_amount_add (&rs->total_out,
-                          &rs->total_out,
-                          &auditor_amount_with_fee);
-  }
+  TALER_ARL_amount_add (&rs->total_out,
+                        &rs->total_out,
+                        &auditor_amount_with_fee);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Reserve `%s' reduced by %s from withdraw\n",
               TALER_B2S (reserve_pub),
@@ -691,7 +682,6 @@ handle_recoup_by_reserve (
   const union TALER_DenominationBlindingKeyP *coin_blind)
 {
   struct ReserveContext *rc = cls;
-  struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Timestamp expiry;
   struct TALER_MasterSignatureP msig;
@@ -794,42 +784,16 @@ handle_recoup_by_reserve (
                           amount);
   }
 
-  GNUNET_CRYPTO_hash (reserve_pub,
-                      sizeof (*reserve_pub),
-                      &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
-                                          &key);
+  rs = setup_reserve (rc,
+                      reserve_pub);
   if (NULL == rs)
   {
-    rs = GNUNET_new (struct ReserveSummary);
-    rs->reserve_pub = *reserve_pub;
-    rs->total_in = *amount;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (amount->currency,
-                                          &rs->total_out));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (amount->currency,
-                                          &rs->total_fee));
-    qs = load_auditor_reserve_summary (rs);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      GNUNET_free (rs);
-      rc->qs = qs;
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
-                                                      &key,
-                                                      rs,
-                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  else
-  {
-    TALER_ARL_amount_add (&rs->total_in,
-                          &rs->total_in,
-                          amount);
-  }
+  TALER_ARL_amount_add (&rs->total_in,
+                        &rs->total_in,
+                        amount);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional /recoup value to for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
@@ -923,44 +887,20 @@ handle_reserve_closed (
   const struct TALER_WireTransferIdentifierRawP *transfer_details)
 {
   struct ReserveContext *rc = cls;
-  struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
-  enum GNUNET_DB_QueryStatus qs;
 
   (void) transfer_details;
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_close_serial_id);
   ppr.last_reserve_close_serial_id = rowid + 1;
 
-  GNUNET_CRYPTO_hash (reserve_pub,
-                      sizeof (*reserve_pub),
-                      &key);
-  rs = GNUNET_CONTAINER_multihashmap_get (rc->reserves,
-                                          &key);
+  rs = setup_reserve (rc,
+                      reserve_pub);
   if (NULL == rs)
   {
-    rs = GNUNET_new (struct ReserveSummary);
-    rs->reserve_pub = *reserve_pub;
-    rs->total_out = *amount_with_fee;
-    rs->total_fee = *closing_fee;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_set_zero (amount_with_fee->currency,
-                                          &rs->total_in));
-    qs = load_auditor_reserve_summary (rs);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      GNUNET_free (rs);
-      rc->qs = qs;
-      return GNUNET_SYSERR;
-    }
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_put (rc->reserves,
-                                                      &key,
-                                                      rs,
-                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  else
   {
     struct TALER_Amount expected_fee;
 
@@ -1088,7 +1028,7 @@ verify_reserve_balance (void *cls,
          making an illegitimate gain over the amount it dropped.
          We don't add the amount to some total simply because it is
          not an actualized gain and could be trivially corrected by
-         restoring the summary. *///
+         restoring the summary. */
       TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
                         GNUNET_JSON_PACK (
                           GNUNET_JSON_pack_data_auto ("reserve_pub",
@@ -1325,7 +1265,36 @@ handle_purse_deposits (
   const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
   const struct TALER_DenominationPublicKey *denom_pub)
 {
+  const char *base_url
+    = (NULL == deposit->exchange_base_url)
+    ? TALER_ARL_exchange_url
+    : deposit->exchange_base_url;
+
+  if (GNUNET_OK !=
+      TALER_wallet_purse_deposit_verify (base_url,
+                                         &deposit->purse_pub,
+                                         &deposit->amount,
+                                         &deposit->coin_pub,
+                                         &deposit->coin_sig))
+  {
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "purse-deposit"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                &deposit->amount),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    &deposit->coin_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          &deposit->amount);
+    return GNUNET_OK;
+  }
+
   GNUNET_break (0); // FIXME
+  // FIXME: need flags + total deposited!
   /* Credit purse value (if last op)! */
   return GNUNET_SYSERR;
 }
@@ -1353,9 +1322,65 @@ handle_purse_merged (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct GNUNET_TIME_Timestamp merge_timestamp)
 {
-  GNUNET_break (0); // FIXME
-  /* Credit purse value (if last op)! */
-  return GNUNET_SYSERR;
+  struct ReserveContext *rc = cls;
+  struct ReserveSummary *rs;
+  char *reserve_url;
+
+  reserve_url
+    = TALER_reserve_make_payto (NULL == partner_base_url
+                                ? TALER_ARL_exchange_url
+                                : partner_base_url,
+                                reserve_pub);
+  if (GNUNET_OK !=
+      TALER_wallet_purse_merge_verify (reserve_url,
+                                       merge_timestamp,
+                                       purse_pub,
+                                       merge_pub,
+                                       merge_sig))
+  {
+    GNUNET_free (reserve_url);
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "merge-purse"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                amount),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    merge_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount);
+    return GNUNET_OK;
+  }
+  GNUNET_free (reserve_url);
+  if (TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE ==
+      (flags & TALER_WAMF_MERGE_MODE_MASK))
+  {
+    /* This just created the purse, actual credit to
+       the reserve will be done in handle_purse_deposits() */
+    return GNUNET_OK;
+  }
+  if ( (NULL != partner_base_url) &&
+       (0 != strcmp (partner_base_url,
+                     TALER_ARL_exchange_url)) )
+  {
+    /* credited reserve is at another exchange, do NOT credit here! */
+    return GNUNET_OK;
+  }
+  rs = setup_reserve (rc,
+                      reserve_pub);
+  if (NULL == rs)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_ARL_amount_add (&rs->total_in,
+                        &rs->total_in,
+                        amount);
+  // rs->a_expiration_date = FIXME: set to what?;
+  return GNUNET_OK;
 }
 
 
@@ -1383,9 +1408,50 @@ handle_account_merged (
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
-  GNUNET_break (0); // FIXME
-  /* Debit purse fee */
-  return GNUNET_SYSERR;
+  struct ReserveContext *rc = cls;
+  struct ReserveSummary *rs;
+
+  if (GNUNET_OK !=
+      TALER_wallet_account_merge_verify (merge_timestamp,
+                                         purse_pub,
+                                         purse_expiration,
+                                         h_contract_terms,
+                                         amount,
+                                         purse_fee,
+                                         min_age,
+                                         flags,
+                                         reserve_pub,
+                                         reserve_sig))
+  {
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "account-merge"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                purse_fee),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    reserve_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          purse_fee);
+    return GNUNET_OK;
+  }
+  rs = setup_reserve (rc,
+                      reserve_pub);
+  if (NULL == rs)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_ARL_amount_add (&total_purse_fee_income,
+                        &total_purse_fee_income,
+                        purse_fee);
+  TALER_ARL_amount_add (&rs->total_out,
+                        &rs->total_out,
+                        purse_fee);
+  return GNUNET_OK;
 }
 
 
@@ -1407,9 +1473,44 @@ handle_history_request (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
-  GNUNET_break (0); // FIXME
-  /* Debit purse fee */
-  return GNUNET_SYSERR;
+  struct ReserveContext *rc = cls;
+  struct ReserveSummary *rs;
+
+  if (GNUNET_OK !=
+      TALER_wallet_reserve_history_verify (ts,
+                                           history_fee,
+                                           reserve_pub,
+                                           reserve_sig))
+  {
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "account-history"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                history_fee),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    reserve_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          history_fee);
+    return GNUNET_OK;
+  }
+  rs = setup_reserve (rc,
+                      reserve_pub);
+  if (NULL == rs)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  TALER_ARL_amount_add (&total_history_fee_income,
+                        &total_history_fee_income,
+                        history_fee);
+  TALER_ARL_amount_add (&rs->total_out,
+                        &rs->total_out,
+                        history_fee);
+  return GNUNET_OK;
 }
 
 

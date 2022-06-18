@@ -418,6 +418,19 @@ TALER_payto_validate (const char *payto_uri);
 
 
 /**
+ * Create payto://-URI for a given exchange base URL
+ * and a @a reserve_pub.
+ *
+ * @param exchange_url the base URL of the exchange
+ * @param reserve_pub the public key of the reserve
+ * @return payto://-URI for the reserve (without receiver-name!)
+ */
+char *
+TALER_reserve_make_payto (const char *exchange_url,
+                          const struct TALER_ReservePublicKeyP *reserve_pub);
+
+
+/**
  * Check that an IBAN number is well-formed.
  *
  * Validates given IBAN according to the European Banking Standards.  See:
