@@ -904,6 +904,14 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_purse_deposit"
       " ($1,$2,$3,$4,$5,$6,$7,$8);",
       8),
+    /* Used in #postgres_update_aggregation_transient() */
+    GNUNET_PQ_make_prepare (
+      "set_purse_balance",
+      "UPDATE purse_requests"
+      " SET balance_val=$2"
+      "    ,balance_frac=$3"
+      " WHERE purse_pub=$1;",
+      3),
     /* used in #postgres_expire_purse() */
     GNUNET_PQ_make_prepare (
       "call_expire_purse",
@@ -1503,19 +1511,27 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "audit_get_purse_deposits_incr",
       "SELECT"
-      " amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",purse_pub"
-      ",coin_sig"
+      " pd.amount_with_fee_val"
+      ",pd.amount_with_fee_frac"
+      ",pr.amount_with_fee_val AS total_val"
+      ",pr.amount_with_fee_frac AS total_frac"
+      ",pr.balance_val"
+      ",pr.balance_frac"
+      ",pr.flags"
+      ",pd.purse_pub"
+      ",pd.coin_sig"
       ",partner_base_url"
       ",denom.denom_pub"
+      ",pm.reserve_pub"
       ",kc.coin_pub"
       ",kc.age_commitment_hash"
-      ",purse_deposit_serial_id"
-      " FROM purse_deposits"
+      ",pd.purse_deposit_serial_id"
+      " FROM purse_deposits pd"
       " LEFT JOIN partners USING (partner_serial_id)"
-      "    JOIN known_coins kc USING (coin_pub)"
-      "    JOIN denominations denom USING (denominations_serial)"
+      " LEFT JOIN purse_merges pm USING (purse_pub)"
+      " JOIN purse_requests pr USING (purse_pub)"
+      " JOIN known_coins kc USING (coin_pub)"
+      " JOIN denominations denom USING (denominations_serial)"
       " WHERE ("
       "  (purse_deposit_serial_id>=$1)"
       " )"
@@ -1554,6 +1570,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",partner_base_url"
       ",pr.amount_with_fee_val"
       ",pr.amount_with_fee_frac"
+      ",pr.balance_val"
+      ",pr.balance_frac"
       ",pr.flags"
       ",pr.merge_pub"
       ",pm.reserve_pub"
@@ -10532,21 +10550,36 @@ purse_deposit_serial_helper_cb (void *cls,
     };
     struct TALER_DenominationPublicKey denom_pub;
     uint64_t rowid;
+    uint32_t flags32;
+    struct TALER_ReservePublicKeyP reserve_pub;
+    bool not_merged = false;
+    struct TALER_Amount purse_balance;
+    struct TALER_Amount purse_total;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &deposit.amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                   &purse_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("total",
+                                   &purse_total),
       TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee",
                                    &deposit.deposit_fee),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_string ("partner_base_url",
                                       &deposit.exchange_base_url),
         NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                              &reserve_pub),
+        &not_merged),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
                                             &deposit.purse_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &deposit.coin_sig),
+      GNUNET_PQ_result_spec_uint32 ("flags",
+                                    &flags32),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &deposit.coin_pub),
       GNUNET_PQ_result_spec_allow_null (
@@ -10574,6 +10607,10 @@ purse_deposit_serial_helper_cb (void *cls,
     ret = dsc->cb (dsc->cb_cls,
                    rowid,
                    &deposit,
+                   not_merged ? NULL : &reserve_pub,
+                   (enum TALER_WalletAccountMergeFlags) flags32,
+                   &purse_balance,
+                   &purse_total,
                    &denom_pub);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
@@ -10827,6 +10864,7 @@ purse_merges_serial_helper_cb (void *cls,
     uint64_t rowid;
     char *partner_base_url = NULL;
     struct TALER_Amount amount;
+    struct TALER_Amount balance;
     uint32_t flags32;
     enum TALER_WalletAccountMergeFlags flags;
     struct TALER_PurseMergePublicKeyP merge_pub;
@@ -10837,6 +10875,8 @@ purse_merges_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                   &balance),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_string ("partner_base_url",
                                       &partner_base_url),
@@ -10873,6 +10913,7 @@ purse_merges_serial_helper_cb (void *cls,
                    rowid,
                    partner_base_url,
                    &amount,
+                   &balance,
                    flags,
                    &merge_pub,
                    &reserve_pub,
@@ -15541,6 +15582,35 @@ postgres_do_purse_deposit (
 
 
 /**
+ * Set the current @a balance in the purse
+ * identified by @a purse_pub. Used by the auditor
+ * to update the balance as calculated by the auditor.
+ *
+ * @param cls closure
+ * @param purse_pub public key of a purse
+ * @param balance new balance to store under the purse
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_set_purse_balance (
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_Amount *balance)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    TALER_PQ_query_param_amount (balance),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "set_purse_balance",
+                                             params);
+}
+
+
+/**
  * Function called to obtain a coin deposit data from
  * depositing the coin into a purse.
  *
@@ -16171,6 +16241,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_purse_by_merge_pub;
   plugin->do_purse_deposit
     = &postgres_do_purse_deposit;
+  plugin->set_purse_balance
+    = &postgres_set_purse_balance;
   plugin->get_purse_deposit
     = &postgres_get_purse_deposit;
   plugin->do_purse_merge

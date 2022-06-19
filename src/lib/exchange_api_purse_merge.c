@@ -119,50 +119,6 @@ struct TALER_EXCHANGE_AccountMergeHandle
 };
 
 
-static char *
-make_payto (const char *exchange_url,
-            const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  char pub_str[sizeof (*reserve_pub) * 2];
-  char *end;
-  bool is_http;
-  char *reserve_url;
-
-  end = GNUNET_STRINGS_data_to_string (
-    reserve_pub,
-    sizeof (*reserve_pub),
-    pub_str,
-    sizeof (pub_str));
-  *end = '\0';
-  if (0 == strncmp (exchange_url,
-                    "http://",
-                    strlen ("http://")))
-  {
-    is_http = true;
-    exchange_url = &exchange_url[strlen ("http://")];
-  }
-  else if (0 == strncmp (exchange_url,
-                         "https://",
-                         strlen ("https://")))
-  {
-    is_http = false;
-    exchange_url = &exchange_url[strlen ("https://")];
-  }
-  else
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  /* exchange_url includes trailing '/' */
-  GNUNET_asprintf (&reserve_url,
-                   "payto://%s/%s%s",
-                   is_http ? "taler+http" : "taler",
-                   exchange_url,
-                   pub_str);
-  return reserve_url;
-}
-
-
 /**
  * Function called when we're done processing the
  * HTTP /purse/$PID/merge request.
@@ -379,8 +335,8 @@ TALER_EXCHANGE_account_merge (
                      "/purses/%s/merge",
                      pub_str);
   }
-  reserve_url = make_payto (pch->provider_url,
-                            &pch->reserve_pub);
+  reserve_url = TALER_reserve_make_payto (pch->provider_url,
+                                          &pch->reserve_pub);
   if (NULL == reserve_url)
   {
     GNUNET_break (0);

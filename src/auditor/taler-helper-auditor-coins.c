@@ -2350,6 +2350,11 @@ check_denomination (
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param deposit deposit details
+ * @param reserve_pub which reserve is the purse merged into, NULL if unknown
+ * @param flags purse flags
+ * @param auditor_balance purse balance (according to the
+ *          auditor during auditing)
+ * @param purse_total target amount the purse should reach
  * @param denom_pub denomination public key of @a coin_pub
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -2358,6 +2363,10 @@ purse_deposit_cb (
   void *cls,
   uint64_t rowid,
   const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_Amount *auditor_balance,
+  const struct TALER_Amount *purse_total,
   const struct TALER_DenominationPublicKey *denom_pub)
 {
   struct CoinContext *cc = cls;
@@ -2366,6 +2375,10 @@ purse_deposit_cb (
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *ds;
 
+  (void) flags;
+  (void) auditor_balance;
+  (void) purse_total;
+  (void) reserve_pub;
   GNUNET_assert (rowid >= ppc.last_purse_deposits_serial_id);
   ppc.last_purse_deposits_serial_id = rowid + 1;
   qs = TALER_ARL_get_denomination_info (denom_pub,

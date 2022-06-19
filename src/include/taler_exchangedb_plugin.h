@@ -1990,6 +1990,11 @@ typedef enum GNUNET_GenericReturnValue
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param deposit deposit details
+ * @param reserve_pub which reserve is the purse merged into, NULL if unknown
+ * @param flags purse flags
+ * @param auditor_balance purse balance (according to the
+ *          auditor during auditing)
+ * @param purse_total target amount the purse should reach
  * @param denom_pub denomination public key of @a coin_pub
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1998,6 +2003,10 @@ typedef enum GNUNET_GenericReturnValue
   void *cls,
   uint64_t rowid,
   const struct TALER_EXCHANGEDB_PurseDeposit *deposit,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  enum TALER_WalletAccountMergeFlags flags,
+  const struct TALER_Amount *auditor_balance,
+  const struct TALER_Amount *purse_total,
   const struct TALER_DenominationPublicKey *denom_pub);
 
 
@@ -2033,6 +2042,15 @@ typedef enum GNUNET_GenericReturnValue
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param partner_base_url where is the reserve, NULL for this exchange
+ * @param amount total amount expected in the purse
+ * @param balance current balance in the purse (according to the auditor)
+ * @param flags purse flags
+ * @param merge_pub merge capability key
+ * @param reserve_pub reserve the merge affects
+ * @param merge_sig signature affirming the merge
+ * @param purse_pub purse key
+ * @param merge_timestamp when did the merge happen
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef enum GNUNET_GenericReturnValue
@@ -2041,6 +2059,7 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t rowid,
   const char *partner_base_url,
   const struct TALER_Amount *amount,
+  const struct TALER_Amount *balance,
   enum TALER_WalletAccountMergeFlags flags,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -5288,6 +5307,23 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_Amount *amount_minus_fee,
     bool *balance_ok,
     bool *conflict);
+
+
+  /**
+   * Set the current @a balance in the purse
+   * identified by @a purse_pub. Used by the auditor
+   * to update the balance as calculated by the auditor.
+   *
+   * @param cls closure
+   * @param purse_pub public key of a purse
+   * @param balance new balance to store under the purse
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*set_purse_balance)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_Amount *balance);
 
 
   /**
