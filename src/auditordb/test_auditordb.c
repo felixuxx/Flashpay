@@ -220,8 +220,14 @@ run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_info\n");
 
-  struct TALER_Amount reserve_balance, withdraw_fee_balance;
-  struct TALER_Amount reserve_balance2 = {}, withdraw_fee_balance2 = {};
+  struct TALER_Amount reserve_balance;
+  struct TALER_Amount withdraw_fee_balance;
+  struct TALER_Amount purse_fee_balance;
+  struct TALER_Amount history_fee_balance;
+  struct TALER_Amount reserve_balance2 = {};
+  struct TALER_Amount withdraw_fee_balance2 = {};
+  struct TALER_Amount purse_fee_balance2 = {};
+  struct TALER_Amount history_fee_balance2 = {};
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":12.345678",
@@ -229,6 +235,12 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":23.456789",
                                          &withdraw_fee_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":23.456789",
+                                         &purse_fee_balance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":23.456789",
+                                         &history_fee_balance));
 
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -268,10 +280,12 @@ run (void *cls)
   FAILIF (0 != strcmp (payto,
                        "payto://bla/blub"));
   GNUNET_free (payto);
-  FAILIF (0 != GNUNET_memcmp (&date, &future)
-          || 0 != GNUNET_memcmp (&reserve_balance2, &reserve_balance)
-          || 0 != GNUNET_memcmp (&withdraw_fee_balance2,
-                                 &withdraw_fee_balance));
+  FAILIF (0 != GNUNET_memcmp (&date,
+                              &future)
+          || 0 != TALER_amount_cmp (&reserve_balance2,
+                                    &reserve_balance)
+          || 0 != TALER_amount_cmp (&withdraw_fee_balance2,
+                                    &withdraw_fee_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_reserve_summary\n");
@@ -279,8 +293,10 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_summary (plugin->cls,
                                           &master_pub,
+                                          &reserve_balance,
                                           &withdraw_fee_balance,
-                                          &reserve_balance));
+                                          &purse_fee_balance,
+                                          &history_fee_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_reserve_summary\n");
@@ -289,25 +305,34 @@ run (void *cls)
           plugin->update_reserve_summary (plugin->cls,
                                           &master_pub,
                                           &reserve_balance,
-                                          &withdraw_fee_balance));
+                                          &withdraw_fee_balance,
+                                          &purse_fee_balance,
+                                          &history_fee_balance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_reserve_summary\n");
 
   ZR_BLK (&reserve_balance2);
   ZR_BLK (&withdraw_fee_balance2);
+  ZR_BLK (&purse_fee_balance2);
+  ZR_BLK (&history_fee_balance2);
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_summary (plugin->cls,
                                        &master_pub,
                                        &reserve_balance2,
-                                       &withdraw_fee_balance2));
+                                       &withdraw_fee_balance2,
+                                       &purse_fee_balance2,
+                                       &history_fee_balance2));
 
-  FAILIF ( (0 != GNUNET_memcmp (&reserve_balance2,
-                                &reserve_balance) ||
-            (0 != GNUNET_memcmp (&withdraw_fee_balance2,
-                                 &withdraw_fee_balance)) ) );
-
+  FAILIF ( (0 != TALER_amount_cmp (&reserve_balance2,
+                                   &reserve_balance) ||
+            (0 != TALER_amount_cmp (&withdraw_fee_balance2,
+                                    &withdraw_fee_balance)) ||
+            (0 != TALER_amount_cmp (&purse_fee_balance2,
+                                    &purse_fee_balance)) ||
+            (0 != TALER_amount_cmp (&history_fee_balance2,
+                                    &history_fee_balance))));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_denomination_balance\n");
 
