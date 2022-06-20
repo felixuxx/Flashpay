@@ -25,6 +25,9 @@ libtalerextensions_la_SOURCES = \
   extension_age_restriction.c
 
 libtalerextensions_la_LIBADD = \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
+  -lgnunetutil \
   -ljansson \
   $(XLIB)

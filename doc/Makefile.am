@@ -21,10 +21,13 @@ man_MANS = \
   prebuilt/man/taler-exchange-benchmark.1  \
   prebuilt/man/taler-exchange-closer.1     \
   prebuilt/man/taler-exchange-dbinit.1  \
+  prebuilt/man/taler-exchange-expire.1  \
   prebuilt/man/taler-exchange-httpd.1       \
   prebuilt/man/taler-exchange-offline.1    \
+  prebuilt/man/taler-exchange-secmod-cs.1\
   prebuilt/man/taler-exchange-secmod-eddsa.1\
   prebuilt/man/taler-exchange-secmod-rsa.1 \
+  prebuilt/man/taler-exchange-router.1\
   prebuilt/man/taler-exchange-transfer.1\
   prebuilt/man/taler-exchange-wirewatch.1   \
   prebuilt/man/taler-exchange-wire-gateway-client.1\

@@ -68,7 +68,6 @@ taler_crypto_worker_LDADD = \
   -lgnunetutil \
   -lgnunetjson \
   -ljansson \
-  -lpthread \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
 
