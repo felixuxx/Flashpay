@@ -6,6 +6,7 @@ Wants=taler-exchange-httpd.service
 Wants=taler-exchange-wirewatch.service
 Wants=taler-exchange-aggregator.service
 Wants=taler-exchange-closer.service
+Wants=taler-exchange-expire.service
 Wants=taler-exchange-transfer.service
 
 [Install]

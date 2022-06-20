@@ -37,6 +37,7 @@ override_dh_installsystemd:
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-aggregator --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-transfer --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-wirewatch --no-start --no-enable
+	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-cs --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-eddsa --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-rsa --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-closer --no-start --no-enable

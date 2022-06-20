@@ -1,0 +1,15 @@
+[Unit]
+Description=GNU Taler payment system exchange expire service
+PartOf=taler-exchange.target
+
+[Service]
+User=taler-exchange-expire
+Type=simple
+Restart=always
+RestartSec=100ms
+ExecStart=/usr/bin/taler-exchange-expire -c /etc/taler/taler.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
