@@ -507,6 +507,13 @@ resolve_refreshes_reveal_denominations (
     }
   }
 
+  old_dk = TEH_keys_denomination_by_hash2 (
+    ksh,
+    &rctx->melt.session.coin.denom_pub_hash,
+    connection,
+    &ret);
+  if (NULL == old_dk)
+    return ret;
 
   /* Parse denomination key hashes */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
@@ -530,13 +537,6 @@ resolve_refreshes_reveal_denominations (
                                              connection,
                                              &ret);
     if (NULL == dks[i])
-      return ret;
-    old_dk = TEH_keys_denomination_by_hash2 (ksh,
-                                             &rctx->melt.session.coin.
-                                             denom_pub_hash,
-                                             connection,
-                                             &ret);
-    if (NULL == old_dk)
       return ret;
     if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&
          (rctx->no_rms) )

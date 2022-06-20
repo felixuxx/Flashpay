@@ -197,6 +197,7 @@ deposit_transaction (void *cls,
   struct PurseDepositContext *pcc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
+  qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   for (unsigned int i = 0; i<pcc->num_coins; i++)
   {
     struct Coin *coin = &pcc->coins[i];
