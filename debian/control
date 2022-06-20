@@ -67,7 +67,8 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends:
-  taler-exchange-offline (= ${binary:Version})
+  taler-exchange-offline (= ${binary:Version}),
+  postgresql (>=13.0)
 Description: GNU's payment system operator
 
 Package: taler-exchange-offline
