@@ -10899,7 +10899,6 @@ purse_merges_serial_helper_cb (void *cls,
     };
     enum GNUNET_GenericReturnValue ret;
 
-    flags = (enum TALER_WalletAccountMergeFlags) flags;
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -10909,6 +10908,7 @@ purse_merges_serial_helper_cb (void *cls,
       dsc->status = GNUNET_SYSERR;
       return;
     }
+    flags = (enum TALER_WalletAccountMergeFlags) flags32;
     ret = dsc->cb (dsc->cb_cls,
                    rowid,
                    partner_base_url,
