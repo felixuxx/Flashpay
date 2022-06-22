@@ -283,7 +283,6 @@ struct SigningKey
 
 };
 
-
 struct TEH_KeyStateHandle
 {
 
@@ -403,7 +402,6 @@ struct SuspendedKeysRequests
    */
   struct GNUNET_TIME_Absolute timeout;
 };
-
 
 /**
  * Stores the latest generation of our key state.
@@ -1353,7 +1351,7 @@ denomination_info_cb (
   dk->meta = *meta;
   dk->master_sig = *master_sig;
   dk->recoup_possible = recoup_possible;
-  dk->denom_pub.age_mask = meta->age_mask;
+  dk->denom_pub.age_mask = meta->age_mask; /* FIXME-oec: age_mask -> reserved_field */
 
   GNUNET_assert (
     GNUNET_OK ==
@@ -1361,6 +1359,7 @@ denomination_info_cb (
                                        &dk->h_denom_pub.hash,
                                        dk,
                                        GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+
 }
 
 
@@ -1727,12 +1726,12 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
  * @a recoup and @a denoms.
  *
  * @param[in,out] ksh key state handle we build @a krd for
- * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms and age_restricted_denoms
+ * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms
  * @param last_cpd timestamp to use
  * @param signkeys list of sign keys to return
  * @param recoup list of revoked keys to return
  * @param denoms list of denominations to return
- * @param age_restricted_denoms list of age restricted denominations to return, can be NULL
+ * @param grouped_denominations list of grouped denominations to return
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
@@ -1742,7 +1741,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
             json_t *signkeys,
             json_t *recoup,
             json_t *denoms,
-            json_t *age_restricted_denoms)
+            json_t *grouped_denominations)
 {
   struct KeysResponseData krd;
   struct TALER_ExchangePublicKeyP exchange_pub;
@@ -1753,6 +1752,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   GNUNET_assert (NULL != signkeys);
   GNUNET_assert (NULL != recoup);
   GNUNET_assert (NULL != denoms);
+  GNUNET_assert (NULL != grouped_denominations);
   GNUNET_assert (NULL != ksh->auditors);
   GNUNET_assert (NULL != TEH_currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1778,6 +1778,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       return GNUNET_SYSERR;
     }
   }
+
   {
     const struct SigningKey *sk;
 
@@ -1803,6 +1804,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    recoup),
     GNUNET_JSON_pack_array_incref ("denoms",
                                    denoms),
+    GNUNET_JSON_pack_array_incref ("denominations",
+                                   grouped_denominations),
     GNUNET_JSON_pack_array_incref ("auditors",
                                    ksh->auditors),
     GNUNET_JSON_pack_array_incref ("global_fees",
@@ -1833,7 +1836,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   {
     json_t *extensions = json_object ();
     bool has_extensions = false;
-    bool age_restriction_enabled = false;
 
     /* Fill in the configurations of the enabled extensions */
     for (const struct TALER_Extension *extension = TALER_extensions_get_head ();
@@ -1851,8 +1853,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
 
       /* flag our findings so far */
       has_extensions = true;
-      age_restriction_enabled = (extension->type ==
-                                 TALER_Extension_AgeRestriction);
 
       GNUNET_assert (NULL != extension->config_json);
 
@@ -1901,20 +1901,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     {
       json_decref (extensions);
     }
-
-    // Special case for age restrictions: if enabled, provide the list of
-    // age-restricted denominations.
-    if (age_restriction_enabled &&
-        NULL != age_restricted_denoms)
-    {
-      GNUNET_assert (
-        0 ==
-        json_object_set (
-          keys,
-          "age_restricted_denoms",
-          age_restricted_denoms));
-    }
-
   }
 
 
@@ -2010,12 +1996,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   json_t *recoup;
   struct SignKeyCtx sctx;
   json_t *denoms = NULL;
-  json_t *age_restricted_denoms = NULL;
+  json_t *grouped_denominations = NULL;
   struct GNUNET_TIME_Timestamp last_cpd;
   struct GNUNET_CONTAINER_Heap *heap;
   struct GNUNET_HashContext *hash_context = NULL;
-  struct GNUNET_HashContext *hash_context_restricted = NULL;
-  bool have_age_restricted_denoms = false;
 
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
@@ -2045,20 +2029,25 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   GNUNET_assert (NULL != denoms);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
 
-  /* If age restriction is enabled, initialize the array of age restricted
-   denoms  and prepare a hash for them, separate from the others.  We will join
-   those hashes afterwards.*/
-  if (0)
-  {
-    age_restricted_denoms = json_array ();
-    GNUNET_assert (NULL != age_restricted_denoms);
-    hash_context_restricted = GNUNET_CRYPTO_hash_context_start ();
-  }
+  grouped_denominations = json_array ();
+  GNUNET_assert (NULL != grouped_denominations);
 
   last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
 
   {
     struct TEH_DenominationKey *dk;
+    struct GNUNET_CONTAINER_MultiHashMap *denominations_by_group;
+
+    denominations_by_group =
+      GNUNET_CONTAINER_multihashmap_create (1024,
+                                            GNUNET_NO /* NO, because keys are only on the stack */);
+
+    /* groupData is the value we store for each group meta-data */
+    struct groupData
+    {
+      json_t *json;   /* The json blob with the group meta-data and list of denominations */
+      struct GNUNET_HashContext *hash_context;   /* hash over all denominations in that group */
+    };
 
     /* heap = min heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
@@ -2068,12 +2057,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                      dk->meta.start) &&
           (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time)) )
       {
-        struct GNUNET_HashCode hc;
-
-        /* FIXME-oec: Do we need to take hash_context_restricted into account
-         * in this if-branch!?  Current tests suggests: no, (they don't fail).
-         * But something seems to be odd about only finishing hash_context.
+        /*
+         * This is not the first entry in the heap (because last_cpd !=
+         * GNUNET_TIME_UNIT_ZERO_TS) and the previous entry had a different
+         * start time.  Therefore, we create an entry in the ksh.
          */
+        struct GNUNET_HashCode hc;
 
         GNUNET_CRYPTO_hash_context_finish (
           GNUNET_CRYPTO_hash_context_copy (hash_context),
@@ -2085,7 +2074,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                         sctx.signkeys,
                         recoup,
                         denoms,
-                        age_restricted_denoms))
+                        grouped_denominations))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                       "Failed to generate key response data for %s\n",
@@ -2096,8 +2085,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             /* intentionally empty */;
           GNUNET_CONTAINER_heap_destroy (heap);
           json_decref (denoms);
-          if (NULL != age_restricted_denoms)
-            json_decref (age_restricted_denoms);
+          json_decref (grouped_denominations);
           json_decref (sctx.signkeys);
           json_decref (recoup);
           return GNUNET_SYSERR;
@@ -2108,9 +2096,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
       {
         json_t *denom;
-        json_t *array;
-        struct GNUNET_HashContext *hc;
-
 
         denom =
           GNUNET_JSON_PACK (
@@ -2131,32 +2116,221 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             TALER_JSON_PACK_DENOM_FEES ("fee",
                                         &dk->meta.fees));
 
-        /* Put the denom into the correct array depending on the settings and
-         * the properties of the denomination.  Also, we build up the right
-         * hash for the corresponding array. */
-        if (0 &&
-            (0 != dk->denom_pub.age_mask.bits))
-        {
-          have_age_restricted_denoms = true;
-          array = age_restricted_denoms;
-          hc = hash_context_restricted;
-        }
-        else
-        {
-          array = denoms;
-          hc = hash_context;
-        }
-
-        GNUNET_CRYPTO_hash_context_read (hc,
+        GNUNET_CRYPTO_hash_context_read (hash_context,
                                          &dk->h_denom_pub,
                                          sizeof (struct GNUNET_HashCode));
 
         GNUNET_assert (
           0 ==
           json_array_append_new (
-            array,
+            denoms,
             denom));
+
       }
+
+      /**
+       * Group the denominations by {cipher, value, fees, age_mask}.
+       *
+       * For each group we save the group meta-data and the list of
+       * denominations in this group as a json-blob in the multihashmap
+       * denominations_by_group.
+       **/
+
+      {
+        static const char *denoms_key = "denoms";
+        struct groupData *group;
+        json_t *list;
+        json_t *entry;
+        struct GNUNET_HashCode key;
+
+        /* Find the group/JSON-blob for the key */
+        struct
+        {
+          enum TALER_DenominationCipher cipher;
+          struct TALER_AgeMask age_mask;
+          struct TALER_Amount value;
+          struct TALER_DenomFeeSet fees;
+        } meta = {
+          .cipher = dk->denom_pub.cipher,
+          .value = dk->meta.value,
+          .fees = dk->meta.fees,
+          .age_mask = dk->meta.age_mask,
+        };
+
+        GNUNET_CRYPTO_hash (&meta, sizeof(meta), &key);
+
+        group = (struct groupData *) GNUNET_CONTAINER_multihashmap_get (
+          denominations_by_group,
+          &key);
+
+        if (NULL == group)
+        {
+          /*
+           * There is no group for this meta-data yet, so let's create a new
+           * group entry.
+           */
+
+          bool age_restricted = meta.age_mask.bits != 0;
+          char *cipher;
+
+          group = GNUNET_new (struct groupData);
+          group->hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+          switch (meta.cipher)
+          {
+          case TALER_DENOMINATION_RSA:
+            cipher = age_restricted ? "RSA+age_restriction": "RSA";
+            break;
+          case TALER_DENOMINATION_CS:
+            cipher = age_restricted ? "CS+age_restriction": "CS";
+            break;
+          default:
+            GNUNET_assert (false);
+          }
+
+          group->json = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_string ("cipher", cipher),
+            TALER_JSON_PACK_DENOM_FEES ("fee", &meta.fees),
+            TALER_JSON_pack_amount ("value", &meta.value));
+          GNUNET_assert (NULL != group->json);
+
+          if (age_restricted)
+          {
+            GNUNET_assert (0 ==
+                           json_object_set (group->json,
+                                            "age_mask",
+                                            json_integer (meta.age_mask.bits)));
+          }
+
+          /* Create a new array for the denominations in this group */
+          list = json_array ();
+          GNUNET_assert (NULL != list);
+          GNUNET_assert (0 ==
+                         json_object_set (group->json, denoms_key, list));
+
+          GNUNET_assert (
+            GNUNET_OK ==
+            GNUNET_CONTAINER_multihashmap_put (denominations_by_group,
+                                               &key,
+                                               group,
+                                               GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+        }
+
+        /*
+         * Now that we have found/created the right group, add the denomination
+         * to the list
+         */
+        {
+          struct GNUNET_JSON_PackSpec key_spec;
+
+          switch (meta.cipher)
+          {
+          case TALER_DENOMINATION_RSA:
+            key_spec =
+              GNUNET_JSON_pack_rsa_public_key ("rsa_pub",
+                                               dk->denom_pub.details.
+                                               rsa_public_key);
+            break;
+          case TALER_DENOMINATION_CS:
+            key_spec =
+              GNUNET_JSON_pack_data_varsize ("cs_pub",
+                                             &dk->denom_pub.details.
+                                             cs_public_key,
+                                             sizeof (dk->denom_pub.details.
+                                                     cs_public_key));
+            break;
+          default:
+            GNUNET_assert (false);
+          }
+
+          entry = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_data_auto ("master_sig",
+                                        &dk->master_sig),
+            GNUNET_JSON_pack_timestamp ("stamp_start",
+                                        dk->meta.start),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
+                                        dk->meta.expire_withdraw),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
+                                        dk->meta.expire_deposit),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
+                                        dk->meta.expire_legal),
+            key_spec
+            );
+          GNUNET_assert (NULL != entry);
+        }
+
+        /*
+         * Build up the running hash of all denominations in this group
+         * TODO: FIXME-oec: this is cipher and age_restriction dependend?!
+         */
+        GNUNET_CRYPTO_hash_context_read (group->hash_context,
+                                         &dk->h_denom_pub,
+                                         sizeof (struct GNUNET_HashCode));
+
+        /* Finally, add the denomination to the list of denominations in this
+         * group */
+        list = json_object_get (group->json, denoms_key);
+        GNUNET_assert (NULL != list);
+        GNUNET_assert (true == json_is_array (list));
+        GNUNET_assert (0 ==
+                       json_array_append_new (list, entry));
+      }
+    }
+
+    /* Create the JSON-array of grouped denominations */
+    if (0 <
+        GNUNET_CONTAINER_multihashmap_size (denominations_by_group))
+    {
+      struct GNUNET_CONTAINER_MultiHashMapIterator *iter;
+      struct GNUNET_HashCode all_hashcode;
+      struct GNUNET_HashContext *all_hash_ctx;
+      struct groupData *group = NULL;
+
+      all_hash_ctx =
+        GNUNET_CRYPTO_hash_context_start ();
+
+      iter =
+        GNUNET_CONTAINER_multihashmap_iterator_create (denominations_by_group);
+
+      while (GNUNET_OK ==
+             GNUNET_CONTAINER_multihashmap_iterator_next (iter, NULL, (const
+                                                                       void **)
+                                                          &group))
+      {
+        struct GNUNET_HashCode hc;
+
+        GNUNET_CRYPTO_hash_context_finish (
+          group->hash_context,
+          &hc);
+
+        GNUNET_CRYPTO_hash_context_read (all_hash_ctx,
+                                         &hc,
+                                         sizeof (struct GNUNET_HashCode));
+
+        GNUNET_assert (0 ==
+                       json_object_set (
+                         group->json,
+                         "hash",
+                         GNUNET_JSON_PACK (
+                           GNUNET_JSON_pack_data_auto (NULL, &hc))));
+
+        GNUNET_assert (0 ==
+                       json_array_append_new (
+                         grouped_denominations,
+                         group->json));
+
+        GNUNET_free (group);
+      }
+
+      GNUNET_CONTAINER_multihashmap_iterator_destroy (iter);
+      GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
+
+      GNUNET_CRYPTO_hash_context_finish (
+        all_hash_ctx,
+        &all_hashcode);
+
+      /* FIXME-oec: TODO:
+       * sign all_hashcode and add the signature to the /keys response */
     }
   }
 
@@ -2164,18 +2338,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   if (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time))
   {
     struct GNUNET_HashCode hc;
-
-    /* If age restriction is active and we had at least one denomination of
-     * that sort, we simply add the hash of all age restricted denominations at
-     * the end of the others. */
-    if (0 && have_age_restricted_denoms)
-    {
-      struct GNUNET_HashCode hcr;
-      GNUNET_CRYPTO_hash_context_finish (hash_context_restricted, &hcr);
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &hcr,
-                                       sizeof (struct GNUNET_HashCode));
-    }
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &hc);
@@ -2187,14 +2349,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                     sctx.signkeys,
                     recoup,
                     denoms,
-                    age_restricted_denoms))
+                    grouped_denominations))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to generate key response data for %s\n",
                   GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
-      if (0 && NULL != age_restricted_denoms)
-        json_decref (age_restricted_denoms);
       json_decref (sctx.signkeys);
       json_decref (recoup);
       return GNUNET_SYSERR;
@@ -2210,8 +2370,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
-  if (NULL != age_restricted_denoms)
-    json_decref (age_restricted_denoms);
   return GNUNET_OK;
 }
 
@@ -2387,11 +2545,13 @@ build_key_state (struct HelperState *hs,
                        true);
     return NULL;
   }
+
   if (management_only)
   {
     ksh->management_only = true;
     return ksh;
   }
+
   if (GNUNET_OK !=
       finish_keys_response (ksh))
   {
@@ -2401,6 +2561,7 @@ build_key_state (struct HelperState *hs,
                        true);
     return NULL;
   }
+
   return ksh;
 }
 
