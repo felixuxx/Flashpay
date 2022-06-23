@@ -135,6 +135,12 @@ struct PurseCreateContext
    * Minimum age for deposits into this purse.
    */
   uint32_t min_age;
+
+  /**
+   * Do we have an @e econtract?
+   */
+  bool no_econtract;
+
 };
 
 
@@ -370,61 +376,64 @@ create_transaction (void *cls,
     }
   }
   /* 3) if present, persist contract */
-  in_conflict = true;
-  qs = TEH_plugin->insert_contract (TEH_plugin->cls,
-                                    pcc->purse_pub,
-                                    &pcc->econtract,
-                                    &in_conflict);
-  if (qs < 0)
+  if (! pcc->no_econtract)
   {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    TALER_LOG_WARNING ("Failed to store purse information in database\n");
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           "purse create contract");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (in_conflict)
-  {
-    struct TALER_EncryptedContract econtract;
-    struct GNUNET_HashCode h_econtract;
-
-    qs = TEH_plugin->select_contract_by_purse (
-      TEH_plugin->cls,
-      pcc->purse_pub,
-      &econtract);
-    if (qs <= 0)
+    in_conflict = true;
+    qs = TEH_plugin->insert_contract (TEH_plugin->cls,
+                                      pcc->purse_pub,
+                                      &pcc->econtract,
+                                      &in_conflict);
+    if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
-      GNUNET_break (0 != qs);
-      TALER_LOG_WARNING (
-        "Failed to store fetch contract information from database\n");
+      TALER_LOG_WARNING ("Failed to store purse information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "select contract");
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "purse create contract");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    GNUNET_CRYPTO_hash (econtract.econtract,
-                        econtract.econtract_size,
-                        &h_econtract);
-    *mhd_ret
-      = TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_CONFLICT,
-          TALER_JSON_pack_ec (
-            TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA),
-          GNUNET_JSON_pack_data_auto ("h_econtract",
-                                      &h_econtract),
-          GNUNET_JSON_pack_data_auto ("econtract_sig",
-                                      &econtract.econtract_sig),
-          GNUNET_JSON_pack_data_auto ("contract_pub",
-                                      &econtract.contract_pub));
-    GNUNET_free (econtract.econtract);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    if (in_conflict)
+    {
+      struct TALER_EncryptedContract econtract;
+      struct GNUNET_HashCode h_econtract;
+
+      qs = TEH_plugin->select_contract_by_purse (
+        TEH_plugin->cls,
+        pcc->purse_pub,
+        &econtract);
+      if (qs <= 0)
+      {
+        if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+          return qs;
+        GNUNET_break (0 != qs);
+        TALER_LOG_WARNING (
+          "Failed to store fetch contract information from database\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select contract");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      GNUNET_CRYPTO_hash (econtract.econtract,
+                          econtract.econtract_size,
+                          &h_econtract);
+      *mhd_ret
+        = TALER_MHD_REPLY_JSON_PACK (
+            connection,
+            MHD_HTTP_CONFLICT,
+            TALER_JSON_pack_ec (
+              TALER_EC_EXCHANGE_PURSE_ECONTRACT_CONFLICTING_META_DATA),
+            GNUNET_JSON_pack_data_auto ("h_econtract",
+                                        &h_econtract),
+            GNUNET_JSON_pack_data_auto ("econtract_sig",
+                                        &econtract.econtract_sig),
+            GNUNET_JSON_pack_data_auto ("contract_pub",
+                                        &econtract.contract_pub));
+      GNUNET_free (econtract.econtract);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
   }
   return qs;
 }
@@ -664,7 +673,6 @@ TEH_handler_purses_create (
   json_t *deposits;
   json_t *deposit;
   unsigned int idx;
-  bool no_econtract = true;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("amount",
                             TEH_currency,
@@ -674,7 +682,7 @@ TEH_handler_purses_create (
     GNUNET_JSON_spec_mark_optional (
       TALER_JSON_spec_econtract ("econtract",
                                  &pcc.econtract),
-      &no_econtract),
+      &pcc.no_econtract),
     GNUNET_JSON_spec_fixed_auto ("merge_pub",
                                  &pcc.merge_pub),
     GNUNET_JSON_spec_fixed_auto ("purse_sig",
@@ -815,7 +823,7 @@ TEH_handler_purses_create (
                                        TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
                                        NULL);
   }
-  if ( (! no_econtract) &&
+  if ( (! pcc.no_econtract) &&
        (GNUNET_OK !=
         TALER_wallet_econtract_upload_verify (pcc.econtract.econtract,
                                               pcc.econtract.econtract_size,
