@@ -14970,7 +14970,7 @@ postgres_delete_shard_locks (void *cls)
 
 /**
  * Function called to save the configuration of an extension
- * (age-restriction, peer2peer, ...).  After succesfull storage of the
+ * (age-restriction, peer2peer, ...).  After successful storage of the
  * configuration it triggers the corresponding event.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -15225,7 +15225,7 @@ postgres_insert_contract (
 
 
 /**
- * Function called to reutrn meta data about a purse by the
+ * Function called to return meta data about a purse by the
  * purse public key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state

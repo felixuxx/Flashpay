@@ -101,17 +101,17 @@ extern unsigned long long TEH_METRICS_batch_withdraw_num_coins;
 extern unsigned long long TEH_METRICS_num_conflict[TEH_MT_REQUEST_COUNT];
 
 /**
- * Number of signatures created by the respecitve cipher.
+ * Number of signatures created by the respective cipher.
  */
 extern unsigned long long TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_COUNT];
 
 /**
- * Number of signatures verified by the respecitve cipher.
+ * Number of signatures verified by the respective cipher.
  */
 extern unsigned long long TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_COUNT];
 
 /**
- * Number of key exchnages done with the respective cipher.
+ * Number of key exchanges done with the respective cipher.
  */
 extern unsigned long long TEH_METRICS_num_keyexchanges[TEH_MT_KEYX_COUNT];
 

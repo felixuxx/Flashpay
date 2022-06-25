@@ -99,8 +99,8 @@ TALER_extensions_is_json_config (
  * he JSON object must be of type ExchangeKeysResponse as described in
  * https://docs.taler.net/design-documents/006-extensions.html#exchange
  *
- * @param cfg JSON object containting the configuration for all extensions
- * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
+ * @param cfg JSON object containing the configuration for all extensions
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if unknown extensions were found
  *         or any particular configuration couldn't be parsed.
  */
 enum GNUNET_GenericReturnValue
@@ -267,7 +267,7 @@ TALER_extensions_age_restriction_num_groups ();
  * Parses a JSON object { "age_groups": "a:b:...y:z" }.
  *
  * @param root is the json object
- * @param[out] mask on succes, will contain the age mask
+ * @param[out] mask on success, will contain the age mask
  * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
  */
 enum GNUNET_GenericReturnValue

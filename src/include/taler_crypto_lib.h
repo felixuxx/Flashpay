@@ -1762,7 +1762,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * @param blinded_planchet blinded planchet
  * @param denom_hash hash of the denomination publick key
  * @param[out] bch where to write the hash
- * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
+ * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occurred
  */
 enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
@@ -5120,7 +5120,7 @@ TALER_age_commitment_hash (
  *
  * @param mask The age mask the defines the age groups
  * @param age The actual age for which an age commitment is generated
- * @param seed The seed that goes into the key generation.  MUST be choosen uniformly random.
+ * @param seed The seed that goes into the key generation.  MUST be chosen uniformly random.
  * @param[out] comm_proof The generated age commitment, ->priv and ->pub allocated via GNUNET_malloc() on success
  * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise
  */
@@ -5168,7 +5168,7 @@ TALER_age_commitment_attest (
  * @param commitment The age commitment that went into the attestation.  Only the public keys are needed.
  * @param age Age (not age group) for which the an attestation should be done
  * @param attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
- * @return #GNUNET_OK when the attestation was successfull, GNUNET_NO no attestation couldn't be verified, #GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK when the attestation was successful, #GNUNET_NO no attestation couldn't be verified, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_verify (

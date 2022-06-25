@@ -62,7 +62,7 @@ struct PurseMergeState
   const char *merge_ref;
 
   /**
-   * Refernece to the reserve, or NULL (!).
+   * Reference to the reserve, or NULL (!).
    */
   const char *reserve_ref;
 

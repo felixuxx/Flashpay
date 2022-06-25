@@ -1420,7 +1420,7 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct TALER_DenominationHashP h_denom_pub;
 
   /**
-   * Age commitment hash, if applicable ot the denomination.  Should be all
+   * Age commitment hash, if applicable to the denomination.  Should be all
    * zeroes if age commitment is not applicable to the denonimation.
    */
   struct TALER_AgeCommitmentHash h_age_commitment;
@@ -5235,7 +5235,7 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to reutrn meta data about a purse by the
+   * Function called to return meta data about a purse by the
    * purse public key.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

@@ -2261,7 +2261,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
         /*
          * Build up the running hash of all denominations in this group
-         * TODO: FIXME-oec: this is cipher and age_restriction dependend?!
+         * TODO: FIXME-oec: this is cipher and age_restriction dependent?!
          */
         GNUNET_CRYPTO_hash_context_read (group->hash_context,
                                          &dk->h_denom_pub,
