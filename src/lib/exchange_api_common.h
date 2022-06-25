@@ -50,6 +50,7 @@ TALER_EXCHANGE_check_purse_create_conflict_ (
  *        not match the signature from the proof)
  * @param merge_pub the public key (must match
  *        the signature from the proof)
+ * @param purse_pub the public key of the purse
  * @param exchange_url the base URL of this exchange
  * @param proof the proof to check
  * @return #GNUNET_OK if the @a proof is OK for @a purse_pub and @a merge_pub and conflicts with @a cmerge_sig
@@ -93,7 +94,6 @@ TALER_EXCHANGE_check_purse_coin_conflict_ (
  * @param ccontract_sig conflicting signature (must
  *        not match the signature from the proof)
  * @param purse_pub public key of the purse
- * @param exchange_url the base URL of this exchange
  * @param proof the proof to check
  * @return #GNUNET_OK if the @a proof is OK for @a purse_pub and conflicts with @a ccontract_sig
  */

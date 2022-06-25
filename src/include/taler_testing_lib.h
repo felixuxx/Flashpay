@@ -2229,6 +2229,7 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
  * @param wire_method wire method to set wire fees for
  * @param wire_fee the wire fee to affirm
  * @param closing_fee the closing fee to affirm
+ * @param wad_fee wad fee to charge
  * @param expected_http_status expected HTTP status from exchange
  * @param bad_sig should we use a bogus signature?
  * @return the command

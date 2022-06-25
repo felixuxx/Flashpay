@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_cmd_history.c
+ * @file testing/testing_api_cmd_reserve_history.c
  * @brief Implement the /reserve/history test command.
  * @author Marcello Stanisci
  */

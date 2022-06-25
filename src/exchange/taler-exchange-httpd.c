@@ -426,7 +426,7 @@ handle_post_reserves (struct TEH_RequestContext *rc,
 /**
  * Signature of functions that handle operations on purses.
  *
- * @param rc request context
+ * @param connection HTTP request handle
  * @param purse_pub the public key of the purse
  * @param root uploaded JSON data
  * @return MHD result code

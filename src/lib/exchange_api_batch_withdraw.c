@@ -145,7 +145,8 @@ struct TALER_EXCHANGE_BatchWithdrawHandle
  *
  * @param cls the `struct TALER_EXCHANGE_BatchWithdrawHandle`
  * @param hr HTTP response data
- * @param blind_sig blind signature over the coin, NULL on error
+ * @param blind_sigs array of blind signatures over the coins, NULL on error
+ * @param blind_sigs_length length of the @a blind_sigs array
  */
 static void
 handle_reserve_batch_withdraw_finished (

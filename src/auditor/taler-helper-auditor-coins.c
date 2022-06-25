@@ -1207,6 +1207,7 @@ check_known_coin (
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
  * @param denom_pub denomination public key of @a coin_pub
+ * @param h_age_commitment hash of the age commitment for the coin
  * @param coin_pub public key of the coin
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -2281,7 +2282,7 @@ recoup_refresh_cb (void *cls,
  *
  * @param cls closure, NULL
  * @param denom_pub public key, sometimes NULL (!)
- * @param validity issuing information with value, fees and other info about the denomination.
+ * @param issue issuing information with value, fees and other info about the denomination.
  */
 static void
 check_denomination (

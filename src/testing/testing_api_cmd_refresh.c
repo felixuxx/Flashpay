@@ -348,15 +348,7 @@ do_reveal_retry (void *cls)
  * coming from the exchange, namely the fresh coins.
  *
  * @param cls closure, a `struct RefreshRevealState`
- * @param hr HTTP response details
- * @param num_coins number of fresh coins created, length of the
- *        @a sigs and @a coin_privs arrays, 0 if the operation
- *        failed.
- * @param coin_privs array of @a num_coins private keys for the
- *        coins that were created, NULL on error.
- * @param psa array of @a num_coins planchet secrets (derived from the transfer secret) for each of the coins
- * @param sigs array of signature over @a num_coins coins,
- *        NULL on error.
+ * @param rr HTTP response details
  */
 static void
 reveal_cb (void *cls,
@@ -594,16 +586,7 @@ do_link_retry (void *cls)
  * withdrawn by the "refresh reveal" CMD.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param num_coins number of fresh coins created, length of the
- *        @a sigs and @a coin_privs arrays, 0 if the operation
- *        failed.
- * @param coin_privs array of @a num_coins private keys for the
- *        coins that were created, NULL on error.
- * @param sigs array of signature over @a num_coins coins, NULL on
- *        error.
- * @param pubs array of public keys for the @a sigs,
- *        NULL on error.
+ * @param lr HTTP response details
  */
 static void
 link_cb (void *cls,

@@ -2017,6 +2017,16 @@ typedef enum GNUNET_GenericReturnValue
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param reserve_pub reserve affected by the merge
+ * @param purse_pub purse being merged
+ * @param h_contract_terms hash over contract of the purse
+ * @param purse_expiration when would the purse expire
+ * @param amount total amount in the purse
+ * @param min_age minimum age of all coins deposited into the purse
+ * @param flags how was the purse created
+ * @param purse_fee if a purse fee was paid, how high is it
+ * @param merge_timestamp when was the merge approved
+ * @param reserve_sig signature by reserve approving the merge
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef enum GNUNET_GenericReturnValue
@@ -2075,6 +2085,10 @@ typedef enum GNUNET_GenericReturnValue
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param history_fee fee paid for the request
+ * @param ts timestamp of the request
+ * @param reserve_pub reserve history was requested for
+ * @param reserve_sig signature approving the @a history_fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef enum GNUNET_GenericReturnValue
@@ -2108,6 +2122,7 @@ typedef enum GNUNET_GenericReturnValue
  * the goal of auditing the purse refund's execution.
  *
  * @param cls closure
+ * @param rowid row of the refund event
  * @param amount_with_fee amount of the deposit into the purse
  * @param coin_pub coin that is to be refunded the @a given amount_with_fee
  * @param denom_pub denomination of @a coin_pub
@@ -3935,8 +3950,8 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert global fee set into database.
    *
    * @param cls closure
-   * @param start_date when does the fee go into effect
-   * @param end_date when does the fee end being valid
+   * @param start_date when does the fees go into effect
+   * @param end_date when does the fees end being valid
    * @param fees how high is are the global fees
    * @param purse_timeout when do purses time out
    * @param kyc_timeout when do reserves without KYC time out
@@ -5101,7 +5116,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] in_conflict set to true if @a econtract
    *             conflicts with an existing contract;
    *             in this case, the return value will be
-   *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+   *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -5163,7 +5178,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] in_conflict set to true if the meta data
    *             conflicts with an existing purse;
    *             in this case, the return value will be
-   *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+   *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -5292,7 +5307,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] balance_ok set to false if the coin's
    *        remaining balance is below @a amount;
    *             in this case, the return value will be
-   *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+   *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
    * @param[out] conflict the same coin was deposited into
    *        this purse with a different amount already
    * @return transaction status code

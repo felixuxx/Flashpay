@@ -1262,7 +1262,6 @@ verify_reserve_balance (void *cls,
  * @param rowid unique serial ID for the deposit in our DB
  * @param deposit deposit details
  * @param reserve_pub which reserve is the purse merged into, NULL if unknown
- * @param auditor_balance balance of the purse calculated by auditor
  * @param flags purse flags
  * @param auditor_balance purse balance (according to the
  *          auditor during auditing)
@@ -1530,6 +1529,16 @@ handle_purse_merged (
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param reserve_pub reserve affected by the merge
+ * @param purse_pub purse being merged
+ * @param h_contract_terms hash over contract of the purse
+ * @param purse_expiration when would the purse expire
+ * @param amount total amount in the purse
+ * @param min_age minimum age of all coins deposited into the purse
+ * @param flags how was the purse created
+ * @param purse_fee if a purse fee was paid, how high is it
+ * @param merge_timestamp when was the merge approved
+ * @param reserve_sig signature by reserve approving the merge
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
@@ -1604,6 +1613,10 @@ handle_account_merged (
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
+ * @param history_fee fee paid for the request
+ * @param ts timestamp of the request
+ * @param reserve_pub reserve history was requested for
+ * @param reserve_sig signature approving the @a history_fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue

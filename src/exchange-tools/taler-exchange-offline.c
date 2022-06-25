@@ -729,7 +729,7 @@ do_shutdown (void *cls)
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Aborting incomplete extensions signature upload #%u\n",
                   (unsigned int) uer->idx);
-      TALER_EXCHANGE_post_management_extensions_cancel (uer->h);
+      TALER_EXCHANGE_management_post_extensions_cancel (uer->h);
       GNUNET_CONTAINER_DLL_remove (uer_head,
                                    uer_tail,
                                    uer);

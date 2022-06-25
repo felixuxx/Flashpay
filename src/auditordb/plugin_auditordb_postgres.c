@@ -2068,6 +2068,8 @@ postgres_insert_reserve_summary (
  * @param reserve_balance amount stored in the reserve
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
  *                             due to withdrawals from this reserve
+ * @param purse_fee_balance amount the exchange gained in purse fees
+ * @param history_fee_balance amount the exchange gained in history fees
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

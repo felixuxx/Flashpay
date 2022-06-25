@@ -323,7 +323,6 @@ TALER_EXCHANGE_deposits_get (
   TALER_merchant_deposit_sign (h_contract_terms,
                                h_wire,
                                coin_pub,
-                               &merchant,
                                merchant_priv,
                                &merchant_sig);
   {

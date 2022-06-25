@@ -287,8 +287,8 @@ deposit_transaction (void *cls,
  * Parse a coin and check signature of the coin and the denomination
  * signature over the coin.
  *
- * @param[in,out] our HTTP connection
- * @param[in,out] request context
+ * @param[in,out] connection our HTTP connection
+ * @param[in,out] pcc request context
  * @param[out] coin coin to initialize
  * @param jcoin coin to parse
  * @return #GNUNET_OK on success, #GNUNET_NO if an error was returned,
