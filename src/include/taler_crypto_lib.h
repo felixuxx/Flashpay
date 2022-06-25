@@ -3570,6 +3570,7 @@ typedef enum TALER_ErrorCode
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_deposit_confirmation_sign (
@@ -3629,6 +3630,7 @@ TALER_exchange_online_deposit_confirmation_verify (
  * @param refund_amount amount refunded
  * @param[out] pub where to write the exchange public key
  * @param[out] sig where to write the exchange signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_refund_confirmation_sign (
@@ -3673,6 +3675,7 @@ TALER_exchange_online_refund_confirmation_verify (
  * @param noreveal_index gamma cut-and-choose value chosen by the exchange
  * @param[out] pub where to write the exchange public key
  * @param[out] sig where to write the exchange signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_melt_confirmation_sign (
@@ -3709,6 +3712,7 @@ TALER_exchange_online_melt_confirmation_verify (
  * @param hc hash over all the keys
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_key_set_sign (
@@ -3745,6 +3749,7 @@ TALER_exchange_online_key_set_verify (
  * @param timestamp time when the KYC was confirmed
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_account_setup_success_sign (
@@ -3772,7 +3777,17 @@ TALER_exchange_online_account_setup_success_verify (
   const struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!?!
+/**
+ * Update the @a hash_context in the computation of the
+ * h_details for a wire status signature.
+ *
+ * @param[in,out] hash_context context to update
+ * @param h_contract_terms hash of the contract
+ * @param execution_time when was the wire transfer initiated
+ * @param coin_pub deposited coin
+ * @param deposit_value contribution of the coin
+ * @param deposit_fee how high was the deposit fee
+ */
 void
 TALER_exchange_online_wire_deposit_append (
   struct GNUNET_HashContext *hash_context,
@@ -3794,6 +3809,7 @@ TALER_exchange_online_wire_deposit_append (
  * @param h_details hash over the aggregation details
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_wire_deposit_sign (
@@ -3842,6 +3858,7 @@ TALER_exchange_online_wire_deposit_verify (
  * @param coin_contribution what was @a coin_pub's contribution to the wire transfer
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_confirm_wire_sign (
@@ -3891,6 +3908,7 @@ TALER_exchange_online_confirm_wire_verify (
  * @param reserve_pub reserve that was credited
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_confirm_recoup_sign (
@@ -3934,6 +3952,7 @@ TALER_exchange_online_confirm_recoup_verify (
  * @param old_coin_pub old coin that was credited
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_confirm_recoup_refresh_sign (
@@ -3975,6 +3994,7 @@ TALER_exchange_online_confirm_recoup_refresh_verify (
  * @param h_denom_pub hash of denomination that is unknown
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_denomination_unknown_sign (
@@ -4012,6 +4032,7 @@ TALER_exchange_online_denomination_unknown_verify (
  *           the denomination is expired
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_denomination_expired_sign (
@@ -4055,6 +4076,7 @@ TALER_exchange_online_denomination_expired_verify (
  * @param reserve_pub public key of the closed reserve
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_exchange_online_reserve_closed_sign (
@@ -4078,8 +4100,8 @@ TALER_exchange_online_reserve_closed_sign (
  * @param payto target of the wire transfer
  * @param wtid wire transfer subject used
  * @param reserve_pub public key of the closed reserve
- * @param pub where to write the public key
- * @param sig where to write the signature
+ * @param pub the public key of the exchange to check against
+ * @param sig the signature to check
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
@@ -4094,7 +4116,20 @@ TALER_exchange_online_reserve_closed_verify (
   const struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!
+/**
+ * Create signature by exchange affirming that a purse was created.
+ *
+ * @param scb function to call to create the signature
+ * @param exchange_time our time
+ * @param purse_expriration when will the purse expire
+ * @param amount_without_fee total amount to be put into the purse (without deposit fees)
+ * @param total_deposited total currently in the purse
+ * @param purse_pub public key of the purse
+ * @param h_contract_term hash of the contract for the purse
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
 enum TALER_ErrorCode
 TALER_exchange_online_purse_created_sign (
   TALER_ExchangeSignCallback scb,
@@ -4108,7 +4143,19 @@ TALER_exchange_online_purse_created_sign (
   struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!
+/**
+ * Verify exchange signature about a purse creation and balance.
+ *
+ * @param exchange_time our time
+ * @param purse_expriration when will the purse expire
+ * @param amount_without_fee total amount to be put into the purse (without deposit fees)
+ * @param total_deposited total currently in the purse
+ * @param purse_pub public key of the purse
+ * @param h_contract_term hash of the contract for the purse
+ * @param pub the public key of the exchange to check against
+ * @param sig the signature to check
+ * @return #GNUNET_OK if the signature is valid
+ */
 enum GNUNET_GenericReturnValue
 TALER_exchange_online_purse_created_verify (
   struct GNUNET_TIME_Timestamp exchange_time,
@@ -4120,7 +4167,22 @@ TALER_exchange_online_purse_created_verify (
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);
 
-// FIXME: document!
+
+/**
+ * Sign affirmation that a purse was merged.
+ *
+ * @param scb function to call to create the signature
+ * @param exchange_time our time
+ * @param purse_expiration when does the purse expire
+ * @param amount_without_fee total amount that should be in the purse without deposit fees
+ * @param purse_pub public key of the purse
+ * @param h_contract_terms hash of the contract of the purse
+ * @param reserve_pub reserve the purse will be merged into
+ * @param exchange_url exchange at which the @a reserve_pub lives
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
 enum TALER_ErrorCode
 TALER_exchange_online_purse_merged_sign (
   TALER_ExchangeSignCallback scb,
@@ -4135,7 +4197,20 @@ TALER_exchange_online_purse_merged_sign (
   struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!
+/**
+ * Verify affirmation that a purse will be merged.
+ *
+ * @param exchange_time our time
+ * @param purse_expiration when does the purse expire
+ * @param amount_without_fee total amount that should be in the purse without deposit fees
+ * @param purse_pub public key of the purse
+ * @param h_contract_terms hash of the contract of the purse
+ * @param reserve_pub reserve the purse will be merged into
+ * @param exchange_url exchange at which the @a reserve_pub lives
+ * @param pub the public key of the exchange to check against
+ * @param sig the signature to check
+ * @return #GNUNET_OK if the signature is valid
+ */
 enum GNUNET_GenericReturnValue
 TALER_exchange_online_purse_merged_verify (
   struct GNUNET_TIME_Timestamp exchange_time,
@@ -4149,7 +4224,17 @@ TALER_exchange_online_purse_merged_verify (
   const struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!
+/**
+ * Sign information about the status of a purse.
+ *
+ * @param scb function to call to create the signature
+ * @param merge_timestamp when was the purse merged (can be never)
+ * @param deposit_timestamp when was the purse fully paid up (can be never)
+ * @param balance current balance of the purse
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
 enum TALER_ErrorCode
 TALER_exchange_online_purse_status_sign (
   TALER_ExchangeSignCallback scb,
@@ -4160,7 +4245,16 @@ TALER_exchange_online_purse_status_sign (
   struct TALER_ExchangeSignatureP *sig);
 
 
-// FIXME: document!
+/**
+ * Verify signature over information about the status of a purse.
+ *
+ * @param merge_timestamp when was the purse merged (can be never)
+ * @param deposit_timestamp when was the purse fully paid up (can be never)
+ * @param balance current balance of the purse
+ * @param pub the public key of the exchange to check against
+ * @param sig the signature to check
+ * @return #GNUNET_OK if the signature is valid
+ */
 enum GNUNET_GenericReturnValue
 TALER_exchange_online_purse_status_verify (
   struct GNUNET_TIME_Timestamp merge_timestamp,
@@ -4395,7 +4489,18 @@ TALER_exchange_offline_denom_validity_verify (
   const struct TALER_MasterSignatureP *master_sig);
 
 
-// FIXME: document
+/**
+ * Create offline signature about an exchange's partners.
+ *
+ * @param partner_pub master public key of the partner
+ * @param start_date validity period start
+ * @param end_date validity period end
+ * @param wad_frequency how often will we do wad transfers to this partner
+ * @param wad_fee what is the wad fee to this partner
+ * @param partner_base_url what is the base URL of the @a partner_pub exchange
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
 void
 TALER_exchange_offline_partner_details_sign (
   const struct TALER_MasterPublicKeyP *partner_pub,
@@ -4408,7 +4513,18 @@ TALER_exchange_offline_partner_details_sign (
   struct TALER_MasterSignatureP *master_sig);
 
 
-// FIXME: document
+/**
+ * Verify signature about an exchange's partners.
+ *
+ * @param start_date validity period start
+ * @param end_date validity period end
+ * @param wad_frequency how often will we do wad transfers to this partner
+ * @param wad_fee what is the wad fee to this partner
+ * @param partner_base_url what is the base URL of the @a partner_pub exchange
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_partner_details_verify (
   const struct TALER_MasterPublicKeyP *partner_pub,
@@ -5052,7 +5168,7 @@ TALER_age_commitment_attest (
  * @param commitment The age commitment that went into the attestation.  Only the public keys are needed.
  * @param age Age (not age group) for which the an attestation should be done
  * @param attest Signature of the age with the appropriate key from the age commitment for the corresponding age group, if applicaple.
- * @return GNUNET_OK when the attestation was successfull, GNUNET_NO no attestation couldn't be verified, GNUNET_SYSERR otherwise
+ * @return #GNUNET_OK when the attestation was successfull, GNUNET_NO no attestation couldn't be verified, #GNUNET_SYSERR otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_age_commitment_verify (
