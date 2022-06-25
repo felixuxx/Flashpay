@@ -6188,6 +6188,7 @@ postgres_do_deposit (
  * of the coin and possibly persisting the melt details.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param rms client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
  * @param[in,out] refresh refresh operation details; the noreveal_index
  *                is set in case the coin was already melted before
  * @param known_coin_id row of the coin in the known_coins table
@@ -9694,12 +9695,14 @@ postgres_insert_wire_fee (void *cls,
  * Insert global fee data into database.
  *
  * @param cls closure
- * @param start_date when does the fee go into effect
+ * @param start_date when does the fees go into effect
+ * @param end_date when does the fees end being valid
  * @param fees how high is are the global fees
  * @param purse_timeout when do purses time out
  * @param kyc_timeout when do reserves without KYC time out
  * @param history_expiration how long are account histories preserved
- * @param purse_account_limit how many purses are free per account * @param master_sig signature over the above by the exchange master key
+ * @param purse_account_limit how many purses are free per account
+ * @param master_sig signature over the above by the exchange master key
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -15293,7 +15296,7 @@ postgres_select_purse_request (
  * @param[out] in_conflict set to true if the meta data
  *             conflicts with an existing purse;
  *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -15541,7 +15544,9 @@ postgres_select_purse_by_merge_pub (
  * @param[out] balance_ok set to false if the coin's
  *        remaining balance is below @a amount;
  *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE despite the failure
+ *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
+ * @param[out] conflict set to true if the deposit failed due to a conflict (coin already spent,
+ *             or deposited into this purse with a different amount)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -15891,7 +15896,7 @@ postgres_insert_history_request (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig,
   struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_Amount *history,
+  const struct TALER_Amount *history_fee,
   bool *balance_ok,
   bool *idempotent)
 {
@@ -15900,7 +15905,7 @@ postgres_insert_history_request (
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount (history),
+    TALER_PQ_query_param_amount (history_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {

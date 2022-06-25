@@ -80,7 +80,7 @@ struct ReserveHistoryContext
  * Send reserve history to client.
  *
  * @param connection connection to the client
- * @param rh reserve history to return
+ * @param rhc reserve history to return
  * @return MHD result code
  */
 static MHD_RESULT

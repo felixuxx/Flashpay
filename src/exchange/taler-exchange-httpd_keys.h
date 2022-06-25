@@ -246,7 +246,6 @@ TEH_keys_denomination_by_hash2 (
  *
  * @param h_denom_pub hash of the public key to use to sign
  * @param bp blinded planchet to sign
- * @param is_melt should we use the KDF for melting?
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */
@@ -263,7 +262,6 @@ TEH_keys_denomination_sign_withdraw (
  *
  * @param h_denom_pub hash of the public key to use to sign
  * @param bp blinded planchet to sign
- * @param is_melt should we use the KDF for melting?
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */

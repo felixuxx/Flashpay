@@ -417,6 +417,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
  * the application and cancel the operation.
  *
  * @param[in] mh melt request that failed
+ * @param ec error code to fail with
  */
 static void
 fail_mh (struct TALER_EXCHANGE_MeltHandle *mh,

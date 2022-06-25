@@ -156,6 +156,7 @@ handle_deposit_confirmation_finished (void *cls,
  * @param h_extensions hash over the extensions, if any
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
  * @param exchange_timestamp timestamp when the deposit was received by the wallet
+ * @param wire_deadline by what time must the amount be wired to the merchant
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
  * @param coin_pub coin’s public key

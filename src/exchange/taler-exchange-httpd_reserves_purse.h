@@ -33,7 +33,7 @@
  * will ultimately lead to the "purses create" being executed, or rejected.
  *
  * @param rc request context
- * @param purse_pub public key of the purse
+ * @param reserve_pub public key of the reserve
  * @param root uploaded JSON data
  * @return MHD result code
  */

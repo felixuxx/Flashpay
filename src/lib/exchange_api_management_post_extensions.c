@@ -118,7 +118,7 @@ handle_post_extensions_finished (void *cls,
             &hr);
     ph->cb = NULL;
   }
-  TALER_EXCHANGE_post_management_extensions_cancel (ph);
+  TALER_EXCHANGE_management_post_extensions_cancel (ph);
 }
 
 
@@ -180,7 +180,7 @@ TALER_EXCHANGE_management_post_extensions (
                                   ph);
   if (NULL == ph->job)
   {
-    TALER_EXCHANGE_post_management_extensions_cancel (ph);
+    TALER_EXCHANGE_management_post_extensions_cancel (ph);
     return NULL;
   }
   return ph;
@@ -188,7 +188,7 @@ TALER_EXCHANGE_management_post_extensions (
 
 
 void
-TALER_EXCHANGE_post_management_extensions_cancel (
+TALER_EXCHANGE_management_post_extensions_cancel (
   struct TALER_EXCHANGE_ManagementPostExtensionsHandle *ph)
 {
   if (NULL != ph->job)

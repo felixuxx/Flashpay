@@ -166,6 +166,7 @@ recoup_refresh_transaction (void *cls,
  * @param exchange_vals values contributed by the exchange
  *         during refresh
  * @param coin_bks blinding data of the coin (to be checked)
+ * @param nonce withdraw nonce (if CS is used)
  * @param coin_sig signature of the coin
  * @return MHD result code
  */

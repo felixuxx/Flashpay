@@ -47,12 +47,6 @@ struct TALER_DepositTrackPS
   struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
 
   /**
-   * The Merchant's public key.  The deposit inquiry request is to be
-   * signed by the corresponding private key (using EdDSA).
-   */
-  struct TALER_MerchantPublicKeyP merchant;
-
-  /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Exchange.
    */
@@ -68,7 +62,6 @@ TALER_merchant_deposit_sign (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_MerchantPrivateKeyP *merchant_priv,
   struct TALER_MerchantSignatureP *merchant_sig)
 {
@@ -77,9 +70,9 @@ TALER_merchant_deposit_sign (
     .purpose.size = htonl (sizeof (dtp)),
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
-    .merchant = *merchant_pub,
     .coin_pub = *coin_pub
   };
+
   GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                             &dtp,
                             &merchant_sig->eddsa_sig);
@@ -97,7 +90,6 @@ TALER_merchant_deposit_verify (
   struct TALER_DepositTrackPS tps = {
     .purpose.size = htonl (sizeof (tps)),
     .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION),
-    .merchant = *merchant,
     .coin_pub = *coin_pub,
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire
@@ -107,7 +99,7 @@ TALER_merchant_deposit_verify (
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
                                 &tps,
                                 &merchant_sig->eddsa_sig,
-                                &tps.merchant.eddsa_pub);
+                                &merchant->eddsa_pub);
 }
 
 

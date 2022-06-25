@@ -1170,6 +1170,7 @@ struct TALER_EXCHANGE_NonceKey
  * Get a set of CS R values using a /csr-melt request.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param rms master key used for the derivation of the CS values
  * @param nks_len length of the @a nks array
  * @param nks array of denominations and nonces
  * @param res_cb the callback to call when the final result for this request is available
@@ -1263,7 +1264,7 @@ typedef void
  * Get a CS R using a /csr-withdraw request.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param dk Which denomination key is the /csr request for
+ * @param pk Which denomination key is the /csr request for
  * @param nonce client nonce for the request
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
@@ -2377,7 +2378,7 @@ struct TALER_EXCHANGE_MeltResponse
   union
   {
     /**
-     * Results for status #MHD_HTTP_SUCCESS.
+     * Results for status #MHD_HTTP_OK.
      */
     struct
     {
@@ -2512,7 +2513,7 @@ struct TALER_EXCHANGE_RevealResult
   union
   {
     /**
-     * Results for status #MHD_HTTP_SUCCESS.
+     * Results for status #MHD_HTTP_OK.
      */
     struct
     {
@@ -2660,7 +2661,7 @@ struct TALER_EXCHANGE_LinkResult
   union
   {
     /**
-     * Results for status #MHD_HTTP_SUCCESS.
+     * Results for status #MHD_HTTP_OK.
      */
     struct
     {
@@ -2704,7 +2705,7 @@ typedef void
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param coin_priv private key to request link data for
- * @param age_commitment age commitment to the corresponding coin, might be NULL
+ * @param age_commitment_proof age commitment to the corresponding coin, might be NULL
  * @param link_cb the callback to call with the useful result of the
  *        refresh operation the @a coin_priv was involved in (if any)
  * @param link_cb_cls closure for @a link_cb
@@ -3773,13 +3774,14 @@ TALER_EXCHANGE_management_post_extensions (
   TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
   void *cb_cls);
 
+
 /**
- * Cancel #TALER_EXCHANGE_post_management_extensions() operation.
+ * Cancel #TALER_EXCHANGE_management_post_extensions() operation.
  *
  * @param ph handle of the operation to cancel
  */
 void
-TALER_EXCHANGE_post_management_extensions_cancel (
+TALER_EXCHANGE_management_post_extensions_cancel (
   struct TALER_EXCHANGE_ManagementPostExtensionsHandle *ph);
 
 
@@ -4205,7 +4207,7 @@ TALER_EXCHANGE_management_set_global_fees (
 /**
  * Cancel #TALER_EXCHANGE_management_enable_wire() operation.
  *
- * @param swfh handle of the operation to cancel
+ * @param sgfh handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_management_set_global_fees_cancel (
@@ -4637,7 +4639,7 @@ struct TALER_EXCHANGE_AccountMergeResponse
  * operation.
  *
  * @param cls closure
- * @param pcr HTTP response data
+ * @param amr HTTP response data
  */
 typedef void
 (*TALER_EXCHANGE_AccountMergeCallback) (
@@ -4663,7 +4665,7 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  * @param h_contract_terms hash of the purses' contract
  * @param min_age minimum age of deposits into the purse
  * @param purse_value_after_fees amount that should be in the purse
- * @paran purse_expiration when will the purse expire
+ * @param purse_expiration when will the purse expire
  * @param merge_timestamp when is the merge happening (current time)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4758,7 +4760,7 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * @param contract_terms contract the purse is about
  * @param upload_contract true to upload the contract
  * @param pay_for_purse true to pay for purse creation
- * @paran merge_timestamp when should the merge happen (use current time)
+ * @param merge_timestamp when should the merge happen (use current time)
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error

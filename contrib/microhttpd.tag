@@ -24,6 +24,12 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>MHD_HTTP_BAD_REQUEST</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
