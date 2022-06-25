@@ -136,7 +136,7 @@ TALER_age_mask_to_string (
 
 /* ==================================================
  *
- * Age Restriction  TALER_Extension imlementation
+ * Age Restriction  TALER_Extension implementation
  *
  * ==================================================
  */

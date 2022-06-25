@@ -640,7 +640,7 @@ struct TALER_ReserveHistoryRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * When did the wallet make the requst.
+   * When did the wallet make the request.
    */
   struct GNUNET_TIME_TimestampNBO request_timestamp;
 
@@ -708,7 +708,7 @@ struct TALER_ReserveStatusRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * When did the wallet make the requst.
+   * When did the wallet make the request.
    */
   struct GNUNET_TIME_TimestampNBO request_timestamp;
 

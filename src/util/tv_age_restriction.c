@@ -162,7 +162,7 @@ generate (
                                 sizeof(seed));
 
     json_object_set (j_top,
-                     "commited_age",
+                     "committed_age",
                      json_integer (age));
 
     ret = TALER_age_restriction_commit (mask,
@@ -214,7 +214,7 @@ generate (
             "not required: age group is 0");
         else if (min_group > age_group)
           j_reason = json_string (
-            "not applicable: commited age too small");
+            "not applicable: committed age too small");
         else
           j_reason = GNUNET_JSON_PACK (
             GNUNET_JSON_pack_data_auto (NULL, &at));
