@@ -4121,11 +4121,11 @@ TALER_exchange_online_reserve_closed_verify (
  *
  * @param scb function to call to create the signature
  * @param exchange_time our time
- * @param purse_expriration when will the purse expire
+ * @param purse_expiration when will the purse expire
  * @param amount_without_fee total amount to be put into the purse (without deposit fees)
  * @param total_deposited total currently in the purse
  * @param purse_pub public key of the purse
- * @param h_contract_term hash of the contract for the purse
+ * @param h_contract_terms hash of the contract for the purse
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
  * @return #TALER_EC_NONE on success
@@ -4147,11 +4147,11 @@ TALER_exchange_online_purse_created_sign (
  * Verify exchange signature about a purse creation and balance.
  *
  * @param exchange_time our time
- * @param purse_expriration when will the purse expire
+ * @param purse_expiration when will the purse expire
  * @param amount_without_fee total amount to be put into the purse (without deposit fees)
  * @param total_deposited total currently in the purse
  * @param purse_pub public key of the purse
- * @param h_contract_term hash of the contract for the purse
+ * @param h_contract_terms hash of the contract for the purse
  * @param pub the public key of the exchange to check against
  * @param sig the signature to check
  * @return #GNUNET_OK if the signature is valid
@@ -4251,8 +4251,8 @@ TALER_exchange_online_purse_status_sign (
  * @param merge_timestamp when was the purse merged (can be never)
  * @param deposit_timestamp when was the purse fully paid up (can be never)
  * @param balance current balance of the purse
- * @param pub the public key of the exchange to check against
- * @param sig the signature to check
+ * @param exchange_pub the public key of the exchange to check against
+ * @param exchange_sig the signature to check
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
@@ -4516,6 +4516,7 @@ TALER_exchange_offline_partner_details_sign (
 /**
  * Verify signature about an exchange's partners.
  *
+ * @param partner_pub master public key of the partner
  * @param start_date validity period start
  * @param end_date validity period end
  * @param wad_frequency how often will we do wad transfers to this partner
