@@ -146,17 +146,17 @@ TALER_age_mask_to_string (
  */
 void
 age_restriction_disable (
-  struct TALER_Extension *this)
+  struct TALER_Extension *ext)
 {
-  if (NULL == this)
+  if (NULL == ext)
     return;
 
-  this->config = NULL;
+  ext->config = NULL;
 
-  if (NULL != this->config_json)
+  if (NULL != ext->config_json)
   {
-    json_decref (this->config_json);
-    this->config_json = NULL;
+    json_decref (ext->config_json);
+    ext->config_json = NULL;
   }
 
   TE_age_restriction_config.mask.bits = 0;
@@ -174,7 +174,7 @@ age_restriction_disable (
  */
 static enum GNUNET_GenericReturnValue
 age_restriction_load_taler_config (
-  struct TALER_Extension *this,
+  struct TALER_Extension *ext,
   const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *groups = NULL;
@@ -192,8 +192,8 @@ age_restriction_load_taler_config (
                                              "ENABLED")))
   {
     /* Age restriction is not enabled */
-    this->config = NULL;
-    this->config_json = NULL;
+    ext->config = NULL;
+    ext->config_json = NULL;
     return GNUNET_OK;
   }
 
@@ -228,10 +228,10 @@ age_restriction_load_taler_config (
                 __builtin_popcount (mask.bits) - 1);
     TE_age_restriction_config.mask.bits = mask.bits;
     TE_age_restriction_config.num_groups = __builtin_popcount (mask.bits) - 1; /* no underflow, first bit always set */
-    this->config = &TE_age_restriction_config;
+    ext->config = &TE_age_restriction_config;
 
     /* Note: we do now have TE_age_restriction_config set, however
-     * this->config_json is NOT set, i.e. the extension is not yet active! For
+     * ext->config_json is NOT set, i.e. the extension is not yet active! For
      * age restriction to become active, load_json_config must have been
      * called. */
   }
@@ -244,12 +244,12 @@ age_restriction_load_taler_config (
 
 /**
  * @brief implements the TALER_Extension.load_json_config interface.
- * @param this if NULL, only tests the configuration
+ * @param ext if NULL, only tests the configuration
  * @param config the configuration as json
  */
 static enum GNUNET_GenericReturnValue
 age_restriction_load_json_config (
-  struct TALER_Extension *this,
+  struct TALER_Extension *ext,
   json_t *jconfig)
 {
   struct TALER_AgeMask mask = {0};
@@ -260,10 +260,10 @@ age_restriction_load_json_config (
     return ret;
 
   /* only testing the parser */
-  if (this == NULL)
+  if (ext == NULL)
     return GNUNET_OK;
 
-  if (TALER_Extension_AgeRestriction != this->type)
+  if (TALER_Extension_AgeRestriction != ext->type)
     return GNUNET_SYSERR;
 
   TE_age_restriction_config.mask.bits = mask.bits;
@@ -278,12 +278,12 @@ age_restriction_load_json_config (
     TE_age_restriction_config.num_groups = __builtin_popcount (mask.bits) - 1;
   }
 
-  this->config = &TE_age_restriction_config;
+  ext->config = &TE_age_restriction_config;
 
-  if (NULL != this->config_json)
-    json_decref (this->config_json);
+  if (NULL != ext->config_json)
+    json_decref (ext->config_json);
 
-  this->config_json = jconfig;
+  ext->config_json = jconfig;
 
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "loaded new age restriction config with age groups: %s\n",
@@ -295,22 +295,22 @@ age_restriction_load_json_config (
 
 /**
  * @brief implements the TALER_Extension.load_json_config interface.
- * @param this if NULL, only tests the configuration
+ * @param ext if NULL, only tests the configuration
  * @param config the configuration as json
  */
 json_t *
 age_restriction_config_to_json (
-  const struct TALER_Extension *this)
+  const struct TALER_Extension *ext)
 {
   char *mask_str;
   json_t *conf;
 
-  GNUNET_assert (NULL != this);
-  GNUNET_assert (NULL != this->config);
+  GNUNET_assert (NULL != ext);
+  GNUNET_assert (NULL != ext->config);
 
-  if (NULL != this->config_json)
+  if (NULL != ext->config_json)
   {
-    return json_copy (this->config_json);
+    return json_copy (ext->config_json);
   }
 
   mask_str = TALER_age_mask_to_string (&TE_age_restriction_config.mask);
@@ -319,8 +319,8 @@ age_restriction_config_to_json (
     );
 
   return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_bool ("critical", this->critical),
-    GNUNET_JSON_pack_string ("version", this->version),
+    GNUNET_JSON_pack_bool ("critical", ext->critical),
+    GNUNET_JSON_pack_string ("version", ext->version),
     GNUNET_JSON_pack_object_steal ("config", conf)
     );
 }
