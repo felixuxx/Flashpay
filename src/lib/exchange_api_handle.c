@@ -303,24 +303,31 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 
 
 /**
- * Parse a exchange's denomination key encoded in JSON.
+ * Parse a exchange's denomination key encoded in JSON partially.
+ *
+ * Only the values for master_sig, timestamps and the cipher-specific public
+ * key are parsed.  All other fields (fees, age_mask, value) MUST have been set
+ * prior to calling this function, otherwise the signature verification
+ * performed within this function will fail.
  *
  * @param currency expected currency of all fees
  * @param[out] denom_key where to return the result
+ * @param cipher cipher type to parse
  * @param check_sigs should we check signatures?
  * @param[in] denom_key_obj json to parse
  * @param master_key master key to use to verify signature
- * @param hash_context where to accumulate data for signature verification
+ * @param hash_xor where to accumulate data for signature verification via XOR
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
 static enum GNUNET_GenericReturnValue
-parse_json_denomkey (const char *currency,
-                     struct TALER_EXCHANGE_DenomPublicKey *denom_key,
-                     bool check_sigs,
-                     json_t *denom_key_obj,
-                     struct TALER_MasterPublicKeyP *master_key,
-                     struct GNUNET_HashContext *hash_context)
+parse_json_denomkey_partially (const char *currency,
+                               struct TALER_EXCHANGE_DenomPublicKey *denom_key,
+                               enum TALER_DenominationCipher cipher,
+                               bool check_sigs,
+                               json_t *denom_key_obj,
+                               struct TALER_MasterPublicKeyP *master_key,
+                               struct GNUNET_HashCode *hash_xor)
 {
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -333,14 +340,9 @@ parse_json_denomkey (const char *currency,
                                 &denom_key->valid_from),
     GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
                                 &denom_key->expire_legal),
-    TALER_JSON_spec_amount ("value",
-                            currency,
-                            &denom_key->value),
-    TALER_JSON_SPEC_DENOM_FEES ("fee",
-                                currency,
-                                &denom_key->fees),
-    TALER_JSON_spec_denom_pub ("denom_pub",
-                               &denom_key->key),
+    TALER_JSON_spec_denom_pub_cipher (NULL,
+                                      cipher,
+                                      &denom_key->key),
     GNUNET_JSON_spec_end ()
   };
 
@@ -354,10 +356,11 @@ parse_json_denomkey (const char *currency,
   }
   TALER_denom_pub_hash (&denom_key->key,
                         &denom_key->h_key);
-  if (NULL != hash_context)
-    GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     &denom_key->h_key,
-                                     sizeof (struct GNUNET_HashCode));
+  if (NULL != hash_xor)
+    GNUNET_CRYPTO_hash_xor (&denom_key->h_key.hash,
+                            hash_xor,
+                            hash_xor);
+
   if (! check_sigs)
     return GNUNET_OK;
   EXITIF (GNUNET_SYSERR ==
@@ -729,15 +732,13 @@ decode_keys_json (const json_t *resp_obj,
                   struct TALER_EXCHANGE_Keys *key_data,
                   enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
-  struct TALER_ExchangeSignatureP sig;
-  struct GNUNET_HashContext *hash_context = NULL;
-  struct GNUNET_HashContext *hash_context_restricted = NULL;
-  bool have_age_restricted_denom = false;
+  struct TALER_ExchangeSignatureP denominations_sig;
+  struct GNUNET_HashCode hash_xor = {0};
   struct TALER_ExchangePublicKeyP pub;
   const char *currency;
   struct GNUNET_JSON_Specification mspec[] = {
-    GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
-                                 &sig),
+    GNUNET_JSON_spec_fixed_auto ("denominations_sig",
+                                 &denominations_sig),
     GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
                                  &pub),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
@@ -760,7 +761,7 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-#if DEBUG
+#if 1 /* DEBUG */
   json_dumpf (resp_obj,
               stderr,
               JSON_INDENT (2));
@@ -827,13 +828,6 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-  }
-
-  /* parse the master public key and issue date of the response */
-  if (check_sig)
-  {
-    hash_context = GNUNET_CRYPTO_hash_context_start ();
-    hash_context_restricted = GNUNET_CRYPTO_hash_context_start ();
   }
 
   /* parse the global fees */
@@ -933,93 +927,101 @@ decode_keys_json (const json_t *resp_obj,
   /* parse the denomination keys, merging with the
      possibly EXISTING array as required (/keys cherry picking) */
   {
-    /* The denominations can be in "denoms" and (optionally) in
-     * "age_restricted_denoms"
-     */
-    struct
-    {
-      char *name;
-      struct GNUNET_HashContext *hc;
-      bool is_optional_age_restriction;
-    }
-    hive[2] = {
-      {
-        "denoms",
-        hash_context,
-        false
-      },
-      {
-        "age_restricted_denoms",
-        hash_context_restricted,
-        true
-      }
-    };
+    json_t *denominations_by_group;
+    json_t *group_obj;
+    unsigned int group_idx;
 
-    for (size_t s = 0; s < sizeof(hive) / sizeof(hive[0]); s++)
-    {
-      json_t *denom_keys_array;
-      json_t *denom_key_obj;
-      unsigned int index;
+    denominations_by_group =
+      json_object_get (
+        resp_obj,
+        "denominations");
 
-      denom_keys_array = json_object_get (resp_obj,
-                                          hive[s].name);
+    EXITIF (JSON_ARRAY !=
+            json_typeof (denominations_by_group));
 
-      if (NULL == denom_keys_array)
-        continue;
+    json_array_foreach (denominations_by_group, group_idx, group_obj) {
+      /* First, parse { cipher, fees, value, age_mask } of the current group */
 
-      EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
-
-      json_array_foreach (denom_keys_array, index, denom_key_obj) {
-        struct TALER_EXCHANGE_DenomPublicKey dk;
-        bool found = false;
-
-        /* mark that we have at least one age restricted denomination, needed
-         * for the hash calculation and signature verification below. */
-        have_age_restricted_denom |= hive[s].is_optional_age_restriction;
-
-        memset (&dk,
-                0,
-                sizeof (dk));
-        EXITIF (GNUNET_SYSERR ==
-                parse_json_denomkey (key_data->currency,
-                                     &dk,
-                                     check_sig,
-                                     denom_key_obj,
-                                     &key_data->master_pub,
-                                     hive[s].hc));
-
-        for (unsigned int j = 0;
-             j<key_data->num_denom_keys;
-             j++)
-        {
-          if (0 == denoms_cmp (&dk,
-                               &key_data->denom_keys[j]))
-          {
-            found = true;
-            break;
-          }
-        }
-        if (found)
-        {
-          /* 0:0:0 did not support /keys cherry picking */
-          TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
-          TALER_denom_pub_free (&dk.key);
-          continue;
-        }
-        if (key_data->denom_keys_size == key_data->num_denom_keys)
-          GNUNET_array_grow (key_data->denom_keys,
-                             key_data->denom_keys_size,
-                             key_data->denom_keys_size * 2 + 2);
-        key_data->denom_keys[key_data->num_denom_keys++] = dk;
-
-        /* Update "last_denom_issue_date" */
-        TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
-                         GNUNET_TIME_timestamp2s (dk.valid_from));
-        key_data->last_denom_issue_date
-          = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
-                                       dk.valid_from);
+      struct TALER_DenominationGroup group = {
+        .currency = currency
       };
-    }
+      struct GNUNET_JSON_Specification group_spec[] = {
+        TALER_JSON_spec_denomination_group (NULL, &group),
+        GNUNET_JSON_spec_end ()
+      };
+
+      EXITIF (GNUNET_SYSERR ==
+              GNUNET_JSON_parse (group_obj,
+                                 group_spec,
+                                 NULL,
+                                 NULL));
+
+      /* Now, parse the individual denominations */
+      {
+        json_t *denom_keys_array;
+        json_t *denom_key_obj;
+        unsigned int index;
+        denom_keys_array = json_object_get (group_obj, "denoms");
+        EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
+
+        json_array_foreach (denom_keys_array, index, denom_key_obj) {
+          struct TALER_EXCHANGE_DenomPublicKey dk = {0};
+          bool found = false;
+
+          memset (&dk, 0, sizeof (dk));
+
+          /* Set the common fields from the group for this particular
+           * denomination.  Required to make the validity check inside
+           * parse_json_denomkey_partially pass */
+          dk.key.cipher = group.cipher;
+          dk.value = group.value;
+          dk.fees = group.fees;
+          dk.key.age_mask = group.age_mask;
+
+          EXITIF (GNUNET_SYSERR ==
+                  parse_json_denomkey_partially (key_data->currency,
+                                                 &dk,
+                                                 group.cipher,
+                                                 check_sig,
+                                                 denom_key_obj,
+                                                 &key_data->master_pub,
+                                                 check_sig ? &hash_xor: NULL));
+
+          for (unsigned int j = 0;
+               j<key_data->num_denom_keys;
+               j++)
+          {
+            if (0 == denoms_cmp (&dk,
+                                 &key_data->denom_keys[j]))
+            {
+              found = true;
+              break;
+            }
+          }
+
+          if (found)
+          {
+            /* 0:0:0 did not support /keys cherry picking */
+            TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
+            TALER_denom_pub_free (&dk.key);
+            continue;
+          }
+
+          if (key_data->denom_keys_size == key_data->num_denom_keys)
+            GNUNET_array_grow (key_data->denom_keys,
+                               key_data->denom_keys_size,
+                               key_data->denom_keys_size * 2 + 2);
+          key_data->denom_keys[key_data->num_denom_keys++] = dk;
+
+          /* Update "last_denom_issue_date" */
+          TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
+                           GNUNET_TIME_timestamp2s (dk.valid_from));
+          key_data->last_denom_issue_date
+            = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
+                                         dk.valid_from);
+        }
+      };
+    };
   }
 
   /* parse the auditor information */
@@ -1139,30 +1141,6 @@ decode_keys_json (const json_t *resp_obj,
 
   if (check_sig)
   {
-    struct GNUNET_HashCode hc;
-
-    /* If we had any age restricted denominations, add their hash to the end of
-     * the normal denominations. */
-    if (have_age_restricted_denom)
-    {
-      struct GNUNET_HashCode hcr;
-
-      GNUNET_CRYPTO_hash_context_finish (hash_context_restricted,
-                                         &hcr);
-      hash_context_restricted = NULL;
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &hcr,
-                                       sizeof(struct GNUNET_HashCode));
-    }
-    else
-    {
-      GNUNET_CRYPTO_hash_context_abort (hash_context_restricted);
-      hash_context_restricted = NULL;
-    }
-
-    GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                       &hc);
-    hash_context = NULL;
     EXITIF (GNUNET_OK !=
             TALER_EXCHANGE_test_signing_key (key_data,
                                              &pub));
@@ -1170,18 +1148,15 @@ decode_keys_json (const json_t *resp_obj,
     EXITIF (GNUNET_OK !=
             TALER_exchange_online_key_set_verify (
               key_data->list_issue_date,
-              &hc,
+              &hash_xor,
               &pub,
-              &sig));
+              &denominations_sig));
   }
-  return GNUNET_OK;
-EXITIF_exit:
 
+  return GNUNET_OK;
+
+EXITIF_exit:
   *vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
-  if (NULL != hash_context)
-    GNUNET_CRYPTO_hash_context_abort (hash_context);
-  if (NULL != hash_context_restricted)
-    GNUNET_CRYPTO_hash_context_abort (hash_context_restricted);
   return GNUNET_SYSERR;
 }
 

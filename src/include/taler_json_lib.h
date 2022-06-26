@@ -359,6 +359,36 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
   TALER_JSON_pack_amount ("account_fee", &(gfs)->account),     \
   TALER_JSON_pack_amount ("purse_fee", &(gfs)->purse)
 
+/**
+ * Group of Denominations.  These are the common fields of an array of
+ * denominations.
+ *
+ * The corresponding JSON-blob will also contain an array of particular
+ * denominations with only the timestamps, cipher-specific public key and the
+ * master signature.
+ *
+ **/
+struct TALER_DenominationGroup
+{
+  /* currency must be set prior to calling TALER_JSON_spec_denomination_group */
+  const char *currency;
+  enum TALER_DenominationCipher cipher;
+  struct TALER_Amount value;
+  struct TALER_DenomFeeSet fees;
+  struct TALER_AgeMask age_mask;
+};
+
+/**
+ * Generate a parser for a group of denominations.
+ * NOTE: group.currency MUST have been set prior to calling this function.
+ *
+ * @param field name of the field, maybe NULL
+ * @param[out] group denomination group information
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_group (const char *field,
+                                    struct TALER_DenominationGroup *group);
 
 /**
  * Generate line in parser specification for denomination public key.
@@ -370,6 +400,20 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_pub (const char *field,
                            struct TALER_DenominationPublicKey *pk);
+
+/**
+ * Generate a parser specification for a denomination public key of a given
+ * cipher.
+ *
+ * @param field name of the field
+ * @parm cipher which cipher type to parse for
+ * @param[out] pk key to fill
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denom_pub_cipher (const char *field,
+                                  const enum TALER_DenominationCipher cipher,
+                                  struct TALER_DenominationPublicKey *pk);
 
 
 /**

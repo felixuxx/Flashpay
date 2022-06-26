@@ -35,11 +35,15 @@
 static enum TALER_DenominationCipher
 string_to_cipher (const char *cipher_s)
 {
-  if (0 == strcasecmp (cipher_s,
-                       "RSA"))
+  if ((0 == strcasecmp (cipher_s,
+                        "RSA")) ||
+      (0 == strcasecmp (cipher_s,
+                        "RSA+age_restricted")))
     return TALER_DENOMINATION_RSA;
-  if (0 == strcasecmp (cipher_s,
-                       "CS"))
+  if ((0 == strcasecmp (cipher_s,
+                        "CS")) ||
+      (0 == strcasecmp (cipher_s,
+                        "CS+age_restricted")))
     return TALER_DENOMINATION_CS;
   return TALER_DENOMINATION_INVALID;
 }
@@ -239,6 +243,84 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
 }
 
 
+static enum GNUNET_GenericReturnValue
+parse_denomination_group (void *cls,
+                          json_t *root,
+                          struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationGroup *group = spec->ptr;
+  const char *cipher;
+  bool age_mask_missing = false;
+  bool has_age_restricted_suffix = false;
+  struct GNUNET_JSON_Specification gspec[] = {
+    GNUNET_JSON_spec_string ("cipher",
+                             &cipher),
+    TALER_JSON_spec_amount ("value",
+                            group->currency,
+                            &group->value),
+    TALER_JSON_SPEC_DENOM_FEES ("fee",
+                                group->currency,
+                                &group->fees),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_uint32 ("age_mask",
+                               &group->age_mask.bits),
+      &age_mask_missing),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         gspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  group->cipher = string_to_cipher (cipher);
+  if (TALER_DENOMINATION_INVALID == group->cipher)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* age_mask and suffix must be consistent */
+  has_age_restricted_suffix =
+    (NULL != strstr (cipher, "+age_restricted"));
+  if (has_age_restricted_suffix && age_mask_missing)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (age_mask_missing)
+    group->age_mask.bits = 0;
+
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denomination_group (const char *name,
+                                    struct TALER_DenominationGroup *group)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_denomination_group,
+    .cleaner = NULL,
+    .field = name,
+    .ptr = group,
+    .ptr_size = sizeof(*group),
+    .size_ptr = NULL,
+  };
+
+
+  return ret;
+}
+
+
 /**
  * Parse given JSON object to an encrypted contract.
  *
@@ -330,11 +412,14 @@ parse_denom_pub (void *cls,
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
   const char *cipher;
+  bool age_mask_missing = false;
   struct GNUNET_JSON_Specification dspec[] = {
     GNUNET_JSON_spec_string ("cipher",
                              &cipher),
-    GNUNET_JSON_spec_uint32 ("age_mask",
-                             &denom_pub->age_mask.bits),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_uint32 ("age_mask",
+                               &denom_pub->age_mask.bits),
+      &age_mask_missing),
     GNUNET_JSON_spec_end ()
   };
   const char *emsg;
@@ -350,6 +435,10 @@ parse_denom_pub (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+
+  if (age_mask_missing)
+    denom_pub->age_mask.bits = 0;
+
   denom_pub->cipher = string_to_cipher (cipher);
   switch (denom_pub->cipher)
   {
@@ -429,6 +518,93 @@ TALER_JSON_spec_denom_pub (const char *field,
   };
 
   pk->cipher = TALER_DENOMINATION_INVALID;
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object partially into a denomination public key.
+ *
+ * Depending on the cipher in cls, it parses the corresponding public key type.
+ *
+ * @param cls closure, enum TALER_DenominationCipher
+ * @param cipher cipher to parse for
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_denom_pub_cipher (void *cls,
+                        json_t *root,
+                        struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
+  enum TALER_DenominationCipher cipher = (enum TALER_DenominationCipher) cls;
+  const char *emsg;
+  unsigned int eline;
+
+  switch (cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_public_key (
+          "rsa_pub",
+          &denom_pub->details.rsa_public_key),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  case TALER_DENOMINATION_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed ("cs_pub",
+                                &denom_pub->details.cs_public_key,
+                                sizeof (denom_pub->details.cs_public_key)),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_denom_pub_cipher (const char *field,
+                                  enum TALER_DenominationCipher cipher,
+                                  struct TALER_DenominationPublicKey *pk)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_denom_pub_cipher,
+    .cleaner = &clean_denom_pub,
+    .field = field,
+    .cls = (void *) cipher,
+    .ptr = pk
+  };
+
   return ret;
 }
 

@@ -1726,12 +1726,13 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
  * @a recoup and @a denoms.
  *
  * @param[in,out] ksh key state handle we build @a krd for
- * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms
+ * @param[in] denom_keys_hash hash over all the denomination keys in @a denoms
  * @param last_cpd timestamp to use
  * @param signkeys list of sign keys to return
  * @param recoup list of revoked keys to return
  * @param denoms list of denominations to return
  * @param grouped_denominations list of grouped denominations to return
+ * @param[in] h_grouped XOR of all hashes in @a grouped_demoninations
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
@@ -1741,11 +1742,14 @@ create_krd (struct TEH_KeyStateHandle *ksh,
             json_t *signkeys,
             json_t *recoup,
             json_t *denoms,
-            json_t *grouped_denominations)
+            json_t *grouped_denominations,
+            const struct GNUNET_HashCode *h_grouped)
 {
   struct KeysResponseData krd;
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_ExchangePublicKeyP grouped_exchange_pub;
+  struct TALER_ExchangeSignatureP grouped_exchange_sig;
   json_t *keys;
 
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time));
@@ -1753,11 +1757,13 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   GNUNET_assert (NULL != recoup);
   GNUNET_assert (NULL != denoms);
   GNUNET_assert (NULL != grouped_denominations);
+  GNUNET_assert (NULL != h_grouped);
   GNUNET_assert (NULL != ksh->auditors);
   GNUNET_assert (NULL != TEH_currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating /keys at cherry pick date %s\n",
               GNUNET_TIME_timestamp2s (last_cpd));
+
   /* Sign hash over denomination keys */
   {
     enum TALER_ErrorCode ec;
@@ -1778,6 +1784,33 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       return GNUNET_SYSERR;
     }
   }
+
+  /* Sign grouped hash */
+  {
+    enum TALER_ErrorCode ec;
+
+    if (TALER_EC_NONE !=
+        (ec =
+           TALER_exchange_online_key_set_sign (
+             &TEH_keys_exchange_sign2_,
+             ksh,
+             last_cpd,
+             h_grouped,
+             &grouped_exchange_pub,
+             &grouped_exchange_sig)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Could not create key response data: cannot sign grouped hash (%s)\n",
+                  TALER_ErrorCode_get_hint (ec));
+      return GNUNET_SYSERR;
+    }
+  }
+
+  /* both public keys really must be the same */
+  GNUNET_assert (0 ==
+                 memcmp (&grouped_exchange_pub,
+                         &exchange_pub,
+                         sizeof(exchange_pub)));
 
   {
     const struct SigningKey *sk;
@@ -1815,7 +1848,9 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_data_auto ("eddsa_pub",
                                 &exchange_pub),
     GNUNET_JSON_pack_data_auto ("eddsa_sig",
-                                &exchange_sig));
+                                &exchange_sig),
+    GNUNET_JSON_pack_data_auto ("denominations_sig",
+                                &grouped_exchange_sig));
   GNUNET_assert (NULL != keys);
 
   /* Set wallet limit if KYC is configured */
@@ -1998,6 +2033,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   struct GNUNET_TIME_Timestamp last_cpd;
   struct GNUNET_CONTAINER_Heap *heap;
   struct GNUNET_HashContext *hash_context = NULL;
+  struct GNUNET_HashCode grouped_hash_xor = {0};
 
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
@@ -2043,8 +2079,11 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     /* groupData is the value we store for each group meta-data */
     struct groupData
     {
-      json_t *json;   /* The json blob with the group meta-data and list of denominations */
-      struct GNUNET_HashContext *hash_context;   /* hash over all denominations in that group */
+      /* The json blob with the group meta-data and list of denominations */
+      json_t *json;
+
+      /* xor of all hashes of denominations in that group */
+      struct GNUNET_HashCode hash_xor;
     };
 
     /* heap = min heap, sorted by start time */
@@ -2065,6 +2104,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         GNUNET_CRYPTO_hash_context_finish (
           GNUNET_CRYPTO_hash_context_copy (hash_context),
           &hc);
+
         if (GNUNET_OK !=
             create_krd (ksh,
                         &hc,
@@ -2072,7 +2112,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                         sctx.signkeys,
                         recoup,
                         denoms,
-                        grouped_denominations))
+                        grouped_denominations,
+
+                        &grouped_hash_xor))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                       "Failed to generate key response data for %s\n",
@@ -2139,21 +2181,14 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         json_t *list;
         json_t *entry;
         struct GNUNET_HashCode key;
-
-        /* Find the group/JSON-blob for the key */
-        struct
-        {
-          enum TALER_DenominationCipher cipher;
-          struct TALER_Amount value;
-          struct TALER_DenomFeeSet fees;
-          struct TALER_AgeMask age_mask;
-        } meta = {
+        struct TALER_DenominationGroup meta = {
           .cipher = dk->denom_pub.cipher,
           .value = dk->meta.value,
           .fees = dk->meta.fees,
           .age_mask = dk->meta.age_mask,
         };
 
+        /* Search the group/JSON-blob for the key */
         GNUNET_CRYPTO_hash (&meta, sizeof(meta), &key);
 
         group =
@@ -2168,15 +2203,15 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           char *cipher;
 
           group = GNUNET_new (struct groupData);
-          group->hash_context = GNUNET_CRYPTO_hash_context_start ();
+          memset (group, 0, sizeof(*group));
 
           switch (meta.cipher)
           {
           case TALER_DENOMINATION_RSA:
-            cipher = age_restricted ? "RSA+age_restriction": "RSA";
+            cipher = age_restricted ? "RSA+age_restricted": "RSA";
             break;
           case TALER_DENOMINATION_CS:
-            cipher = age_restricted ? "CS+age_restriction": "CS";
+            cipher = age_restricted ? "CS+age_restricted": "CS";
             break;
           default:
             GNUNET_assert (false);
@@ -2190,10 +2225,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
           if (age_restricted)
           {
-            char *mask = TALER_age_mask_to_string (&meta.age_mask);
             int r = json_object_set (group->json,
                                      "age_mask",
-                                     json_string (mask));
+                                     json_integer (meta.age_mask.bits));
             GNUNET_assert (0 == r);
           }
 
@@ -2252,12 +2286,11 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           GNUNET_assert (NULL != entry);
         }
 
-        // Build up the running hash of all denominations in this group
-        //
-        // TODO: FIXME-oec: this is cipher and age_restriction dependend?!
-        GNUNET_CRYPTO_hash_context_read (group->hash_context,
-                                         &dk->h_denom_pub,
-                                         sizeof (struct GNUNET_HashCode));
+        // Build up the running xor of all hashes of the denominations in this
+        // group
+        GNUNET_CRYPTO_hash_xor (&dk->h_denom_pub.hash,
+                                &group->hash_xor,
+                                &group->hash_xor);
 
         // Finally, add the denomination to the list of denominations in this
         // group
@@ -2267,37 +2300,29 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         GNUNET_assert (0 ==
                        json_array_append_new (list, entry));
       }
-    }
+    } /* loop over heap ends */
 
     // Create the JSON-array of grouped denominations
     if (0 <
         GNUNET_CONTAINER_multihashmap_size (denominations_by_group))
     {
       struct GNUNET_CONTAINER_MultiHashMapIterator *iter;
-      struct GNUNET_HashCode all_hashcode;
-      struct GNUNET_HashContext *all_hash_ctx;
       struct groupData *group = NULL;
-
-      all_hash_ctx =
-        GNUNET_CRYPTO_hash_context_start ();
 
       iter =
         GNUNET_CONTAINER_multihashmap_iterator_create (denominations_by_group);
 
       while (GNUNET_OK ==
-             GNUNET_CONTAINER_multihashmap_iterator_next (iter, NULL, (const
-                                                                       void **)
-                                                          &group))
+             GNUNET_CONTAINER_multihashmap_iterator_next (iter,
+                                                          NULL,
+                                                          (const
+                                                           void **) &group))
       {
         struct GNUNET_HashCode hc;
 
-        GNUNET_CRYPTO_hash_context_finish (
-          group->hash_context,
-          &hc);
-
-        GNUNET_CRYPTO_hash_context_read (all_hash_ctx,
-                                         &hc,
-                                         sizeof (struct GNUNET_HashCode));
+        GNUNET_CRYPTO_hash_xor (&group->hash_xor,
+                                &grouped_hash_xor,
+                                &grouped_hash_xor);
 
         GNUNET_assert (0 ==
                        json_object_set (
@@ -2317,12 +2342,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       GNUNET_CONTAINER_multihashmap_iterator_destroy (iter);
       GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
 
-      GNUNET_CRYPTO_hash_context_finish (
-        all_hash_ctx,
-        &all_hashcode);
-
-      // FIXME-oec: TODO:
-      // sign all_hashcode and add the signature to the /keys response
     }
   }
 
@@ -2333,7 +2352,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &hc);
-
     if (GNUNET_OK !=
         create_krd (ksh,
                     &hc,
@@ -2341,7 +2359,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                     sctx.signkeys,
                     recoup,
                     denoms,
-                    grouped_denominations))
+                    grouped_denominations,
+                    &grouped_hash_xor))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to generate key response data for %s\n",
