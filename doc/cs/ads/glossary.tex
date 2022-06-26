@@ -1,12 +1,12 @@
 %!TEX root = ../thesis.tex
 
 %
-% vorher in Konsole folgendes aufrufen: 
+% vorher in Konsole folgendes aufrufen:
 %	makeglossaries makeglossaries dokumentation.acn && makeglossaries dokumentation.glo
 %
 
 %
-% Glossareintraege --> referenz, name, beschreibung
+% Glossareintraege --> reference, name, beschreibung
 % Aufruf mit \gls{...}
 %
 % \newglossaryentry{non-repudiation}{name={non-repudiation},plural={non-repudiation},description={After a message is signed, one can not dispute that a message was signed}}
@@ -18,36 +18,36 @@
 }
 
 \newglossaryentry{25519}{
-    name        = {Curve25519}, 
-    description = {A popular elliptic curve used in many cryptographic systems based on elliptic curve cryptography. See section \ref{par:curve25519}} 
+    name        = {Curve25519},
+    description = {A popular elliptic curve used in many cryptographic systems based on elliptic curve cryptography. See section \ref{par:curve25519}}
 }
 
 \newglossaryentry{fdh}{
     name        = {FDH},
-    description = {A Full-Domain Hash is a hash function with an image size equal to the original gorup. See section \ref{sec:rsa-fdh}}. 
-} 
+    description = {A Full-Domain Hash is a hash function with an image size equal to the original gorup. See section \ref{sec:rsa-fdh}}.
+}
 
 \newglossaryentry{idempotence}{
     name        = {idempotence},
-    description = {Idempotence in the context of computer science is a property to ensure that the state of system will not change, no matter how many times the same request was made. See section \ref{abort-idempotency}} 
-} 
+    description = {Idempotence in the context of computer science is a property to ensure that the state of system will not change, no matter how many times the same request was made. See section \ref{abort-idempotency}}
+}
 
 \newglossaryentry{abort-idempotency}{
     name        = {abort-idempotency},
-    description = {Abort-idempotency is a special case of \gls{idempotence}. On every step in a protocol it needs to be ensured that even on an abort, the same request always receives the same response. See section \ref{abort-idempotency}} 
-} 
+    description = {Abort-idempotency is a special case of \gls{idempotence}. On every step in a protocol it needs to be ensured that even on an abort, the same request always receives the same response. See section \ref{abort-idempotency}}
+}
 
 \newglossaryentry{RSABS}{
     name        = {RSA Blind Signatures},
-    description = {Chaums Blind Signature Scheme based on RSA. See section \ref{sec:blind-rsa-sign}} 
+    description = {Chaums Blind Signature Scheme based on RSA. See section \ref{sec:blind-rsa-sign}}
 }
 
 \newglossaryentry{CSBS}{
     name        = {Clause Blind Schnorr Signatures},
     description = {A secure variant of Blind Schnorr Signature Schemes introduced in section \ref{sec:clause-blind-schnorr-sig}}
-} 
+}
 
 % \newglossaryentry{25519}{
     % name        = {},
-    % description = {} 
-% } 
+    % description = {}
+% }

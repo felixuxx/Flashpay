@@ -57,7 +57,7 @@ This section compares how the two schemes perform regarding CPU usage, latency, 
 Clause Schnorr has fixed key sizes with 256 bits (32 bytes), which we compare against different RSA key sizes (1024, 2048, 3072 and 4096 bits).
 In terms of security, \gls{CSBS} 256 bit keys could be compared to 3072 bit RSA keys (see \url{https://www.keylength.com/} for more information).
 
-\subsection{CPU Usage}  
+\subsection{CPU Usage}
 Various benchmarks were made on different CPU architectures.
 This section discusses the main results, detailed information about the performance comparison can be found in appendix \ref{chap:app-perf}.
 We thank the Taler team for providing measurements from additional systems and architectures.
@@ -75,7 +75,7 @@ Signing and blinding operations are much faster in \gls{CSBS}, also \gls{CSBS} s
 \begin{bfhBox}[BFH-MediumBlue]{Setup}
 	CPU: 8-core AMD Ryzen 7 PRO 5850U \\
     OS: Ubuntu 21.10 Linux 5.13.0-25-generic \#26-Ubuntu SMP Fri Jan 7 15:48:31 UTC 2022 x86\_64 x86\_64 x86\_64 GNU/Linux \\
-    libsodium version: 1.0.18-1build1 \\ 
+    libsodium version: 1.0.18-1build1 \\
     libgcrypt version: 1.8.7-5ubuntu2 \\\\
     Benchmarks with other hardware setups can be found in appendix \ref{chap:app-perf}.
 \end{bfhBox}
@@ -112,7 +112,7 @@ RSA 1024 is in some situations faster than the \gls{CSBS} implementation.
 Note that 1024 bit keys are not recommended for many use cases, but the highest currently known RSA factorization done is 829 bits \cite{enwiki:1055393696}.
 The following section \ref{sec:disc-risk} explains the risk running RSA 1024 or \gls{CSBS} denominations further.\\
 The blind and unblind operations are running in a wallet implementation, therefore the comparison with RSA 1024 is very interesting for devices with less CPU power.
-Comparison of such hardware can be found in appendix \ref{chap:app-perf}, these comparison results come to the same conlcusion.\\
+Comparison of such hardware can be found in appendix \ref{chap:app-perf}, these comparison results come to the same conclusion.\\
 Although RSA 1024 bit is much faster in the blinding operation, \gls{CSBS} still perform better when calculating the blinding and unblinding operations together.
 \gls{CSBS} unblinding computes only an addition of two scalars $s + \alpha \mod p$, while RSA computes $s * r^{-1}$.
 To conclude, \gls{CSBS} are faster than RSA 1024 bit and provide a better level of security.
@@ -205,7 +205,7 @@ The disk space comparison for a wallet can be found in \ref{tab:comp-wallet-spac
     These are theoretical calculations, implementations may choose to persist additional values.
 \end{bfhWarnBox}
 The reasons that \gls{CSBS} use less bandwidth is mostly because the signature/key sizes are much smaller.
-The bandwith improvements for the \texttt{/keys} API is the same as specified in the table with disk space comparison \ref{tab:comp-sign-space}.
+The bandwidth improvements for the \texttt{/keys} API is the same as specified in the table with disk space comparison \ref{tab:comp-sign-space}.
 For \gls{CSBS} many calculations are performed twice, therefore also two values are submitted.
 Table \ref{tab:comp-band-withd} compares the bandwidth used in a withdrawal.
 The 32 byte values $2 * n_w, 2 * D_p, R_0, R_1, s,W_p, c_0, c_1, \sigma_W$ as well as an integer $b$ are transmitted for \gls{CSBS}.\\
@@ -222,14 +222,14 @@ Depending on the hash size another 32 byte (or 64 byte) value is transmitted.
     \setupBfhTabular
     \begin{tabular}{lccr}
         \rowcolor{BFH-tablehead}
-        \textbf{Signature Scheme} & \textbf{Bandwith used} & \textbf{Factor} & \textbf{1M coins}\\\hline
+        \textbf{Signature Scheme} & \textbf{Bandwidth used} & \textbf{Factor} & \textbf{1M coins}\\\hline
         CS 256 bits & 356 bytes & 1x & 324 MB\\\hline
         RSA 1024 bit & 448 bytes & 1.3x & 448 MB \\\hline
         RSA 2048 bit & 832 bytes & 2.5x & 832 MB\\\hline
         RSA 3072 bit & 1216 bytes & 3.75x & 1216 MB\\\hline
         RSA 4096 bit & 1600 bytes & 4.9x & 1600 MB\\\hline
     \end{tabular}
-    \caption{Bandwith comparison withdrawal}
+    \caption{Bandwidth comparison withdrawal}
     \label{tab:comp-band-withd}
 \end{table}
 

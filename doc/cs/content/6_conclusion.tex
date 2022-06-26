@@ -25,8 +25,8 @@ The thesis provides several results to add support for Schnorr's blind signature
     \end{itemize}
     \item Comparison and Analysis
     \begin{itemize}
-        \item Performance (speed, space, latency \& bandwith)
-        \item Security 
+        \item Performance (speed, space, latency \& bandwidth)
+        \item Security
         \item Scheme Comparison
     \end{itemize}
     \item Fixing a minor security issue in Taler's current protocols
@@ -47,7 +47,7 @@ This section provides an outlook on what can be done in future work.
     \item Evaluating \& implementing \gls{CSBS} on other curves
 \end{itemize}
 
-There are some remaining protocols to implement, which were out of scope for this thesis. 
+There are some remaining protocols to implement, which were out of scope for this thesis.
 To run \gls{CSBS} in production, these protocols have to be implemented too.
 Further, the merchant needs to support \gls{CSBS} too.
 The merchant implementation can be done fast, as the merchant only verifies denomination signatures in most cases. \\
@@ -58,7 +58,7 @@ A security audit should always be made when implementing big changes like these.
 As mentioned in the scope section, the optional goal to find and implement a good solution for the withdraw loophole was dropped.
 This was due to the scope shift and because the analysis of the problem showed that finding a good solution needs more research and is a whole project in itself (see \ref{sec:scope} for more information).\\
 Furthermore, \gls{CSBS} could be implemented on other curves.
-For example Curve448 \cite{cryptoeprint:2015:625} could be used, as it provides 224 bits of security, wheras \gls{25519} \cite{bern:curve25519} provides about 128 bits of security.
+For example Curve448 \cite{cryptoeprint:2015:625} could be used, as it provides 224 bits of security, whereas \gls{25519} \cite{bern:curve25519} provides about 128 bits of security.
 Curve secp256k1 could further improve \gls{CSBS} performance.
 While providing support for Curve448 should not be problematic, a potential implementation for secp256k1 needs further analysis (see \cite{bernlange:safecurves} and \cite{bip:schnorr-bitc} for more information).
 
