@@ -103,7 +103,7 @@ struct ReservePurseState
   json_t *contract_terms;
 
   /**
-   * Refernece to the reserve, or NULL (!).
+   * Reference to the reserve, or NULL (!).
    */
   const char *reserve_ref;
 

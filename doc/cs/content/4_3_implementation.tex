@@ -94,8 +94,8 @@ The corresponding crypto helper, that talks with the security module, and its te
     \item \texttt{src/util/test\_helper\_cs.c}: Tests and benchmarks for the \gls{CSBS} crypto helper
 \end{itemize}
 % Crypto API offene Punkte:
-%Input-Validierung von Punkten und Skalar
-% Clamping beschreiben: https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/
+%Input-validation of points and scalars:
+% describe clamping: https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/
 % Testing: inverse operations, blinded signature test
 
 
@@ -219,7 +219,7 @@ Tests for deposit are implemented here:
 \begin{itemize}
     \item \url{/src/testing/test_exchange_api.c}: Add tests (see "struct TALER\_TESTING\_Command\ spend\_cs[]") that spend \gls{CSBS} coins withdrawn in tests added for withdrawal
     \item \url{/src/json/json_pack.c}: Implement \gls{CSBS} case in function TALER\_JSON\_pack\_denom\_sig
-\end{itemize} 
+\end{itemize}
 
 \section{Fixing a Minor Security Issue in Taler's RSA Blind Signature Protocols}
 \label{sec:taler-vuln}
@@ -230,7 +230,7 @@ The issue was only in the implementation of the current RSA Blind Signature prot
 \label{sec:taler-vuln-desc}
 
 The redesigned \gls{CSBS} protocols already include the denomination key in the nonce check, which fixes this issue (see \ref{sec:withdraw-protocol-schnorr}).
-In the case of \gls{RSABS}, the current protocol includes an \gls{idempotence} check by persisting the hash value of the blinded coin $m'$. 
+In the case of \gls{RSABS}, the current protocol includes an \gls{idempotence} check by persisting the hash value of the blinded coin $m'$.
 On a withdrawal/refresh the \gls{idempotence} check compares if the hash value of $m'$ was seen in the past and returns the 'old' signature on a match.
 This could lead to the following scenario:
 
@@ -277,7 +277,7 @@ After discussing this issue with Christian Grothoff, the conclusion was to inclu
         return GNUNET_OK;
       case TALER_DENOMINATION_CS:
       ...
-    
+
 \end{lstlisting}
 
 The issue is fixed by adding a hash of the current denomination key into the calculation of the hash used in the \gls{idempotence} check.
@@ -295,7 +295,7 @@ The applied fix can be seen in listing \ref{lst:fixed-idempotence}.
         {
           struct GNUNET_HashContext *hash_context;
           hash_context = GNUNET_CRYPTO_hash_context_start ();
-    
+
           GNUNET_CRYPTO_hash_context_read (hash_context,
                                            &denom_hash->hash,
                                            sizeof(denom_hash->hash));
@@ -312,7 +312,7 @@ The applied fix can be seen in listing \ref{lst:fixed-idempotence}.
         {
           struct GNUNET_HashContext *hash_context;
           hash_context = GNUNET_CRYPTO_hash_context_start ();
-    
+
           GNUNET_CRYPTO_hash_context_read (hash_context,
                                            &denom_hash->hash,
                                            sizeof(denom_hash->hash));

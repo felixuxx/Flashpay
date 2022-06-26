@@ -141,7 +141,6 @@ This can be used to detect compromised signing keys or a malicious exchange.
 
 \subsection{Properties}
 \label{sec:taler-properties}
-%Alle Taler Eigenschaften die wir angreifen wollen auflisten und bezug nehmen wie diese erreicht werden
 This section describes Taler's properties.
 
 \subsubsection{Free Software}
@@ -299,7 +298,7 @@ If verification is successful, only Alice knows her private key and Bob uses Ali
 A digital signature scheme has a message space M, a signature space S and three algorithms:
 \begin{itemize}
     \item Key generation: $(pk,sk) \gets keyGen()$
-    \item Signatue generation: $s \gets $sign$_sk(m)$
+    \item Signature generation: $s \gets $sign$_sk(m)$
     \item Verification: $ v \gets $verify$_pk(m,s)$ where $v \in {0,1}$
 \end{itemize}
 If the result of the verification algorithm equals 1, a signature for m is called valid.
@@ -783,7 +782,7 @@ A good introduction to cut and choose protocols gives the Paper from Claude Cré
         The expression cut-and-choose was later introduced by David Chaum in analogy to a popular cake sharing problem:
         Given a complete cake to be shared among two parties distrusting of each other (for reasons of serious appetite).
         A fair way for them to share the cake is to have one of them cut the cake in two equals hares, and let the other one choose his favourite share.
-        This solution guarantes that it is in the formers best interest to cut the shares as evenly as possible."
+        This solution guarantees that it is in the formers best interest to cut the shares as evenly as possible."
     }
 \end{center}
 
@@ -870,10 +869,10 @@ Figure \ref{fig:withdraw-loophole-exploit} explains how such a payment would wor
 Note that we omitted the parts leading up to the coin creation (contract, agreement of price, number of coins and their denominations).
 This is how it works on a high level:
 \begin{enumerate}
-    \item The malicous merchant generates and blinds coins, which are then transmitted to the customer
+    \item The malicious merchant generates and blinds coins, which are then transmitted to the customer
     \item The customer authorizes the withdraw from his reserve by signing the blinded coins with the private key of his reserve, thus generating withdraw confirmations.
-    \item The withdraw confirmations are transmitted to the exchange, which generates the signatures and returns them to the malicous merchant.
-    \item The malicous merchant unblinds the signatures.
+    \item The withdraw confirmations are transmitted to the exchange, which generates the signatures and returns them to the malicious merchant.
+    \item The malicious merchant unblinds the signatures.
           He is now in possession of the coin, thus the payment is completed.
 \end{enumerate}
 
@@ -882,7 +881,7 @@ This is how it works on a high level:
         \resizebox{1.0\textwidth}{!}{$\displaystyle
         \begin{array}{ l c l}
             % preliminaries
-            \textbf{Customer}          &  & \textbf{malicous Merchant}
+            \textbf{Customer}          &  & \textbf{malicious Merchant}
             \\ \text{knows:} & & \text{knows:}
             \\ \text{reserve keys } w_s, W_p
             \\ \text{denomination public key } D_p = \langle e, N \rangle & & \text{denomination public key } D_p = \langle e, N \rangle
@@ -903,7 +902,7 @@ This is how it works on a high level:
             \\
             \hline
             \\
-            \textbf{malicous Merchant} &  & \textbf{Exchange}
+            \textbf{malicious Merchant} &  & \textbf{Exchange}
             \\\text{knows:} & & \text{knows:}
             \\& & \text{reserve public key } W_p
             \\ \text{denomination public key } D_p = \langle e, N \rangle & & \text{denomination keys } d_s, D_p
@@ -949,7 +948,6 @@ Chapter 4.1.4 describes more general aspects as well as the contract header and 
 \subsubsection{Spend Protocol}
 The payment process begins when a customer submits a shopping cart (one or more items to buy) and commits his intent to buy them.
 The merchant has a key pair skM, pkM of which the customer knows the public key.
-% besseres Wort als commit?
 Note that certain details contained in contract header or deposit permission like merchant \ac{KYC} information, deposit and refund deadlines and fees are left out.
 The deposit state machine can be seen in figure \ref{fig:deposit:states}.
 \begin{figure}[htp]
@@ -1033,7 +1031,7 @@ In cases where there are multiple deposit permissions (meaning that multiple coi
               \item Is the signature of the coin valid?
               \item Is $ f $ (the value to be spent) smaller or equal the residual value of the coin (check for overspending attempt)?
           \end{itemize}
-          If all checks are successful, the exchange saves the deposit record containing the deposit permission and its signature in a database, substracts the spent value from the residual value of the coin and schedules the money transfer to the merchant's account $ A_m $ (grouping payments is done to reduce payment fees).
+          If all checks are successful, the exchange saves the deposit record containing the deposit permission and its signature in a database, subtracts the spent value from the residual value of the coin and schedules the money transfer to the merchant's account $ A_m $ (grouping payments is done to reduce payment fees).
           \\The exchange calculates a deposit confirmation signature $ \sigma_{DC} $ for the deposit permission with the exchange signing private key and returns them to the merchant.
           \\This signature is also used to prove that a merchant was the first to receive payment from a certain coin.
           Without this, an evil exchange could later deny confirming a payment and claim double spending.
@@ -1180,7 +1178,7 @@ The customer, which holds the old partially spend coin and knows \\$C_{old} = \t
     On the exchange's side various checks are done to validate the request.
     Detailed steps of the commit phase are shown in figure  \ref{fig:refresh-part1}.
 
-    
+
     \begin{figure}
         \begin{equation*}
         \resizebox{1.0\textwidth}{!}{$\displaystyle
