@@ -38,7 +38,7 @@ TALER_extensions_get_head ()
 
 enum GNUNET_GenericReturnValue
 TALER_extensions_add (
-  const struct TALER_Extension *extension)
+  struct TALER_Extension *extension)
 {
   /* Sanity checks */
   if ((NULL == extension) ||
@@ -60,10 +60,12 @@ TALER_extensions_add (
   else
   {
     struct TALER_Extension *iter;
+    struct TALER_Extension *last;
 
     /* Check for collisions */
     for (iter = TE_extensions; NULL != iter; iter = iter->next)
     {
+      last = iter;
       if (extension->type == iter->type ||
           0 == strcasecmp (extension->name,
                            iter->name))
@@ -76,7 +78,7 @@ TALER_extensions_add (
     }
 
     /* No collisions found, so add this extension to the list */
-    iter->next = (struct TALER_Extension *) extension;
+    last->next = extension;
   }
 
   return GNUNET_OK;

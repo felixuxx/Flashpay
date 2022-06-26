@@ -123,7 +123,7 @@ TALER_extensions_get_head ();
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_add (
-  const struct TALER_Extension *new_extension);
+  struct TALER_Extension *new_extension);
 
 /**
  * Finds and returns a supported extension by a given type.

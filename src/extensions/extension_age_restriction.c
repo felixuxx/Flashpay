@@ -79,7 +79,7 @@ TALER_parse_age_group_string (
       return GNUNET_SYSERR;
   }
 
-  if (0>val || 32<=val || prev>=val)
+  if (32<=val || prev>=val)
     return GNUNET_SYSERR;
 
   mask->bits |= (1 << val);

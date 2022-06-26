@@ -259,6 +259,8 @@ check_commitment (struct RevealContext *rctx,
         const struct TALER_TransferPrivateKeyP *tpriv
           = &rctx->transfer_privs[i - off];
         struct TALER_TransferSecretP ts;
+        struct TALER_AgeCommitmentHash h = {0};
+        struct TALER_AgeCommitmentHash *hac = NULL;
 
         GNUNET_CRYPTO_ecdhe_key_get_public (&tpriv->ecdhe_priv,
                                             &rce->transfer_pub.ecdhe_pub);
@@ -279,7 +281,6 @@ check_commitment (struct RevealContext *rctx,
           const struct TALER_ExchangeWithdrawValues *alg_value
             = &rctx->rrcs[j].exchange_vals;
           struct TALER_PlanchetDetail pd = {0};
-          struct TALER_AgeCommitmentHash *hac = NULL;
           struct TALER_CoinPubHashP c_hash;
           struct TALER_PlanchetMasterSecretP ps;
 
@@ -303,7 +304,6 @@ check_commitment (struct RevealContext *rctx,
               .commitment = *(rctx->old_age_commitment)
             };
             struct TALER_AgeCommitmentProof nacp = {0};
-            struct TALER_AgeCommitmentHash h = {0};
 
             GNUNET_assert (GNUNET_OK ==
                            TALER_age_commitment_derive (

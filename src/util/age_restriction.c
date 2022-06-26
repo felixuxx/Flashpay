@@ -96,7 +96,6 @@ TALER_age_restriction_commit (
   GNUNET_assert (NULL != seed);
   GNUNET_assert (NULL != new);
   GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
-  GNUNET_assert (0 <= num_priv);
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
 
