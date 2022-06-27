@@ -485,29 +485,33 @@ TALER_EXCHANGE_purse_deposit (
   for (unsigned int i = 0; i<num_deposits; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
+    const struct TALER_AgeCommitmentProof *acp = deposit->age_commitment_proof;
     struct Coin *coin = &pch->coins[i];
     json_t *jdeposit;
-#if FIXME_OEC
-    struct TALER_AgeCommitmentHash agh;
-    struct TALER_AgeCommitmentHash *aghp = NULL;
+    struct TALER_AgeCommitmentHash ach;
+    struct TALER_AgeCommitmentHash *achp = NULL;
     struct TALER_AgeAttestation attest;
+    struct TALER_AgeAttestation *attestp = NULL;
 
-    TALER_age_commitment_hash (&deposit->age_commitment,
-                               &agh);
-    aghp = &agh;
-    if (GNUNET_OK !=
-        TALER_age_commitment_attest (&deposit->age_proof,
-                                     min_age,
-                                     &attest))
+    if (NULL != acp)
     {
-      GNUNET_break (0);
-      json_decref (deposit_arr);
-      GNUNET_free (pch->base_url);
-      GNUNET_free (pch->coins);
-      GNUNET_free (pch);
-      return NULL;
+      TALER_age_commitment_hash (&acp->commitment,
+                                 &ach);
+      achp = &ach;
+      if (GNUNET_OK !=
+          TALER_age_commitment_attest (acp,
+                                       min_age,
+                                       &attest))
+      {
+        GNUNET_break (0);
+        json_decref (deposit_arr);
+        GNUNET_free (pch->base_url);
+        GNUNET_free (pch->coins);
+        GNUNET_free (pch);
+        return NULL;
+      }
+      attestp = &attest;
     }
-#endif
     GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
                                         &coin->coin_pub.eddsa_pub);
     coin->h_denom_pub = deposit->h_denom_pub;
@@ -519,14 +523,12 @@ TALER_EXCHANGE_purse_deposit (
       &deposit->coin_priv,
       &coin->coin_sig);
     jdeposit = GNUNET_JSON_PACK (
-#if FIXME_OEC
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_data_auto ("h_age_commitment",
-                                    aghp)),
+                                    achp)),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_data_auto ("age_attestation",
-                                    &attest)),
-#endif
+                                    attestp)),
       TALER_JSON_pack_amount ("amount",
                               &deposit->amount),
       GNUNET_JSON_pack_data_auto ("denom_pub_hash",

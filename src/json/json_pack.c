@@ -72,6 +72,40 @@ TALER_JSON_pack_econtract (
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_age_commitment (
+  const char *name,
+  const struct TALER_AgeCommitment *age_commitment)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+  json_t *keys;
+
+  if (NULL == age_commitment ||
+      0 == age_commitment->num)
+    return ps;
+
+  GNUNET_assert (NULL !=
+                 (keys = json_array ()));
+
+  for (size_t i = 0;
+       i < age_commitment->num;
+       i++)
+  {
+    json_t *val;
+    val = GNUNET_JSON_from_data (&age_commitment->keys[i],
+                                 sizeof(age_commitment->keys[i]));
+    GNUNET_assert (NULL != val);
+    GNUNET_assert (0 ==
+                   json_array_append_new (keys, val));
+  }
+
+  ps.object = keys;
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_denom_pub (
   const char *name,
   const struct TALER_DenominationPublicKey *pk)

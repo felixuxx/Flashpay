@@ -215,6 +215,18 @@ TALER_JSON_pack_econtract (
   const char *name,
   const struct TALER_EncryptedContract *econtract);
 
+/**
+ * Generate packer instruction for a JSON field of type age_commitment
+ *
+ * @param name name of the field to add to the object
+ * @param age_commitment age commitment to add
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_age_commitment (
+  const char *name,
+  const struct TALER_AgeCommitment *age_commitment);
+
 
 /**
  * Convert a TALER amount to a JSON object.
@@ -293,6 +305,17 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_econtract (const char *name,
                            struct TALER_EncryptedContract *econtract);
 
+
+/**
+ * Provide specification to parse a given JSON object to an age commitment.
+ *
+ * @param name name of the age commitment field in the JSON
+ * @param[out] age_commitment where to store the age commitment
+ * @return spec for parsing an age commitment
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_age_commitment (const char *name,
+                                struct TALER_AgeCommitment *age_commitment);
 
 /**
  * Provide specification to parse given JSON object to an amount

@@ -456,6 +456,10 @@ parse_coin (struct MHD_Connection *connection,
             struct Coin *coin,
             const json_t *jcoin)
 {
+  struct TALER_AgeAttestation attest = {0};
+  bool no_attest = true;
+  struct TALER_AgeCommitment age_commitment = {0};
+  bool no_age_commitment = true;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("amount",
                             TEH_currency,
@@ -465,10 +469,13 @@ parse_coin (struct MHD_Connection *connection,
     TALER_JSON_spec_denom_sig ("ub_sig",
                                &coin->cpi.denom_sig),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                   &coin->cpi.h_age_commitment),
-      &coin->cpi.no_age_commitment),
-    // FIXME-Oec: proof of age is missing.
+      GNUNET_JSON_spec_fixed_auto ("attest",
+                                   &attest),
+      &no_attest),
+    GNUNET_JSON_spec_mark_optional (
+      TALER_JSON_spec_age_commitment ("age_commitment",
+                                      &age_commitment),
+      &no_age_commitment),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin->coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -591,6 +598,48 @@ parse_coin (struct MHD_Connection *connection,
                    TALER_amount_subtract (&coin->amount_minus_fee,
                                           &coin->amount,
                                           &coin->deposit_fee));
+
+    // Check and verify the age restriction.  Needs to happen before
+    // coin-signature check, because we set the h_age_commitment here.
+    {
+      if (no_attest != no_age_commitment)
+
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           /* FIXME: other error code? */
+                                           TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+                                           "mismatch of attest and age_commitment");
+      }
+
+      if (! no_age_commitment)
+      {
+        // attestation must be valid.
+        if (GNUNET_OK !=
+            TALER_age_commitment_verify (
+              &age_commitment,
+              pcc->min_age,
+              &attest))
+        {
+          GNUNET_break (0);
+          return TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             /* FIXME: other error code? */
+                                             TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+                                             "invalid attest for minimum age");
+        }
+
+        // Save the hash of the age commitment in the coin's public info, so we
+        // can verify the signature later.
+        TALER_age_commitment_hash (&age_commitment,
+                                   &coin->cpi.h_age_commitment);
+        coin->cpi.no_age_commitment = false;
+
+      }
+    }
+
+
     /* check coin signature */
     switch (dk->denom_pub.cipher)
     {

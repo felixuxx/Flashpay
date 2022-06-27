@@ -402,6 +402,109 @@ TALER_JSON_spec_econtract (const char *name,
 
 
 /**
+ * Parse given JSON object to an age commitmnet
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_age_commitment (void *cls,
+                      json_t *root,
+                      struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_AgeCommitment *age_commitment = spec->ptr;
+  json_t *pk;
+  unsigned int idx;
+  size_t num;
+
+  if (NULL == root || ! json_is_array (root))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  num = json_array_size (root);
+  if (32 <= num || 0 == num)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  age_commitment->num = num;
+  age_commitment->keys =
+    GNUNET_new_array (num,
+                      struct TALER_AgeCommitmentPublicKeyP);
+
+  json_array_foreach (root, idx, pk) {
+    const char *emsg;
+    unsigned int eline;
+    struct GNUNET_JSON_Specification pkspec[] = {
+      GNUNET_JSON_spec_fixed_auto (
+        NULL,
+        &age_commitment->keys[idx].pub),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (pk,
+                           pkspec,
+                           &emsg,
+                           &eline))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_SYSERR;
+    }
+  };
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * Cleanup data left fom parsing age commitment
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_age_commitment (void *cls,
+                      struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_AgeCommitment *age_commitment = spec->ptr;
+
+  (void) cls;
+
+  if (NULL == age_commitment ||
+      NULL == age_commitment->keys)
+    return;
+
+  age_commitment->num = 0;
+  GNUNET_free (age_commitment->keys);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_age_commitment (const char *name,
+                                struct TALER_AgeCommitment *age_commitment)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_age_commitment,
+    .cleaner = &clean_age_commitment,
+    .cls = NULL,
+    .field = name,
+    .ptr = age_commitment,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+
+  return ret;
+}
+
+
+/**
  * Parse given JSON object to denomination public key.
  *
  * @param cls closure, NULL
