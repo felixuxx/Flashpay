@@ -2068,23 +2068,26 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
   last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
 
+  // FIXME: This block contains the implementation of the DEPRICATED
+  // "denom_pubs" array along with the new grouped "denominations".
+  // "denom_pubs" Will be removed sooner or later.
   {
     struct TEH_DenominationKey *dk;
     struct GNUNET_CONTAINER_MultiHashMap *denominations_by_group;
+    // groupData is the value we store for each group meta-data
+    struct groupData
+    {
+      // The json blob with the group meta-data and list of denominations
+      json_t *json;
+
+      // xor of all hashes of denominations in that group
+      struct GNUNET_HashCode hash_xor;
+    };
 
     denominations_by_group =
       GNUNET_CONTAINER_multihashmap_create (1024,
                                             GNUNET_NO /* NO, because keys are only on the stack */);
 
-    /* groupData is the value we store for each group meta-data */
-    struct groupData
-    {
-      /* The json blob with the group meta-data and list of denominations */
-      json_t *json;
-
-      /* xor of all hashes of denominations in that group */
-      struct GNUNET_HashCode hash_xor;
-    };
 
     /* heap = min heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
@@ -2113,7 +2116,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                         recoup,
                         denoms,
                         grouped_denominations,
-
                         &grouped_hash_xor))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -2318,23 +2320,25 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                                           (const
                                                            void **) &group))
       {
-        struct GNUNET_HashCode hc;
-
-        GNUNET_CRYPTO_hash_xor (&group->hash_xor,
-                                &grouped_hash_xor,
-                                &grouped_hash_xor);
-
+        // Add the XOR over all hashes of denominations in this group to the group
         GNUNET_assert (0 ==
                        json_object_set (
                          group->json,
                          "hash",
                          GNUNET_JSON_PACK (
-                           GNUNET_JSON_pack_data_auto (NULL, &hc))));
+                           GNUNET_JSON_pack_data_auto (NULL,
+                                                       &group->hash_xor))));
 
+        // Add this group to the array
         GNUNET_assert (0 ==
                        json_array_append_new (
                          grouped_denominations,
                          group->json));
+
+        // Build the running XOR over all hash(_xor)
+        GNUNET_CRYPTO_hash_xor (&group->hash_xor,
+                                &grouped_hash_xor,
+                                &grouped_hash_xor);
 
         GNUNET_free (group);
       }

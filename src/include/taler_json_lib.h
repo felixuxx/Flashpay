@@ -370,12 +370,17 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
  **/
 struct TALER_DenominationGroup
 {
-  /* currency must be set prior to calling TALER_JSON_spec_denomination_group */
-  const char *currency;
   enum TALER_DenominationCipher cipher;
   struct TALER_Amount value;
   struct TALER_DenomFeeSet fees;
   struct TALER_AgeMask age_mask;
+
+  // currency must be set prior to calling TALER_JSON_spec_denomination_group
+  const char *currency;
+
+  // hash is/should be the XOR of all SHA-512 hashes of the public keys in this
+  // group
+  struct GNUNET_HashCode hash;
 };
 
 /**
