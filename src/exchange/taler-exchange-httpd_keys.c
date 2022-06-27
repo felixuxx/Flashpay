@@ -2190,6 +2190,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           .age_mask = dk->meta.age_mask,
         };
 
+        memset (&meta.hash, 0, sizeof(meta.hash));
+
         /* Search the group/JSON-blob for the key */
         GNUNET_CRYPTO_hash (&meta, sizeof(meta), &key);
 

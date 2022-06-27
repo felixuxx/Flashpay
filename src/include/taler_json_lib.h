@@ -375,9 +375,6 @@ struct TALER_DenominationGroup
   struct TALER_DenomFeeSet fees;
   struct TALER_AgeMask age_mask;
 
-  // currency must be set prior to calling TALER_JSON_spec_denomination_group
-  const char *currency;
-
   // hash is/should be the XOR of all SHA-512 hashes of the public keys in this
   // group
   struct GNUNET_HashCode hash;
@@ -385,14 +382,15 @@ struct TALER_DenominationGroup
 
 /**
  * Generate a parser for a group of denominations.
- * NOTE: group.currency MUST have been set prior to calling this function.
  *
- * @param field name of the field, maybe NULL
+ * @param[in] field name of the field, maybe NULL
+ * @param[in] currency name of the currency
  * @param[out] group denomination group information
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_group (const char *field,
+                                    const char *currency,
                                     struct TALER_DenominationGroup *group);
 
 /**

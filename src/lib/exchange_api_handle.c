@@ -952,9 +952,9 @@ decode_keys_json (const json_t *resp_obj,
 
       // First, parse { cipher, fees, value, age_mask, hash } of the current
       // group.
-      struct TALER_DenominationGroup group = { .currency = currency };
+      struct TALER_DenominationGroup group = {0};
       struct GNUNET_JSON_Specification group_spec[] = {
-        TALER_JSON_spec_denomination_group (NULL, &group),
+        TALER_JSON_spec_denomination_group (NULL, currency, &group),
         GNUNET_JSON_spec_end ()
       };
       EXITIF (GNUNET_SYSERR ==

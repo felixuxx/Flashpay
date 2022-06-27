@@ -250,16 +250,17 @@ parse_denomination_group (void *cls,
 {
   struct TALER_DenominationGroup *group = spec->ptr;
   const char *cipher;
+  const char *currency = cls;
   bool age_mask_missing = false;
   bool has_age_restricted_suffix = false;
   struct GNUNET_JSON_Specification gspec[] = {
     GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     TALER_JSON_spec_amount ("value",
-                            group->currency,
+                            currency,
                             &group->value),
     TALER_JSON_SPEC_DENOM_FEES ("fee",
-                                group->currency,
+                                currency,
                                 &group->fees),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_uint32 ("age_mask",
@@ -307,9 +308,11 @@ parse_denomination_group (void *cls,
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_group (const char *name,
+                                    const char *currency,
                                     struct TALER_DenominationGroup *group)
 {
   struct GNUNET_JSON_Specification ret = {
+    .cls = (void *) currency,
     .parser = &parse_denomination_group,
     .cleaner = NULL,
     .field = name,
@@ -317,7 +320,6 @@ TALER_JSON_spec_denomination_group (const char *name,
     .ptr_size = sizeof(*group),
     .size_ptr = NULL,
   };
-
 
   return ret;
 }
