@@ -38,8 +38,8 @@ static struct GNUNET_DB_EventHandler *extensions_eh;
  * the extensions data in the database.
  *
  * @param cls NULL
- * @param extra unused
- * @param extra_size number of bytes in @a extra unused
+ * @param extra type of the extension
+ * @param extra_size number of bytes in @a extra
  */
 static void
 extension_update_event_cb (void *cls,
@@ -47,13 +47,14 @@ extension_update_event_cb (void *cls,
                            size_t extra_size)
 {
   (void) cls;
+  uint32_t nbo_type;
   enum TALER_Extension_Type type;
   const struct TALER_Extension *extension;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received extensions update event\n");
 
-  if (sizeof(enum TALER_Extension_Type) != extra_size)
+  if (sizeof(nbo_type) != extra_size)
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -61,8 +62,10 @@ extension_update_event_cb (void *cls,
     return;
   }
 
-  type = *(enum TALER_Extension_Type *) extra;
+  GNUNET_assert (NULL != extra);
 
+  nbo_type = *(uint32_t *) extra;
+  type = (enum TALER_Extension_Type) ntohl (nbo_type);
 
   /* Get the corresponding extension */
   extension = TALER_extensions_get_by_type (type);

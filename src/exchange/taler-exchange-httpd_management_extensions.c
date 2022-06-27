@@ -121,20 +121,16 @@ set_extensions (void *cls,
 
     /* Success, trigger event */
     {
-      enum TALER_Extension_Type *type = &sec->extensions[i].type;
+      uint32_t nbo_type = htonl (sec->extensions[i].type);
       struct GNUNET_DB_EventHeaderP ev = {
         .size = htons (sizeof (ev)),
         .type = htons (TALER_DBEVENT_EXCHANGE_EXTENSIONS_UPDATED)
       };
 
-      // FIXME-Oec: bug: convert type to NBO first!
-      // FIXME-Oec: bug: sizeof enum is ill-defined...
-      // FIXME-Oec: bug: don't see /keys listening to the event
-      // FIXME-Oec: why is   TEH_keys_update_states (); not enough?
       TEH_plugin->event_notify (TEH_plugin->cls,
                                 &ev,
-                                type,
-                                sizeof(*type));
+                                &nbo_type,
+                                sizeof(nbo_type));
     }
 
   }
