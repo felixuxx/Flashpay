@@ -568,28 +568,31 @@ TALER_EXCHANGE_purse_create_with_deposit (
   for (unsigned int i = 0; i<num_deposits; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *deposit = &deposits[i];
+    const struct TALER_AgeCommitmentProof *acp = deposit->age_commitment_proof;
     struct Deposit *d = &pch->deposits[i];
     json_t *jdeposit;
-#if FIXME_OEC
     struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
     struct TALER_AgeAttestation attest;
+    struct TALER_AgeAttestation *attestp = NULL;
 
-    TALER_age_commitment_hash (&deposit->age_commitment,
-                               &agh);
-    aghp = &agh;
-    if (GNUNET_OK !=
-        TALER_age_commitment_attest (&deposit->age_proof,
-                                     min_age,
-                                     &attest))
+    if (NULL != acp)
     {
-      GNUNET_break (0);
-      json_decref (deposit_arr);
-      GNUNET_free (url);
-      GNUNET_free (pch);
-      return NULL;
+      TALER_age_commitment_hash (&acp->commitment,
+                                 &agh);
+      aghp = &agh;
+      if (GNUNET_OK !=
+          TALER_age_commitment_attest (acp,
+                                       min_age,
+                                       &attest))
+      {
+        GNUNET_break (0);
+        json_decref (deposit_arr);
+        GNUNET_free (url);
+        GNUNET_free (pch);
+        return NULL;
+      }
     }
-#endif
     d->contribution = deposit->amount;
     d->h_denom_pub = deposit->h_denom_pub;
     GNUNET_CRYPTO_eddsa_key_get_public (&deposit->coin_priv.eddsa_priv,
@@ -601,14 +604,12 @@ TALER_EXCHANGE_purse_create_with_deposit (
       &deposit->coin_priv,
       &d->coin_sig);
     jdeposit = GNUNET_JSON_PACK (
-#if FIXME_OEC
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_data_auto ("h_age_commitment",
                                     aghp)),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_data_auto ("age_attestation",
-                                    &attest)),
-#endif
+                                    attestp)),
       TALER_JSON_pack_amount ("amount",
                               &deposit->amount),
       GNUNET_JSON_pack_data_auto ("denom_pub_hash",

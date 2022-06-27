@@ -4516,12 +4516,10 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle;
  */
 struct TALER_EXCHANGE_PurseDeposit
 {
-#if FIXME_OEC
   /**
-   * Age commitment data.
+   * Age commitment data, might be NULL.
    */
-  struct TALER_AgeCommitment age_commitment;
-#endif
+  const struct TALER_AgeCommitmentProof *age_commitment_proof;
 
   /**
    * Private key of the coin.

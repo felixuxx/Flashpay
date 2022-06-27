@@ -207,7 +207,6 @@ deposit_run (void *cls,
     const struct TALER_TESTING_Command *coin_cmd;
     const struct TALER_CoinSpendPrivateKeyP *coin_priv;
     const struct TALER_AgeCommitmentProof *age_commitment_proof = NULL;
-    struct TALER_AgeCommitmentHash h_age_commitment = {0};
     const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
     const struct TALER_DenominationSignature *denom_pub_sig;
 
@@ -242,14 +241,7 @@ deposit_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    if (NULL != age_commitment_proof)
-    {
-      TALER_age_commitment_hash (&age_commitment_proof->commitment,
-                                 &h_age_commitment);
-    }
-#if FIXME_OEC
-    pd->age_commitment = *h_age_commitment;
-#endif
+    pd->age_commitment_proof = age_commitment_proof;
     pd->denom_sig = *denom_pub_sig;
     pd->coin_priv = *coin_priv;
     pd->amount = cr->deposit_with_fee;
