@@ -5069,7 +5069,15 @@ struct TALER_AgeCommitment
 };
 
 
-// FIXME-oec: document!
+/**
+ * @brief Proof for a particular age commitment, used in age attestation
+ *
+ * This struct is used in a call to TALER_age_commitment_attest to create an
+ * attestation for a minimum age (if that minimum age is less or equal to the
+ * commited age for this proof).  It consists of a list private keys, one per
+ * age group, for which the commited age is either lager or within that
+ * particular group.
+ */
 struct TALER_AgeProof
 {
   /**
@@ -5094,12 +5102,32 @@ struct TALER_AgeProof
 };
 
 
-// FIXME-oec: document!
+/**
+ * @brief Commitment and Proof for a maximum age
+ *
+ * Calling TALER_age_restriction_commit on an (maximum) age value returns this
+ * data structure.  It consists of the proof, which is used to create
+ * attestations for compatible minimum ages, and the commitment, which is used
+ * to verify the attestations and derived commitments.
+ *
+ * The hash value of the commitment is bound to a particular coin with age
+ * restriction.
+ */
 struct TALER_AgeCommitmentProof
 {
-  // FIXME-oec: document!
+  /**
+   * The commitment is used to verify a particular attestation.  Its hash value
+   * is bound to a particular coin with age restriction.  This structure is
+   * sent to the merchant in order to verify a particular attestation for a
+   * minimum age.
+   * In itself, it does not convey any information about the maximum age that
+   * went into the call to TALER_age_restriction_commit.
+   */
   struct TALER_AgeCommitment commitment;
-  // FIXME-oec: document!
+
+  /**
+   * The proof is used to create an attestation for a (compatible) minimum age.
+   */
   struct TALER_AgeProof proof;
 };
 
