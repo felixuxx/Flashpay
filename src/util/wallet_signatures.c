@@ -898,6 +898,10 @@ struct TALER_PurseDepositPS
    */
   struct TALER_AmountNBO coin_amount;
 
+  // FIXME-CG: also sign over age commitment hash AND
+  // denomination hash, needed for proper known-coin
+  // conflict proofs!
+
   /**
    * Purse to deposit funds into.
    */
