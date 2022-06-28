@@ -1158,7 +1158,7 @@ struct TALER_BlindedDenominationSignature
  *
  * The bits set in the mask mark the edges at the beginning of a next age
  * group.  F.e. for the age groups
- *     0-7, 8-9, 10-11, 12-14, 14-15, 16-17, 18-21, 21-*
+ *     0-7, 8-9, 10-11, 12-13, 14-15, 16-17, 18-21, 21-*
  * the following bits are set:
  *
  *   31     24        16        8         0
