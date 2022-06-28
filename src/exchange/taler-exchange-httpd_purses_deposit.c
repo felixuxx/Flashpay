@@ -441,8 +441,8 @@ parse_coin (struct MHD_Connection *connection,
                                           &coin->amount,
                                           &coin->deposit_fee));
 
-    // Check and verify the age restriction.  Needs to happen before
-    // coin-signature check, because we set the h_age_commitment here.
+    /* Check and verify the age restriction.  Needs to happen before
+       coin-signature check, because we set the h_age_commitment here. */
     {
       if (no_attest != no_age_commitment)
 
@@ -457,7 +457,7 @@ parse_coin (struct MHD_Connection *connection,
 
       if (! no_age_commitment)
       {
-        // attestation must be valid.
+        /* attestation must be valid. */
         if (GNUNET_OK !=
             TALER_age_commitment_verify (
               &age_commitment,
@@ -472,8 +472,8 @@ parse_coin (struct MHD_Connection *connection,
                                              "invalid attest for minimum age");
         }
 
-        // Save the hash of the age commitment in the coin's public info, so we
-        // can verify the signature later.
+        /* Save the hash of the age commitment in the coin's public info, so we
+           can verify the signature later. */
         TALER_age_commitment_hash (&age_commitment,
                                    &coin->cpi.h_age_commitment);
         coin->cpi.no_age_commitment = false;
