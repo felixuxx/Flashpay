@@ -55,6 +55,11 @@ struct Coin
   struct TALER_DenominationHashP h_denom_pub;
 
   /**
+   * Age restriction hash for the coin.
+   */
+  struct TALER_AgeCommitmentHash ahac;
+
+  /**
    * How much did we say the coin contributed.
    */
   struct TALER_Amount contribution;
@@ -234,6 +239,8 @@ handle_purse_deposit_finished (void *cls,
       {
         struct TALER_CoinSpendPublicKeyP coin_pub;
         struct TALER_CoinSpendSignatureP coin_sig;
+        struct TALER_DenominationHashP h_denom_pub;
+        struct TALER_AgeCommitmentHash phac;
         bool found = false;
 
         if (GNUNET_OK !=
@@ -241,6 +248,8 @@ handle_purse_deposit_finished (void *cls,
               &pch->purse_pub,
               pch->base_url,
               j,
+              &h_denom_pub,
+              &phac,
               &coin_pub,
               &coin_sig))
         {
@@ -251,18 +260,32 @@ handle_purse_deposit_finished (void *cls,
         }
         for (unsigned int i = 0; i<pch->num_deposits; i++)
         {
-          if (0 == GNUNET_memcmp (&coin_pub,
-                                  &pch->coins[i].coin_pub))
+          struct Coin *coin = &pch->coins[i];
+          if (0 != GNUNET_memcmp (&coin_pub,
+                                  &coin->coin_pub))
+            continue;
+          if (0 !=
+              GNUNET_memcmp (&coin->h_denom_pub,
+                             &h_denom_pub))
           {
-            if (0 == GNUNET_memcmp (&coin_sig,
-                                    &pch->coins[i].coin_sig))
-            {
-              /* identical signature => not a conflict */
-              continue;
-            }
             found = true;
             break;
           }
+          if (0 !=
+              GNUNET_memcmp (&coin->ahac,
+                             &phac))
+          {
+            found = true;
+            break;
+          }
+          if (0 == GNUNET_memcmp (&coin_sig,
+                                  &coin->coin_sig))
+          {
+            /* identical signature => not a conflict */
+            continue;
+          }
+          found = true;
+          break;
         }
         if (! found)
         {
@@ -488,7 +511,6 @@ TALER_EXCHANGE_purse_deposit (
     const struct TALER_AgeCommitmentProof *acp = deposit->age_commitment_proof;
     struct Coin *coin = &pch->coins[i];
     json_t *jdeposit;
-    struct TALER_AgeCommitmentHash ach;
     struct TALER_AgeCommitmentHash *achp = NULL;
     struct TALER_AgeAttestation attest;
     struct TALER_AgeAttestation *attestp = NULL;
@@ -496,8 +518,8 @@ TALER_EXCHANGE_purse_deposit (
     if (NULL != acp)
     {
       TALER_age_commitment_hash (&acp->commitment,
-                                 &ach);
-      achp = &ach;
+                                 &coin->ahac);
+      achp = &coin->ahac;
       if (GNUNET_OK !=
           TALER_age_commitment_attest (acp,
                                        min_age,
@@ -520,6 +542,8 @@ TALER_EXCHANGE_purse_deposit (
       pch->base_url,
       &pch->purse_pub,
       &deposit->amount,
+      &coin->h_denom_pub,
+      &coin->ahac,
       &deposit->coin_priv,
       &coin->coin_sig);
     jdeposit = GNUNET_JSON_PACK (

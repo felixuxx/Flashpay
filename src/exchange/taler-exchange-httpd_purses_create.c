@@ -335,6 +335,8 @@ create_transaction (void *cls,
       struct TALER_Amount amount;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_DenominationHashP h_denom_pub;
+      struct TALER_AgeCommitmentHash phac;
       char *partner_url = NULL;
 
       TEH_plugin->rollback (TEH_plugin->cls);
@@ -342,6 +344,8 @@ create_transaction (void *cls,
                                           pcc->purse_pub,
                                           &coin->cpi.coin_pub,
                                           &amount,
+                                          &h_denom_pub,
+                                          &phac,
                                           &coin_sig,
                                           &partner_url);
       if (qs < 0)
@@ -366,6 +370,10 @@ create_transaction (void *cls,
                                         &coin_pub),
             GNUNET_JSON_pack_data_auto ("coin_sig",
                                         &coin_sig),
+            GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                        &h_denom_pub),
+            GNUNET_JSON_pack_data_auto ("h_age_restrictions",
+                                        &phac),
             GNUNET_JSON_pack_allow_null (
               GNUNET_JSON_pack_string ("partner_url",
                                        partner_url)),
@@ -493,22 +501,33 @@ parse_coin (struct MHD_Connection *connection,
       return res;
   }
 
-  if (GNUNET_OK !=
-      TALER_wallet_purse_deposit_verify (TEH_base_url,
-                                         pcc->purse_pub,
-                                         &coin->amount,
-                                         &coin->cpi.coin_pub,
-                                         &coin->coin_sig))
   {
-    TALER_LOG_WARNING (
-      "Invalid coin signature on /purses/$PID/create request\n");
-    GNUNET_JSON_parse_free (spec);
-    return (MHD_YES ==
-            TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_FORBIDDEN,
-                                        TALER_EC_EXCHANGE_PURSE_CREATE_COIN_SIGNATURE_INVALID,
-                                        TEH_base_url))
+    struct TALER_AgeCommitmentHash h_age;
+
+    if (no_age_commitment)
+      memset (&h_age, 0, sizeof (h_age));
+    else
+      TALER_age_commitment_hash (&age_commitment,
+                                 &h_age);
+    if (GNUNET_OK !=
+        TALER_wallet_purse_deposit_verify (TEH_base_url,
+                                           pcc->purse_pub,
+                                           &coin->amount,
+                                           &coin->cpi.denom_pub_hash,
+                                           &h_age,
+                                           &coin->cpi.coin_pub,
+                                           &coin->coin_sig))
+    {
+      TALER_LOG_WARNING (
+        "Invalid coin signature on /purses/$PID/create request\n");
+      GNUNET_JSON_parse_free (spec);
+      return (MHD_YES ==
+              TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_FORBIDDEN,
+                                          TALER_EC_EXCHANGE_PURSE_CREATE_COIN_SIGNATURE_INVALID,
+                                          TEH_base_url))
            ? GNUNET_NO : GNUNET_SYSERR;
+    }
   }
   /* check denomination exists and is valid */
   {

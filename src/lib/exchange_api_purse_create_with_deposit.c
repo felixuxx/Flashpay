@@ -55,6 +55,11 @@ struct Deposit
   struct TALER_DenominationHashP h_denom_pub;
 
   /**
+   * Age restriction hash for the coin.
+   */
+  struct TALER_AgeCommitmentHash ahac;
+
+  /**
    * How much did we say the coin contributed.
    */
   struct TALER_Amount contribution;
@@ -375,6 +380,8 @@ handle_purse_create_deposit_finished (void *cls,
         {
           struct TALER_CoinSpendPublicKeyP coin_pub;
           struct TALER_CoinSpendSignatureP coin_sig;
+          struct TALER_DenominationHashP h_denom_pub;
+          struct TALER_AgeCommitmentHash phac;
           bool found = false;
 
           if (GNUNET_OK !=
@@ -382,6 +389,8 @@ handle_purse_create_deposit_finished (void *cls,
                 &pch->purse_pub,
                 pch->exchange->url,
                 j,
+                &h_denom_pub,
+                &phac,
                 &coin_pub,
                 &coin_sig))
           {
@@ -398,6 +407,20 @@ handle_purse_create_deposit_finished (void *cls,
                 GNUNET_memcmp (&coin_pub,
                                &deposit->coin_pub))
               continue;
+            if (0 !=
+                GNUNET_memcmp (&deposit->h_denom_pub,
+                               &h_denom_pub))
+            {
+              found = true;
+              break;
+            }
+            if (0 !=
+                GNUNET_memcmp (&deposit->ahac,
+                               &phac))
+            {
+              found = true;
+              break;
+            }
             if (0 ==
                 GNUNET_memcmp (&coin_sig,
                                &deposit->coin_sig))
@@ -571,7 +594,6 @@ TALER_EXCHANGE_purse_create_with_deposit (
     const struct TALER_AgeCommitmentProof *acp = deposit->age_commitment_proof;
     struct Deposit *d = &pch->deposits[i];
     json_t *jdeposit;
-    struct TALER_AgeCommitmentHash agh;
     struct TALER_AgeCommitmentHash *aghp = NULL;
     struct TALER_AgeAttestation attest;
     struct TALER_AgeAttestation *attestp = NULL;
@@ -579,8 +601,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
     if (NULL != acp)
     {
       TALER_age_commitment_hash (&acp->commitment,
-                                 &agh);
-      aghp = &agh;
+                                 &d->ahac);
+      aghp = &d->ahac;
       if (GNUNET_OK !=
           TALER_age_commitment_attest (acp,
                                        min_age,
@@ -601,6 +623,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
       url,
       &pch->purse_pub,
       &deposit->amount,
+      &d->h_denom_pub,
+      &d->ahac,
       &deposit->coin_priv,
       &d->coin_sig);
     jdeposit = GNUNET_JSON_PACK (

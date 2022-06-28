@@ -1289,38 +1289,15 @@ handle_purse_deposits (
   struct TALER_Amount amount_minus_fee;
   struct TALER_Amount new_balance;
   struct ReserveSummary *rs;
+  struct TALER_DenominationHashP h_denom_pub;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_purse_deposits_serial_id);
   ppr.last_purse_deposits_serial_id = rowid + 1;
 
-  if (GNUNET_OK !=
-      TALER_wallet_purse_deposit_verify (base_url,
-                                         &deposit->purse_pub,
-                                         &deposit->amount,
-                                         &deposit->coin_pub,
-                                         &deposit->coin_sig))
-  {
-    TALER_ARL_report (report_bad_sig_losses,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_string ("operation",
-                                                 "purse-deposit"),
-                        GNUNET_JSON_pack_uint64 ("row",
-                                                 rowid),
-                        TALER_JSON_pack_amount ("loss",
-                                                &deposit->amount),
-                        GNUNET_JSON_pack_data_auto ("key_pub",
-                                                    &deposit->coin_pub)));
-    TALER_ARL_amount_add (&total_bad_sig_loss,
-                          &total_bad_sig_loss,
-                          &deposit->amount);
-    return GNUNET_OK;
-  }
-
   {
     const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
     enum GNUNET_DB_QueryStatus qs;
-    struct TALER_DenominationHashP h_denom_pub;
 
     qs = TALER_ARL_get_denomination_info (denom_pub,
                                           &issue,
@@ -1347,6 +1324,31 @@ handle_purse_deposits (
     TALER_ARL_amount_subtract (&amount_minus_fee,
                                &deposit->amount,
                                &issue->fees.deposit);
+  }
+
+  if (GNUNET_OK !=
+      TALER_wallet_purse_deposit_verify (base_url,
+                                         &deposit->purse_pub,
+                                         &deposit->amount,
+                                         &h_denom_pub,
+                                         &deposit->h_age_commitment,
+                                         &deposit->coin_pub,
+                                         &deposit->coin_sig))
+  {
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "purse-deposit"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                &deposit->amount),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    &deposit->coin_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          &deposit->amount);
+    return GNUNET_OK;
   }
 
   TALER_ARL_amount_add (&new_balance,

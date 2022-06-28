@@ -1170,13 +1170,22 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
   struct TALER_CoinSpendSignatureP coin_sig;
   const char *exchange_base_url;
   bool refunded;
+  struct TALER_AgeCommitmentHash phac = { 0 };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("purse_pub",
                                  &purse_pub),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                   &coin_sig),
+      NULL),
     GNUNET_JSON_spec_string ("exchange_base_url",
                              &exchange_base_url),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                   &phac),
+      NULL),
     GNUNET_JSON_spec_bool ("refunded",
                            &refunded),
     GNUNET_JSON_spec_end ()
@@ -1195,6 +1204,8 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
         exchange_base_url,
         &purse_pub,
         amount,
+        &pc->dk->h_key,
+        &phac,
         pc->coin_pub,
         &coin_sig))
   {
@@ -1560,12 +1571,18 @@ TALER_EXCHANGE_check_purse_coin_conflict_ (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const char *exchange_url,
   const json_t *proof,
+  struct TALER_DenominationHashP *h_denom_pub,
+  struct TALER_AgeCommitmentHash *phac,
   struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
   const char *partner_url = NULL;
   struct TALER_Amount amount;
   struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                 h_denom_pub),
+    GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
+                                 phac),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  coin_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -1594,6 +1611,8 @@ TALER_EXCHANGE_check_purse_coin_conflict_ (
         partner_url,
         purse_pub,
         &amount,
+        h_denom_pub,
+        phac,
         coin_pub,
         coin_sig))
   {

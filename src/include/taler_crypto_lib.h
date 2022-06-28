@@ -2887,6 +2887,8 @@ TALER_wallet_purse_status_verify (
  * @param exchange_base_url URL of the exchange hosting the purse
  * @param purse_pub purse’s public key
  * @param amount amount of the coin's value to transfer to the purse
+ * @param h_denom_pub hash of the coin's denomination
+ * @param h_age_commitment hash of the coin's age commitment
  * @param coin_priv key identifying the coin to be deposited
  * @param[out] coin_sig resulting signature
  */
@@ -2895,6 +2897,8 @@ TALER_wallet_purse_deposit_sign (
   const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -2905,6 +2909,8 @@ TALER_wallet_purse_deposit_sign (
  * @param exchange_base_url URL of the exchange hosting the purse
  * @param purse_pub purse’s public key
  * @param amount amount of the coin's value to transfer to the purse
+ * @param h_denom_pub hash of the coin's denomination
+ * @param h_age_commitment hash of the coin's age commitment
  * @param coin_pub key identifying the coin that is being deposited
  * @param[out] coin_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
@@ -2914,6 +2920,8 @@ TALER_wallet_purse_deposit_verify (
   const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 

@@ -898,9 +898,16 @@ struct TALER_PurseDepositPS
    */
   struct TALER_AmountNBO coin_amount;
 
-  // FIXME-CG: also sign over age commitment hash AND
-  // denomination hash, needed for proper known-coin
-  // conflict proofs!
+  /**
+   * Hash over the denomination public key used to sign the coin.
+   */
+  struct TALER_DenominationHashP h_denom_pub GNUNET_PACKED;
+
+  /**
+   * Hash over the age commitment that went into the coin. Maybe all zero, if
+   * age commitment isn't applicable to the denomination.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
 
   /**
    * Purse to deposit funds into.
@@ -911,7 +918,7 @@ struct TALER_PurseDepositPS
    * Hash of the base URL of the exchange hosting the
    * @e purse_pub.
    */
-  struct GNUNET_HashCode h_exchange_base_url;
+  struct GNUNET_HashCode h_exchange_base_url GNUNET_PACKED;
 };
 
 
@@ -920,6 +927,8 @@ TALER_wallet_purse_deposit_sign (
   const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -927,6 +936,8 @@ TALER_wallet_purse_deposit_sign (
     .purpose.size = htonl (sizeof (pm)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_DEPOSIT),
     .purse_pub = *purse_pub,
+    .h_denom_pub = *h_denom_pub,
+    .h_age_commitment = *h_age_commitment
   };
 
   GNUNET_CRYPTO_hash (exchange_base_url,
@@ -945,6 +956,8 @@ TALER_wallet_purse_deposit_verify (
   const char *exchange_base_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_Amount *amount,
+  const struct TALER_DenominationHashP *h_denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -952,6 +965,8 @@ TALER_wallet_purse_deposit_verify (
     .purpose.size = htonl (sizeof (pm)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_DEPOSIT),
     .purse_pub = *purse_pub,
+    .h_denom_pub = *h_denom_pub,
+    .h_age_commitment = *h_age_commitment
   };
 
   GNUNET_CRYPTO_hash (exchange_base_url,

@@ -75,6 +75,8 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
  * @param purse_pub the public key of the purse
  * @param exchange_url base URL of our exchange
  * @param proof the proof to check
+ * @param[out] h_denom_pub hash of the coin's denomination
+ * @param[out] phac age commitment hash of the coin
  * @param[out] coin_pub set to the conflicting coin
  * @param[out] coin_sig set to the conflicting signature
  * @return #GNUNET_OK if the @a proof is OK for @a purse_pub and showing that @a coin_pub was spent using @a coin_sig.
@@ -84,6 +86,8 @@ TALER_EXCHANGE_check_purse_coin_conflict_ (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const char *exchange_url,
   const json_t *proof,
+  struct TALER_DenominationHashP *h_denom_pub,
+  struct TALER_AgeCommitmentHash *phac,
   struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_CoinSpendSignatureP *coin_sig);
 

@@ -1275,6 +1275,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denoms.fee_deposit_val"
       ",denoms.fee_deposit_frac"
       ",pd.purse_pub"
+      ",kc.age_commitment_hash"
       ",pd.coin_sig"
       ",pd.purse_deposit_serial_id"
       ",pr.refunded"
@@ -4199,9 +4200,13 @@ prepare_statements (struct PostgresClosure *pg)
       " coin_sig"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
+      ",denom_pub_hash"
+      ",age_commitment_hash"
       ",partner_base_url"
       " FROM purse_deposits"
       " LEFT JOIN partners USING (partner_serial_id)"
+      " JOIN known_coins kc USING (coin_pub)"
+      " JOIN denominations USING (denominations_serial)"
       " WHERE coin_pub=$2"
       "   AND purse_pub=$1;",
       2),
@@ -8571,6 +8576,8 @@ add_coin_purse_deposit (void *cls,
           NULL),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->coin_sig),
+        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                              &deposit->h_age_commitment),
         GNUNET_PQ_result_spec_bool ("refunded",
                                     &deposit->refunded),
         GNUNET_PQ_result_spec_end
@@ -8586,6 +8593,7 @@ add_coin_purse_deposit (void *cls,
         chc->failed = true;
         return;
       }
+      deposit->no_age_commitment = GNUNET_is_zero (&deposit->h_age_commitment);
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
@@ -15623,6 +15631,8 @@ postgres_set_purse_balance (
  * @param purse_pub purse to credit
  * @param coin_pub coin to deposit (debit)
  * @param[out] amount set fraction of the coin's value that was deposited (with fee)
+ * @param[out] h_denom_pub set to hash of denomination of the coin
+ * @param[out] phac set to hash of age restriction on the coin
  * @param[out] coin_sig set to signature affirming the operation
  * @param[out] partner_url set to the URL of the partner exchange, or NULL for ourselves, must be freed by caller
  * @return transaction status code
@@ -15633,6 +15643,8 @@ postgres_get_purse_deposit (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_Amount *amount,
+  struct TALER_DenominationHashP *h_denom_pub,
+  struct TALER_AgeCommitmentHash *phac,
   struct TALER_CoinSpendSignatureP *coin_sig,
   char **partner_url)
 {
@@ -15644,6 +15656,10 @@ postgres_get_purse_deposit (
   };
   bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                          h_denom_pub),
+    GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
+                                          phac),
     GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                           coin_sig),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",

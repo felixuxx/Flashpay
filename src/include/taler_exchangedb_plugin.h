@@ -1687,19 +1687,20 @@ struct TALER_EXCHANGEDB_PurseDepositListEntry
   struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
-   * FIXME-Oec: probably needed here, not yet used
-   * anywhere!
-   *
    * Hash of the age commitment used to sign the coin, if age restriction was
-   * applicable to the denomination.  May be all zeroes if no age restriction
-   * applies.
+   * applicable to the denomination.
    */
-  struct TALER_AgeCommitmentHash h_age_commitment_FIXME;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * Set to true if the coin was refunded.
    */
   bool refunded;
+
+  /**
+   * Set to true if there was no age commitment.
+   */
+  bool no_age_commitment;
 
 };
 
@@ -5349,6 +5350,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param purse_pub purse to credit
    * @param coin_pub coin to deposit (debit)
    * @param[out] amount set fraction of the coin's value that was deposited (with fee)
+   * @param[out] h_denom_pub set to hash of denomination of the coin
+   * @param[out] phac set to hash of age restriction on the coin
    * @param[out] coin_sig set to signature affirming the operation
    * @param[out] partner_url set to the URL of the partner exchange, or NULL for ourselves, must be freed by caller
    * @return transaction status code
@@ -5359,6 +5362,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PurseContractPublicKeyP *purse_pub,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     struct TALER_Amount *amount,
+    struct TALER_DenominationHashP *h_denom_pub,
+    struct TALER_AgeCommitmentHash *phac,
     struct TALER_CoinSpendSignatureP *coin_sig,
     char **partner_url);
 

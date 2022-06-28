@@ -391,6 +391,10 @@ TEH_RESPONSE_compile_transaction_history (
       {
         struct TALER_EXCHANGEDB_PurseDepositListEntry *pd
           = pos->details.purse_deposit;
+        const struct TALER_AgeCommitmentHash *phac = NULL;
+
+        if (! pd->no_age_commitment)
+          phac = &pd->h_age_commitment;
 
         if (0 !=
             json_array_append_new (
@@ -404,6 +408,9 @@ TEH_RESPONSE_compile_transaction_history (
                                          NULL == pd->exchange_base_url
                                          ? TEH_base_url
                                          : pd->exchange_base_url),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                              phac)),
                 GNUNET_JSON_pack_data_auto ("purse_pub",
                                             &pd->purse_pub),
                 GNUNET_JSON_pack_bool ("refunded",

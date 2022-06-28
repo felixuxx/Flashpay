@@ -2414,6 +2414,8 @@ purse_deposit_cb (
         : TALER_ARL_exchange_url,
         &deposit->purse_pub,
         &deposit->amount,
+        &dh,
+        &deposit->h_age_commitment,
         &deposit->coin_pub,
         &deposit->coin_sig))
   {
