@@ -17,7 +17,7 @@
 #
 #
 AC_PREREQ([2.69])
-AC_INIT([taler-exchange], [0.8.5], [taler-bug@gnunet.org])
+AC_INIT([taler-exchange],[0.8.5],[taler-bug@gnunet.org])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
@@ -33,8 +33,6 @@ AM_SILENT_RULES([yes])
 AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_AWK
 AC_PROG_CC
-# FIXME: AC_PROG_CC_C99 is obsolete, remove for autoconf 2.70
-AC_PROG_CC_C99
 AC_PROG_OBJC
 AC_PROG_INSTALL
 AC_PROG_LN_S
