@@ -66,9 +66,14 @@ struct BatchDepositContext
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Salt used by the merchant to compute "h_wire".
+   * Salt used by the merchant to compute @e h_wire.
    */
   struct TALER_WireSaltP wire_salt;
+
+  /**
+   * Hash over the wire details (with @e wire_salt).
+   */
+  struct TALER_MerchantWireHashP h_wire;
 
   /**
    * Hash of the payto URI.
@@ -86,6 +91,11 @@ struct BatchDepositContext
    * deposit operation, possibly NULL!
    */
   json_t *extension_details;
+
+  /**
+   * Hash over @e extension_details.
+   */
+  struct TALER_ExtensionContractHashP h_extensions;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -136,44 +146,63 @@ struct BatchDepositContext
  * @return MHD result code
  */
 static MHD_RESULT
-reply_batch_deposit (
+reply_batch_deposit_success (
   struct MHD_Connection *connection,
   const struct BatchDepositContext *bdc)
 {
-  struct TALER_ExchangePublicKeyP pub;
-  struct TALER_ExchangeSignatureP sig;
-  enum TALER_ErrorCode ec;
+  json_t *arr;
 
-#if FIXME
-  if (TALER_EC_NONE !=
-      (ec = TALER_exchange_online_deposit_confirmation_sign (
-         &TEH_keys_exchange_sign_,
-         h_contract_terms,
-         h_wire,
-         h_extensions,
-         exchange_timestamp,
-         wire_deadline,
-         refund_deadline,
-         amount_without_fee,
-         coin_pub,
-         merchant,
-         &pub,
-         &sig)))
+  arr = json_array ();
+  GNUNET_assert (NULL != arr);
+  for (unsigned int i = 0; i<bdc->num_coins; i++)
   {
-    return TALER_MHD_reply_with_ec (connection,
-                                    ec,
-                                    NULL);
+    const struct TALER_EXCHANGEDB_Deposit *deposit = &bdc->deposits[i];
+    struct TALER_ExchangePublicKeyP pub;
+    struct TALER_ExchangeSignatureP sig;
+    enum TALER_ErrorCode ec;
+    struct TALER_Amount amount_without_fee;
+
+    GNUNET_assert (0 <=
+                   TALER_amount_subtract (&amount_without_fee,
+                                          &deposit->amount_with_fee,
+                                          &deposit->deposit_fee));
+    if (TALER_EC_NONE !=
+        (ec = TALER_exchange_online_deposit_confirmation_sign (
+           &TEH_keys_exchange_sign_,
+           &bdc->h_contract_terms,
+           &bdc->h_wire,
+           &bdc->h_extensions,
+           bdc->exchange_timestamp,
+           bdc->wire_deadline,
+           bdc->refund_deadline,
+           &amount_without_fee,
+           &deposit->coin.coin_pub,
+           &bdc->merchant_pub,
+           &pub,
+           &sig)))
+    {
+      return TALER_MHD_reply_with_ec (connection,
+                                      ec,
+                                      NULL);
+    }
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (arr,
+                             GNUNET_JSON_PACK (
+                               GNUNET_JSON_pack_data_auto (
+                                 "exchange_sig",
+                                 &sig),
+                               GNUNET_JSON_pack_data_auto (
+                                 "exchange_pub",
+                                 &pub))));
   }
-#endif
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_timestamp ("exchange_timestamp",
-                                exchange_timestamp),
-    GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                &sig),
-    GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                &pub));
+                                bdc->exchange_timestamp),
+    GNUNET_JSON_pack_array_steal ("confirmations",
+                                  arr));
 }
 
 
@@ -202,17 +231,18 @@ batch_deposit_transaction (void *cls,
 
   for (unsigned int i = 0; i<dc->num_coins; i++)
   {
+    const struct TALER_EXCHANGEDB_Deposit *deposit = &dc->deposits[i];
     uint64_t known_coin_id;
 
-    qs = TEH_make_coin_known (&dc->deposit->coin,
+    qs = TEH_make_coin_known (&deposit->coin,
                               connection,
-                              &dc->known_coin_id,
+                              &known_coin_id,
                               mhd_ret);
     if (qs < 0)
       return qs;
     qs = TEH_plugin->do_deposit (TEH_plugin->cls,
-                                 dc->deposit,
-                                 dc->known_coin_id,
+                                 deposit,
+                                 known_coin_id,
                                  &dc->h_payto,
                                  false, /* FIXME-OEC: extension blocked */
                                  &dc->exchange_timestamp,
@@ -236,8 +266,8 @@ batch_deposit_transaction (void *cls,
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
             TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
-            &dc->deposit->coin.denom_pub_hash,
-            &dc->deposit->coin.coin_pub);
+            &deposit->coin.denom_pub_hash,
+            &deposit->coin.coin_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (! balance_ok)
@@ -246,8 +276,8 @@ batch_deposit_transaction (void *cls,
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
             TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
-            &dc->deposit->coin.denom_pub_hash,
-            &dc->deposit->coin.coin_pub);
+            &deposit->coin.denom_pub_hash,
+            &deposit->coin.coin_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -263,7 +293,7 @@ batch_deposit_transaction (void *cls,
  *
  * @param connection connection we are handling
  * @param jcoin coin data to parse
- * @param ctx overall context information to use
+ * @param dc overall batch deposit context information to use
  * @param[out] deposit where to store the result
  * @return #GNUNET_OK on success, #GNUNET_NO if an error was returned,
  *         #GNUNET_SYSERR on failure and no error could be returned
@@ -271,31 +301,31 @@ batch_deposit_transaction (void *cls,
 static enum GNUNET_GenericReturnValue
 parse_coin (struct MHD_Connection *connection,
             json_t *jcoin,
-            const struct BatchDepositContext *ctx,
+            const struct BatchDepositContext *dc,
             struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("contribution",
                             TEH_currency,
-                            &deposit.amount_with_fee),
+                            &deposit->amount_with_fee),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
-                                 &deposit.coin.denom_pub_hash),
+                                 &deposit->coin.denom_pub_hash),
     TALER_JSON_spec_denom_sig ("ub_sig",
-                               &deposit.coin.denom_sig),
+                               &deposit->coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                 &deposit.coin_pub),
+                                 &deposit->coin.coin_pub),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
-                                   &deposit.coin.h_age_commitment),
-      &deposit.coin.no_age_commitment),
+                                   &deposit->coin.h_age_commitment),
+      &deposit->coin.no_age_commitment),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                 &deposit.csig),
+                                 &deposit->csig),
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_GenericReturnValue res;
 
   res = TALER_MHD_parse_json_data (connection,
-                                   root,
+                                   jcoin,
                                    spec);
   if (GNUNET_SYSERR == res)
   {
@@ -313,7 +343,7 @@ parse_coin (struct MHD_Connection *connection,
     struct TEH_DenominationKey *dk;
     MHD_RESULT mret;
 
-    dk = TEH_keys_denomination_by_hash (&deposit.coin.denom_pub_hash,
+    dk = TEH_keys_denomination_by_hash (&deposit->coin.denom_pub_hash,
                                         connection,
                                         &mret);
     if (NULL == dk)
@@ -322,7 +352,7 @@ parse_coin (struct MHD_Connection *connection,
       return mret;
     }
     if (0 > TALER_amount_cmp (&dk->meta.value,
-                              &deposit.amount_with_fee))
+                              &deposit->amount_with_fee))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
@@ -337,7 +367,7 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        &deposit.coin.denom_pub_hash,
+        &deposit->coin.denom_pub_hash,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "DEPOSIT");
     }
@@ -347,7 +377,7 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        &deposit.coin.denom_pub_hash,
+        &deposit->coin.denom_pub_hash,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "DEPOSIT");
     }
@@ -357,11 +387,11 @@ parse_coin (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        &deposit.coin.denom_pub_hash,
+        &deposit->coin.denom_pub_hash,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
         "DEPOSIT");
     }
-    if (dk->denom_pub.cipher != deposit.coin.denom_sig.cipher)
+    if (dk->denom_pub.cipher != deposit->coin.denom_sig.cipher)
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
@@ -371,7 +401,7 @@ parse_coin (struct MHD_Connection *connection,
                                          NULL);
     }
 
-    deposit.deposit_fee = dk->meta.fees.deposit;
+    deposit->deposit_fee = dk->meta.fees.deposit;
     /* check coin signature */
     switch (dk->denom_pub.cipher)
     {
@@ -385,7 +415,7 @@ parse_coin (struct MHD_Connection *connection,
       break;
     }
     if (GNUNET_YES !=
-        TALER_test_coin_valid (&deposit.coin,
+        TALER_test_coin_valid (&deposit->coin,
                                &dk->denom_pub))
     {
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
@@ -396,8 +426,8 @@ parse_coin (struct MHD_Connection *connection,
                                          NULL);
     }
   }
-  if (0 < TALER_amount_cmp (&deposit.deposit_fee,
-                            &deposit.amount_with_fee))
+  if (0 < TALER_amount_cmp (&deposit->deposit_fee,
+                            &deposit->amount_with_fee))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
@@ -409,18 +439,18 @@ parse_coin (struct MHD_Connection *connection,
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_wallet_deposit_verify (&deposit.amount_with_fee,
-                                   &deposit.deposit_fee,
-                                   &h_wire,
-                                   &deposit.h_contract_terms,
-                                   &deposit.coin.h_age_commitment,
-                                   NULL /* h_extensions! */,
-                                   &deposit.coin.denom_pub_hash,
-                                   deposit.timestamp,
-                                   &deposit.merchant_pub,
-                                   deposit.refund_deadline,
-                                   &deposit.coin.coin_pub,
-                                   &deposit.csig))
+      TALER_wallet_deposit_verify (&deposit->amount_with_fee,
+                                   &deposit->deposit_fee,
+                                   &dc->h_wire,
+                                   &dc->h_contract_terms,
+                                   &deposit->coin.h_age_commitment,
+                                   &dc->h_extensions,
+                                   &deposit->coin.denom_pub_hash,
+                                   dc->timestamp,
+                                   &dc->merchant_pub,
+                                   dc->refund_deadline,
+                                   &deposit->coin.coin_pub,
+                                   &deposit->csig))
   {
     TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
     GNUNET_JSON_parse_free (spec);
@@ -429,9 +459,18 @@ parse_coin (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
                                        NULL);
   }
-
-  // FIXME: duplicate batch-global values into
-  // per-deposit data structure!
+  deposit->merchant_pub = dc->merchant_pub;
+  deposit->h_contract_terms = dc->h_contract_terms;
+  deposit->wire_salt = dc->wire_salt;
+  deposit->receiver_wire_account = (char *) dc->payto_uri;
+  /* FIXME-OEC: should NOT insert the extension details N times,
+     but rather insert them ONCE and then per-coin only use
+     the resulting extension UUID/serial; so the data structure
+     here should be changed once we look at extensions in earnest.  */
+  deposit->extension_details = dc->extension_details;
+  deposit->timestamp = dc->timestamp;
+  deposit->refund_deadline = dc->refund_deadline;
+  deposit->wire_deadline = dc->wire_deadline;
   return GNUNET_OK;
 }
 
@@ -454,6 +493,8 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                                  &dc.h_contract_terms),
     GNUNET_JSON_spec_json ("coins",
                            &coins),
+    GNUNET_JSON_spec_json ("extension_details",
+                           &dc.extension_details),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &dc.timestamp),
     GNUNET_JSON_spec_mark_optional (
@@ -465,7 +506,6 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
     GNUNET_JSON_spec_end ()
   };
 
-  struct TALER_MerchantWireHashP h_wire;
   enum GNUNET_GenericReturnValue res;
 
   res = TALER_MHD_parse_json_data (connection,
@@ -501,9 +541,9 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
       return ret;
     }
   }
-  if (GNUNET_TIME_timestamp_cmp (deposit.refund_deadline,
+  if (GNUNET_TIME_timestamp_cmp (dc.refund_deadline,
                                  >,
-                                 deposit.wire_deadline))
+                                 dc.wire_deadline))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
@@ -512,7 +552,7 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                        NULL);
   }
-  if (GNUNET_TIME_absolute_is_never (deposit.wire_deadline.abs_time))
+  if (GNUNET_TIME_absolute_is_never (dc.wire_deadline.abs_time))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
@@ -524,12 +564,17 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
   TALER_payto_hash (dc.payto_uri,
                     &dc.h_payto);
   TALER_merchant_wire_signature_hash (dc.payto_uri,
-                                      &deposit.wire_salt,
-                                      &h_wire);
+                                      &dc.wire_salt,
+                                      &dc.h_wire);
+  /* FIXME-OEC: hash actual extension JSON object here */
+  memset (&dc.h_extensions,
+          0,
+          sizeof (dc.h_extensions));
   dc.num_coins = json_array_size (coins);
   if (0 == dc.num_coins)
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
@@ -538,13 +583,14 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
   if (TALER_MAX_FRESH_COINS < dc.num_coins)
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "coins");
   }
-  dc->deposits = GNUNET_new_array (dc.num_coins,
-                                   struct TALER_EXCHANGEDB_Deposit *);
+  dc.deposits = GNUNET_new_array (dc.num_coins,
+                                  struct TALER_EXCHANGEDB_Deposit);
   for (unsigned int i = 0; i<dc.num_coins; i++)
   {
     if (GNUNET_OK !=
@@ -552,11 +598,12 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                            json_array_get (coins,
                                            i),
                            &dc,
-                           &dc->deposits[i])))
+                           &dc.deposits[i])))
     {
       for (unsigned int j = 0; j<i; j++)
-        TALER_denom_sig_free (&dc.deposits[j].denom_sig);
+        TALER_denom_sig_free (&dc.deposits[j].coin.denom_sig);
       GNUNET_free (dc.deposits);
+      GNUNET_JSON_parse_free (spec);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
   }
@@ -566,6 +613,7 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
       TEH_plugin->preflight (TEH_plugin->cls))
   {
     GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_START_FAILED,
@@ -586,8 +634,9 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
     {
       GNUNET_JSON_parse_free (spec);
       for (unsigned int j = 0; j<dc.num_coins; j++)
-        TALER_denom_sig_free (&dc.deposits[i].denom_sig);
+        TALER_denom_sig_free (&dc.deposits[j].coin.denom_sig);
       GNUNET_free (dc.deposits);
+      GNUNET_JSON_parse_free (spec);
       return mhd_ret;
     }
   }
@@ -599,7 +648,7 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
     res = reply_batch_deposit_success (connection,
                                        &dc);
     for (unsigned int j = 0; j<dc.num_coins; j++)
-      TALER_denom_sig_free (&dc.deposits[i].denom_sig);
+      TALER_denom_sig_free (&dc.deposits[j].coin.denom_sig);
     GNUNET_free (dc.deposits);
     GNUNET_JSON_parse_free (spec);
     return res;
