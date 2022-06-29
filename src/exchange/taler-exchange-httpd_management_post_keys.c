@@ -85,6 +85,11 @@ struct AddKeysContext
   struct SigningSig *s_sigs;
 
   /**
+   * Our key state.
+   */
+  struct TEH_KeyStateHandle *ksh;
+
+  /**
    * Length of the d_sigs array.
    */
   unsigned int nd_sigs;
@@ -150,7 +155,8 @@ add_keys (void *cls,
     {
       enum GNUNET_GenericReturnValue rv;
 
-      rv = TEH_keys_load_fees (&d->h_denom_pub,
+      rv = TEH_keys_load_fees (akc->ksh,
+                               &d->h_denom_pub,
                                &denom_pub,
                                &meta);
       switch (rv)
@@ -370,6 +376,18 @@ TEH_handler_management_post_keys (
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/keys\n");
+  akc.ksh = TEH_keys_get_state2 (true); /* may start its own transaction, thus
+                                     must be done here, before we run ours! */
+  if (NULL == akc.ksh)
+  {
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+      "no key state (not even for management)");
+  }
   akc.nd_sigs = json_array_size (denom_sigs);
   akc.d_sigs = GNUNET_new_array (akc.nd_sigs,
                                  struct DenomSig);

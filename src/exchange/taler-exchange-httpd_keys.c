@@ -2604,16 +2604,8 @@ TEH_keys_update_states ()
 }
 
 
-/**
- * Obtain the key state. Should ONLY be used
- * directly if @a management_only is true. Otherwise use #TEH_keys_get_state().
- *
- * @param management_only if we should NOT run 'finish_keys_response()'
- *                  because we only need the state for the /management/keys API
- * @return NULL on error
- */
-static struct TEH_KeyStateHandle *
-get_key_state (bool management_only)
+struct TEH_KeyStateHandle *
+TEH_keys_get_state2 (bool management_only)
 {
   struct TEH_KeyStateHandle *old_ksh;
   struct TEH_KeyStateHandle *ksh;
@@ -2653,7 +2645,7 @@ TEH_keys_get_state (void)
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = get_key_state (false);
+  ksh = TEH_keys_get_state2 (false);
   if (NULL == ksh)
     return NULL;
   if (ksh->management_only)
@@ -3247,20 +3239,13 @@ load_extension_data (const char *section_name,
 
 
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct TALER_DenominationHashP *h_denom_pub,
+TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
+                    const struct TALER_DenominationHashP *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
-  struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
   enum GNUNET_GenericReturnValue ok;
-
-  ksh = get_key_state (true);
-  if (NULL == ksh)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
 
   hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                           &h_denom_pub->hash);
@@ -3304,7 +3289,7 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct HelperSignkey *hsk;
   struct GNUNET_PeerIdentity pid;
 
-  ksh = get_key_state (true);
+  ksh = TEH_keys_get_state2 (true);
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -3474,7 +3459,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
   json_t *reply;
 
   (void) rh;
-  ksh = get_key_state (true);
+  ksh = TEH_keys_get_state2 (true);
   if (NULL == ksh)
   {
     return TALER_MHD_reply_with_error (connection,

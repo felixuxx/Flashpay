@@ -175,6 +175,18 @@ TEH_keys_get_state (void);
 
 
 /**
+ * Obtain the key state. Should ONLY be used
+ * directly if @a management_only is true. Otherwise use #TEH_keys_get_state().
+ *
+ * @param management_only if we should NOT run finish_keys_response()
+ *                  because we only need the state for the /management/keys API
+ * @return NULL on error
+ */
+struct TEH_KeyStateHandle *
+TEH_keys_get_state2 (bool management_only);
+
+
+/**
  * Something changed in the database. Rebuild all key states.  This function
  * should be called if the exchange learns about a new signature from an
  * auditor or our master key.
@@ -485,6 +497,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
  * Load fees and expiration times (!) for the denomination type configured for
  * the denomination matching @a h_denom_pub.
  *
+ * @param ksh key state to load fees from
  * @param h_denom_pub hash of the denomination public key
  *        to use to derive the section name of the configuration to use
  * @param[out] denom_pub set to the denomination public key (to be freed by caller!)
@@ -494,7 +507,8 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
  *         #GNUNET_SYSERR on hard errors
  */
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct TALER_DenominationHashP *h_denom_pub,
+TEH_keys_load_fees (struct TEH_KeyStateHandle *ksh,
+                    const struct TALER_DenominationHashP *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
