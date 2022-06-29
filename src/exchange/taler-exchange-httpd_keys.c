@@ -2155,7 +2155,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                         dk->meta.expire_deposit),
             GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
                                         dk->meta.expire_legal),
-            GNUNET_JSON_pack_uint32 ("age_mask",
+            GNUNET_JSON_pack_uint64 ("age_mask",
                                      dk->meta.age_mask.bits),
             TALER_JSON_pack_denom_pub ("denom_pub",
                                        &dk->denom_pub),
