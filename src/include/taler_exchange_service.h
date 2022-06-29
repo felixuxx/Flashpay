@@ -821,35 +821,101 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
 
 
 /**
- * Sign a deposit permission.  Function for wallets.
- *
- * @param amount the amount to be deposited
- * @param deposit_fee the deposit fee we expect to pay
- * @param h_wire hash of the merchant’s account details
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param h_extensions hash over the extensions
- * @param h_denom_pub hash of the coin denomination's public key
- * @param coin_priv coin’s private key
- * @param age_commitment age commitment that went into the making of the coin, might be NULL
- * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
+ * Information needed for a coin to be deposited.
  */
-void
-TALER_EXCHANGE_deposit_permission_sign (
-  const struct TALER_Amount *amount,
-  const struct TALER_Amount *deposit_fee,
-  const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_ExtensionContractHashP *h_extensions,
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-  const struct TALER_AgeCommitment *age_commitment,
-  struct GNUNET_TIME_Timestamp wallet_timestamp,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Timestamp refund_deadline,
-  struct TALER_CoinSpendSignatureP *coin_sig);
+struct TALER_EXCHANGE_CoinDepositDetail
+{
+
+  /**
+   * The amount to be deposited.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Hash over the age commitment of the coin.
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
+   * The coin’s public key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * The signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made
+   * by the customer with the coin’s private key.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
+   * Exchange’s unblinded signature of the coin.
+   */
+  struct TALER_DenominationSignature denom_sig;
+
+  /**
+   * Hash of the public key of the coin.
+   */
+  struct TALER_DenominationHashP h_denom_pub;
+};
+
+
+/**
+ * Meta information about the contract relevant for a coin's deposit
+ * operation.
+ */
+struct TALER_EXCHANGE_DepositContractDetail
+{
+
+  /**
+   * Execution date, until which the merchant would like the exchange to
+   * settle the balance (advisory, the exchange cannot be forced to settle in
+   * the past or upon very short notice, but of course a well-behaved exchange
+   * will limit aggregation based on the advice received).
+   */
+  struct GNUNET_TIME_Timestamp wire_deadline;
+
+  /**
+   * The merchant’s account details, in the payto://-format supported by the
+   * exchange.
+   */
+  const char *merchant_payto_uri;
+
+  /**
+   * Salt used to hash the @e merchant_payto_uri.
+   */
+  struct TALER_WireSaltP wire_salt;
+
+  /**
+   * Hash of the contact of the merchant with the customer (further details
+   * are never disclosed to the exchange)
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Extension-specific details about the deposit relevant to the exchange.
+   */
+  const json_t *extension_details;
+
+  /**
+   * Timestamp when the contract was finalized, must match approximately the
+   * current time of the exchange.
+   */
+  struct GNUNET_TIME_Timestamp timestamp;
+
+  /**
+   * The public key of the merchant (used to identify the merchant for refund
+   * requests).
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Date until which the merchant can issue a refund to the customer via the
+   * exchange (can be zero if refunds are not allowed); must not be after the
+   * @e wire_deadline.
+   */
+  struct GNUNET_TIME_Timestamp refund_deadline;
+
+};
 
 
 /**
@@ -936,27 +1002,15 @@ typedef void
  * the exchange's reply is not well-formed, we return an HTTP status code
  * of zero to @a cb.
  *
- * We also verify that the @a coin_sig is valid for this deposit
- * request, and that the @a ub_sig is a valid signature for @a
+ * We also verify that the @a cdd.coin_sig is valid for this deposit
+ * request, and that the @a cdd.ub_sig is a valid signature for @a
  * coin_pub.  Also, the @a exchange must be ready to operate (i.e.  have
  * finished processing the /keys reply).  If either check fails, we do
  * NOT initiate the transaction with the exchange and instead return NULL.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param amount the amount to be deposited
- * @param wire_deadline execution date, until which the merchant would like the exchange to settle the balance (advisory, the exchange cannot be
- *        forced to settle in the past or upon very short notice, but of course a well-behaved exchange will limit aggregation based on the advice received)
- * @param merchant_payto_uri the merchant’s account details, in the payto://-format supported by the exchange
- * @param wire_salt salt used to hash the @a merchant_payto_uri
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param extension_details extension-specific details about the deposit relevant to the exchange
- * @param coin_pub coin’s public key
- * @param denom_pub denomination key with which the coin is signed
- * @param denom_sig exchange’s unblinded signature of the coin
- * @param timestamp timestamp when the contract was finalized, must match approximately the current time of the exchange
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
+ * @param dcd details about the contract the deposit is for
+ * @param cdd details about the coin to be deposited
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
  * @param[out] ec if NULL is returned, set to the error code explaining why the operation failed
@@ -966,20 +1020,8 @@ typedef void
 struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Timestamp wire_deadline,
-  const char *merchant_payto_uri,
-  const struct TALER_WireSaltP *wire_salt,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const json_t *extension_details,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_DenominationSignature *denom_sig,
-  const struct TALER_DenominationPublicKey *denom_pub,
-  struct GNUNET_TIME_Timestamp timestamp,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_EXCHANGE_DepositContractDetail *dcd,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
   TALER_EXCHANGE_DepositResultCallback cb,
   void *cb_cls,
   enum TALER_ErrorCode *ec);

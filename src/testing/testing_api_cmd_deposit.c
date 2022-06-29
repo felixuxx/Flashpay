@@ -454,24 +454,33 @@ deposit_run (void *cls,
                                &coin_sig);
   }
   GNUNET_assert (NULL == ds->dh);
-  ds->dh = TALER_EXCHANGE_deposit (is->exchange,
-                                   &ds->amount,
-                                   ds->wire_deadline,
-                                   payto_uri,
-                                   &wire_salt,
-                                   &h_contract_terms,
-                                   &h_age_commitment,
-                                   NULL, /* FIXME: add hash of extensions */
-                                   &coin_pub,
-                                   denom_pub_sig,
-                                   &denom_pub->key,
-                                   ds->wallet_timestamp,
-                                   &merchant_pub,
-                                   ds->refund_deadline,
-                                   &coin_sig,
-                                   &deposit_cb,
-                                   ds,
-                                   &ec);
+  {
+    struct TALER_EXCHANGE_CoinDepositDetail cdd = {
+      .amount = ds->amount,
+      .h_age_commitment = h_age_commitment,
+      .coin_pub = coin_pub,
+      .coin_sig = coin_sig,
+      .denom_sig = *denom_pub_sig,
+      .h_denom_pub = denom_pub->h_key
+    };
+    struct TALER_EXCHANGE_DepositContractDetail dcd = {
+      .wire_deadline = ds->wire_deadline,
+      .merchant_payto_uri = payto_uri,
+      .wire_salt = wire_salt,
+      .h_contract_terms = h_contract_terms,
+      .extension_details = NULL /* FIXME-OEC */,
+      .timestamp = ds->wallet_timestamp,
+      .merchant_pub = merchant_pub,
+      .refund_deadline = ds->refund_deadline
+    };
+
+    ds->dh = TALER_EXCHANGE_deposit (is->exchange,
+                                     &dcd,
+                                     &cdd,
+                                     &deposit_cb,
+                                     ds,
+                                     &ec);
+  }
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

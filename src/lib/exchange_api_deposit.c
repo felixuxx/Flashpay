@@ -82,63 +82,30 @@ struct TALER_EXCHANGE_DepositHandle
   void *cb_cls;
 
   /**
-   * Hash over the contract for which this deposit is made.
+   * Details about the contract.
    */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
+  struct TALER_EXCHANGE_DepositContractDetail dcd;
 
   /**
-   * Hash over the wiring information of the merchant.
+   * Details about the coin.
    */
-  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
+  struct TALER_EXCHANGE_CoinDepositDetail cdd;
 
   /**
-   * Hash over the extension options of the deposit, 0 if there
-   * were not extension options.
+   * Hash of the merchant's wire details.
    */
-  struct TALER_ExtensionContractHashP h_extensions GNUNET_PACKED;
+  struct TALER_MerchantWireHashP h_wire;
+
+  /**
+   * Hash over the extensions, or all zero.
+   */
+  struct TALER_ExtensionContractHashP h_extensions;
 
   /**
    * Time when this confirmation was generated / when the exchange received
    * the deposit request.
    */
   struct GNUNET_TIME_Timestamp exchange_timestamp;
-
-  /**
-   * By when does the exchange expect to pay the merchant
-   * (as per the merchant's request).
-   */
-  struct GNUNET_TIME_Timestamp wire_deadline;
-
-  /**
-   * How much time does the @e merchant have to issue a refund
-   * request?  Zero if refunds are not allowed.  After this time, the
-   * coin cannot be refunded.  Note that the wire transfer will not be
-   * performed by the exchange until the refund deadline.  This value
-   * is taken from the original deposit request.
-   */
-  struct GNUNET_TIME_Timestamp refund_deadline;
-
-  /**
-   * Amount to be deposited, excluding fee.  Calculated from the
-   * amount with fee and the fee from the deposit request.
-   */
-  struct TALER_Amount amount_without_fee;
-
-  /**
-   * The public key of the coin that was deposited.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * Our signature for the deposit operation.
-   */
-  struct TALER_CoinSpendSignatureP coin_sig;
-
-  /**
-   * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction or to inquire about the wire transfer identifier.
-   */
-  struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
    * Exchange signature, set for #auditor_cb.
@@ -149,17 +116,6 @@ struct TALER_EXCHANGE_DepositHandle
    * Exchange signing public key, set for #auditor_cb.
    */
   struct TALER_ExchangePublicKeyP exchange_pub;
-
-  /**
-   * Value of the /deposit transaction, including fee.
-   */
-  struct TALER_Amount amount_with_fee;
-
-  /**
-   * @brief Public information about the coin's denomination key.
-   * Note that the "key" field itself has been zero'ed out.
-   */
-  struct TALER_EXCHANGE_DenomPublicKey dki;
 
   /**
    * Chance that we will inform the auditor about the deposit
@@ -188,9 +144,12 @@ auditor_cb (void *cls,
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
+  struct TALER_Amount amount_without_fee;
+  const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
-  if (0 != GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
-                                     dh->auditor_chance))
+  if (0 !=
+      GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                dh->auditor_chance))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Not providing deposit confirmation to auditor\n");
@@ -200,6 +159,9 @@ auditor_cb (void *cls,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+  dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                     &dh->cdd.h_denom_pub);
+  GNUNET_assert (NULL != dki);
   spk = TALER_EXCHANGE_get_signing_key_info (key_state,
                                              &dh->exchange_pub);
   if (NULL == spk)
@@ -207,18 +169,22 @@ auditor_cb (void *cls,
     GNUNET_break_op (0);
     return NULL;
   }
+  GNUNET_assert (0 <=
+                 TALER_amount_subtract (&amount_without_fee,
+                                        &dh->cdd.amount,
+                                        &dki->fees.deposit));
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
   aie->dch = TALER_AUDITOR_deposit_confirmation (
     ah,
     &dh->h_wire,
     &dh->h_extensions,
-    &dh->h_contract_terms,
+    &dh->dcd.h_contract_terms,
     dh->exchange_timestamp,
-    dh->wire_deadline,
-    dh->refund_deadline,
-    &dh->amount_without_fee,
-    &dh->coin_pub,
-    &dh->merchant_pub,
+    dh->dcd.wire_deadline,
+    dh->dcd.refund_deadline,
+    &amount_without_fee,
+    &dh->cdd.coin_pub,
+    &dh->dcd.merchant_pub,
     &dh->exchange_pub,
     &dh->exchange_sig,
     &key_state->master_pub,
@@ -276,6 +242,8 @@ handle_deposit_finished (void *cls,
                                     &dh->exchange_timestamp),
         GNUNET_JSON_spec_end ()
       };
+      struct TALER_Amount amount_without_fee;
+      const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -288,6 +256,9 @@ handle_deposit_finished (void *cls,
         break;
       }
       key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+      dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                         &dh->cdd.h_denom_pub);
+      GNUNET_assert (NULL != dki);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
                                            &dh->exchange_pub))
@@ -297,18 +268,22 @@ handle_deposit_finished (void *cls,
         dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
         break;
       }
+      GNUNET_assert (0 <=
+                     TALER_amount_subtract (&amount_without_fee,
+                                            &dh->cdd.amount,
+                                            &dki->fees.deposit));
 
       if (GNUNET_OK !=
           TALER_exchange_online_deposit_confirmation_verify (
-            &dh->h_contract_terms,
+            &dh->dcd.h_contract_terms,
             &dh->h_wire,
             &dh->h_extensions,
             dh->exchange_timestamp,
-            dh->wire_deadline,
-            dh->refund_deadline,
-            &dh->amount_without_fee,
-            &dh->coin_pub,
-            &dh->merchant_pub,
+            dh->dcd.wire_deadline,
+            dh->dcd.refund_deadline,
+            &amount_without_fee,
+            &dh->cdd.coin_pub,
+            &dh->dcd.merchant_pub,
             &dh->exchange_pub,
             &dh->exchange_sig))
       {
@@ -346,21 +321,30 @@ handle_deposit_finished (void *cls,
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_check_coin_conflict_ (
-          keys,
-          j,
-          &dh->dki,
-          &dh->coin_pub,
-          &dh->coin_sig,
-          &dh->amount_with_fee))
     {
-      GNUNET_break_op (0);
-      dr.hr.http_status = 0;
-      dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      break;
+      const struct TALER_EXCHANGE_Keys *key_state;
+      const struct TALER_EXCHANGE_DenomPublicKey *dki;
+
+      key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+      dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                         &dh->cdd.h_denom_pub);
+      GNUNET_assert (NULL != dki);
+      dr.hr.ec = TALER_JSON_get_error_code (j);
+      dr.hr.hint = TALER_JSON_get_error_hint (j);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_conflict_ (
+            keys,
+            j,
+            dki,
+            &dh->cdd.coin_pub,
+            &dh->cdd.coin_sig,
+            &dh->cdd.amount))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
     }
     break;
   case MHD_HTTP_GONE:
@@ -397,56 +381,38 @@ handle_deposit_finished (void *cls,
 /**
  * Verify signature information about the deposit.
  *
- * @param dki public key information
- * @param amount the amount to be deposited
- * @param h_wire hash of the merchant’s account details
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param ech hash over contract extensions
- * @param coin_pub coin’s public key
- * @param h_age_commitment coin’s hash of age commitment, might be NULL
- * @param denom_sig exchange’s unblinded signature of the coin
- * @param denom_pub denomination key with which the coin is signed
- * @param denom_pub_hash hash of @a denom_pub
- * @param timestamp timestamp when the deposit was finalized
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed)
- * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
+ * @param dcd contract details
+ * @param ech hashed contract (passed to avoid recomputation)
+ * @param h_wire hashed wire details (passed to avoid recomputation)
+ * @param cdd coin-specific details
+ * @param dki denomination of the coin
  * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
  */
 static enum GNUNET_GenericReturnValue
-verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
-                   const struct TALER_Amount *amount,
-                   const struct TALER_MerchantWireHashP *h_wire,
-                   const struct TALER_PrivateContractHashP *h_contract_terms,
+verify_signatures (const struct TALER_EXCHANGE_DepositContractDetail *dcd,
                    const struct TALER_ExtensionContractHashP *ech,
-                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                   const struct TALER_AgeCommitmentHash *h_age_commitment,
-                   const struct TALER_DenominationSignature *denom_sig,
-                   const struct TALER_DenominationPublicKey *denom_pub,
-                   const struct TALER_DenominationHashP *denom_pub_hash,
-                   struct GNUNET_TIME_Timestamp timestamp,
-                   const struct TALER_MerchantPublicKeyP *merchant_pub,
-                   struct GNUNET_TIME_Timestamp refund_deadline,
-                   const struct TALER_CoinSpendSignatureP *coin_sig)
+                   const struct TALER_MerchantWireHashP *h_wire,
+                   const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
+                   const struct TALER_EXCHANGE_DenomPublicKey *dki)
 {
   if (GNUNET_OK !=
-      TALER_wallet_deposit_verify (amount,
+      TALER_wallet_deposit_verify (&cdd->amount,
                                    &dki->fees.deposit,
                                    h_wire,
-                                   h_contract_terms,
-                                   h_age_commitment,
+                                   &dcd->h_contract_terms,
+                                   &cdd->h_age_commitment,
                                    ech,
-                                   denom_pub_hash,
-                                   timestamp,
-                                   merchant_pub,
-                                   refund_deadline,
-                                   coin_pub,
-                                   coin_sig))
+                                   &cdd->h_denom_pub,
+                                   dcd->timestamp,
+                                   &dcd->merchant_pub,
+                                   dcd->refund_deadline,
+                                   &cdd->coin_pub,
+                                   &cdd->coin_sig))
   {
     GNUNET_break_op (0);
     TALER_LOG_WARNING ("Invalid coin signature on /deposit request!\n");
     TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
-                     TALER_amount2s (amount));
+                     TALER_amount2s (&cdd->amount));
     TALER_LOG_DEBUG ("... deposit_fee was %s\n",
                      TALER_amount2s (&dki->fees.deposit));
     return GNUNET_SYSERR;
@@ -455,19 +421,15 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
   /* check coin signature */
   {
     struct TALER_CoinPublicInfo coin_info = {
-      .coin_pub = *coin_pub,
-      .denom_pub_hash = *denom_pub_hash,
-      .denom_sig = *denom_sig,
-      .h_age_commitment = {{{0}}}
+      .coin_pub = cdd->coin_pub,
+      .denom_pub_hash = cdd->h_denom_pub,
+      .denom_sig = cdd->denom_sig,
+      .h_age_commitment = cdd->h_age_commitment,
     };
-    if (NULL != h_age_commitment)
-    {
-      coin_info.h_age_commitment = *h_age_commitment;
-    }
 
     if (GNUNET_YES !=
         TALER_test_coin_valid (&coin_info,
-                               denom_pub))
+                               &dki->key))
     {
       GNUNET_break_op (0);
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
@@ -477,7 +439,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 
   /* Check coin does make a contribution */
   if (0 < TALER_amount_cmp (&dki->fees.deposit,
-                            amount))
+                            &cdd->amount))
   {
     GNUNET_break_op (0);
     TALER_LOG_WARNING ("Deposit amount smaller than fee\n");
@@ -490,45 +452,37 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Timestamp wire_deadline,
-  const char *merchant_payto_uri,
-  const struct TALER_WireSaltP *wire_salt,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const json_t *extension_details,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_DenominationSignature *denom_sig,
-  const struct TALER_DenominationPublicKey *denom_pub,
-  struct GNUNET_TIME_Timestamp timestamp,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Timestamp refund_deadline,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_EXCHANGE_DepositContractDetail *dcd,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
   TALER_EXCHANGE_DepositResultCallback cb,
   void *cb_cls,
   enum TALER_ErrorCode *ec)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   struct TALER_EXCHANGE_DepositHandle *dh;
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
-  struct TALER_MerchantWireHashP h_wire;
-  struct TALER_DenominationHashP denom_pub_hash;
+  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   struct TALER_Amount amount_without_fee;
-  struct TALER_ExtensionContractHashP ech;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
-  if (NULL != extension_details)
-    TALER_deposit_extension_hash (extension_details,
-                                  &ech);
+  GNUNET_assert (GNUNET_YES ==
+                 TEAH_handle_is_ready (exchange));
+  if (GNUNET_TIME_timestamp_cmp (dcd->refund_deadline,
+                                 >,
+                                 dcd->wire_deadline))
+  {
+    GNUNET_break_op (0);
+    *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
+    return NULL;
+  }
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      coin_pub,
+      &cdd->coin_pub,
       sizeof (struct TALER_CoinSpendPublicKeyP),
       pub_str,
       sizeof (pub_str));
@@ -538,26 +492,10 @@ TALER_EXCHANGE_deposit (
                      "/coins/%s/deposit",
                      pub_str);
   }
-  if (GNUNET_TIME_timestamp_cmp (refund_deadline,
-                                 >,
-                                 wire_deadline))
-  {
-    GNUNET_break_op (0);
-    *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
-    return NULL;
-  }
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
-
-  /* initialize h_wire */
-  TALER_merchant_wire_signature_hash (merchant_payto_uri,
-                                      wire_salt,
-                                      &h_wire);
 
   key_state = TALER_EXCHANGE_get_keys (exchange);
-
-  dki = TALER_EXCHANGE_get_denomination_key (key_state,
-                                             denom_pub);
+  dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                     &cdd->h_denom_pub);
   if (NULL == dki)
   {
     *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
@@ -567,97 +505,77 @@ TALER_EXCHANGE_deposit (
 
   if (0 >
       TALER_amount_subtract (&amount_without_fee,
-                             amount,
+                             &cdd->amount,
                              &dki->fees.deposit))
   {
     *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
     GNUNET_break_op (0);
     return NULL;
   }
-
-  TALER_denom_pub_hash (denom_pub,
-                        &denom_pub_hash);
-
-  if (GNUNET_OK !=
-      verify_signatures (dki,
-                         amount,
-                         &h_wire,
-                         h_contract_terms,
-                         (NULL != extension_details) ? &ech : NULL,
-                         coin_pub,
-                         h_age_commitment,
-                         denom_sig,
-                         denom_pub,
-                         &denom_pub_hash,
-                         timestamp,
-                         merchant_pub,
-                         refund_deadline,
-                         coin_sig))
-  {
-    *ec = TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID;
-    GNUNET_break_op (0);
-    return NULL;
-  }
-
-  deposit_obj = GNUNET_JSON_PACK (
-    TALER_JSON_pack_amount ("contribution",
-                            amount),
-    GNUNET_JSON_pack_string ("merchant_payto_uri",
-                             merchant_payto_uri),
-    GNUNET_JSON_pack_data_auto ("wire_salt",
-                                wire_salt),
-    GNUNET_JSON_pack_data_auto ("h_contract_terms",
-                                h_contract_terms),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_data_auto ("h_age_commitment",
-                                  h_age_commitment)),
-    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
-                                &denom_pub_hash),
-    TALER_JSON_pack_denom_sig ("ub_sig",
-                               denom_sig),
-    GNUNET_JSON_pack_timestamp ("timestamp",
-                                timestamp),
-    GNUNET_JSON_pack_data_auto ("merchant_pub",
-                                merchant_pub),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_timestamp ("refund_deadline",
-                                  refund_deadline)),
-    GNUNET_JSON_pack_timestamp ("wire_transfer_deadline",
-                                wire_deadline),
-    GNUNET_JSON_pack_data_auto ("coin_sig",
-                                coin_sig));
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
   dh->auditor_chance = AUDITOR_CHANCE;
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->coin_sig = *coin_sig;
-  dh->coin_pub = *coin_pub;
+  dh->cdd = *cdd;
+  dh->dcd = *dcd;
+  if (NULL != dcd->extension_details)
+    TALER_deposit_extension_hash (dcd->extension_details,
+                                  &dh->h_extensions);
+  TALER_merchant_wire_signature_hash (dcd->merchant_payto_uri,
+                                      &dcd->wire_salt,
+                                      &dh->h_wire);
+  if (GNUNET_OK !=
+      verify_signatures (dcd,
+                         &dh->h_extensions,
+                         &dh->h_wire,
+                         cdd,
+                         dki))
+  {
+    *ec = TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID;
+    GNUNET_break_op (0);
+    GNUNET_free (dh);
+    return NULL;
+  }
   dh->url = TEAH_path_to_url (exchange,
                               arg_str);
   if (NULL == dh->url)
   {
     GNUNET_break (0);
     *ec = TALER_EC_GENERIC_ALLOCATION_FAILURE;
+    GNUNET_free (dh->url);
     GNUNET_free (dh);
-    json_decref (deposit_obj);
     return NULL;
   }
-  dh->h_contract_terms = *h_contract_terms;
-  dh->h_wire = h_wire;
-  /* dh->h_extensions = ... */
-  dh->refund_deadline = refund_deadline;
-  dh->wire_deadline = wire_deadline;
-  dh->amount_without_fee = amount_without_fee;
-  dh->coin_pub = *coin_pub;
-  dh->merchant_pub = *merchant_pub;
-  dh->amount_with_fee = *amount;
-  dh->dki = *dki;
-  memset (&dh->dki.key,
-          0,
-          sizeof (dh->dki.key)); /* lifetime not warranted, so better
-                                    not copy the contents! */
 
+  deposit_obj = GNUNET_JSON_PACK (
+    TALER_JSON_pack_amount ("contribution",
+                            &cdd->amount),
+    GNUNET_JSON_pack_string ("merchant_payto_uri",
+                             dcd->merchant_payto_uri),
+    GNUNET_JSON_pack_data_auto ("wire_salt",
+                                &dcd->wire_salt),
+    GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                &dcd->h_contract_terms),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                  &cdd->h_age_commitment)),
+    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                &cdd->h_denom_pub),
+    TALER_JSON_pack_denom_sig ("ub_sig",
+                               &cdd->denom_sig),
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                dcd->timestamp),
+    GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                &dcd->merchant_pub),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                  dcd->refund_deadline)),
+    GNUNET_JSON_pack_timestamp ("wire_transfer_deadline",
+                                dcd->wire_deadline),
+    GNUNET_JSON_pack_data_auto ("coin_sig",
+                                &cdd->coin_sig));
+  GNUNET_assert (NULL != deposit_obj);
   eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=
