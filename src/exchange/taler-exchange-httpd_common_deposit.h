@@ -32,7 +32,7 @@
 /**
  * Information about an individual coin being deposited.
  */
-struct TEH_DepositedCoin
+struct TEH_PurseDepositedCoin
 {
   /**
    * Public information about the coin.
@@ -93,9 +93,9 @@ struct TEH_DepositedCoin
  *         #GNUNET_SYSERR on failure and no error could be returned
  */
 enum GNUNET_GenericReturnValue
-TEH_common_deposit_parse_coin (
+TEH_common_purse_deposit_parse_coin (
   struct MHD_Connection *connection,
-  struct TEH_DepositedCoin *coin,
+  struct TEH_PurseDepositedCoin *coin,
   const json_t *jcoin);
 
 
@@ -113,7 +113,7 @@ TEH_common_deposit_parse_coin (
 enum GNUNET_GenericReturnValue
 TEH_common_deposit_check_purse_deposit (
   struct MHD_Connection *connection,
-  const struct TEH_DepositedCoin *coin,
+  const struct TEH_PurseDepositedCoin *coin,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint32_t min_age);
 
@@ -125,6 +125,6 @@ TEH_common_deposit_check_purse_deposit (
  * @param[in] coin information to release
  */
 void
-TEH_common_deposit_free_coin (struct TEH_DepositedCoin *coin);
+TEH_common_purse_deposit_free_coin (struct TEH_PurseDepositedCoin *coin);
 
 #endif

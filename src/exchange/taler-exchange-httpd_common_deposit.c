@@ -25,9 +25,9 @@
 
 
 enum GNUNET_GenericReturnValue
-TEH_common_deposit_parse_coin (
+TEH_common_purse_deposit_parse_coin (
   struct MHD_Connection *connection,
-  struct TEH_DepositedCoin *coin,
+  struct TEH_PurseDepositedCoin *coin,
   const json_t *jcoin)
 {
   struct GNUNET_JSON_Specification spec[] = {
@@ -194,7 +194,7 @@ TEH_common_deposit_parse_coin (
 enum GNUNET_GenericReturnValue
 TEH_common_deposit_check_purse_deposit (
   struct MHD_Connection *connection,
-  const struct TEH_DepositedCoin *coin,
+  const struct TEH_PurseDepositedCoin *coin,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint32_t min_age)
 {
@@ -255,7 +255,7 @@ TEH_common_deposit_check_purse_deposit (
  * @param[in] coin information to release
  */
 void
-TEH_common_deposit_free_coin (struct TEH_DepositedCoin *coin)
+TEH_common_purse_deposit_free_coin (struct TEH_PurseDepositedCoin *coin)
 {
   TALER_denom_sig_free (&coin->cpi.denom_sig);
   if (! coin->cpi.no_age_commitment)

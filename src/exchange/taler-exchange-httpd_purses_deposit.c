@@ -73,7 +73,7 @@ struct PurseDepositContext
   /**
    * Array of coins being deposited.
    */
-  struct TEH_DepositedCoin *coins;
+  struct TEH_PurseDepositedCoin *coins;
 
   /**
    * Length of the @e coins array.
@@ -163,7 +163,7 @@ deposit_transaction (void *cls,
   qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   for (unsigned int i = 0; i<pcc->num_coins; i++)
   {
-    struct TEH_DepositedCoin *coin = &pcc->coins[i];
+    struct TEH_PurseDepositedCoin *coin = &pcc->coins[i];
     bool balance_ok = false;
     bool conflict = true;
 
@@ -274,15 +274,15 @@ deposit_transaction (void *cls,
 static enum GNUNET_GenericReturnValue
 parse_coin (struct MHD_Connection *connection,
             struct PurseDepositContext *pcc,
-            struct TEH_DepositedCoin *coin,
+            struct TEH_PurseDepositedCoin *coin,
             const json_t *jcoin)
 {
   enum GNUNET_GenericReturnValue iret;
 
   if (GNUNET_OK !=
-      (iret = TEH_common_deposit_parse_coin (connection,
-                                             coin,
-                                             jcoin)))
+      (iret = TEH_common_purse_deposit_parse_coin (connection,
+                                                   coin,
+                                                   jcoin)))
     return iret;
   if (GNUNET_OK !=
       (iret = TEH_common_deposit_check_purse_deposit (
@@ -402,11 +402,11 @@ TEH_handler_purses_deposit (
 
   /* parse deposits */
   pcc.coins = GNUNET_new_array (pcc.num_coins,
-                                struct TEH_DepositedCoin);
+                                struct TEH_PurseDepositedCoin);
   json_array_foreach (deposits, idx, deposit)
   {
     enum GNUNET_GenericReturnValue res;
-    struct TEH_DepositedCoin *coin = &pcc.coins[idx];
+    struct TEH_PurseDepositedCoin *coin = &pcc.coins[idx];
 
     res = parse_coin (connection,
                       &pcc,
@@ -416,7 +416,7 @@ TEH_handler_purses_deposit (
     {
       GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<idx; i++)
-        TEH_common_deposit_free_coin (&pcc.coins[i]);
+        TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
@@ -428,7 +428,7 @@ TEH_handler_purses_deposit (
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
-      TEH_common_deposit_free_coin (&pcc.coins[i]);
+      TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -450,7 +450,7 @@ TEH_handler_purses_deposit (
     {
       GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<pcc.num_coins; i++)
-        TEH_common_deposit_free_coin (&pcc.coins[i]);
+        TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
       return mhd_ret;
     }
@@ -478,7 +478,7 @@ TEH_handler_purses_deposit (
     res = reply_deposit_success (connection,
                                  &pcc);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
-      TEH_common_deposit_free_coin (&pcc.coins[i]);
+      TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
     GNUNET_JSON_parse_free (spec);
     return res;
