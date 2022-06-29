@@ -761,7 +761,7 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-#if 1 /* DEBUG */
+#if DEBUG
   json_dumpf (resp_obj,
               stderr,
               JSON_INDENT (2));
