@@ -2074,13 +2074,17 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   {
     struct TEH_DenominationKey *dk;
     struct GNUNET_CONTAINER_MultiHashMap *denominations_by_group;
-    // groupData is the value we store for each group meta-data
+    /* groupData is the value we store for each group meta-data */
     struct groupData
     {
-      // The json blob with the group meta-data and list of denominations
+      /**
+       * The json blob with the group meta-data and list of denominations
+       */
       json_t *json;
 
-      // xor of all hashes of denominations in that group
+      /**
+       * xor of all hashes of denominations in that group
+       */
       struct GNUNET_HashCode hash_xor;
     };
 
@@ -2170,13 +2174,13 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
       }
 
-      /**
+      /*
        * Group the denominations by {cipher, value, fees, age_mask}.
        *
        * For each group we save the group meta-data and the list of
        * denominations in this group as a json-blob in the multihashmap
        * denominations_by_group.
-       **/
+       */
       {
         static const char *denoms_key = "denoms";
         struct groupData *group;
@@ -2202,7 +2206,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
         if (NULL == group)
         {
-          // There is no group for this meta-data yet, so we create a new group
+          /* There is no group for this meta-data yet, so we create a new group */
           bool age_restricted = meta.age_mask.bits != 0;
           char *cipher;
 
@@ -2235,7 +2239,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             GNUNET_assert (0 == r);
           }
 
-          // Create a new array for the denominations in this group
+          /* Create a new array for the denominations in this group */
           list = json_array ();
           GNUNET_assert (NULL != list);
           GNUNET_assert (0 ==
@@ -2249,8 +2253,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                                GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
         }
 
-        // Now that we have found/created the right group, add the
-        // denomination to the list
+        /* Now that we have found/created the right group, add the
+           denomination to the list */
         {
           struct GNUNET_JSON_PackSpec key_spec;
 
@@ -2290,14 +2294,14 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           GNUNET_assert (NULL != entry);
         }
 
-        // Build up the running xor of all hashes of the denominations in this
-        // group
+        /* Build up the running xor of all hashes of the denominations in this
+           group */
         GNUNET_CRYPTO_hash_xor (&dk->h_denom_pub.hash,
                                 &group->hash_xor,
                                 &group->hash_xor);
 
-        // Finally, add the denomination to the list of denominations in this
-        // group
+        /* Finally, add the denomination to the list of denominations in this
+           group */
         list = json_object_get (group->json, denoms_key);
         GNUNET_assert (NULL != list);
         GNUNET_assert (true == json_is_array (list));
@@ -2306,7 +2310,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       }
     } /* loop over heap ends */
 
-    // Create the JSON-array of grouped denominations
+    /* Create the JSON-array of grouped denominations */
     if (0 <
         GNUNET_CONTAINER_multihashmap_size (denominations_by_group))
     {
@@ -2322,7 +2326,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                                           (const
                                                            void **) &group))
       {
-        // Add the XOR over all hashes of denominations in this group to the group
+        /* Add the XOR over all hashes of denominations in this group to the group */
         GNUNET_assert (0 ==
                        json_object_set (
                          group->json,
@@ -2331,13 +2335,13 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                            GNUNET_JSON_pack_data_auto (NULL,
                                                        &group->hash_xor))));
 
-        // Add this group to the array
+        /* Add this group to the array */
         GNUNET_assert (0 ==
                        json_array_append_new (
                          grouped_denominations,
                          group->json));
 
-        // Build the running XOR over all hash(_xor)
+        /* Build the running XOR over all hash(_xor) */
         GNUNET_CRYPTO_hash_xor (&group->hash_xor,
                                 &grouped_hash_xor,
                                 &grouped_hash_xor);
