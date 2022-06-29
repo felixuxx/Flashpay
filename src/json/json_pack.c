@@ -113,33 +113,29 @@ TALER_JSON_pack_denom_pub (
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
   };
-  struct GNUNET_JSON_PackSpec mask_or_end;
 
   if (NULL == pk)
     return ps;
-
-  mask_or_end = (0 != pk->age_mask.bits) ?
-                GNUNET_JSON_pack_uint64 ("age_mask", pk->age_mask.bits) :
-                GNUNET_JSON_pack_end_ ();
-
   switch (pk->cipher)
   {
   case TALER_DENOMINATION_RSA:
     ps.object
       = GNUNET_JSON_PACK (
           GNUNET_JSON_pack_string ("cipher", "RSA"),
+          GNUNET_JSON_pack_uint64 ("age_mask",
+                                   pk->age_mask.bits),
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
-                                           pk->details.rsa_public_key),
-          mask_or_end);
+                                           pk->details.rsa_public_key));
     break;
   case TALER_DENOMINATION_CS:
     ps.object
       = GNUNET_JSON_PACK (
           GNUNET_JSON_pack_string ("cipher", "CS"),
+          GNUNET_JSON_pack_uint64 ("age_mask",
+                                   pk->age_mask.bits),
           GNUNET_JSON_pack_data_varsize ("cs_public_key",
                                          &pk->details.cs_public_key,
-                                         sizeof (pk->details.cs_public_key)),
-          mask_or_end);
+                                         sizeof (pk->details.cs_public_key)));
     break;
   default:
     GNUNET_assert (0);
