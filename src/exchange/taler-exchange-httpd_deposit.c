@@ -452,35 +452,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        "preflight failure");
   }
 
-#if NOT_MOVED
-  {
-    MHD_RESULT mhd_ret = MHD_NO;
-    enum GNUNET_DB_QueryStatus qs;
-
-    /* make sure coin is 'known' in database */
-    for (unsigned int tries = 0; tries<MAX_TRANSACTION_COMMIT_RETRIES; tries++)
-    {
-      qs = TEH_make_coin_known (&deposit.coin,
-                                connection,
-                                &dc.known_coin_id,
-                                &mhd_ret);
-      /* no transaction => no serialization failures should be possible */
-      if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
-        break;
-    }
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_DB_COMMIT_FAILED,
-                                         "make_coin_known");
-    }
-    if (qs < 0)
-      return mhd_ret;
-  }
-#endif
-
   /* execute transaction */
   {
     MHD_RESULT mhd_ret;

@@ -25,50 +25,13 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_common_deposit.h"
 #include "taler-exchange-httpd_purses_create.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
-
-
-/**
- * Information about an individual coin being deposited.
- */
-struct Coin
-{
-  /**
-   * Public information about the coin.
-   */
-  struct TALER_CoinPublicInfo cpi;
-
-  /**
-   * Signature affirming spending the coin.
-   */
-  struct TALER_CoinSpendSignatureP coin_sig;
-
-  /**
-   * Amount to be put into the purse from this coin.
-   */
-  struct TALER_Amount amount;
-
-  /**
-   * Deposit fee applicable to this coin.
-   */
-  struct TALER_Amount deposit_fee;
-
-  /**
-   * Amount to be put into the purse from this coin.
-   */
-  struct TALER_Amount amount_minus_fee;
-
-  /**
-   * ID of the coin in known_coins.
-   */
-  uint64_t known_coin_id;
-};
 
 
 /**
@@ -124,7 +87,7 @@ struct PurseCreateContext
   /**
    * Array of coins being deposited.
    */
-  struct Coin *coins;
+  struct TEH_DepositedCoin *coins;
 
   /**
    * Length of the @e coins array.
@@ -295,10 +258,16 @@ create_transaction (void *cls,
   /* 2) deposit all coins */
   for (unsigned int i = 0; i<pcc->num_coins; i++)
   {
-    struct Coin *coin = &pcc->coins[i];
+    struct TEH_DepositedCoin *coin = &pcc->coins[i];
     bool balance_ok = false;
     bool conflict = true;
 
+    qs = TEH_make_coin_known (&coin->cpi,
+                              connection,
+                              &coin->known_coin_id,
+                              mhd_ret);
+    if (qs < 0)
+      return qs;
     qs = TEH_plugin->do_purse_deposit (TEH_plugin->cls,
                                        pcc->purse_pub,
                                        &coin->cpi.coin_pub,
@@ -461,268 +430,37 @@ create_transaction (void *cls,
 static enum GNUNET_GenericReturnValue
 parse_coin (struct MHD_Connection *connection,
             struct PurseCreateContext *pcc,
-            struct Coin *coin,
+            struct TEH_DepositedCoin *coin,
             const json_t *jcoin)
 {
-  struct TALER_AgeAttestation attest = {0};
-  bool no_attest = true;
-  struct TALER_AgeCommitment age_commitment = {0};
-  bool no_age_commitment = true;
-  struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("amount",
-                            TEH_currency,
-                            &coin->amount),
-    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
-                                 &coin->cpi.denom_pub_hash),
-    TALER_JSON_spec_denom_sig ("ub_sig",
-                               &coin->cpi.denom_sig),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_fixed_auto ("attest",
-                                   &attest),
-      &no_attest),
-    GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_age_commitment ("age_commitment",
-                                      &age_commitment),
-      &no_age_commitment),
-    GNUNET_JSON_spec_fixed_auto ("coin_sig",
-                                 &coin->coin_sig),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub",
-                                 &coin->cpi.coin_pub),
-    GNUNET_JSON_spec_end ()
-  };
+  enum GNUNET_GenericReturnValue iret;
 
+  if (GNUNET_OK !=
+      (iret = TEH_common_deposit_parse_coin (connection,
+                                             coin,
+                                             jcoin)))
+    return iret;
+
+  if (GNUNET_OK !=
+      (iret = TEH_common_deposit_check_purse_deposit (
+         connection,
+         coin,
+         pcc->purse_pub,
+         pcc->min_age)))
+    return iret;
+  if (0 >
+      TALER_amount_add (&pcc->deposit_total,
+                        &pcc->deposit_total,
+                        &coin->amount_minus_fee))
   {
-    enum GNUNET_GenericReturnValue res;
-
-    res = TALER_MHD_parse_json_data (connection,
-                                     jcoin,
-                                     spec);
-    if (GNUNET_OK != res)
-      return res;
-  }
-
-  {
-    struct TALER_AgeCommitmentHash h_age;
-
-    if (no_age_commitment)
-      memset (&h_age, 0, sizeof (h_age));
-    else
-      TALER_age_commitment_hash (&age_commitment,
-                                 &h_age);
-    if (GNUNET_OK !=
-        TALER_wallet_purse_deposit_verify (TEH_base_url,
-                                           pcc->purse_pub,
-                                           &coin->amount,
-                                           &coin->cpi.denom_pub_hash,
-                                           &h_age,
-                                           &coin->cpi.coin_pub,
-                                           &coin->coin_sig))
-    {
-      TALER_LOG_WARNING (
-        "Invalid coin signature on /purses/$PID/create request\n");
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_FORBIDDEN,
-                                          TALER_EC_EXCHANGE_PURSE_CREATE_COIN_SIGNATURE_INVALID,
-                                          TEH_base_url))
-           ? GNUNET_NO : GNUNET_SYSERR;
-    }
-  }
-  /* check denomination exists and is valid */
-  {
-    struct TEH_DenominationKey *dk;
-    MHD_RESULT mret;
-
-    dk = TEH_keys_denomination_by_hash (&coin->cpi.denom_pub_hash,
-                                        connection,
-                                        &mret);
-    if (NULL == dk)
-    {
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES == mret) ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (0 > TALER_amount_cmp (&dk->meta.value,
-                              &coin->amount))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_BAD_REQUEST,
-                                          TALER_EC_EXCHANGE_GENERIC_AMOUNT_EXCEEDS_DENOMINATION_VALUE,
-                                          NULL))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
-    {
-      /* This denomination is past the expiration time for deposits */
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TEH_RESPONSE_reply_expired_denom_pub_hash (
-                connection,
-                &coin->cpi.denom_pub_hash,
-                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-                "PURSE CREATE"))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
-    {
-      /* This denomination is not yet valid */
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TEH_RESPONSE_reply_expired_denom_pub_hash (
-                connection,
-                &coin->cpi.denom_pub_hash,
-                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-                "PURSE CREATE"))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (dk->recoup_possible)
-    {
-      /* This denomination has been revoked */
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TEH_RESPONSE_reply_expired_denom_pub_hash (
-                connection,
-                &coin->cpi.denom_pub_hash,
-                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-                "PURSE CREATE"))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (dk->denom_pub.cipher != coin->cpi.denom_sig.cipher)
-    {
-      /* denomination cipher and denomination signature cipher not the same */
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_BAD_REQUEST,
-                                          TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
-                                          NULL))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-
-    coin->deposit_fee = dk->meta.fees.deposit;
-    if (0 < TALER_amount_cmp (&coin->deposit_fee,
-                              &coin->amount))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
-                                         NULL);
-    }
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&coin->amount_minus_fee,
-                                          &coin->amount,
-                                          &coin->deposit_fee));
-
-    // Check and verify the age restriction.  Needs to happen before
-    // coin-signature check, because we set the h_age_commitment here.
-    {
-      if (no_attest != no_age_commitment)
-
-      {
-        GNUNET_break (0);
-        return TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           /* FIXME: other error code? */
-                                           TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
-                                           "mismatch of attest and age_commitment");
-      }
-
-      if (! no_age_commitment)
-      {
-        // attestation must be valid.
-        if (GNUNET_OK !=
-            TALER_age_commitment_verify (
-              &age_commitment,
-              pcc->min_age,
-              &attest))
-        {
-          GNUNET_break (0);
-          return TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             /* FIXME: other error code? */
-                                             TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
-                                             "invalid attest for minimum age");
-        }
-
-        // Save the hash of the age commitment in the coin's public info, so we
-        // can verify the signature later.
-        TALER_age_commitment_hash (&age_commitment,
-                                   &coin->cpi.h_age_commitment);
-        coin->cpi.no_age_commitment = false;
-
-      }
-    }
-
-
-    /* check coin signature */
-    switch (dk->denom_pub.cipher)
-    {
-    case TALER_DENOMINATION_RSA:
-      TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_RSA]++;
-      break;
-    case TALER_DENOMINATION_CS:
-      TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_CS]++;
-      break;
-    default:
-      break;
-    }
-    if (GNUNET_YES !=
-        TALER_test_coin_valid (&coin->cpi,
-                               &dk->denom_pub))
-    {
-      TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
-      GNUNET_JSON_parse_free (spec);
-      return (MHD_YES ==
-              TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_FORBIDDEN,
-                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
-                                          NULL))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (0 >
-        TALER_amount_add (&pcc->deposit_total,
-                          &pcc->deposit_total,
-                          &coin->amount_minus_fee))
-    {
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_FAILED_COMPUTE_AMOUNT,
-                                         "total deposit contribution");
-    }
-  }
-  {
-    MHD_RESULT mhd_ret = MHD_NO;
-    enum GNUNET_DB_QueryStatus qs;
-
-    /* make sure coin is 'known' in database */
-    for (unsigned int tries = 0; tries<MAX_TRANSACTION_COMMIT_RETRIES; tries++)
-    {
-      qs = TEH_make_coin_known (&coin->cpi,
-                                connection,
-                                &coin->known_coin_id,
-                                &mhd_ret);
-      /* no transaction => no serialization failures should be possible */
-      if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
-        break;
-    }
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-    {
-      GNUNET_break (0);
-      return (MHD_YES ==
-              TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_DB_COMMIT_FAILED,
-                                          "make_coin_known"))
-             ? GNUNET_NO : GNUNET_SYSERR;
-    }
-    if (qs < 0)
-      return (MHD_YES == mhd_ret) ? GNUNET_NO : GNUNET_SYSERR;
+    GNUNET_break (0);
+    return (MHD_YES ==
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_FAILED_COMPUTE_AMOUNT,
+                                        "total deposit contribution"))
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }
@@ -843,11 +581,11 @@ TEH_handler_purses_create (
   }
   /* parse deposits */
   pcc.coins = GNUNET_new_array (pcc.num_coins,
-                                struct Coin);
+                                struct TEH_DepositedCoin);
   json_array_foreach (deposits, idx, deposit)
   {
     enum GNUNET_GenericReturnValue res;
-    struct Coin *coin = &pcc.coins[idx];
+    struct TEH_DepositedCoin *coin = &pcc.coins[idx];
 
     res = parse_coin (connection,
                       &pcc,
@@ -875,13 +613,14 @@ TEH_handler_purses_create (
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
 
   if (GNUNET_OK !=
-      TALER_wallet_purse_create_verify (pcc.purse_expiration,
-                                        &pcc.h_contract_terms,
-                                        &pcc.merge_pub,
-                                        pcc.min_age,
-                                        &pcc.amount,
-                                        pcc.purse_pub,
-                                        &pcc.purse_sig))
+      TALER_wallet_purse_create_verify (
+        pcc.purse_expiration,
+        &pcc.h_contract_terms,
+        &pcc.merge_pub,
+        pcc.min_age,
+        &pcc.amount,
+        pcc.purse_pub,
+        &pcc.purse_sig))
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
     GNUNET_JSON_parse_free (spec);
