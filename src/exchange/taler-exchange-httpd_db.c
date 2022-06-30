@@ -61,7 +61,8 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                                     NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_DENOM_CONFLICT:
-    /* FIXME-Oec: insufficient_funds != denom conflict! */
+    /* FIXME: insufficient_funds != denom conflict! See issue 0007267, need new
+     * strategy for evidence gathering */
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
@@ -69,7 +70,8 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
       &coin->coin_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_AGE_CONFLICT:
-    /* FIXME-Oec: insufficient_funds != Age conflict! */
+    /* FIXME: insufficient_funds != Age conflict! See issue 0007267, need new
+     * strategy for evidence gathering */
     *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (
       connection,
       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
