@@ -400,8 +400,8 @@ build_wire_state (void)
         wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
         wsh->wire_reply
           = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
-              payto_uri);
+          TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
+          payto_uri);
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
         GNUNET_CRYPTO_hash_context_abort (hc);
@@ -482,7 +482,6 @@ build_wire_state (void)
                                            MHD_HTTP_HEADER_EXPIRES,
                                            wsh->dat));
   }
-  TALER_MHD_add_global_headers (wsh->wire_reply);
   /* Set cache control headers: our response varies depending on these headers */
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (wsh->wire_reply,
