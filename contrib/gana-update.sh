@@ -22,6 +22,7 @@ ensure ()
 
     if ! diff $src $dst > /dev/null
     then
+        test ! -f $dst || chmod +w $dst
         cp $src $dst
         chmod -w $dst
     fi
