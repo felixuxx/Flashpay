@@ -17,13 +17,13 @@ ensure ()
     # $2 -- src dir under contrib/
     # $3 -- dst dir under ./
     fn="$1"
-    src="contrib/$2"
-    dst="./$3"
+    src="contrib/$2/$fn"
+    dst="./$3/$fn"
 
-    if ! diff $src/$fn $dst/$fn > /dev/null
+    if ! diff $src $dst > /dev/null
     then
-        cp $src/$fn $dst/$fn
-        chmod -w $dst/$fn
+        cp $src $dst
+        chmod -w $dst
     fi
 }
 
