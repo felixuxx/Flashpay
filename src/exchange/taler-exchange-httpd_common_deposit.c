@@ -224,13 +224,13 @@ TEH_common_deposit_check_purse_deposit (
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       /* FIXME: other error code? */
-                                       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+                                       TALER_EC_EXCHANGE_PURSE_DEPOSIT_COIN_CONFLICTING_ATTEST_VS_AGE_COMMITMENT,
                                        "mismatch of attest and age_commitment");
   }
 
   if (coin->cpi.no_age_commitment)
     return GNUNET_OK; /* unrestricted coin */
+
   /* age attestation must be valid */
   if (GNUNET_OK !=
       TALER_age_commitment_verify (&coin->age_commitment,
@@ -241,7 +241,7 @@ TEH_common_deposit_check_purse_deposit (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        /* FIXME: other error code? */
-                                       TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_AGE_HASH,
+                                       TALER_EC_EXCHANGE_PURSE_DEPOSIT_COIN_AGE_ATTESTATION_FAILURE,
                                        "invalid attest for minimum age");
   }
   return GNUNET_OK;
@@ -259,7 +259,7 @@ TEH_common_purse_deposit_free_coin (struct TEH_PurseDepositedCoin *coin)
 {
   TALER_denom_sig_free (&coin->cpi.denom_sig);
   if (! coin->cpi.no_age_commitment)
-    TALER_age_commitment_free (&coin->age_commitment);
+    GNUNET_free (coin->age_commitment.keys); /* Only the keys have been allocated */
 }
 
 
