@@ -2797,8 +2797,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (order_id, const char *)                                      \
   op (amount, const struct TALER_Amount)                           \
   op (amount_with_fee, const struct TALER_Amount)                  \
-  op (deposit_amount, const struct TALER_Amount)                   \
-  op (deposit_fee_amount, const struct TALER_Amount)               \
   op (batch_cmds, struct TALER_TESTING_Command *)                  \
   op (uuid, const struct GNUNET_Uuid)                              \
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
@@ -2814,6 +2812,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
   op (amounts, const struct TALER_Amount)                           \
+  op (deposit_amount, const struct TALER_Amount)                   \
+  op (deposit_fee_amount, const struct TALER_Amount)               \
   op (age_commitment, const struct TALER_AgeCommitment)              \
   op (age_commitment_proof, const struct TALER_AgeCommitmentProof)     \
   op (h_age_commitment, const struct TALER_AgeCommitmentHash)          \
