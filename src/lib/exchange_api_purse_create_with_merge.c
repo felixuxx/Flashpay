@@ -478,8 +478,8 @@ TALER_EXCHANGE_purse_create_with_merge (
     GNUNET_JSON_pack_allow_null (
       TALER_JSON_pack_econtract ("econtract",
                                  upload_contract
-                                  ? &pcm->econtract
-                                  : NULL)),
+                                 ? &pcm->econtract
+                                 : NULL)),
     GNUNET_JSON_pack_allow_null (
       pay_for_purse
       ? TALER_JSON_pack_amount ("purse_fee",

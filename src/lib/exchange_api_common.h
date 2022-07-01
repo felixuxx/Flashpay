@@ -198,4 +198,24 @@ TALER_EXCHANGE_get_min_denomination_ (
   const struct TALER_EXCHANGE_Keys *keys,
   struct TALER_Amount *min);
 
+
+/**
+ * Verify signature information about the deposit.
+ *
+ * @param dcd contract details
+ * @param ech hashed contract (passed to avoid recomputation)
+ * @param h_wire hashed wire details (passed to avoid recomputation)
+ * @param cdd coin-specific details
+ * @param dki denomination of the coin
+ * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_verify_deposit_signature_ (
+  const struct TALER_EXCHANGE_DepositContractDetail *dcd,
+  const struct TALER_ExtensionContractHashP *ech,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
+  const struct TALER_EXCHANGE_DenomPublicKey *dki);
+
+
 #endif

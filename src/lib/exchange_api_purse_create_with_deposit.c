@@ -680,8 +680,8 @@ TALER_EXCHANGE_purse_create_with_deposit (
     GNUNET_JSON_pack_allow_null (
       TALER_JSON_pack_econtract ("econtract",
                                  upload_contract
-                                  ? &pch->econtract
-                                  : NULL)),
+                                 ? &pch->econtract
+                                 : NULL)),
     GNUNET_JSON_pack_data_auto ("purse_sig",
                                 &pch->purse_sig),
     GNUNET_JSON_pack_data_auto ("merge_pub",

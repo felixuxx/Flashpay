@@ -1283,8 +1283,8 @@ handle_purse_deposits (
   struct ReserveContext *rc = cls;
   const char *base_url
     = (NULL == deposit->exchange_base_url)
-    ? TALER_ARL_exchange_url
-    : deposit->exchange_base_url;
+      ? TALER_ARL_exchange_url
+      : deposit->exchange_base_url;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount amount_minus_fee;
   struct TALER_Amount new_balance;

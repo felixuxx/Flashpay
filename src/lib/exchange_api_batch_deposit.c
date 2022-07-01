@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2021 Taler Systems SA
+   Copyright (C) 2014-2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -15,8 +15,8 @@
    <http://www.gnu.org/licenses/>
  */
 /**
- * @file lib/exchange_api_deposit.c
- * @brief Implementation of the /deposit request of the exchange's HTTP API
+ * @file lib/exchange_api_batch_deposit.c
+ * @brief Implementation of the /batch-deposit request of the exchange's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
  */
@@ -47,7 +47,7 @@
 /**
  * @brief A Deposit Handle
  */
-struct TALER_EXCHANGE_DepositHandle
+struct TALER_EXCHANGE_BatchDepositHandle
 {
 
   /**
@@ -74,7 +74,7 @@ struct TALER_EXCHANGE_DepositHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_DepositResultCallback cb;
+  TALER_EXCHANGE_BatchDepositResultCallback cb;
 
   /**
    * Closure for @a cb.
@@ -87,9 +87,9 @@ struct TALER_EXCHANGE_DepositHandle
   struct TALER_EXCHANGE_DepositContractDetail dcd;
 
   /**
-   * Details about the coin.
+   * Array with details about the coins.
    */
-  struct TALER_EXCHANGE_CoinDepositDetail cdd;
+  struct TALER_EXCHANGE_CoinDepositDetail *cdds;
 
   /**
    * Hash of the merchant's wire details.
@@ -108,9 +108,9 @@ struct TALER_EXCHANGE_DepositHandle
   struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
-   * Exchange signature, set for #auditor_cb.
+   * Exchange signatures, set for #auditor_cb.
    */
-  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_ExchangeSignatureP *exchange_sigs;
 
   /**
    * Exchange signing public key, set for #auditor_cb.
@@ -122,6 +122,11 @@ struct TALER_EXCHANGE_DepositHandle
    * is 1:n, where the value of this field is "n".
    */
   unsigned int auditor_chance;
+
+  /**
+   * Length of the @e cdds array.
+   */
+  unsigned int num_cdds;
 
 };
 
@@ -140,12 +145,13 @@ auditor_cb (void *cls,
             struct TALER_AUDITOR_Handle *ah,
             const struct TALER_AuditorPublicKeyP *auditor_pub)
 {
-  struct TALER_EXCHANGE_DepositHandle *dh = cls;
+  struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
   struct TALER_Amount amount_without_fee;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
+  unsigned int coin;
 
   if (0 !=
       GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
@@ -155,12 +161,14 @@ auditor_cb (void *cls,
                 "Not providing deposit confirmation to auditor\n");
     return NULL;
   }
+  coin = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                   dh->num_cdds);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                     &dh->cdd.h_denom_pub);
+                                                     &dh->cdds[coin].h_denom_pub);
   GNUNET_assert (NULL != dki);
   spk = TALER_EXCHANGE_get_signing_key_info (key_state,
                                              &dh->exchange_pub);
@@ -171,7 +179,7 @@ auditor_cb (void *cls,
   }
   GNUNET_assert (0 <=
                  TALER_amount_subtract (&amount_without_fee,
-                                        &dh->cdd.amount,
+                                        &dh->cdds[coin].amount,
                                         &dki->fees.deposit));
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
   aie->dch = TALER_AUDITOR_deposit_confirmation (
@@ -183,10 +191,10 @@ auditor_cb (void *cls,
     dh->dcd.wire_deadline,
     dh->dcd.refund_deadline,
     &amount_without_fee,
-    &dh->cdd.coin_pub,
+    &dh->cdds[coin].coin_pub,
     &dh->dcd.merchant_pub,
     &dh->exchange_pub,
-    &dh->exchange_sig,
+    &dh->exchange_sigs[coin],
     &key_state->master_pub,
     spk->valid_from,
     spk->valid_until,
@@ -202,7 +210,7 @@ auditor_cb (void *cls,
  * Function called when we're done processing the
  * HTTP /deposit request.
  *
- * @param cls the `struct TALER_EXCHANGE_DepositHandle`
+ * @param cls the `struct TALER_EXCHANGE_BatchDepositHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -211,9 +219,9 @@ handle_deposit_finished (void *cls,
                          long response_code,
                          const void *response)
 {
-  struct TALER_EXCHANGE_DepositHandle *dh = cls;
+  struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_DepositResult dr = {
+  struct TALER_EXCHANGE_BatchDepositResult dr = {
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
@@ -229,9 +237,12 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_OK:
     {
       const struct TALER_EXCHANGE_Keys *key_state;
+      json_t *sigs;
+      json_t *sig;
+      unsigned int idx;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &dh->exchange_sig),
+        GNUNET_JSON_spec_json ("exchange_sigs",
+                               &sigs),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
@@ -242,8 +253,6 @@ handle_deposit_finished (void *cls,
                                     &dh->exchange_timestamp),
         GNUNET_JSON_spec_end ()
       };
-      struct TALER_Amount amount_without_fee;
-      const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -255,10 +264,16 @@ handle_deposit_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      if (json_array_size (sigs) != dh->num_cdds)
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      dh->exchange_sigs = GNUNET_new_array (dh->num_cdds,
+                                            struct TALER_ExchangeSignatureP);
       key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-      dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                         &dh->cdd.h_denom_pub);
-      GNUNET_assert (NULL != dki);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
                                            &dh->exchange_pub))
@@ -268,38 +283,64 @@ handle_deposit_finished (void *cls,
         dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
         break;
       }
-      GNUNET_assert (0 <=
-                     TALER_amount_subtract (&amount_without_fee,
-                                            &dh->cdd.amount,
-                                            &dki->fees.deposit));
-
-      if (GNUNET_OK !=
-          TALER_exchange_online_deposit_confirmation_verify (
-            &dh->dcd.h_contract_terms,
-            &dh->h_wire,
-            &dh->h_extensions,
-            dh->exchange_timestamp,
-            dh->dcd.wire_deadline,
-            dh->dcd.refund_deadline,
-            &amount_without_fee,
-            &dh->cdd.coin_pub,
-            &dh->dcd.merchant_pub,
-            &dh->exchange_pub,
-            &dh->exchange_sig))
+      json_array_foreach (sigs, idx, sig)
       {
-        GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
-        break;
-      }
+        struct GNUNET_JSON_Specification ispec[] = {
+          GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                       &dh->exchange_sigs[idx]),
+          GNUNET_JSON_spec_end ()
+        };
+        struct TALER_Amount amount_without_fee;
+        const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (sig,
+                               ispec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          GNUNET_JSON_parse_free (spec);
+          break;
+        }
+        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                           &dh->cdds[idx].
+                                                           h_denom_pub);
+        GNUNET_assert (NULL != dki);
+        GNUNET_assert (0 <=
+                       TALER_amount_subtract (&amount_without_fee,
+                                              &dh->cdds[idx].amount,
+                                              &dki->fees.deposit));
+
+        if (GNUNET_OK !=
+            TALER_exchange_online_deposit_confirmation_verify (
+              &dh->dcd.h_contract_terms,
+              &dh->h_wire,
+              &dh->h_extensions,
+              dh->exchange_timestamp,
+              dh->dcd.wire_deadline,
+              dh->dcd.refund_deadline,
+              &amount_without_fee,
+              &dh->cdds[idx].coin_pub,
+              &dh->dcd.merchant_pub,
+              &dh->exchange_pub,
+              &dh->exchange_sigs[idx]))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+          break;
+        }
+      }
       TEAH_get_auditors_for_dc (dh->exchange,
                                 &auditor_cb,
                                 dh);
     }
-    dr.details.success.exchange_sig = &dh->exchange_sig;
+    dr.details.success.exchange_sigs = dh->exchange_sigs;
     dr.details.success.exchange_pub = &dh->exchange_pub;
     dr.details.success.deposit_timestamp = dh->exchange_timestamp;
+    dr.details.success.num_signatures = dh->num_cdds;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -323,28 +364,62 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_CONFLICT:
     {
       const struct TALER_EXCHANGE_Keys *key_state;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                     &coin_pub),
+        GNUNET_JSON_spec_end ()
+      };
       const struct TALER_EXCHANGE_DenomPublicKey *dki;
+      bool found = false;
 
-      key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-      dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                         &dh->cdd.h_denom_pub);
-      GNUNET_assert (NULL != dki);
-      dr.hr.ec = TALER_JSON_get_error_code (j);
-      dr.hr.hint = TALER_JSON_get_error_hint (j);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_conflict_ (
-            keys,
-            j,
-            dki,
-            &dh->cdd.coin_pub,
-            &dh->cdd.coin_sig,
-            &dh->cdd.amount))
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      for (unsigned int i = 0; i<dh->num_cdds; i++)
+      {
+        if (0 !=
+            GNUNET_memcmp (&coin_pub,
+                           &dh->cdds[i].coin_pub))
+          continue;
+        key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                           &dh->cdds[i].
+                                                           h_denom_pub);
+        GNUNET_assert (NULL != dki);
+        if (GNUNET_OK !=
+            TALER_EXCHANGE_check_coin_conflict_ (
+              keys,
+              j,
+              dki,
+              &dh->cdds[i].coin_pub,
+              &dh->cdds[i].coin_sig,
+              &dh->cdds[i].amount))
+        {
+          GNUNET_break_op (0);
+          dr.hr.http_status = 0;
+          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+        found = true;
+        break;
+      }
+      if (! found)
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      dr.hr.ec = TALER_JSON_get_error_code (j);
+      dr.hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   case MHD_HTTP_GONE:
@@ -374,27 +449,27 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           &dr);
-  TALER_EXCHANGE_deposit_cancel (dh);
+  TALER_EXCHANGE_batch_deposit_cancel (dh);
 }
 
 
-struct TALER_EXCHANGE_DepositHandle *
-TALER_EXCHANGE_deposit (
+struct TALER_EXCHANGE_BatchDepositHandle *
+TALER_EXCHANGE_batch_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DepositContractDetail *dcd,
-  const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
-  TALER_EXCHANGE_DepositResultCallback cb,
+  unsigned int num_cdds,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdds,
+  TALER_EXCHANGE_BatchDepositResultCallback cb,
   void *cb_cls,
   enum TALER_ErrorCode *ec)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
-  struct TALER_EXCHANGE_DepositHandle *dh;
+  struct TALER_EXCHANGE_BatchDepositHandle *dh;
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
+  json_t *deposits;
   CURL *eh;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   struct TALER_Amount amount_without_fee;
-  char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -406,47 +481,16 @@ TALER_EXCHANGE_deposit (
     *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
     return NULL;
   }
-  {
-    char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
-    char *end;
-
-    end = GNUNET_STRINGS_data_to_string (
-      &cdd->coin_pub,
-      sizeof (struct TALER_CoinSpendPublicKeyP),
-      pub_str,
-      sizeof (pub_str));
-    *end = '\0';
-    GNUNET_snprintf (arg_str,
-                     sizeof (arg_str),
-                     "/coins/%s/deposit",
-                     pub_str);
-  }
-
   key_state = TALER_EXCHANGE_get_keys (exchange);
-  dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                     &cdd->h_denom_pub);
-  if (NULL == dki)
-  {
-    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-    GNUNET_break_op (0);
-    return NULL;
-  }
-
-  if (0 >
-      TALER_amount_subtract (&amount_without_fee,
-                             &cdd->amount,
-                             &dki->fees.deposit))
-  {
-    *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
-    GNUNET_break_op (0);
-    return NULL;
-  }
-  dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
+  dh = GNUNET_new (struct TALER_EXCHANGE_BatchDepositHandle);
   dh->auditor_chance = AUDITOR_CHANCE;
   dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->cdd = *cdd;
+  dh->cdds = GNUNET_memdup (cdds,
+                            num_cdds
+                            * sizeof (*cdds));
+  dh->num_cdds = num_cdds;
   dh->dcd = *dcd;
   if (NULL != dcd->extension_details)
     TALER_deposit_extension_hash (dcd->extension_details,
@@ -454,45 +498,85 @@ TALER_EXCHANGE_deposit (
   TALER_merchant_wire_signature_hash (dcd->merchant_payto_uri,
                                       &dcd->wire_salt,
                                       &dh->h_wire);
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_deposit_signature_ (dcd,
-                                                &dh->h_extensions,
-                                                &dh->h_wire,
-                                                cdd,
-                                                dki))
+  deposits = json_array ();
+  GNUNET_assert (NULL != deposits);
+  for (unsigned int i = 0; i<num_cdds; i++)
   {
-    *ec = TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID;
-    GNUNET_break_op (0);
-    GNUNET_free (dh);
-    return NULL;
+    const struct TALER_EXCHANGE_CoinDepositDetail *cdd = &cdds[i];
+    const struct TALER_EXCHANGE_DenomPublicKey *dki;
+
+    dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+                                                       &cdd->h_denom_pub);
+    if (NULL == dki)
+    {
+      *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+      GNUNET_break_op (0);
+      return NULL;
+    }
+    if (0 >
+        TALER_amount_subtract (&amount_without_fee,
+                               &cdd->amount,
+                               &dki->fees.deposit))
+    {
+      *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
+      GNUNET_break_op (0);
+      GNUNET_free (dh->cdds);
+      GNUNET_free (dh);
+      return NULL;
+    }
+
+    if (GNUNET_OK !=
+        TALER_EXCHANGE_verify_deposit_signature_ (dcd,
+                                                  &dh->h_extensions,
+                                                  &dh->h_wire,
+                                                  cdd,
+                                                  dki))
+    {
+      *ec = TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID;
+      GNUNET_break_op (0);
+      GNUNET_free (dh->cdds);
+      GNUNET_free (dh);
+      return NULL;
+    }
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        deposits,
+        GNUNET_JSON_PACK (
+          TALER_JSON_pack_amount ("contribution",
+                                  &cdd->amount),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                        &cdd->h_age_commitment)),
+          GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                      &cdd->h_denom_pub),
+          TALER_JSON_pack_denom_sig ("ub_sig",
+                                     &cdd->denom_sig),
+          GNUNET_JSON_pack_data_auto ("coin_sig",
+                                      &cdd->coin_sig)
+          )));
   }
   dh->url = TEAH_path_to_url (exchange,
-                              arg_str);
+                              "/batch-deposit");
   if (NULL == dh->url)
   {
     GNUNET_break (0);
     *ec = TALER_EC_GENERIC_ALLOCATION_FAILURE;
     GNUNET_free (dh->url);
+    GNUNET_free (dh->cdds);
     GNUNET_free (dh);
     return NULL;
   }
 
   deposit_obj = GNUNET_JSON_PACK (
-    TALER_JSON_pack_amount ("contribution",
-                            &cdd->amount),
+    GNUNET_JSON_pack_array_steal ("coins",
+                                  deposits),
     GNUNET_JSON_pack_string ("merchant_payto_uri",
                              dcd->merchant_payto_uri),
     GNUNET_JSON_pack_data_auto ("wire_salt",
                                 &dcd->wire_salt),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &dcd->h_contract_terms),
-    GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_data_auto ("h_age_commitment",
-                                  &cdd->h_age_commitment)),
-    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
-                                &cdd->h_denom_pub),
-    TALER_JSON_pack_denom_sig ("ub_sig",
-                               &cdd->denom_sig),
     GNUNET_JSON_pack_timestamp ("timestamp",
                                 dcd->timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
@@ -501,9 +585,7 @@ TALER_EXCHANGE_deposit (
       GNUNET_JSON_pack_timestamp ("refund_deadline",
                                   dcd->refund_deadline)),
     GNUNET_JSON_pack_timestamp ("wire_transfer_deadline",
-                                dcd->wire_deadline),
-    GNUNET_JSON_pack_data_auto ("coin_sig",
-                                &cdd->coin_sig));
+                                dcd->wire_deadline));
   GNUNET_assert (NULL != deposit_obj);
   eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
   if ( (NULL == eh) ||
@@ -517,6 +599,7 @@ TALER_EXCHANGE_deposit (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (deposit_obj);
+    GNUNET_free (dh->cdds);
     GNUNET_free (dh->url);
     GNUNET_free (dh);
     return NULL;
@@ -536,14 +619,17 @@ TALER_EXCHANGE_deposit (
 
 
 void
-TALER_EXCHANGE_deposit_force_dc (struct TALER_EXCHANGE_DepositHandle *deposit)
+TALER_EXCHANGE_batch_deposit_force_dc (struct
+                                       TALER_EXCHANGE_BatchDepositHandle *
+                                       deposit)
 {
   deposit->auditor_chance = 1;
 }
 
 
 void
-TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
+TALER_EXCHANGE_batch_deposit_cancel (struct
+                                     TALER_EXCHANGE_BatchDepositHandle *deposit)
 {
   if (NULL != deposit->job)
   {
@@ -551,9 +637,11 @@ TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
     deposit->job = NULL;
   }
   GNUNET_free (deposit->url);
+  GNUNET_free (deposit->cdds);
+  GNUNET_free (deposit->exchange_sigs);
   TALER_curl_easy_post_finished (&deposit->ctx);
   GNUNET_free (deposit);
 }
 
 
-/* end of exchange_api_deposit.c */
+/* end of exchange_api_batch_deposit.c */

@@ -214,8 +214,8 @@ TEH_common_deposit_check_purse_deposit (
                                         MHD_HTTP_FORBIDDEN,
                                         TALER_EC_EXCHANGE_PURSE_DEPOSIT_COIN_SIGNATURE_INVALID,
                                         TEH_base_url))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
 
   /* Check and verify the age restriction. */
@@ -301,7 +301,7 @@ if (0 >
                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
                                         TALER_EC_GENERIC_DB_COMMIT_FAILED,
                                         "make_coin_known"))
-             ? GNUNET_NO : GNUNET_SYSERR;
+           ? GNUNET_NO : GNUNET_SYSERR;
   }
   if (qs < 0)
     return (MHD_YES == mhd_ret) ? GNUNET_NO : GNUNET_SYSERR;

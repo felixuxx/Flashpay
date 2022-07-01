@@ -992,7 +992,7 @@ decode_keys_json (const json_t *resp_obj,
                                                  check_sig,
                                                  denom_key_obj,
                                                  &key_data->master_pub,
-                                                 check_sig ? &hash_xor: NULL));
+                                                 check_sig ? &hash_xor : NULL));
 
           // Build the running xor of the SHA512-hash of the public keys
           {

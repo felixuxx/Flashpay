@@ -1946,4 +1946,66 @@ TALER_EXCHANGE_get_min_denomination_ (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_verify_deposit_signature_ (
+  const struct TALER_EXCHANGE_DepositContractDetail *dcd,
+  const struct TALER_ExtensionContractHashP *ech,
+  const struct TALER_MerchantWireHashP *h_wire,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
+  const struct TALER_EXCHANGE_DenomPublicKey *dki)
+{
+  if (GNUNET_OK !=
+      TALER_wallet_deposit_verify (&cdd->amount,
+                                   &dki->fees.deposit,
+                                   h_wire,
+                                   &dcd->h_contract_terms,
+                                   &cdd->h_age_commitment,
+                                   ech,
+                                   &cdd->h_denom_pub,
+                                   dcd->timestamp,
+                                   &dcd->merchant_pub,
+                                   dcd->refund_deadline,
+                                   &cdd->coin_pub,
+                                   &cdd->coin_sig))
+  {
+    GNUNET_break_op (0);
+    TALER_LOG_WARNING ("Invalid coin signature on /deposit request!\n");
+    TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
+                     TALER_amount2s (&cdd->amount));
+    TALER_LOG_DEBUG ("... deposit_fee was %s\n",
+                     TALER_amount2s (&dki->fees.deposit));
+    return GNUNET_SYSERR;
+  }
+
+  /* check coin signature */
+  {
+    struct TALER_CoinPublicInfo coin_info = {
+      .coin_pub = cdd->coin_pub,
+      .denom_pub_hash = cdd->h_denom_pub,
+      .denom_sig = cdd->denom_sig,
+      .h_age_commitment = cdd->h_age_commitment,
+    };
+
+    if (GNUNET_YES !=
+        TALER_test_coin_valid (&coin_info,
+                               &dki->key))
+    {
+      GNUNET_break_op (0);
+      TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+      return GNUNET_SYSERR;
+    }
+  }
+
+  /* Check coin does make a contribution */
+  if (0 < TALER_amount_cmp (&dki->fees.deposit,
+                            &cdd->amount))
+  {
+    GNUNET_break_op (0);
+    TALER_LOG_WARNING ("Deposit amount smaller than fee\n");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /* end of exchange_api_common.c */

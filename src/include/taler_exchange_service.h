@@ -1047,6 +1047,144 @@ void
 TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit);
 
 
+/**
+ * @brief A Batch Deposit Handle
+ */
+struct TALER_EXCHANGE_BatchDepositHandle;
+
+
+/**
+ * Structure with information about a batch deposit
+ * operation's result.
+ */
+struct TALER_EXCHANGE_BatchDepositResult
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  union
+  {
+
+    /**
+     * Information returned if the HTTP status is
+     * #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Time when the exchange generated the batch deposit confirmation
+       */
+      struct GNUNET_TIME_Timestamp deposit_timestamp;
+
+      /**
+       * Array of signatures provided by the exchange
+       */
+      const struct TALER_ExchangeSignatureP *exchange_sigs;
+
+      /**
+       * exchange key used to sign @a exchange_sig.
+       */
+      const struct TALER_ExchangePublicKeyP *exchange_pub;
+
+      /**
+       * Base URL for looking up wire transfers, or
+       * NULL to use the default base URL.
+       */
+      const char *transaction_base_url;
+
+      /**
+       * Length of the @e exchange_sigs array.
+       */
+      unsigned int num_signatures;
+
+    } success;
+
+    /**
+     * Information returned if the HTTP status is
+     * #MHD_HTTP_CONFLICT.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } conflict;
+
+  } details;
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * deposit permission request to a exchange.
+ *
+ * @param cls closure
+ * @param dr deposit response details
+ */
+typedef void
+(*TALER_EXCHANGE_BatchDepositResultCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_BatchDepositResult *dr);
+
+
+/**
+ * Submit a batch of deposit permissions to the exchange and get the
+ * exchange's response.  This API is typically used by a merchant.  Note that
+ * while we return the response verbatim to the caller for further processing,
+ * we do already verify that the response is well-formed (i.e. that signatures
+ * included in the response are all valid).  If the exchange's reply is not
+ * well-formed, we return an HTTP status code of zero to @a cb.
+ *
+ * We also verify that the @a cdds.coin_sig are valid for this deposit
+ * request, and that the @a cdds.ub_sig are a valid signatures for @a
+ * coin_pub.  Also, the @a exchange must be ready to operate (i.e.  have
+ * finished processing the /keys reply).  If either check fails, we do
+ * NOT initiate the transaction with the exchange and instead return NULL.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param dcd details about the contract the deposit is for
+ * @param num_cdds length of the @a cdds array
+ * @param cdds array with details about the coins to be deposited
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @param[out] ec if NULL is returned, set to the error code explaining why the operation failed
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_BatchDepositHandle *
+TALER_EXCHANGE_batch_deposit (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DepositContractDetail *dcd,
+  unsigned int num_cdds,
+  const struct TALER_EXCHANGE_CoinDepositDetail *cdds,
+  TALER_EXCHANGE_BatchDepositResultCallback cb,
+  void *cb_cls,
+  enum TALER_ErrorCode *ec);
+
+
+/**
+ * Change the chance that our deposit confirmation will be given to the
+ * auditor to 100%.
+ *
+ * @param deposit the batch deposit permission request handle
+ */
+void
+TALER_EXCHANGE_batch_deposit_force_dc (struct
+                                       TALER_EXCHANGE_BatchDepositHandle *
+                                       deposit);
+
+
+/**
+ * Cancel a batch deposit permission request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param deposit the deposit permission request handle
+ */
+void
+TALER_EXCHANGE_batch_deposit_cancel (struct
+                                     TALER_EXCHANGE_BatchDepositHandle *deposit);
+
+
 /* *********************  /coins/$COIN_PUB/refund *********************** */
 
 /**

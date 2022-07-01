@@ -458,8 +458,8 @@ parse_coin (struct MHD_Connection *connection,
                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
                                         TALER_EC_GENERIC_FAILED_COMPUTE_AMOUNT,
                                         "total deposit contribution"))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }

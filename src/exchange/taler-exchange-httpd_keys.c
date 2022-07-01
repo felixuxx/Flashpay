@@ -2216,10 +2216,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           switch (meta.cipher)
           {
           case TALER_DENOMINATION_RSA:
-            cipher = age_restricted ? "RSA+age_restricted": "RSA";
+            cipher = age_restricted ? "RSA+age_restricted" : "RSA";
             break;
           case TALER_DENOMINATION_CS:
-            cipher = age_restricted ? "CS+age_restricted": "CS";
+            cipher = age_restricted ? "CS+age_restricted" : "CS";
             break;
           default:
             GNUNET_assert (false);
