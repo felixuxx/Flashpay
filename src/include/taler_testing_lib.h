@@ -1615,6 +1615,32 @@ TALER_TESTING_cmd_deposit_replay (const char *label,
 
 
 /**
+ * Create a "batch deposit" command.
+ *
+ * @param label command label.
+ * @param target_account_payto target account for the "deposit"
+ *        request.
+ * @param contract_terms contract terms to be signed over by the
+ *        coin.
+ * @param refund_deadline refund deadline, zero means 'no refunds'.
+ * @param amount how much is going to be deposited.
+ * @param expected_response_code expected HTTP response code.
+ * @param ... NULL-terminated list with an even number of
+ *            strings that alternate referring to coins
+ *            (possibly with index using label#index notation)
+ *            and the amount of that coin to deposit
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_batch_deposit (const char *label,
+                                 const char *target_account_payto,
+                                 const char *contract_terms,
+                                 struct GNUNET_TIME_Relative refund_deadline,
+                                 unsigned int expected_response_code,
+                                 ...);
+
+
+/**
  * Create a "refresh melt" command.
  *
  * @param label command label.

@@ -482,7 +482,6 @@ build_wire_state (void)
                                            MHD_HTTP_HEADER_EXPIRES,
                                            wsh->dat));
   }
-  TALER_MHD_add_global_headers (wsh->wire_reply);
   /* Set cache control headers: our response varies depending on these headers */
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (wsh->wire_reply,
