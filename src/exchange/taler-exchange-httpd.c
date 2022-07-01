@@ -30,6 +30,7 @@
 #include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
+#include "taler-exchange-httpd_batch-deposit.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
 #include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
@@ -65,18 +66,6 @@
 #include "taler_exchangedb_plugin.h"
 #include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>
-
-/**
- * Macro to enable P2P handlers. ON for debugging,
- * FIXME: set to OFF for 0.9.0 release as the feature is not stable!
- */
-#define WITH_P2P 1
-
-/**
- * Should the experimental batch withdraw be supported?
- * ON for testing disable for 0.9.0 release!
- */
-#define WITH_EXPERIMENTAL 1
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -374,12 +363,10 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "withdraw",
       .handler = &TEH_handler_withdraw
     },
-#if WITH_EXPERIMENTAL
     {
       .op = "batch-withdraw",
       .handler = &TEH_handler_batch_withdraw
     },
-#endif
     {
       .op = "status",
       .handler = &TEH_handler_reserves_status
@@ -388,12 +375,10 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .op = "history",
       .handler = &TEH_handler_reserves_history
     },
-#if WITH_P2P
     {
       .op = "purse",
       .handler = &TEH_handler_reserves_purse
     },
-#endif
     {
       .op = NULL,
       .handler = NULL
@@ -465,7 +450,6 @@ handle_post_purses (struct TEH_RequestContext *rc,
     PurseOpHandler handler;
 
   } h[] = {
-#if WITH_P2P
     {
       .op = "create",
       .handler = &TEH_handler_purses_create
@@ -478,7 +462,6 @@ handle_post_purses (struct TEH_RequestContext *rc,
       .op = "merge",
       .handler = &TEH_handler_purses_merge
     },
-#endif
     {
       .op = NULL,
       .handler = NULL
@@ -1123,6 +1106,12 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_wire
     },
+    {
+      .url = "batch-deposit",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_batch_deposit,
+      .nargs = 0
+    },
     /* request R, used in clause schnorr withdraw and refresh */
     {
       .url = "csr-melt",
@@ -1190,7 +1179,6 @@ handle_mhd_request (void *cls,
       .handler.post = &handle_post_purses,
       .nargs = 2 // ??
     },
-#if WITH_P2P
     /* Getting purse status */
     {
       .url = "purses",
@@ -1205,7 +1193,6 @@ handle_mhd_request (void *cls,
       .handler.get = &TEH_handler_contracts_get,
       .nargs = 1
     },
-#endif
     /* KYC endpoints */
     {
       .url = "kyc-check",

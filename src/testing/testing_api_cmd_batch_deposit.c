@@ -317,9 +317,10 @@ batch_deposit_run (void *cls,
     const struct TALER_AgeCommitmentProof *age_commitment_proof = NULL;
 
     GNUNET_assert (NULL != coin->coin_reference);
-    coin->coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
-                                                               coin->
-                                                               coin_reference);
+    cdd->amount = coin->amount;
+    coin->coin_cmd = TALER_TESTING_interpreter_lookup_command (
+      is,
+      coin->coin_reference);
     if (NULL == coin->coin_cmd)
     {
       GNUNET_break (0);

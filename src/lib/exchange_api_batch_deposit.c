@@ -520,6 +520,12 @@ TALER_EXCHANGE_batch_deposit (
     {
       *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
       GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Amount: %s\n",
+                  TALER_amount2s (&cdd->amount));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fee: %s\n",
+                  TALER_amount2s (&dki->fees.deposit));
       GNUNET_free (dh->cdds);
       GNUNET_free (dh);
       return NULL;
@@ -545,13 +551,15 @@ TALER_EXCHANGE_batch_deposit (
         GNUNET_JSON_PACK (
           TALER_JSON_pack_amount ("contribution",
                                   &cdd->amount),
-          GNUNET_JSON_pack_allow_null (
-            GNUNET_JSON_pack_data_auto ("h_age_commitment",
-                                        &cdd->h_age_commitment)),
           GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                       &cdd->h_denom_pub),
           TALER_JSON_pack_denom_sig ("ub_sig",
                                      &cdd->denom_sig),
+          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                      &cdd->coin_pub),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_data_auto ("h_age_commitment",
+                                        &cdd->h_age_commitment)),
           GNUNET_JSON_pack_data_auto ("coin_sig",
                                       &cdd->coin_sig)
           )));
@@ -569,14 +577,17 @@ TALER_EXCHANGE_batch_deposit (
   }
 
   deposit_obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_steal ("coins",
-                                  deposits),
     GNUNET_JSON_pack_string ("merchant_payto_uri",
                              dcd->merchant_payto_uri),
     GNUNET_JSON_pack_data_auto ("wire_salt",
                                 &dcd->wire_salt),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 &dcd->h_contract_terms),
+    GNUNET_JSON_pack_array_steal ("coins",
+                                  deposits),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_object_steal ("extension_details",
+                                     NULL)), /* FIXME-Oec */
     GNUNET_JSON_pack_timestamp ("timestamp",
                                 dcd->timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
@@ -619,17 +630,16 @@ TALER_EXCHANGE_batch_deposit (
 
 
 void
-TALER_EXCHANGE_batch_deposit_force_dc (struct
-                                       TALER_EXCHANGE_BatchDepositHandle *
-                                       deposit)
+TALER_EXCHANGE_batch_deposit_force_dc (
+  struct TALER_EXCHANGE_BatchDepositHandle *deposit)
 {
   deposit->auditor_chance = 1;
 }
 
 
 void
-TALER_EXCHANGE_batch_deposit_cancel (struct
-                                     TALER_EXCHANGE_BatchDepositHandle *deposit)
+TALER_EXCHANGE_batch_deposit_cancel (
+  struct TALER_EXCHANGE_BatchDepositHandle *deposit)
 {
   if (NULL != deposit->job)
   {

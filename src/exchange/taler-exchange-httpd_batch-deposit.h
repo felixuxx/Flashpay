@@ -35,13 +35,15 @@
  * out, this will ultimately lead to the "/batch-deposit" being executed, or
  * rejected.
  *
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param root uploaded JSON data
+ * @param args arguments, empty in this case
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_batch_deposit (struct MHD_Connection *connection,
-                           const json_t *root);
+TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
+                           const json_t *root,
+                           const char *const args[]);
 
 
 #endif

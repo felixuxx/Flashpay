@@ -151,13 +151,15 @@ reply_batch_deposit_success (
   const struct BatchDepositContext *bdc)
 {
   json_t *arr;
+  struct TALER_ExchangePublicKeyP pub;
 
+again:
   arr = json_array ();
   GNUNET_assert (NULL != arr);
   for (unsigned int i = 0; i<bdc->num_coins; i++)
   {
     const struct TALER_EXCHANGEDB_Deposit *deposit = &bdc->deposits[i];
-    struct TALER_ExchangePublicKeyP pub;
+    struct TALER_ExchangePublicKeyP pubi;
     struct TALER_ExchangeSignatureP sig;
     enum TALER_ErrorCode ec;
     struct TALER_Amount amount_without_fee;
@@ -178,12 +180,27 @@ reply_batch_deposit_success (
            &amount_without_fee,
            &deposit->coin.coin_pub,
            &bdc->merchant_pub,
-           &pub,
+           &pubi,
            &sig)))
     {
+      GNUNET_break (0);
       return TALER_MHD_reply_with_ec (connection,
                                       ec,
                                       NULL);
+    }
+    if (0 == i)
+      pub = pubi;
+    if (0 !=
+        GNUNET_memcmp (&pub,
+                       &pubi))
+    {
+      /* note: in the future, maybe have batch
+         sign API to avoid having to handle
+         key rollover... */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Exchange public key changed during batch deposit, trying again\n");
+      json_decref (arr);
+      goto again;
     }
     GNUNET_assert (
       0 ==
@@ -191,17 +208,17 @@ reply_batch_deposit_success (
                              GNUNET_JSON_PACK (
                                GNUNET_JSON_pack_data_auto (
                                  "exchange_sig",
-                                 &sig),
-                               GNUNET_JSON_pack_data_auto (
-                                 "exchange_pub",
-                                 &pub))));
+                                 &sig))));
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_timestamp ("exchange_timestamp",
                                 bdc->exchange_timestamp),
-    GNUNET_JSON_pack_array_steal ("confirmations",
+    GNUNET_JSON_pack_data_auto (
+      "exchange_pub",
+      &pub),
+    GNUNET_JSON_pack_array_steal ("exchange_sigs",
                                   arr));
 }
 
@@ -476,12 +493,15 @@ parse_coin (struct MHD_Connection *connection,
 
 
 MHD_RESULT
-TEH_handler_batch_deposit (struct MHD_Connection *connection,
-                           const json_t *root)
+TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
+                           const json_t *root,
+                           const char *const args[])
 {
+  struct MHD_Connection *connection = rc->connection;
   struct BatchDepositContext dc;
   json_t *coins;
   bool no_refund_deadline = true;
+  bool no_extensions = true;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("merchant_payto_uri",
                              &dc.payto_uri),
@@ -493,8 +513,10 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                                  &dc.h_contract_terms),
     GNUNET_JSON_spec_json ("coins",
                            &coins),
-    GNUNET_JSON_spec_json ("extension_details",
-                           &dc.extension_details),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_json ("extension_details",
+                             &dc.extension_details),
+      &no_extensions),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &dc.timestamp),
     GNUNET_JSON_spec_mark_optional (
@@ -505,7 +527,6 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                                 &dc.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
-
   enum GNUNET_GenericReturnValue res;
 
   res = TALER_MHD_parse_json_data (connection,
@@ -567,6 +588,7 @@ TEH_handler_batch_deposit (struct MHD_Connection *connection,
                                       &dc.wire_salt,
                                       &dc.h_wire);
   /* FIXME-OEC: hash actual extension JSON object here */
+  // if (! no_extensions)
   memset (&dc.h_extensions,
           0,
           sizeof (dc.h_extensions));

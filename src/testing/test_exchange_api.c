@@ -1183,22 +1183,16 @@ run (void *cls,
     /**
      * Spend the coins.
      */
-    TALER_TESTING_cmd_deposit ("deposit-batch-simple-1",
-                               "batch-withdraw-coin-1",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":5}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit ("deposit-batch-simple-2",
-                               "batch-withdraw-coin-1",
-                               1,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:1",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_batch_deposit ("batch-deposit-1",
+                                     bc.user42_payto,
+                                     "{\"items\":[{\"name\":\"ice cream\",\"value\":5}]}",
+                                     GNUNET_TIME_UNIT_ZERO,
+                                     MHD_HTTP_OK,
+                                     "batch-withdraw-coin-1#0",
+                                     "EUR:5",
+                                     "batch-withdraw-coin-1#1",
+                                     "EUR:1",
+                                     NULL),
     TALER_TESTING_cmd_end ()
   };
 
