@@ -224,7 +224,7 @@ again:
 
 
 /**
- * Execute database transaction for /deposit.  Runs the transaction
+ * Execute database transaction for /batch-deposit.  Runs the transaction
  * logic; IF it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
  * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
@@ -269,11 +269,12 @@ batch_deposit_transaction (void *cls,
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
-      TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
+      TALER_LOG_WARNING (
+        "Failed to store /batch-deposit information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_STORE_FAILED,
-                                             "deposit");
+                                             "batch-deposit");
       return qs;
     }
     if (in_conflict)
@@ -341,20 +342,11 @@ parse_coin (struct MHD_Connection *connection,
   };
   enum GNUNET_GenericReturnValue res;
 
-  res = TALER_MHD_parse_json_data (connection,
-                                   jcoin,
-                                   spec);
-  if (GNUNET_SYSERR == res)
-  {
-    GNUNET_break (0);
-    return MHD_NO;   /* hard failure */
-  }
-  if (GNUNET_NO == res)
-  {
-    GNUNET_break_op (0);
-    return MHD_YES;   /* failure */
-  }
-
+  if (GNUNET_OK !=
+      (res = TALER_MHD_parse_json_data (connection,
+                                        jcoin,
+                                        spec)))
+    return res;
   /* check denomination exists and is valid */
   {
     struct TEH_DenominationKey *dk;
@@ -373,49 +365,64 @@ parse_coin (struct MHD_Connection *connection,
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_AMOUNT_EXCEEDS_DENOMINATION_VALUE,
-                                         NULL);
+      return (MHD_YES ==
+              TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_BAD_REQUEST,
+                                          TALER_EC_EXCHANGE_GENERIC_AMOUNT_EXCEEDS_DENOMINATION_VALUE,
+                                          NULL))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
     {
       /* This denomination is past the expiration time for deposits */
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
-        &deposit->coin.denom_pub_hash,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        "DEPOSIT");
+      return (MHD_YES ==
+              TEH_RESPONSE_reply_expired_denom_pub_hash (
+                connection,
+                &deposit->coin.denom_pub_hash,
+                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+                "DEPOSIT"))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
     if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
       /* This denomination is not yet valid */
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
-        &deposit->coin.denom_pub_hash,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-        "DEPOSIT");
+      return (MHD_YES ==
+              TEH_RESPONSE_reply_expired_denom_pub_hash (
+                connection,
+                &deposit->coin.denom_pub_hash,
+                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+                "DEPOSIT"))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
     if (dk->recoup_possible)
     {
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
-        &deposit->coin.denom_pub_hash,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-        "DEPOSIT");
+      return (MHD_YES ==
+              TEH_RESPONSE_reply_expired_denom_pub_hash (
+                connection,
+                &deposit->coin.denom_pub_hash,
+                TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+                "DEPOSIT"))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
     if (dk->denom_pub.cipher != deposit->coin.denom_sig.cipher)
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
-                                         NULL);
+      return (MHD_YES ==
+              TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_BAD_REQUEST,
+                                          TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+                                          NULL))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
 
     deposit->deposit_fee = dk->meta.fees.deposit;
@@ -435,12 +442,15 @@ parse_coin (struct MHD_Connection *connection,
         TALER_test_coin_valid (&deposit->coin,
                                &dk->denom_pub))
     {
-      TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+      TALER_LOG_WARNING ("Invalid coin passed for /batch-deposit\n");
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
-                                         NULL);
+      return (MHD_YES ==
+              TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_FORBIDDEN,
+                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
+                                          NULL))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
     }
   }
   if (0 < TALER_amount_cmp (&deposit->deposit_fee,
@@ -448,10 +458,13 @@ parse_coin (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
-                                       NULL);
+    return (MHD_YES ==
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_EXCHANGE_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
+                                        NULL))
+        ? GNUNET_NO
+        : GNUNET_SYSERR;
   }
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
@@ -469,12 +482,15 @@ parse_coin (struct MHD_Connection *connection,
                                    &deposit->coin.coin_pub,
                                    &deposit->csig))
   {
-    TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
+    TALER_LOG_WARNING ("Invalid signature on /batch-deposit request\n");
     GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
-                                       NULL);
+    return (MHD_YES ==
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_FORBIDDEN,
+                                        TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
+                                        NULL))
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
   }
   deposit->merchant_pub = dc->merchant_pub;
   deposit->h_contract_terms = dc->h_contract_terms;
