@@ -421,7 +421,6 @@ TALER_EXCHANGE_deposit (
                      "/coins/%s/deposit",
                      pub_str);
   }
-
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
                                                      &cdd->h_denom_pub);
@@ -431,7 +430,6 @@ TALER_EXCHANGE_deposit (
     GNUNET_break_op (0);
     return NULL;
   }
-
   if (0 >
       TALER_amount_subtract (&amount_without_fee,
                              &cdd->amount,

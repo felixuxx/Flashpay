@@ -545,6 +545,9 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   };
   enum GNUNET_GenericReturnValue res;
 
+  memset (&dc,
+          0,
+          sizeof (dc));
   res = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);

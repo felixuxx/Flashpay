@@ -138,10 +138,8 @@ TALER_wallet_deposit_sign (
 
   if (NULL != h_age_commitment)
     dr.h_age_commitment = *h_age_commitment;
-
   if (NULL != h_extensions)
     dr.h_extensions = *h_extensions;
-
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -182,15 +180,12 @@ TALER_wallet_deposit_verify (
 
   if (NULL != h_age_commitment)
     dr.h_age_commitment = *h_age_commitment;
-
   if (NULL != h_extensions)
     dr.h_extensions = *h_extensions;
-
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
                      deposit_fee);
-
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr,
