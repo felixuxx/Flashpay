@@ -32,6 +32,7 @@ taler_bank_benchmark_SOURCES = \
 taler_bank_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/testing/libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
