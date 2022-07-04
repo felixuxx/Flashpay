@@ -1198,6 +1198,65 @@ check_known_coin (
 
 
 /**
+ * Update the denom balance in @a dso reducing it by
+ * @a amount_with_fee. If this is not possible, report
+ * an emergency.  Also updates the #total_escrow_balance.
+ *
+ * @param dso denomination summary to update
+ * @param rowid responsible row (for logging)
+ * @param amount_with_fee amount to subtract
+ */
+static void
+reduce_denom_balance (struct DenominationSummary *dso,
+                      uint64_t rowid,
+                      const struct TALER_Amount *amount_with_fee)
+{
+  struct TALER_Amount tmp;
+
+  if (TALER_ARL_SR_INVALID_NEGATIVE ==
+      TALER_ARL_amount_subtract_neg (&tmp,
+                                     &dso->denom_balance,
+                                     amount_with_fee))
+  {
+    TALER_ARL_amount_add (&dso->denom_loss,
+                          &dso->denom_loss,
+                          amount_with_fee);
+    dso->report_emergency = true;
+  }
+  else
+  {
+    dso->denom_balance = tmp;
+  }
+  if (-1 == TALER_amount_cmp (&total_escrow_balance,
+                              amount_with_fee))
+  {
+    /* This can theoretically happen if for example the exchange
+       never issued any coins (i.e. escrow balance is zero), but
+       accepted a forged coin (i.e. emergency situation after
+       private key compromise). In that case, we cannot even
+       subtract the profit we make from the fee from the escrow
+       balance. Tested as part of test-auditor.sh, case #18 */
+    report_amount_arithmetic_inconsistency (
+      "subtracting amount from escrow balance",
+      rowid,
+      &total_escrow_balance,
+      amount_with_fee,
+      0);
+  }
+  else
+  {
+    TALER_ARL_amount_subtract (&total_escrow_balance,
+                               &total_escrow_balance,
+                               amount_with_fee);
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "New balance of denomination `%s' is %s\n",
+              GNUNET_h2s (&dso->issue->denom_hash.hash),
+              TALER_amount2s (&dso->denom_balance));
+}
+
+
+/**
  * Function called with details about coins that were melted, with the
  * goal of auditing the refresh's execution.  Verifies the signature
  * and updates our information about coins outstanding (the old coin's
@@ -1230,7 +1289,6 @@ refresh_session_cb (void *cls,
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
-  struct TALER_Amount tmp;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) noreveal_index;
@@ -1462,47 +1520,9 @@ refresh_session_cb (void *cls,
   }
   else
   {
-    // FIXME: refactor: repeated logic!
-    if (TALER_ARL_SR_INVALID_NEGATIVE ==
-        TALER_ARL_amount_subtract_neg (&tmp,
-                                       &dso->denom_balance,
-                                       amount_with_fee))
-    {
-      TALER_ARL_amount_add (&dso->denom_loss,
-                            &dso->denom_loss,
-                            amount_with_fee);
-      dso->report_emergency = true;
-    }
-    else
-    {
-      dso->denom_balance = tmp;
-    }
-    if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                                amount_with_fee))
-    {
-      /* This can theoretically happen if for example the exchange
-         never issued any coins (i.e. escrow balance is zero), but
-         accepted a forged coin (i.e. emergency situation after
-         private key compromise). In that case, we cannot even
-         subtract the profit we make from the fee from the escrow
-         balance. Tested as part of test-auditor.sh, case #18 */
-      report_amount_arithmetic_inconsistency (
-        "subtracting refresh fee from escrow balance",
-        rowid,
-        &total_escrow_balance,
-        amount_with_fee,
-        0);
-    }
-    else
-    {
-      TALER_ARL_amount_subtract (&total_escrow_balance,
-                                 &total_escrow_balance,
-                                 amount_with_fee);
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "New balance of denomination `%s' after melt is %s\n",
-                GNUNET_h2s (&issue->denom_hash.hash),
-                TALER_amount2s (&dso->denom_balance));
+    reduce_denom_balance (dso,
+                          rowid,
+                          amount_with_fee);
   }
 
   /* update global melt fees */
@@ -1648,51 +1668,9 @@ deposit_cb (void *cls,
   }
   else
   {
-    struct TALER_Amount tmp;
-
-    // FIXME: refactor: repeated logic!
-    if (TALER_ARL_SR_INVALID_NEGATIVE ==
-        TALER_ARL_amount_subtract_neg (&tmp,
-                                       &ds->denom_balance,
-                                       &deposit->amount_with_fee))
-    {
-      TALER_ARL_amount_add (&ds->denom_loss,
-                            &ds->denom_loss,
-                            &deposit->amount_with_fee);
-      ds->report_emergency = true;
-    }
-    else
-    {
-      ds->denom_balance = tmp;
-    }
-
-    if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                                &deposit->amount_with_fee))
-    {
-      /* This can theoretically happen if for example the exchange
-         never issued any coins (i.e. escrow balance is zero), but
-         accepted a forged coin (i.e. emergency situation after
-         private key compromise). In that case, we cannot even
-         subtract the profit we make from the fee from the escrow
-         balance. Tested as part of test-auditor.sh, case #18 */
-      report_amount_arithmetic_inconsistency (
-        "subtracting deposit fee from escrow balance",
-        rowid,
-        &total_escrow_balance,
-        &deposit->amount_with_fee,
-        0);
-    }
-    else
-    {
-      TALER_ARL_amount_subtract (&total_escrow_balance,
-                                 &total_escrow_balance,
-                                 &deposit->amount_with_fee);
-    }
-
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "New balance of denomination `%s' after deposit is %s\n",
-                GNUNET_h2s (&issue->denom_hash.hash),
-                TALER_amount2s (&ds->denom_balance));
+    reduce_denom_balance (ds,
+                          rowid,
+                          &deposit->amount_with_fee);
   }
 
   /* update global deposit fees */
@@ -2449,50 +2427,9 @@ purse_deposit_cb (
   }
   else
   {
-    struct TALER_Amount tmp;
-
-    // FIXME: refactor: repeated logic!
-    if (TALER_ARL_SR_INVALID_NEGATIVE ==
-        TALER_ARL_amount_subtract_neg (&tmp,
-                                       &ds->denom_balance,
-                                       &deposit->amount))
-    {
-      TALER_ARL_amount_add (&ds->denom_loss,
-                            &ds->denom_loss,
-                            &deposit->amount);
-      ds->report_emergency = true;
-    }
-    else
-    {
-      ds->denom_balance = tmp;
-    }
-    if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                                &deposit->amount))
-    {
-      /* This can theoretically happen if for example the exchange
-         never issued any coins (i.e. escrow balance is zero), but
-         accepted a forged coin (i.e. emergency situation after
-         private key compromise). In that case, we cannot even
-         subtract the profit we make from the fee from the escrow
-         balance. Tested as part of test-auditor.sh, case #18 */
-      report_amount_arithmetic_inconsistency (
-        "subtracting purse deposit fee from escrow balance",
-        rowid,
-        &total_escrow_balance,
-        &deposit->amount,
-        0);
-    }
-    else
-    {
-      TALER_ARL_amount_subtract (&total_escrow_balance,
-                                 &total_escrow_balance,
-                                 &deposit->amount);
-    }
-
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "New balance of denomination `%s' after purse deposit is %s\n",
-                GNUNET_h2s (&issue->denom_hash.hash),
-                TALER_amount2s (&ds->denom_balance));
+    reduce_denom_balance (ds,
+                          rowid,
+                          &deposit->amount);
   }
 
   /* update global deposit fees */
