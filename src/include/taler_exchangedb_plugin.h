@@ -5463,24 +5463,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to approve merging of a purse with
-   * an account, made by the receiving account.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param purse_pub public key of the purse being merged
-   * @param reserve_pub public key of the account being credited
-   * @param reserve_sig signature of the account holder affirming the merge
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*do_account_merge)(
-    void *cls,
-    const struct TALER_PurseContractPublicKeyP *purse_pub,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
-    const struct TALER_ReserveSignatureP *reserve_sig);
-
-
-  /**
    * Function called to persist a signature that
    * prove that the client requested an
    * account history.  Debits the @a history_fee from
@@ -5513,6 +5495,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the account to close
    * @param reserve_sig signature affiming that the account is to be closed
+   * @param request_timestamp timestamp of the close request
    * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
    * @return transaction status code
    */
@@ -5520,6 +5503,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_close_request)(void *cls,
                           const struct TALER_ReservePublicKeyP *reserve_pub,
                           const struct TALER_ReserveSignatureP *reserve_sig,
+                          struct GNUNET_TIME_Timestamp request_timestamp,
                           struct TALER_Amount *final_balance);
 
 

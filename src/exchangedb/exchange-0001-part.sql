@@ -3605,6 +3605,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION exchange_do_close_request(
   IN in_reserve_pub BYTEA,
+  IN in_close_timestamp INT8,
   IN in_reserve_sig BYTEA,
   OUT out_final_balance_val INT8,
   OUT out_final_balance_frac INT4,
@@ -3613,7 +3614,45 @@ CREATE OR REPLACE FUNCTION exchange_do_close_request(
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- FIXME
+
+  SELECT
+    current_balance_val
+   ,current_balance_frac
+  INTO
+    out_final_balance_val
+   ,out_final_balance_frac
+  FROM reserves
+  WHERE reserve_pub=in_reserve_pub;
+
+  IF NOT FOUND
+  THEN
+    out_final_balance_val=0;
+    out_final_balance_frac=0;
+    out_balance_ok = FALSE;
+    out_conflict = FALSE;
+  END IF;
+
+  INSERT INTO close_requests
+    (reserve_pub
+    ,close_timestamp
+    ,reserve_sig
+    ,close_val
+    ,close_frac)
+    VALUES
+    (in_reserve_pub
+    ,in_close_timestamp
+    ,in_reserve_sig
+    ,out_final_balance_val
+    ,out_final_balance_frac)
+  ON CONFLICT DO NOTHING;
+  out_conflict = NOT FOUND;
+
+  UPDATE reserves SET
+    current_balance_val=0
+   ,current_balance_frac=0
+  WHERE reserve_pub=in_reserve_pub;
+  out_balance_ok = TRUE;
+
 END $$;
 
 

@@ -741,22 +741,6 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
       " ON CONFLICT DO NOTHING;",
       7),
-#if FIXME_DEAD
-    /* Used in #postgres_reserves_in_insert() to store transaction details */
-    GNUNET_PQ_make_prepare (
-      "reserves_in_add_by_pub",
-      "INSERT INTO reserves_in "
-      "(reserve_pub"
-      ",wire_reference"
-      ",credit_val"
-      ",credit_frac"
-      ",exchange_account_section"
-      ",wire_source_h_payto"
-      ",execution_date"
-      ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
-      " ON CONFLICT DO NOTHING;",
-      7),
-#endif
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -4268,8 +4252,8 @@ prepare_statements (struct PostgresClosure *pg)
       " out_final_balance_val"
       ",out_final_balance_frac"
       " FROM exchange_do_close_request"
-      "  ($1, $2)",
-      2),
+      "  ($1, $2, $3)",
+      3),
 
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -15869,28 +15853,6 @@ postgres_select_purse_merge (
 
 
 /**
- * Function called to approve merging of a purse with
- * an account, made by the receiving account.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub public key of the purse being merged
- * @param reserve_pub public key of the account being credited
- * @param reserve_sig signature of the account holder affirming the merge
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_account_merge (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig)
-{
-  GNUNET_break (0); // FIXME: Function dead, eliminate? (DCE)
-  return GNUNET_DB_STATUS_HARD_ERROR;
-}
-
-
-/**
  * Function called to persist a signature that
  * prove that the client requested an
  * account history.  Debits the @a history_fee from
@@ -15953,10 +15915,26 @@ postgres_insert_close_request (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig,
+  struct GNUNET_TIME_Timestamp request_timestamp,
   struct TALER_Amount *final_balance)
 {
-  GNUNET_break (0); // FIXME
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_timestamp (&request_timestamp),
+    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC_AMOUNT ("out_final_balance",
+                                 final_balance),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_account_close",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -16272,8 +16250,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_do_reserve_purse;
   plugin->select_purse_merge
     = &postgres_select_purse_merge;
-  plugin->do_account_merge
-    = &postgres_do_account_merge;
   plugin->insert_history_request
     = &postgres_insert_history_request;
   plugin->insert_close_request
