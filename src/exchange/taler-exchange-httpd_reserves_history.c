@@ -96,8 +96,6 @@ reply_reserve_history_success (struct MHD_Connection *connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        NULL);
-  /* FIXME: should set explicit cache control headers
-     for this response to enable caching! */
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
