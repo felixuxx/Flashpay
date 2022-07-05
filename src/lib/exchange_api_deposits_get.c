@@ -80,74 +80,12 @@ struct TALER_EXCHANGE_DepositGetHandle
   struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
-   * Raw value (binary encoding) of the wire transfer subject.
-   */
-  struct TALER_WireTransferIdentifierRawP wtid;
-
-  /**
    * The coin's public key.  This is the value that must have been
    * signed (blindly) by the Exchange.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
-  /**
-   * When did the exchange execute this transfer? Note that the
-   * timestamp may not be exactly the same on the wire, i.e.
-   * because the wire has a different timezone or resolution.
-   */
-  struct GNUNET_TIME_Timestamp execution_time;
-
-  /**
-   * The contribution of @e coin_pub to the total transfer volume.
-   * This is the value of the deposit minus the fee.
-   */
-  struct TALER_Amount coin_contribution;
-
 };
-
-
-/**
- * Verify that the signature on the "200 OK" response
- * from the exchange is valid.
- *
- * @param dwh deposit wtid handle
- * @param exchange_pub the exchange's public key
- * @param exchange_sig the exchange's signature
- * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
- */
-// FIXME: inline...
-static enum GNUNET_GenericReturnValue
-verify_deposit_wtid_signature_ok (
-  const struct TALER_EXCHANGE_DepositGetHandle *dwh,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_ExchangeSignatureP *exchange_sig)
-{
-  const struct TALER_EXCHANGE_Keys *key_state;
-
-  key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_test_signing_key (key_state,
-                                       exchange_pub))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_exchange_online_confirm_wire_verify (
-        &dwh->h_wire,
-        &dwh->h_contract_terms,
-        &dwh->wtid,
-        &dwh->coin_pub,
-        dwh->execution_time,
-        &dwh->coin_contribution,
-        exchange_pub,
-        exchange_sig))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
 
 
 /**
@@ -191,7 +129,10 @@ handle_deposit_wtid_finished (void *cls,
                                      &dr.details.success.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
+      const struct TALER_EXCHANGE_Keys *key_state;
 
+      key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
+      GNUNET_assert (NULL != key_state);
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
                              spec,
@@ -202,14 +143,25 @@ handle_deposit_wtid_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      // FIXME: remove once we inline function below...
-      dwh->execution_time = dr.details.success.execution_time;
-      dwh->wtid = dr.details.success.wtid;
-      dwh->coin_contribution = dr.details.success.coin_contribution;
       if (GNUNET_OK !=
-          verify_deposit_wtid_signature_ok (dwh,
-                                            &dr.details.success.exchange_pub,
-                                            &dr.details.success.exchange_sig))
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &dr.details.success.exchange_pub))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_SIGNATURE_BY_EXCHANGE;
+        break;
+      }
+      if (GNUNET_OK !=
+          TALER_exchange_online_confirm_wire_verify (
+            &dwh->h_wire,
+            &dwh->h_contract_terms,
+            &dr.details.success.wtid,
+            &dwh->coin_pub,
+            dr.details.success.execution_time,
+            &dr.details.success.coin_contribution,
+            &dr.details.success.exchange_pub,
+            &dr.details.success.exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
