@@ -222,31 +222,28 @@ run (void *cls,
                                      &priv),
         GNUNET_JSON_spec_end ()
       };
-      if (GNUNET_OK != GNUNET_JSON_parse (args,
-                                          kx_spec,
-                                          NULL,
-                                          NULL))
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (args,
+                             kx_spec,
+                             NULL,
+                             NULL))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "malformed op args\n");
         global_ret = 1;
         return;
       }
-      if (GNUNET_OK != GNUNET_CRYPTO_ecdh_eddsa (&priv,
-                                                 &pub,
-                                                 &key_material))
-      {
-        // FIXME: Return as result?
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "kx failed\n");
-        global_ret = 1;
-        return;
-      }
+      GNUNET_assert (GNUNET_OK ==
+                     GNUNET_CRYPTO_ecdh_eddsa (&priv,
+                                               &pub,
+                                               &key_material));
       resp = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h",
                                     &key_material)
         );
-      json_dumpf (resp, stdout, JSON_COMPACT);
+      json_dumpf (resp,
+                  stdout,
+                  JSON_COMPACT);
       printf ("\n");
       fflush (stdout);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
