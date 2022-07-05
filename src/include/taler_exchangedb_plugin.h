@@ -3171,6 +3171,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param now current time (rounded)
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] nonce_ok set to false if the nonce was reused
    * @param[out] kyc set to the KYC status of the reserve
    * @param[out] ruuid set to the reserve's UUID (reserves table row)
    * @return query execution status
@@ -3183,6 +3184,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
+    bool *nonce_ok,
     struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
     uint64_t *ruuid);
 

@@ -1422,6 +1422,7 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN min_reserve_gc INT8,
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
+  OUT nonce_ok BOOLEAN,
   OUT kycok BOOLEAN,
   OUT account_uuid INT8,
   OUT ruuid INT8)
@@ -1478,6 +1479,7 @@ THEN
   -- reserve unknown
   reserve_found=FALSE;
   balance_ok=FALSE;
+  nonce_ok=TRUE;
   kycok=FALSE;
   account_uuid=0;
   ruuid=2;
@@ -1511,6 +1513,7 @@ THEN
   -- idempotent query, all constraints must be satisfied
   reserve_found=TRUE;
   balance_ok=TRUE;
+  nonce_ok=TRUE;
   kycok=TRUE;
   account_uuid=0;
   RETURN;
@@ -1534,6 +1537,7 @@ ELSE
     reserve_frac=reserve_frac - amount_frac;
   ELSE
     reserve_found=TRUE;
+    nonce_ok=TRUE; -- we do not really know
     balance_ok=FALSE;
     kycok=FALSE; -- we do not really know or care
     account_uuid=0;
@@ -1585,10 +1589,12 @@ THEN
       balance_ok=FALSE;
       kycok=FALSE;
       account_uuid=0;
-      ruuid=1; -- FIXME: return error message more nicely!
-      ASSERT false, 'nonce reuse attempted by client';
+      nonce_ok=FALSE;
+      RETURN;
     END IF;
   END IF;
+ELSE
+  nonce_ok=TRUE; -- no nonce, hence OK!
 END IF;
 
 

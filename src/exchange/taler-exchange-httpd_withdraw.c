@@ -97,6 +97,7 @@ withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   bool found = false;
   bool balance_ok = false;
+  bool nonce_ok = false;
   struct GNUNET_TIME_Timestamp now;
   uint64_t ruuid;
   const struct TALER_CsNonce *nonce;
@@ -108,16 +109,13 @@ withdraw_transaction (void *cls,
     (TALER_DENOMINATION_CS == bp->cipher)
     ? &bp->details.cs_blinded_planchet.nonce
     : NULL;
-  // FIXME: what error is returned on nonce reuse?
-  // Should expand function to return this error
-  // specifically, and then we should return a
-  // TALER_EC_EXCHANGE_WITHDRAW_NONCE_REUSE,
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
                                 nonce,
                                 &wc->collectable,
                                 now,
                                 &found,
                                 &balance_ok,
+                                &nonce_ok,
                                 &wc->kyc,
                                 &ruuid);
   if (0 > qs)
@@ -144,6 +142,15 @@ withdraw_transaction (void *cls,
       connection,
       &wc->collectable.amount_with_fee,
       &wc->collectable.reserve_pub);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (! nonce_ok)
+  {
+    TEH_plugin->rollback (TEH_plugin->cls);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_CONFLICT,
+                                           TALER_EC_EXCHANGE_WITHDRAW_NONCE_REUSE,
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&

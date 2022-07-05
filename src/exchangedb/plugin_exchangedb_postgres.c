@@ -827,6 +827,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT "
       " reserve_found"
       ",balance_ok"
+      ",nonce_ok"
       ",kycok AS kyc_ok"
       ",account_uuid AS payment_target_uuid"
       ",ruuid"
@@ -5906,6 +5907,7 @@ postgres_get_withdraw_info (
  * @param now current time (rounded)
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] nonce_ok set to false if the nonce was reused
  * @param[out] kyc set to true if the kyc status of the reserve is satisfied
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
  * @return query execution status
@@ -5918,6 +5920,7 @@ postgres_do_withdraw (
   struct GNUNET_TIME_Timestamp now,
   bool *found,
   bool *balance_ok,
+  bool *nonce_ok,
   struct TALER_EXCHANGEDB_KycStatus *kyc,
   uint64_t *ruuid)
 {
@@ -5944,6 +5947,8 @@ postgres_do_withdraw (
                                 balance_ok),
     GNUNET_PQ_result_spec_bool ("kyc_ok",
                                 &kyc->ok),
+    GNUNET_PQ_result_spec_bool ("nonce_ok",
+                                nonce_ok),
     GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                   &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
