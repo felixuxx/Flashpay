@@ -545,8 +545,8 @@ parallel_benchmark (void)
     else
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "FIXME: launching LibEuFin not yet supported\n");
-      bankd = NULL; // FIXME
+                  "FIXME #7273: launching LibEuFin not yet supported\n");
+      bankd = NULL; // FIXME #7273
       return GNUNET_SYSERR;
     }
 
