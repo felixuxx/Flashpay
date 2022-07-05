@@ -740,7 +740,7 @@ history_cb (void *cls,
               "Adding wire transfer over %s with (hashed) subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->reserve_pub));
-  /* FIXME-PERFORMANCE: Consider using Postgres multi-valued insert here,
+  /* FIXME #7276: Consider using Postgres multi-valued insert here,
      for up to 15x speed-up according to
      https://dba.stackexchange.com/questions/224989/multi-row-insert-vs-transactional-single-row-inserts#225006
      (Note: this may require changing both the
