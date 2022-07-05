@@ -221,7 +221,6 @@ handle_wire_finished (void *cls,
   {
   case 0:
     hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-    /* FIXME:  Maybe we should only increment when we know it's a timeout? */
     wh->exchange->wire_error_count++;
     break;
   case MHD_HTTP_OK:
