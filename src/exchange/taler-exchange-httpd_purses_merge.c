@@ -553,7 +553,49 @@ TEH_handler_purses_merge (
 
   if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
   {
-    // FIXME-BUG: idempotency check, otherwise generate 410!
+    struct TALER_PurseMergeSignatureP merge_sig;
+    struct GNUNET_TIME_Timestamp merge_timestamp;
+    char *partner_url = NULL;
+    struct TALER_ReservePublicKeyP reserve_pub;
+
+    qs = TEH_plugin->select_purse_merge (TEH_plugin->cls,
+                                         pcc.purse_pub,
+                                         &merge_sig,
+                                         &merge_timestamp,
+                                         &partner_url,
+                                         &reserve_pub);
+    if (qs <= 0)
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_GONE,
+                                         TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                         NULL);
+    }
+    if (0 !=
+        GNUNET_memcmp (&merge_sig,
+                       &pcc.merge_sig))
+    {
+      MHD_RESULT mhd_res;
+
+      mhd_res = TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_CONFLICT,
+        GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                    merge_timestamp),
+        GNUNET_JSON_pack_data_auto ("merge_sig",
+                                    &merge_sig),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_string ("partner_url",
+                                   partner_url)),
+        GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                    &reserve_pub));
+      GNUNET_free (partner_url);
+      return mhd_res;
+    }
+    GNUNET_free (partner_url);
+    /* request was idempotent, return success! */
+    return reply_merge_success (connection,
+                                &pcc);
   }
 
   /* execute transaction */
