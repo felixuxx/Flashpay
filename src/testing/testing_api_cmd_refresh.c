@@ -467,6 +467,19 @@ reveal_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
+melt_run (void *cls,
+          const struct TALER_TESTING_Command *cmd,
+          struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Run the command.
+ *
+ * @param cls closure.
+ * @param cmd the command to execute.
+ * @param is the interpreter state.
+ */
+static void
 refresh_reveal_run (void *cls,
                     const struct TALER_TESTING_Command *cmd,
                     struct TALER_TESTING_Interpreter *is)
@@ -484,7 +497,7 @@ refresh_reveal_run (void *cls,
     TALER_TESTING_interpreter_fail (rrs->is);
     return;
   }
-  // FIXME: use trait for 'rms'!
+  GNUNET_assert (melt_cmd->run == &melt_run);
   rms = melt_cmd->cls;
   {
     struct TALER_ExchangeWithdrawValues alg_values[rms->num_fresh_coins];
@@ -791,17 +804,15 @@ refresh_link_run (void *cls,
   }
 
   /* find reserve_withdraw command */
+  GNUNET_assert (melt_cmd->run == &melt_run);
+  rms = melt_cmd->cls;
+  coin_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
+                                                       rms->coin_reference);
+  if (NULL == coin_cmd)
   {
-    // FIXME: use trait!
-    rms = melt_cmd->cls;
-    coin_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
-                                                         rms->coin_reference);
-    if (NULL == coin_cmd)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (rls->is);
-      return;
-    }
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (rls->is);
+    return;
   }
 
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
@@ -861,19 +872,6 @@ refresh_link_cleanup (void *cls,
   }
   GNUNET_free (rls);
 }
-
-
-/**
- * Run the command.
- *
- * @param cls closure.
- * @param cmd the command to execute.
- * @param is the interpreter state.
- */
-static void
-melt_run (void *cls,
-          const struct TALER_TESTING_Command *cmd,
-          struct TALER_TESTING_Interpreter *is);
 
 
 /**
