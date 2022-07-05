@@ -579,10 +579,8 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
       TALER_EC_GENERIC_DB_START_FAILED,
       NULL);
   }
-  // FIXME: simplify, 3rd arg is always 'true' now?
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           coin_pub,
-                                          true,
                                           &tl);
   TEH_plugin->rollback (TEH_plugin->cls);
   if (0 > qs)

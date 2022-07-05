@@ -1707,7 +1707,6 @@ run (void *cls)
 
       qs = plugin->get_coin_transactions (plugin->cls,
                                           &refresh.coin.coin_pub,
-                                          GNUNET_YES,
                                           &tl);
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
       plugin->free_coin_transaction_list (plugin->cls,
@@ -1946,7 +1945,6 @@ run (void *cls)
   FAILIF (1 != auditor_row_cnt);
   qs = plugin->get_coin_transactions (plugin->cls,
                                       &refund.coin.coin_pub,
-                                      GNUNET_YES,
                                       &tl);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
   GNUNET_assert (NULL != tl);

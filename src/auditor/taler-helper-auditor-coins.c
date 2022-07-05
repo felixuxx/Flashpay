@@ -473,7 +473,6 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
 
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
-                                             true,
                                              &tl);
   if (0 >= qs)
     return qs;

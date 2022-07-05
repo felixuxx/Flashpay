@@ -3838,14 +3838,12 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param coin_pub coin to investigate
-   * @param include_recoup include recoup transactions of the coin?
    * @param[out] tlp set to list of transactions, NULL if coin is fresh
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_transactions)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                           bool include_recoup,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
 
 

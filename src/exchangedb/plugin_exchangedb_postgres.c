@@ -8937,7 +8937,6 @@ struct Work
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param coin_pub coin to investigate
- * @param include_recoup should recoup transactions be included in the @a tlp
  * @param[out] tlp set to list of transactions, NULL if coin is fresh
  * @return database transaction status
  */
@@ -8945,26 +8944,10 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_coin_transactions (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  bool include_recoup,
   struct TALER_EXCHANGEDB_TransactionList **tlp)
 {
   struct PostgresClosure *pg = cls;
-  static const struct Work work_op[] = {
-    /** #TALER_EXCHANGEDB_TT_DEPOSIT */
-    { "get_deposit_with_coin_pub",
-      &add_coin_deposit },
-    /** #TALER_EXCHANGEDB_TT_MELT */
-    { "get_refresh_session_by_coin",
-      &add_coin_melt },
-    /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
-    { "get_purse_deposit_by_coin_pub",
-      &add_coin_purse_deposit },
-    /** #TALER_EXCHANGEDB_TT_REFUND */
-    { "get_refunds_by_coin",
-      &add_coin_refund },
-    { NULL, NULL }
-  };
-  static const struct Work work_wp[] = {
+  static const struct Work work[] = {
     /** #TALER_EXCHANGEDB_TT_DEPOSIT */
     { "get_deposit_with_coin_pub",
       &add_coin_deposit },
@@ -8993,7 +8976,6 @@ postgres_get_coin_transactions (
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
-  const struct Work *work;
   struct CoinHistoryContext chc = {
     .head = NULL,
     .coin_pub = coin_pub,
@@ -9001,7 +8983,6 @@ postgres_get_coin_transactions (
     .db_cls = cls
   };
 
-  work = (GNUNET_YES == include_recoup) ? work_wp : work_op;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting transactions for coin %s\n",
               TALER_B2S (coin_pub));

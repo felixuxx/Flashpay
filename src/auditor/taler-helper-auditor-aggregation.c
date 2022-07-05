@@ -713,7 +713,6 @@ wire_transfer_information_cb (
   /* Obtain coin's transaction history */
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
                                              coin_pub,
-                                             GNUNET_YES,
                                              &tl);
   if ( (qs < 0) ||
        (NULL == tl) )
