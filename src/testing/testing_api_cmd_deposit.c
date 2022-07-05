@@ -445,7 +445,7 @@ deposit_run (void *cls,
                                &h_wire,
                                &h_contract_terms,
                                &h_age_commitment,
-                               NULL, /* FIXME: add hash of extensions */
+                               NULL, /* FIXME #7270: add hash of extensions */
                                &denom_pub->h_key,
                                ds->wallet_timestamp,
                                &merchant_pub,
@@ -468,7 +468,7 @@ deposit_run (void *cls,
       .merchant_payto_uri = payto_uri,
       .wire_salt = wire_salt,
       .h_contract_terms = h_contract_terms,
-      .extension_details = NULL /* FIXME-OEC */,
+      .extension_details = NULL /* FIXME #7270-OEC */,
       .timestamp = ds->wallet_timestamp,
       .merchant_pub = merchant_pub,
       .refund_deadline = ds->refund_deadline

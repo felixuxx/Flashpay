@@ -296,7 +296,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   {
     struct TALER_CsNonce nonce;
 
-    // FIXME: add this to the spec!
     /* NOTE: this is not elegant, and as per the note in TALER_coin_ev_hash()
        it is not strictly clear that the nonce is needed. Best case would be
        to find a way to include it more 'naturally' somehow, for example with

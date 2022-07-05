@@ -1819,8 +1819,8 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-#if FIXME
-  /* TODO: do we even care about these? */
+#if 0
+  /* FIXME #7269 (support for explicit reserve closure request) */
   qs = TALER_ARL_edb->select_close_requests_above_serial_id (
     TALER_ARL_edb->cls,
     ppr.last_close_requests_serial_id,

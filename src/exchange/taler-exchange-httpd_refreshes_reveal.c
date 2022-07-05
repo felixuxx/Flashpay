@@ -751,7 +751,7 @@ clean_age:
   {
     enum TALER_ErrorCode ec;
 
-    // FIXME: replace with a batch call that
+    // FIXME #7272: replace with a batch call that
     // passes all coins in once go!
     ec = TEH_keys_denomination_sign_melt (
       &rrcs[i].h_denom_pub,

@@ -261,7 +261,7 @@ batch_deposit_transaction (void *cls,
                                  deposit,
                                  known_coin_id,
                                  &dc->h_payto,
-                                 false, /* FIXME-OEC: extension blocked */
+                                 false, /* FIXME-OEC: #7270 extension blocked */
                                  &dc->exchange_timestamp,
                                  &balance_ok,
                                  &in_conflict);
@@ -279,7 +279,7 @@ batch_deposit_transaction (void *cls,
     }
     if (in_conflict)
     {
-      /* FIXME: conficting contract != insufficient funds */
+      /* FIXME: #7267 conficting contract != insufficient funds */
       *mhd_ret
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
@@ -496,7 +496,7 @@ parse_coin (struct MHD_Connection *connection,
   deposit->h_contract_terms = dc->h_contract_terms;
   deposit->wire_salt = dc->wire_salt;
   deposit->receiver_wire_account = (char *) dc->payto_uri;
-  /* FIXME-OEC: should NOT insert the extension details N times,
+  /* FIXME-OEC: #7270 should NOT insert the extension details N times,
      but rather insert them ONCE and then per-coin only use
      the resulting extension UUID/serial; so the data structure
      here should be changed once we look at extensions in earnest.  */
@@ -606,7 +606,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   TALER_merchant_wire_signature_hash (dc.payto_uri,
                                       &dc.wire_salt,
                                       &dc.h_wire);
-  /* FIXME-OEC: hash actual extension JSON object here */
+  /* FIXME-OEC: #7270 hash actual extension JSON object here */
   // if (! no_extensions)
   memset (&dc.h_extensions,
           0,

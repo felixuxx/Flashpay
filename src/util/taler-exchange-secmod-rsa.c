@@ -1981,7 +1981,7 @@ run (void *cls,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   if (0 == max_workers)
-    max_workers = 1; /* FIXME: or determine from CPU? */
+    max_workers = 1; /* FIXME-#7272: or determine from CPU? */
   for (unsigned int i = 0; i<max_workers; i++)
     if (GNUNET_OK !=
         start_worker ())

@@ -178,7 +178,7 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
         }
 
         /* derive r_pub */
-        // FIXME: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
+        // FIXME-#7272: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
         ec = TEH_keys_denomination_cs_r_pub_melt (denom_pub_hash,
                                                   nonce,
                                                   r_pub);

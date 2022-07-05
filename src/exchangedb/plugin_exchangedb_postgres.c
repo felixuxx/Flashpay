@@ -15553,7 +15553,7 @@ postgres_do_purse_deposit (
   bool *conflict)
 {
   struct PostgresClosure *pg = cls;
-  uint64_t partner_id = 0; /* FIXME: WAD support... */
+  uint64_t partner_id = 0; /* FIXME #7271: WAD support... */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),

@@ -167,7 +167,7 @@ deposit_transaction (void *cls,
                                dc->deposit,
                                dc->known_coin_id,
                                &dc->h_payto,
-                               false, /* FIXME-OEC: extension blocked */
+                               false, /* FIXME-OEC: extension blocked #7270 */
                                &dc->exchange_timestamp,
                                &balance_ok,
                                &in_conflict);
@@ -184,7 +184,7 @@ deposit_transaction (void *cls,
   }
   if (in_conflict)
   {
-    /* FIXME: conficting contract != insufficient funds */
+    /* FIXME #7267: conficting contract != insufficient funds */
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,

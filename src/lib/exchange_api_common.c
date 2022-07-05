@@ -724,7 +724,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
 {
   struct TALER_MerchantWireHashP h_wire;
   struct TALER_PrivateContractHashP h_contract_terms;
-  // struct TALER_ExtensionContractHashP h_extensions; // FIXME!
+  // struct TALER_ExtensionContractHashP h_extensions; // FIXME #7270!
   struct GNUNET_TIME_Timestamp wallet_timestamp;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_TIME_Timestamp refund_deadline = {0};

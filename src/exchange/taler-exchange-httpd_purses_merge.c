@@ -485,9 +485,9 @@ TEH_handler_purses_merge (
   }
   else
   {
-    char *method = GNUNET_strdup ("FIXME-WAD");
+    char *method = GNUNET_strdup ("FIXME-WAD #7271");
 
-    /* FIXME: lookup wire method by pcc.provider_url! */
+    /* FIXME-#7271: lookup wire method by pcc.provider_url! */
     pcc.wf = TEH_wire_fees_by_time (pcc.exchange_timestamp,
                                     method);
     if (NULL == pcc.wf)
@@ -553,7 +553,7 @@ TEH_handler_purses_merge (
 
   if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
   {
-    // FIXME: idempotency check, otherwise generate 410!
+    // FIXME-BUG: idempotency check, otherwise generate 410!
   }
 
   /* execute transaction */

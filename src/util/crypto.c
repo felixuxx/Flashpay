@@ -244,7 +244,7 @@ TALER_cs_refresh_nonce_derive (
                                     sizeof (*nonce),
                                     &be_salt,
                                     sizeof (be_salt),
-                                    "refresh-n", // FIXME: value used in spec?
+                                    "refresh-n",
                                     strlen ("refresh-n"),
                                     rms,
                                     sizeof(*rms),

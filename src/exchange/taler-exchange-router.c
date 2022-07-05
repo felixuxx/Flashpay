@@ -32,7 +32,7 @@
 #include "taler_bank_service.h"
 
 
-// FIXME: revisit how (and if) we do sharding!
+// FIXME #7271: revisit how (and if) we do sharding!
 // Maybe use different helpers for wads than
 // for local purses?!
 /**
@@ -282,7 +282,7 @@ run_routing (void *cls)
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for ready P2P transfers to route\n");
-  // FIXME: do actual work here!
+  // FIXME #7271: do actual work here!
   commit_or_warn ();
   release_shard (s);
   task = GNUNET_SCHEDULER_add_now (&run_shard,

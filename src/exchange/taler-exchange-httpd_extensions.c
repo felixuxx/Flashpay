@@ -162,7 +162,7 @@ TEH_extensions_init ()
     return GNUNET_SYSERR;
   }
 
-  /* FIXME: shall we load the extensions from the config right away?
+  /* FIXME #7270: shall we load the extensions from the config right away?
    * We do have to for now, as otherwise denominations with age restriction
    * will not have the age mask set right upon initial generation.
    */

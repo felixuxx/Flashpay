@@ -602,7 +602,7 @@ TALER_CRYPTO_helper_rsa_batch_sign (
   struct TALER_BlindedDenominationSignature *bss)
 {
   GNUNET_break (0);
-  return -1; /* FIXME: NOT IMPLEMENTED! */
+  return -1; /* FIXME #7272: NOT IMPLEMENTED! */
 }
 
 

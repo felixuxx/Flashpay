@@ -587,7 +587,7 @@ TALER_EXCHANGE_batch_deposit (
                                   deposits),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_object_steal ("extension_details",
-                                     NULL)), /* FIXME-Oec */
+                                     NULL)), /* FIXME #7270-Oec */
     GNUNET_JSON_pack_timestamp ("timestamp",
                                 dcd->timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
