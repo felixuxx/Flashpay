@@ -937,4 +937,46 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
 }
 
 
+MHD_RESULT
+TEH_RESPONSE_reply_purse_created (
+  struct MHD_Connection *connection,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  const struct TALER_Amount *purse_balance,
+  const struct TEH_PurseDetails *pd)
+{
+  struct TALER_ExchangePublicKeyP pub;
+  struct TALER_ExchangeSignatureP sig;
+  enum TALER_ErrorCode ec;
+
+  if (TALER_EC_NONE !=
+      (ec = TALER_exchange_online_purse_created_sign (
+         &TEH_keys_exchange_sign_,
+         exchange_timestamp,
+         pd->purse_expiration,
+         &pd->target_amount,
+         purse_balance,
+         &pd->purse_pub,
+         &pd->h_contract_terms,
+         &pub,
+         &sig)))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
+  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_amount ("total_deposited",
+                            purse_balance),
+    GNUNET_JSON_pack_timestamp ("exchange_timestamp",
+                                exchange_timestamp),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
+}
+
+
 /* end of taler-exchange-httpd_responses.c */

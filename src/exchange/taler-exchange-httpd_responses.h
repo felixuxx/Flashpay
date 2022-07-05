@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -123,6 +123,50 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   enum TALER_ErrorCode ec,
   const struct TALER_DenominationHashP *h_denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub);
+
+/**
+ * Fundamental details about a purse.
+ */
+struct TEH_PurseDetails
+{
+  /**
+   * When should the purse expire.
+   */
+  struct GNUNET_TIME_Timestamp purse_expiration;
+
+  /**
+   * Hash of the contract terms of the purse.
+   */
+  struct TALER_PrivateContractHashP h_contract_terms;
+
+  /**
+   * Public key of the purse we are creating.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Total amount to be put into the purse.
+   */
+  struct TALER_Amount target_amount;
+};
+
+
+/**
+ * Send confirmation that a purse was created with
+ * the current purse balance.
+ *
+ * @param connection connection to the client
+ * @param pd purse details
+ * @param exchange_timestamp our time for purse creation
+ * @param purse_balance current balance in the purse
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_purse_created (
+  struct MHD_Connection *connection,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  const struct TALER_Amount *purse_balance,
+  const struct TEH_PurseDetails *pd);
 
 
 /**
