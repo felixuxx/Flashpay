@@ -2844,6 +2844,18 @@ struct TALER_EXCHANGEDB_Plugin
   (*start_read_committed)(void *cls,
                           const char *name);
 
+  /**
+   * Start a READ ONLY serializable transaction.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param name unique name identifying the transaction (for debugging)
+   *             must point to a constant
+   * @return #GNUNET_OK on success
+   */
+  enum GNUNET_GenericReturnValue
+  (*start_read_only)(void *cls,
+                     const char *name);
+
 
   /**
    * Commit a transaction.

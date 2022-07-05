@@ -568,10 +568,9 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   json_t *history;
 
   TEH_plugin->rollback (TEH_plugin->cls);
-  // FIXME: maybe start read-only transaction here?
   if (GNUNET_OK !=
-      TEH_plugin->start_read_committed (TEH_plugin->cls,
-                                        "get_coin_transactions"))
+      TEH_plugin->start_read_only (TEH_plugin->cls,
+                                   "get_coin_transactions"))
   {
     return TALER_MHD_reply_with_error (
       connection,
@@ -900,10 +899,9 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
   enum GNUNET_DB_QueryStatus qs;
   MHD_RESULT mhd_ret;
 
-  // FIXME: maybe start read-committed here?
   if (GNUNET_OK !=
-      TEH_plugin->start (TEH_plugin->cls,
-                         "get_reserve_history on insufficient balance"))
+      TEH_plugin->start_read_only (TEH_plugin->cls,
+                                   "get_reserve_history on insufficient balance"))
   {
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,

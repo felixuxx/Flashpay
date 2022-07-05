@@ -4451,6 +4451,45 @@ postgres_start_read_committed (void *cls,
 
 
 /**
+ * Start a READ ONLY serializable transaction.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param name unique name identifying the transaction (for debugging)
+ *             must point to a constant
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+postgres_start_read_only (void *cls,
+                          const char *name)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute (
+      "START TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
+  GNUNET_assert (NULL != name);
+  if (GNUNET_SYSERR ==
+      postgres_preflight (pg))
+    return GNUNET_SYSERR;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting READ ONLY transaction `%s`\n",
+              name);
+  if (GNUNET_OK !=
+      GNUNET_PQ_exec_statements (pg->conn,
+                                 es))
+  {
+    TALER_LOG_ERROR ("Failed to start transaction\n");
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  pg->transaction_name = name;
+  return GNUNET_OK;
+}
+
+
+/**
  * Roll back the current transaction of a database connection.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -16021,6 +16060,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->setup_foreign_servers = &postgres_setup_foreign_servers;
   plugin->start = &postgres_start;
   plugin->start_read_committed = &postgres_start_read_committed;
+  plugin->start_read_only = &postgres_start_read_only;
   plugin->commit = &postgres_commit;
   plugin->preflight = &postgres_preflight;
   plugin->rollback = &postgres_rollback;
