@@ -2171,7 +2171,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       GNUNET_JSON_pack_string ("credit_account",
                                credit_payto),
       GNUNET_JSON_pack_string ("debit_account",
-                               debit_payto),          // FIXME: inefficient to return this here always!
+                               debit_payto),          // FIXME #7275: inefficient to return this here always!
       GNUNET_JSON_pack_string ("exchange_base_url",
                                pos->subject.debit.exchange_base_url),
       GNUNET_JSON_pack_data_auto ("wtid",
@@ -2384,7 +2384,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
       GNUNET_JSON_pack_string ("credit_account",
-                               credit_payto),   // FIXME: inefficient to repeat this always here!
+                               credit_payto),   // FIXME #7275: inefficient to repeat this always here!
       GNUNET_JSON_pack_string ("debit_account",
                                debit_payto),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
