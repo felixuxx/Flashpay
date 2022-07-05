@@ -3442,14 +3442,18 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
-   * @param[out] balance set to the reserve balance
+   * @param[out] balance_in set to the total of inbound
+   *             transactions in the returned history
+   * @param[out] balance_out set to the total of outbound
+   *             transactions in the returned history
    * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_status)(void *cls,
                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                        struct TALER_Amount *balance,
+                        struct TALER_Amount *balance_in,
+                        struct TALER_Amount *balance_out,
                         struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 

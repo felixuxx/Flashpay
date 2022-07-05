@@ -59,6 +59,18 @@ struct ReserveStatusContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * Sum of incoming transactions within the returned history.
+   * (currently not used).
+   */
+  struct TALER_Amount balance_in;
+
+  /**
+   * Sum of outgoing transactions within the returned history.
+   * (currently not used).
+   */
+  struct TALER_Amount balance_out;
+
+  /**
    * Current reserve balance.
    */
   struct TALER_Amount balance;
@@ -135,10 +147,11 @@ reserve_status_transaction (void *cls,
                                            "inselect_wallet_status");
     return qs;
   }
-  qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                        rsc->reserve_pub,
-                                        &rsc->balance,
-                                        &rsc->rh);
+  qs = TEH_plugin->get_reserve_status (TEH_plugin->cls,
+                                       rsc->reserve_pub,
+                                       &rsc->balance_in,
+                                       &rsc->balance_out,
+                                       &rsc->rh);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -147,6 +160,18 @@ reserve_status_transaction (void *cls,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
                                     "get_reserve_status");
+  }
+  qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
+                                        rsc->reserve_pub,
+                                        &rsc->balance);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                    "get_reserve_balance");
   }
   return qs;
 }
