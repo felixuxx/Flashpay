@@ -5082,8 +5082,8 @@ struct TALER_AgeCommitment
  *
  * This struct is used in a call to TALER_age_commitment_attest to create an
  * attestation for a minimum age (if that minimum age is less or equal to the
- * commited age for this proof).  It consists of a list private keys, one per
- * age group, for which the commited age is either lager or within that
+ * committed age for this proof).  It consists of a list private keys, one per
+ * age group, for which the committed age is either lager or within that
  * particular group.
  */
 struct TALER_AgeProof

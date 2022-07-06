@@ -2068,7 +2068,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
   last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
 
-  // FIXME: This block contains the implementation of the DEPRICATED
+  // FIXME: This block contains the implementation of the DEPRECATED
   // "denom_pubs" array along with the new grouped "denominations".
   // "denom_pubs" Will be removed sooner or later.
   {

@@ -432,7 +432,7 @@ TALER_JSON_spec_denom_pub (const char *field,
  * cipher.
  *
  * @param field name of the field
- * @parm cipher which cipher type to parse for
+ * @param cipher which cipher type to parse for
  * @param[out] pk key to fill
  * @return corresponding field spec
  */
