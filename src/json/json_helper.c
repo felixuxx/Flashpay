@@ -635,7 +635,6 @@ TALER_JSON_spec_denom_pub (const char *field,
  * Depending on the cipher in cls, it parses the corresponding public key type.
  *
  * @param cls closure, enum TALER_DenominationCipher
- * @param cipher cipher to parse for
  * @param root the json object representing data
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error

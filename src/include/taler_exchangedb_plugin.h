@@ -2810,8 +2810,8 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param num the number of shard servers to create. The shard servers
-   *            must follow the numbering of 1-N, have the same user as
-   *            the master and have tables named <table>_n where n is the same
+   *            must follow the numbering of [1-N], have the same user as
+   *            the master and have tables named $TABLE_$N where $N is the same
    *            as the servers index of N.
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */

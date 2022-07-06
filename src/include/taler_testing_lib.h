@@ -1623,7 +1623,6 @@ TALER_TESTING_cmd_deposit_replay (const char *label,
  * @param contract_terms contract terms to be signed over by the
  *        coin.
  * @param refund_deadline refund deadline, zero means 'no refunds'.
- * @param amount how much is going to be deposited.
  * @param expected_response_code expected HTTP response code.
  * @param ... NULL-terminated list with an even number of
  *            strings that alternate referring to coins

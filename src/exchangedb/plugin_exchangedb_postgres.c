@@ -16126,6 +16126,7 @@ postgres_insert_history_request (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param reserve_pub public key of the account to close
  * @param reserve_sig signature affiming that the account is to be closed
+ * @param request_timestamp time of the close request (client-side?)
  * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
  * @return transaction status code
  */
