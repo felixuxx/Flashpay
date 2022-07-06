@@ -1778,18 +1778,12 @@ prepare_statements (struct PostgresClosure *pg)
       "    FROM refunds"
       "   WHERE coin_pub IN (SELECT coin_pub FROM dep)"
       "     AND deposit_serial_id IN (SELECT deposit_serial_id FROM dep))"
-      " ,coins_with_fees AS (" /* find coins for which deposit fees apply */
-      "  SELECT"
-      "     coin_pub"
-      "    ,deposit_serial_id" /* ensures that if the same coin is deposited twice, it is in the list twice */
-      "    FROM dep"
-      "   WHERE deposit_serial_id NOT IN (SELECT deposit_serial_id FROM ref))"
       " ,fees AS (" /* find deposit fees for non-refunded deposits */
       "  SELECT"
       "    denom.fee_deposit_val AS fee_val"
       "   ,denom.fee_deposit_frac AS fee_frac"
       "   ,cs.deposit_serial_id" /* ensures we get the fee for each coin, not once per denomination */
-      "    FROM coins_with_fees cs"
+      "    FROM dep cs"
       "    JOIN known_coins kc" /* NOTE: may do a full join on the master, maybe find a left-join way to integrate with query above to push it to the shards? */
       "      USING (coin_pub)"
       "    JOIN denominations denom"

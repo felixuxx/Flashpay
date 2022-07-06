@@ -1397,6 +1397,7 @@ run (void *cls)
 
   {
     bool found;
+    bool nonce_ok;
     bool balance_ok;
     struct TALER_EXCHANGEDB_KycStatus kyc;
     uint64_t ruuid;
@@ -1408,9 +1409,11 @@ run (void *cls)
                                  now,
                                  &found,
                                  &balance_ok,
+                                 &nonce_ok,
                                  &kyc,
                                  &ruuid));
     GNUNET_assert (found);
+    GNUNET_assert (nonce_ok);
     GNUNET_assert (balance_ok);
     GNUNET_assert (! kyc.ok);
   }

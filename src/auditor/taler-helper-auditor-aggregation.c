@@ -102,7 +102,7 @@ static struct TALER_Amount total_arithmetic_delta_plus;
 static struct TALER_Amount total_arithmetic_delta_minus;
 
 /**
- * Total aggregation fees earned.
+ * Total aggregation fees (wire fees) earned.
  */
 static struct TALER_Amount total_aggregation_fee_income;
 
@@ -398,9 +398,9 @@ check_transaction_history_for_deposit (
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
   struct TALER_Amount spent;
+  struct TALER_Amount *deposited = NULL;
   struct TALER_Amount merchant_loss;
   const struct TALER_Amount *deposit_fee;
-  bool refund_deposit_fee;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
@@ -422,24 +422,33 @@ check_transaction_history_for_deposit (
      compute positive (deposit, melt) and negative (refund) values separately
      here, and then subtract the negative from the positive at the end (after
      the loops). */
-  refund_deposit_fee = false;
   deposit_fee = NULL;
   for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;
        NULL != tl;
        tl = tl->next)
   {
-    const struct TALER_Amount *amount_with_fee;
     const struct TALER_Amount *fee_claimed;
 
     switch (tl->type)
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       /* check wire and h_wire are consistent */
-      amount_with_fee = &tl->details.deposit->amount_with_fee; /* according to exchange*/
+      if (NULL != deposited)
+      {
+        TALER_ARL_report (report_row_inconsistencies,
+                          GNUNET_JSON_PACK (
+                            GNUNET_JSON_pack_string ("table",
+                                                     "deposits"),
+                            GNUNET_JSON_pack_uint64 ("row",
+                                                     tl->serial_id),
+                            GNUNET_JSON_pack_string ("diagnostic",
+                                                     "multiple deposits of the same coin into the same contract detected")));
+      }
+      deposited = &tl->details.deposit->amount_with_fee; /* according to exchange*/
       fee_claimed = &tl->details.deposit->deposit_fee; /* Fee according to exchange DB */
       TALER_ARL_amount_add (&expenditures,
                             &expenditures,
-                            amount_with_fee);
+                            deposited);
       /* Check if this deposit is within the remit of the aggregation
          we are investigating, if so, include it in the totals. */
       if ( (0 == GNUNET_memcmp (merchant_pub,
@@ -450,7 +459,7 @@ check_transaction_history_for_deposit (
         struct TALER_Amount amount_without_fee;
 
         TALER_ARL_amount_subtract (&amount_without_fee,
-                                   amount_with_fee,
+                                   deposited,
                                    fee_claimed);
         TALER_ARL_amount_add (merchant_gain,
                               merchant_gain,
@@ -474,96 +483,116 @@ check_transaction_history_for_deposit (
       }
       break;
     case TALER_EXCHANGEDB_TT_MELT:
-      amount_with_fee = &tl->details.melt->amount_with_fee;
-      fee_claimed = &tl->details.melt->melt_fee;
-      TALER_ARL_amount_add (&expenditures,
-                            &expenditures,
-                            amount_with_fee);
-      /* Check that the fees given in the transaction list and in dki match */
-      if (0 !=
-          TALER_amount_cmp (&issue->fees.refresh,
-                            fee_claimed))
       {
-        /* Disagreement in fee structure between exchange and auditor */
-        report_amount_arithmetic_inconsistency ("melt fee",
-                                                0,
-                                                fee_claimed,
-                                                &issue->fees.refresh,
-                                                1);
-      }
-      break;
-    case TALER_EXCHANGEDB_TT_REFUND:
-      amount_with_fee = &tl->details.refund->refund_amount;
-      fee_claimed = &tl->details.refund->refund_fee;
-      TALER_ARL_amount_add (&refunds,
-                            &refunds,
-                            amount_with_fee);
-      TALER_ARL_amount_add (&expenditures,
-                            &expenditures,
-                            fee_claimed);
-      /* Check if this refund is within the remit of the aggregation
-         we are investigating, if so, include it in the totals. */
-      if ( (0 == GNUNET_memcmp (merchant_pub,
-                                &tl->details.refund->merchant_pub)) &&
-           (0 == GNUNET_memcmp (h_contract_terms,
-                                &tl->details.refund->h_contract_terms)) )
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Detected applicable refund of %s\n",
-                    TALER_amount2s (amount_with_fee));
-        TALER_ARL_amount_add (&merchant_loss,
-                              &merchant_loss,
-                              amount_with_fee);
-        /* If there is a refund, we give back the deposit fee */
-        /* FIXME: wrong: only if this is a FULL
-           refund we refund the deposit fee! */
-        refund_deposit_fee = true;
-      }
-      /* Check that the fees given in the transaction list and in dki match */
-      if (0 !=
-          TALER_amount_cmp (&issue->fees.refund,
-                            fee_claimed))
-      {
-        /* Disagreement in fee structure between exchange and auditor! */
-        report_amount_arithmetic_inconsistency ("refund fee",
-                                                0,
-                                                fee_claimed,
-                                                &issue->fees.refund,
-                                                1);
-      }
-      break;
-    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
-      amount_with_fee = &tl->details.old_coin_recoup->value;
-      /* We count recoups of refreshed coins like refunds for the dirty old
-         coin, as they equivalently _increase_ the remaining value on the
-         _old_ coin */
-      TALER_ARL_amount_add (&refunds,
-                            &refunds,
-                            amount_with_fee);
-      break;
-    case TALER_EXCHANGEDB_TT_RECOUP:
-      /* We count recoups of the coin as expenditures, as it
-         equivalently decreases the remaining value of the recouped coin. */
-      amount_with_fee = &tl->details.recoup->value;
-      TALER_ARL_amount_add (&expenditures,
-                            &expenditures,
-                            amount_with_fee);
-      break;
-    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
-      /* We count recoups of the coin as expenditures, as it
-         equivalently decreases the remaining value of the recouped coin. */
-      amount_with_fee = &tl->details.recoup_refresh->value;
-      TALER_ARL_amount_add (&expenditures,
-                            &expenditures,
-                            amount_with_fee);
-      break;
-    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
-      amount_with_fee = &tl->details.purse_deposit->amount;
-      if (! tl->details.purse_deposit->refunded)
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.melt->amount_with_fee;
+        fee_claimed = &tl->details.melt->melt_fee;
         TALER_ARL_amount_add (&expenditures,
                               &expenditures,
                               amount_with_fee);
-      break;
+        /* Check that the fees given in the transaction list and in dki match */
+        if (0 !=
+            TALER_amount_cmp (&issue->fees.refresh,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between exchange and auditor */
+          report_amount_arithmetic_inconsistency ("melt fee",
+                                                  0,
+                                                  fee_claimed,
+                                                  &issue->fees.refresh,
+                                                  1);
+        }
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_REFUND:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.refund->refund_amount;
+        fee_claimed = &tl->details.refund->refund_fee;
+        TALER_ARL_amount_add (&refunds,
+                              &refunds,
+                              amount_with_fee);
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              fee_claimed);
+        /* Check if this refund is within the remit of the aggregation
+           we are investigating, if so, include it in the totals. */
+        if ( (0 == GNUNET_memcmp (merchant_pub,
+                                  &tl->details.refund->merchant_pub)) &&
+             (0 == GNUNET_memcmp (h_contract_terms,
+                                  &tl->details.refund->h_contract_terms)) )
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Detected applicable refund of %s\n",
+                      TALER_amount2s (amount_with_fee));
+          TALER_ARL_amount_add (&merchant_loss,
+                                &merchant_loss,
+                                amount_with_fee);
+        }
+        /* Check that the fees given in the transaction list and in dki match */
+        if (0 !=
+            TALER_amount_cmp (&issue->fees.refund,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between exchange and auditor! */
+          report_amount_arithmetic_inconsistency ("refund fee",
+                                                  0,
+                                                  fee_claimed,
+                                                  &issue->fees.refund,
+                                                  1);
+        }
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.old_coin_recoup->value;
+        /* We count recoups of refreshed coins like refunds for the dirty old
+           coin, as they equivalently _increase_ the remaining value on the
+           _old_ coin */
+        TALER_ARL_amount_add (&refunds,
+                              &refunds,
+                              amount_with_fee);
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_RECOUP:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        /* We count recoups of the coin as expenditures, as it
+           equivalently decreases the remaining value of the recouped coin. */
+        amount_with_fee = &tl->details.recoup->value;
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              amount_with_fee);
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        /* We count recoups of the coin as expenditures, as it
+           equivalently decreases the remaining value of the recouped coin. */
+        amount_with_fee = &tl->details.recoup_refresh->value;
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              amount_with_fee);
+        break;
+      }
+    case TALER_EXCHANGEDB_TT_PURSE_DEPOSIT:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.purse_deposit->amount;
+        if (! tl->details.purse_deposit->refunded)
+          TALER_ARL_amount_add (&expenditures,
+                                &expenditures,
+                                amount_with_fee);
+        break;
+      }
     }
   } /* for 'tl' */
 
@@ -574,14 +603,15 @@ check_transaction_history_for_deposit (
               "Aggregation loss due to refunds is %s\n",
               TALER_amount2s (&merchant_loss));
   *deposit_gain = *merchant_gain;
-  if ( (refund_deposit_fee) &&
-       (NULL != deposit_fee) )
+  if ( (NULL != deposited) &&
+       (NULL != deposit_fee) &&
+       (0 == TALER_amount_cmp (&refunds,
+                               deposited)) )
   {
-    /* We had a /deposit operation AND a /refund operation,
-       and should thus not charge the merchant the /deposit fee */
-    /* FIXME: this is wrong, the merchant never pays either
-       fee, the deposit fee is simply not charged to the coin
-       IF there is a full refund. */
+    /* We had a /deposit operation AND /refund operations adding up to the
+       total deposited value including deposit fee. Thus, we should not
+       subtract the /deposit fee from the merchant gain (as it was also
+       refunded). */
     TALER_ARL_amount_add (merchant_gain,
                           merchant_gain,
                           deposit_fee);
@@ -699,6 +729,10 @@ wire_transfer_information_cb (
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP hpt;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "DEPFEE: %s\n",
+              TALER_amount2s (deposit_fee));
 
   TALER_payto_hash (account_pay_uri,
                     &hpt);
