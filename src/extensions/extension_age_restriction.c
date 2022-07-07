@@ -37,14 +37,6 @@ struct age_restriction_config
  */
 static struct age_restriction_config TE_age_restriction_config = {0};
 
-/**
- * @param groups String representation of the age groups. Must be of the form
- *  a:b:...:n:m
- * with
- *  0 < a < b <...< n < m < 32
- * @param[out] mask Bit representation of the age groups.
- * @return Error if string was invalid, OK otherwise.
- */
 enum GNUNET_GenericReturnValue
 TALER_parse_age_group_string (
   const char *groups,
@@ -89,13 +81,6 @@ TALER_parse_age_group_string (
 }
 
 
-/**
- * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
- *
- * @param mask Age mask
- * @return String representation of the age mask, allocated by GNUNET_malloc.
- *         Can be used as value in the TALER config.
- */
 char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *m)
@@ -143,6 +128,8 @@ TALER_age_mask_to_string (
 
 /**
  * @brief implements the TALER_Extension.disable interface.
+ *
+ * @param ext Pointer to the current extension
  */
 void
 age_restriction_disable (
@@ -166,9 +153,9 @@ age_restriction_disable (
 
 /**
  * @brief implements the TALER_Extension.load_taler_config interface.
+ *
+ * @param ext Pointer to the current extension
  * @param cfg Handle to the GNUNET configuration
- * @param[out] enabled Set to true if age restriction is enabled in the config, false otherwise.
- * @param[out] mask Mask for age restriction. Will be 0 if age restriction was not enabled in the config.
  * @return Error if extension for age restriction was set, but age groups were
  *         invalid, OK otherwise.
  */
@@ -244,8 +231,9 @@ age_restriction_load_taler_config (
 
 /**
  * @brief implements the TALER_Extension.load_json_config interface.
+ *
  * @param ext if NULL, only tests the configuration
- * @param config the configuration as json
+ * @param jconfig the configuration as json
  */
 static enum GNUNET_GenericReturnValue
 age_restriction_load_json_config (
@@ -295,8 +283,9 @@ age_restriction_load_json_config (
 
 /**
  * @brief implements the TALER_Extension.load_json_config interface.
+ *
  * @param ext if NULL, only tests the configuration
- * @param config the configuration as json
+ * @return configuration as json_t* object
  */
 json_t *
 age_restriction_config_to_json (
@@ -328,6 +317,9 @@ age_restriction_config_to_json (
 
 /**
  * @brief implements the TALER_Extension.test_json_config interface.
+ *
+ * @param config configuration as json_t* to test
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR otherwise.
  */
 static enum GNUNET_GenericReturnValue
 age_restriction_test_json_config (

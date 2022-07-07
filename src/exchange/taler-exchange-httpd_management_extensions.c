@@ -180,7 +180,7 @@ verify_extensions_from_json (
       return GNUNET_SYSERR;
 
     if (critical != extension->critical
-        || 0 != strcmp (version, extension->version) // TODO: libtool compare?
+        || 0 != strcmp (version, extension->version) // FIXME-oec: libtool compare
         || NULL == config
         || GNUNET_OK != extension->test_json_config (config))
       return GNUNET_SYSERR;

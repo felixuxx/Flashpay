@@ -35,7 +35,8 @@ enum TALER_Extension_Type
 };
 
 /*
- * Represents the implementation of an extension.
+ * @brief Represents the implementation of an extension.
+ *
  * TODO: add documentation
  */
 struct TALER_Extension
@@ -50,20 +51,20 @@ struct TALER_Extension
   void *config;
   json_t *config_json;
 
-  void (*disable)(struct TALER_Extension *this);
+  void (*disable)(struct TALER_Extension *ext);
 
   enum GNUNET_GenericReturnValue (*test_json_config)(
     const json_t *config);
 
   enum GNUNET_GenericReturnValue (*load_json_config)(
-    struct TALER_Extension *this,
+    struct TALER_Extension *ext,
     json_t *config);
 
   json_t *(*config_to_json)(
-    const struct TALER_Extension *this);
+    const struct TALER_Extension *ext);
 
   enum GNUNET_GenericReturnValue (*load_taler_config)(
-    struct TALER_Extension *this,
+    struct TALER_Extension *ext,
     const struct GNUNET_CONFIGURATION_Handle *cfg);
 };
 
@@ -72,7 +73,8 @@ struct TALER_Extension
  */
 
 /*
- * Sets the configuration of the extensions from the given TALER configuration
+ * @brief Sets the configuration of the extensions from the given TALER
+ * configuration.
  *
  * @param cfg Handle to the TALER configuration
  * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
@@ -83,8 +85,14 @@ TALER_extensions_load_taler_config (
   const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 /*
- * Check the given obj to be a valid extension object and fill the fields
- * accordingly.
+ * @brief Checks the given obj to be a valid extension object and fill the
+ * fields accordingly.
+ *
+ * @param[in] obj Object to verify is a valid extension
+ * @param{out] critical will be set to 1 if the extension is critical according to obj
+ * @param[out] version will be set to the version of the extension according to obj
+ * @param[out] config will be set to the configuration of the extension according to obj
+ * @return OK on success, Error otherwise
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_is_json_config (
@@ -94,27 +102,27 @@ TALER_extensions_is_json_config (
   json_t **config);
 
 /*
- * Sets the configuration of the extensions from a given JSON object.
+ * @brief Sets the configuration of the extensions from a given JSON object.
  *
- * he JSON object must be of type ExchangeKeysResponse as described in
+ * The JSON object must be of type ExchangeKeysResponse as described in
  * https://docs.taler.net/design-documents/006-extensions.html#exchange
  *
  * @param cfg JSON object containing the configuration for all extensions
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if unknown extensions were found
- *         or any particular configuration couldn't be parsed.
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if unknown extensions were
+ *  found or any particular configuration couldn't be parsed.
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_load_json_config (
   json_t *cfg);
 
 /*
- * Returns the head of the linked list of extensions
+ * @brief Returns the head of the linked list of extensions.
  */
 const struct TALER_Extension *
 TALER_extensions_get_head ();
 
 /*
- * Adds an extension to the linked list of extensions
+ * @brief Adds an extension to the linked list of extensions.
  *
  * @param new_extension the new extension to be added
  * @return GNUNET_OK on success, GNUNET_SYSERR if the extension is invalid
@@ -126,7 +134,7 @@ TALER_extensions_add (
   struct TALER_Extension *new_extension);
 
 /**
- * Finds and returns a supported extension by a given type.
+ * @brief Finds and returns a supported extension by a given type.
  *
  * @param type type of the extension to lookup
  * @return extension found, or NULL (should not happen!)
@@ -137,7 +145,7 @@ TALER_extensions_get_by_type (
 
 
 /**
- * Finds and returns a supported extension by a given name.
+ * @brief Finds and returns a supported extension by a given name.
  *
  * @param name name of the extension to lookup
  * @return the extension, if found, NULL otherwise
@@ -149,7 +157,7 @@ TALER_extensions_get_by_name (
 #define TALER_extensions_is_enabled(ext) (NULL != (ext)->config)
 
 /**
- * Check if a given type of an extension is enabled
+ * @brief Check if a given type of an extension is enabled
  *
  * @param type type of to check
  * @return true enabled, false if not enabled, will assert if type is not found.
@@ -207,13 +215,28 @@ TALER_extension_age_restriction_register ();
  *
  * The string must consist of a colon-separated list of increasing integers
  * between 0 and 31.  Each entry represents the beginning of a new age group.
- * F.e. the string "8:10:12:14:16:18:21" parses into the following list of age
- * groups
- *   0-7, 8-9, 10-11, 12-13, 14-15, 16-17, 18-20, 21-...
- * which then is represented as bit mask with the corresponding bits set:
- *   31     24        16        8         0
- *   |      |         |         |         |
- *   oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
+ * F.e. the string
+ *
+ *  "8:10:12:14:16:18:21"
+ *
+ * represents the following list of eight age groups:
+ *
+ * | Group |    Ages       |
+ * | -----:|:------------- |
+ * |    0  |  0, 1, ..., 7 |
+ * |    1  |  8, 9         |
+ * |    2  | 10, 11        |
+ * |    3  | 12, 13        |
+ * |    4  | 14, 15        |
+ * |    5  | 16, 17        |
+ * |    6  | 18, 19, 20    |
+ * |    7  | 21, ...       |
+ *
+ * which is then encoded as a bit mask with the corresponding bits set:
+ *
+ *  31     24        16        8         0
+ *  |      |         |         |         |
+ *  oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
  *
  * @param groups String representation of age groups
  * @param[out] mask Mask representation for age restriction.
@@ -225,7 +248,7 @@ TALER_parse_age_group_string (
   struct TALER_AgeMask *mask);
 
 /**
- * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
+ * @brief Encodes the age mask into a string, like "8:10:12:14:16:18:21"
  *
  * @param mask Age mask
  * @return String representation of the age mask, allocated by GNUNET_malloc.
@@ -236,35 +259,35 @@ TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask);
 
 /**
- * Returns true when age restriction is configured and enabled.
+ * @brief Returns true when age restriction is configured and enabled.
  */
 bool
 TALER_extensions_age_restriction_is_enabled ();
 
 /**
- * Returns true when age restriction is configured (might not be _enabled_,
- * though).
+ * @brief Returns true when age restriction is configured (might not be
+ * _enabled_, though).
  */
 bool
 TALER_extensions_age_restriction_is_configured ();
 
 /**
- * Returns the currently set age mask.  Note that even if age restriction is
- * not enabled, the age mask might be have a non-zero value.
+ * @brief Returns the currently set age mask.  Note that even if age
+ * restriction is not enabled, the age mask might be have a non-zero value.
  */
 struct TALER_AgeMask
 TALER_extensions_age_restriction_ageMask ();
 
 
 /**
- * Returns the amount of age groups defined.  0 means no age restriction
+ * @brief Returns the amount of age groups defined.  0 means no age restriction
  * enabled.
  */
 size_t
 TALER_extensions_age_restriction_num_groups ();
 
 /**
- * Parses a JSON object { "age_groups": "a:b:...y:z" }.
+ * @brief Parses a JSON object { "age_groups": "a:b:...y:z" }.
  *
  * @param root is the json object
  * @param[out] mask on success, will contain the age mask
