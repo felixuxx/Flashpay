@@ -37,9 +37,9 @@ get_age_group (
  */
 char *
 age_mask_to_string (
-  const struct TALER_AgeMask *m)
+  const struct TALER_AgeMask *mask)
 {
-  uint32_t bits = m->bits;
+  uint32_t bits = mask->bits;
   unsigned int n = 0;
   char *buf = GNUNET_malloc (32 * 3); // max characters possible
   char *pos = buf;
