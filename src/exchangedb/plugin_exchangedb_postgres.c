@@ -1779,6 +1779,9 @@ prepare_statements (struct PostgresClosure *pg)
       "   WHERE coin_pub IN (SELECT coin_pub FROM dep)"
       "     AND deposit_serial_id IN (SELECT deposit_serial_id FROM dep))"
       " ,fees AS (" /* find deposit fees for non-refunded deposits */
+      // FIXME: this is wrong, the deposit fee is waived IF the
+      // refunds were for 100% of the deposit value. This logic
+      // ignores this detail :-(.
       "  SELECT"
       "    denom.fee_deposit_val AS fee_val"
       "   ,denom.fee_deposit_frac AS fee_frac"
@@ -7502,7 +7505,7 @@ postgres_aggregate (
                                                  rs);
   if (qs < 0)
   {
-    GNUNET_assert (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
