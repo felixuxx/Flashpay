@@ -102,7 +102,7 @@ struct DepositConfirmationContext
  * @param dc the deposit confirmation we know
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_dc (void *cls,
          uint64_t serial_id,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)

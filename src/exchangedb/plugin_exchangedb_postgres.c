@@ -7281,7 +7281,6 @@ postgres_get_reserve_status (void *cls,
     GNUNET_TIME_absolute_get (),
     GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_WEEKS,
                                    5));
-  /* FIXME: actually implement reserve history truncation logic! */
   rhc.reserve_pub = reserve_pub;
   rhc.rh = NULL;
   rhc.rh_tail = NULL;
@@ -7432,10 +7431,7 @@ postgres_have_deposit2 (
        (0 != GNUNET_memcmp (h_wire,
                             &h_wire2) ) )
   {
-    /* Inconsistencies detected! Does not match!  (We might want to
-       expand the API with a 'get_deposit' function to return the
-       original transaction details to be used for an error message
-       in the future!) FIXME #3838 */
+    /* Inconsistencies detected! Does not match! */
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
