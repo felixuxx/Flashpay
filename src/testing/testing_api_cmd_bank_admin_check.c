@@ -102,7 +102,6 @@ check_bank_admin_transfer_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  TALER_LOG_INFO ("Deposit reference NOT given\n");
   debit_payto = bcs->debit_payto;
   credit_payto = bcs->credit_payto;
   if (GNUNET_OK !=
