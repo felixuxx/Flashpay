@@ -240,7 +240,6 @@ TEH_common_deposit_check_purse_deposit (
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       /* FIXME-Oec: other error code? */
                                        TALER_EC_EXCHANGE_PURSE_DEPOSIT_COIN_AGE_ATTESTATION_FAILURE,
                                        "invalid attest for minimum age");
   }
