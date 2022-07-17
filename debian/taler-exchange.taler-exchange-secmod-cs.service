@@ -14,3 +14,5 @@ StandardError=journal
 PrivateTmp=no
 PrivateDevices=yes
 ProtectSystem=full
+IPAddressDeny=any
+Slice=taler-exchange.slice

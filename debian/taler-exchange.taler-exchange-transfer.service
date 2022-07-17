@@ -14,3 +14,4 @@ StandardError=journal
 PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=full
+Slice=taler-exchange.slice

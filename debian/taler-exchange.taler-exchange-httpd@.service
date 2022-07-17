@@ -21,6 +21,7 @@ StandardError=journal
 PrivateTmp=no
 PrivateDevices=yes
 ProtectSystem=full
+Slice=taler-exchange.slice
 
 [Install]
 WantedBy=multi-user.target
