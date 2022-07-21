@@ -167,6 +167,9 @@ handle_credit_history_finished (void *cls,
                                j))
     {
       GNUNET_break_op (0);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
       response_code = 0;
       ec = TALER_EC_GENERIC_INVALID_RESPONSE;
       break;
