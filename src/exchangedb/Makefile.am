@@ -27,6 +27,7 @@ sql_DATA = \
   versioning.sql \
   exchange-0001.sql \
   drop.sql \
+  procedures.sql \
   shard-0001.sql \
   shard-drop.sql
 
@@ -35,6 +36,7 @@ BUILT_SOURCES = \
   shard-0001.sql \
   exchange-0001.sql \
   drop.sql \
+  procedures.sql \
   shard-drop.sql
 
 CLEANFILES = \

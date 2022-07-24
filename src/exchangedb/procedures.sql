@@ -1,0 +1,2281 @@
+--
+-- This file is part of TALER
+-- Copyright (C) 2014--2022 Taler Systems SA
+--
+-- TALER is free software; you can redistribute it and/or modify it under the
+-- terms of the GNU General Public License as published by the Free Software
+-- Foundation; either version 3, or (at your option) any later version.
+--
+-- TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+-- A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License along with
+-- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+--
+
+-- Everything in one big transaction
+BEGIN;
+
+---------------------------------------------------------------------------
+--                      Stored procedures
+---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION exchange_do_withdraw(
+  IN cs_nonce BYTEA,
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN h_denom_pub BYTEA,
+  IN rpub BYTEA,
+  IN reserve_sig BYTEA,
+  IN h_coin_envelope BYTEA,
+  IN denom_sig BYTEA,
+  IN now INT8,
+  IN min_reserve_gc INT8,
+  OUT reserve_found BOOLEAN,
+  OUT balance_ok BOOLEAN,
+  OUT nonce_ok BOOLEAN,
+  OUT kycok BOOLEAN,
+  OUT account_uuid INT8,
+  OUT ruuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_gc INT8;
+DECLARE
+  denom_serial INT8;
+DECLARE
+  reserve_val INT8;
+DECLARE
+  reserve_frac INT4;
+BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by wih
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_h_payto
+
+SELECT denominations_serial
+  INTO denom_serial
+  FROM denominations
+ WHERE denom_pub_hash=h_denom_pub;
+
+IF NOT FOUND
+THEN
+  -- denomination unknown, should be impossible!
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  kycok=FALSE;
+  account_uuid=0;
+  ruuid=0;
+  ASSERT false, 'denomination unknown';
+  RETURN;
+END IF;
+
+
+SELECT
+   current_balance_val
+  ,current_balance_frac
+  ,gc_date
+  ,reserve_uuid
+ INTO
+   reserve_val
+  ,reserve_frac
+  ,reserve_gc
+  ,ruuid
+  FROM reserves
+ WHERE reserves.reserve_pub=rpub;
+
+IF NOT FOUND
+THEN
+  -- reserve unknown
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  nonce_ok=TRUE;
+  kycok=FALSE;
+  account_uuid=0;
+  ruuid=2;
+  RETURN;
+END IF;
+
+-- We optimistically insert, and then on conflict declare
+-- the query successful due to idempotency.
+INSERT INTO reserves_out
+  (h_blind_ev
+  ,denominations_serial
+  ,denom_sig
+  ,reserve_uuid
+  ,reserve_sig
+  ,execution_date
+  ,amount_with_fee_val
+  ,amount_with_fee_frac)
+VALUES
+  (h_coin_envelope
+  ,denom_serial
+  ,denom_sig
+  ,ruuid
+  ,reserve_sig
+  ,now
+  ,amount_val
+  ,amount_frac)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- idempotent query, all constraints must be satisfied
+  reserve_found=TRUE;
+  balance_ok=TRUE;
+  nonce_ok=TRUE;
+  kycok=TRUE;
+  account_uuid=0;
+  RETURN;
+END IF;
+
+-- Check reserve balance is sufficient.
+IF (reserve_val > amount_val)
+THEN
+  IF (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=reserve_val - amount_val;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_val=reserve_val - amount_val - 1;
+    reserve_frac=reserve_frac + 100000000 - amount_frac;
+  END IF;
+ELSE
+  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=0;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_found=TRUE;
+    nonce_ok=TRUE; -- we do not really know
+    balance_ok=FALSE;
+    kycok=FALSE; -- we do not really know or care
+    account_uuid=0;
+    RETURN;
+  END IF;
+END IF;
+
+-- Calculate new expiration dates.
+min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+
+-- Update reserve balance.
+UPDATE reserves SET
+  gc_date=min_reserve_gc
+ ,current_balance_val=reserve_val
+ ,current_balance_frac=reserve_frac
+WHERE
+  reserves.reserve_pub=rpub;
+
+reserve_found=TRUE;
+balance_ok=TRUE;
+
+
+
+-- Special actions needed for a CS withdraw?
+IF NOT NULL cs_nonce
+THEN
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_nonce
+    ,denom_serial
+    ,h_coin_envelope)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- See if the existing entry is identical.
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_nonce
+       AND op_hash=h_coin_envelope;
+    IF NOT FOUND
+    THEN
+      reserve_found=FALSE;
+      balance_ok=FALSE;
+      kycok=FALSE;
+      account_uuid=0;
+      nonce_ok=FALSE;
+      RETURN;
+    END IF;
+  END IF;
+ELSE
+  nonce_ok=TRUE; -- no nonce, hence OK!
+END IF;
+
+
+
+-- Obtain KYC status based on the last wire transfer into
+-- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
+-- SELECT
+--    kyc_ok
+--   ,wire_target_serial_id
+--   INTO
+--    kycok
+--   ,account_uuid
+--   FROM reserves_in
+--   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
+--  WHERE reserve_pub=rpub
+--  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+
+WITH reserves_in AS materialized (
+  SELECT wire_source_h_payto
+  FROM reserves_in WHERE
+  reserve_pub=rpub
+)
+SELECT
+  kyc_ok
+  ,wire_target_serial_id
+INTO
+  kycok
+  ,account_uuid
+FROM wire_targets
+  WHERE wire_target_h_payto = (
+    SELECT wire_source_h_payto
+      FROM reserves_in
+  );
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
+  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN rpub BYTEA,
+  IN now INT8,
+  IN min_reserve_gc INT8,
+  OUT reserve_found BOOLEAN,
+  OUT balance_ok BOOLEAN,
+  OUT kycok BOOLEAN,
+  OUT account_uuid INT8,
+  OUT ruuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_gc INT8;
+DECLARE
+  reserve_val INT8;
+DECLARE
+  reserve_frac INT4;
+BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by wih
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_h_payto
+
+SELECT
+   current_balance_val
+  ,current_balance_frac
+  ,gc_date
+  ,reserve_uuid
+ INTO
+   reserve_val
+  ,reserve_frac
+  ,reserve_gc
+  ,ruuid
+  FROM reserves
+ WHERE reserves.reserve_pub=rpub;
+
+IF NOT FOUND
+THEN
+  -- reserve unknown
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  kycok=FALSE;
+  account_uuid=0;
+  ruuid=2;
+  RETURN;
+END IF;
+
+-- Check reserve balance is sufficient.
+IF (reserve_val > amount_val)
+THEN
+  IF (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=reserve_val - amount_val;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_val=reserve_val - amount_val - 1;
+    reserve_frac=reserve_frac + 100000000 - amount_frac;
+  END IF;
+ELSE
+  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=0;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_found=TRUE;
+    balance_ok=FALSE;
+    kycok=FALSE; -- we do not really know or care
+    account_uuid=0;
+    RETURN;
+  END IF;
+END IF;
+
+-- Calculate new expiration dates.
+min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+
+-- Update reserve balance.
+UPDATE reserves SET
+  gc_date=min_reserve_gc
+ ,current_balance_val=reserve_val
+ ,current_balance_frac=reserve_frac
+WHERE
+  reserves.reserve_pub=rpub;
+
+reserve_found=TRUE;
+balance_ok=TRUE;
+
+
+-- Obtain KYC status based on the last wire transfer into
+-- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
+-- SELECT
+--    kyc_ok
+--   ,wire_target_serial_id
+--   INTO
+--    kycok
+--   ,account_uuid
+--   FROM reserves_in
+--   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
+--  WHERE reserve_pub=rpub
+--  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+
+WITH reserves_in AS materialized (
+  SELECT wire_source_h_payto
+  FROM reserves_in WHERE
+  reserve_pub=rpub
+)
+SELECT
+  kyc_ok
+  ,wire_target_serial_id
+INTO
+  kycok
+  ,account_uuid
+FROM wire_targets
+  WHERE wire_target_h_payto = (
+    SELECT wire_source_h_payto
+      FROM reserves_in
+  );
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_batch_withdraw(INT8, INT4, BYTEA, INT8, INT8)
+  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result. Excludes storing the planchets.';
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw_insert(
+  IN cs_nonce BYTEA,
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN h_denom_pub BYTEA,
+  IN ruuid INT8,
+  IN reserve_sig BYTEA,
+  IN h_coin_envelope BYTEA,
+  IN denom_sig BYTEA,
+  IN now INT8,
+  OUT out_denom_unknown BOOLEAN,
+  OUT out_nonce_reuse BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  denom_serial INT8;
+BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by wih
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_h_payto
+
+out_denom_unknown=TRUE;
+out_conflict=TRUE;
+out_nonce_reuse=TRUE;
+
+SELECT denominations_serial
+  INTO denom_serial
+  FROM denominations
+ WHERE denom_pub_hash=h_denom_pub;
+
+IF NOT FOUND
+THEN
+  -- denomination unknown, should be impossible!
+  out_denom_unknown=TRUE;
+  ASSERT false, 'denomination unknown';
+  RETURN;
+END IF;
+out_denom_unknown=FALSE;
+
+INSERT INTO reserves_out
+  (h_blind_ev
+  ,denominations_serial
+  ,denom_sig
+  ,reserve_uuid
+  ,reserve_sig
+  ,execution_date
+  ,amount_with_fee_val
+  ,amount_with_fee_frac)
+VALUES
+  (h_coin_envelope
+  ,denom_serial
+  ,denom_sig
+  ,ruuid
+  ,reserve_sig
+  ,now
+  ,amount_val
+  ,amount_frac)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  out_conflict=TRUE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+-- Special actions needed for a CS withdraw?
+out_nonce_reuse=FALSE;
+IF NOT NULL cs_nonce
+THEN
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_nonce
+    ,denom_serial
+    ,h_coin_envelope)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- See if the existing entry is identical.
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_nonce
+       AND op_hash=h_coin_envelope;
+    IF NOT FOUND
+    THEN
+      out_nonce_reuse=TRUE;
+      ASSERT false, 'nonce reuse attempted by client';
+      RETURN;
+    END IF;
+  END IF;
+END IF;
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, INT8, INT4, BYTEA, INT8, BYTEA, BYTEA, BYTEA, INT8)
+  IS 'Stores information about a planchet for a batch withdraw operation. Checks if the planchet already exists, and in that case indicates a conflict';
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
+  IN ruuid INT8,
+  IN start_time INT8,
+  IN upper_limit_val INT8,
+  IN upper_limit_frac INT4,
+  OUT below_limit BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  total_val INT8;
+DECLARE
+  total_frac INT8; -- INT4 could overflow during accumulation!
+BEGIN
+-- NOTE: Read-only, but crosses shards.
+-- Shards: reserves by reserve_pub
+--         reserves_out by reserve_uuid -- crosses shards!!
+
+
+SELECT
+   SUM(amount_with_fee_val) -- overflow here is not plausible
+  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
+  INTO
+   total_val
+  ,total_frac
+  FROM reserves_out
+ WHERE reserve_uuid=ruuid
+   AND execution_date > start_time;
+
+-- normalize result
+total_val = total_val + total_frac / 100000000;
+total_frac = total_frac % 100000000;
+
+-- compare to threshold
+below_limit = (total_val < upper_limit_val) OR
+            ( (total_val = upper_limit_val) AND
+              (total_frac <= upper_limit_frac) );
+END $$;
+
+COMMENT ON FUNCTION exchange_do_withdraw_limit_check(INT8, INT8, INT8, INT4)
+  IS 'Check whether the withdrawals from the given reserve since the given time are below the given threshold';
+
+
+-- NOTE: experiment, currently dead, see postgres_Start_deferred_wire_out;
+-- now done inline. FIXME: Remove code here once inline version is confirmed working nicely!
+CREATE OR REPLACE PROCEDURE defer_wire_out()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+IF EXISTS (
+  SELECT 1
+    FROM information_Schema.constraint_column_usage
+   WHERE table_name='wire_out'
+     AND constraint_name='wire_out_ref')
+THEN
+  SET CONSTRAINTS wire_out_ref DEFERRED;
+END IF;
+
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_recoup_by_reserve(
+  IN res_pub BYTEA
+)
+RETURNS TABLE
+(
+  denom_sig            BYTEA,
+  denominations_serial BIGINT,
+  coin_pub             BYTEA,
+  coin_sig             BYTEA,
+  coin_blind           BYTEA,
+  amount_val           BIGINT,
+  amount_frac          INTEGER,
+  recoup_timestamp     BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  res_uuid BIGINT;
+  blind_ev BYTEA;
+  c_pub    BYTEA;
+BEGIN
+  SELECT reserve_uuid
+  INTO res_uuid
+  FROM reserves
+  WHERE reserves.reserve_pub = res_pub;
+
+  FOR blind_ev IN
+    SELECT h_blind_ev
+      FROM reserves_out_by_reserve
+    WHERE reserves_out_by_reserve.reserve_uuid = res_uuid
+  LOOP
+    SELECT robr.coin_pub
+      INTO c_pub
+      FROM recoup_by_reserve robr
+    WHERE robr.reserve_out_serial_id = (
+      SELECT reserves_out.reserve_out_serial_id
+        FROM reserves_out
+      WHERE reserves_out.h_blind_ev = blind_ev
+    );
+    RETURN QUERY
+      SELECT kc.denom_sig,
+             kc.denominations_serial,
+             rc.coin_pub,
+             rc.coin_sig,
+             rc.coin_blind,
+             rc.amount_val,
+             rc.amount_frac,
+             rc.recoup_timestamp
+      FROM (
+        SELECT *
+        FROM known_coins
+        WHERE known_coins.coin_pub = c_pub
+      ) kc
+      JOIN (
+        SELECT *
+        FROM recoup
+        WHERE recoup.coin_pub = c_pub
+      ) rc USING (coin_pub);
+  END LOOP;
+END;
+$$;
+
+COMMENT ON FUNCTION exchange_do_recoup_by_reserve
+  IS 'Recoup by reserve as a function to make sure we hit only the needed partition and not all when joining as joins on distributed tables fetch ALL rows from the shards';
+
+
+CREATE OR REPLACE FUNCTION exchange_do_deposit(
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_h_contract_terms BYTEA,
+  IN in_wire_salt BYTEA,
+  IN in_wallet_timestamp INT8,
+  IN in_exchange_timestamp INT8,
+  IN in_refund_deadline INT8,
+  IN in_wire_deadline INT8,
+  IN in_merchant_pub BYTEA,
+  IN in_receiver_wire_account VARCHAR,
+  IN in_h_payto BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_pub BYTEA,
+  IN in_coin_sig BYTEA,
+  IN in_shard INT8,
+  IN in_extension_blocked BOOLEAN,
+  IN in_extension_details VARCHAR,
+  OUT out_exchange_timestamp INT8,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  wtsi INT8; -- wire target serial id
+DECLARE
+  xdi INT8; -- eXstension details serial id
+BEGIN
+-- Shards: INSERT extension_details (by extension_details_serial_id)
+--         INSERT wire_targets (by h_payto), on CONFLICT DO NOTHING;
+--         INSERT deposits (by coin_pub, shard), ON CONFLICT DO NOTHING;
+--         UPDATE known_coins (by coin_pub)
+
+IF NOT NULL in_extension_details
+THEN
+  INSERT INTO extension_details
+  (extension_options)
+  VALUES
+    (in_extension_details)
+  RETURNING extension_details_serial_id INTO xdi;
+ELSE
+  xdi=NULL;
+END IF;
+
+
+INSERT INTO wire_targets
+  (wire_target_h_payto
+  ,payto_uri)
+  VALUES
+  (in_h_payto
+  ,in_receiver_wire_account)
+ON CONFLICT DO NOTHING -- for CONFLICT ON (wire_target_h_payto)
+  RETURNING wire_target_serial_id INTO wtsi;
+
+IF NOT FOUND
+THEN
+  SELECT wire_target_serial_id
+  INTO wtsi
+  FROM wire_targets
+  WHERE wire_target_h_payto=in_h_payto;
+END IF;
+
+
+INSERT INTO deposits
+  (shard
+  ,coin_pub
+  ,known_coin_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,wallet_timestamp
+  ,exchange_timestamp
+  ,refund_deadline
+  ,wire_deadline
+  ,merchant_pub
+  ,h_contract_terms
+  ,coin_sig
+  ,wire_salt
+  ,wire_target_h_payto
+  ,extension_blocked
+  ,extension_details_serial_id
+  )
+  VALUES
+  (in_shard
+  ,in_coin_pub
+  ,in_known_coin_id
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_wallet_timestamp
+  ,in_exchange_timestamp
+  ,in_refund_deadline
+  ,in_wire_deadline
+  ,in_merchant_pub
+  ,in_h_contract_terms
+  ,in_coin_sig
+  ,in_wire_salt
+  ,in_h_payto
+  ,in_extension_blocked
+  ,xdi)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'coin_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  -- We do select over merchant_pub and wire_target_h_payto
+  -- primarily here to maximally use the existing index.
+  SELECT
+     exchange_timestamp
+   INTO
+     out_exchange_timestamp
+   FROM deposits
+   WHERE shard=in_shard
+     AND merchant_pub=in_merchant_pub
+     AND wire_target_h_payto=in_h_payto
+     AND coin_pub=in_coin_pub
+     AND coin_sig=in_coin_sig;
+
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but with differences. Not allowed.
+    out_balance_ok=FALSE;
+    out_conflict=TRUE;
+    RETURN;
+  END IF;
+
+  -- Idempotent request known, return success.
+  out_balance_ok=TRUE;
+  out_conflict=FALSE;
+
+  RETURN;
+END IF;
+
+
+out_exchange_timestamp=in_exchange_timestamp;
+
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_balance_ok=FALSE;
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+
+-- Everything fine, return success!
+out_balance_ok=TRUE;
+out_conflict=FALSE;
+
+END $$;
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_melt(
+  IN in_cs_rms BYTEA,
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_rc BYTEA,
+  IN in_old_coin_pub BYTEA,
+  IN in_old_coin_sig BYTEA,
+  IN in_known_coin_id INT8, -- not used, but that's OK
+  IN in_noreveal_index INT4,
+  IN in_zombie_required BOOLEAN,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_zombie_bad BOOLEAN,
+  OUT out_noreveal_index INT4)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  denom_max INT8;
+BEGIN
+-- Shards: INSERT refresh_commitments (by rc)
+-- (rare:) SELECT refresh_commitments (by old_coin_pub) -- crosses shards!
+-- (rare:) SEELCT refresh_revealed_coins (by melt_serial_id)
+-- (rare:) PERFORM recoup_refresh (by rrc_serial) -- crosses shards!
+--         UPDATE known_coins (by coin_pub)
+
+INSERT INTO refresh_commitments
+  (rc
+  ,old_coin_pub
+  ,old_coin_sig
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,noreveal_index
+  )
+  VALUES
+  (in_rc
+  ,in_old_coin_pub
+  ,in_old_coin_sig
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_noreveal_index)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  out_noreveal_index=-1;
+  SELECT
+     noreveal_index
+    INTO
+     out_noreveal_index
+    FROM refresh_commitments
+   WHERE rc=in_rc;
+  out_balance_ok=FOUND;
+  out_zombie_bad=FALSE; -- zombie is OK
+  RETURN;
+END IF;
+
+
+IF in_zombie_required
+THEN
+  -- Check if this coin was part of a refresh
+  -- operation that was subsequently involved
+  -- in a recoup operation.  We begin by all
+  -- refresh operations our coin was involved
+  -- with, then find all associated reveal
+  -- operations, and then see if any of these
+  -- reveal operations was involved in a recoup.
+  PERFORM
+    FROM recoup_refresh
+   WHERE rrc_serial IN
+    (SELECT rrc_serial
+       FROM refresh_revealed_coins
+      WHERE melt_serial_id IN
+      (SELECT melt_serial_id
+         FROM refresh_commitments
+        WHERE old_coin_pub=in_old_coin_pub));
+  IF NOT FOUND
+  THEN
+    out_zombie_bad=TRUE;
+    out_balance_ok=FALSE;
+    RETURN;
+  END IF;
+END IF;
+
+out_zombie_bad=FALSE; -- zombie is OK
+
+
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_old_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_noreveal_index=-1;
+  out_balance_ok=FALSE;
+  RETURN;
+END IF;
+
+
+
+-- Special actions needed for a CS melt?
+IF NOT NULL in_cs_rms
+THEN
+  -- Get maximum denominations serial value in
+  -- existence, this will determine how long the
+  -- nonce will be locked.
+  SELECT
+      denominations_serial
+    INTO
+      denom_max
+    FROM denominations
+      ORDER BY denominations_serial DESC
+      LIMIT 1;
+
+  -- Cache CS signature to prevent replays in the future
+  -- (and check if cached signature exists at the same time).
+  INSERT INTO cs_nonce_locks
+    (nonce
+    ,max_denomination_serial
+    ,op_hash)
+  VALUES
+    (cs_rms
+    ,denom_serial
+    ,in_rc)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    -- Record exists, make sure it is the same
+    SELECT 1
+      FROM cs_nonce_locks
+     WHERE nonce=cs_rms
+       AND op_hash=in_rc;
+
+    IF NOT FOUND
+    THEN
+       -- Nonce reuse detected
+       out_balance_ok=FALSE;
+       out_zombie_bad=FALSE;
+       out_noreveal_index=42; -- FIXME: return error message more nicely!
+       ASSERT false, 'nonce reuse attempted by client';
+    END IF;
+  END IF;
+END IF;
+
+-- Everything fine, return success!
+out_balance_ok=TRUE;
+out_noreveal_index=in_noreveal_index;
+
+END $$;
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_refund(
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_amount_val INT8,
+  IN in_amount_frac INT4,
+  IN in_deposit_fee_val INT8,
+  IN in_deposit_fee_frac INT4,
+  IN in_h_contract_terms BYTEA,
+  IN in_rtransaction_id INT8,
+  IN in_deposit_shard INT8,
+  IN in_known_coin_id INT8,
+  IN in_coin_pub BYTEA,
+  IN in_merchant_pub BYTEA,
+  IN in_merchant_sig BYTEA,
+  OUT out_not_found BOOLEAN,
+  OUT out_refund_ok BOOLEAN,
+  OUT out_gone BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  dsi INT8; -- ID of deposit being refunded
+DECLARE
+  tmp_val INT8; -- total amount refunded
+DECLARE
+  tmp_frac INT8; -- total amount refunded
+DECLARE
+  deposit_val INT8; -- amount that was originally deposited
+DECLARE
+  deposit_frac INT8; -- amount that was originally deposited
+BEGIN
+-- Shards: SELECT deposits (coin_pub, shard, h_contract_terms, merchant_pub)
+--         INSERT refunds (by coin_pub, rtransaction_id) ON CONFLICT DO NOTHING
+--         SELECT refunds (by coin_pub)
+--         UPDATE known_coins (by coin_pub)
+
+SELECT
+   deposit_serial_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,done
+INTO
+   dsi
+  ,deposit_val
+  ,deposit_frac
+  ,out_gone
+FROM deposits
+ WHERE coin_pub=in_coin_pub
+  AND shard=in_deposit_shard
+  AND merchant_pub=in_merchant_pub
+  AND h_contract_terms=in_h_contract_terms;
+
+IF NOT FOUND
+THEN
+  -- No matching deposit found!
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=TRUE;
+  out_gone=FALSE;
+  RETURN;
+END IF;
+
+INSERT INTO refunds
+  (deposit_serial_id
+  ,coin_pub
+  ,merchant_sig
+  ,rtransaction_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  )
+  VALUES
+  (dsi
+  ,in_coin_pub
+  ,in_merchant_sig
+  ,in_rtransaction_id
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'coin_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  -- We do select over merchant_pub and h_contract_terms
+  -- primarily here to maximally use the existing index.
+   PERFORM
+   FROM refunds
+   WHERE coin_pub=in_coin_pub
+     AND deposit_serial_id=dsi
+     AND rtransaction_id=in_rtransaction_id
+     AND amount_with_fee_val=in_amount_with_fee_val
+     AND amount_with_fee_frac=in_amount_with_fee_frac;
+
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but have conflicting refund.
+    out_refund_ok=FALSE;
+    out_conflict=TRUE;
+    out_not_found=FALSE;
+    RETURN;
+  END IF;
+
+  -- Idempotent request known, return success.
+  out_refund_ok=TRUE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  out_gone=FALSE;
+  RETURN;
+END IF;
+
+IF out_gone
+THEN
+  -- money already sent to the merchant. Tough luck.
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  RETURN;
+END IF;
+
+-- Check refund balance invariant.
+SELECT
+   SUM(amount_with_fee_val) -- overflow here is not plausible
+  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
+  INTO
+   tmp_val
+  ,tmp_frac
+  FROM refunds
+  WHERE coin_pub=in_coin_pub
+    AND deposit_serial_id=dsi;
+IF tmp_val IS NULL
+THEN
+  RAISE NOTICE 'failed to sum up existing refunds';
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  RETURN;
+END IF;
+
+-- Normalize result before continuing
+tmp_val = tmp_val + tmp_frac / 100000000;
+tmp_frac = tmp_frac % 100000000;
+
+-- Actually check if the deposits are sufficient for the refund. Verbosely. ;-)
+IF (tmp_val < deposit_val)
+THEN
+  out_refund_ok=TRUE;
+ELSE
+  IF (tmp_val = deposit_val) AND (tmp_frac <= deposit_frac)
+  THEN
+    out_refund_ok=TRUE;
+  ELSE
+    out_refund_ok=FALSE;
+  END IF;
+END IF;
+
+IF (tmp_val = deposit_val) AND (tmp_frac = deposit_frac)
+THEN
+  -- Refunds have reached the full value of the original
+  -- deposit. Also refund the deposit fee.
+  in_amount_frac = in_amount_frac + in_deposit_fee_frac;
+  in_amount_val = in_amount_val + in_deposit_fee_val;
+
+  -- Normalize result before continuing
+  in_amount_val = in_amount_val + in_amount_frac / 100000000;
+  in_amount_frac = in_amount_frac % 100000000;
+END IF;
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac+in_amount_frac
+       - CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val+in_amount_val
+       + CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub;
+
+
+out_conflict=FALSE;
+out_not_found=FALSE;
+
+END $$;
+
+-- COMMENT ON FUNCTION exchange_do_refund(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a refund operation, checking that the corresponding deposit was sufficient to cover the refunded amount';
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_recoup_to_reserve(
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_out_serial_id INT8,
+  IN in_coin_blind BYTEA,
+  IN in_coin_pub BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_sig BYTEA,
+  IN in_reserve_gc INT8,
+  IN in_reserve_expiration INT8,
+  IN in_recoup_timestamp INT8,
+  OUT out_recoup_ok BOOLEAN,
+  OUT out_internal_failure BOOLEAN,
+  OUT out_recoup_timestamp INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  tmp_val INT8; -- amount recouped
+DECLARE
+  tmp_frac INT8; -- amount recouped
+BEGIN
+-- Shards: SELECT known_coins (by coin_pub)
+--         SELECT recoup      (by coin_pub)
+--         UPDATE known_coins (by coin_pub)
+--         UPDATE reserves (by reserve_pub)
+--         INSERT recoup      (by coin_pub)
+
+out_internal_failure=FALSE;
+
+
+-- Check remaining balance of the coin.
+SELECT
+   remaining_frac
+  ,remaining_val
+ INTO
+   tmp_frac
+  ,tmp_val
+FROM known_coins
+  WHERE coin_pub=in_coin_pub;
+
+IF NOT FOUND
+THEN
+  out_internal_failure=TRUE;
+  out_recoup_ok=FALSE;
+  RETURN;
+END IF;
+
+IF tmp_val + tmp_frac = 0
+THEN
+  -- Check for idempotency
+  SELECT
+    recoup_timestamp
+  INTO
+    out_recoup_timestamp
+    FROM recoup
+    WHERE coin_pub=in_coin_pub;
+
+  out_recoup_ok=FOUND;
+  RETURN;
+END IF;
+
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+     remaining_frac=0
+    ,remaining_val=0
+  WHERE coin_pub=in_coin_pub;
+
+
+-- Credit the reserve and update reserve timers.
+UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+tmp_frac
+       - CASE
+         WHEN current_balance_frac+tmp_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+tmp_val
+       + CASE
+         WHEN current_balance_frac+tmp_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END,
+    gc_date=GREATEST(gc_date, in_reserve_gc),
+    expiration_date=GREATEST(expiration_date, in_reserve_expiration)
+  WHERE reserve_pub=in_reserve_pub;
+
+
+IF NOT FOUND
+THEN
+  RAISE NOTICE 'failed to increase reserve balance from recoup';
+  out_recoup_ok=TRUE;
+  out_internal_failure=TRUE;
+  RETURN;
+END IF;
+
+
+INSERT INTO recoup
+  (coin_pub
+  ,coin_sig
+  ,coin_blind
+  ,amount_val
+  ,amount_frac
+  ,recoup_timestamp
+  ,reserve_out_serial_id
+  )
+VALUES
+  (in_coin_pub
+  ,in_coin_sig
+  ,in_coin_blind
+  ,tmp_val
+  ,tmp_frac
+  ,in_recoup_timestamp
+  ,in_reserve_out_serial_id);
+
+-- Normal end, everything is fine.
+out_recoup_ok=TRUE;
+out_recoup_timestamp=in_recoup_timestamp;
+
+END $$;
+
+-- COMMENT ON FUNCTION exchange_do_recoup_to_reserve(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a recoup of a coin that was withdrawn from a reserve';
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_recoup_to_coin(
+  IN in_old_coin_pub BYTEA,
+  IN in_rrc_serial INT8,
+  IN in_coin_blind BYTEA,
+  IN in_coin_pub BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_sig BYTEA,
+  IN in_recoup_timestamp INT8,
+  OUT out_recoup_ok BOOLEAN,
+  OUT out_internal_failure BOOLEAN,
+  OUT out_recoup_timestamp INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  tmp_val INT8; -- amount recouped
+DECLARE
+  tmp_frac INT8; -- amount recouped
+BEGIN
+
+-- Shards: UPDATE known_coins (by coin_pub)
+--         SELECT recoup_refresh (by coin_pub)
+--         UPDATE known_coins (by coin_pub)
+--         INSERT recoup_refresh (by coin_pub)
+
+
+out_internal_failure=FALSE;
+
+
+-- Check remaining balance of the coin.
+SELECT
+   remaining_frac
+  ,remaining_val
+ INTO
+   tmp_frac
+  ,tmp_val
+FROM known_coins
+  WHERE coin_pub=in_coin_pub;
+
+IF NOT FOUND
+THEN
+  out_internal_failure=TRUE;
+  out_recoup_ok=FALSE;
+  RETURN;
+END IF;
+
+IF tmp_val + tmp_frac = 0
+THEN
+  -- Check for idempotency
+  SELECT
+      recoup_timestamp
+    INTO
+      out_recoup_timestamp
+    FROM recoup_refresh
+    WHERE coin_pub=in_coin_pub;
+  out_recoup_ok=FOUND;
+  RETURN;
+END IF;
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+     remaining_frac=0
+    ,remaining_val=0
+  WHERE coin_pub=in_coin_pub;
+
+
+-- Credit the old coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac+tmp_frac
+       - CASE
+         WHEN remaining_frac+tmp_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val+tmp_val
+       + CASE
+         WHEN remaining_frac+tmp_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_old_coin_pub;
+
+
+IF NOT FOUND
+THEN
+  RAISE NOTICE 'failed to increase old coin balance from recoup';
+  out_recoup_ok=TRUE;
+  out_internal_failure=TRUE;
+  RETURN;
+END IF;
+
+
+INSERT INTO recoup_refresh
+  (coin_pub
+  ,known_coin_id
+  ,coin_sig
+  ,coin_blind
+  ,amount_val
+  ,amount_frac
+  ,recoup_timestamp
+  ,rrc_serial
+  )
+VALUES
+  (in_coin_pub
+  ,in_known_coin_id
+  ,in_coin_sig
+  ,in_coin_blind
+  ,tmp_val
+  ,tmp_frac
+  ,in_recoup_timestamp
+  ,in_rrc_serial);
+
+-- Normal end, everything is fine.
+out_recoup_ok=TRUE;
+out_recoup_timestamp=in_recoup_timestamp;
+
+END $$;
+
+
+
+
+-- COMMENT ON FUNCTION exchange_do_recoup_to_coin(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a recoup-refresh of a coin that was obtained from a refresh-reveal process';
+
+
+
+CREATE OR REPLACE PROCEDURE exchange_do_gc(
+  IN in_ancient_date INT8,
+  IN in_now INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_uuid_min INT8; -- minimum reserve UUID still alive
+DECLARE
+  melt_min INT8; -- minimum melt still alive
+DECLARE
+  coin_min INT8; -- minimum known_coin still alive
+DECLARE
+  deposit_min INT8; -- minimum deposit still alive
+DECLARE
+  reserve_out_min INT8; -- minimum reserve_out still alive
+DECLARE
+  denom_min INT8; -- minimum denomination still alive
+BEGIN
+
+DELETE FROM prewire
+  WHERE finished=TRUE;
+
+DELETE FROM wire_fee
+  WHERE end_date < in_ancient_date;
+
+-- TODO: use closing fee as threshold?
+DELETE FROM reserves
+  WHERE gc_date < in_now
+    AND current_balance_val = 0
+    AND current_balance_frac = 0;
+
+SELECT
+     reserve_out_serial_id
+  INTO
+     reserve_out_min
+  FROM reserves_out
+  ORDER BY reserve_out_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM recoup
+  WHERE reserve_out_serial_id < reserve_out_min;
+-- FIXME: recoup_refresh lacks GC!
+
+SELECT
+     reserve_uuid
+  INTO
+     reserve_uuid_min
+  FROM reserves
+  ORDER BY reserve_uuid ASC
+  LIMIT 1;
+
+DELETE FROM reserves_out
+  WHERE reserve_uuid < reserve_uuid_min;
+
+-- FIXME: this query will be horribly slow;
+-- need to find another way to formulate it...
+DELETE FROM denominations
+  WHERE expire_legal < in_now
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM reserves_out)
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM known_coins
+        WHERE coin_pub IN
+          (SELECT DISTINCT coin_pub
+             FROM recoup))
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM known_coins
+        WHERE coin_pub IN
+          (SELECT DISTINCT coin_pub
+             FROM recoup_refresh));
+
+SELECT
+     melt_serial_id
+  INTO
+     melt_min
+  FROM refresh_commitments
+  ORDER BY melt_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM refresh_revealed_coins
+  WHERE melt_serial_id < melt_min;
+
+DELETE FROM refresh_transfer_keys
+  WHERE melt_serial_id < melt_min;
+
+SELECT
+     known_coin_id
+  INTO
+     coin_min
+  FROM known_coins
+  ORDER BY known_coin_id ASC
+  LIMIT 1;
+
+DELETE FROM deposits
+  WHERE known_coin_id < coin_min;
+
+SELECT
+     deposit_serial_id
+  INTO
+     deposit_min
+  FROM deposits
+  ORDER BY deposit_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM refunds
+  WHERE deposit_serial_id < deposit_min;
+
+DELETE FROM aggregation_tracking
+  WHERE deposit_serial_id < deposit_min;
+
+SELECT
+     denominations_serial
+  INTO
+     denom_min
+  FROM denominations
+  ORDER BY denominations_serial ASC
+  LIMIT 1;
+
+DELETE FROM cs_nonce_locks
+  WHERE max_denomination_serial <= denom_min;
+
+END $$;
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
+  IN in_partner_id INT8,
+  IN in_purse_pub BYTEA,
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_coin_pub BYTEA,
+  IN in_coin_sig BYTEA,
+  IN in_amount_without_fee_val INT8,
+  IN in_amount_without_fee_frac INT4,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  was_merged BOOLEAN;
+DECLARE
+  psi INT8; -- partner's serial ID (set if merged)
+DECLARE
+  my_amount_val INT8; -- total in purse
+DECLARE
+  my_amount_frac INT4; -- total in purse
+DECLARE
+  was_paid BOOLEAN;
+DECLARE
+  my_reserve_pub BYTEA;
+BEGIN
+
+-- Store the deposit request.
+INSERT INTO purse_deposits
+  (partner_serial_id
+  ,purse_pub
+  ,coin_pub
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,coin_sig)
+  VALUES
+  (in_partner_id
+  ,in_purse_pub
+  ,in_coin_pub
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_coin_sig)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: check if coin_sig is the same,
+  -- if so, success, otherwise conflict!
+  PERFORM
+  FROM purse_deposits
+  WHERE coin_pub = in_coin_pub
+    AND purse_pub = in_purse_pub
+    AND coin_sig = in_cion_sig;
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but with differences. Not allowed.
+    out_balance_ok=FALSE;
+    out_conflict=TRUE;
+    RETURN;
+  END IF;
+END IF;
+
+
+-- Debit the coin
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_balance_ok=FALSE;
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+
+
+-- Credit the purse.
+UPDATE purse_requests
+  SET
+    balance_frac=balance_frac+in_amount_without_fee_frac
+       - CASE
+         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    balance_val=balance_val+in_amount_without_fee_val
+       + CASE
+         WHEN balance_frac+in_amount_without_fee_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE purse_pub=in_purse_pub;
+
+out_conflict=FALSE;
+out_balance_ok=TRUE;
+
+-- See if we can finish the merge or need to update the trigger time and partner.
+SELECT partner_serial_id
+      ,reserve_pub
+  INTO psi
+      ,my_reserve_pub
+  FROM purse_merges
+ WHERE purse_pub=in_purse_pub;
+
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+SELECT
+    amount_with_fee_val
+   ,amount_with_fee_frac
+  INTO
+    my_amount_val
+   ,my_amount_frac
+  FROM purse_requests
+  WHERE (purse_pub=in_purse_pub)
+    AND ( ( ( (amount_with_fee_val <= balance_val)
+          AND (amount_with_fee_frac <= balance_frac) )
+         OR (amount_with_fee_val < balance_val) ) );
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+IF (0 != psi)
+THEN
+  -- The taler-exchange-router will take care of this.
+  UPDATE purse_actions
+     SET action_date=0 --- "immediately"
+        ,partner_serial_id=psi
+   WHERE purse_pub=in_purse_pub;
+ELSE
+  -- This is a local reserve, update balance immediately.
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+my_amount_frac
+       - CASE
+         WHEN current_balance_frac + my_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+my_amount_val
+       + CASE
+         WHEN current_balance_frac + my_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE reserve_pub=my_reserve_pub;
+
+  -- ... and mark purse as finished.
+  -- FIXME: combine with UPDATE above?
+  UPDATE purse_requests
+     SET finished=true
+  WHERE purse_pub=in_purse_pub;
+END IF;
+
+
+END $$;
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
+  IN in_purse_pub BYTEA,
+  IN in_merge_sig BYTEA,
+  IN in_merge_timestamp INT8,
+  IN in_reserve_sig BYTEA,
+  IN in_partner_url VARCHAR,
+  IN in_reserve_pub BYTEA,
+  IN in_require_kyc BOOLEAN,
+  OUT out_no_partner BOOLEAN,
+  OUT out_no_balance BOOLEAN,
+  OUT out_no_kyc BOOLEAN,
+  OUT out_no_reserve BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  my_amount_val INT8;
+DECLARE
+  my_amount_frac INT4;
+DECLARE
+  my_purse_fee_val INT8;
+DECLARE
+  my_purse_fee_frac INT4;
+DECLARE
+  my_partner_serial_id INT8;
+DECLARE
+  my_finished BOOLEAN;
+BEGIN
+
+IF in_partner_url IS NULL
+THEN
+  my_partner_serial_id=0;
+ELSE
+  SELECT
+    partner_serial_id
+  INTO
+    my_partner_serial_id
+  FROM partners
+  WHERE partner_base_url=in_partner_url
+    AND start_date <= in_merge_timestamp
+    AND end_date > in_merge_timestamp;
+  IF NOT FOUND
+  THEN
+    out_no_partner=TRUE;
+    out_conflict=FALSE;
+    out_no_kyc=FALSE;
+    out_no_reserve=FALSE;
+    RETURN;
+  END IF;
+END IF;
+
+out_no_partner=FALSE;
+
+
+-- Check purse is 'full'.
+SELECT amount_with_fee_val
+      ,amount_with_fee_frac
+      ,purse_fee_val
+      ,purse_fee_frac
+      ,finished
+  INTO my_amount_val
+      ,my_amount_frac
+      ,my_purse_fee_val
+      ,my_purse_fee_frac
+      ,my_finished
+  FROM purse_requests
+  WHERE purse_pub=in_purse_pub
+    AND balance_val >= amount_with_fee_val
+    AND ( (balance_frac >= amount_with_fee_frac) OR
+          (balance_val > amount_with_fee_val) );
+IF NOT FOUND
+THEN
+  out_no_balance=TRUE;
+  out_conflict=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
+  RETURN;
+END IF;
+out_no_balance=FALSE;
+
+-- Store purse merge signature, checks for purse_pub uniqueness
+INSERT INTO purse_merges
+    (partner_serial_id
+    ,reserve_pub
+    ,purse_pub
+    ,merge_sig
+    ,merge_timestamp)
+  VALUES
+    (my_partner_serial_id
+    ,in_reserve_pub
+    ,in_purse_pub
+    ,in_merge_sig
+    ,in_merge_timestamp)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'merge_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  PERFORM
+  FROM purse_merges
+  WHERE purse_pub=in_purse_pub
+     AND merge_sig=in_merge_sig;
+  IF NOT FOUND
+  THEN
+     -- Purse was merged, but to some other reserve. Not allowed.
+     out_conflict=TRUE;
+     out_no_kyc=FALSE;
+     out_no_reserve=FALSE;
+     RETURN;
+  END IF;
+
+  -- "success"
+  out_conflict=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+ASSERT NOT my_finished, 'internal invariant failed';
+
+IF ( (in_partner_url IS NULL) AND
+     (in_require_kyc) )
+THEN
+  -- Need to do KYC check.
+  SELECT NOT kyc_passed
+    INTO out_no_kyc
+    FROM reserves
+   WHERE reserve_pub=in_reserve_pub;
+
+  IF NOT FOUND
+  THEN
+    out_no_kyc=TRUE;
+    out_no_reserve=TRUE;
+    RETURN;
+  END IF;
+  out_no_reserve=FALSE;
+
+  IF (out_no_kyc)
+  THEN
+    RETURN;
+  END IF;
+ELSE
+  -- KYC is not our responsibility
+  out_no_reserve=FALSE;
+  out_no_kyc=FALSE;
+END IF;
+
+
+
+-- Store account merge signature.
+INSERT INTO account_merges
+  (reserve_pub
+  ,reserve_sig
+  ,purse_pub)
+  VALUES
+  (in_reserve_pub
+  ,in_reserve_sig
+  ,in_purse_pub);
+
+-- If we need a wad transfer, mark purse ready for it.
+IF (0 != my_partner_serial_id)
+THEN
+  -- The taler-exchange-router will take care of this.
+  UPDATE purse_actions
+     SET action_date=0 --- "immediately"
+        ,partner_serial_id=my_partner_serial_id
+   WHERE purse_pub=in_purse_pub;
+ELSE
+  -- This is a local reserve, update reserve balance immediately.
+
+  -- Refund the purse fee, by adding it to the purse value:
+  my_amount_val = my_amount_val + my_purse_fee_val;
+  my_amount_frac = my_amount_frac + my_purse_fee_frac;
+  -- normalize result
+  my_amount_val = my_amount_val + my_amount_frac / 100000000;
+  my_amount_frac = my_amount_frac % 100000000;
+
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+my_amount_frac
+       - CASE
+         WHEN current_balance_frac + my_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+my_amount_val
+       + CASE
+         WHEN current_balance_frac + my_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE reserve_pub=in_reserve_pub;
+
+  -- ... and mark purse as finished.
+  UPDATE purse_requests
+     SET finished=true
+  WHERE purse_pub=in_purse_pub;
+END IF;
+
+
+RETURN;
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BOOLEAN)
+  IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
+
+
+CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
+  IN in_purse_pub BYTEA,
+  IN in_merge_sig BYTEA,
+  IN in_merge_timestamp INT8,
+  IN in_reserve_sig BYTEA,
+  IN in_reserve_quota BOOLEAN,
+  IN in_purse_fee_val INT8,
+  IN in_purse_fee_frac INT4,
+  IN in_reserve_pub BYTEA,
+  IN in_require_kyc BOOLEAN,
+  OUT out_no_funds BOOLEAN,
+  OUT out_no_kyc BOOLEAN,
+  OUT out_no_reserve BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+-- Store purse merge signature, checks for purse_pub uniqueness
+INSERT INTO purse_merges
+    (partner_serial_id
+    ,reserve_pub
+    ,purse_pub
+    ,merge_sig
+    ,merge_timestamp)
+  VALUES
+    (0
+    ,in_reserve_pub
+    ,in_purse_pub
+    ,in_merge_sig
+    ,in_merge_timestamp)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'merge_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  PERFORM
+  FROM purse_merges
+  WHERE purse_pub=in_purse_pub
+     AND merge_sig=in_merge_sig;
+  IF NOT FOUND
+  THEN
+     -- Purse was merged, but to some other reserve. Not allowed.
+     out_conflict=TRUE;
+     out_no_kyc=FALSE;
+     out_no_reserve=FALSE;
+     out_no_funds=FALSE;
+     RETURN;
+  END IF;
+
+  -- "success"
+  out_conflict=FALSE;
+  out_no_funds=FALSE;
+  out_no_kyc=FALSE;
+  out_no_reserve=FALSE;
+  RETURN;
+END IF;
+out_conflict=FALSE;
+
+SELECT NOT kyc_passed
+  INTO out_no_kyc
+  FROM reserves
+ WHERE reserve_pub=in_reserve_pub;
+
+IF NOT FOUND
+THEN
+  out_no_kyc=TRUE;
+  out_no_reserve=TRUE;
+  out_no_funds=TRUE;
+  RETURN;
+END IF;
+out_no_reserve=FALSE;
+
+IF (out_no_kyc AND in_require_kyc)
+THEN
+  out_no_funds=FALSE;
+  RETURN;
+END IF;
+
+IF (in_reserve_quota)
+THEN
+  -- Increment active purses per reserve (and check this is allowed)
+  UPDATE reserves
+     SET purses_active=purses_active+1
+        ,kyc_required=TRUE
+   WHERE reserve_pub=in_reserve_pub
+     AND purses_active < purses_allowed;
+  IF NOT FOUND
+  THEN
+    out_no_funds=TRUE;
+    RETURN;
+  END IF;
+ELSE
+  --  UPDATE reserves balance (and check if balance is enough to pay the fee)
+  UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac-in_purse_fee_frac
+       + CASE
+         WHEN current_balance_frac < in_purse_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val-in_purse_fee_val
+       - CASE
+         WHEN current_balance_frac < in_purse_fee_frac
+         THEN 1
+         ELSE 0
+         END
+    ,kyc_required=TRUE
+  WHERE reserve_pub=in_reserve_pub
+    AND ( (current_balance_val > in_purse_fee_val) OR
+          ( (current_balance_frac >= in_purse_fee_frac) AND
+            (current_balance_val >= in_purse_fee_val) ) );
+  IF NOT FOUND
+  THEN
+    out_no_funds=TRUE;
+    RETURN;
+  END IF;
+END IF;
+
+out_no_funds=FALSE;
+
+
+-- Store account merge signature.
+INSERT INTO account_merges
+  (reserve_pub
+  ,reserve_sig
+  ,purse_pub)
+  VALUES
+  (in_reserve_pub
+  ,in_reserve_sig
+  ,in_purse_pub);
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BOOLEAN)
+  IS 'Create a purse for a reserve.';
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_account_merge(
+  IN in_purse_pub BYTEA,
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_sig BYTEA,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- FIXME: function/API is dead! Do DCE?
+END $$;
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_expire_purse(
+  IN in_start_time INT8,
+  IN in_end_time INT8,
+  OUT out_found BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  my_purse_pub BYTEA;
+DECLARE
+  my_deposit record;
+BEGIN
+
+SELECT purse_pub
+  INTO my_purse_pub
+  FROM purse_requests
+ WHERE (purse_expiration >= in_start_time) AND
+       (purse_expiration < in_end_time) AND
+       (NOT finished) AND
+       (NOT refunded)
+ ORDER BY purse_expiration ASC
+ LIMIT 1;
+out_found = FOUND;
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+
+UPDATE purse_requests
+ SET refunded=TRUE,
+     finished=TRUE
+ WHERE purse_pub=my_purse_pub;
+
+INSERT INTO purse_refunds
+ (purse_pub)
+ VALUES
+ (my_purse_pub);
+
+-- restore balance to each coin deposited into the purse
+FOR my_deposit IN
+  SELECT coin_pub
+        ,amount_with_fee_val
+        ,amount_with_fee_frac
+    FROM purse_deposits
+  WHERE purse_pub = my_purse_pub
+LOOP
+  UPDATE known_coins SET
+    remaining_frac=remaining_frac+my_deposit.amount_with_fee_frac
+     - CASE
+       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       THEN 100000000
+       ELSE 0
+       END,
+    remaining_val=remaining_val+my_deposit.amount_with_fee_val
+     + CASE
+       WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
+       THEN 1
+       ELSE 0
+       END
+    WHERE coin_pub = my_deposit.coin_pub;
+  END LOOP;
+END $$;
+
+COMMENT ON FUNCTION exchange_do_expire_purse(INT8,INT8)
+  IS 'Finds an expired purse in the given time range and refunds the coins (if any).';
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_history_request(
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_sig BYTEA,
+  IN in_request_timestamp INT8,
+  IN in_history_fee_val INT8,
+  IN in_history_fee_frac INT4,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_idempotent BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+  -- Insert and check for idempotency.
+  INSERT INTO history_requests
+  (reserve_pub
+  ,request_timestamp
+  ,reserve_sig
+  ,history_fee_val
+  ,history_fee_frac)
+  VALUES
+  (in_reserve_pub
+  ,in_request_timestamp
+  ,in_reserve_sig
+  ,in_history_fee_val
+  ,in_history_fee_frac)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+    out_balance_ok=TRUE;
+    out_idempotent=TRUE;
+    RETURN;
+  END IF;
+
+  out_idempotent=FALSE;
+
+  -- Update reserve balance.
+  UPDATE reserves
+   SET
+    current_balance_frac=current_balance_frac-in_history_fee_frac
+       + CASE
+         WHEN current_balance_frac < in_history_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val-in_history_fee_val
+       - CASE
+         WHEN current_balance_frac < in_history_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE
+    reserve_pub=in_reserve_pub
+    AND ( (current_balance_val > in_history_fee_val) OR
+          ( (current_balance_frac >= in_history_fee_frac) AND
+            (current_balance_val >= in_history_fee_val) ) );
+
+  IF NOT FOUND
+  THEN
+    -- Either reserve does not exist, or balance insufficient.
+    -- Both we treat the same here as balance insufficient.
+    out_balance_ok=FALSE;
+    RETURN;
+  END IF;
+
+  out_balance_ok=TRUE;
+END $$;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_close_request(
+  IN in_reserve_pub BYTEA,
+  IN in_close_timestamp INT8,
+  IN in_reserve_sig BYTEA,
+  OUT out_final_balance_val INT8,
+  OUT out_final_balance_frac INT4,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+  SELECT
+    current_balance_val
+   ,current_balance_frac
+  INTO
+    out_final_balance_val
+   ,out_final_balance_frac
+  FROM reserves
+  WHERE reserve_pub=in_reserve_pub;
+
+  IF NOT FOUND
+  THEN
+    out_final_balance_val=0;
+    out_final_balance_frac=0;
+    out_balance_ok = FALSE;
+    out_conflict = FALSE;
+  END IF;
+
+  INSERT INTO close_requests
+    (reserve_pub
+    ,close_timestamp
+    ,reserve_sig
+    ,close_val
+    ,close_frac)
+    VALUES
+    (in_reserve_pub
+    ,in_close_timestamp
+    ,in_reserve_sig
+    ,out_final_balance_val
+    ,out_final_balance_frac)
+  ON CONFLICT DO NOTHING;
+  out_conflict = NOT FOUND;
+
+  UPDATE reserves SET
+    current_balance_val=0
+   ,current_balance_frac=0
+  WHERE reserve_pub=in_reserve_pub;
+  out_balance_ok = TRUE;
+
+END $$;
+
+
+COMMIT;

@@ -240,6 +240,7 @@ postgres_create_tables (void *cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
+  enum GNUNET_GenericReturnValue ret;
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
@@ -248,8 +249,10 @@ postgres_create_tables (void *cls)
                                      NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
+  ret = GNUNET_PQ_exec_sql (conn,
+                            "procedures");
   GNUNET_PQ_disconnect (conn);
-  return GNUNET_OK;
+  return ret;
 }
 
 
