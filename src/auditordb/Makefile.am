@@ -14,10 +14,10 @@ pkgcfg_DATA = \
 sqldir = $(prefix)/share/taler/sql/auditor/
 
 sql_DATA = \
-  auditor-0000.sql \
+  versioning.sql \
   auditor-0001.sql \
-  drop0001.sql \
-  restart0001.sql
+  drop.sql \
+  restart.sql
 
 EXTRA_DIST = \
   auditordb-postgres.conf \

@@ -452,7 +452,7 @@ struct TALER_AUDITORDB_Plugin
    */
   enum GNUNET_GenericReturnValue
   (*drop_tables)(void *cls,
-                 int drop_exchangelist);
+                 bool drop_exchangelist);
 
 
   /**

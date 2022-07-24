@@ -97,20 +97,23 @@ struct PostgresClosure
  */
 static enum GNUNET_GenericReturnValue
 postgres_drop_tables (void *cls,
-                      int drop_exchangelist)
+                      bool drop_exchangelist)
 {
   struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_Context *conn;
+  enum GNUNET_GenericReturnValue ret;
 
   conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
                                      "auditordb-postgres",
-                                     (drop_exchangelist) ? "drop" : "restart",
+                                     NULL,
                                      NULL,
                                      NULL);
   if (NULL == conn)
     return GNUNET_SYSERR;
+  ret = GNUNET_PQ_exec_sql (conn,
+                            (drop_exchangelist) ? "drop" : "restart");
   GNUNET_PQ_disconnect (conn);
-  return GNUNET_OK;
+  return ret;
 }
 
 

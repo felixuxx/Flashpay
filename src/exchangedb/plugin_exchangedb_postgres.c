@@ -155,22 +155,25 @@ postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
+  enum GNUNET_GenericReturnValue ret;
 
-  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                     "exchangedb-postgres",
-                                     "drop",
-                                     NULL,
-                                     NULL);
-  if (NULL == conn)
-    return GNUNET_SYSERR;
-  GNUNET_PQ_disconnect (conn);
   if (NULL != pg->conn)
   {
     GNUNET_PQ_disconnect (pg->conn);
     pg->conn = NULL;
     pg->init = false;
   }
-  return GNUNET_OK;
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
+                                     "exchangedb-postgres",
+                                     NULL,
+                                     NULL,
+                                     NULL);
+  if (NULL == conn)
+    return GNUNET_SYSERR;
+  ret = GNUNET_PQ_exec_sql (conn,
+                            "drop");
+  GNUNET_PQ_disconnect (conn);
+  return ret;
 }
 
 
@@ -200,6 +203,13 @@ postgres_drop_shard_tables (void *cls,
                             1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
+
+  if (NULL != pg->conn)
+  {
+    GNUNET_PQ_disconnect (pg->conn);
+    pg->conn = NULL;
+    pg->init = false;
+  }
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      NULL,
@@ -211,22 +221,10 @@ postgres_drop_shard_tables (void *cls,
                                               "drop_shard_tables",
                                               params))
     ret = GNUNET_SYSERR;
+  if (GNUNET_OK == ret)
+    ret = GNUNET_PQ_exec_sql (conn,
+                              "shard-drop");
   GNUNET_PQ_disconnect (conn);
-
-  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                     "exchangedb-postgres",
-                                     "shard-drop",
-                                     NULL,
-                                     NULL);
-  if (NULL == conn)
-    return GNUNET_SYSERR;
-  GNUNET_PQ_disconnect (conn);
-  if (NULL != pg->conn)
-  {
-    GNUNET_PQ_disconnect (pg->conn);
-    pg->conn = NULL;
-    pg->init = false;
-  }
   return ret;
 }
 
