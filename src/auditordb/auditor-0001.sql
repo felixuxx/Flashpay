@@ -21,6 +21,12 @@ BEGIN;
 SELECT _v.register_patch('auditor-0001', NULL, NULL);
 
 
+CREATE SCHEMA auditor;
+COMMENT ON SCHEMA auditor IS 'taler-auditor data';
+
+SET search_path TO auditor;
+
+
 CREATE TABLE IF NOT EXISTS auditor_exchanges
   (master_pub BYTEA PRIMARY KEY CHECK (LENGTH(master_pub)=32)
   ,exchange_url VARCHAR NOT NULL
