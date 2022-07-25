@@ -20,9 +20,6 @@ BEGIN;
 
 SELECT _v.unregister_patch('exchange-0001');
 
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO postgres;
-COMMENT ON SCHEMA public IS 'standard public schema';
+DROP SCHEMA exchange CASCADE;
 
 COMMIT;

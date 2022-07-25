@@ -222,6 +222,11 @@ postgres_create_shard_tables (void *cls,
     GNUNET_PQ_query_param_uint32 (&idx),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
   struct GNUNET_PQ_PreparedStatement ps[] = {
     GNUNET_PQ_make_prepare ("create_shard_tables",
                             "SELECT"
@@ -234,7 +239,7 @@ postgres_create_shard_tables (void *cls,
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      "shard-",
-                                     NULL,
+                                     es,
                                      ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
@@ -273,11 +278,15 @@ postgres_setup_partitions (void *cls,
                             1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      NULL,
-                                     NULL,
+                                     es,
                                      ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
@@ -353,7 +362,10 @@ postgres_setup_foreign_servers (void *cls,
     GNUNET_PQ_query_param_string (remote_user_pw),
     GNUNET_PQ_query_param_end
   };
-
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
   struct GNUNET_PQ_PreparedStatement ps[] = {
     GNUNET_PQ_make_prepare ("create_foreign_servers",
                             "SELECT"
@@ -366,7 +378,7 @@ postgres_setup_foreign_servers (void *cls,
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      NULL,
-                                     NULL,
+                                     es,
                                      ps);
   if (NULL == conn)
   {
@@ -4455,6 +4467,7 @@ internal_setup (struct PostgresClosure *pg,
         "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
       GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
       GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };
 #else
@@ -4464,6 +4477,7 @@ internal_setup (struct PostgresClosure *pg,
       GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
       GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
       GNUNET_PQ_make_try_execute ("SET autocommit=OFF;"),
+      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
     };
 #endif
@@ -10501,6 +10515,10 @@ postgres_gc (void *cls)
       GNUNET_TIME_UNIT_YEARS,
       10));
   {
+    struct GNUNET_PQ_ExecuteStatement es[] = {
+      GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+      GNUNET_PQ_EXECUTE_STATEMENT_END
+    };
     struct GNUNET_PQ_PreparedStatement ps[] = {
       /* Used in #postgres_gc() */
       GNUNET_PQ_make_prepare ("run_gc",
@@ -10514,7 +10532,7 @@ postgres_gc (void *cls)
     conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                        "exchangedb-postgres",
                                        NULL,
-                                       NULL,
+                                       es,
                                        ps);
   }
   if (NULL == conn)
