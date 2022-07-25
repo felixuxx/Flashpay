@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2021 Taler Systems SA
+-- Copyright (C) 2014--2022 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -14,14 +14,15 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+-- Everything in one big transaction
 BEGIN;
 
--- Unregister patch (shard-0001.sql)
-SELECT _v.unregister_patch('shard-0001');
 
--- Drops for shard-0001-part.sql
+SELECT _v.unregister_patch('exchange-0001');
 
-DROP FUNCTION IF EXISTS drop_shard;
-DROP FUNCTION IF EXISTS setup_shard;
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+COMMENT ON SCHEMA public IS 'standard public schema';
 
 COMMIT;

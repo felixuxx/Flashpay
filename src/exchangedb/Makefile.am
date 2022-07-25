@@ -16,11 +16,8 @@ sqldir = $(prefix)/share/taler/sql/exchange/
 
 sqlinputs = \
   common-0001.sql \
-  drop-common.sql \
   exchange-0001-part.sql \
-  drop-exchange-part.sql \
-  shard-0001-part.sql \
-  drop-shard-part.sql
+  shard-0001-part.sql 
 
 sql_DATA = \
   benchmark-0001.sql \
@@ -28,22 +25,17 @@ sql_DATA = \
   exchange-0001.sql \
   drop.sql \
   procedures.sql \
-  shard-0001.sql \
-  shard-drop.sql
-
+  shard-0001.sql 
 
 BUILT_SOURCES = \
   shard-0001.sql \
   exchange-0001.sql \
   drop.sql \
-  procedures.sql \
-  shard-drop.sql
+  procedures.sql
 
 CLEANFILES = \
   shard-0001.sql \
-  exchange-0001.sql \
-  drop.sql \
-  shard-drop.sql
+  exchange-0001.sql 
 
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql
 	chmod +w $@ || true
@@ -53,16 +45,6 @@ exchange-0001.sql: common-0001.sql exchange-0001-part.sql
 shard-0001.sql: common-0001.sql shard-0001-part.sql
 	chmod +w $@ || true
 	cat common-0001.sql shard-0001-part.sql >$@
-	chmod ugo-w $@
-
-drop.sql: drop-common.sql drop-exchange-part.sql
-	chmod +w $@ || true
-	cat drop-common.sql drop-exchange-part.sql >$@
-	chmod ugo-w $@
-
-shard-drop.sql: drop-common.sql drop-shard-part.sql
-	chmod +w $@ || true
-	cat drop-common.sql drop-shard-part.sql >$@
 	chmod ugo-w $@
 
 EXTRA_DIST = \

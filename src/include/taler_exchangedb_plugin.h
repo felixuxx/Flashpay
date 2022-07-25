@@ -2761,17 +2761,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*drop_tables)(void *cls);
 
   /**
-   * Drop the Taler tables on a shard.  This should only be used in testcases.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param old_idx the index which was used then the database was initialized.
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
-   */
-  enum GNUNET_GenericReturnValue
-  (*drop_shard_tables)(void *cls,
-                       uint32_t old_idx);
-
-  /**
    * Create the necessary tables if they are not present
    *
    * @param cls the @e cls of this struct with the plugin-specific state
