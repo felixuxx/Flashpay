@@ -17,6 +17,8 @@
 -- Everything in one big transaction
 BEGIN;
 
+SET search_path TO auditor;
+
 -- This script restart the auditor state as done to RESTART
 -- an audit from scratch. It does NOT drop tables and also
 -- PRESERVES data that running the auditor would not recover,
