@@ -14,16 +14,6 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
-BEGIN;
-
--------------------- Schema ----------------------------
-
-CREATE SCHEMA exchange;
-COMMENT ON SCHEMA exchange IS 'taler-exchange data';
-
-SET search_path TO exchange;
-
 -------------------- Tables ----------------------------
 
 CREATE OR REPLACE FUNCTION create_partitioned_table(
@@ -2750,5 +2740,3 @@ BEGIN
 
 END
 $$;
-
-COMMIT;

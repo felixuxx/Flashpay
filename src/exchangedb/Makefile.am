@@ -16,8 +16,10 @@ sqldir = $(prefix)/share/taler/sql/exchange/
 
 sqlinputs = \
   common-0001.sql \
+  exchange-0001.sql.in \
   exchange-0001-part.sql \
-  shard-0001-part.sql 
+  shard-0001-part.sql \
+  shard-0001.sql.in
 
 sql_DATA = \
   benchmark-0001.sql \
@@ -25,7 +27,7 @@ sql_DATA = \
   exchange-0001.sql \
   drop.sql \
   procedures.sql \
-  shard-0001.sql 
+  shard-0001.sql
 
 BUILT_SOURCES = \
   shard-0001.sql \
@@ -35,16 +37,16 @@ BUILT_SOURCES = \
 
 CLEANFILES = \
   shard-0001.sql \
-  exchange-0001.sql 
+  exchange-0001.sql
 
-exchange-0001.sql: common-0001.sql exchange-0001-part.sql
+exchange-0001.sql: common-0001.sql exchange-0001-part.sql exchange-0001.sql.in
 	chmod +w $@ || true
-	cat common-0001.sql exchange-0001-part.sql >$@
+	gcc -E -P -undef - < exchange-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
-shard-0001.sql: common-0001.sql shard-0001-part.sql
+shard-0001.sql: common-0001.sql shard-0001-part.sql exchange-0001.sql.in
 	chmod +w $@ || true
-	cat common-0001.sql shard-0001-part.sql >$@
+	gcc -E -P -undef - < shard-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 EXTRA_DIST = \

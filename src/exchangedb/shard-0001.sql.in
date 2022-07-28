@@ -1,0 +1,33 @@
+--
+-- This file is part of TALER
+-- Copyright (C) 2014--2022 Taler Systems SA
+--
+-- TALER is free software; you can redistribute it and/or modify it under the
+-- terms of the GNU General Public License as published by the Free Software
+-- Foundation; either version 3, or (at your option) any later version.
+--
+-- TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+-- A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License along with
+-- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+--
+
+-- Everything in one big transaction
+BEGIN;
+
+-- Check patch versioning is in place.
+SELECT _v.register_patch('shard-0001', NULL, NULL);
+
+-------------------- Schema ----------------------------
+
+CREATE SCHEMA exchange;
+COMMENT ON SCHEMA exchange IS 'taler-exchange data';
+
+SET search_path TO exchange;
+
+#include "common-0001.sql"
+#include "shard-0001-part.sql"
+
+COMMIT;

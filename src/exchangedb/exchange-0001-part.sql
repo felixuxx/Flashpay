@@ -14,12 +14,6 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
-BEGIN;
-
--- Check patch versioning is in place.
-SELECT _v.register_patch('exchange-0001', NULL, NULL);
-
 -- ------------------------------ denominations ----------------------------------------
 
 CREATE TABLE IF NOT EXISTS denominations
@@ -1404,12 +1398,3 @@ CREATE TRIGGER purse_requests_on_update
 COMMENT ON TRIGGER purse_requests_on_update
   ON purse_requests
   IS 'This covers the case where a deposit is made into a purse, which inherently then changes the purse balance via an UPDATE. If the merge is already present and the balance matches the total, we trigger the router. Once the router sets the purse to finished, the trigger will remove the purse from the watchlist of the router.';
-
-
-
--------------------------------------------------------------
---                   THE END
--------------------------------------------------------------
-
--- Complete transaction
-COMMIT;
