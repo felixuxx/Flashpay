@@ -95,7 +95,7 @@ struct TALER_EXCHANGEDB_AccountInfo
  * @param[out] ret where the resulting total is to be stored
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGEDB_calculate_transaction_list_totals (
   struct TALER_EXCHANGEDB_TransactionList *tl,
   const struct TALER_Amount *off,

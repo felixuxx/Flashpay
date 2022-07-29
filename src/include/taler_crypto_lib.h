@@ -4547,6 +4547,55 @@ TALER_exchange_offline_partner_details_verify (
 
 
 /**
+ * Create offline signature about wiring profits to a
+ * regular non-escrowed account of the exchange.
+ *
+ * @param wtid (random) wire transfer ID to be used
+ * @param date when was the profit drain approved (not exact time of execution)
+ * @param amount how much should be wired
+ * @param account_section configuration section of the
+ *        exchange specifying the account to be debited
+ * @param payto_uri target account to be credited
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_profit_drain_sign (
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Timestamp date,
+  const struct TALER_Amount *amount,
+  const char *account_section,
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify offline signature about wiring profits to a
+ * regular non-escrowed account of the exchange.
+ *
+ * @param wtid (random) wire transfer ID to be used
+ * @param date when was the profit drain approved (not exact time of execution)
+ * @param amount how much should be wired
+ * @param account_section configuration section of the
+ *        exchange specifying the account to be debited
+ * @param payto_uri target account to be credited
+ * @param master_pub public key to verify signature against
+ * @param master_sig the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_profit_drain_verify (
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Timestamp date,
+  const struct TALER_Amount *amount,
+  const char *account_section,
+  const char *payto_uri,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
  * Create security module EdDSA signature.
  *
  * @param exchange_pub public signing key to validate

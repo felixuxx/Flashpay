@@ -1145,4 +1145,88 @@ TALER_exchange_offline_partner_details_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by account to drain profits
+ * from the escrow account of the exchange.
+ */
+struct TALER_DrainProfitPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DRAIN_PROFITS
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+  struct TALER_WireTransferIdentifierRawP wtid;
+  struct GNUNET_TIME_TimestampNBO date;
+  struct TALER_AmountNBO amount;
+  struct GNUNET_HashCode h_section;
+  struct TALER_PaytoHashP h_payto;
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_exchange_offline_profit_drain_sign (
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Timestamp date,
+  const struct TALER_Amount *amount,
+  const char *account_section,
+  const char *payto_uri,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_DrainProfitPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DRAIN_PROFIT),
+    .purpose.size = htonl (sizeof (wd)),
+    .wtid = *wtid,
+    .date = GNUNET_TIME_timestamp_hton (date),
+  };
+
+  GNUNET_CRYPTO_hash (account_section,
+                      strlen (account_section) + 1,
+                      &wd.h_section);
+  TALER_payto_hash (payto_uri,
+                    &wd.h_payto);
+  TALER_amount_hton (&wd.amount,
+                     amount);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &wd,
+                            &master_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_profit_drain_verify (
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Timestamp date,
+  const struct TALER_Amount *amount,
+  const char *account_section,
+  const char *payto_uri,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_DrainProfitPS wd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DRAIN_PROFIT),
+    .purpose.size = htonl (sizeof (wd)),
+    .wtid = *wtid,
+    .date = GNUNET_TIME_timestamp_hton (date),
+  };
+
+  GNUNET_CRYPTO_hash (account_section,
+                      strlen (account_section) + 1,
+                      &wd.h_section);
+  TALER_payto_hash (payto_uri,
+                    &wd.h_payto);
+  TALER_amount_hton (&wd.amount,
+                     amount);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_DRAIN_PROFIT,
+                                     &wd,
+                                     &master_sig->eddsa_signature,
+                                     &master_pub->eddsa_pub);
+}
+
+
 /* end of offline_signatures.c */
