@@ -162,6 +162,19 @@ TEH_handler_management_post_extensions (
 
 
 /**
+ * Handle a POST "/management/drain" request.
+ *
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_management_post_drain (
+  struct MHD_Connection *connection,
+  const json_t *root);
+
+
+/**
  * Initialize extension configuration handling.
  *
  * @return #GNUNET_OK on success

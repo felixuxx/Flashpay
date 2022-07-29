@@ -126,6 +126,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_management_auditors.c \
   taler-exchange-httpd_management_auditors_AP_disable.c \
   taler-exchange-httpd_management_denominations_HDP_revoke.c \
+  taler-exchange-httpd_management_drain.c \
   taler-exchange-httpd_management_extensions.c \
   taler-exchange-httpd_management_global_fees.c \
   taler-exchange-httpd_management_post_keys.c \
