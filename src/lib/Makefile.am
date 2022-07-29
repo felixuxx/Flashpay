@@ -39,6 +39,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_link.c \
   exchange_api_management_auditor_disable.c \
   exchange_api_management_auditor_enable.c \
+  exchange_api_management_drain_profits.c \
   exchange_api_management_get_keys.c \
   exchange_api_management_post_keys.c \
   exchange_api_management_post_extensions.c \

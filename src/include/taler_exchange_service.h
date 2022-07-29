@@ -3966,6 +3966,63 @@ TALER_EXCHANGE_management_post_extensions_cancel (
 
 
 /**
+ * Function called with information about the drain profits result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementDrainProfitsCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/drain request.
+ */
+struct TALER_EXCHANGE_ManagementDrainProfitsHandle;
+
+
+/**
+ * Uploads the drain profits request.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param wtid wire transfer identifier to use
+ * @param amount total to transfer
+ * @param date when was the request created
+ * @param account_section configuration section identifying account to debit
+ * @param payto_uri RFC 8905 URI of the account to credit
+ * @param master_sig signature affirming the operation
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementDrainProfitsHandle *
+TALER_EXCHANGE_management_drain_profits (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Timestamp date,
+  const char *account_section,
+  const char *payto_uri,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementDrainProfitsCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_drain_profits() operation.
+ *
+ * @param dp handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_drain_profits_cancel (
+  struct TALER_EXCHANGE_ManagementDrainProfitsHandle *dp);
+
+
+/**
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure

@@ -107,6 +107,10 @@
  */
 #define OP_EXTENSIONS "exchange-extensions-0"
 
+/**
+ * Generate message to drain profits.
+ */
+#define OP_DRAIN_PROFITS "exchange-drain-profits-0"
 
 /**
  * Our private key, initialized in #load_offline_key().
@@ -385,6 +389,34 @@ struct WireFeeRequest
 
 
 /**
+ * Data structure for draining profits.
+ */
+struct DrainProfitsRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct DrainProfitsRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct DrainProfitsRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementDrainProfitsHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Data structure for announcing global fees.
  */
 struct GlobalFeeRequest
@@ -576,6 +608,17 @@ static struct UploadExtensionsRequest *uer_head;
 static struct UploadExtensionsRequest *uer_tail;
 
 /**
+ * Active drain profits requests.
+ */
+struct DrainProfitsRequest *dpr_head;
+
+/**
+ * Active drain profits requests.
+ */
+static struct DrainProfitsRequest *dpr_tail;
+
+
+/**
  * Shutdown task. Invoked when the application is being terminated.
  *
  * @param cls NULL
@@ -736,6 +779,23 @@ do_shutdown (void *cls)
       GNUNET_free (uer);
     }
   }
+
+  {
+    struct DrainProfitsRequest *dpr;
+
+    while (NULL != (dpr = dpr_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete drain profits request #%u\n",
+                  (unsigned int) dpr->idx);
+      TALER_EXCHANGE_management_drain_profits_cancel (dpr->h);
+      GNUNET_CONTAINER_DLL_remove (dpr_head,
+                                   dpr_tail,
+                                   dpr);
+      GNUNET_free (dpr);
+    }
+  }
+
   if (NULL != out)
   {
     json_dumpf (out,
@@ -790,6 +850,7 @@ test_shutdown (void)
        (NULL == gfr_head) &&
        (NULL == ukr_head) &&
        (NULL == uer_head) &&
+       (NULL == dpr_head) &&
        (NULL == mgkh) &&
        (NULL == nxt) )
     GNUNET_SCHEDULER_shutdown ();
@@ -1750,6 +1811,112 @@ upload_global_fee (const char *exchange_url,
 
 
 /**
+ * Function called with information about the drain profits operation.
+ *
+ * @param cls closure with a `struct DrainProfitsRequest`
+ * @param hr HTTP response data
+ */
+static void
+drain_profits_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct DrainProfitsRequest *dpr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) dpr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = EXIT_FAILURE;
+  }
+  GNUNET_CONTAINER_DLL_remove (dpr_head,
+                               dpr_tail,
+                               dpr);
+  GNUNET_free (dpr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload drain profit action.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value arguments for drain profits
+ */
+static void
+upload_drain (const char *exchange_url,
+              size_t idx,
+              const json_t *value)
+{
+  struct TALER_WireTransferIdentifierRawP wtid;
+  struct TALER_MasterSignatureP master_sig;
+  const char *err_name;
+  unsigned int err_line;
+  struct TALER_Amount amount;
+  struct GNUNET_TIME_Timestamp date;
+  const char *payto_uri;
+  const char *account_section;
+  struct DrainProfitsRequest *dpr;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("wtid",
+                                 &wtid),
+    TALER_JSON_spec_amount ("amount",
+                            currency,
+                            &amount),
+    GNUNET_JSON_spec_timestamp ("date",
+                                &date),
+    GNUNET_JSON_spec_string ("account_section",
+                             &account_section),
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to drain profits: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = EXIT_FAILURE;
+    test_shutdown ();
+    return;
+  }
+  dpr = GNUNET_new (struct DrainProfitsRequest);
+  dpr->idx = idx;
+  dpr->h =
+    TALER_EXCHANGE_management_drain_profits (ctx,
+                                             exchange_url,
+                                             &wtid,
+                                             &amount,
+                                             date,
+                                             account_section,
+                                             payto_uri,
+                                             &master_sig,
+                                             &drain_profits_cb,
+                                             dpr);
+  GNUNET_CONTAINER_DLL_insert (dpr_head,
+                               dpr_tail,
+                               dpr);
+}
+
+
+/**
  * Function called with information about the post upload keys operation result.
  *
  * @param cls closure with a `struct UploadKeysRequest`
@@ -2097,6 +2264,10 @@ trigger_upload (const char *exchange_url)
     {
       .key = OP_UPLOAD_SIGS,
       .cb = &upload_keys
+    },
+    {
+      .key = OP_DRAIN_PROFITS,
+      .cb = &upload_drain
     },
     {
       .key = OP_EXTENSIONS,
@@ -2784,6 +2955,112 @@ do_set_global_fee (char *const *args)
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
   next (args + 9);
+}
+
+
+/**
+ * Drain profits from exchange's escrow account to
+ * regular exchange account.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the amount,
+ *        args[1] must be the section of the escrow account to drain
+ *        args[2] must be the payto://-URI of the target account
+ */
+static void
+do_drain (char *const *args)
+{
+  struct TALER_WireTransferIdentifierRawP wtid;
+  struct GNUNET_TIME_Timestamp date;
+  struct TALER_Amount amount;
+  const char *account_section;
+  const char *payto_uri;
+  struct TALER_MasterSignatureP master_sig;
+  char *err;
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, refusing drain\n");
+    test_shutdown ();
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) ||
+       (NULL == args[2]) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[0],
+                                &amount)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Drain requires an amount, section name and target payto://-URI as arguments\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) ||
+       (NULL == args[2]) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Drain requires an amount, section name and target payto://-URI as arguments\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (GNUNET_OK !=
+      TALER_string_to_amount (args[0],
+                              &amount))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid amount `%s' specified for drain\n",
+                args[0]);
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  account_section = args[1];
+  payto_uri = args[2];
+  err = TALER_payto_validate (payto_uri);
+  if (NULL != err)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid payto://-URI `%s' specified for drain: %s\n",
+                payto_uri,
+                err);
+    GNUNET_free (err);
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_NO))
+    return;
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &wtid,
+                              sizeof (wtid));
+  date = GNUNET_TIME_timestamp_get ();
+  TALER_exchange_offline_profit_drain_sign (&wtid,
+                                            date,
+                                            &amount,
+                                            account_section,
+                                            payto_uri,
+                                            &master_priv,
+                                            &master_sig);
+  output_operation (OP_DRAIN_PROFITS,
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("wtid",
+                                                  &wtid),
+                      GNUNET_JSON_pack_string ("account_section",
+                                               account_section),
+                      GNUNET_JSON_pack_string ("payto_uri",
+                                               payto_uri),
+                      GNUNET_JSON_pack_timestamp ("date",
+                                                  date),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
+  next (args + 3);
 }
 
 
@@ -4179,6 +4456,12 @@ work (void *cls)
       .help =
         "sign global fees for the given year (year, history fee, kyc fee, account fee, purse fee, purse timeout, kyc timeout, history expiration and the maximum number of free purses per account must be given as arguments)",
       .cb = &do_set_global_fee
+    },
+    {
+      .name = "drain",
+      .help =
+        "drain profits from exchange escrow account to regular exchange operator account (amount, debit account configuration section and credit account payto://-URI must be given as arguments)",
+      .cb = &do_drain
     },
     {
       .name = "upload",
