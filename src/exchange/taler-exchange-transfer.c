@@ -264,7 +264,7 @@ shutdown_task (void *cls)
 
 
 /**
- * Parse the configuration for wirewatch.
+ * Parse the configuration for taler-exchange-transfer.
  *
  * @return #GNUNET_OK on success
  */
