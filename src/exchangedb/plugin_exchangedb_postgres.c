@@ -690,7 +690,31 @@ prepare_statements (struct PostgresClosure *pg)
       ",master_sig"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7);",
       7),
-    /* Used in #reserves_update() when the reserve is updated */
+    /* Used in #postgres_profit_drains_get_pending() */
+    GNUNET_PQ_make_prepare (
+      "get_ready_profit_drain",
+      "SELECT"
+      " profit_drain_serial_id"
+      ",wtid"
+      ",account_section"
+      ",payto_uri"
+      ",trigger_date"
+      ",amount_val"
+      ",amount_frac"
+      ",master_sig"
+      " FROM profit_drains"
+      " WHERE NOT executed"
+      " ORDER BY trigger_date ASC;",
+      0),
+    /* Used in #postgres_profit_drains_set_finished() */
+    GNUNET_PQ_make_prepare (
+      "drain_profit_set_finished",
+      "UPDATE profit_drains"
+      " SET"
+      " executed=TRUE"
+      " WHERE profit_drain_serial_id=$1;",
+      1),
+    /* Used in #postgres_reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
       "reserve_update",
       "UPDATE reserves"
@@ -16246,6 +16270,83 @@ postgres_insert_drain_profit (
 
 
 /**
+ * Get profit drain operation ready to execute.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param[out] serial set to serial ID of the entry
+ * @param[out] wtid set set to wire transfer ID to use
+ * @param[out] account_section set to  account to drain
+ * @param[out] payto_uri set to account to wire funds to
+ * @param[out] request_timestamp set to time of the signature
+ * @param[out] amount set to amount to wire
+ * @param[out] master_sig set to signature affirming the operation
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_profit_drains_get_pending (
+  void *cls,
+  uint64_t *serial,
+  struct TALER_WireTransferIdentifierRawP *wtid,
+  char **account_section,
+  char **payto_uri,
+  struct GNUNET_TIME_Timestamp *request_timestamp,
+  struct TALER_Amount *amount,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("profit_drain_serial_id",
+                                  serial),
+    GNUNET_PQ_result_spec_auto_from_type ("wtid",
+                                          wtid),
+    GNUNET_PQ_result_spec_string ("account_section",
+                                  account_section),
+    GNUNET_PQ_result_spec_string ("payto_uri",
+                                  payto_uri),
+    GNUNET_PQ_result_spec_timestamp ("trigger_date",
+                                     request_timestamp),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                 amount),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_ready_profit_drain",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Set profit drain operation to finished.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param serial serial ID of the entry to mark finished
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_profit_drains_set_finished (
+  void *cls,
+  uint64_t serial)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "drain_profit_set_finished",
+                                             params);
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -16563,6 +16664,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_close_request;
   plugin->insert_drain_profit
     = &postgres_insert_drain_profit;
+  plugin->profit_drains_get_pending
+    = &postgres_profit_drains_get_pending;
+  plugin->profit_drains_set_finished
+    = &postgres_profit_drains_set_finished;
   return plugin;
 }
 
