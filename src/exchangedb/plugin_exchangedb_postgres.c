@@ -3149,6 +3149,14 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY wad_in_entry_serial_id DESC"
       " LIMIT 1;",
       0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_profit_drains",
+      "SELECT"
+      " profit_drain_serial_id AS serial"
+      " FROM profit_drains"
+      " ORDER BY profit_drain_serial_id DESC"
+      " LIMIT 1;",
+      0),
     /* For postgres_lookup_records_by_table */
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_denominations",
@@ -3652,6 +3660,21 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE wad_in_entry_serial_id > $1"
       " ORDER BY wad_in_entry_serial_id ASC;",
       1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_profit_drains",
+      "SELECT"
+      " profit_drain_serial_id"
+      ",wtid"
+      ",account_section"
+      ",payto_uri"
+      ",trigger_date"
+      ",amount_val"
+      ",amount_frac"
+      ",master_sig"
+      " FROM profit_drains"
+      " WHERE profit_drain_serial_id > $1"
+      " ORDER BY profit_drain_serial_id ASC;",
+      1),
     /* For postgres_insert_records_by_table */
     GNUNET_PQ_make_prepare (
       "insert_into_table_denominations",
@@ -4128,7 +4151,21 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_sig"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);",
-      3),
+      15),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_profit_drains",
+      "INSERT INTO profit_drains"
+      "(profit_drain_serial_id"
+      ",wtid"
+      ",account_section"
+      ",payto_uri"
+      ",trigger_date"
+      ",amount_val"
+      ",amount_frac"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
 
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
@@ -14253,6 +14290,9 @@ postgres_lookup_serial_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
     statement = "select_serial_by_table_wads_in_entries";
     break;
+  case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
+    statement = "select_serial_by_table_profit_drains";
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -14474,6 +14514,10 @@ postgres_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_wads_in_entries";
     rh = &lrbt_cb_table_wads_in_entries;
     break;
+  case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
+    statement = "select_above_serial_by_table_profit_drains";
+    rh = &lrbt_cb_table_profit_drains;
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -14640,6 +14684,9 @@ postgres_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
     rh = &irbt_cb_table_wads_in_entries;
+    break;
+  case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
+    rh = &irbt_cb_table_profit_drains;
     break;
   default:
     GNUNET_break (0);

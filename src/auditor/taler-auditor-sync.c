@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -125,6 +125,7 @@ static struct Table tables[] = {
   { .rt = TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES},
   { .rt = TALER_EXCHANGEDB_RT_WADS_IN},
   { .rt = TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES},
+  { .rt = TALER_EXCHANGEDB_RT_PROFIT_DRAINS},
   { .end = true }
 };
 

@@ -1131,4 +1131,37 @@ irbt_cb_table_wads_in_entries (struct PostgresClosure *pg,
 }
 
 
+/**
+ * Function called with profit_drains records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_profit_drains (struct PostgresClosure *pg,
+                             const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.profit_drains.wtid),
+    GNUNET_PQ_query_param_string (
+      td->details.profit_drains.account_section),
+    GNUNET_PQ_query_param_string (
+      td->details.profit_drains.payto_uri),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.profit_drains.trigger_date),
+    TALER_PQ_query_param_amount (
+      &td->details.profit_drains.amount),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.profit_drains.master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_profit_drains",
+                                             params);
+}
+
+
 /* end of irbt_callbacks.c */

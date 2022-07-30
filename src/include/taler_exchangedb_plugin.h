@@ -228,6 +228,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES,
   TALER_EXCHANGEDB_RT_WADS_IN,
   TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES,
+  TALER_EXCHANGEDB_RT_PROFIT_DRAINS,
 };
 
 
@@ -587,6 +588,17 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_PurseContractSignatureP purse_sig;
     } wads_in_entries;
+
+    struct
+    {
+      uint64_t profit_drain_serial_id;
+      struct TALER_WireTransferIdentifierRawP wtid;
+      char *account_section;
+      char *payto_uri;
+      struct GNUNET_TIME_Timestamp trigger_date;
+      struct TALER_Amount amount;
+      struct TALER_MasterSignatureP master_sig;
+    } profit_drains;
 
   } details;
 

@@ -2120,4 +2120,65 @@ lrbt_cb_table_wads_in_entries (void *cls,
 }
 
 
+/**
+ * Function called with profit_drains table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_profit_drains (void *cls,
+                             PGresult *result,
+                             unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PROFIT_DRAINS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "profit_drain_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wtid",
+        &td.details.profit_drains.wtid),
+      GNUNET_PQ_result_spec_string (
+        "account_section",
+        &td.details.profit_drains.account_section),
+      GNUNET_PQ_result_spec_string (
+        "payto_uri",
+        &td.details.profit_drains.payto_uri),
+      GNUNET_PQ_result_spec_timestamp (
+        "trigger_date",
+        &td.details.profit_drains.trigger_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount",
+        &td.details.profit_drains.amount),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "master_sig",
+        &td.details.profit_drains.master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
 /* end of lrbt_callbacks.c */
