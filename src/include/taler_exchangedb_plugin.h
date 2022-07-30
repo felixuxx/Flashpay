@@ -5530,7 +5530,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wtid wire transfer ID to use
    * @param account_section account to drain
    * @param payto_uri account to wire funds to
-   * @param date time of the signature
+   * @param request_timestamp time of the signature
    * @param amount amount to wire
    * @param master_sig signature affirming the operation
    * @return transaction status code

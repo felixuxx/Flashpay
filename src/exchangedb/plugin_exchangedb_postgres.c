@@ -16213,7 +16213,7 @@ postgres_insert_close_request (
  * @param wtid wire transfer ID to use
  * @param account_section account to drain
  * @param payto_uri account to wire funds to
- * @param date time of the signature
+ * @param request_timestamp when was the request made
  * @param amount amount to wire
  * @param master_sig signature affirming the operation
  * @return transaction status code
