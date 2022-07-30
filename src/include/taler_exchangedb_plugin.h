@@ -5545,6 +5545,44 @@ struct TALER_EXCHANGEDB_Plugin
                          const struct TALER_MasterSignatureP *master_sig);
 
 
+  /**
+   * Get profit drain operation ready to execute.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param[out] serial set to serial ID of the entry
+   * @param[out] wtid set set to wire transfer ID to use
+   * @param[out] account_section set to  account to drain
+   * @param[out] payto_uri set to account to wire funds to
+   * @param[out] request_timestamp set to time of the signature
+   * @param[out] amount set to amount to wire
+   * @param[out] master_sig set to signature affirming the operation
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*profit_drains_get_pending)(
+    void *cls,
+    uint64_t *serial,
+    struct TALER_WireTransferIdentifierRawP *wtid,
+    char **account_section,
+    char **payto_uri,
+    struct GNUNET_TIME_Timestamp *request_timestamp,
+    struct TALER_Amount *amount,
+    struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Set profit drain operation to finished.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param serial serial ID of the entry to mark finished
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*profit_drains_set_finished)(
+    void *cls,
+    uint64_t serial);
+
+
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

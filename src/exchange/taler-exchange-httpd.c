@@ -1836,8 +1836,10 @@ exchange_serve_process_config (void)
                                                     &TEH_master_public_key.
                                                     eddsa_pub))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid master public key given in exchange configuration.");
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY",
+                                 "invalid base32 encoding for a master public key");
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }

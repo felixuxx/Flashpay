@@ -234,12 +234,12 @@ shutdown_task (void *cls)
 
 
 /**
- * Parse the configuration for wirewatch.
+ * Parse the configuration for aggregator.
  *
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-parse_wirewatch_config (void)
+parse_aggregator_config (void)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -811,7 +811,7 @@ run (void *cls,
   (void) cfgfile;
 
   cfg = c;
-  if (GNUNET_OK != parse_wirewatch_config ())
+  if (GNUNET_OK != parse_aggregator_config ())
   {
     cfg = NULL;
     global_ret = EXIT_NOTCONFIGURED;

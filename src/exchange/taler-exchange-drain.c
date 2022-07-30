@@ -40,9 +40,19 @@ static const struct GNUNET_CONFIGURATION_Handle *cfg;
 static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 
 /**
+ * Our master public key.
+ */
+static struct TALER_MasterPublicKeyP master_pub;
+
+/**
  * Next task to run, if any.
  */
 static struct GNUNET_SCHEDULER_Task *task;
+
+/**
+ * Base URL of this exchange.
+ */
+static char *exchange_base_url;
 
 /**
  * Value to return from main(). 0 on success, non-zero on errors.
@@ -82,6 +92,47 @@ shutdown_task (void *cls)
 static enum GNUNET_GenericReturnValue
 parse_drain_config (void)
 {
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &exchange_base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    return GNUNET_SYSERR;
+  }
+
+  {
+    char *master_public_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "exchange",
+                                               "MASTER_PUBLIC_KEY",
+                                               &master_public_key_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (master_public_key_str,
+                                                    strlen (
+                                                      master_public_key_str),
+                                                    &master_pub.eddsa_pub))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY",
+                                 "invalid base32 encoding for a master public key");
+      GNUNET_free (master_public_key_str);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (master_public_key_str);
+  }
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
@@ -134,6 +185,13 @@ static void
 run_drain (void *cls)
 {
   enum GNUNET_DB_QueryStatus qs;
+  uint64_t serial;
+  struct TALER_WireTransferIdentifierRawP wtid;
+  char *account_section;
+  char *payto_uri;
+  struct GNUNET_TIME_Timestamp request_timestamp;
+  struct TALER_Amount amount;
+  struct TALER_MasterSignatureP master_sig;
 
   (void) cls;
   task = NULL;
@@ -147,11 +205,14 @@ run_drain (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-#if 0
-  qs = db_plugin->profit_drains_get_pending (db_plugin->cls);
-#else
-  qs = -1;
-#endif
+  qs = db_plugin->profit_drains_get_pending (db_plugin->cls,
+                                             &serial,
+                                             &wtid,
+                                             &account_section,
+                                             &payto_uri,
+                                             &request_timestamp,
+                                             &amount,
+                                             &master_sig);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -161,7 +222,6 @@ run_drain (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
-    /* try again */
     db_plugin->rollback (db_plugin->cls);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Serialization failure on simple SELECT!?\n");
@@ -169,7 +229,7 @@ run_drain (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* no more profit drains, go sleep a bit! */
+    /* no profit drains, finished */
     db_plugin->rollback (db_plugin->cls);
     GNUNET_assert (NULL == task);
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
@@ -180,11 +240,107 @@ run_drain (void *cls)
     /* continued below */
     break;
   }
-  // FIXME: check signature (again!)
-  // FIMXE: display for human check
-  // FIXME: insert into pre-wire
-  // FIXME: mark as done
-  // FIXME: commit transaction + report success + exit
+  /* Check signature (again, this is a critical operation!) */
+  if (GNUNET_OK !=
+      TALER_exchange_offline_profit_drain_verify (
+        &wtid,
+        request_timestamp,
+        &amount,
+        account_section,
+        payto_uri,
+        &master_pub,
+        &master_sig))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    db_plugin->rollback (db_plugin->cls);
+    GNUNET_assert (NULL == task);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+
+  /* Display data for manual human check */
+  fprintf (stdout,
+           "Critical operation. MANUAL CHECK REQUIRED.\n");
+  fprintf (stdout,
+           "We will wire %s to `%s'\n based on instructions from %s.\n",
+           TALER_amount2s (&amount),
+           payto_uri,
+           GNUNET_TIME_timestamp2s (request_timestamp));
+  fprintf (stdout,
+           "Press ENTER to confirm, CTRL-D to abort.\n");
+  while (1)
+  {
+    int key;
+
+    key = getchar ();
+    if (EOF == key)
+    {
+      fprintf (stdout,
+               "Transfer aborted.\n"
+               "Re-run 'taler-exchange-drain' to try it again.\n"
+               "Contact Taler Systems SA to cancel it for good.\n"
+               "Exiting.\n");
+      db_plugin->rollback (db_plugin->cls);
+      GNUNET_assert (NULL == task);
+      GNUNET_SCHEDULER_shutdown ();
+      global_ret = EXIT_FAILURE;
+      return;
+    }
+    if ('\n' == key)
+      break;
+  }
+
+  /* Note: account_section ignored for now, we
+     might want to use it here in the future... */
+  (void) account_section;
+  {
+    char *method;
+    void *buf;
+    size_t buf_size;
+
+    TALER_BANK_prepare_transfer (payto_uri,
+                                 &amount,
+                                 exchange_base_url,
+                                 &wtid,
+                                 &buf,
+                                 &buf_size);
+    method = TALER_payto_get_method (payto_uri);
+    qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
+                                              method,
+                                              buf,
+                                              buf_size);
+    GNUNET_free (method);
+    GNUNET_free (buf);
+  }
+  qs = db_plugin->profit_drains_set_finished (db_plugin->cls,
+                                              serial);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    db_plugin->rollback (db_plugin->cls);
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    db_plugin->rollback (db_plugin->cls);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed: database serialization issue\n");
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    db_plugin->rollback (db_plugin->cls);
+    GNUNET_assert (NULL == task);
+    GNUNET_break (0);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  default:
+    /* continued below */
+    break;
+  }
+  /* commit transaction + report success + exit */
   if (0 >= commit_or_warn ())
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
                 "Profit drain triggered. Exiting.\n");
