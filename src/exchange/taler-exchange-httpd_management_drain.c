@@ -92,7 +92,6 @@ drain (void *cls,
   struct DrainContext *dc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-#if 0
   qs = TEH_plugin->insert_drain_profit (
     TEH_plugin->cls,
     &dc->wtid,
@@ -101,9 +100,6 @@ drain (void *cls,
     dc->date,
     &dc->amount,
     &dc->master_sig);
-#else
-  qs = -1;
-#endif
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

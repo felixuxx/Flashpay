@@ -677,6 +677,19 @@ prepare_statements (struct PostgresClosure *pg)
       ",closing_fee_frac"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
       8),
+    /* Used in #postgres_insert_drain_profit() */
+    GNUNET_PQ_make_prepare (
+      "drain_profit_insert",
+      "INSERT INTO profit_drains "
+      "(wtid"
+      ",account_section"
+      ",payto_uri"
+      ",trigger_date"
+      ",amount_val"
+      ",amount_frac"
+      ",master_sig"
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7);",
+      7),
     /* Used in #reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
       "reserve_update",
@@ -16147,6 +16160,45 @@ postgres_insert_close_request (
 
 
 /**
+ * Function called to persist a request to drain profits.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param wtid wire transfer ID to use
+ * @param account_section account to drain
+ * @param payto_uri account to wire funds to
+ * @param date time of the signature
+ * @param amount amount to wire
+ * @param master_sig signature affirming the opearation
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_drain_profit (
+  void *cls,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const char *account_section,
+  const char *payto_uri,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_Amount *amount,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    GNUNET_PQ_query_param_string (account_section),
+    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_timestamp (&request_timestamp),
+    TALER_PQ_query_param_amount (amount),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "drain_profit_insert",
+                                             params);
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -16462,6 +16514,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_history_request;
   plugin->insert_close_request
     = &postgres_insert_close_request;
+  plugin->insert_drain_profit
+    = &postgres_insert_drain_profit;
   return plugin;
 }
 
