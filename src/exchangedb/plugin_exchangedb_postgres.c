@@ -16215,7 +16215,7 @@ postgres_insert_close_request (
  * @param payto_uri account to wire funds to
  * @param date time of the signature
  * @param amount amount to wire
- * @param master_sig signature affirming the opearation
+ * @param master_sig signature affirming the operation
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

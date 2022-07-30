@@ -591,7 +591,6 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      uint64_t profit_drain_serial_id;
       struct TALER_WireTransferIdentifierRawP wtid;
       char *account_section;
       char *payto_uri;
@@ -5533,7 +5532,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param payto_uri account to wire funds to
    * @param date time of the signature
    * @param amount amount to wire
-   * @param master_sig signature affirming the opearation
+   * @param master_sig signature affirming the operation
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
