@@ -670,20 +670,26 @@ setup_connection (struct PostgresClosure *pg)
                             "(master_pub"
                             ",balance_val"
                             ",balance_frac"
-                            ") VALUES ($1,$2,$3);",
-                            3),
+                            ",drained_val"
+                            ",drained_frac"
+                            ") VALUES ($1,$2,$3,$4,$5);",
+                            5),
     /* Used in #postgres_update_predicted_result() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_update",
                             "UPDATE auditor_predicted_result SET"
                             " balance_val=$1"
                             ",balance_frac=$2"
-                            " WHERE master_pub=$3;",
-                            3),
+                            ",drained_val=$3"
+                            ",drained_frac=$4"
+                            " WHERE master_pub=$5;",
+                            5),
     /* Used in #postgres_get_predicted_balance() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_select",
                             "SELECT"
                             " balance_val"
                             ",balance_frac"
+                            ",drained_val"
+                            ",drained_frac"
                             " FROM auditor_predicted_result"
                             " WHERE master_pub=$1;",
                             1),
@@ -2833,18 +2839,21 @@ postgres_select_historic_reserve_revenue (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
  * @param balance what the bank account balance of the exchange should show
+ * @param drained amount that was drained in profits
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_predicted_result (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *balance)
+  const struct TALER_Amount *balance,
+  const struct TALER_Amount *drained)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount (drained),
     GNUNET_PQ_query_param_end
   };
 
@@ -2861,17 +2870,20 @@ postgres_insert_predicted_result (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
  * @param balance what the bank account balance of the exchange should show
+ * @param drained amount that was drained in profits
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_predicted_result (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *balance)
+  const struct TALER_Amount *balance,
+  const struct TALER_Amount *drained)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount (drained),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2888,12 +2900,14 @@ postgres_update_predicted_result (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
  * @param[out] balance expected bank account balance of the exchange
+ * @param[out] drained amount drained so far
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_predicted_balance (void *cls,
                                 const struct TALER_MasterPublicKeyP *master_pub,
-                                struct TALER_Amount *balance)
+                                struct TALER_Amount *balance,
+                                struct TALER_Amount *drained)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2903,6 +2917,8 @@ postgres_get_predicted_balance (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
                                  balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("drained",
+                                 drained),
     GNUNET_PQ_result_spec_end
   };
 

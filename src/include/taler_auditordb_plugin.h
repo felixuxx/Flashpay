@@ -1335,12 +1335,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
    * @param balance what the bank account balance of the exchange should show
+   * @param drained_profits total profits drained by the exchange so far
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*insert_predicted_result)(void *cls,
                              const struct TALER_MasterPublicKeyP *master_pub,
-                             const struct TALER_Amount *balance);
+                             const struct TALER_Amount *balance,
+                             const struct TALER_Amount *drained_profits);
 
 
   /**
@@ -1350,12 +1352,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
    * @param balance what the bank account balance of the exchange should show
+   * @param drained_profits total profits drained by the exchange so far
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*update_predicted_result)(void *cls,
                              const struct TALER_MasterPublicKeyP *master_pub,
-                             const struct TALER_Amount *balance);
+                             const struct TALER_Amount *balance,
+                             const struct TALER_Amount *drained_profits);
 
 
   /**
@@ -1364,12 +1368,14 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
    * @param[out] balance expected bank account balance of the exchange
+   * @param[out] drained_profits total profits drained by the exchange so far
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_predicted_balance)(void *cls,
                            const struct TALER_MasterPublicKeyP *master_pub,
-                           struct TALER_Amount *balance);
+                           struct TALER_Amount *balance,
+                           struct TALER_Amount *drained_profits);
 
 
 };

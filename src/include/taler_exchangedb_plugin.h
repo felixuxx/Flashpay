@@ -5546,6 +5546,30 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called to get information about a profit drain event.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param wtid wire transfer ID to look up drain event for
+   * @param[out] serial set to serial ID of the entry
+   * @param[out] account_section set to account to drain
+   * @param[out] payto_uri set to account to wire funds to
+   * @param[out] request_timestamp set to time of the signature
+   * @param[out] amount set to amount to wire
+   * @param[out] master_sig set to signature affirming the operation
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_drain_profit)(void *cls,
+                      const struct TALER_WireTransferIdentifierRawP *wtid,
+                      uint64_t *serial,
+                      char **account_section,
+                      char **payto_uri,
+                      struct GNUNET_TIME_Timestamp *request_timestamp,
+                      struct TALER_Amount *amount,
+                      struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
    * Get profit drain operation ready to execute.
    *
    * @param cls the @e cls of this struct with the plugin-specific state

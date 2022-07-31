@@ -267,9 +267,11 @@ CREATE TABLE IF NOT EXISTS auditor_predicted_result
   (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,balance_val INT8 NOT NULL
   ,balance_frac INT4 NOT NULL
+  ,drained_val INT8 NOT NULL
+  ,drained_frac INT4 NOT NULL
   );
 COMMENT ON TABLE auditor_predicted_result
-  IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance.  This is the final amount that the exchange should have in its bank account right now.';
+  IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance and the drained profits.  This is the final amount that the exchange should have in its bank account right now (and the total amount drained as profits to non-escrow accounts).';
 
 
 -- Finally, commit everything

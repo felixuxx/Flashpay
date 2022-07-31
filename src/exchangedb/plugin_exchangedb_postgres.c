@@ -706,6 +706,20 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE NOT executed"
       " ORDER BY trigger_date ASC;",
       0),
+    /* Used in #postgres_profit_drains_get() */
+    GNUNET_PQ_make_prepare (
+      "get_profit_drain",
+      "SELECT"
+      " profit_drain_serial_id"
+      ",account_section"
+      ",payto_uri"
+      ",trigger_date"
+      ",amount_val"
+      ",amount_frac"
+      ",master_sig"
+      " FROM profit_drains"
+      " WHERE wtid=$1;",
+      1),
     /* Used in #postgres_profit_drains_set_finished() */
     GNUNET_PQ_make_prepare (
       "drain_profit_set_finished",
@@ -16323,6 +16337,58 @@ postgres_profit_drains_get_pending (
 
 
 /**
+ * Function called to get information about a profit drain event.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param wtid wire transfer ID to look up drain event for
+ * @param[out] serial set to serial ID of the entry
+ * @param[out] account_section set to account to drain
+ * @param[out] payto_uri set to account to wire funds to
+ * @param[out] request_timestamp set to time of the signature
+ * @param[out] amount set to amount to wire
+ * @param[out] master_sig set to signature affirming the operation
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_drain_profit (
+  void *cls,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  uint64_t *serial,
+  char **account_section,
+  char **payto_uri,
+  struct GNUNET_TIME_Timestamp *request_timestamp,
+  struct TALER_Amount *amount,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (wtid),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("profit_drain_serial_id",
+                                  serial),
+    GNUNET_PQ_result_spec_string ("account_section",
+                                  account_section),
+    GNUNET_PQ_result_spec_string ("payto_uri",
+                                  payto_uri),
+    GNUNET_PQ_result_spec_timestamp ("trigger_date",
+                                     request_timestamp),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                 amount),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_profit_drain",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
  * Set profit drain operation to finished.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -16666,6 +16732,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_drain_profit;
   plugin->profit_drains_get_pending
     = &postgres_profit_drains_get_pending;
+  plugin->get_drain_profit
+    = &postgres_get_drain_profit;
   plugin->profit_drains_set_finished
     = &postgres_profit_drains_set_finished;
   return plugin;

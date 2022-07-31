@@ -347,7 +347,9 @@ run (void *cls)
   struct TALER_Amount melt_fee_balance2;
   struct TALER_Amount refund_fee_balance2;
   struct TALER_Amount rbalance;
+  struct TALER_Amount dbalance;
   struct TALER_Amount rbalance2;
+  struct TALER_Amount dbalance2;
   struct TALER_Amount loss;
   struct TALER_Amount loss2;
   struct TALER_Amount iirp;
@@ -372,6 +374,9 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":13.57986",
                                          &rbalance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":12.57986",
+                                         &dbalance));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.6",
                                          &loss));
@@ -613,7 +618,8 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_predicted_result (plugin->cls,
                                            &master_pub,
-                                           &rbalance));
+                                           &rbalance,
+                                           &dbalance));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: update_predicted_result\n");
@@ -621,11 +627,15 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":78.901234",
                                          &rbalance));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (CURRENCY ":73.901234",
+                                         &dbalance));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_predicted_result (plugin->cls,
                                            &master_pub,
-                                           &rbalance));
+                                           &rbalance,
+                                           &dbalance));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_wire_fee_summary (plugin->cls,
@@ -659,7 +669,8 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_predicted_balance (plugin->cls,
                                          &master_pub,
-                                         &rbalance2));
+                                         &rbalance2,
+                                         &dbalance2));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->del_reserve_info (plugin->cls,
@@ -668,6 +679,8 @@ run (void *cls)
 
   FAILIF (0 != TALER_amount_cmp (&rbalance2,
                                  &rbalance));
+  FAILIF (0 != TALER_amount_cmp (&dbalance2,
+                                 &dbalance));
 
   plugin->rollback (plugin->cls);
 
