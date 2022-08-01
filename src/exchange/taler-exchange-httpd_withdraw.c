@@ -427,6 +427,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to sign coin: %d\n",
+                ec);
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_ec (rc->connection,
                                     ec,
