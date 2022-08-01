@@ -715,7 +715,7 @@ run_transfers (void *cls)
     }
     else
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "No more pending wire transfers, going idle\n");
       GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_delayed (transfer_idle_sleep_interval,
