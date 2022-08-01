@@ -139,12 +139,26 @@ In that time, the wire auditor processed the following table ranges:
 {% endif %}
 \end{center}
 
+The total credits to the exchange processed in
+this audit run was {\bf {{ wire.total_wire_in }}.
+The total debits initiated by the exchange processed in
+this audit run was {\bf {{ wire.total_wire_out }}.
 
 \section{Operations}
 
 The balance of the escrow account should
 be {\bf {{ coins.total_escrow_balance }}} (coins)
 plus {\bf {{ reserves.total_escrow_balance }}} (reserves).
+
+\noindent
+This should match the final balance computed from
+ingoing and outgoing wire transfers, which is
+{\bf {{ wire.final_balance}} }.
+
+\noindent
+A total of {\bf {{ wire.total_drained}} } in profits
+were transferred (over the lifetime of the exchange)
+to non-escrowed accounts.
 
 \noindent
 The active operational risk stands at
