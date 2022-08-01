@@ -10,7 +10,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 32`
+ALL_TESTS=`seq 0 34`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -138,11 +138,28 @@ function post_audit () {
 # generation.  Pass "aggregator" as $1 to run
 # $ taler-exchange-aggregator
 # before auditor (to trigger pending wire transfers).
+# Pass "drain" as $2 to run a drain operation as well.
 function run_audit () {
     pre_audit ${1:-no}
+    if test ${2:-no} = "drain"
+    then
+        echo -n "Running taler-exchange-offline drain ..."
+        taler-exchange-offline -L DEBUG -c $CONF \
+          drain TESTKUDOS:0.1 exchange-account-1 payto://x-taler-bank/localhost/drain-target \
+          upload \
+          2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
+
+        echo -n "Running taler-exchange-drain ..."
+        echo "\n" | taler-exchange-drain -L DEBUG -c $CONF 2> taler-exchange-drain.log || exit_fail "FAIL"
+        echo " DONE"
+
+        echo -n "Running taler-exchange-transfer ..."
+        taler-exchange-transfer -L INFO -t -c $CONF 2> drain-transfer.log || exit_fail "FAIL"
+        echo " DONE"
+
+    fi
     audit_only
     post_audit
-
 }
 
 
@@ -1810,7 +1827,125 @@ fi
 }
 
 
+function test_34() {
 
+echo "===========34: normal run with aggregator and profit drain==========="
+run_audit aggregator
+
+echo "Checking output"
+# if an emergency was detected, that is a bug and we should fail
+echo -n "Test for emergencies... "
+jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+echo -n "Test for deposit confirmation emergencies... "
+jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+echo -n "Test for emergencies by count... "
+jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+
+echo -n "Test for wire inconsistencies... "
+jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
+jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
+jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+
+
+# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
+
+echo PASS
+
+LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
+fi
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
+fi
+LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
+fi
+
+echo -n "Test for wire amounts... "
+WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta plus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta minus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta plus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total wire delta minus wrong, got $WIRED"
+fi
+WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
+if test $WIRED != "TESTKUDOS:0"
+then
+    exit_fail "Expected total missattribution in wrong, got $WIRED"
+fi
+echo PASS
+
+echo -n "Checking for unexpected arithmetic differences "
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
+fi
+
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
+echo PASS
+
+echo -n "Checking for unexpected wire out differences "
+jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+echo PASS
+
+# cannot easily undo aggregator, hence full reload
+full_reload
+
+}
 
 
 # *************** Main test loop starts here **************
