@@ -1623,7 +1623,7 @@ import_key (void *cls,
   }
 
   fd = open (filename,
-             O_CLOEXEC);
+             O_RDONLY | O_CLOEXEC);
   if (-1 == fd)
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
