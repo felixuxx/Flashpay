@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2020 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -26,9 +26,14 @@
 #include <microhttpd.h>
 #include "taler_json_lib.h"
 #include "taler_crypto_lib.h"
+#include "taler_kyclogic_plugin.h"
 #include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
+
+/* ************* NOTE: OLD KYC logic,***********
+   new logic is in taler-exchange-httpd_kyc.h!
+   ********************************************* */
 
 /**
  * Enumeration for our KYC modes.
