@@ -33,12 +33,12 @@ enum TEH_KycUserType
   /**
    * KYC rule is for an individual.
    */
-  TEH_KYC_INDIVIDUAL = 0,
+  TEH_KYC_UT_INDIVIDUAL = 0,
 
   /**
    * KYC rule is for a business.
    */
-  TEH_KYC_BUSINESS = 1
+  TEH_KYC_UT_BUSINESS = 1
 };
 
 
