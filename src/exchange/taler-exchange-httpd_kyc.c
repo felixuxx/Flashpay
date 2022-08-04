@@ -74,6 +74,11 @@ struct TEH_KycProvider
   struct TEH_KYCLOGIC_ProviderDetails *pd;
 
   /**
+   * Cost of running this provider's KYC.
+   */
+  unsigned long long cost;
+
+  /**
    * Length of the @e checks array.
    */
   unsigned int num_checks;
@@ -156,7 +161,7 @@ static unsigned int num_kyc_triggers;
 /**
  * Array of configured providers.
  */
-static struct TEH_KycProvider *kyc_providers;
+static struct TEH_KycProvider **kyc_providers;
 
 /**
  * Length of the #kyc_providers array.
@@ -419,6 +424,7 @@ add_provider (const char *section)
     kp->provider_section_name = section;
     kp->user_type = ut;
     kp->logic = lp;
+    kp->cost = cost;
     add_checks (checks,
                 &kp->provided_checks,
                 &kp->num_checks);
@@ -574,6 +580,33 @@ handle_section (void *cls,
 }
 
 
+/**
+ * Comparator for qsort. Compares two triggers
+ * by timeframe to sort triggers by time.
+ *
+ * @param p1 first trigger to compare
+ * @param p2 second trigger to compare
+ * @return -1 if p1 < p2, 0 if p1==p2, 1 if p1 > p2.
+ */
+static int
+sort_by_timeframe (void *p1,
+                   void *p2)
+{
+  struct TEH_KycTrigger **t1 = p1;
+  struct TEH_KycTrigger **t2 = p2;
+
+  if (GNUNET_TIME_relative_cmp ((*t1)->timeframe,
+                                <,
+                                (*t2)->timeframe))
+    return -1;
+  if (GNUNET_TIME_relative_cmp ((*t1)->timeframe,
+                                >,
+                                (*t2)->timeframe))
+    return 1;
+  return 0;
+}
+
+
 enum GNUNET_GenericReturnValue
 TEH_kyc_init (void)
 {
@@ -599,7 +632,10 @@ TEH_kyc_init (void)
       TEH_kyc_done ();
       return GNUNET_SYSERR;
     }
-
+  qsort (kyc_triggers,
+         num_kyc_triggers,
+         sizeof (struct TEH_KycTrigger *),
+         &sort_by_timeframe);
   return GNUNET_OK;
 }
 
@@ -654,22 +690,288 @@ TEH_kyc_done (void)
 }
 
 
+/**
+ * Closure for the #eval_trigger().
+ */
+struct ThresholdTestContext
+{
+  /**
+   * Total amount so far.
+   */
+  struct TALER_Amount total;
+
+  /**
+   * Trigger event to evaluate triggers of.
+   */
+  enum TEH_KycTriggerEvent event;
+
+  /**
+   * Offset in the triggers array where we need to start
+   * checking for triggers. All trigges below this
+   * offset were already hit.
+   */
+  unsigned int start;
+
+  /**
+   * Array of checks needed so far.
+   */
+  struct TEH_KycCheck **needed;
+
+  /**
+   * Pointer to number of entries used in @a needed.
+   */
+  unsigned int *needed_cnt;
+
+};
+
+
+/**
+ * Function called on each @a amount that was found to
+ * be relevant for a KYC check.
+ *
+ * @param cls closure to allow the KYC module to
+ *        total up amounts and evaluate rules
+ * @param amount encountered transaction amount
+ * @param date when was the amount encountered
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_NO to abort iteration
+ *         #GNUNET_SYSERR on internal error (also abort itaration)
+ */
+static enum GNUNET_GenericReturnValue
+eval_trigger (void *cls,
+              const struct TALER_Amount *amount,
+              struct GNUNET_TIME_Absolute date)
+{
+  struct ThresholdTestContext *ttc = cls;
+  struct GNUNET_TIME_Relative duration;
+  bool bump = true;
+
+  duration = GNUNET_TIME_absolute_get_duration (date);
+  if (0 >
+      TALER_amount_add (&ttc->total,
+                        &ttc->total,
+                        amount))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  for (unsigned int i = ttc->start; i<num_kyc_triggers; i++)
+  {
+    const struct TEH_KycTrigger *kt = kyc_triggers[i];
+
+    if (event != kt->trigger)
+      continue;
+    timeframe = GNUNET_TIME_relative_max (timeframe,
+                                          kt->timeframe);
+    if (GNUNET_TIME_relative_cmp (kt->timeframe,
+                                  >,
+                                  duration))
+    {
+      if (bump)
+        ttc->start = i;
+      return;
+    }
+    if (-1 ==
+        TALER_amount_cmp (&ttc->total,
+                          &kt->threshold))
+    {
+      if (bump)
+        ttc->start = i;
+      bump = false;
+      continue; /* amount too low to trigger */
+    }
+    /* add check to list of required checks, unless
+       already present... */
+    for (unsigned int j = 0; j<kt->num_checks; j++)
+    {
+      struct TEH_KycCheck *rc = kt->required_checks[j];
+      bool found = false;
+
+      for (unsigned int k = 0; k<*ttc->needed_cnt; k++)
+        if (ttc->needed[k] == rc)
+        {
+          found = true;
+          break;
+        }
+      if (! found)
+      {
+        ttc->needed[*ttc->needed_cnt] = rc;
+        (*ttc->needed_cnt)++;
+      }
+    }
+  }
+  if (bump)
+    return GNUNET_NO; /* we hit all possible triggers! */
+  return GNUNET_OK;
+}
+
+
+/**
+ * Closure for the #remove_satisfied().
+ */
+struct RemoveContext
+{
+
+  /**
+   * Array of checks needed so far.
+   */
+  struct TEH_KycCheck **needed;
+
+  /**
+   * Pointer to number of entries used in @a needed.
+   */
+  unsigned int *needed_cnt;
+
+};
+
+
+/**
+ * Remove all checks satisfied by @a provider_name from
+ * our list of checks.
+ *
+ * @param cls a `struct RemoveContext`
+ * @param provider_name section name of provider that was already run previously
+ */
+static void
+remove_satisfied (void *cls,
+                  const char *provider_name)
+{
+  struct RemoveContext *rc = cls;
+
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    const struct TEH_KycProvider *kp = kyc_providers[i];
+
+    if (0 != strcasecmp (provider_name,
+                         kp->provider_section_name))
+      continue;
+    for (unsigned int j = 0; j<kp->num_checks; j++)
+    {
+      const struct TEH_KycCheck *kc = kp->provided_checks[j];
+
+      for (unsigned int k = 0; k<*rc->needed_cnt; k++)
+        if (kc == rc->needed[k])
+        {
+          rc->needed[k] = rc->needed[*rc->needed_cnt - 1];
+          (*rc->needed_cnt)--;
+          if (0 == *rc->needed_cnt)
+            return; /* for sure finished */
+          break;
+        }
+    }
+    break;
+  }
+}
+
+
 const char *
 TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
                        const struct TALER_PaytoHashP *h_payto,
                        TEH_KycAmountIterator ai,
                        void *cls)
 {
-  // Check if event(s) may at all require KYC.
-  // If so, check what provider checks are
-  // already satisfied for h_payto (with database)
-  // If unsatisfied checks are left, use 'ai'
-  // to check if amount is high enough to trigger them.
-  // If it is, find cheapest provider that satisfies
-  // all of them (or, if multiple providers would be
-  // needed, return one of them).
-  GNUNET_break (0);
-  return NULL;
+  struct TEH_KycCheck *needed[num_kyc_checks];
+  unsigned int needed_cnt = 0;
+  struct GNUNET_TIME_Relative timeframe;
+  unsigned long long min_cost = ULONG_LONG_MAX;
+  unsigned int max_checks = 0;
+  const struct TEH_KycProvider *kp_best = NULL;
+
+  timeframe = GNUNET_TIME_UNIT_ZERO;
+  for (unsigned int i = 0; i<num_kyc_triggers; i++)
+  {
+    const struct TEH_KycTrigger *kt = kyc_triggers[i];
+
+    if (event != kt->trigger)
+      continue;
+    timeframe = GNUNET_TIME_relative_max (timeframe,
+                                          kt->timeframe);
+  }
+  {
+    struct GNUNET_TIME_Absolute now;
+    struct ThresholdTestContext ttc = {
+      .event = event,
+      .needed = needed,
+      .needed_cnt = &needed_cnt
+    };
+
+    TALER_amount_set_zero (TEH_currency,
+                           &ttc.total);
+    now = GNUNET_TIME_absolute_get ();
+    ai (ai_cls,
+        GNUNET_TIME_absolute_subtract (now,
+                                       timeframe),
+        &eval_trigger,
+        &ttc);
+  }
+  if (0 == needed_cnt)
+    return NULL;
+  {
+    struct RemoveContext rc = {
+      .needed = needed,
+      .needed_cnt = &needed_cnt
+    };
+    enum GNUNET_DB_QueryStatus qs;
+
+    /* Check what provider checks are already satisfied for h_payto (with
+       database), remove those from the 'needed' array. */
+    GNUNET_break (0);
+    qs = TEH_plugin->select_satisfied_kyc_processes (TEH_plugin->cls,
+                                                     h_payto,
+                                                     &remove_satisfied,
+                                                     &rc);
+    GNUNET_break (qs >= 0);  // FIXME: handle DB failure more nicely?
+  }
+
+  /* Count maximum number of remaining checks covered by any
+     provider */
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    const struct TEH_KycProvider *kp = kyc_providers[i];
+    unsigned int matched = 0;
+
+    for (unsigned int j = 0; j<kp->num_checks; j++)
+    {
+      const struct TEH_KycCheck *kc = kp->provided_checks[j];
+
+      for (unsigned int k = 0; k<needed_cnt; k++)
+        if (kc == needed[k])
+        {
+          matched++;
+          break;
+        }
+    }
+    max_checks = GNUNET_MAX (max_checks,
+                             matched);
+  }
+
+  /* Find min-cost provider covering max_checks. */
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    const struct TEH_KycProvider *kp = kyc_providers[i];
+    unsigned int matched = 0;
+
+    for (unsigned int j = 0; j<kp->num_checks; j++)
+    {
+      const struct TEH_KycCheck *kc = kp->provided_checks[j];
+
+      for (unsigned int k = 0; k<needed_cnt; k++)
+        if (kc == needed[k])
+        {
+          matched++;
+          break;
+        }
+    }
+    if ( (max_checks == matched) &&
+         (kp->cost < min_cost) )
+    {
+      min_cost = kp->cost;
+      kp_best = kp;
+    }
+  }
+
+  GNUNET_assert (NULL != kp_best);
+  return kp_best->provider_section_name;
 }
 
 

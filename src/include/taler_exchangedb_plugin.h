@@ -866,6 +866,20 @@ typedef void
 
 
 /**
+ * Function called on all KYC process names that the given
+ * account has already passed.
+ *
+ * @param cls closure
+ * @param kyc_provider_section_name configuration section
+ *        of the respective KYC process
+ */
+typedef void
+(*TALER_EXCHANGEDB_SatisfiedProviderCallback)(
+  void *cls,
+  const char *kyc_provider_section_name);
+
+
+/**
  * Function called with information about the exchange's auditors.
  *
  * @param cls closure with a `struct TEH_KeyStateHandle *`
@@ -5605,6 +5619,24 @@ struct TALER_EXCHANGEDB_Plugin
   (*profit_drains_set_finished)(
     void *cls,
     uint64_t serial);
+
+
+  /**
+   * Call us on KYC processes satisfied for the given
+   * account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param spc function to call for each satisfied KYC process
+   * @param spc_cls closure for @a spc
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_satisfied_kyc_processes)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
+    void *spc_cls);
 
 
 };

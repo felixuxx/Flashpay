@@ -203,8 +203,7 @@ TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
 
 
 /**
- * Obtain the provider logic for a given
- * @a provider_section_name.
+ * Obtain the provider logic for a given @a provider_section_name.
  *
  * @param provider_section_name identifies a KYC provider process
  * @param[out] plugin set to the KYC logic API
