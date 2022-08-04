@@ -150,7 +150,7 @@ TEH_kyc_done (void);
  *         #GNUNET_NO to abort iteration
  *         #GNUNET_SYSERR on internal error (also abort itaration)
  */
-enum GNUNET_GenericReturnValue
+typedef enum GNUNET_GenericReturnValue
 (*TEH_KycAmountCallback)(void *cls,
                          const struct TALER_Amount *amount,
                          struct GNUNET_TIME_Absolute date);
@@ -171,7 +171,7 @@ enum GNUNET_GenericReturnValue
  *        order
  * @param cb_cls closure for @a cb
  */
-void
+typedef void
 (*TEH_KycAmountIterator)(void *cls,
                          struct GNUNET_TIME_Absolute limit,
                          TEH_KycAmountCallback cb,
@@ -192,14 +192,14 @@ void
  * @param ai callback offered to inquire about historic
  *         amounts involved in this type of operation
  *         at the given account
- * @param cls closure for @a pi and @a ai
+ * @param ai_cls closure for @a ai
  * @return NULL if no check is needed
  */
 const char *
 TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
                        const struct TALER_PaytoHashP *h_payto,
                        TEH_KycAmountIterator ai,
-                       void *cls);
+                       void *ai_cls);
 
 
 /**
@@ -212,8 +212,8 @@ TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
  */
 enum GNUNET_GenericReturnValue
 TEH_kyc_get_logic (const char *provider_section_name,
-                   struct TEH_KYCLOGIC_Plugin **plugin,
-                   struct TEH_KYCLOGIC_ProviderDetails **pd);
+                   struct TALER_KYCLOGIC_Plugin **plugin,
+                   struct TALER_KYCLOGIC_ProviderDetails **pd);
 
 
 #endif

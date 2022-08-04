@@ -23,18 +23,19 @@
 
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
+#include "taler_util.h"
 
 
 /**
  * Plugin-internal specification of the configuration
  * of the plugin for a given KYC provider.
  */
-struct TEH_KYCLOGIC_ProviderDetails;
+struct TALER_KYCLOGIC_ProviderDetails;
 
 /**
  * Handle for an initiation operation.
  */
-struct TEH_KYCLOGIC_InitiateHandle;
+struct TALER_KYCLOGIC_InitiateHandle;
 
 
 /**
@@ -48,7 +49,7 @@ struct TEH_KYCLOGIC_InitiateHandle;
  * @param error_msg_hint set to additional details to return to user, NULL on success
  */
 typedef void
-(*TEH_KYCLOGIC_InitiateCallback)(
+(*TALER_KYCLOGIC_InitiateCallback)(
   enum TALER_ErrorCode ec,
   const char *redirect_url,
   const char *provider_user_id,
@@ -77,11 +78,13 @@ struct TALER_KYCLOGIC_Plugin
   /**
    * Load the configuration of the KYC provider.
    *
+   * @param cls closure
    * @param provider_section_name configuration section to parse
    * @return NULL if configuration is invalid
    */
-  struct TEH_KYCLOGIC_ProviderDetails *
-  (*load_configuration)(const char *provider_section_name);
+  struct TALER_KYCLOGIC_ProviderDetails *
+  (*load_configuration)(void *cls,
+                        const char *provider_section_name);
 
   /**
    * Release configuration resources previously loaded
@@ -89,7 +92,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param[in] pd configuration to release
    */
   void
-  (*unload_configuration)(struct TEH_KYCLOGIC_ProviderDetails *pd);
+  (*unload_configuration)(struct TALER_KYCLOGIC_ProviderDetails *pd);
 
 
   /**
@@ -100,11 +103,11 @@ struct TALER_KYCLOGIC_Plugin
    * @param account_id which account to trigger process for
    * @return handle to cancel operation early
    */
-  struct TEH_KYCLOGIC_InitiateHandle *
+  struct TALER_KYCLOGIC_InitiateHandle *
   (*initiate)(void *cls,
-              const struct TEH_KYCLOGIC_ProviderDetails *pd,
+              const struct TALER_KYCLOGIC_ProviderDetails *pd,
               const struct TALER_PaytoHashP *account_id,
-              TEH_KYCLOGIC_InitiateCallback cb,
+              TALER_KYCLOGIC_InitiateCallback cb,
               void *cb_cls);
 
   /**
@@ -113,7 +116,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param[in] ih handle of operation to cancel
    */
   void
-  (*initiate_cancel) (struct TEH_KYCLOGIC_InitiateHandle *ih);
+  (*initiate_cancel) (struct TALER_KYCLOGIC_InitiateHandle *ih);
 
   // FIXME: add callback pair for kyc_proof
 

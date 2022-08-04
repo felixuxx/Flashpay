@@ -19,7 +19,9 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_kyc.h"
+#include "taler_exchangedb_plugin.h"
 
 /**
  * Information about a KYC provider.
@@ -40,7 +42,7 @@ struct TEH_KycCheck
   /**
    * Array of @e num_providers providers that offer this type of KYC check.
    */
-  struct TEH_KycProvider *providers;
+  struct TEH_KycProvider **providers;
 
   /**
    * Length of the @e providers array.
@@ -65,13 +67,13 @@ struct TEH_KycProvider
   /**
    * Logic to run for this provider.
    */
-  struct TEH_KYCLOGIC_Plugin *logic;
+  struct TALER_KYCLOGIC_Plugin *logic;
 
   /**
    * @e provider_section_name specific details to
    * pass to the @e logic functions.
    */
-  struct TEH_KYCLOGIC_ProviderDetails *pd;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
 
   /**
    * Cost of running this provider's KYC.
@@ -130,12 +132,12 @@ struct TEH_KycTrigger
 /**
  * Array of @e num_kyc_logics KYC logic plugins we have loaded.
  */
-static struct TEH_KYCLOGIC_Plugin **kyc_logics;
+static struct TALER_KYCLOGIC_Plugin **kyc_logics;
 
 /**
  * Length of the #kyc_logics array.
  */
-static unsigned in num_kyc_logics;
+static unsigned int num_kyc_logics;
 
 /**
  * Array of @e num_kyc_checks known types of
@@ -267,11 +269,22 @@ TEH_kyc_user_type2s (enum TEH_KycUserType ut)
  * @param name name of the plugin
  * @return NULL on error
  */
-static struct TEH_KYCLOGIC_Plugin *
+static struct TALER_KYCLOGIC_Plugin *
 load_logic (const char *name)
 {
-  GNUNET_break (0);
-  return NULL;
+  char *lib_name;
+  struct TALER_KYCLOGIC_Plugin *plugin;
+
+  GNUNET_asprintf (&lib_name,
+                   "libtaler_plugin_kyclogic_%s",
+                   name);
+  plugin = GNUNET_PLUGIN_load (lib_name,
+                               (void *) TEH_cfg);
+  if (NULL != plugin)
+    plugin->library_name = lib_name;
+  else
+    GNUNET_free (lib_name);
+  return plugin;
 }
 
 
@@ -312,16 +325,16 @@ add_check (const char *check)
  */
 static void
 add_checks (char *checks,
-            struct TEH_KycCheck **p_checks,
+            struct TEH_KycCheck ***p_checks,
             unsigned int *num_p_checks)
 {
   char *sptr;
-  struct TEH_KycCheck *rchecks = NULL;
+  struct TEH_KycCheck **rchecks = NULL;
   unsigned int num_rchecks = 0;
 
   for (char *tok = strtok_r (checks, " ", &sptr);
        NULL != tok;
-       tok = strtok_r (checks, NULL, &sptr))
+       tok = strtok_r (NULL, " ", &sptr))
   {
     struct TEH_KycCheck *kc;
 
@@ -348,6 +361,7 @@ add_provider (const char *section)
   char *ut_s;
   enum TEH_KycUserType ut;
   char *checks;
+  struct TALER_KYCLOGIC_Plugin *lp;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
@@ -429,8 +443,8 @@ add_provider (const char *section)
                 &kp->provided_checks,
                 &kp->num_checks);
     GNUNET_free (checks);
-    kp->pd = lp->load (lp->cls,
-                       section);
+    kp->pd = lp->load_configuration (lp->cls,
+                                     section);
     if (NULL == kp->pd)
     {
       GNUNET_free (kp);
@@ -462,10 +476,10 @@ add_trigger (const char *section)
   enum TEH_KycTriggerEvent ot;
 
   if (GNUNET_OK !=
-      TALER_CONFIGURATION_get_value_amount (TEH_cfg,
-                                            section,
-                                            "THRESHOLD",
-                                            &threshold))
+      TALER_config_get_amount (TEH_cfg,
+                               section,
+                               "THRESHOLD",
+                               &threshold))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
@@ -539,8 +553,8 @@ add_trigger (const char *section)
                 &kt->required_checks,
                 &kt->num_checks);
     GNUNET_free (checks);
-    GNUNET_array_append (kyc_checks,
-                         num_kyc_checks,
+    GNUNET_array_append (kyc_triggers,
+                         num_kyc_triggers,
                          kt);
   }
   return GNUNET_OK;
@@ -589,11 +603,11 @@ handle_section (void *cls,
  * @return -1 if p1 < p2, 0 if p1==p2, 1 if p1 > p2.
  */
 static int
-sort_by_timeframe (void *p1,
-                   void *p2)
+sort_by_timeframe (const void *p1,
+                   const void *p2)
 {
-  struct TEH_KycTrigger **t1 = p1;
-  struct TEH_KycTrigger **t2 = p2;
+  struct TEH_KycTrigger **t1 = (struct TEH_KycTrigger **) p1;
+  struct TEH_KycTrigger **t2 = (struct TEH_KycTrigger **) p2;
 
   if (GNUNET_TIME_relative_cmp ((*t1)->timeframe,
                                 <,
@@ -610,7 +624,7 @@ sort_by_timeframe (void *p1,
 enum GNUNET_GenericReturnValue
 TEH_kyc_init (void)
 {
-  book ok = true;
+  bool ok = true;
 
   GNUNET_CONFIGURATION_iterate_sections (TEH_cfg,
                                          &handle_section,
@@ -659,7 +673,7 @@ TEH_kyc_done (void)
   {
     struct TEH_KycProvider *kp = kyc_providers[i];
 
-    kp->logic->unload (kp->pd);
+    kp->logic->unload_configuration (kp->pd);
     GNUNET_array_grow (kp->provided_checks,
                        kp->num_checks,
                        0);
@@ -670,9 +684,12 @@ TEH_kyc_done (void)
                      0);
   for (unsigned int i = 0; i<num_kyc_logics; i++)
   {
-    struct TEH_KYCLOGIC_Plugin *lp = kyc_logics[i];
+    struct TALER_KYCLOGIC_Plugin *lp = kyc_logics[i];
+    char *lib_name = lp->library_name;
 
-    unload_plugin (lp);
+    GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
+                                                 lp));
+    GNUNET_free (lib_name);
   }
   GNUNET_array_grow (kyc_logics,
                      num_kyc_logics,
@@ -759,17 +776,17 @@ eval_trigger (void *cls,
   {
     const struct TEH_KycTrigger *kt = kyc_triggers[i];
 
-    if (event != kt->trigger)
+    if (ttc->event != kt->trigger)
       continue;
-    timeframe = GNUNET_TIME_relative_max (timeframe,
-                                          kt->timeframe);
+    duration = GNUNET_TIME_relative_max (duration,
+                                         kt->timeframe);
     if (GNUNET_TIME_relative_cmp (kt->timeframe,
                                   >,
                                   duration))
     {
       if (bump)
         ttc->start = i;
-      return;
+      return GNUNET_OK;
     }
     if (-1 ==
         TALER_amount_cmp (&ttc->total,
@@ -868,7 +885,7 @@ const char *
 TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
                        const struct TALER_PaytoHashP *h_payto,
                        TEH_KycAmountIterator ai,
-                       void *cls)
+                       void *ai_cls)
 {
   struct TEH_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -977,8 +994,8 @@ TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
 
 enum GNUNET_GenericReturnValue
 TEH_kyc_get_logic (const char *provider_section_name,
-                   struct TEH_KYCLOGIC_Plugin **plugin,
-                   struct TEH_KYCLOGIC_ProviderDetails **pd)
+                   struct TALER_KYCLOGIC_Plugin **plugin,
+                   struct TALER_KYCLOGIC_ProviderDetails **pd)
 {
   for (unsigned int i = 0; i<num_kyc_providers; i++)
   {
