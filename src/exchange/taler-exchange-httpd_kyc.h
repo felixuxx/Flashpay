@@ -22,6 +22,7 @@
 #define TALER_EXCHANGE_HTTPD_KYC_H
 
 #include <microhttpd.h>
+#include "taler_exchangedb_plugin.h"
 #include "taler_kyclogic_plugin.h"
 
 

@@ -5664,6 +5664,7 @@ struct TALER_EXCHANGEDB_Plugin
    * expiration data.
    *
    * @param cls closure
+   * @param legi_row row to select by
    * @param provider_section provider that must be checked
    * @param h_payto account that must be KYC'ed
    * @param provider_account_id provider account ID

@@ -25,6 +25,7 @@ SUBDIRS = \
   mhd \
   bank-lib \
   exchangedb \
+  kyclogic \
   exchange \
   auditordb \
   auditor \

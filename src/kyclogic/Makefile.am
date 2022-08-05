@@ -1,0 +1,36 @@
+# This Makefile.am is in the public domain
+AM_CPPFLAGS = -I$(top_srcdir)/src/include
+
+if USE_COVERAGE
+  AM_CFLAGS = --coverage -O0
+  XLIB = -lgcov
+endif
+
+pkgcfgdir = $(prefix)/share/taler/config.d/
+
+pkgcfg_DATA = \
+  kyclogic.conf \
+  kyclogic-oauth2.conf
+
+EXTRA_DIST = \
+  kyclogic.conf \
+  kyclogic-oauth2.conf
+
+plugindir = $(libdir)/taler
+
+plugin_LTLIBRARIES = \
+  libtaler_plugin_kyclogic_oauth2.la
+
+libtaler_plugin_kyclogic_oauth2_la_SOURCES = \
+  plugin_kyclogic_oauth2.c
+libtaler_plugin_kyclogic_oauth2_la_LIBADD = \
+  $(LTLIBINTL)
+libtaler_plugin_kyclogic_oauth2_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;

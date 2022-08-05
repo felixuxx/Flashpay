@@ -533,6 +533,7 @@ AC_CONFIG_FILES([Makefile
                  src/exchange-tools/Makefile
                  src/extensions/Makefile
                  src/lib/Makefile
+                 src/kyclogic/Makefile
                  src/testing/Makefile
                  src/benchmark/Makefile
                  src/include/Makefile
