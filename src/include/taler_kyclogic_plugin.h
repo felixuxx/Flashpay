@@ -81,7 +81,8 @@ enum TALER_KYCLOGIC_KycStatus
       | TALER_KYCLOGIC_STATUS_PENDING,
 
   /**
-   * The user aborted the check (possibly recoverable).
+   * The user aborted the check (possibly recoverable)
+   * or made some other type of (recoverable) mistake.
    */
   TALER_KYCLOGIC_STATUS_USER_ABORTED
     = TALER_KYCLOGIC_STATUS_USER
@@ -123,6 +124,7 @@ struct TALER_KYCLOGIC_WebhookHandle;
  * Function called with the result of a KYC initiation
  * operation.
  *
+ * @param cls closure
  * @param ec #TALER_EC_NONE on success
  * @param redirect_url set to where to redirect the user on success, NULL on failure
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
@@ -131,6 +133,7 @@ struct TALER_KYCLOGIC_WebhookHandle;
  */
 typedef void
 (*TALER_KYCLOGIC_InitiateCallback)(
+  void *cls,
   enum TALER_ErrorCode ec,
   const char *redirect_url,
   const char *provider_user_id,
@@ -248,6 +251,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param pd provider configuration details
    * @param account_id which account to trigger process for
+   * @param legitimization_uuid unique ID for the legitimization process
    * @param cb function to call with the result
    * @param cb_cls closure for @a cb
    * @return handle to cancel operation early
@@ -256,6 +260,7 @@ struct TALER_KYCLOGIC_Plugin
   (*initiate)(void *cls,
               const struct TALER_KYCLOGIC_ProviderDetails *pd,
               const struct TALER_PaytoHashP *account_id,
+              uint64_t legitimization_uuid,
               TALER_KYCLOGIC_InitiateCallback cb,
               void *cb_cls);
 

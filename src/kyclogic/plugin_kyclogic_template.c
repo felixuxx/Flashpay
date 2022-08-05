@@ -25,12 +25,48 @@
 #include <regex.h>
 #include "taler_util.h"
 
+
+/**
+ * Saves the state of a plugin.
+ */
+struct PluginState
+{
+
+  /**
+   * Our base URL.
+   */
+  char *exchange_base_url;
+
+  /**
+   * Our global configuration.
+   */
+  const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
+   * Context for CURL operations (useful to the event loop)
+   */
+  struct GNUNET_CURL_Context *curl_ctx;
+
+  /**
+   * Context for integrating @e curl_ctx with the
+   * GNUnet event loop.
+   */
+  struct GNUNET_CURL_RescheduleContext *curl_rc;
+
+};
+
+
 /**
  * Keeps the plugin-specific state for
  * a given configuration section.
  */
 struct TALER_KYCLOGIC_ProviderDetails
 {
+
+  /**
+   * Overall plugin state.
+   */
+  struct PluginState *ps;
 
 };
 
@@ -40,6 +76,32 @@ struct TALER_KYCLOGIC_ProviderDetails
  */
 struct TALER_KYCLOGIC_InitiateHandle
 {
+
+  /**
+   * Hash of the payto:// URI we are initiating
+   * the KYC for.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * UUID being checked.
+   */
+  uint64_t legitimization_uuid;
+
+  /**
+   * Our configuration details.
+   */
+  const struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  /**
+   * Continuation to call.
+   */
+  TALER_KYCLOGIC_InitiateCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
 };
 
 
@@ -48,6 +110,26 @@ struct TALER_KYCLOGIC_InitiateHandle
  */
 struct TALER_KYCLOGIC_ProofHandle
 {
+
+  /**
+   * Overall plugin state.
+   */
+  struct PluginState *ps;
+
+  /**
+   * Our configuration details.
+   */
+  const struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  /**
+   * Continuation to call.
+   */
+  TALER_KYCLOGIC_ProofCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
 };
 
 
@@ -56,20 +138,21 @@ struct TALER_KYCLOGIC_ProofHandle
  */
 struct TALER_KYCLOGIC_WebhookHandle
 {
-};
-
-
-/**
- * Saves the state of a plugin.
- */
-struct PluginState
-{
 
   /**
-   * Our global configuration.
+   * Overall plugin state.
    */
-  const struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct PluginState *ps;
 
+  /**
+   * Our configuration details.
+   */
+  const struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  /**
+   * Overall plugin state.
+   */
+  struct PluginState *ps;
 };
 
 
@@ -84,7 +167,13 @@ static struct TALER_KYCLOGIC_ProviderDetails *
 template_load_configuration (void *cls,
                              const char *provider_section_name)
 {
-  return NULL;
+  struct PluginState *ps = cls;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  pd = GNUNET_new (struct TALER_KYCLOGIC_ProviderDetails);
+  pd->ps = ps;
+  GNUNET_break (0); // FIXME: parse config here!
+  return pd;
 }
 
 
@@ -96,6 +185,7 @@ template_load_configuration (void *cls,
 static void
 template_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
 {
+  GNUNET_free (pd);
 }
 
 
@@ -116,7 +206,16 @@ template_initiate (void *cls,
                    TALER_KYCLOGIC_InitiateCallback cb,
                    void *cb_cls)
 {
-  return NULL;
+  struct TALER_KYCLOGIC_InitiateHandle *ih;
+
+  ih = GNUNET_new (struct TALER_KYCLOGIC_InitiateHandle);
+  ih->legitimization_uuid = legitimization_uuid;
+  ih->cb = cb;
+  ih->cb_cls = cb_cls;
+  ih->h_payto = *account_id;
+  ih->pd = pd;
+  GNUNET_break (0); // FIXME: add actual initiation logic!
+  return res;
 }
 
 
@@ -128,6 +227,8 @@ template_initiate (void *cls,
 static void
 template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 {
+  GNUNET_break (0); // FIXME: add cancel logic here
+  GNUNET_free (ih);
 }
 
 
@@ -156,7 +257,17 @@ template_proof (void *cls,
                 TALER_KYCLOGIC_ProofCallback cb,
                 void *cb_cls)
 {
-  return NULL;
+  struct PluginState *ps = cls;
+  struct TALER_KYCLOGIC_ProofHandle *ph;
+
+  ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
+  ph->ps = ps;
+  ph->pd = pd;
+  ph->cb = cb;
+  ph->cb_cls = cb_cls;
+
+  GNUNET_break (0); // FIXME: start check!
+  return ps;
 }
 
 
@@ -168,6 +279,8 @@ template_proof (void *cls,
 static void
 template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 {
+  GNUNET_break (0); // FIXME: stop activities...
+  GNUNET_free (ph);
 }
 
 
@@ -231,6 +344,31 @@ libtaler_plugin_kyclogic_template_init (void *cls)
 
   ps = GNUNET_new (struct PluginState);
   ps->cfg = cfg;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &ps->exchange_base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    GNUNET_free (ps);
+    return NULL;
+  }
+
+  ps->curl_ctx
+    = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                        &ps->curl_rc);
+  if (NULL == ps->curl_ctx)
+  {
+    GNUNET_break (0);
+    GNUNET_free (ps->exchange_base_url);
+    GNUNET_free (ps);
+    return NULL;
+  }
+  ps->curl_rc = GNUNET_CURL_gnunet_rc_create (ps->curl_ctx);
+
   plugin = GNUNET_new (struct TALER_KYCLOGIC_Plugin);
   plugin->cls = ps;
   plugin->load_configuration
@@ -265,6 +403,17 @@ libtaler_plugin_kyclogic_template_done (void *cls)
   struct TALER_KYCLOGIC_Plugin *plugin = cls;
   struct PluginState *ps = plugin->cls;
 
+  if (NULL != ps->curl_ctx)
+  {
+    GNUNET_CURL_fini (ps->curl_ctx);
+    ps->curl_ctx = NULL;
+  }
+  if (NULL != ps->curl_rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (ps->curl_rc);
+    ps->curl_rc = NULL;
+  }
+  GNUNET_free (ps->exchange_base_url);
   GNUNET_free (ps);
   GNUNET_free (plugin);
   return NULL;
