@@ -104,8 +104,10 @@ COMMENT ON COLUMN wire_targets.payto_uri
   IS 'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)';
 COMMENT ON COLUMN wire_targets.wire_target_h_payto
   IS 'Unsalted hash of payto_uri';
+-- FIXME: remove:
 COMMENT ON COLUMN wire_targets.kyc_ok
   IS 'true if the KYC check was passed successfully';
+-- FIXME: remove:
 COMMENT ON COLUMN wire_targets.external_id
   IS 'Name of the user that was used for OAuth 2.0-based legitimization';
 
@@ -114,6 +116,34 @@ CREATE TABLE IF NOT EXISTS wire_targets_default
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_wire_targets_partition('default');
+
+
+-- ------------------------------ legitimizations ----------------------------------------
+
+SELECT create_table_legitimizations();
+
+COMMENT ON TABLE legitimizations
+  IS 'List of legitimizations (required and completed) by account and provider';
+COMMENT ON COLUMN legitimizations.legitimization_serial_id
+  IS 'unique ID for this legitimization process at the exchange';
+COMMENT ON COLUMN legitimizations.h_payto
+  IS 'foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)';
+COMMENT ON COLUMN legitimizations.expiration_time
+  IS 'in the future if the respective KYC check was passed successfully';
+COMMENT ON COLUMN legitimizations.provider_section
+  IS 'Configuration file section with details about this provider';
+COMMENT ON COLUMN legitimizations.provider_user_id
+  IS 'Identifier for the user at the provider that was used for the legitimization. NULL if provider is unaware.';
+COMMENT ON COLUMN legitimizations.provider_legitimization_id
+  IS 'Identifier for the specific legitimization process at the provider. NULL if legitimization was not started.';
+
+CREATE TABLE IF NOT EXISTS legitimizations_default
+  PARTITION OF legitimizations
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_legitimizations_partition('default');
+
+
 
 -- ------------------------------ reserves ----------------------------------------
 

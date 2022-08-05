@@ -23,7 +23,78 @@
 
 #include <jansson.h>
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_db_lib.h>
 #include "taler_util.h"
+
+
+/**
+ * Possible states of a KYC check.
+ */
+enum TALER_KYCLOGIC_KycStatus
+{
+
+  /**
+   * The provider has passed the customer.
+   */
+  TALER_KYCLOGIC_STATUS_SUCCESS = 0,
+
+  /**
+   * Something to do with the user (bit!).
+   */
+  TALER_KYCLOGIC_STATUS_USER = 1,
+
+  /**
+   * Something to do with the provider (bit!).
+   */
+  TALER_KYCLOGIC_STATUS_PROVIDER = 2,
+
+  /**
+   * The interaction ended in definitive failure.
+   * (kind of with both parties).
+   */
+  TALER_KYCLOGIC_STATUS_FAILED
+    = TALER_KYCLOGIC_STATUS_USER
+      | TALER_KYCLOGIC_STATUS_PROVIDER,
+
+  /**
+   * The interaction is still ongoing.
+   */
+  TALER_KYCLOGIC_STATUS_PENDING = 4,
+
+  /**
+   * One of the parties hat a temporary failure.
+   */
+  TALER_KYCLOGIC_STATUS_ABORTED = 8,
+
+  /**
+   * The interaction with the user is ongoing.
+   */
+  TALER_KYCLOGIC_STATUS_USER_PENDING
+    = TALER_KYCLOGIC_STATUS_USER
+      | TALER_KYCLOGIC_STATUS_PENDING,
+
+  /**
+   * The provider is still checking.
+   */
+  TALER_KYCLOGIC_STATUS_PROVIDER_PENDING
+    = TALER_KYCLOGIC_STATUS_PROVIDER
+      | TALER_KYCLOGIC_STATUS_PENDING,
+
+  /**
+   * The user aborted the check (possibly recoverable).
+   */
+  TALER_KYCLOGIC_STATUS_USER_ABORTED
+    = TALER_KYCLOGIC_STATUS_USER
+      | TALER_KYCLOGIC_STATUS_ABORTED,
+
+  /**
+   * The provider had an (internal) failure.
+   */
+  TALER_KYCLOGIC_STATUS_PROVIDER_FAILED
+    = TALER_KYCLOGIC_STATUS_PROVIDER
+      | TALER_KYCLOGIC_STATUS_ABORTED,
+
+};
 
 
 /**
@@ -36,6 +107,16 @@ struct TALER_KYCLOGIC_ProviderDetails;
  * Handle for an initiation operation.
  */
 struct TALER_KYCLOGIC_InitiateHandle;
+
+/**
+ * Handle for an KYC proof operation.
+ */
+struct TALER_KYCLOGIC_ProofHandle;
+
+/**
+ * Handle for an KYC Web hook operation.
+ */
+struct TALER_KYCLOGIC_WebhookHandle;
 
 
 /**
@@ -55,6 +136,72 @@ typedef void
   const char *provider_user_id,
   const char *provider_legitimization_id,
   const char *error_msg_hint);
+
+
+/**
+ * Function called with the result of a proof check
+ * operation.
+ *
+ * Note that the "decref" for the @a response
+ * will be done by the plugin.
+ *
+ * @param cls closure
+ * @param status KYC status
+ * @param expiration until when is the KYC check valid
+ * @param http_status HTTP status code of @a response
+ * @param[in] response to return to the HTTP client
+ */
+typedef void
+(*TALER_KYCLOGIC_ProofCallback)(
+  void *cls,
+  enum TALER_KYCLOGIC_KycStatus status,
+  struct GNUNET_TIME_Absolute expiration,
+  unsigned int http_status,
+  struct MHD_Response *response);
+
+
+/**
+ * Function called with the result of a webhook
+ * operation.
+ *
+ * Note that the "decref" for the @a response
+ * will be done by the plugin.
+ *
+ * @param cls closure
+ * @param account_id account the webhook was about
+ * @param status KYC status
+ * @param expiration until when is the KYC check valid
+ * @param http_status HTTP status code of @a response
+ * @param[in] response to return to the HTTP client
+ */
+typedef void
+(*TALER_KYCLOGIC_WebhookCallback)(
+  void *cls,
+  const struct TALER_PaytoHashP *account_id,
+  enum TALER_KYCLOGIC_KycStatus status,
+  struct GNUNET_TIME_Absolute expiration,
+  unsigned int http_status,
+  struct MHD_Response *response);
+
+
+/**
+ * Function the plugin can use to lookup an
+ * @a h_payto by @a provider_legitimization_id.
+ * Must match the `kyc_provider_account_lookup`
+ * of the exchange's database plugin.
+ *
+ * @param cls closure
+ * @param provider_section
+ * @param provider_legitimization_id legi to look up
+ * @param[out] h_payto where to write the result
+ * @return database transaction status
+ */
+typedef enum GNUNET_DB_QueryStatus
+(*TALER_KYCLOGIC_ProviderLookupCallback)(
+  void *cls,
+  const char *provider_section,
+  const char *provider_legitimization_id,
+  struct TALER_PaytoHashP *h_payto);
 
 
 /**
@@ -101,6 +248,8 @@ struct TALER_KYCLOGIC_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param pd provider configuration details
    * @param account_id which account to trigger process for
+   * @param cb function to call with the result
+   * @param cb_cls closure for @a cb
    * @return handle to cancel operation early
    */
   struct TALER_KYCLOGIC_InitiateHandle *
@@ -110,6 +259,7 @@ struct TALER_KYCLOGIC_Plugin
               TALER_KYCLOGIC_InitiateCallback cb,
               void *cb_cls);
 
+
   /**
    * Cancel KYC check initiation.
    *
@@ -118,9 +268,73 @@ struct TALER_KYCLOGIC_Plugin
   void
   (*initiate_cancel) (struct TALER_KYCLOGIC_InitiateHandle *ih);
 
-  // FIXME: add callback pair for kyc_proof
 
-  // FIXME: add callback pair for kyc_webhook
+  /**
+   * Check KYC status and return status to human.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param pd provider configuration details
+   * @param account_id which account to trigger process for
+   * @param cb function to call with the result
+   * @param cb_cls closure for @a cb
+   * @return handle to cancel operation early
+   */
+  struct TALER_KYCLOGIC_ProofHandle *
+  (*proof)(void *cls,
+           const struct TALER_KYCLOGIC_ProviderDetails *pd,
+           const struct TALER_PaytoHashP *account_id,
+           const char *provider_user_id,
+           const char *provider_legitimization_id,
+           TALER_KYCLOGIC_ProofCallback cb,
+           void *cb_cls);
+
+
+  /**
+   * Cancel KYC proof.
+   *
+   * @param[in] ph handle of operation to cancel
+   */
+  void
+  (*proof_cancel) (struct TALER_KYCLOGIC_ProofHandle *ph);
+
+
+  /**
+   * Check KYC status and return result for Webhook.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param pd provider configuration details
+   * @param plc callback to lookup accounts with
+   * @param plc_cls closure for @a plc
+   * @param http_method HTTP method used for the webhook
+   * @param url_path rest of the URL after `/kyc-webhook/`
+   * @param connection MHD connection object (for HTTP headers)
+   * @param body_size number of bytes in @a body
+   * @param body HTTP request body
+   * @param cb function to call with the result
+   * @param cb_cls closure for @a cb
+   * @return handle to cancel operation early
+   */
+  struct TALER_KYCLOGIC_InitiateHandle *
+  (*webhook)(void *cls,
+             const struct TALER_KYCLOGIC_ProviderDetails *pd,
+             TALER_KYCLOGIC_ProviderLookupCallback plc,
+             void *plc_cls,
+             const char *http_method,
+             const char *url_path,
+             struct MHD_Connection *connection,
+             size_t body_size,
+             const void *body,
+             TALER_KYCLOGIC_WebhookCallback cb,
+             void *cb_cls);
+
+
+  /**
+   * Cancel KYC webhook execution.
+   *
+   * @param[in] wh handle of operation to cancel
+   */
+  void
+  (*webhook_cancel) (struct TALER_KYCLOGIC_WebhookHandle *wh);
 
 };
 

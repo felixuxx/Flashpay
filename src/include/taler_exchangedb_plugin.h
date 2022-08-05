@@ -5622,6 +5622,110 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Insert KYC requirement for @a h_payto account into table.
+   *
+   * @param cls closure
+   * @param provider_section provider that must be checked
+   * @param h_payto account that must be KYC'ed
+   * @param[out] legi_row set to legitimization row for this check
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_kyc_requirement_for_account)(
+    void *cls,
+    const char *provider_section,
+    const struct TALER_PaytoHashP *h_payto,
+    uint64_t *legi_row);
+
+
+  /**
+   * Update KYC requirement check with provider-linkage and/or
+   * expiration data.
+   *
+   * @param cls closure
+   * @param provider_section provider that must be checked
+   * @param h_payto account that must be KYC'ed
+   * @param provider_account_id provider account ID
+   * @param provider_legitimization_id provider legitimization ID
+   * @param expiration how long is this KYC check set to be valid (in the past if invalid)
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_kyc_requirement_by_row)(
+    void *cls,
+    uint64_t legi_row,
+    const char *provider_section,
+    struct TALER_PaytoHashP *h_payto,
+    const char *provider_account_id,
+    const char *provider_legitimization_id,
+    struct GNUNET_TIME_Absolute expiration);
+
+
+  /**
+   * Lookup KYC provider meta data.
+   *
+   * @param cls closure
+   * @param legi_row legitimization row to lookup
+   * @param[out] provider_section provider that must be checked
+   * @param[out] h_payto account that must be KYC'ed
+   * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
+   * @param[out] provider_account_id provider account ID
+   * @param[out] provider_legitimization_id provider legitimization ID
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_kyc_requirement_by_row)(
+    void *cls,
+    uint64_t legi_row,
+    char **provider_section,
+    struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute *expiration,
+    char **provider_account_id,
+    char **provider_legitimization_id);
+
+
+  /**
+   * Lookup KYC provider meta data.
+   *
+   * @param cls closure
+   * @param provider_section provider that must be checked
+   * @param h_payto account that must be KYC'ed
+   * @param[out] legi_row row with the legitimization data
+   * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
+   * @param[out] provider_account_id provider account ID
+   * @param[out] provider_legitimization_id provider legitimization ID
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_kyc_requirement_by_account)(
+    void *cls,
+    const char *provider_section,
+    const struct TALER_PaytoHashP *h_payto,
+    uint64_t *legi_row,
+    struct GNUNET_TIME_Absolute *expiration,
+    char **provider_account_id,
+    char **provider_legitimization_id);
+
+
+  /**
+   * Lookup an
+   * @a h_payto by @a provider_legitimization_id.
+   *
+   * @param cls closure
+   * @param provider_section
+   * @param provider_legitimization_id legi to look up
+   * @param[out] h_payto where to write the result
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*kyc_provider_account_lookup)(
+    void *cls,
+    const char *provider_section,
+    const char *provider_legitimization_id,
+    struct TALER_PaytoHashP *h_payto);
+
+
+  /**
    * Call us on KYC processes satisfied for the given
    * account.
    *

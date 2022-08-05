@@ -245,6 +245,7 @@ TEH_handler_kyc_check (
     rc->rh_cleaner = &kyp_cleanup;
 
     {
+      // FIXME: now 'legitimization_uuid'!
       unsigned long long payment_target_uuid;
       char dummy;
 
@@ -290,6 +291,8 @@ TEH_handler_kyc_check (
                                          tms));
       }
     }
+
+    // FIXME: replace with args[1]!
     kyp->hps = MHD_lookup_connection_value (rc->connection,
                                             MHD_GET_ARGUMENT_KIND,
                                             "h_payto");

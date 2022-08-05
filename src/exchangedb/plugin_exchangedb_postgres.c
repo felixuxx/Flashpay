@@ -4515,7 +4515,70 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_close_request"
       "  ($1, $2, $3)",
       3),
-
+    /* Used in #postgres_insert_kyc_requirement_for_account() */
+    GNUNET_PQ_make_prepare (
+      "insert_legitimization_requirement",
+      "INSERT INTO legitimizations"
+      "  (h_payto"
+      "  ,provider_section"
+      "  ) VALUES "
+      "  ($1, $2)"
+      " RETURNING legitimization_serial_id",
+      2),
+    /* Used in #postgres_update_kyc_requirement_by_row() */
+    GNUNET_PQ_make_prepare (
+      "update_legitimization_requirement",
+      "UPDATE legitimizations"
+      " SET provider_user_id=$4"
+      "    ,provider_legitimization_id=$5"
+      "    ,expiration_time=$6"
+      " WHERE"
+      "      h_payto=$3"
+      "  AND legitimization_serial_id=$1"
+      "  AND provider_section=$2;",
+      6),
+    /* Used in #postgres_lookup_kyc_requirement_by_row() */
+    GNUNET_PQ_make_prepare (
+      "lookup_legitimization_by_row",
+      "SELECT "
+      " provider_section"
+      ",h_payto"
+      ",expiration_time"
+      ",provider_user_id"
+      ",provider_legitimization_id"
+      " FROM legitimizations"
+      " WHERE legitimization_serial_id=$1;",
+      1),
+    /* Used in #postgres_lookup_kyc_requirement_by_account() */
+    GNUNET_PQ_make_prepare (
+      "lookup_legitimization_by_account",
+      "SELECT "
+      " legitimization_serial_id"
+      ",expiration_time"
+      ",provider_user_id"
+      ",provider_legitimization_id"
+      " FROM legitimizations"
+      " WHERE h_payto=$1"
+      "   AND provider_section=$2;",
+      2),
+    /* Used in #postgres_kyc_provider_account_lookup() */
+    GNUNET_PQ_make_prepare (
+      "get_wire_target_by_legitimization_id",
+      "SELECT "
+      " h_payto"
+      " FROM legitimizations"
+      " WHERE provider_legitimization_id=$1"
+      "   AND provider_section=$2;",
+      2),
+    /* Used in #postgres_select_satisfied_kyc_processes() */
+    GNUNET_PQ_make_prepare (
+      "get_satisfied_legitimizations",
+      "SELECT "
+      " provider_section"
+      " FROM legitimizations"
+      " WHERE h_payto=$1"
+      "   AND expiration_time>=$2;",
+      2),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -13511,7 +13574,7 @@ struct GetWireFeesContext
 /**
  * Invoke the callback for each result.
  *
- * @param cls a `struct MissingWireContext *`
+ * @param cls a `struct GetWireFeesContext *`
  * @param result SQL result
  * @param num_results number of rows in @a result
  */
@@ -16413,6 +16476,340 @@ postgres_profit_drains_set_finished (
 
 
 /**
+ * Insert KYC requirement for @a h_payto account into table.
+ *
+ * @param cls closure
+ * @param provider_section provider that must be checked
+ * @param h_payto account that must be KYC'ed
+ * @param[out] legi_row set to legitimization row for this check
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_kyc_requirement_for_account (
+  void *cls,
+  const char *provider_section,
+  const struct TALER_PaytoHashP *h_payto,
+  uint64_t *legi_row)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("legitimization_serial_id",
+                                  legi_row),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "insert_legitimization_requirement",
+    params,
+    rs);
+}
+
+
+/**
+ * Update KYC requirement check with provider-linkage and/or
+ * expiration data.
+ *
+ * @param cls closure
+ * @param provider_section provider that must be checked
+ * @param h_payto account that must be KYC'ed
+ * @param provider_account_id provider account ID
+ * @param provider_legitimization_id provider legitimization ID
+ * @param expiration how long is this KYC check set to be valid (in the past if invalid)
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_kyc_requirement_by_row (
+  void *cls,
+  uint64_t legi_row,
+  const char *provider_section,
+  struct TALER_PaytoHashP *h_payto,
+  const char *provider_account_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&legi_row),
+    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_string (provider_account_id),
+    GNUNET_PQ_query_param_string (provider_legitimization_id),
+    GNUNET_PQ_query_param_absolute_time (&expiration),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (
+    pg->conn,
+    "update_legitimization_requirement",
+    params);
+}
+
+
+/**
+ * Lookup KYC provider meta data.
+ *
+ * @param cls closure
+ * @param legi_row legitimization row to lookup
+ * @param[out] provider_section provider that must be checked
+ * @param[out] h_payto account that must be KYC'ed
+ * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
+ * @param[out] provider_account_id provider account ID
+ * @param[out] provider_legitimization_id provider legitimization ID
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_kyc_requirement_by_row (
+  void *cls,
+  uint64_t legi_row,
+  char **provider_section,
+  struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Absolute *expiration,
+  char **provider_account_id,
+  char **provider_legitimization_id)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&legi_row),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_string ("provider_section",
+                                  provider_section),
+    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                          h_payto),
+    GNUNET_PQ_result_spec_absolute_time ("expiration_time",
+                                         expiration),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("provider_user_id",
+                                    provider_account_id),
+      NULL),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("provider_legitimization_id",
+                                    provider_legitimization_id),
+      NULL),
+    GNUNET_PQ_result_spec_end
+  };
+
+  *provider_account_id = NULL;
+  *provider_legitimization_id = NULL;
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "lookup_legitimization_by_row",
+    params,
+    rs);
+}
+
+
+/**
+ * Lookup KYC provider meta data.
+ *
+ * @param cls closure
+ * @param provider_section provider that must be checked
+ * @param h_payto account that must be KYC'ed
+ * @param[out] legi_row row with the legitimization data
+ * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
+ * @param[out] provider_account_id provider account ID
+ * @param[out] provider_legitimization_id provider legitimization ID
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_kyc_requirement_by_account (
+  void *cls,
+  const char *provider_section,
+  const struct TALER_PaytoHashP *h_payto,
+  uint64_t *legi_row,
+  struct GNUNET_TIME_Absolute *expiration,
+  char **provider_account_id,
+  char **provider_legitimization_id)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("legitimization_serial_id",
+                                  legi_row),
+    GNUNET_PQ_result_spec_absolute_time ("expiration_time",
+                                         expiration),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("provider_user_id",
+                                    provider_account_id),
+      NULL),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("provider_legitimization_id",
+                                    provider_legitimization_id),
+      NULL),
+    GNUNET_PQ_result_spec_end
+  };
+
+  *provider_account_id = NULL;
+  *provider_legitimization_id = NULL;
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "lookup_legitimization_by_account",
+    params,
+    rs);
+}
+
+
+/**
+ * Lookup an
+ * @a h_payto by @a provider_legitimization_id.
+ *
+ * @param cls closure
+ * @param provider_section
+ * @param provider_legitimization_id legi to look up
+ * @param[out] h_payto where to write the result
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_kyc_provider_account_lookup (
+  void *cls,
+  const char *provider_section,
+  const char *provider_legitimization_id,
+  struct TALER_PaytoHashP *h_payto)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (provider_section),
+    GNUNET_PQ_query_param_string (provider_legitimization_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                          h_payto),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (
+    pg->conn,
+    "get_wire_target_by_legitimization_id",
+    params,
+    rs);
+}
+
+
+/**
+ * Closure for #get_wire_fees_cb().
+ */
+struct GetLegitimizationsContext
+{
+  /**
+   * Function to call per result.
+   */
+  TALER_EXCHANGEDB_SatisfiedProviderCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Flag set to #GNUNET_OK as long as everything is fine.
+   */
+  enum GNUNET_GenericReturnValue status;
+
+};
+
+
+/**
+ * Invoke the callback for each result.
+ *
+ * @param cls a `struct GetLegitimizationsContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+get_legitimizations_cb (void *cls,
+                        PGresult *result,
+                        unsigned int num_results)
+{
+  struct GetLegitimizationsContext *ctx = cls;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    char *provider_section;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_string ("provider_section",
+                                    &provider_section),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->status = GNUNET_SYSERR;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             provider_section);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Call us on KYC processes satisfied for the given
+ * account.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param spc function to call for each satisfied KYC process
+ * @param spc_cls closure for @a spc
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_satisfied_kyc_processes (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
+  void *spc_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Absolute now
+    = GNUNET_TIME_absolute_get ();
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+  struct GetLegitimizationsContext ctx = {
+    .cb = spc,
+    .cb_cls = spc_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "get_satisfied_legitimizations",
+    params,
+    &get_legitimizations_cb,
+    &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -16736,6 +17133,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_get_drain_profit;
   plugin->profit_drains_set_finished
     = &postgres_profit_drains_set_finished;
+  plugin->insert_kyc_requirement_for_account
+    = &postgres_insert_kyc_requirement_for_account;
+  plugin->update_kyc_requirement_by_row
+    = &postgres_update_kyc_requirement_by_row;
+  plugin->lookup_kyc_requirement_by_row
+    = &postgres_lookup_kyc_requirement_by_row;
+  plugin->lookup_kyc_requirement_by_account
+    = &postgres_lookup_kyc_requirement_by_account;
+  plugin->kyc_provider_account_lookup
+    = &postgres_kyc_provider_account_lookup;
+  plugin->select_satisfied_kyc_processes
+    = &postgres_select_satisfied_kyc_processes;
   return plugin;
 }
 
