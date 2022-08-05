@@ -136,7 +136,11 @@ template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
+ * @param url_path rest of the URL after `/kyc-webhook/`
+ * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
+ * @param provider_user_id user ID (or NULL) the proof is for
+ * @param provider_legitimization_id legitimization ID the proof is for
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -144,6 +148,8 @@ template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 static struct TALER_KYCLOGIC_ProofHandle *
 template_proof (void *cls,
                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
+                const char *url_path,
+                struct MHD_Connection *connection,
                 const struct TALER_PaytoHashP *account_id,
                 const char *provider_user_id,
                 const char *provider_legitimization_id,
