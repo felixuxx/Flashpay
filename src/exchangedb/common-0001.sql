@@ -164,7 +164,9 @@ BEGIN
       ',current_balance_frac INT4 NOT NULL DEFAULT(0)'
       ',purses_active INT8 NOT NULL DEFAULT(0)'
       ',purses_allowed INT8 NOT NULL DEFAULT(0)'
+      -- FIXME: remove:
       ',kyc_required BOOLEAN NOT NULL DEFAULT(FALSE)'
+      -- FIXME: remove:
       ',kyc_passed BOOLEAN NOT NULL DEFAULT(FALSE)'
       ',max_age INT4 NOT NULL DEFAULT(120)'
       ',expiration_date INT8 NOT NULL'
@@ -1399,6 +1401,7 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)' -- REFERENCES reserves (reserve_pub) ON DELETE CASCADE
       ',reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)'
       ',purse_pub BYTEA NOT NULL CHECK (LENGTH(purse_pub)=32)' -- REFERENCES purse_requests (purse_pub)
+      ',wallet_h_payto BYTEA NOT NULL CHECK (LENGTH(wallet_h_payto)=32)'
       ',PRIMARY KEY (purse_pub)'
     ') %s ;'
     ,table_name

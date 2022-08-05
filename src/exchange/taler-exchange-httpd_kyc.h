@@ -139,24 +139,6 @@ TEH_kyc_done (void);
 
 
 /**
- * Function called on each @a amount that was found to
- * be relevant for a KYC check.
- *
- * @param cls closure to allow the KYC module to
- *        total up amounts and evaluate rules
- * @param amount encountered transaction amount
- * @param date when was the amount encountered
- * @return #GNUNET_OK to continue to iterate,
- *         #GNUNET_NO to abort iteration
- *         #GNUNET_SYSERR on internal error (also abort itaration)
- */
-typedef enum GNUNET_GenericReturnValue
-(*TEH_KycAmountCallback)(void *cls,
-                         const struct TALER_Amount *amount,
-                         struct GNUNET_TIME_Absolute date);
-
-
-/**
  * Function called to iterate over KYC-relevant
  * transaction amounts for a particular time range.
  * Called within a database transaction, so must
@@ -174,7 +156,7 @@ typedef enum GNUNET_GenericReturnValue
 typedef void
 (*TEH_KycAmountIterator)(void *cls,
                          struct GNUNET_TIME_Absolute limit,
-                         TEH_KycAmountCallback cb,
+                         TALER_EXCHANGEDB_KycAmountCallback cb,
                          void *cb_cls);
 
 

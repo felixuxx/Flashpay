@@ -2275,6 +2275,7 @@ struct TALER_EXCHANGEDB_CsRevealFreshCoinData
 
 /**
  * Types of operations that require KYC checks.
+ * @deprecated FIXME - remove with new KYC logic
  */
 enum TALER_EXCHANGEDB_KycType
 {
@@ -2318,6 +2319,7 @@ enum TALER_EXCHANGEDB_KycType
 
 /**
  * Generic KYC status for some operation.
+ * @deprecated FIXME - remove with new KYC logic
  */
 struct TALER_EXCHANGEDB_KycStatus
 {
@@ -2338,6 +2340,25 @@ struct TALER_EXCHANGEDB_KycStatus
   bool ok;
 
 };
+
+
+/**
+ * Function called on each @a amount that was found to
+ * be relevant for a KYC check.
+ *
+ * @param cls closure to allow the KYC module to
+ *        total up amounts and evaluate rules
+ * @param amount encountered transaction amount
+ * @param date when was the amount encountered
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_NO to abort iteration
+ *         #GNUNET_SYSERR on internal error (also abort itaration)
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_KycAmountCallback)(
+  void *cls,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Absolute date);
 
 
 /**
@@ -5741,6 +5762,66 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
     void *spc_cls);
+
+
+  /**
+   * Call @a kac on withdrawn amounts after @a time_limit which are relevant
+   * for a KYC trigger for a the (debited) account identified by @a h_payto.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param time_limit oldest transaction that could be relevant
+   * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+   * @param kac_cls closure for @a kac
+   * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_withdraw_amounts_for_kyc_check)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute time_limit,
+    TALER_EXCHANGEDB_KycAmountCallback kac,
+    void *kac_cls);
+
+
+  /**
+   * Call @a kac on aggregated amounts after @a time_limit which are relevant for a
+   * KYC trigger for a the (credited) account identified by @a h_payto.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param time_limit oldest transaction that could be relevant
+   * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+   * @param kac_cls closure for @a kac
+   * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aggregation_amounts_for_kyc_check)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute time_limit,
+    TALER_EXCHANGEDB_KycAmountCallback kac,
+    void *kac_cls);
+
+
+  /**
+   * Call @a kac on merged reserve amounts after @a time_limit which are relevant for a
+   * KYC trigger for a the wallet identified by @a h_payto.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param time_limit oldest transaction that could be relevant
+   * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+   * @param kac_cls closure for @a kac
+   * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_merge_amounts_for_kyc_check)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute time_limit,
+    TALER_EXCHANGEDB_KycAmountCallback kac,
+    void *kac_cls);
 
 
 };

@@ -4090,6 +4090,7 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7);",
       7),
+    // FIXME: dead!
     GNUNET_PQ_make_prepare (
       "insert_into_table_account_merges",
       "INSERT INTO account_merges"
@@ -4097,9 +4098,10 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_pub"
       ",reserve_sig"
       ",purse_pub"
+      ",wallet_h_payto"
       ") VALUES "
-      "($1, $2, $3, $4);",
-      4),
+      "($1, $2, $3, $4, $5);",
+      5),
     GNUNET_PQ_make_prepare (
       "insert_into_table_history_requests",
       "INSERT INTO history_requests"
@@ -4465,7 +4467,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_reserve AS no_reserve"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5, $6, $7);",
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
       7),
     /* Used in #postgres_do_reserve_purse() */
     GNUNET_PQ_make_prepare (
@@ -4476,8 +4478,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_kyc AS no_kyc"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-      9),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
+      10),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
@@ -4579,6 +4581,55 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE h_payto=$1"
       "   AND expiration_time>=$2;",
       2),
+
+    /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
+() */
+    GNUNET_PQ_make_prepare (
+      "select_kyc_relevant_withdraw_events",
+      "SELECT"
+      " ro.amount_with_fee_val AS amount_val"
+      ",ro.amount_with_fee_frac AS amount_frac"
+      ",ro.execution_date AS date"
+      " FROM reserves_out ro"
+      " JOIN reserves_out_by_reserve USING (h_blind_ev)"
+      " JOIN reserves res ON (ro.reserve_uuid = res.reserve_uuid)"
+      " JOIN reserves_in ri ON (res.reserve_pub = ri.reserve_pub)"
+      " WHERE wire_source_h_payto=$1"
+      "   AND ro.execution_date >= $2"
+      " ORDER BY ro.execution_date DESC",
+      2),
+
+    /* Used in #postgres_select_aggregation_amounts_for_kyc_check (
+() */
+    GNUNET_PQ_make_prepare (
+      "select_kyc_relevant_aggregation_events",
+      "SELECT"
+      " amount_val"
+      ",amount_frac"
+      ",execution_date AS date"
+      " FROM wire_out"
+      " WHERE wire_target_h_payto=$1"
+      "   AND execution_date >= $2"
+      " ORDER BY execution_date DESC",
+      2),
+
+    /* Used in #postgres_select_merge_amounts_for_kyc_check (
+() */
+    GNUNET_PQ_make_prepare (
+      "select_kyc_relevant_merge_events",
+      "SELECT"
+      " amount_with_fee_val AS amount_val"
+      ",amount_with_fee_frac AS amount_frac"
+      ",merge_timestamp AS date"
+      " FROM account_merges"
+      " JOIN purse_merges USING (purse_pub)"
+      " JOIN purse_requests USING (purse_pub)"
+      " WHERE wallet_h_payto=$1"
+      "   AND merge_timestamp >= $2"
+      "   AND finished"
+      " ORDER BY merge_timestamp DESC",
+      2),
+
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -16067,6 +16118,7 @@ postgres_do_purse_merge (
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
+  struct TALER_PaytoHashP h_payto;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
@@ -16076,6 +16128,7 @@ postgres_do_purse_merge (
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_string (partner_url),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
@@ -16093,6 +16146,15 @@ postgres_do_purse_merge (
     GNUNET_PQ_result_spec_end
   };
 
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+                                          reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &h_payto);
+    GNUNET_free (payto_uri);
+  }
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_purse_merge",
                                                    params,
@@ -16136,6 +16198,7 @@ postgres_do_reserve_purse (
 {
   struct PostgresClosure *pg = cls;
   struct TALER_Amount zero_fee;
+  struct TALER_PaytoHashP h_payto;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
@@ -16146,6 +16209,7 @@ postgres_do_reserve_purse (
                                  ? &zero_fee
                                  : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
@@ -16161,6 +16225,15 @@ postgres_do_reserve_purse (
     GNUNET_PQ_result_spec_end
   };
 
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+                                          reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &h_payto);
+    GNUNET_free (payto_uri);
+  }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (pg->currency,
                                         &zero_fee));
@@ -16810,6 +16883,225 @@ postgres_select_satisfied_kyc_processes (
 
 
 /**
+ * Closure for #get_kyc_amounts_cb().
+ */
+struct KycAmountCheckContext
+{
+  /**
+   * Function to call per result.
+   */
+  TALER_EXCHANGEDB_KycAmountCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Flag set to #GNUNET_OK as long as everything is fine.
+   */
+  enum GNUNET_GenericReturnValue status;
+
+};
+
+
+/**
+ * Invoke the callback for each result.
+ *
+ * @param cls a `struct KycAmountCheckContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+get_kyc_amounts_cb (void *cls,
+                    PGresult *result,
+                    unsigned int num_results)
+{
+  struct KycAmountCheckContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    struct GNUNET_TIME_Absolute date;
+    struct TALER_Amount amount;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &amount),
+      GNUNET_PQ_result_spec_absolute_time ("date",
+                                           &date),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->status = GNUNET_SYSERR;
+      return;
+    }
+    ret = ctx->cb (ctx->cb_cls,
+                   &amount,
+                   date);
+    GNUNET_PQ_cleanup_result (rs);
+    switch (ret)
+    {
+    case GNUNET_OK:
+      continue;
+    case GNUNET_NO:
+      break;
+    case GNUNET_SYSERR:
+      ctx->status = GNUNET_SYSERR;
+      break;
+    }
+    break;
+  }
+}
+
+
+/**
+ * Call @a kac on withdrawn amounts after @a time_limit which are relevant
+ * for a KYC trigger for a the (debited) account identified by @a h_payto.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param time_limit oldest transaction that could be relevant
+ * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+ * @param kac_cls closure for @a kac
+ * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_withdraw_amounts_for_kyc_check (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Absolute time_limit,
+  TALER_EXCHANGEDB_KycAmountCallback kac,
+  void *kac_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&time_limit),
+    GNUNET_PQ_query_param_end
+  };
+  struct KycAmountCheckContext ctx = {
+    .cb = kac,
+    .cb_cls = kac_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "select_kyc_relevant_withdraw_events",
+    params,
+    &get_kyc_amounts_cb,
+    &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Call @a kac on deposited amounts after @a time_limit which are relevant for a
+ * KYC trigger for a the (credited) account identified by @a h_payto.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param time_limit oldest transaction that could be relevant
+ * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+ * @param kac_cls closure for @a kac
+ * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_aggregation_amounts_for_kyc_check (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Absolute time_limit,
+  TALER_EXCHANGEDB_KycAmountCallback kac,
+  void *kac_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&time_limit),
+    GNUNET_PQ_query_param_end
+  };
+  struct KycAmountCheckContext ctx = {
+    .cb = kac,
+    .cb_cls = kac_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "select_kyc_relevant_aggregation_events",
+    params,
+    &get_kyc_amounts_cb,
+    &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Call @a kac on merged reserve amounts after @a time_limit which are relevant for a
+ * KYC trigger for a the wallet identified by @a h_payto.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param time_limit oldest transaction that could be relevant
+ * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+ * @param kac_cls closure for @a kac
+ * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_merge_amounts_for_kyc_check (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  struct GNUNET_TIME_Absolute time_limit,
+  TALER_EXCHANGEDB_KycAmountCallback kac,
+  void *kac_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&time_limit),
+    GNUNET_PQ_query_param_end
+  };
+  struct KycAmountCheckContext ctx = {
+    .cb = kac,
+    .cb_cls = kac_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "select_kyc_relevant_merge_events",
+    params,
+    &get_kyc_amounts_cb,
+    &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -17145,6 +17437,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_kyc_provider_account_lookup;
   plugin->select_satisfied_kyc_processes
     = &postgres_select_satisfied_kyc_processes;
+  plugin->select_withdraw_amounts_for_kyc_check
+    = &postgres_select_withdraw_amounts_for_kyc_check;
+  plugin->select_aggregation_amounts_for_kyc_check
+    = &postgres_select_aggregation_amounts_for_kyc_check;
+  plugin->select_merge_amounts_for_kyc_check
+    = &postgres_select_merge_amounts_for_kyc_check;
   return plugin;
 }
 

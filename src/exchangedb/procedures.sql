@@ -1727,6 +1727,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_reserve_sig BYTEA,
   IN in_partner_url VARCHAR,
   IN in_reserve_pub BYTEA,
+  IN in_wallet_h_payto BYTEA,
   IN in_require_kyc BOOLEAN,
   OUT out_no_partner BOOLEAN,
   OUT out_no_balance BOOLEAN,
@@ -1876,11 +1877,13 @@ END IF;
 INSERT INTO account_merges
   (reserve_pub
   ,reserve_sig
-  ,purse_pub)
+  ,purse_pub
+  ,wallet_h_payto)
   VALUES
   (in_reserve_pub
   ,in_reserve_sig
-  ,in_purse_pub);
+  ,in_purse_pub
+  ,in_wallet_h_payto);
 
 -- If we need a wad transfer, mark purse ready for it.
 IF (0 != my_partner_serial_id)
@@ -1927,7 +1930,7 @@ RETURN;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA, BOOLEAN)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
@@ -1940,6 +1943,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_purse_fee_val INT8,
   IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
+  IN in_wallet_h_payto BYTEA,
   IN in_require_kyc BOOLEAN,
   OUT out_no_funds BOOLEAN,
   OUT out_no_kyc BOOLEAN,
@@ -2060,15 +2064,17 @@ out_no_funds=FALSE;
 INSERT INTO account_merges
   (reserve_pub
   ,reserve_sig
-  ,purse_pub)
+  ,purse_pub
+  ,wallet_h_payto)
   VALUES
   (in_reserve_pub
   ,in_reserve_sig
-  ,in_purse_pub);
+  ,in_purse_pub
+  ,in_wallet_h_payto);
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA, BOOLEAN)
   IS 'Create a purse for a reserve.';
 
 
