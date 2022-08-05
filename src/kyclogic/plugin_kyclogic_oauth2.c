@@ -32,6 +32,38 @@
 struct TALER_KYCLOGIC_ProviderDetails
 {
 
+  /**
+   * URL of the OAuth2.0 endpoint for KYC checks.
+   * (token/auth)
+   */
+  char *auth_url;
+
+  /**
+   * URL of the OAuth2.0 endpoint for KYC checks.
+   */
+  char *login_url;
+
+  /**
+   * URL of the user info access endpoint.
+   */
+  char *info_url;
+
+  /**
+   * Our client ID for OAuth2.0.
+   */
+  char *client_id;
+
+  /**
+   * Our client secret for OAuth2.0.
+   */
+  char *client_secret;
+
+  /**
+   * Where to redirect clients after the
+   * Web-based KYC process is done?
+   */
+  char *post_kyc_redirect_url;
+
 };
 
 
@@ -74,6 +106,24 @@ struct PluginState
 
 
 /**
+ * Release configuration resources previously loaded
+ *
+ * @param[in] pd configuration to release
+ */
+static void
+oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
+{
+  GNUNET_free (pd->auth_url);
+  GNUNET_free (pd->login_url);
+  GNUNET_free (pd->info_url);
+  GNUNET_free (pd->client_id);
+  GNUNET_free (pd->client_secret);
+  GNUNET_free (pd->post_kyc_redirect_url);
+  GNUNET_free (pd);
+}
+
+
+/**
  * Load the configuration of the KYC provider.
  *
  * @param cls closure
@@ -84,18 +134,144 @@ static struct TALER_KYCLOGIC_ProviderDetails *
 oauth2_load_configuration (void *cls,
                            const char *provider_section_name)
 {
-  return NULL;
-}
+  struct PluginState *ps = cls;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+  char *s;
 
+  pd = GNUNET_new (struct TALER_KYCLOGIC_ProviderDetails);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_AUTH_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_AUTH_URL");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  if ( (! TALER_url_valid_charset (s)) ||
+       ( (0 != strncasecmp (s,
+                            "http://",
+                            strlen ("http://"))) &&
+         (0 != strncasecmp (s,
+                            "https://",
+                            strlen ("https://"))) ) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_AUTH_URL",
+                               "not a valid URL");
+    GNUNET_free (s);
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->auth_url = s;
 
-/**
- * Release configuration resources previously loaded
- *
- * @param[in] pd configuration to release
- */
-static void
-oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
-{
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_LOGIN_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_LOGIN_URL");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  if ( (! TALER_url_valid_charset (s)) ||
+       ( (0 != strncasecmp (s,
+                            "http://",
+                            strlen ("http://"))) &&
+         (0 != strncasecmp (s,
+                            "https://",
+                            strlen ("https://"))) ) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_LOGIN_URL",
+                               "not a valid URL");
+    oauth2_unload_configuration (pd);
+    GNUNET_free (s);
+    return NULL;
+  }
+  pd->login_url = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_INFO_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_INFO_URL");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  if ( (! TALER_url_valid_charset (s)) ||
+       ( (0 != strncasecmp (s,
+                            "http://",
+                            strlen ("http://"))) &&
+         (0 != strncasecmp (s,
+                            "https://",
+                            strlen ("https://"))) ) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_INFO_URL",
+                               "not a valid URL");
+    GNUNET_free (s);
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->info_url = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_CLIENT_ID",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_CLIENT_ID");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->client_id = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_CLIENT_SECRET",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_CLIENT_SECRET");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->client_secret = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_POST_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_POST_URL");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
+  pd->post_kyc_redirect_url = s;
+
+  return pd;
 }
 
 
