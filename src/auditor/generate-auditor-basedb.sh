@@ -15,6 +15,20 @@
 #
 set -eu
 
+function get_iban() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.iban'
+}
+
+function get_payto_uri() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
+}
+
 # Cleanup to run whenever we exit
 function cleanup()
 {
@@ -22,6 +36,9 @@ function cleanup()
     do
         kill $n 2> /dev/null || true
     done
+    echo Killing euFin..
+    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
     wait
 }
 
@@ -34,10 +51,8 @@ function exit_skip() {
     echo $1
     exit 77
 }
-
 # Where do we write the result?
 BASEDB=${1:-"auditor-basedb"}
-
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
@@ -47,16 +62,15 @@ export WALLET_DB=${BASEDB:-"wallet"}.wdb
 
 # delete existing wallet database
 rm -f $WALLET_DB
-
+# delete libeufin database
+rm -f $TARGET_DB
 
 # Configuration file will be edited, so we create one
 # from the template.
-CONF=${BASEDB}.conf
-cp generate-auditor-basedb.conf $CONF
-
-
-echo -n "Testing for taler-bank-manage"
-taler-bank-manage --help >/dev/null </dev/null || exit_skip " MISSING"
+CONF_ONCE=${BASEDB}.conf
+cp generate-auditor-basedb.conf $CONF_ONCE
+echo -n "Testing for libeufin"
+libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 echo -n "Testing for taler-wallet-cli"
 taler-wallet-cli -v >/dev/null </dev/null || exit_skip " MISSING"
@@ -69,7 +83,7 @@ echo " FOUND"
 pwd
 # Clean up
 
-DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
+DATA_DIR=`taler-config -f -c $CONF_ONCE -s PATHS -o TALER_HOME`
 rm -rf $DATA_DIR || true
 
 # reset database
@@ -78,59 +92,59 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 
 # obtain key configuration data
-MASTER_PRIV_FILE=`taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE`
+MASTER_PRIV_FILE=`taler-config -f -c $CONF_ONCE -s exchange-offline -o MASTER_PRIV_FILE`
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
 MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
-EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
-MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
+MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
-BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
-BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8083/
-AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_FILE=`taler-config -f -c $CONF_ONCE -s AUDITOR -o AUDITOR_PRIV_FILE`
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
 mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
+EXCHANGE_URL=`taler-config -c $CONF_ONCE -s EXCHANGE -o BASE_URL`
+BANK_PORT=`taler-config -c $CONF_ONCE -s BANK -o HTTP_PORT`
+BANK_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 
 echo "AUDITOR PUB is $AUDITOR_PUB using file $AUDITOR_PRIV_FILE"
 
 # patch configuration
-taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
-taler-config -c $CONF -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
-taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
-taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
+taler-config -c $CONF_ONCE -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
+taler-config -c $CONF_ONCE -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
+taler-config -c $CONF_ONCE -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
+taler-config -c $CONF_ONCE -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF_ONCE -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF_ONCE -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF_ONCE -s bank -o database -V postgres:///$TARGET_DB
 
 # setup exchange
 echo "Setting up exchange"
-taler-exchange-dbinit -c $CONF
+taler-exchange-dbinit -c $CONF_ONCE
 
 echo "Setting up merchant"
-taler-merchant-dbinit -c $CONF
+taler-merchant-dbinit -c $CONF_ONCE
 
 # setup auditor
 echo "Setting up auditor"
-taler-auditor-dbinit -c $CONF || exit_skip "Failed to initialize auditor DB"
-taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Failed to add exchange to auditor"
+taler-auditor-dbinit -c $CONF_ONCE || exit_skip "Failed to initialize auditor DB"
+taler-auditor-exchange -c $CONF_ONCE -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Failed to add exchange to auditor"
 
 # Launch services
-echo "Launching services"
-taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> taler-bank.log &
+echo "Launching services (pre audit DB: $TARGET_DB)"
+taler-bank-manage-testing $BANK_PORT $TARGET_DB $EXCHANGE_URL $CONF_ONCE
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
-taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
-taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
-taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
-taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
-taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
-taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
-taler-auditor-httpd -L INFO -c $CONF 2> taler-auditor-httpd.log &
+taler-exchange-secmod-eddsa -c $CONF_ONCE 2> taler-exchange-secmod-eddsa.log &
+taler-exchange-secmod-rsa -c $CONF_ONCE 2> taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-cs -c $CONF_ONCE 2> taler-exchange-secmod-cs.log &
+taler-exchange-httpd -c $CONF_ONCE 2> taler-exchange-httpd.log &
+taler-merchant-httpd -c $CONF_ONCE -L INFO 2> taler-merchant-httpd.log &
+taler-exchange-wirewatch -c $CONF_ONCE 2> taler-exchange-wirewatch.log &
+taler-auditor-httpd -L INFO -c $CONF_ONCE 2> taler-auditor-httpd.log &
 
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`
@@ -169,14 +183,12 @@ if [ 1 != $OK ]
 then
     exit_skip "Failed to launch services"
 fi
-echo " DONE"
-
 echo -n "Setting up keys"
-taler-exchange-offline -c $CONF \
+taler-exchange-offline -c $CONF_ONCE \
   download sign \
-  enable-account payto://x-taler-bank/localhost/Exchange \
+  enable-account `taler-config -c $CONF_ONCE -s exchange-account-1 -o PAYTO_URI` \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
-  wire-fee now x-taler-bank TESTKUDOS:0.07 TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  wire-fee now iban TESTKUDOS:0.07 TESTKUDOS:0.01 TESTKUDOS:0.01 \
   global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
   upload &> taler-exchange-offline.log
 
@@ -199,7 +211,7 @@ fi
 echo " DONE"
 echo -n "Adding auditor signatures ..."
 
-taler-auditor-offline -c $CONF \
+taler-auditor-offline -c $CONF_ONCE \
   download sign upload &> taler-auditor-offline.log
 
 echo " DONE"
@@ -227,16 +239,16 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
     }' \
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
-    --arg BANK_URL "$BANK_URL"
+    --arg BANK_URL "$BANK_URL/access-api/"
   )" &> taler-wallet-cli.log
-
 
 echo "Shutting down services"
 cleanup
 
 # Dump database
-echo "Dumping database"
+echo "Dumping database ${BASEDB}(-libeufin).sql"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
+sqlite3 $TARGET_DB ".dump" > ${BASEDB}-libeufin.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 
@@ -245,7 +257,7 @@ date +%s > ${BASEDB}.age
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
-
+rm $TARGET_DB # libeufin DB
 rm -rf $DATA_DIR || true
 
 echo "====================================="

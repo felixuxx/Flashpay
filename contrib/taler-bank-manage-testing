@@ -4,24 +4,176 @@
 # testing accounts before launching the bank properly.
 #
 # Takes 3 arguments:
-# $1: the configuration file name
+# $1: the Nexus port (Sandbox port prepends 1 to it)
 # $2: the database name
-# $3: serve-http or serve-uwsgi
+# $3: exchange base URL (used to specify the default exchange)
+# $4: config file (needs patch to specify exchange's PAYTO_URI)
 
 set -eu
 
-if [ "$#" -ne 3 ];
+if [ "$#" -ne 4 ];
 then
-    echo "illegal number of parameters"
+    echo "illegal number of parameters.  \
+Give: Nexus port number, SQLIte file path, exchange base URL, config file path."
     exit 1
 fi
 
-# Ensure starting accounts exist
-taler-bank-manage -c $1 --with-db $2 django provide_accounts
-taler-bank-manage -c $1 --with-db $2 django add_bank_account 42
-taler-bank-manage -c $1 --with-db $2 django add_bank_account 43
+# Must not terminate jobs here, as they are needed
+# by the script _importing_ this one.  Those script
+# will then manage the termination.
+# trap cleanup EXIT
 
-taler-bank-manage -c $1 --with-db $2 django changepassword_unsafe Exchange x
+export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:$2"
+# Create the default demobank.
+libeufin-sandbox config --currency TESTKUDOS default
+export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
+libeufin-sandbox serve --port "1$1" \
+  > libeufin-sandbox-stdout.log \
+  2> libeufin-sandbox-stderr.log &
+echo $! > libeufin-sandbox.pid
+export LIBEUFIN_SANDBOX_URL="http://localhost:1$1/demobanks/default"
+set +e
+echo -n "Waiting for Sandbox.."
+for n in `seq 1 50`; do
+  echo -n "."
+  sleep 1  
+  wget --timeout=1 \
+    --tries=3 --waitretry=0 \
+    -o /dev/null -O /dev/null \
+    $LIBEUFIN_SANDBOX_URL
+  break
+done
+echo OK
 
-# Now run Django for good
-exec taler-bank-manage -c $1 --with-db $2 $3
+register_sandbox_account() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    libeufin-cli sandbox \
+      demobank \
+      register --name "$3"
+    unset LIBEUFIN_SANDBOX_USERNAME
+    unset LIBEUFIN_SANDBOX_PASSWORD
+}
+set -e
+echo -n "Register the 'fortytwo' Sandbox user.."
+register_sandbox_account fortytwo x "Forty Two"
+echo OK
+echo -n "Register the 'fortythree' Sandbox user.."
+register_sandbox_account fortythree x "Forty Three"
+echo OK
+echo -n "Register 'exchange' Sandbox user.."
+register_sandbox_account exchange x "Exchange Company"
+echo OK
+echo -n "Register 'tor' Sandbox user.."
+register_sandbox_account tor x "Tor Project"
+echo OK
+echo -n "Register 'gnunet' Sandbox user.."
+register_sandbox_account gnunet x "GNUnet"
+echo OK
+echo -n "Register 'tutorial' Sandbox user.."
+register_sandbox_account tutorial x "Tutorial"
+echo OK
+echo -n "Register 'survey' Sandbox user.."
+register_sandbox_account survey x "Survey"
+echo OK
+echo -n "Specify exchange's PAYTO_URI in the config ..."
+export LIBEUFIN_SANDBOX_USERNAME=exchange
+export LIBEUFIN_SANDBOX_PASSWORD=x
+PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
+taler-config -c $4 -s exchange-account-1 -o PAYTO_URI -V $PAYTO
+echo " OK"
+echo -n "Setting this exchange as the bank's default ..."
+EXCHANGE_PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
+libeufin-sandbox default-exchange "$3" "$EXCHANGE_PAYTO"
+echo " OK"
+# Prepare EBICS: create Ebics host and Exchange subscriber.
+# Shortly becoming admin to setup Ebics.
+export LIBEUFIN_SANDBOX_USERNAME=admin
+export LIBEUFIN_SANDBOX_PASSWORD=secret
+echo -n "Create EBICS host at Sandbox.."
+libeufin-cli sandbox \
+  --sandbox-url http://localhost:1$1 \
+  ebicshost create --host-id talerebics
+echo OK
+echo -n "Create exchange EBICS subscriber at Sandbox.."
+libeufin-cli sandbox \
+  demobank new-ebicssubscriber --host-id talerebics \
+  --user-id exchangeebics --partner-id talerpartner \
+  --bank-account exchange # that's a username _and_ a bank account name
+echo OK
+unset LIBEUFIN_SANDBOX_USERNAME
+unset LIBEUFIN_SANDBOX_PASSWORD
+# Prepare Nexus, which is the side actually talking
+# to the exchange.
+export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$2"
+# For convenience, username and password are
+# identical to those used at the Sandbox.
+echo -n Create exchange Nexus user..
+libeufin-nexus superuser exchange --password x
+echo OK
+libeufin-nexus serve --port $1 \
+  2> libeufin-nexus-stderr.log \
+  > libeufin-nexus-stdout.log &
+echo $! > libeufin-nexus.pid
+export LIBEUFIN_NEXUS_URL=http://localhost:$1
+echo -n Waiting for Nexus..
+set +e
+for n in `seq 1 50`; do
+  echo -n "."
+  sleep 1  
+  wget --timeout=1 \
+    --tries=3 --waitretry=0 \
+    -o /dev/null -O /dev/null \
+    $LIBEUFIN_NEXUS_URL
+  break
+done
+set -e
+echo OK
+export LIBEUFIN_NEXUS_USERNAME=exchange
+export LIBEUFIN_NEXUS_PASSWORD=x
+echo -n Creating a EBICS connection at Nexus..
+libeufin-cli connections new-ebics-connection \
+  --ebics-url "http://localhost:1$1/ebicsweb" \
+  --host-id talerebics \
+  --partner-id talerpartner \
+  --ebics-user-id exchangeebics \
+  talerconn
+echo OK
+echo -n Setup EBICS keying..
+libeufin-cli connections connect talerconn > /dev/null
+echo OK
+echo -n Download bank account name from Sandbox..
+libeufin-cli connections download-bank-accounts talerconn
+echo OK
+echo -n Importing bank account info into Nexus..
+libeufin-cli connections import-bank-account \
+  --offered-account-id exchange \
+  --nexus-bank-account-id exchange-nexus \
+  talerconn
+echo OK
+echo -n Setup payments submission task..
+# Tries every second.
+libeufin-cli accounts task-schedule \
+  --task-type submit \
+  --task-name exchange-payments \
+  --task-cronspec "* * *" \
+  exchange-nexus
+echo OK
+# Tries every second.  Ask C52
+echo -n Setup history fetch task..
+libeufin-cli accounts task-schedule \
+  --task-type fetch \
+  --task-name exchange-history \
+  --task-cronspec "* * *" \
+  --task-param-level report \
+  --task-param-range-type latest \
+  exchange-nexus
+echo OK
+# TBD: create Taler facade.
+echo -n Create the Taler facade at Nexus..
+libeufin-cli facades \
+  new-taler-wire-gateway-facade \
+  --currency TESTKUDOS --facade-name test-facade \
+  talerconn exchange-nexus
+echo OK
+# Facade schema: http://localhost:$1/facades/test-facade/taler-wire-gateway/

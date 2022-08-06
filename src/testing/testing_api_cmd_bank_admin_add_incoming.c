@@ -217,6 +217,26 @@ confirmation_cb (void *cls,
   fts->reserve_history.details.in_details.timestamp = timestamp;
   fts->reserve_history.details.in_details.wire_reference = serial_id;
   fts->aih = NULL;
+  /**
+   * Test case not caring about the HTTP status code.
+   * That helps when Fakebank and Libeufin diverge in
+   * the response status code.  An example is the
+   * /admin/add-incoming: libeufin return ALWAYS '200 OK'
+   * (see note below) whereas the Fakebank responds with
+   * '409 Conflict' upon a duplicate reserve public key.
+   *
+   * Note: this decision aims at avoiding to put Taler
+   * logic into the Sandbox; that's because banks DO allow
+   * their customers to wire the same subject multiple
+   * times.  Hence, instead of triggering any error, libeufin
+   * bounces the payment back in the same way it does for
+   * malformed reserve public keys.
+   */
+  if (-1 == fts->expected_http_status)
+  {
+    TALER_TESTING_interpreter_next (is);
+    return;
+  }
   if (http_status != fts->expected_http_status)
   {
     GNUNET_break (0);

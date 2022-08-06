@@ -37,6 +37,13 @@
 #define CONFIG_FILE_PYBANK "test_bank_api_pybank.conf"
 #define CONFIG_FILE_NEXUS "test_bank_api_nexus.conf"
 
+
+/**
+ * Configuration file.  It changes based on
+ * whether Nexus or Fakebank are used.
+ */
+const char *cfgfile;
+
 /**
  * Bank configuration data.
  */
@@ -88,14 +95,24 @@ run (void *cls,
                                             "KUDOS:5.01",
                                             &bc.exchange_auth,
                                             bc.user42_payto),
+      /**
+       * This CMD doesn't care about the HTTP response code; that's
+       * because Fakebank and euFin behaves differently when a reserve
+       * pub is duplicate.  Fakebank responds with 409, whereas euFin
+       * with 200 but it bounces the payment back to the customer.
+       */
       TALER_TESTING_cmd_admin_add_incoming_with_ref ("credit-1-fail",
                                                      "KUDOS:2.01",
                                                      &bc.exchange_auth,
                                                      bc.user42_payto,
                                                      "credit-1",
-                                                     MHD_HTTP_CONFLICT),
+                                                     -1),
       TALER_TESTING_cmd_sleep ("Waiting 4s for 'credit-1' to settle",
                                4),
+      /**
+       * Check that the incoming payment with a duplicate
+       * reserve public key didn't make it to the exchange.
+       */
       TALER_TESTING_cmd_bank_credits ("history-1c",
                                       &bc.exchange_auth,
                                       NULL,
@@ -164,7 +181,6 @@ main (int argc,
       char *const *argv)
 {
   int rv;
-  const char *cfgfile;
 
   (void) argc;
   (void) argv;

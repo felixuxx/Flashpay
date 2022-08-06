@@ -28,6 +28,11 @@ TESTS=${1:-$ALL_TESTS}
 # VALGRIND=valgrind
 VALGRIND=""
 
+# Number of seconds to let libeuifn background
+# tasks apply a cycle of payment submission and
+# history request.
+LIBEUFIN_SETTLE_TIME=1
+
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo $1
@@ -48,17 +53,72 @@ function cleanup()
         kill $n 2> /dev/null || true
     done
     wait
+    # kill euFin
+    echo Killing euFin..
+    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
 }
 
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
 
+function launch_libeufin () {
+    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    libeufin-nexus serve --port 8082 \
+      2> libeufin-nexus-stderr.log \
+      > libeufin-nexus-stdout.log &
+    echo $! > libeufin-nexus.pid
+    export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
+    libeufin-sandbox serve --port 18082 \
+      > libeufin-sandbox-stdout.log \
+      2> libeufin-sandbox-stderr.log &
+    echo $! > libeufin-sandbox.pid
+}
 
+# Downloads new transactions from the bank.
+function nexus_fetch_transactions () {
+  export LIBEUFIN_NEXUS_USERNAME=exchange
+  export LIBEUFIN_NEXUS_PASSWORD=x
+  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+  libeufin-cli accounts fetch-transactions \
+    --range-type since-last --level report exchange-nexus > /dev/null
+  unset LIBEUFIN_NEXUS_USERNAME
+  unset LIBEUFIN_NEXUS_PASSWORD
+  unset LIBEUFIN_NEXUS_URL
+}
+
+
+# Instruct Nexus to all the prepared payments (= those
+# POSTed to /transfer by the exchange).
+function nexus_submit_to_sandbox () {
+  export LIBEUFIN_NEXUS_USERNAME=exchange
+  export LIBEUFIN_NEXUS_PASSWORD=x
+  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+  libeufin-cli accounts submit-payments exchange-nexus
+  unset LIBEUFIN_NEXUS_USERNAME
+  unset LIBEUFIN_NEXUS_PASSWORD
+  unset LIBEUFIN_NEXUS_URL
+}
 # Operations to run before the actual audit
 function pre_audit () {
     # Launch bank
-    echo -n "Launching bank "
-    taler-bank-manage-testing $CONF postgres:///$DB serve 2>bank.err >bank.log &
+    echo -n "Launching bank"
+    EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
+    launch_libeufin
+    for n in `seq 1 80`
+    do
+        echo -n "."
+        sleep 0.1
+        OK=1
+        wget http://localhost:18082/ -o /dev/null -O /dev/null >/dev/null && break
+        OK=0
+    done
+    if [ 1 != $OK ]
+    then
+        exit_skip "Failed to launch Sandbox"
+    fi
+    sleep $LIBEUFIN_SETTLE_TIME
     for n in `seq 1 80`
     do
         echo -n "."
@@ -69,7 +129,7 @@ function pre_audit () {
     done
     if [ 1 != $OK ]
     then
-        exit_skip "Failed to launch bank"
+        exit_skip "Failed to launch Nexus"
     fi
     echo " DONE"
     if test ${1:-no} = "aggregator"
@@ -83,6 +143,13 @@ function pre_audit () {
         echo -n "Running exchange transfer ..."
         taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
         echo " DONE"
+	echo -n "Running Nexus payment submitter ..."
+	nexus_submit_to_sandbox
+	echo " DONE"
+	# Make outgoing transactions appear in the TWG:
+	echo -n "Download bank transactions ..."
+	nexus_fetch_transactions
+	echo " DONE"
     fi
 }
 
@@ -111,7 +178,7 @@ function audit_only () {
     echo -n "."
     $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> test-wire-audit.log || exit_fail "wire audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> test-wire-audit-inc.log || exit_fail "wire audit failed"
+    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> test-wire-audit-inc.log || exit_fail "wire audit inc failed"
     echo -n "."
 
     echo " DONE"
@@ -166,11 +233,14 @@ function run_audit () {
 # Do a full reload of the (original) database
 full_reload()
 {
-    echo -n "Doing full reload of the database... "
+    echo "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
+    rm $DB.sqlite3 2> /dev/null || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
+    echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
+    sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
     echo "DONE"
 }
 
@@ -179,7 +249,6 @@ function test_0() {
 
 echo "===========0: normal run with aggregator==========="
 run_audit aggregator
-
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
@@ -379,7 +448,7 @@ echo "OK"
 # Change amount of wire transfer reported by exchange
 function test_2() {
 
-echo "===========2: reserves_in inconsistency==========="
+echo "===========2: reserves_in inconsistency ==========="
 echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
 
 run_audit
@@ -671,10 +740,10 @@ echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | 
 function test_8() {
 
 echo "===========8: wire-transfer-subject disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_WTID=`echo "SELECT subject FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+OLD_WTID=`echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
 NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
-echo "UPDATE app_banktransaction SET subject='$NEW_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
+echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 run_audit
 
@@ -731,19 +800,18 @@ fi
 echo PASS
 
 # Undo database modification
-echo "UPDATE app_banktransaction SET subject='$OLD_WTID' WHERE id='$OLD_ID';" | psql -Aqt $DB
+echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 }
-
 
 
 # Test wire origin disagreement!
 function test_9() {
 
 echo "===========9: wire-origin disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
-echo "UPDATE app_banktransaction SET debit_account_id=1 WHERE id='$OLD_ID';" | psql -Aqt $DB
+OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
+echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 run_audit
 
@@ -761,18 +829,18 @@ fi
 echo PASS
 
 # Undo database modification
-echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC WHERE id='$OLD_ID';" | psql -Aqt $DB
+echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 }
 
 
 # Test wire_in timestamp disagreement!
 function test_10() {
-
+NOW_MS=`date +%s`000
 echo "===========10: wire-timestamp disagreement==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='$OLD_ID';" | psql $DB -Aqt`
-echo "UPDATE app_banktransaction SET date=NOW() WHERE id=$OLD_ID;" | psql -Aqt $DB
+OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
+echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
 
 run_audit
 
@@ -790,24 +858,35 @@ fi
 echo PASS
 
 # Undo database modification
-echo "UPDATE app_banktransaction SET date='$OLD_DATE' WHERE id=$OLD_ID;" | psql -Aqt $DB
+echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
 
 }
 
 
 # Test for extra outgoing wire transfer.
+# In case of changing the subject in the Nexus
+# ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
 function test_11() {
-
 echo "===========11: spurious outgoing transfer ==========="
-OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE amount='TESTKUDOS:10' ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-OLD_ACC=`echo "SELECT debit_account_id FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
-OLD_SUBJECT=`echo "SELECT subject FROM app_banktransaction WHERE id=$OLD_ID;" | psql $DB -Aqt`
+OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 $DB.sqlite3`
 # Change wire transfer to be FROM the exchange (#2) to elsewhere!
 # (Note: this change also causes a missing incoming wire transfer, but
 #  this test is only concerned about the outgoing wire transfer
 #  being detected as such, and we simply ignore the other
 #  errors being reported.)
-echo -e "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1,subject='CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/' WHERE id=$OLD_ID;" | psql -Aqt $DB
+OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 $DB.sqlite3`
+NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'$OTHER_IBAN'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
+echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 $DB.sqlite3
+# Now fake that the exchange prepared this payment (= it POSTed to /transfer)
+# This step is necessary, because the TWG table that accounts for outgoing
+# payments needs it.  Worth noting here is the column 'rawConfirmation' that
+# points to the transaction from the main Nexus ledger; without that column set,
+# a prepared payment won't appear as actually outgoing.
+echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','"$OTHER_IBAN"','SANDBOXX','Forty Two','unused',1,$OLD_ID)" | sqlite3 $DB.sqlite3
+# Now populate the TWG table that accounts for outgoing payments, in
+# order to let /history/outgoing return one result.
+echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/"$OTHER_IBAN"?receiver-name=Forty+Two')" | sqlite3 $DB.sqlite3
 
 run_audit
 
@@ -839,12 +918,13 @@ then
 fi
 echo PASS
 
-# Undo database modification (exchange always has account #2)
-echo "UPDATE app_banktransaction SET debit_account_id=$OLD_ACC,credit_account_id=2,subject='$OLD_SUBJECT' WHERE id=$OLD_ID;" | psql -Aqt $DB
-
+# Undo database modification
+echo -e "UPDATE NexusBankTransactions SET transactionJson='"$OLD_TX"' WHERE id=$OLD_ID;" | sqlite3 $DB.sqlite3
+# No other prepared payment should exist at this point,
+# so OK to remove the number 1.
+echo -e "DELETE FROM PaymentInitiations WHERE id=1" | sqlite3 $DB.sqlite3
+echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 $DB.sqlite3
 }
-
-
 
 # Test for hanging/pending refresh.
 function test_12() {
@@ -999,13 +1079,11 @@ then
     pre_audit aggregator
 
     # Modify wire amount, such that it is inconsistent with 'aggregation'
-    # (exchange account is #2, so the logic below should select the outgoing
+    # (Only one payment out exist, so the logic below should select the outgoing
     # wire transfer):
-    OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-    OLD_AMOUNT=`echo "SELECT amount FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+    OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 $DB.sqlite3`
     NEW_AMOUNT="TESTKUDOS:50"
-    echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
     audit_only
 
     echo -n "Testing inconsistency detection... "
@@ -1034,8 +1112,7 @@ then
 
     echo "Second modification: wire nothing"
     NEW_AMOUNT="TESTKUDOS:0"
-    echo "UPDATE app_banktransaction SET amount='${NEW_AMOUNT}' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
     audit_only
 
     echo -n "Testing inconsistency detection... "
@@ -1078,7 +1155,6 @@ fi
 # Test where wire-out timestamp is wrong
 function test_17() {
 echo "===========17: incorrect wire_out timestamp================="
-
 # Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
@@ -1092,14 +1168,15 @@ then
     pre_audit aggregator
 
     # Modify wire amount, such that it is inconsistent with 'aggregation'
-    # (exchange account is #2, so the logic below should select the outgoing
+    # (exchange payed only once, so the logic below should select the outgoing
     # wire transfer):
-    OLD_ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 ORDER BY id LIMIT 1;" | psql $DB -Aqt`
-    OLD_DATE=`echo "SELECT date FROM app_banktransaction WHERE id='${OLD_ID}';" | psql $DB -Aqt`
+    OLD_ID=1
+    OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
+    OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
     # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
     # (due to rounding, if this machine is fast...)
-    echo "UPDATE app_banktransaction SET date=NOW()- interval '1 hour' WHERE id='${OLD_ID}';" | psql -Aqt $DB
-
+    NOW_1HR=$(expr $(date +%s) - 3600)
+    echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 $DB.sqlite3
     audit_only
     post_audit
 
@@ -1272,8 +1349,8 @@ then
     pre_audit aggregator
 
     # remove transaction from bank DB
-    echo "DELETE FROM app_banktransaction WHERE debit_account_id=2 AND amount='TESTKUDOS:${VAL_DELTA}';" | psql -Aqt $DB
-
+    # Currently emulating this (to be deleted):
+    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" | sqlite3 $DB.sqlite3
     audit_only
     post_audit
 
@@ -1559,12 +1636,13 @@ then
     pre_audit aggregator
 
     # Obtain data to duplicate.
-    ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
-    WTID=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
+    WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 $DB.sqlite3`
     echo WTID=$WTID
-    UUID="992e8936-a64d-4845-87d7-021440330f8a"
-    echo "INSERT INTO app_banktransaction (amount,subject,date,credit_account_id,debit_account_id,cancelled,request_uid) VALUES ('TESTKUDOS:1','$WTID',NOW(),12,2,'f','$UUID')" | psql -Aqt $DB
-
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 $DB.sqlite3`
+    # 'rawConfirmation' is set to 2 here, that doesn't
+    # point to any record.  That's only needed to set a non null value.
+    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" | sqlite3 $DB.sqlite3
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" | sqlite3 $DB.sqlite3
     audit_only
     post_audit
 
@@ -2003,8 +2081,9 @@ CONF=${DB}.conf
 # test required commands exist
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
-echo "Testing for taler-bank-manage"
-taler-bank-manage --help >/dev/null </dev/null || exit_skip "taler-bank-manage required"
+# NOTE: really check for all three libeufin commands?
+echo "Testing for libeufin"
+libeufin-cli --help >/dev/null </dev/null || exit_skip "libeufin required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 

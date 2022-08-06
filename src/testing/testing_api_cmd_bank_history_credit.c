@@ -168,9 +168,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
   unsigned int start;
   unsigned int end;
 
-  /* @var turns GNUNET_YES whenever either no 'start' value was
-   *      given for the history query, or the given value is found
-   *      in the list of all the CMDs. *///
   int ok;
   const uint64_t *row_id_start = NULL;
 
@@ -208,7 +205,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
     start = is->ip - 1;
     end = 0;
   }
-
+  /**
+   * ok equals GNUNET_YES whenever a starting row_id
+   * was provided AND was found among the CMDs, OR no
+   * starting row was given in the first place.
+   */
   ok = GNUNET_NO;
   if (NULL == row_id_start)
     ok = GNUNET_YES;
@@ -228,9 +229,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
     const struct TALER_ReservePublicKeyP *reserve_pub;
     const char **exchange_credit_url;
 
-    /* The following command allows us to skip over those CMDs
+    /**
+     * The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
-     * not interesting for building a history. *///
+     * not interesting for building a history.
+     */
     if ( (GNUNET_OK !=
           TALER_TESTING_get_trait_bank_row (cmd,
                                             &row_id)) ||
@@ -250,22 +253,29 @@ build_history (struct TALER_TESTING_Interpreter *is,
           TALER_TESTING_get_trait_exchange_bank_account_url (
             cmd,
             &exchange_credit_url)) )
-      continue; /* not an interesting event */
-    /* Seek "/history/incoming" starting row.  */
+      continue; // Not an interesting event
+    /**
+     * Is the interesting event a match with regard to
+     * the row_id value?  If yes, store this condition
+     * to the state and analyze the next CMDs.
+     */
     if ( (NULL != row_id_start) &&
          (*row_id_start == *row_id) &&
          (GNUNET_NO == ok) )
     {
-      /* Until here, nothing counted. */
       ok = GNUNET_YES;
       continue;
     }
-    /* when 'start' was _not_ given, then ok == GNUNET_YES */
+    /**
+     * The interesting event didn't match the wanted
+     * row_id value, analyze the next CMDs.  Note: this
+     * branch is relevant only when row_id WAS given.
+     */
     if (GNUNET_NO == ok)
-      continue; /* skip until we find the marker */
+      continue;
     if (0 != strcasecmp (hs->account_url,
                          *exchange_credit_url))
-      continue; /* account mismatch */
+      continue; // Account mismatch
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
     {

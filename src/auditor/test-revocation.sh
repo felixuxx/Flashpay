@@ -47,17 +47,89 @@ function cleanup()
         kill $n 2> /dev/null || true
     done
     wait
+    # kill euFin
+    echo Killing euFin..
+    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    # So far only Sandbox gave exit issues / delays ..
+    count=0
+    while ps xo pid | grep `cat libeufin-sandbox.pid`; do
+      if test $count = 5; then
+        echo "Sandbox unkillable, failing now .."
+	exit 1
+      fi
+      echo "Sandbox didn't exit yet.."
+      sleep 1;
+      count=`expr $count + 1`
+    done
 }
 
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
 
+# Downloads new transactions from the bank.
+function nexus_fetch_transactions () {
+  export LIBEUFIN_NEXUS_USERNAME=exchange
+  export LIBEUFIN_NEXUS_PASSWORD=x
+  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+  libeufin-cli accounts fetch-transactions \
+    --range-type since-last --level report exchange-nexus > /dev/null
+  unset LIBEUFIN_NEXUS_USERNAME
+  unset LIBEUFIN_NEXUS_PASSWORD
+  unset LIBEUFIN_NEXUS_URL
+}
+
+# Instruct Nexus to all the prepared payments (= those
+# POSTed to /transfer by the exchange).
+function nexus_submit_to_sandbox () {
+  export LIBEUFIN_NEXUS_USERNAME=exchange
+  export LIBEUFIN_NEXUS_PASSWORD=x
+  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+  libeufin-cli accounts submit-payments exchange-nexus
+  unset LIBEUFIN_NEXUS_USERNAME
+  unset LIBEUFIN_NEXUS_PASSWORD
+  unset LIBEUFIN_NEXUS_URL
+}
+
+function get_payto_uri() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    export LIBEUFIN_SANDBOX_URL=http://localhost:18082/demobanks/default
+    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
+}
+
+function launch_libeufin () {
+    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    libeufin-nexus serve --port 8082 \
+      2> libeufin-nexus-stderr.log \
+      > libeufin-nexus-stdout.log &
+    echo $! > libeufin-nexus.pid
+    export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
+    libeufin-sandbox serve --port 18082 \
+      > libeufin-sandbox-stdout.log \
+      2> libeufin-sandbox-stderr.log &
+    echo $! > libeufin-sandbox.pid
+}
 
 # Operations to run before the actual audit
 function pre_audit () {
     # Launch bank
     echo -n "Launching bank "
-    taler-bank-manage-testing $CONF postgres:///$DB serve 2>bank.err >bank.log &
+    EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
+    launch_libeufin
+    for n in `seq 1 80`
+    do
+        echo -n "."
+        sleep 0.1
+        OK=1
+        wget http://localhost:18082/ -o /dev/null -O /dev/null >/dev/null && break
+        OK=0
+    done
+    if [ 1 != $OK ]
+    then
+        exit_skip "Failed to launch Sandbox"
+    fi
     for n in `seq 1 80`
     do
         echo -n "."
@@ -68,14 +140,13 @@ function pre_audit () {
     done
     if [ 1 != $OK ]
     then
-        exit_skip "Failed to launch bank"
+        exit_skip "Failed to launch Nexus"
     fi
     echo " DONE"
-
     if test ${1:-no} = "aggregator"
     then
         export CONF
-        echo -n "Running exchange aggregator ..."
+	echo -n "Running exchange aggregator ... (config: $CONF)"
         taler-exchange-aggregator -L INFO -t -c $CONF -y 2> aggregator.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange closer ..."
@@ -84,13 +155,20 @@ function pre_audit () {
         echo -n "Running exchange transfer ..."
         taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
         echo " DONE"
+	echo -n "Running Nexus payment submitter ..."
+	nexus_submit_to_sandbox
+	echo " DONE"
+	# Make outgoing transactions appear in the TWG:
+	echo -n "Download bank transactions ..."
+	nexus_fetch_transactions
+	echo " DONE"
     fi
 }
 
 # actual audit run
 function audit_only () {
     # Run the auditor!
-    echo -n "Running audit(s) ..."
+    echo -n "Running audit(s) ... (conf is $CONF)"
 
     # Restart so that first run is always fresh, and second one is incremental
     taler-auditor-dbinit -r -c $CONF
@@ -152,10 +230,22 @@ full_reload()
 {
     echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
+    rm -f $DB.sqlite3 || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
+    sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
     echo "DONE"
+    # Exchange payto URI contains the (dynamically generated)
+    # IBAN, that can only be written in CONF after libeufin is
+    # setup.
+    taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI &> /dev/null || (
+    echo -n "Specifying exchange payto URI in the configuration ($CONF) (grab IBAN from $DB.sqlite3)...";
+      EXCHANGE_IBAN=`echo "SELECT iban FROM BankAccounts WHERE label='exchange'" | sqlite3 $DB.sqlite3`;
+      taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI \
+        -V "payto://iban/SANDBOXX/$EXCHANGE_IBAN?receiver-name=Exchange+Company"
+      echo " DONE"
+    )
 }
 
 
@@ -462,7 +552,6 @@ check_with_database()
 
     # Load database
     full_reload
-
     # Run test suite
     fail=0
     for i in $TESTS
@@ -492,8 +581,8 @@ CONF=revoke-basedb.conf
 # test required commands exist
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
-echo "Testing for taler-bank-manage"
-taler-bank-manage --help >/dev/null </dev/null || exit_skip "taler-bank-manage required"
+echo "Testing for libeufin(-cli)"
+libeufin-cli --help >/dev/null </dev/null || exit_skip "libeufin required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 

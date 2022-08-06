@@ -92,6 +92,12 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   struct TALER_TESTING_LibeufinServices ret = { 0 };
   unsigned int iter;
   char *curl_check_cmd;
+  const char *db_conn = "jdbc:sqlite:/tmp/libeufin-exchange-test.sqlite3";
+
+  setenv (
+    "LIBEUFIN_NEXUS_DB_CONNECTION",
+    db_conn,
+    1); // not overwriting any potentially existing DB.
 
   nexus_proc = GNUNET_OS_start_process (
     GNUNET_OS_INHERIT_STD_ERR,
@@ -99,7 +105,6 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
     "libeufin-nexus",
     "libeufin-nexus",
     "serve",
-    "--db-name", "/tmp/nexus-exchange-test.sqlite3",
     NULL);
   if (NULL == nexus_proc)
   {
@@ -139,14 +144,26 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   // start sandbox.
   GNUNET_free (curl_check_cmd);
   fprintf (stderr, "\n");
-
+  setenv (
+    "LIBEUFIN_SANDBOX_DB_CONNECTION",
+    db_conn,
+    1); // not overwriting existing any potentially existing DB.
+  setenv (
+    "LIBEUFIN_SANDBOX_ADMIN_PASSWORD",
+    "secret",
+    1);
+  if (0 != system ("libeufin-sandbox config --currency=KUDOS default"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not create the default demobank.\n");
+    return ret;
+  }
   sandbox_proc = GNUNET_OS_start_process (
     GNUNET_OS_INHERIT_STD_ERR,
     NULL, NULL, NULL,
     "libeufin-sandbox",
     "libeufin-sandbox",
     "serve",
-    "--db-name", "/tmp/sandbox-exchange-test.sqlite3",
     NULL);
   if (NULL == sandbox_proc)
   {
@@ -350,8 +367,7 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   /* DB preparation */
   if (GNUNET_YES == reset_db)
   {
-    if (0 != system (
-          "rm -f /tmp/nexus-exchange-test.sqlite3 && rm -f /tmp/sandbox-exchange-test.sqlite3"))
+    if (0 != system ("rm -f /tmp/libeufin-exchange-test.sqlite3"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to invoke db-removal command.\n");
@@ -384,9 +400,9 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;
   bc->user42_payto =
-    "payto://iban/BIC/FR7630006000011234567890189?receiver-name=User42";
+    "payto://iban/SANDBOXX/FR7630006000011234567890189?receiver-name=User42";
   bc->user43_payto =
-    "payto://iban/BIC/GB33BUKB20201555555555?receiver-name=User43";
+    "payto://iban/SANDBOXX/GB33BUKB20201555555555?receiver-name=User43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Relying on nexus %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,

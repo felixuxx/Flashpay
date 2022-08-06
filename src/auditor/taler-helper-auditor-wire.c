@@ -1576,10 +1576,12 @@ process_debits (void *cls)
               "Checking bank DEBIT records of account `%s'\n",
               wa->ai->section_name);
   GNUNET_assert (NULL == wa->dhh);
+  // FIXME: handle the case where more than INT32_MAX transactions exist.
+  // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
   wa->dhh = TALER_BANK_debit_history (ctx,
                                       wa->ai->auth,
                                       wa->out_wire_off,
-                                      INT64_MAX,
+                                      INT32_MAX,
                                       GNUNET_TIME_UNIT_ZERO,
                                       &history_debit_cb,
                                       wa);
@@ -2012,10 +2014,12 @@ process_credits (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting bank CREDIT history of account `%s'\n",
               wa->ai->section_name);
+  // NOTE: handle the case where more than INT32_MAX transactions exist.
+  // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
   wa->chh = TALER_BANK_credit_history (ctx,
                                        wa->ai->auth,
                                        wa->in_wire_off,
-                                       INT64_MAX,
+                                       INT32_MAX,
                                        GNUNET_TIME_UNIT_ZERO,
                                        &history_credit_cb,
                                        wa);

@@ -14,7 +14,17 @@ function cleanup()
     do
         kill $n 2> /dev/null || true
     done
+    echo Killing euFin..
+    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
     wait
+}
+
+function get_payto_uri() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
 }
 
 # Install cleanup handler (except for kill -9)
@@ -43,8 +53,8 @@ export CONF=generate-auditor-basedb-revocation.conf
 cp generate-auditor-basedb.conf $CONF
 
 
-echo -n "Testing for taler-bank-manage"
-taler-bank-manage --help >/dev/null </dev/null || exit_skip " MISSING"
+echo -n "Testing for libeufin(-cli)"
+libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 echo -n "Testing for taler-wallet-cli"
 taler-wallet-cli -v >/dev/null </dev/null || exit_skip " MISSING"
@@ -53,8 +63,6 @@ echo -n "Testing for curl"
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-
-
 # Clean up
 DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
 rm -rf $DATA_DIR || true
@@ -62,6 +70,7 @@ rm -rf $DATA_DIR || true
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
+rm $TARGET_DB >/dev/null 2>/dev/null || true # libeufin
 
 # obtain key configuration data
 MASTER_PRIV_FILE=`taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE`
@@ -73,7 +82,7 @@ export EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
 MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
 export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
-export BANK_URL=http://localhost:${BANK_PORT}/
+export BANK_URL=http://localhost:1${BANK_PORT}/demobanks/default
 export AUDITOR_URL=http://localhost:8083/
 AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
@@ -105,7 +114,7 @@ taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 
 # Launch services
 echo "Launching services"
-taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> revocation-bank.log &
+taler-bank-manage-testing $BANK_PORT $TARGET_DB $EXCHANGE_URL $CONF
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
@@ -166,9 +175,9 @@ echo -n "Setting up keys"
 
 taler-exchange-offline -c $CONF \
   download sign \
-  enable-account payto://x-taler-bank/localhost/Exchange \
+  enable-account `taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI` \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
-  wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  wire-fee now iban TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 \
   global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
   upload &> taler-exchange-offline.log
 
@@ -211,7 +220,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' 
       bankBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
     }' \
-    --arg BANK_URL $BANK_URL \
+    --arg BANK_URL "$BANK_URL/access-api/" \
     --arg EXCHANGE_URL $EXCHANGE_URL
   )"
 
@@ -388,7 +397,10 @@ cleanup
 
 # Dump database
 echo "Dumping database"
+echo "Dumping PostgreSQL database: ${BASEDB}.sql"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
+echo "Dumping libeufin database: ${BASEDB}-libeufin.sql"
+sqlite3 $TARGET_DB ".dump" > ${BASEDB}-libeufin.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 date +%s > ${BASEDB}.age
@@ -396,6 +408,7 @@ date +%s > ${BASEDB}.age
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
+rm $TARGET_DB # libeufin
 rm -rf $DATA_DIR || true
 rm -f $CONF
 rm -r $TMP_DIR
