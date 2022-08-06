@@ -2162,6 +2162,12 @@ begin_transaction (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_drained));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_wire_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TALER_ARL_currency,
+                                        &total_wire_out));
   qs = TALER_ARL_adb->get_predicted_balance (TALER_ARL_adb->cls,
                                              &TALER_ARL_master_pub,
                                              &start_balance,
