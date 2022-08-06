@@ -14,7 +14,7 @@ set -eu
 if [ "$#" -ne 4 ];
 then
     echo "illegal number of parameters.  \
-Give: Nexus port number, SQLIte file path, exchange base URL, config file path."
+Give: Nexus port number, SQLite file path, exchange base URL, config file path."
     exit 1
 fi
 
@@ -36,13 +36,14 @@ set +e
 echo -n "Waiting for Sandbox.."
 for n in `seq 1 50`; do
   echo -n "."
-  sleep 1  
+  sleep 1
   wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
     $LIBEUFIN_SANDBOX_URL
   break
 done
+sleep 1  #7293
 echo OK
 
 register_sandbox_account() {
@@ -120,13 +121,14 @@ echo -n Waiting for Nexus..
 set +e
 for n in `seq 1 50`; do
   echo -n "."
-  sleep 1  
+  sleep 1
   wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
     $LIBEUFIN_NEXUS_URL
   break
 done
+sleep 1 #7293
 set -e
 echo OK
 export LIBEUFIN_NEXUS_USERNAME=exchange
