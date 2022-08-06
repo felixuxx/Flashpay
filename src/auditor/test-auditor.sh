@@ -1168,7 +1168,7 @@ then
     pre_audit aggregator
 
     # Modify wire amount, such that it is inconsistent with 'aggregation'
-    # (exchange payed only once, so the logic below should select the outgoing
+    # (exchange paid only once, so the logic below should select the outgoing
     # wire transfer):
     OLD_ID=1
     OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
