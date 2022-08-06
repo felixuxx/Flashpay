@@ -95,6 +95,11 @@ enum TALER_KYCLOGIC_KycStatus
     = TALER_KYCLOGIC_STATUS_PROVIDER
       | TALER_KYCLOGIC_STATUS_ABORTED,
 
+  /**
+   * Return code set to not update the KYC status
+   * at all.
+   */
+  TALER_KYCLOGIC_STATUS_KEEP = 16
 };
 
 
@@ -333,7 +338,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param cb_cls closure for @a cb
    * @return handle to cancel operation early
    */
-  struct TALER_KYCLOGIC_InitiateHandle *
+  struct TALER_KYCLOGIC_WebhookHandle *
   (*webhook)(void *cls,
              const struct TALER_KYCLOGIC_ProviderDetails *pd,
              TALER_KYCLOGIC_ProviderLookupCallback plc,

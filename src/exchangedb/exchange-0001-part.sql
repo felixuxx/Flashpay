@@ -239,7 +239,7 @@ CREATE OR REPLACE FUNCTION reserves_out_by_reserve_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO reserves_out_by_reserve
+  INSERT INTO exchange.reserves_out_by_reserve
     (reserve_uuid
     ,h_blind_ev)
   VALUES
@@ -260,7 +260,7 @@ CREATE OR REPLACE FUNCTION reserves_out_by_reserve_delete_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  DELETE FROM reserves_out_by_reserve
+  DELETE FROM exchange.reserves_out_by_reserve
    WHERE reserve_uuid = OLD.reserve_uuid;
   RETURN OLD;
 END $$;
@@ -533,7 +533,7 @@ BEGIN
 
   IF (is_ready)
   THEN
-    INSERT INTO deposits_by_ready
+    INSERT INTO exchange.deposits_by_ready
       (wire_deadline
       ,shard
       ,coin_pub
@@ -543,7 +543,7 @@ BEGIN
       ,NEW.shard
       ,NEW.coin_pub
       ,NEW.deposit_serial_id);
-    INSERT INTO deposits_for_matching
+    INSERT INTO exchange.deposits_for_matching
       (refund_deadline
       ,merchant_pub
       ,coin_pub
@@ -577,12 +577,12 @@ BEGIN
   is_ready  = NOT (NEW.done OR NEW.extension_blocked);
   IF (was_ready AND NOT is_ready)
   THEN
-    DELETE FROM deposits_by_ready
+    DELETE FROM exchange.deposits_by_ready
      WHERE wire_deadline = OLD.wire_deadline
        AND shard = OLD.shard
        AND coin_pub = OLD.coin_pub
        AND deposit_serial_id = OLD.deposit_serial_id;
-    DELETE FROM deposits_for_matching
+    DELETE FROM exchange.deposits_for_matching
      WHERE refund_deadline = OLD.refund_deadline
        AND merchant_pub = OLD.merchant_pub
        AND coin_pub = OLD.coin_pub
@@ -590,7 +590,7 @@ BEGIN
   END IF;
   IF (is_ready AND NOT was_ready)
   THEN
-    INSERT INTO deposits_by_ready
+    INSERT INTO exchange.deposits_by_ready
       (wire_deadline
       ,shard
       ,coin_pub
@@ -600,7 +600,7 @@ BEGIN
       ,NEW.shard
       ,NEW.coin_pub
       ,NEW.deposit_serial_id);
-    INSERT INTO deposits_for_matching
+    INSERT INTO exchange.deposits_for_matching
       (refund_deadline
       ,merchant_pub
       ,coin_pub
@@ -632,12 +632,12 @@ BEGIN
 
   IF (was_ready)
   THEN
-    DELETE FROM deposits_by_ready
+    DELETE FROM exchange.deposits_by_ready
      WHERE wire_deadline = OLD.wire_deadline
        AND shard = OLD.shard
        AND coin_pub = OLD.coin_pub
        AND deposit_serial_id = OLD.deposit_serial_id;
-    DELETE FROM deposits_for_matching
+    DELETE FROM exchange.deposits_for_matching
      WHERE refund_deadline = OLD.refund_deadline
        AND merchant_pub = OLD.merchant_pub
        AND coin_pub = OLD.coin_pub
@@ -694,7 +694,7 @@ CREATE OR REPLACE FUNCTION wire_out_delete_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  DELETE FROM aggregation_tracking
+  DELETE FROM exchange.aggregation_tracking
    WHERE wtid_raw = OLD.wtid_raw;
   RETURN OLD;
 END $$;
@@ -833,7 +833,7 @@ CREATE OR REPLACE FUNCTION recoup_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  INSERT INTO recoup_by_reserve
+  INSERT INTO exchange.recoup_by_reserve
     (reserve_out_serial_id
     ,coin_pub)
   VALUES
@@ -854,7 +854,7 @@ CREATE OR REPLACE FUNCTION recoup_delete_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  DELETE FROM recoup_by_reserve
+  DELETE FROM exchange.recoup_by_reserve
    WHERE reserve_out_serial_id = OLD.reserve_out_serial_id
      AND coin_pub = OLD.coin_pub;
   RETURN OLD;
@@ -1434,14 +1434,14 @@ BEGIN
          SET purses_active=purses_active-1
        WHERE reserve_pub IN
          (SELECT reserve_pub
-            FROM purse_merges
+            FROM exchange.purse_merges
            WHERE purse_pub=NEW.purse_pub
            LIMIT 1);
       NEW.in_reserve_quota=FALSE;
     END IF;
     -- Delete from the purse_actions table, we are done
     -- with this purse for good.
-    DELETE FROM purse_actions
+    DELETE FROM exchange.purse_actions
           WHERE purse_pub=NEW.purse_pub;
     RETURN NEW;
   END IF;

@@ -140,6 +140,21 @@ struct TALER_KYCLOGIC_WebhookHandle
 {
 
   /**
+   * Continuation to call when done.
+   */
+  TALER_KYCLOGIC_WebhookCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Task for asynchronous execution.
+   */
+  struct GNUNET_SCHEDULER_Task *task;
+
+  /**
    * Overall plugin state.
    */
   struct PluginState *ps;
@@ -300,7 +315,7 @@ template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
  */
-static struct TALER_KYCLOGIC_InitiateHandle *
+static struct TALER_KYCLOGIC_WebhookHandle *
 template_webhook (void *cls,
                   const struct TALER_KYCLOGIC_ProviderDetails *pd,
                   TALER_KYCLOGIC_ProviderLookupCallback plc,
@@ -313,8 +328,16 @@ template_webhook (void *cls,
                   TALER_KYCLOGIC_WebhookCallback cb,
                   void *cb_cls)
 {
-  GNUNET_break_op (0);
-  return NULL;
+  struct PluginState *ps = cls;
+  struct TALER_KYCLOGIC_WebhookHandle *wh;
+
+  wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
+  wh->cb = cb;
+  wh->cb_cls = cb_cls;
+  wh->ps = ps;
+  wh->pd = pd;
+  GNUNET_break (0); /* FIXME: start activity */
+  return wh;
 }
 
 
@@ -326,6 +349,8 @@ template_webhook (void *cls,
 static void
 template_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
 {
+  GNUNET_break (0); /*  FIXME: stop activity */
+  GNUNET_free (wh);
 }
 
 

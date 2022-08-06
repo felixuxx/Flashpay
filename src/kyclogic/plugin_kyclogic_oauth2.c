@@ -237,6 +237,21 @@ struct TALER_KYCLOGIC_WebhookHandle
 {
 
   /**
+   * Continuation to call when done.
+   */
+  TALER_KYCLOGIC_WebhookCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Task for asynchronous execution.
+   */
+  struct GNUNET_SCHEDULER_Task *task;
+
+  /**
    * Overall plugin state.
    */
   struct PluginState *ps;
@@ -901,6 +916,34 @@ oauth2_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 
 
 /**
+ * Function to asynchronously return the 404 not found
+ * page for the webhook.
+ *
+ * @param cls the `struct TALER_KYCLOGIC_WebhookHandle *`
+ */
+static void
+wh_return_not_found (void *cls)
+{
+  struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
+  struct MHD_Response *response;
+
+  wh->task = NULL;
+  response = MHD_create_response_from_buffer (0,
+                                              "",
+                                              MHD_RESPMEM_PERSISTENT);
+  wh->cb (wh->cb_cls,
+          NULL,
+          NULL,
+          NULL,
+          TALER_KYCLOGIC_STATUS_KEEP,
+          GNUNET_TIME_UNIT_ZERO_ABS,
+          MHD_HTTP_NOT_FOUND,
+          response);
+  GNUNET_free (wh);
+}
+
+
+/**
  * Check KYC status and return result for Webhook.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -916,7 +959,7 @@ oauth2_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
  */
-static struct TALER_KYCLOGIC_InitiateHandle *
+static struct TALER_KYCLOGIC_WebhookHandle *
 oauth2_webhook (void *cls,
                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
                 TALER_KYCLOGIC_ProviderLookupCallback plc,
@@ -929,9 +972,16 @@ oauth2_webhook (void *cls,
                 TALER_KYCLOGIC_WebhookCallback cb,
                 void *cb_cls)
 {
-  // FIXME: add logic to asynchronously return an error (404)
-  GNUNET_break_op (0);
-  return NULL;
+  struct PluginState *ps = cls;
+  struct TALER_KYCLOGIC_WebhookHandle *wh;
+
+  wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
+  wh->cb = cb;
+  wh->cb_cls = cb_cls;
+  wh->ps = ps;
+  wh->task = GNUNET_SCHEDULER_add_now (&wh_return_not_found,
+                                       wh);
+  return wh;
 }
 
 
@@ -943,6 +993,8 @@ oauth2_webhook (void *cls,
 static void
 oauth2_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
 {
+  GNUNET_SCHEDULER_cancel (wh->task);
+  GNUNET_free (wh);
 }
 
 

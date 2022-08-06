@@ -59,7 +59,7 @@ BEGIN
 
 SELECT denominations_serial
   INTO denom_serial
-  FROM denominations
+  FROM exchange.denominations
  WHERE denom_pub_hash=h_denom_pub;
 
 IF NOT FOUND
@@ -85,7 +85,7 @@ SELECT
   ,reserve_frac
   ,reserve_gc
   ,ruuid
-  FROM reserves
+  FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
 IF NOT FOUND
@@ -102,7 +102,7 @@ END IF;
 
 -- We optimistically insert, and then on conflict declare
 -- the query successful due to idempotency.
-INSERT INTO reserves_out
+INSERT INTO exchange.reserves_out
   (h_blind_ev
   ,denominations_serial
   ,denom_sig
@@ -180,7 +180,7 @@ IF NOT NULL cs_nonce
 THEN
   -- Cache CS signature to prevent replays in the future
   -- (and check if cached signature exists at the same time).
-  INSERT INTO cs_nonce_locks
+  INSERT INTO exchange.cs_nonce_locks
     (nonce
     ,max_denomination_serial
     ,op_hash)
@@ -194,7 +194,7 @@ THEN
   THEN
     -- See if the existing entry is identical.
     SELECT 1
-      FROM cs_nonce_locks
+      FROM exchange.cs_nonce_locks
      WHERE nonce=cs_nonce
        AND op_hash=h_coin_envelope;
     IF NOT FOUND
@@ -221,15 +221,15 @@ END IF;
 --   INTO
 --    kycok
 --   ,account_uuid
---   FROM reserves_in
+--   FROM exchange.reserves_in
 --   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
 --  WHERE reserve_pub=rpub
 --  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
-WITH reserves_in AS materialized (
+WITH my_reserves_in AS materialized (
   SELECT wire_source_h_payto
-  FROM reserves_in WHERE
-  reserve_pub=rpub
+  FROM exchange.reserves_in
+  WHERE reserve_pub=rpub
 )
 SELECT
   kyc_ok
@@ -237,10 +237,10 @@ SELECT
 INTO
   kycok
   ,account_uuid
-FROM wire_targets
+FROM exchange.wire_targets
   WHERE wire_target_h_payto = (
     SELECT wire_source_h_payto
-      FROM reserves_in
+      FROM my_reserves_in
   );
 
 END $$;
@@ -287,7 +287,7 @@ SELECT
   ,reserve_frac
   ,reserve_gc
   ,ruuid
-  FROM reserves
+  FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
 IF NOT FOUND
@@ -349,15 +349,15 @@ balance_ok=TRUE;
 --   INTO
 --    kycok
 --   ,account_uuid
---   FROM reserves_in
+--   FROM exchange.reserves_in
 --   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
 --  WHERE reserve_pub=rpub
 --  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
-WITH reserves_in AS materialized (
+WITH my_reserves_in AS materialized (
   SELECT wire_source_h_payto
-  FROM reserves_in WHERE
-  reserve_pub=rpub
+  FROM exchange.reserves_in
+  WHERE reserve_pub=rpub
 )
 SELECT
   kyc_ok
@@ -365,10 +365,10 @@ SELECT
 INTO
   kycok
   ,account_uuid
-FROM wire_targets
+FROM exchange.wire_targets
   WHERE wire_target_h_payto = (
     SELECT wire_source_h_payto
-      FROM reserves_in
+      FROM my_reserves_in
   );
 
 END $$;
@@ -410,7 +410,7 @@ out_nonce_reuse=TRUE;
 
 SELECT denominations_serial
   INTO denom_serial
-  FROM denominations
+  FROM exchange.denominations
  WHERE denom_pub_hash=h_denom_pub;
 
 IF NOT FOUND
@@ -422,7 +422,7 @@ THEN
 END IF;
 out_denom_unknown=FALSE;
 
-INSERT INTO reserves_out
+INSERT INTO exchange.reserves_out
   (h_blind_ev
   ,denominations_serial
   ,denom_sig
@@ -455,7 +455,7 @@ IF NOT NULL cs_nonce
 THEN
   -- Cache CS signature to prevent replays in the future
   -- (and check if cached signature exists at the same time).
-  INSERT INTO cs_nonce_locks
+  INSERT INTO exchange.cs_nonce_locks
     (nonce
     ,max_denomination_serial
     ,op_hash)
@@ -469,7 +469,7 @@ THEN
   THEN
     -- See if the existing entry is identical.
     SELECT 1
-      FROM cs_nonce_locks
+      FROM exchange.cs_nonce_locks
      WHERE nonce=cs_nonce
        AND op_hash=h_coin_envelope;
     IF NOT FOUND
@@ -513,7 +513,7 @@ SELECT
   INTO
    total_val
   ,total_frac
-  FROM reserves_out
+  FROM exchange.reserves_out
  WHERE reserve_uuid=ruuid
    AND execution_date > start_time;
 
@@ -540,7 +540,7 @@ BEGIN
 
 IF EXISTS (
   SELECT 1
-    FROM information_Schema.constraint_column_usage
+    FROM exchange.information_Schema.constraint_column_usage
    WHERE table_name='wire_out'
      AND constraint_name='wire_out_ref')
 THEN
@@ -573,20 +573,20 @@ DECLARE
 BEGIN
   SELECT reserve_uuid
   INTO res_uuid
-  FROM reserves
+  FROM exchange.reserves
   WHERE reserves.reserve_pub = res_pub;
 
   FOR blind_ev IN
     SELECT h_blind_ev
-      FROM reserves_out_by_reserve
+      FROM exchange.reserves_out_by_reserve
     WHERE reserves_out_by_reserve.reserve_uuid = res_uuid
   LOOP
     SELECT robr.coin_pub
       INTO c_pub
-      FROM recoup_by_reserve robr
+      FROM exchange.recoup_by_reserve robr
     WHERE robr.reserve_out_serial_id = (
       SELECT reserves_out.reserve_out_serial_id
-        FROM reserves_out
+        FROM exchange.reserves_out
       WHERE reserves_out.h_blind_ev = blind_ev
     );
     RETURN QUERY
@@ -600,12 +600,12 @@ BEGIN
              rc.recoup_timestamp
       FROM (
         SELECT *
-        FROM known_coins
+        FROM exchange.known_coins
         WHERE known_coins.coin_pub = c_pub
       ) kc
       JOIN (
         SELECT *
-        FROM recoup
+        FROM exchange.recoup
         WHERE recoup.coin_pub = c_pub
       ) rc USING (coin_pub);
   END LOOP;
@@ -651,7 +651,7 @@ BEGIN
 
 IF NOT NULL in_extension_details
 THEN
-  INSERT INTO extension_details
+  INSERT INTO exchange.extension_details
   (extension_options)
   VALUES
     (in_extension_details)
@@ -661,7 +661,7 @@ ELSE
 END IF;
 
 
-INSERT INTO wire_targets
+INSERT INTO exchange.wire_targets
   (wire_target_h_payto
   ,payto_uri)
   VALUES
@@ -674,12 +674,12 @@ IF NOT FOUND
 THEN
   SELECT wire_target_serial_id
   INTO wtsi
-  FROM wire_targets
+  FROM exchange.wire_targets
   WHERE wire_target_h_payto=in_h_payto;
 END IF;
 
 
-INSERT INTO deposits
+INSERT INTO exchange.deposits
   (shard
   ,coin_pub
   ,known_coin_id
@@ -727,7 +727,7 @@ THEN
      exchange_timestamp
    INTO
      out_exchange_timestamp
-   FROM deposits
+   FROM exchange.deposits
    WHERE shard=in_shard
      AND merchant_pub=in_merchant_pub
      AND wire_target_h_payto=in_h_payto
@@ -812,7 +812,7 @@ BEGIN
 -- (rare:) PERFORM recoup_refresh (by rrc_serial) -- crosses shards!
 --         UPDATE known_coins (by coin_pub)
 
-INSERT INTO refresh_commitments
+INSERT INTO exchange.refresh_commitments
   (rc
   ,old_coin_pub
   ,old_coin_sig
@@ -837,7 +837,7 @@ THEN
      noreveal_index
     INTO
      out_noreveal_index
-    FROM refresh_commitments
+    FROM exchange.refresh_commitments
    WHERE rc=in_rc;
   out_balance_ok=FOUND;
   out_zombie_bad=FALSE; -- zombie is OK
@@ -855,13 +855,13 @@ THEN
   -- operations, and then see if any of these
   -- reveal operations was involved in a recoup.
   PERFORM
-    FROM recoup_refresh
+    FROM exchange.recoup_refresh
    WHERE rrc_serial IN
     (SELECT rrc_serial
-       FROM refresh_revealed_coins
+       FROM exchange.refresh_revealed_coins
       WHERE melt_serial_id IN
       (SELECT melt_serial_id
-         FROM refresh_commitments
+         FROM exchange.refresh_commitments
         WHERE old_coin_pub=in_old_coin_pub));
   IF NOT FOUND
   THEN
@@ -914,13 +914,13 @@ THEN
       denominations_serial
     INTO
       denom_max
-    FROM denominations
+    FROM exchange.denominations
       ORDER BY denominations_serial DESC
       LIMIT 1;
 
   -- Cache CS signature to prevent replays in the future
   -- (and check if cached signature exists at the same time).
-  INSERT INTO cs_nonce_locks
+  INSERT INTO exchange.cs_nonce_locks
     (nonce
     ,max_denomination_serial
     ,op_hash)
@@ -934,7 +934,7 @@ THEN
   THEN
     -- Record exists, make sure it is the same
     SELECT 1
-      FROM cs_nonce_locks
+      FROM exchange.cs_nonce_locks
      WHERE nonce=cs_rms
        AND op_hash=in_rc;
 
@@ -1003,7 +1003,7 @@ INTO
   ,deposit_val
   ,deposit_frac
   ,out_gone
-FROM deposits
+FROM exchange.deposits
  WHERE coin_pub=in_coin_pub
   AND shard=in_deposit_shard
   AND merchant_pub=in_merchant_pub
@@ -1019,7 +1019,7 @@ THEN
   RETURN;
 END IF;
 
-INSERT INTO refunds
+INSERT INTO exchange.refunds
   (deposit_serial_id
   ,coin_pub
   ,merchant_sig
@@ -1044,7 +1044,7 @@ THEN
   -- We do select over merchant_pub and h_contract_terms
   -- primarily here to maximally use the existing index.
    PERFORM
-   FROM refunds
+   FROM exchange.refunds
    WHERE coin_pub=in_coin_pub
      AND deposit_serial_id=dsi
      AND rtransaction_id=in_rtransaction_id
@@ -1084,7 +1084,7 @@ SELECT
   INTO
    tmp_val
   ,tmp_frac
-  FROM refunds
+  FROM exchange.refunds
   WHERE coin_pub=in_coin_pub
     AND deposit_serial_id=dsi;
 IF tmp_val IS NULL
@@ -1190,7 +1190,7 @@ SELECT
  INTO
    tmp_frac
   ,tmp_val
-FROM known_coins
+FROM exchange.known_coins
   WHERE coin_pub=in_coin_pub;
 
 IF NOT FOUND
@@ -1207,7 +1207,7 @@ THEN
     recoup_timestamp
   INTO
     out_recoup_timestamp
-    FROM recoup
+    FROM exchange.recoup
     WHERE coin_pub=in_coin_pub;
 
   out_recoup_ok=FOUND;
@@ -1252,7 +1252,7 @@ THEN
 END IF;
 
 
-INSERT INTO recoup
+INSERT INTO exchange.recoup
   (coin_pub
   ,coin_sig
   ,coin_blind
@@ -1319,7 +1319,7 @@ SELECT
  INTO
    tmp_frac
   ,tmp_val
-FROM known_coins
+FROM exchange.known_coins
   WHERE coin_pub=in_coin_pub;
 
 IF NOT FOUND
@@ -1336,7 +1336,7 @@ THEN
       recoup_timestamp
     INTO
       out_recoup_timestamp
-    FROM recoup_refresh
+    FROM exchange.recoup_refresh
     WHERE coin_pub=in_coin_pub;
   out_recoup_ok=FOUND;
   RETURN;
@@ -1377,7 +1377,7 @@ THEN
 END IF;
 
 
-INSERT INTO recoup_refresh
+INSERT INTO exchange.recoup_refresh
   (coin_pub
   ,known_coin_id
   ,coin_sig
@@ -1430,14 +1430,14 @@ DECLARE
   denom_min INT8; -- minimum denomination still alive
 BEGIN
 
-DELETE FROM prewire
+DELETE FROM exchange.prewire
   WHERE finished=TRUE;
 
-DELETE FROM wire_fee
+DELETE FROM exchange.wire_fee
   WHERE end_date < in_ancient_date;
 
 -- TODO: use closing fee as threshold?
-DELETE FROM reserves
+DELETE FROM exchange.reserves
   WHERE gc_date < in_now
     AND current_balance_val = 0
     AND current_balance_frac = 0;
@@ -1446,11 +1446,11 @@ SELECT
      reserve_out_serial_id
   INTO
      reserve_out_min
-  FROM reserves_out
+  FROM exchange.reserves_out
   ORDER BY reserve_out_serial_id ASC
   LIMIT 1;
 
-DELETE FROM recoup
+DELETE FROM exchange.recoup
   WHERE reserve_out_serial_id < reserve_out_min;
 -- FIXME: recoup_refresh lacks GC!
 
@@ -1458,81 +1458,81 @@ SELECT
      reserve_uuid
   INTO
      reserve_uuid_min
-  FROM reserves
+  FROM exchange.reserves
   ORDER BY reserve_uuid ASC
   LIMIT 1;
 
-DELETE FROM reserves_out
+DELETE FROM exchange.reserves_out
   WHERE reserve_uuid < reserve_uuid_min;
 
 -- FIXME: this query will be horribly slow;
 -- need to find another way to formulate it...
-DELETE FROM denominations
+DELETE FROM exchange.denominations
   WHERE expire_legal < in_now
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM reserves_out)
+         FROM exchange.reserves_out)
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM known_coins
+         FROM exchange.known_coins
         WHERE coin_pub IN
           (SELECT DISTINCT coin_pub
-             FROM recoup))
+             FROM exchange.recoup))
     AND denominations_serial NOT IN
       (SELECT DISTINCT denominations_serial
-         FROM known_coins
+         FROM exchange.known_coins
         WHERE coin_pub IN
           (SELECT DISTINCT coin_pub
-             FROM recoup_refresh));
+             FROM exchange.recoup_refresh));
 
 SELECT
      melt_serial_id
   INTO
      melt_min
-  FROM refresh_commitments
+  FROM exchange.refresh_commitments
   ORDER BY melt_serial_id ASC
   LIMIT 1;
 
-DELETE FROM refresh_revealed_coins
+DELETE FROM exchange.refresh_revealed_coins
   WHERE melt_serial_id < melt_min;
 
-DELETE FROM refresh_transfer_keys
+DELETE FROM exchange.refresh_transfer_keys
   WHERE melt_serial_id < melt_min;
 
 SELECT
      known_coin_id
   INTO
      coin_min
-  FROM known_coins
+  FROM exchange.known_coins
   ORDER BY known_coin_id ASC
   LIMIT 1;
 
-DELETE FROM deposits
+DELETE FROM exchange.deposits
   WHERE known_coin_id < coin_min;
 
 SELECT
      deposit_serial_id
   INTO
      deposit_min
-  FROM deposits
+  FROM exchange.deposits
   ORDER BY deposit_serial_id ASC
   LIMIT 1;
 
-DELETE FROM refunds
+DELETE FROM exchange.refunds
   WHERE deposit_serial_id < deposit_min;
 
-DELETE FROM aggregation_tracking
+DELETE FROM exchange.aggregation_tracking
   WHERE deposit_serial_id < deposit_min;
 
 SELECT
      denominations_serial
   INTO
      denom_min
-  FROM denominations
+  FROM exchange.denominations
   ORDER BY denominations_serial ASC
   LIMIT 1;
 
-DELETE FROM cs_nonce_locks
+DELETE FROM exchange.cs_nonce_locks
   WHERE max_denomination_serial <= denom_min;
 
 END $$;
@@ -1568,7 +1568,7 @@ DECLARE
 BEGIN
 
 -- Store the deposit request.
-INSERT INTO purse_deposits
+INSERT INTO exchange.purse_deposits
   (partner_serial_id
   ,purse_pub
   ,coin_pub
@@ -1589,7 +1589,7 @@ THEN
   -- Idempotency check: check if coin_sig is the same,
   -- if so, success, otherwise conflict!
   PERFORM
-  FROM purse_deposits
+  FROM exchange.purse_deposits
   WHERE coin_pub = in_coin_pub
     AND purse_pub = in_purse_pub
     AND coin_sig = in_cion_sig;
@@ -1658,7 +1658,7 @@ SELECT partner_serial_id
       ,reserve_pub
   INTO psi
       ,my_reserve_pub
-  FROM purse_merges
+  FROM exchange.purse_merges
  WHERE purse_pub=in_purse_pub;
 
 IF NOT FOUND
@@ -1672,7 +1672,7 @@ SELECT
   INTO
     my_amount_val
    ,my_amount_frac
-  FROM purse_requests
+  FROM exchange.purse_requests
   WHERE (purse_pub=in_purse_pub)
     AND ( ( ( (amount_with_fee_val <= balance_val)
           AND (amount_with_fee_frac <= balance_frac) )
@@ -1758,7 +1758,7 @@ ELSE
     partner_serial_id
   INTO
     my_partner_serial_id
-  FROM partners
+  FROM exchange.partners
   WHERE partner_base_url=in_partner_url
     AND start_date <= in_merge_timestamp
     AND end_date > in_merge_timestamp;
@@ -1786,7 +1786,7 @@ SELECT amount_with_fee_val
       ,my_purse_fee_val
       ,my_purse_fee_frac
       ,my_finished
-  FROM purse_requests
+  FROM exchange.purse_requests
   WHERE purse_pub=in_purse_pub
     AND balance_val >= amount_with_fee_val
     AND ( (balance_frac >= amount_with_fee_frac) OR
@@ -1802,7 +1802,7 @@ END IF;
 out_no_balance=FALSE;
 
 -- Store purse merge signature, checks for purse_pub uniqueness
-INSERT INTO purse_merges
+INSERT INTO exchange.purse_merges
     (partner_serial_id
     ,reserve_pub
     ,purse_pub
@@ -1822,7 +1822,7 @@ THEN
   -- Note that by checking 'merge_sig', we implicitly check
   -- identity over everything that the signature covers.
   PERFORM
-  FROM purse_merges
+  FROM exchange.purse_merges
   WHERE purse_pub=in_purse_pub
      AND merge_sig=in_merge_sig;
   IF NOT FOUND
@@ -1850,7 +1850,7 @@ THEN
   -- Need to do KYC check.
   SELECT NOT kyc_passed
     INTO out_no_kyc
-    FROM reserves
+    FROM exchange.reserves
    WHERE reserve_pub=in_reserve_pub;
 
   IF NOT FOUND
@@ -1874,7 +1874,7 @@ END IF;
 
 
 -- Store account merge signature.
-INSERT INTO account_merges
+INSERT INTO exchange.account_merges
   (reserve_pub
   ,reserve_sig
   ,purse_pub
@@ -1954,7 +1954,7 @@ AS $$
 BEGIN
 
 -- Store purse merge signature, checks for purse_pub uniqueness
-INSERT INTO purse_merges
+INSERT INTO exchange.purse_merges
     (partner_serial_id
     ,reserve_pub
     ,purse_pub
@@ -1974,7 +1974,7 @@ THEN
   -- Note that by checking 'merge_sig', we implicitly check
   -- identity over everything that the signature covers.
   PERFORM
-  FROM purse_merges
+  FROM exchange.purse_merges
   WHERE purse_pub=in_purse_pub
      AND merge_sig=in_merge_sig;
   IF NOT FOUND
@@ -1998,7 +1998,7 @@ out_conflict=FALSE;
 
 SELECT NOT kyc_passed
   INTO out_no_kyc
-  FROM reserves
+  FROM exchange.reserves
  WHERE reserve_pub=in_reserve_pub;
 
 IF NOT FOUND
@@ -2061,7 +2061,7 @@ out_no_funds=FALSE;
 
 
 -- Store account merge signature.
-INSERT INTO account_merges
+INSERT INTO exchange.account_merges
   (reserve_pub
   ,reserve_sig
   ,purse_pub
@@ -2110,7 +2110,7 @@ BEGIN
 
 SELECT purse_pub
   INTO my_purse_pub
-  FROM purse_requests
+  FROM exchange.purse_requests
  WHERE (purse_expiration >= in_start_time) AND
        (purse_expiration < in_end_time) AND
        (NOT finished) AND
@@ -2128,7 +2128,7 @@ UPDATE purse_requests
      finished=TRUE
  WHERE purse_pub=my_purse_pub;
 
-INSERT INTO purse_refunds
+INSERT INTO exchange.purse_refunds
  (purse_pub)
  VALUES
  (my_purse_pub);
@@ -2138,7 +2138,7 @@ FOR my_deposit IN
   SELECT coin_pub
         ,amount_with_fee_val
         ,amount_with_fee_frac
-    FROM purse_deposits
+    FROM exchange.purse_deposits
   WHERE purse_pub = my_purse_pub
 LOOP
   UPDATE known_coins SET
@@ -2177,7 +2177,7 @@ AS $$
 BEGIN
 
   -- Insert and check for idempotency.
-  INSERT INTO history_requests
+  INSERT INTO exchange.history_requests
   (reserve_pub
   ,request_timestamp
   ,reserve_sig
@@ -2251,7 +2251,7 @@ BEGIN
   INTO
     out_final_balance_val
    ,out_final_balance_frac
-  FROM reserves
+  FROM exchange.reserves
   WHERE reserve_pub=in_reserve_pub;
 
   IF NOT FOUND
@@ -2262,7 +2262,7 @@ BEGIN
     out_conflict = FALSE;
   END IF;
 
-  INSERT INTO close_requests
+  INSERT INTO exchange.close_requests
     (reserve_pub
     ,close_timestamp
     ,reserve_sig
