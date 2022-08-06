@@ -207,7 +207,7 @@ echo " DONE"
 # Setup merchant
 echo -n "Setting up merchant"
 
-curl -H "Content-Type: application/json" -X POST -d '{"auth": {"method": "external"}, "payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000}}' http://localhost:9966/management/instances
+curl -H "Content-Type: application/json" -X POST -d '{"auth": {"method": "external"}, "payto_uris":["payto://iban/SANDBOXX/DE474361?receiver-name=Merchant43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_us" : 3600000000},"default_pay_delay":{"d_us": 3600000000}}' http://localhost:9966/management/instances
 
 
 # run wallet CLI
