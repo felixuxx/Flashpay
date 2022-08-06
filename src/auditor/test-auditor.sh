@@ -449,7 +449,7 @@ echo "OK"
 function test_2() {
 
 echo "===========2: reserves_in inconsistency ==========="
-echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
+echo "UPDATE exchange.reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
 
 run_audit
 
@@ -483,7 +483,7 @@ fi
 echo PASS
 
 # Undo database modification
-echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -493,7 +493,7 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 function test_3() {
 
 echo "===========3: reserves_in inconsistency==========="
-echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 run_audit
 
@@ -546,7 +546,7 @@ then
 fi
 
 # Undo database modification
-echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -557,10 +557,10 @@ function test_4() {
 
 echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
-SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
-echo "UPDATE deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
+echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -594,7 +594,7 @@ fi
 
 echo PASS
 # Undo:
-echo "UPDATE deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -605,9 +605,9 @@ echo "UPDATE deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_seria
 function test_5() {
 echo "===========5: deposit contract hash wrong================="
 # Modify h_wire hash, so it is inconsistent with 'wire'
-SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_H=`echo "SELECT h_contract_terms FROM deposits WHERE deposit_serial_id=$SERIAL;" | psql $DB -Aqt`
-echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
+SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+OLD_H=`echo "SELECT h_contract_terms FROM exchange.deposits WHERE deposit_serial_id=$SERIAL;" | psql $DB -Aqt`
+echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
 
 run_audit
 
@@ -638,7 +638,7 @@ fi
 echo PASS
 
 # Undo:
-echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
+echo "UPDATE exchange.deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
 
 }
 
@@ -648,9 +648,9 @@ echo "UPDATE deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$S
 function test_6() {
 echo "===========6: known_coins signature wrong================="
 # Modify denom_sig, so it is wrong
-OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
-COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
-echo "UPDATE known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+OLD_SIG=`echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql $DB -Aqt`
+COIN_PUB=`echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
+echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 run_audit
 
@@ -679,7 +679,7 @@ then
 fi
 
 # Undo
-echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 }
 
@@ -689,13 +689,13 @@ echo "UPDATE known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | 
 function test_7() {
 echo "===========7: reserves_out signature wrong================="
 # Modify reserve_sig, so it is bogus
-HBE=`echo 'SELECT h_blind_ev FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT reserve_sig FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
-A_VAL=`echo "SELECT amount_with_fee_val FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
-A_FRAC=`echo "SELECT amount_with_fee_frac FROM reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+HBE=`echo 'SELECT h_blind_ev FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT reserve_sig FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+A_VAL=`echo "SELECT amount_with_fee_val FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+A_FRAC=`echo "SELECT amount_with_fee_frac FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
 # Normalize, we only deal with cents in this test-case
 A_FRAC=`expr $A_FRAC / 1000000 || true`
-echo "UPDATE reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
 
 run_audit
 
@@ -731,7 +731,7 @@ else
 fi
 
 # Undo:
-echo "UPDATE reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
 
 }
 
@@ -930,7 +930,7 @@ echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 $DB.sqlite3
 function test_12() {
 
 echo "===========12: incomplete refresh ==========="
-OLD_ACC=`echo "DELETE FROM refresh_revealed_coins;" | psql $DB -Aqt`
+OLD_ACC=`echo "DELETE FROM exchange.refresh_revealed_coins;" | psql $DB -Aqt`
 
 run_audit
 
@@ -961,10 +961,10 @@ function test_13() {
 
 echo "===========13: wrong melt signature ==========="
 # Modify denom_sig, so it is wrong
-COIN_PUB=`echo "SELECT old_coin_pub FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
+COIN_PUB=`echo "SELECT old_coin_pub FROM exchange.refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT old_coin_sig FROM exchange.refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
 NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
-echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
+echo "UPDATE exchange.refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 run_audit
 
@@ -1011,7 +1011,7 @@ then
     # actual outgoing wire transfers, so we need to run the
     # aggregator here.
     pre_audit aggregator
-    echo "UPDATE wire_fee SET wire_fee_frac=100;" | psql -Aqt $DB
+    echo "UPDATE exchange.wire_fee SET wire_fee_frac=100;" | psql -Aqt $DB
     audit_only
     post_audit
 
@@ -1043,8 +1043,8 @@ function test_15() {
 echo "===========15: deposit wire salt wrong================="
 
 # Modify wire_salt hash, so it is inconsistent
-SALT=`echo "SELECT wire_salt FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
-echo "UPDATE deposits SET wire_salt='\x1197cd7f7b0e13ab1905fedb36c536a2' WHERE deposit_serial_id=1;" | psql -Aqt $DB
+SALT=`echo "SELECT wire_salt FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
+echo "UPDATE exchange.deposits SET wire_salt='\x1197cd7f7b0e13ab1905fedb36c536a2' WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
 run_audit
 
@@ -1057,7 +1057,7 @@ fi
 echo PASS
 
 # Restore DB
-echo "UPDATE deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE exchange.deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
 }
 
@@ -1210,7 +1210,7 @@ fi
 function test_18() {
 echo "===========18: emergency================="
 
-echo "DELETE FROM reserves_out;" | psql -Aqt $DB
+echo "DELETE FROM exchange.reserves_out;" | psql -Aqt $DB
 
 run_audit
 
@@ -1256,16 +1256,16 @@ echo "===========19: reserve closure done properly ================="
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
-    OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+    OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM exchange.reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
-    echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
     # Need to run with the aggregator so the reserve closure happens
     run_audit aggregator
@@ -1294,13 +1294,13 @@ fi
 function test_20() {
 echo "===========20: reserve closure missing ================="
 
-OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_PUB=`echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
 NEW_CREDIT=`expr $OLD_VAL + 100 || true`
-echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE exchange.reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
 # This time, run without the aggregator so the reserve closure is skipped!
 run_audit
@@ -1316,8 +1316,8 @@ then
 fi
 
 # Undo
-echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+echo "UPDATE exchange.reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
 }
 
@@ -1334,16 +1334,16 @@ echo "===========21: reserve closure missreported ================="
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
-    OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+    OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM exchange.reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
-    echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
@@ -1383,14 +1383,14 @@ fi
 function test_22() {
 echo "===========22: denomination key expired ================="
 
-S_DENOM=`echo 'SELECT denominations_serial FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
+S_DENOM=`echo 'SELECT denominations_serial FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
 
-OLD_START=`echo "SELECT valid_from FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
-OLD_WEXP=`echo "SELECT expire_withdraw FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
+OLD_START=`echo "SELECT valid_from FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
+OLD_WEXP=`echo "SELECT expire_withdraw FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
 # Basically expires 'immediately', so that the withdraw must have been 'invalid'
 NEW_WEXP=$OLD_START
 
-echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 
 run_audit
@@ -1401,7 +1401,7 @@ jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserv
 echo PASS
 
 # Undo modification
-echo "UPDATE denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 }
 
@@ -1422,9 +1422,9 @@ then
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
 
-    OLD_AMOUNT=`echo "SELECT amount_frac FROM wire_out WHERE wireout_uuid=1;" | psql $DB -Aqt`
+    OLD_AMOUNT=`echo "SELECT amount_frac FROM exchange.wire_out WHERE wireout_uuid=1;" | psql $DB -Aqt`
     NEW_AMOUNT=`expr $OLD_AMOUNT - 1000000 || true`
-    echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
 
     audit_only
     post_audit
@@ -1452,7 +1452,7 @@ then
 
     echo "Second pass: changing how amount is wrong to other direction"
     NEW_AMOUNT=`expr $OLD_AMOUNT + 1000000 || true`
-    echo "UPDATE wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt $DB
 
     pre_audit
     audit_only
@@ -1494,13 +1494,13 @@ function test_24() {
 
 echo "===========24: deposits missing ==========="
 # Modify denom_sig, so it is wrong
-CNT=`echo "SELECT COUNT(*) FROM deposit_confirmations;" | psql -Aqt $DB`
+CNT=`echo "SELECT COUNT(*) FROM exchange.deposit_confirmations;" | psql -Aqt $DB`
 if test x$CNT = x0
 then
     echo "Skipping deposits missing test: no deposit confirmations in database!"
 else
-    echo "DELETE FROM deposits;" | psql -Aqt $DB
-    echo "DELETE FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
+    echo "DELETE FROM exchange.deposits;" | psql -Aqt $DB
+    echo "DELETE FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
     run_audit
 
@@ -1540,7 +1540,7 @@ if [ $DATABASE_AGE -gt 3600 ]
 then
 
     # Drop refund, so coin history is bogus.
-    echo "DELETE FROM refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
+    echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
 
     run_audit aggregator
 
@@ -1578,12 +1578,12 @@ fi
 function test_26() {
 echo "===========26: deposit wire target malformed ================="
 # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
-SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
+SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
 echo OLD_WIRE_ID=$OLD_WIRE_ID
 echo NEW_WIRE_ID=$NEW_WIRE_ID
-echo "UPDATE deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -1617,7 +1617,7 @@ fi
 
 echo PASS
 # Undo:
-echo "UPDATE deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -1683,9 +1683,9 @@ then
 
     echo "===========28: known_coins signature wrong================="
     # Modify denom_sig, so it is wrong
-    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
-    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
-    echo "UPDATE known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    OLD_SIG=`echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql $DB -Aqt`
+    COIN_PUB=`echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
+    echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
     run_audit aggregator
 
@@ -1729,7 +1729,7 @@ fi
 function test_29() {
 echo "===========29: withdraw fee inconsistency ================="
 
-echo "UPDATE denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 run_audit
 
@@ -1747,7 +1747,7 @@ then
 fi
 echo "OK"
 # Undo
-echo "UPDATE denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 }
 
@@ -1757,7 +1757,7 @@ echo "UPDATE denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | ps
 function test_30() {
 echo "===========30: melt fee inconsistency ================="
 
-echo "UPDATE denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
 
 run_audit
 echo -n "Testing inconsistency detection... "
@@ -1776,7 +1776,7 @@ fi
 jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
 echo "OK"
 # Undo
-echo "UPDATE denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 }
 
@@ -1794,7 +1794,7 @@ then
 
     echo "===========31: deposit fee inconsistency ================="
 
-    echo "UPDATE denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
+    echo "UPDATE exchange.denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
 
     run_audit aggregator
     echo -n "Testing inconsistency detection... "
@@ -1812,7 +1812,7 @@ then
 
     echo "OK"
     # Undo
-    echo "UPDATE denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
+    echo "UPDATE exchange.denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
 
 else
     echo "Test skipped (database too new)"
@@ -1836,9 +1836,9 @@ then
 
     echo "===========32: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
-    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -At`
-    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -At`
-    echo "UPDATE known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    OLD_SIG=`echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql $DB -At`
+    COIN_PUB=`echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -At`
+    echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
     run_audit aggregator
     echo -n "Testing inconsistency detection... "
@@ -1880,8 +1880,8 @@ if [ $DATABASE_AGE -gt 3600 ]
 then
 
     # Modify h_payto hash, so it is inconsistent with 'wire'
-    WTSID=`echo "SELECT wire_target_serial_id FROM deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
-    echo "UPDATE wire_targets SET h_payto='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE wire_target_serial_id=$WTSID" | psql -Aqt $DB
+    WTSID=`echo "SELECT wire_target_serial_id FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
+    echo "UPDATE exchange.wire_targets SET h_payto='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE wire_target_serial_id=$WTSID" | psql -Aqt $DB
 
     # The auditor checks h_wire consistency only for
     # coins where the wire transfer has happened, hence

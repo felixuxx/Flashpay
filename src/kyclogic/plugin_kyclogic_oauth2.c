@@ -200,6 +200,18 @@ struct TALER_KYCLOGIC_ProofHandle
   struct GNUNET_CURL_Job *job;
 
   /**
+   * User ID to return, the 'id' from OAuth.
+   */
+  char *provider_user_id;
+
+  /**
+   * Legitimization ID to return, the 64-bit row ID
+   * as a string.
+   */
+  char provider_legitimization_id[32];
+
+
+  /**
    * Expiration time for a successful KYC process.
    */
   struct GNUNET_TIME_Absolute expiration;
@@ -444,9 +456,9 @@ initiate_task (void *cls)
   ih->cb (ih->cb_cls,
           TALER_EC_NONE,
           url,
-          hps,
+          NULL /* unknown user_id here */,
           legi_s,
-          NULL);
+          NULL /* no error */);
   GNUNET_free (url);
   GNUNET_free (hps);
   GNUNET_free (ih);
@@ -513,10 +525,13 @@ return_proof_response (void *cls)
   ph->task = NULL;
   ph->cb (ph->cb_cls,
           ph->status,
+          ph->provider_user_id,
+          ph->provider_legitimization_id,
           ph->expiration,
           ph->http_status,
           ph->response);
   MHD_destroy_response (ph->response);
+  GNUNET_free (ph->provider_user_id);
   GNUNET_free (ph);
 }
 
@@ -671,8 +686,7 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                     MHD_HTTP_HEADER_LOCATION,
                     ph->pd->post_kyc_redirect_url));
     ph->http_status = MHD_HTTP_SEE_OTHER;
-    // FIXME: return & persist ID somehow!! => API design issue?
-    // kpc->id = GNUNET_strdup (id);
+    ph->provider_user_id = GNUNET_strdup (id);
   }
 }
 
@@ -740,7 +754,16 @@ oauth2_proof (void *cls,
   struct TALER_KYCLOGIC_ProofHandle *ph;
   const char *code;
 
+  if (strlen (provider_legitimization_id) >=
+      sizeof (ph->provider_legitimization_id))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  GNUNET_break (NULL == provider_user_id);
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
+  strcpy (ph->provider_legitimization_id,
+          provider_legitimization_id);
   ph->pd = pd;
   ph->connection = connection;
   ph->h_payto = *account_id;

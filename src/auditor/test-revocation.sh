@@ -434,7 +434,7 @@ echo "OK"
 function test_2() {
 
 echo "===========2: recoup amount inconsistency==========="
-echo "UPDATE recoup SET amount_val=5 WHERE recoup_uuid=1" | psql -Aqt $DB
+echo "UPDATE exchange.recoup SET amount_val=5 WHERE recoup_uuid=1" | psql -Aqt $DB
 
 run_audit
 
@@ -464,7 +464,7 @@ fi
 echo OK
 
 # Undo database modification
-echo "UPDATE recoup SET amount_val=2 WHERE recoup_uuid=1" | psql -Aqt $DB
+echo "UPDATE exchange.recoup SET amount_val=2 WHERE recoup_uuid=1" | psql -Aqt $DB
 
 }
 
@@ -473,7 +473,7 @@ echo "UPDATE recoup SET amount_val=2 WHERE recoup_uuid=1" | psql -Aqt $DB
 function test_3() {
 
 echo "===========3: recoup-refresh amount inconsistency==========="
-echo "UPDATE recoup_refresh SET amount_val=5 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
+echo "UPDATE exchange.recoup_refresh SET amount_val=5 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
 
 run_audit
 
@@ -492,7 +492,7 @@ fi
 echo OK
 
 # Undo database modification
-echo "UPDATE recoup_refresh SET amount_val=0 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
+echo "UPDATE exchange.recoup_refresh SET amount_val=0 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
 
 }
 
@@ -501,7 +501,7 @@ echo "UPDATE recoup_refresh SET amount_val=0 WHERE recoup_refresh_uuid=1" | psql
 function test_4() {
 
 echo "===========4: invalid recoup==========="
-echo "DELETE FROM denomination_revocations;" | psql -Aqt $DB
+echo "DELETE FROM exchange.denomination_revocations;" | psql -Aqt $DB
 
 run_audit
 

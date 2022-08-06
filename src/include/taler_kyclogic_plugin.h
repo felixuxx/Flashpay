@@ -150,6 +150,8 @@ typedef void
  *
  * @param cls closure
  * @param status KYC status
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
  * @param http_status HTTP status code of @a response
  * @param[in] response to return to the HTTP client
@@ -158,6 +160,8 @@ typedef void
 (*TALER_KYCLOGIC_ProofCallback)(
   void *cls,
   enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
   unsigned int http_status,
   struct MHD_Response *response);
@@ -172,6 +176,8 @@ typedef void
  *
  * @param cls closure
  * @param account_id account the webhook was about
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
  * @param expiration until when is the KYC check valid
  * @param http_status HTTP status code of @a response
@@ -181,6 +187,8 @@ typedef void
 (*TALER_KYCLOGIC_WebhookCallback)(
   void *cls,
   const struct TALER_PaytoHashP *account_id,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
   struct GNUNET_TIME_Absolute expiration,
   unsigned int http_status,
