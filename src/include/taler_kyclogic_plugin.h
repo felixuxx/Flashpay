@@ -147,11 +147,10 @@ typedef void
 
 
 /**
- * Function called with the result of a proof check
- * operation.
+ * Function called with the result of a proof check operation.
  *
  * Note that the "decref" for the @a response
- * will be done by the plugin.
+ * will be done by the callee and MUST NOT be done by the plugin.
  *
  * @param cls closure
  * @param status KYC status
@@ -173,13 +172,13 @@ typedef void
 
 
 /**
- * Function called with the result of a webhook
- * operation.
+ * Function called with the result of a webhook operation.
  *
- * Note that the "decref" for the @a response
- * will be done by the plugin.
+ * Note that the "decref" for the @a response will be done by the callee and
+ * MUST NOT be done by the plugin!
  *
  * @param cls closure
+ * @param legi_row legitimization request the webhook was about
  * @param account_id account the webhook was about
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
@@ -191,6 +190,7 @@ typedef void
 typedef void
 (*TALER_KYCLOGIC_WebhookCallback)(
   void *cls,
+  uint64_t legi_row,
   const struct TALER_PaytoHashP *account_id,
   const char *provider_user_id,
   const char *provider_legitimization_id,
@@ -330,7 +330,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param plc callback to lookup accounts with
    * @param plc_cls closure for @a plc
    * @param http_method HTTP method used for the webhook
-   * @param url_path rest of the URL after `/kyc-webhook/`
+   * @param url_path rest of the URL after `/kyc-webhook/$LOGIC/`
    * @param connection MHD connection object (for HTTP headers)
    * @param body_size number of bytes in @a body
    * @param body HTTP request body
@@ -344,10 +344,9 @@ struct TALER_KYCLOGIC_Plugin
              TALER_KYCLOGIC_ProviderLookupCallback plc,
              void *plc_cls,
              const char *http_method,
-             const char *url_path,
+             const char *const url_path[],
              struct MHD_Connection *connection,
-             size_t body_size,
-             const void *body,
+             const json_t *upload,
              TALER_KYCLOGIC_WebhookCallback cb,
              void *cb_cls);
 

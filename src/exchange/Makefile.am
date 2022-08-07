@@ -136,6 +136,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
   taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
+  taler-exchange-httpd_kyc-webhook.c taler-exchange-httpd_kyc-webhook.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
   taler-exchange-httpd_management.h \
   taler-exchange-httpd_management_auditors.c \

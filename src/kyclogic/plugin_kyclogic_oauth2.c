@@ -556,7 +556,6 @@ return_proof_response (void *cls)
           GNUNET_TIME_relative_to_absolute (ph->pd->expiration),
           ph->http_status,
           ph->response);
-  MHD_destroy_response (ph->response);
   GNUNET_free (ph->provider_user_id);
   GNUNET_free (ph);
 }
@@ -943,6 +942,7 @@ wh_return_not_found (void *cls)
                                               "",
                                               MHD_RESPMEM_PERSISTENT);
   wh->cb (wh->cb_cls,
+          0LLU,
           NULL,
           NULL,
           NULL,
@@ -962,10 +962,9 @@ wh_return_not_found (void *cls)
  * @param plc callback to lookup accounts with
  * @param plc_cls closure for @a plc
  * @param http_method HTTP method used for the webhook
- * @param url_path rest of the URL after `/kyc-webhook/`
+ * @param url_path rest of the URL after `/kyc-webhook/$LOGIC/`, as NULL-terminated array
  * @param connection MHD connection object (for HTTP headers)
- * @param body_size number of bytes in @a body
- * @param body HTTP request body
+ * @param body HTTP request body, or NULL if not available
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -976,10 +975,9 @@ oauth2_webhook (void *cls,
                 TALER_KYCLOGIC_ProviderLookupCallback plc,
                 void *plc_cls,
                 const char *http_method,
-                const char *url_path,
+                const char *url_path[],
                 struct MHD_Connection *connection,
-                size_t body_size,
-                const void *body,
+                const json_t *body,
                 TALER_KYCLOGIC_WebhookCallback cb,
                 void *cb_cls)
 {

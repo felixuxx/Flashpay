@@ -16602,7 +16602,7 @@ postgres_update_kyc_requirement_by_row (
   void *cls,
   uint64_t legi_row,
   const char *provider_section,
-  struct TALER_PaytoHashP *h_payto,
+  const struct TALER_PaytoHashP *h_payto,
   const char *provider_account_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration)
