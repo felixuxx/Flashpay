@@ -100,6 +100,11 @@ struct TALER_KYCLOGIC_ProviderDetails
    */
   char *post_kyc_redirect_url;
 
+  /**
+   * Expiration time for a successful KYC process.
+   */
+  struct GNUNET_TIME_Relative expiration;
+
 };
 
 
@@ -210,12 +215,6 @@ struct TALER_KYCLOGIC_ProofHandle
    */
   char provider_legitimization_id[32];
 
-
-  /**
-   * Expiration time for a successful KYC process.
-   */
-  struct GNUNET_TIME_Absolute expiration;
-
   /**
    * KYC status to return.
    */
@@ -293,6 +292,18 @@ oauth2_load_configuration (void *cls,
 
   pd = GNUNET_new (struct TALER_KYCLOGIC_ProviderDetails);
   pd->ps = ps;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (ps->cfg,
+                                           provider_section_name,
+                                           "KYC_OAUTH2_EXPIRATION",
+                                           &pd->expiration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_OAUTH2_EXPIARTION");
+    oauth2_unload_configuration (pd);
+    return NULL;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
@@ -542,7 +553,7 @@ return_proof_response (void *cls)
           ph->status,
           ph->provider_user_id,
           ph->provider_legitimization_id,
-          ph->expiration,
+          GNUNET_TIME_relative_to_absolute (ph->pd->expiration),
           ph->http_status,
           ph->response);
   MHD_destroy_response (ph->response);
