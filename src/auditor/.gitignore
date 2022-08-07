@@ -19,3 +19,7 @@ generate-auditor-basedb-revocation.conf
 revocation-tmp-*
 auditor-basedb.wdb
 taler-auditor-sync
+auditor-basedb.sqlite3
+taler-auditor-test.sqlite3
+libeufin-nexus.pid
+libeufin-sandbox.pid
