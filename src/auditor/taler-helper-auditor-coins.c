@@ -1340,6 +1340,7 @@ refresh_session_cb (void *cls,
                                   coin_pub,
                                   coin_sig))
     {
+      GNUNET_break_op (0);
       TALER_ARL_report (report_bad_sig_losses,
                         GNUNET_JSON_PACK (
                           GNUNET_JSON_pack_string ("operation",
@@ -1451,11 +1452,12 @@ refresh_session_cb (void *cls,
                                             &amount_without_fee));
     }
 
-    /* check old coin covers complete expenses (of withdraw operations) */
+    /* check old coin covers complete expenses (of refresh operation) */
     if (1 == TALER_amount_cmp (&refresh_cost,
                                &amount_without_fee))
     {
       /* refresh_cost > amount_without_fee, which is bad (exchange lost) */
+      GNUNET_break_op (0);
       report_amount_arithmetic_inconsistency ("melt (cost)",
                                               rowid,
                                               &amount_without_fee, /* 'exchange' */

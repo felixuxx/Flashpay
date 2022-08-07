@@ -1776,7 +1776,7 @@ fi
 jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
 echo "OK"
 # Undo
-echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=10;" | psql -Aqt $DB
 
 }
 
