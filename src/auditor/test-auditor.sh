@@ -235,7 +235,7 @@ full_reload()
 {
     echo "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
-    rm $DB.sqlite3 2> /dev/null || true # libeufin
+    rm -f $DB.sqlite3 2> /dev/null || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"

@@ -210,8 +210,10 @@ EXTRA_DIST = \
   auditor-basedb.age \
   auditor-basedb.conf \
   auditor-basedb.sql \
+  auditor-basedb-libeufin.sql \
   auditor-basedb.mpub \
   revoke-basedb.age \
   revoke-basedb.conf \
   revoke-basedb.sql \
+  revoke-basedb-libeufin.sql \
   revoke-basedb.mpub
