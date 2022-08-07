@@ -25,7 +25,6 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <sched.h>
-#include <pthread.h>
 #include <sys/resource.h>
 #include <limits.h>
 #include "taler_mhd_lib.h"

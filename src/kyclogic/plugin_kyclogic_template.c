@@ -164,10 +164,6 @@ struct TALER_KYCLOGIC_WebhookHandle
    */
   const struct TALER_KYCLOGIC_ProviderDetails *pd;
 
-  /**
-   * Overall plugin state.
-   */
-  struct PluginState *ps;
 };
 
 
@@ -210,6 +206,7 @@ template_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
  * @param account_id which account to trigger process for
+ * @param legitimization_uuid unique ID for the legitimization process
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to cancel operation early
@@ -218,6 +215,7 @@ static struct TALER_KYCLOGIC_InitiateHandle *
 template_initiate (void *cls,
                    const struct TALER_KYCLOGIC_ProviderDetails *pd,
                    const struct TALER_PaytoHashP *account_id,
+                   uint64_t legitimization_uuid,
                    TALER_KYCLOGIC_InitiateCallback cb,
                    void *cb_cls)
 {
@@ -230,7 +228,7 @@ template_initiate (void *cls,
   ih->h_payto = *account_id;
   ih->pd = pd;
   GNUNET_break (0); // FIXME: add actual initiation logic!
-  return res;
+  return ih;
 }
 
 
@@ -282,7 +280,7 @@ template_proof (void *cls,
   ph->cb_cls = cb_cls;
 
   GNUNET_break (0); // FIXME: start check!
-  return ps;
+  return ph;
 }
 
 
@@ -321,10 +319,9 @@ template_webhook (void *cls,
                   TALER_KYCLOGIC_ProviderLookupCallback plc,
                   void *plc_cls,
                   const char *http_method,
-                  const char *url_path,
+                  const char *const url_path[],
                   struct MHD_Connection *connection,
-                  size_t body_size,
-                  const void *body,
+                  const json_t *body,
                   TALER_KYCLOGIC_WebhookCallback cb,
                   void *cb_cls)
 {
@@ -370,7 +367,7 @@ libtaler_plugin_kyclogic_template_init (void *cls)
   ps = GNUNET_new (struct PluginState);
   ps->cfg = cfg;
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+      GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
                                              "BASE_URL",
                                              &ps->exchange_base_url))
