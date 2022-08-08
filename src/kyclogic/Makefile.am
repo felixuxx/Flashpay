@@ -16,6 +16,17 @@ EXTRA_DIST = \
   kyclogic.conf \
   kyclogic-oauth2.conf
 
+lib_LTLIBRARIES = \
+  libtalerkyclogic.la
+
+libtalerkyclogic_la_SOURCES = \
+  kyclogic_api.c
+libtalerkyclogic_la_LIBADD = \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  $(XLIB)
+
+
 bin_PROGRAMS = \
   taler-exchange-kyc-tester
 
@@ -23,6 +34,7 @@ taler_exchange_kyc_tester_SOURCES = \
   taler-exchange-kyc-tester.c
 taler_exchange_kyc_tester_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  libtalerkyclogic.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

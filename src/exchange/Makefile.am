@@ -132,7 +132,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_extensions.c taler-exchange-httpd_extensions.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
-  taler-exchange-httpd_kyc.c taler-exchange-httpd_kyc.h \
   taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
   taler-exchange-httpd_kyc-wallet.c taler-exchange-httpd_kyc-wallet.h \
@@ -177,6 +176,7 @@ taler_exchange_httpd_LDADD = \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \
   -lmicrohttpd \

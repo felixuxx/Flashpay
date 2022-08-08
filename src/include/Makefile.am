@@ -17,6 +17,7 @@ talerinclude_HEADERS = \
   taler_exchangedb_plugin.h \
   taler_extensions.h \
   taler_fakebank_lib.h \
+  taler_kyclogic_lib.h \
   taler_kyclogic_plugin.h \
   taler_json_lib.h \
   taler_testing_lib.h \

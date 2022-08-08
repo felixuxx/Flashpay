@@ -26,7 +26,7 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_kyc.h"
+#include "taler_kyclogic_lib.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -263,9 +263,9 @@ handler_kyc_webhook_generic (
     rc->rh_cleaner = &clean_kwh;
 
     if (GNUNET_OK !=
-        TEH_kyc_get_logic (kwh->logic,
-                           &kwh->plugin,
-                           &kwh->pd))
+        TALER_KYCLOGIC_kyc_get_logic (kwh->logic,
+                                      &kwh->plugin,
+                                      &kwh->pd))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",

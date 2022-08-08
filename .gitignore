@@ -163,3 +163,4 @@ po/remove-potcdate.sed
 src/include/taler_dbevents.h
 src/bank-lib/taler-exchange-wire-gateway-client
 src/exchange/taler-exchange-drain
+src/kyclogic/taler-exchange-kyc-tester

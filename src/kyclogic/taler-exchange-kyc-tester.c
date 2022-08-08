@@ -28,6 +28,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_crypto_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_kyclogic_plugin.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
@@ -221,6 +222,328 @@ r404 (struct MHD_Connection *connection,
 
 
 /**
+ * Context for the webhook.
+ */
+struct KycWebhookContext
+{
+
+  /**
+   * Kept in a DLL while suspended.
+   */
+  struct KycWebhookContext *next;
+
+  /**
+   * Kept in a DLL while suspended.
+   */
+  struct KycWebhookContext *prev;
+
+  /**
+   * Details about the connection we are processing.
+   */
+  struct TEKT_RequestContext *rc;
+
+  /**
+   * Plugin responsible for the webhook.
+   */
+  struct TALER_KYCLOGIC_Plugin *plugin;
+
+  /**
+   * Configuration for the specific action.
+   */
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  /**
+   * Webhook activity.
+   */
+  struct TALER_KYCLOGIC_WebhookHandle *wh;
+
+  /**
+   * HTTP response to return.
+   */
+  struct MHD_Response *response;
+
+  /**
+   * Logic the request is for. Name of the configuration
+   * section defining the KYC logic.
+   */
+  char *logic;
+
+  /**
+   * HTTP response code to return.
+   */
+  unsigned int response_code;
+
+  /**
+   * #GNUNET_YES if we are suspended,
+   * #GNUNET_NO if not.
+   * #GNUNET_SYSERR if we had some error.
+   */
+  enum GNUNET_GenericReturnValue suspended;
+
+};
+
+
+/**
+ * Contexts are kept in a DLL while suspended.
+ */
+static struct KycWebhookContext *kwh_head;
+
+/**
+ * Contexts are kept in a DLL while suspended.
+ */
+static struct KycWebhookContext *kwh_tail;
+
+
+/**
+ * Resume processing the @a kwh request.
+ *
+ * @param kwh request to resume
+ */
+static void
+kwh_resume (struct KycWebhookContext *kwh)
+{
+  GNUNET_assert (GNUNET_YES == kwh->suspended);
+  kwh->suspended = GNUNET_NO;
+  GNUNET_CONTAINER_DLL_remove (kwh_head,
+                               kwh_tail,
+                               kwh);
+  MHD_resume_connection (kwh->rc->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
+static void
+kyc_webhook_cleanup (void)
+{
+  struct KycWebhookContext *kwh;
+
+  while (NULL != (kwh = kwh_head))
+  {
+    if (NULL != kwh->wh)
+    {
+      kwh->plugin->webhook_cancel (kwh->wh);
+      kwh->wh = NULL;
+    }
+    kwh_resume (kwh);
+  }
+}
+
+
+/**
+ * Function called with the result of a webhook
+ * operation.
+ *
+ * Note that the "decref" for the @a response
+ * will be done by the plugin.
+ *
+ * @param cls closure
+ * @param legi_row legitimization request the webhook was about
+ * @param account_id account the webhook was about
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param status KYC status
+ * @param expiration until when is the KYC check valid
+ * @param http_status HTTP status code of @a response
+ * @param[in] response to return to the HTTP client
+ */
+static void
+webhook_finished_cb (
+  void *cls,
+  uint64_t legi_row,
+  const struct TALER_PaytoHashP *account_id,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  enum TALER_KYCLOGIC_KycStatus status,
+  struct GNUNET_TIME_Absolute expiration,
+  unsigned int http_status,
+  struct MHD_Response *response)
+{
+  struct KycWebhookContext *kwh = cls;
+
+  kwh->wh = NULL;
+  switch (status)
+  {
+  case TALER_KYCLOGIC_STATUS_SUCCESS:
+    /* _successfully_ resumed case */
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "KYC successful for user `%s' (legi: %s)\n",
+                provider_user_id,
+                provider_legitimization_id);
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC status of %s/%s (Row #%llu) is %d\n",
+                provider_user_id,
+                provider_legitimization_id,
+                (unsigned long long) legi_row,
+                status);
+    break;
+  }
+  kwh->response = response;
+  kwh->response_code = http_status;
+  kwh_resume (kwh);
+}
+
+
+/**
+ * Function called to clean up a context.
+ *
+ * @param rc request context
+ */
+static void
+clean_kwh (struct TEKT_RequestContext *rc)
+{
+  struct KycWebhookContext *kwh = rc->rh_ctx;
+
+  if (NULL != kwh->wh)
+  {
+    kwh->plugin->webhook_cancel (kwh->wh);
+    kwh->wh = NULL;
+  }
+  if (NULL != kwh->response)
+  {
+    MHD_destroy_response (kwh->response);
+    kwh->response = NULL;
+  }
+  GNUNET_free (kwh->logic);
+  GNUNET_free (kwh);
+}
+
+
+/**
+ * Function the plugin can use to lookup an
+ * @a h_payto by @a provider_legitimization_id.
+ *
+ * @param cls closure, NULL
+ * @param provider_section
+ * @param provider_legitimization_id legi to look up
+ * @param[out] h_payto where to write the result
+ * @return database transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+kyc_provider_account_lookup (
+  void *cls,
+  const char *provider_section,
+  const char *provider_legitimization_id,
+  struct TALER_PaytoHashP *h_payto)
+{
+  // FIXME: pass value to use for h_payto via command-line?
+  memset (h_payto,
+          42,
+          sizeof (*h_payto));
+  return 1; // FIXME...
+}
+
+
+/**
+ * Handle a (GET or POST) "/kyc-webhook" request.
+ *
+ * @param rc request to handle
+ * @param method HTTP request method used by the client
+ * @param root uploaded JSON body (can be NULL)
+ * @param args one argument with the payment_target_uuid
+ * @return MHD result code
+ */
+static MHD_RESULT
+handler_kyc_webhook_generic (
+  struct TEKT_RequestContext *rc,
+  const char *method,
+  const json_t *root,
+  const char *const args[])
+{
+  struct KycWebhookContext *kwh = rc->rh_ctx;
+
+  if (NULL == kwh)
+  { /* first time */
+    kwh = GNUNET_new (struct KycWebhookContext);
+    kwh->logic = GNUNET_strdup (args[0]);
+    kwh->rc = rc;
+    rc->rh_ctx = kwh;
+    rc->rh_cleaner = &clean_kwh;
+
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_get_logic (kwh->logic,
+                                      &kwh->plugin,
+                                      &kwh->pd))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "KYC logic `%s' unknown (check KYC provider configuration)\n",
+                  kwh->logic);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_EXCHANGE_KYC_WEBHOOK_LOGIC_UNKNOWN,
+                                         "$LOGIC");
+    }
+    kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
+                                    kwh->pd,
+                                    &kyc_provider_account_lookup,
+                                    NULL,
+                                    method,
+                                    &args[1],
+                                    rc->connection,
+                                    root,
+                                    &webhook_finished_cb,
+                                    kwh);
+    if (NULL == kwh->wh)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                         "failed to run webhook logic");
+    }
+    kwh->suspended = GNUNET_YES;
+    GNUNET_CONTAINER_DLL_insert (kwh_head,
+                                 kwh_tail,
+                                 kwh);
+    MHD_suspend_connection (rc->connection);
+    return MHD_YES;
+  }
+
+  if (NULL != kwh->response)
+  {
+    /* handle _failed_ resumed cases */
+    return MHD_queue_response (rc->connection,
+                               kwh->response_code,
+                               kwh->response);
+  }
+
+  /* We resumed, but got no response? This should
+     not happen. */
+  GNUNET_break (0);
+  return TALER_MHD_reply_with_error (rc->connection,
+                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                     TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                     "resumed without response");
+}
+
+
+static MHD_RESULT
+handler_kyc_webhook_get (
+  struct TEKT_RequestContext *rc,
+  const char *const args[])
+{
+  return handler_kyc_webhook_generic (rc,
+                                      MHD_HTTP_METHOD_GET,
+                                      NULL,
+                                      args);
+}
+
+
+static MHD_RESULT
+handler_kyc_webhook_post (
+  struct TEKT_RequestContext *rc,
+  const json_t *root,
+  const char *const args[])
+{
+  return handler_kyc_webhook_generic (rc,
+                                      MHD_HTTP_METHOD_POST,
+                                      root,
+                                      args);
+}
+
+
+/**
  * Function called whenever MHD is done with a request.  If the
  * request was a POST, we may have stored a `struct Buffer *` in the
  * @a con_cls that might still need to be cleaned up.  Call the
@@ -295,7 +618,6 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
                       size_t *upload_data_size)
 {
   const struct TEKT_RequestHandler *rh = rc->rh;
-  // FIXME: handle '-1 == rh->nargs'!!!
   const char *args[rh->nargs + 2];
   size_t ulen = strlen (url) + 1;
   json_t *root = NULL;
@@ -442,19 +764,21 @@ handle_mhd_request (void *cls,
       .handler.post = &TEKT_handler_kyc_wallet,
       .nargs = 0
     },
+#endif
     {
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEKT_handler_kyc_webhook_post,
-      .nargs = -1
+      .handler.post = &handler_kyc_webhook_post,
+      .nargs = 128,
+      .nargs_is_upper_bound = true
     },
     {
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.post = &TEKT_handler_kyc_webhook_get,
-      .nargs = -1
+      .handler.get = &handler_kyc_webhook_get,
+      .nargs = 128,
+      .nargs_is_upper_bound = true
     },
-#endif
     /* mark end of list */
     {
       .url = NULL
@@ -670,6 +994,8 @@ do_shutdown (void *cls)
   struct MHD_Daemon *mhd;
   (void) cls;
 
+  kyc_webhook_cleanup ();
+  TALER_KYCLOGIC_kyc_done ();
   mhd = TALER_MHD_daemon_stop ();
   if (NULL != mhd)
     MHD_stop_daemon (mhd);
@@ -708,11 +1034,18 @@ run (void *cls,
   (void ) cfgfile;
   TALER_MHD_setup (TALER_MHD_GO_NONE);
   TEKT_cfg = config;
-
+  if (GNUNET_OK !=
+      TALER_KYCLOGIC_kyc_init (config))
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   if (GNUNET_OK !=
       exchange_serve_process_config ())
   {
     global_ret = EXIT_NOTCONFIGURED;
+    TALER_KYCLOGIC_kyc_done ();
     GNUNET_SCHEDULER_shutdown ();
     return;
   }

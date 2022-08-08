@@ -14,32 +14,32 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_kyc.h
- * @brief KYC API for the exchange
+ * @file taler_kyclogic_lib.h
+ * @brief server-side KYC API
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_KYC_H
-#define TALER_EXCHANGE_HTTPD_KYC_H
+#ifndef TALER_KYCLOGIC_LIB_H
+#define TALER_KYCLOGIC_LIB_H
 
 #include <microhttpd.h>
-#include "taler_exchangedb_plugin.h"
-#include "taler_kyclogic_plugin.h"
+#include <taler_exchangedb_plugin.h>
+#include <taler_kyclogic_plugin.h>
 
 
 /**
  * Enumeration for our KYC user types.
  */
-enum TEH_KycUserType
+enum TALER_KYCLOGIC_KycUserType
 {
   /**
    * KYC rule is for an individual.
    */
-  TEH_KYC_UT_INDIVIDUAL = 0,
+  TALER_KYCLOGIC_KYC_UT_INDIVIDUAL = 0,
 
   /**
    * KYC rule is for a business.
    */
-  TEH_KYC_UT_BUSINESS = 1
+  TALER_KYCLOGIC_KYC_UT_BUSINESS = 1
 };
 
 
@@ -47,28 +47,28 @@ enum TEH_KycUserType
  * Enumeration of possible events that may trigger
  * KYC requirements.
  */
-enum TEH_KycTriggerEvent
+enum TALER_KYCLOGIC_KycTriggerEvent
 {
 
   /**
    * Customer withdraws coins.
    */
-  TEH_KYC_TRIGGER_WITHDRAW = 0,
+  TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW = 0,
 
   /**
    * Merchant deposits coins.
    */
-  TEH_KYC_TRIGGER_DEPOSIT = 1,
+  TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT = 1,
 
   /**
    * Wallet receives P2P payment.
    */
-  TEH_KYC_TRIGGER_P2P_RECEIVE = 2,
+  TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE = 2,
 
   /**
    * Wallet balance exceeds threshold.
    */
-  TEH_KYC_TRIGGER_WALLET_BALANCE = 3
+  TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 3
 
 };
 
@@ -84,8 +84,9 @@ enum TEH_KycTriggerEvent
  *         malformed
  */
 enum GNUNET_GenericReturnValue
-TEH_kyc_trigger_from_string (const char *trigger_s,
-                             enum TEH_KycTriggerEvent *trigger);
+TALER_KYCLOGIC_kyc_trigger_from_string (
+  const char *trigger_s,
+  enum TALER_KYCLOGIC_KycTriggerEvent *trigger);
 
 
 /**
@@ -95,7 +96,7 @@ TEH_kyc_trigger_from_string (const char *trigger_s,
  * @return human-readable representation of the @a trigger
  */
 const char *
-TEH_kyc_trigger2s (enum TEH_KycTriggerEvent trigger);
+TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger);
 
 
 /**
@@ -108,8 +109,8 @@ TEH_kyc_trigger2s (enum TEH_KycTriggerEvent trigger);
  *         malformed
  */
 enum GNUNET_GenericReturnValue
-TEH_kyc_user_type_from_string (const char *ut_s,
-                               enum TEH_KycUserType *ut);
+TALER_KYCLOGIC_kyc_user_type_from_string (const char *ut_s,
+                                          enum TALER_KYCLOGIC_KycUserType *ut);
 
 
 /**
@@ -119,24 +120,24 @@ TEH_kyc_user_type_from_string (const char *ut_s,
  * @return human-readable representation of the @a ut
  */
 const char *
-TEH_kyc_user_type2s (enum TEH_KycUserType ut);
+TALER_KYCLOGIC_kyc_user_type2s (enum TALER_KYCLOGIC_KycUserType ut);
 
 
 /**
- * Initialize KYC subsystem. Loads the KYC
- * configuration.
+ * Initialize KYC subsystem. Loads the KYC configuration.
  *
+ * @param cfg configuration to parse
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TEH_kyc_init (void);
+TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
  * Shut down the KYC subsystem.
  */
 void
-TEH_kyc_done (void);
+TALER_KYCLOGIC_kyc_done (void);
 
 
 /**
@@ -155,10 +156,28 @@ TEH_kyc_done (void);
  * @param cb_cls closure for @a cb
  */
 typedef void
-(*TEH_KycAmountIterator)(void *cls,
-                         struct GNUNET_TIME_Absolute limit,
-                         TALER_EXCHANGEDB_KycAmountCallback cb,
-                         void *cb_cls);
+(*TALER_KYCLOGIC_KycAmountIterator)(void *cls,
+                                    struct GNUNET_TIME_Absolute limit,
+                                    TALER_EXCHANGEDB_KycAmountCallback cb,
+                                    void *cb_cls);
+
+
+/**
+ * Call us on KYC processes satisfied for the given
+ * account. Must match the ``select_satisfied_kyc_processes`` of the exchange database plugin.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param spc function to call for each satisfied KYC process
+ * @param spc_cls closure for @a spc
+ * @return transaction status code
+ */
+typedef enum GNUNET_DB_QueryStatus
+(*TALER_KYCLOGIC_KycSatisfiedIterator)(
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
+  void *spc_cls);
 
 
 /**
@@ -172,6 +191,9 @@ typedef void
  * @param event what type of operation is triggering the
  *         test if KYC is required
  * @param h_payto account the event is about
+ * @param ki callback that returns list of already
+ *    satisfied KYC checks, implemented by ``select_satisfied_kyc_processes`` of the exchangedb
+ * @param ki_cls closure for @a ki
  * @param ai callback offered to inquire about historic
  *         amounts involved in this type of operation
  *         at the given account
@@ -179,10 +201,12 @@ typedef void
  * @return NULL if no check is needed
  */
 const char *
-TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
-                       const struct TALER_PaytoHashP *h_payto,
-                       TEH_KycAmountIterator ai,
-                       void *ai_cls);
+TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
+                                  const struct TALER_PaytoHashP *h_payto,
+                                  TALER_KYCLOGIC_KycSatisfiedIterator ki,
+                                  void *ki_cls,
+                                  TALER_KYCLOGIC_KycAmountIterator ai,
+                                  void *ai_cls);
 
 
 /**
@@ -194,9 +218,9 @@ TEH_kyc_test_required (enum TEH_KycTriggerEvent event,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TEH_kyc_get_logic (const char *provider_section_name,
-                   struct TALER_KYCLOGIC_Plugin **plugin,
-                   struct TALER_KYCLOGIC_ProviderDetails **pd);
+TALER_KYCLOGIC_kyc_get_logic (const char *provider_section_name,
+                              struct TALER_KYCLOGIC_Plugin **plugin,
+                              struct TALER_KYCLOGIC_ProviderDetails **pd);
 
 
 #endif
