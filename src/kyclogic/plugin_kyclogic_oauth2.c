@@ -101,9 +101,9 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *post_kyc_redirect_url;
 
   /**
-   * Expiration time for a successful KYC process.
+   * Validity time for a successful KYC process.
    */
-  struct GNUNET_TIME_Relative expiration;
+  struct GNUNET_TIME_Relative validity;
 
 };
 
@@ -295,12 +295,12 @@ oauth2_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (ps->cfg,
                                            provider_section_name,
-                                           "KYC_OAUTH2_EXPIRATION",
-                                           &pd->expiration))
+                                           "KYC_OAUTH2_VALIDITY",
+                                           &pd->validity))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_EXPIARTION");
+                               "KYC_OAUTH2_VALIDITY");
     oauth2_unload_configuration (pd);
     return NULL;
   }
@@ -367,12 +367,12 @@ oauth2_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_INFO_URL",
+                                             "KYC_OAUTH2_INFO_URL",
                                              &s))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_INFO_URL");
+                               "KYC_OAUTH2_INFO_URL");
     oauth2_unload_configuration (pd);
     return NULL;
   }
@@ -553,7 +553,7 @@ return_proof_response (void *cls)
           ph->status,
           ph->provider_user_id,
           ph->provider_legitimization_id,
-          GNUNET_TIME_relative_to_absolute (ph->pd->expiration),
+          GNUNET_TIME_relative_to_absolute (ph->pd->validity),
           ph->http_status,
           ph->response);
   GNUNET_free (ph->provider_user_id);

@@ -14,7 +14,8 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   kyclogic.conf \
-  kyclogic-oauth2.conf
+  kyclogic-oauth2.conf \
+  sample.conf
 
 lib_LTLIBRARIES = \
   libtalerkyclogic.la

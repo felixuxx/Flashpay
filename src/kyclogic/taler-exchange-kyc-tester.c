@@ -172,19 +172,49 @@ static const struct GNUNET_CONFIGURATION_Handle *TEKT_cfg;
 static struct MHD_Daemon *mhd;
 
 /**
- * Our currency.
- */
-static char *TEKT_currency;
-
-/**
  * Our base URL.
  */
 static char *TEKT_base_url;
 
 /**
+ * Payto set via command-line (or otherwise random).
+ */
+static struct TALER_PaytoHashP cmd_line_h_payto;
+
+/**
+ * Row ID to use, override with '-r'
+ */
+static unsigned int kyc_row_id = 42;
+
+/**
+ * -P command-line option.
+ */
+static int print_h_payto;
+
+/**
+ * -w command-line option.
+ */
+static int run_webservice;
+
+/**
  * Value to return from main()
  */
 static int global_ret;
+
+/**
+ * -i command-line flag.
+ */
+static char *initiate_section;
+
+/**
+ * Handle for ongoing initiation operation.
+ */
+static struct TALER_KYCLOGIC_InitiateHandle *ih;
+
+/**
+ * KYC logic running for @e ih.
+ */
+static struct TALER_KYCLOGIC_Plugin *logic;
 
 /**
  * Port to run the daemon on.
@@ -201,24 +231,6 @@ static struct GNUNET_CURL_Context *TEKT_curl_ctx;
  * GNUnet event loop.
  */
 static struct GNUNET_CURL_RescheduleContext *exchange_curl_rc;
-
-
-/**
- * Generate a 404 "not found" reply on @a connection with
- * the hint @a details.
- *
- * @param connection where to send the reply on
- * @param details details for the error message, can be NULL
- */
-static MHD_RESULT
-r404 (struct MHD_Connection *connection,
-      const char *details)
-{
-  return TALER_MHD_reply_with_error (connection,
-                                     MHD_HTTP_NOT_FOUND,
-                                     TALER_EC_EXCHANGE_GENERIC_OPERATION_UNKNOWN,
-                                     details);
-}
 
 
 /**
@@ -427,11 +439,12 @@ kyc_provider_account_lookup (
   const char *provider_legitimization_id,
   struct TALER_PaytoHashP *h_payto)
 {
-  // FIXME: pass value to use for h_payto via command-line?
-  memset (h_payto,
-          42,
-          sizeof (*h_payto));
-  return 1; // FIXME...
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Simulated account lookup using `%s/%s'\n",
+              provider_section,
+              provider_legitimization_id);
+  *h_payto = cmd_line_h_payto;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -745,24 +758,12 @@ handle_mhd_request (void *cls,
 {
   static struct TEKT_RequestHandler handlers[] = {
 #if FIXME
-    /* KYC endpoints */
-    {
-      .url = "kyc-check",
-      .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEKT_handler_kyc_check,
-      .nargs = 1
-    },
+    /* simulated KYC endpoints */
     {
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEKT_handler_kyc_proof,
       .nargs = 1
-    },
-    {
-      .url = "kyc-wallet",
-      .method = MHD_HTTP_METHOD_POST,
-      .handler.post = &TEKT_handler_kyc_wallet,
-      .nargs = 0
     },
 #endif
     {
@@ -994,6 +995,11 @@ do_shutdown (void *cls)
   struct MHD_Daemon *mhd;
   (void) cls;
 
+  if (NULL != ih)
+  {
+    logic->initiate_cancel (ih);
+    ih = NULL;
+  }
   kyc_webhook_cleanup ();
   TALER_KYCLOGIC_kyc_done ();
   mhd = TALER_MHD_daemon_stop ();
@@ -1009,6 +1015,45 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (exchange_curl_rc);
     exchange_curl_rc = NULL;
   }
+}
+
+
+/**
+ * Function called with the result of a KYC initiation
+ * operation.
+ *
+ * @param cls closure
+ * @param ec #TALER_EC_NONE on success
+ * @param redirect_url set to where to redirect the user on success, NULL on failure
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param error_msg_hint set to additional details to return to user, NULL on success
+ */
+static void
+initiate_cb (
+  void *cls,
+  enum TALER_ErrorCode ec,
+  const char *redirect_url,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  const char *error_msg_hint)
+{
+  ih = NULL;
+  if (TALER_EC_NONE != ec)
+  {
+    fprintf (stderr,
+             "Failed to start KYC process: %s (#%d)\n",
+             error_msg_hint,
+             ec);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  fprintf (stdout,
+           "Visit `%s' to begin KYC process (%s/%s)\n",
+           redirect_url,
+           provider_user_id,
+           provider_legitimization_id);
 }
 
 
@@ -1032,6 +1077,17 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void ) cfgfile;
+  if (print_h_payto)
+  {
+    char *s;
+
+    s = GNUNET_STRINGS_data_to_string_alloc (&cmd_line_h_payto,
+                                             sizeof (cmd_line_h_payto));
+    fprintf (stdout,
+             "%s\n",
+             s);
+    GNUNET_free (s);
+  }
   TALER_MHD_setup (TALER_MHD_GO_NONE);
   TEKT_cfg = config;
   if (GNUNET_OK !=
@@ -1041,61 +1097,87 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
   if (GNUNET_OK !=
       exchange_serve_process_config ())
   {
     global_ret = EXIT_NOTCONFIGURED;
-    TALER_KYCLOGIC_kyc_done ();
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  TEKT_curl_ctx
-    = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
-                        &exchange_curl_rc);
-  if (NULL == TEKT_curl_ctx)
-  {
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  exchange_curl_rc = GNUNET_CURL_gnunet_rc_create (TEKT_curl_ctx);
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-                                 NULL);
-  fh = TALER_MHD_bind (TEKT_cfg,
-                       "exchange",
-                       &serve_port);
-  if ( (0 == serve_port) &&
-       (-1 == fh) )
-  {
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
-                          | MHD_USE_PIPE_FOR_SHUTDOWN
-                          | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                          | MHD_USE_TCP_FASTOPEN,
-                          (-1 == fh) ? serve_port : 0,
-                          NULL, NULL,
-                          &handle_mhd_request, NULL,
-                          MHD_OPTION_LISTEN_SOCKET,
-                          fh,
-                          MHD_OPTION_EXTERNAL_LOGGER,
-                          &TALER_MHD_handle_logs,
-                          NULL,
-                          MHD_OPTION_NOTIFY_COMPLETED,
-                          &handle_mhd_completion_callback,
-                          NULL,
-                          MHD_OPTION_END);
-  if (NULL == mhd)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to launch HTTP service. Is the port in use?\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   global_ret = EXIT_SUCCESS;
-  TALER_MHD_daemon_start (mhd);
+  if (NULL != initiate_section)
+  {
+    struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_get_logic (initiate_section,
+                                      &logic,
+                                      &pd))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not initiate KYC with provider `%s' (configuration error?)\n",
+                  initiate_section);
+      global_ret = EXIT_NOTCONFIGURED;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    ih = logic->initiate (logic->cls,
+                          pd,
+                          &cmd_line_h_payto,
+                          kyc_row_id,
+                          &initiate_cb,
+                          NULL);
+    GNUNET_break (NULL != ih);
+  }
+  if (run_webservice)
+  {
+    TEKT_curl_ctx
+      = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                          &exchange_curl_rc);
+    if (NULL == TEKT_curl_ctx)
+    {
+      GNUNET_break (0);
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    exchange_curl_rc = GNUNET_CURL_gnunet_rc_create (TEKT_curl_ctx);
+    fh = TALER_MHD_bind (TEKT_cfg,
+                         "exchange",
+                         &serve_port);
+    if ( (0 == serve_port) &&
+         (-1 == fh) )
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
+                            | MHD_USE_PIPE_FOR_SHUTDOWN
+                            | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                            | MHD_USE_TCP_FASTOPEN,
+                            (-1 == fh) ? serve_port : 0,
+                            NULL, NULL,
+                            &handle_mhd_request, NULL,
+                            MHD_OPTION_LISTEN_SOCKET,
+                            fh,
+                            MHD_OPTION_EXTERNAL_LOGGER,
+                            &TALER_MHD_handle_logs,
+                            NULL,
+                            MHD_OPTION_NOTIFY_COMPLETED,
+                            &handle_mhd_completion_callback,
+                            NULL,
+                            MHD_OPTION_END);
+    if (NULL == mhd)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to launch HTTP service. Is the port in use?\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    TALER_MHD_daemon_start (mhd);
+  }
 }
 
 
@@ -1113,11 +1195,43 @@ main (int argc,
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_help (
       "tool to test KYC provider integrations"),
+    GNUNET_GETOPT_option_flag (
+      'P',
+      "print-payto-hash",
+      "output the hash of the payto://-URI",
+      &print_h_payto),
+    GNUNET_GETOPT_option_uint (
+      'r',
+      "rowid",
+      "NUMBER",
+      "override row ID to use in simulation (default: 42)",
+      &kyc_row_id),
+    GNUNET_GETOPT_option_flag (
+      'w',
+      "run-webservice",
+      "run the integrated HTTP service",
+      &run_webservice),
+    GNUNET_GETOPT_option_string (
+      'i',
+      "initiate",
+      "SECTION_NAME",
+      "initiate KYC check using provider configured in SECTION_NAME of the configuration",
+      &initiate_section),
+    GNUNET_GETOPT_option_base32_fixed_size (
+      'p',
+      "payto-hash",
+      "URI",
+      "base32 encoding of the hash of a payto://-URI to use for the account (otherwise a random value will be used)",
+      &cmd_line_h_payto,
+      sizeof (cmd_line_h_payto)),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
 
   TALER_OS_init ();
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &cmd_line_h_payto,
+                              sizeof (cmd_line_h_payto));
   ret = GNUNET_PROGRAM_run (argc, argv,
                             "taler-exchange-kyc-tester",
                             "tool to test KYC provider integrations",
