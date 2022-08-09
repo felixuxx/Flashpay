@@ -162,6 +162,48 @@ struct TEKT_RequestHandler
 
 
 /**
+ * Information we track per ongoing kyc-proof request.
+ */
+struct ProofRequestState
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct ProofRequestState *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct ProofRequestState *prev;
+
+  /**
+   * Handle for operation with the plugin.
+   */
+  struct TALER_KYCLOGIC_ProofHandle *ph;
+
+  /**
+   * Logic plugin we are using.
+   */
+  struct TALER_KYCLOGIC_Plugin *logic;
+
+  /**
+   * HTTP request details.
+   */
+  struct TEKT_RequestContext *rc;
+
+};
+
+/**
+ * Head of DLL.
+ */
+static struct ProofRequestState *rs_head;
+
+/**
+ * Tail of DLL.
+ */
+static struct ProofRequestState *rs_tail;
+
+/**
  * The exchange's configuration (global)
  */
 static const struct GNUNET_CONFIGURATION_Handle *TEKT_cfg;
@@ -180,6 +222,16 @@ static char *TEKT_base_url;
  * Payto set via command-line (or otherwise random).
  */
 static struct TALER_PaytoHashP cmd_line_h_payto;
+
+/**
+ * Provider user ID to use.
+ */
+static char *cmd_provider_user_id;
+
+/**
+ * Provider legitimization ID to use.
+ */
+static char *cmd_provider_legitimization_id;
 
 /**
  * Row ID to use, override with '-r'
@@ -214,7 +266,7 @@ static struct TALER_KYCLOGIC_InitiateHandle *ih;
 /**
  * KYC logic running for @e ih.
  */
-static struct TALER_KYCLOGIC_Plugin *logic;
+static struct TALER_KYCLOGIC_Plugin *ih_logic;
 
 /**
  * Port to run the daemon on.
@@ -484,7 +536,7 @@ handler_kyc_webhook_generic (
                   kwh->logic);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_KYC_WEBHOOK_LOGIC_UNKNOWN,
+                                         TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          "$LOGIC");
     }
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
@@ -531,6 +583,13 @@ handler_kyc_webhook_generic (
 }
 
 
+/**
+ * Handle a GET "/kyc-webhook" request.
+ *
+ * @param rc request to handle
+ * @param args one argument with the payment_target_uuid
+ * @return MHD result code
+ */
 static MHD_RESULT
 handler_kyc_webhook_get (
   struct TEKT_RequestContext *rc,
@@ -543,6 +602,14 @@ handler_kyc_webhook_get (
 }
 
 
+/**
+ * Handle a POST "/kyc-webhook" request.
+ *
+ * @param rc request to handle
+ * @param root uploaded JSON body (can be NULL)
+ * @param args one argument with the payment_target_uuid
+ * @return MHD result code
+ */
 static MHD_RESULT
 handler_kyc_webhook_post (
   struct TEKT_RequestContext *rc,
@@ -553,6 +620,127 @@ handler_kyc_webhook_post (
                                       MHD_HTTP_METHOD_POST,
                                       root,
                                       args);
+}
+
+
+/**
+ * Function called with the result of a proof check operation.
+ *
+ * Note that the "decref" for the @a response
+ * will be done by the callee and MUST NOT be done by the plugin.
+ *
+ * @param cls closure with the `struct ProofRequestState`
+ * @param status KYC status
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param expiration until when is the KYC check valid
+ * @param http_status HTTP status code of @a response
+ * @param[in] response to return to the HTTP client
+ */
+static void
+proof_cb (
+  void *cls,
+  enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration,
+  unsigned int http_status,
+  struct MHD_Response *response)
+{
+  struct ProofRequestState *rs = cls;
+
+  MHD_resume_connection (rs->rc->connection);
+  // FIXME: kick MHD event loop!
+  // FIXME: actually queue response...
+  GNUNET_CONTAINER_DLL_remove (rs_head,
+                               rs_tail,
+                               rs);
+  GNUNET_free (rs);
+}
+
+
+/**
+ * Function called when we receive a 'GET' to the
+ * '/kyc-proof' endpoint.
+ *
+ * @param rc request context
+ * @param args remaining URL arguments;
+ *        args[0] is the 'h_payto',
+ *        args[1] should be the logic plugin name
+ */
+static MHD_RESULT
+handler_kyc_proof_get (
+  struct TEKT_RequestContext *rc,
+  const char *const args[])
+{
+  struct TALER_PaytoHashP h_payto;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+  struct TALER_KYCLOGIC_Plugin *logic;
+  struct ProofRequestState *rs;
+
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) )
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                       "'/$H_PAYTO/$LOGIC' required after '/kyc-proof'");
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &h_payto,
+                                     sizeof (h_payto)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       "h_payto");
+  }
+  if (0 !=
+      GNUNET_memcmp (&h_payto,
+                     &cmd_line_h_payto))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
+                                       "h_payto");
+  }
+
+  if (GNUNET_OK !=
+      TALER_KYCLOGIC_kyc_get_logic (args[1],
+                                    &logic,
+                                    &pd))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not initiate KYC with provider `%s' (configuration error?)\n",
+                initiate_section);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
+                                       args[1]);
+  }
+  rs = GNUNET_new (struct ProofRequestState);
+  rs->rc = rc;
+  rs->logic = logic;
+  MHD_suspend_connection (rc->connection);
+  GNUNET_CONTAINER_DLL_insert (rs_head,
+                               rs_tail,
+                               rs);
+  rs->ph = logic->proof (logic->cls,
+                         pd,
+                         &args[2],
+                         rc->connection,
+                         &h_payto,
+                         cmd_provider_user_id,
+                         cmd_provider_legitimization_id,
+                         &proof_cb,
+                         rs);
+  GNUNET_assert (NULL != rs->ph);
+  return MHD_YES;
 }
 
 
@@ -757,15 +945,14 @@ handle_mhd_request (void *cls,
                     void **con_cls)
 {
   static struct TEKT_RequestHandler handlers[] = {
-#if FIXME
     /* simulated KYC endpoints */
     {
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEKT_handler_kyc_proof,
-      .nargs = 1
+      .handler.get = &handler_kyc_proof_get,
+      .nargs = 128,
+      .nargs_is_upper_bound = true
     },
-#endif
     {
       .url = "kyc-webhook",
       .method = MHD_HTTP_METHOD_POST,
@@ -993,11 +1180,21 @@ static void
 do_shutdown (void *cls)
 {
   struct MHD_Daemon *mhd;
-  (void) cls;
+  struct ProofRequestState *rs;
 
+  (void) cls;
+  while (NULL != (rs = rs_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (rs_head,
+                                 rs_tail,
+                                 rs);
+    rs->logic->proof_cancel (rs->ph);
+    MHD_resume_connection (rs->rc->connection);
+    GNUNET_free (rs);
+  }
   if (NULL != ih)
   {
-    logic->initiate_cancel (ih);
+    ih_logic->initiate_cancel (ih);
     ih = NULL;
   }
   kyc_webhook_cleanup ();
@@ -1050,10 +1247,16 @@ initiate_cb (
     return;
   }
   fprintf (stdout,
-           "Visit `%s' to begin KYC process (%s/%s)\n",
+           "Visit `%s' to begin KYC process (-u: '%s', -l: '%s')\n",
            redirect_url,
            provider_user_id,
            provider_legitimization_id);
+  GNUNET_free (cmd_provider_user_id);
+  GNUNET_free (cmd_provider_legitimization_id);
+  if (NULL != provider_user_id)
+    cmd_provider_user_id = GNUNET_strdup (provider_user_id);
+  if (NULL != provider_legitimization_id)
+    cmd_provider_legitimization_id = GNUNET_strdup (provider_legitimization_id);
 }
 
 
@@ -1113,7 +1316,7 @@ run (void *cls,
 
     if (GNUNET_OK !=
         TALER_KYCLOGIC_kyc_get_logic (initiate_section,
-                                      &logic,
+                                      &ih_logic,
                                       &pd))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1123,12 +1326,12 @@ run (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
-    ih = logic->initiate (logic->cls,
-                          pd,
-                          &cmd_line_h_payto,
-                          kyc_row_id,
-                          &initiate_cb,
-                          NULL);
+    ih = ih_logic->initiate (ih_logic->cls,
+                             pd,
+                             &cmd_line_h_payto,
+                             kyc_row_id,
+                             &initiate_cb,
+                             NULL);
     GNUNET_break (NULL != ih);
   }
   if (run_webservice)
@@ -1217,6 +1420,24 @@ main (int argc,
       "SECTION_NAME",
       "initiate KYC check using provider configured in SECTION_NAME of the configuration",
       &initiate_section),
+    GNUNET_GETOPT_option_string (
+      'i',
+      "initiate",
+      "SECTION_NAME",
+      "initiate KYC check using provider configured in SECTION_NAME of the configuration",
+      &initiate_section),
+    GNUNET_GETOPT_option_string (
+      'u',
+      "user",
+      "ID",
+      "use the given provider user ID (overridden if -i is also used)",
+      &cmd_provider_user_id),
+    GNUNET_GETOPT_option_string (
+      'l',
+      "legitimization",
+      "ID",
+      "use the given provider legitimization ID (overridden if -i is also used)",
+      &cmd_provider_legitimization_id),
     GNUNET_GETOPT_option_base32_fixed_size (
       'p',
       "payto-hash",

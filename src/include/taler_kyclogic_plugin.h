@@ -292,7 +292,7 @@ struct TALER_KYCLOGIC_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param pd provider configuration details
-   * @param url_path rest of the URL after `/kyc-webhook/`
+   * @param url_path rest of the URL after `/kyc-webhook/$H_PAYTO/$LOGIC`
    * @param connection MHD connection object (for HTTP headers)
    * @param account_id which account to trigger process for
    * @param provider_user_id user ID (or NULL) the proof is for
@@ -304,7 +304,7 @@ struct TALER_KYCLOGIC_Plugin
   struct TALER_KYCLOGIC_ProofHandle *
   (*proof)(void *cls,
            const struct TALER_KYCLOGIC_ProviderDetails *pd,
-           const char *url_path,
+           const char *const url_path[],
            struct MHD_Connection *connection,
            const struct TALER_PaytoHashP *account_id,
            const char *provider_user_id,

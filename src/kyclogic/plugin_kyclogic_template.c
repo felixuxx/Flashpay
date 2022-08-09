@@ -262,7 +262,7 @@ template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 static struct TALER_KYCLOGIC_ProofHandle *
 template_proof (void *cls,
                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                const char *url_path,
+                const char *const url_path[],
                 struct MHD_Connection *connection,
                 const struct TALER_PaytoHashP *account_id,
                 const char *provider_user_id,

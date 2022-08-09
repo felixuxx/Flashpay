@@ -272,7 +272,7 @@ handler_kyc_webhook_generic (
                   kwh->logic);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_EXCHANGE_KYC_WEBHOOK_LOGIC_UNKNOWN,
+                                         TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          "$LOGIC");
     }
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
