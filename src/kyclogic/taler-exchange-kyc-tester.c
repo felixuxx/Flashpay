@@ -61,6 +61,11 @@ struct TEKT_RequestContext
   struct MHD_Connection *connection;
 
   /**
+   * HTTP response to return (or NULL).
+   */
+  struct MHD_Response *response;
+
+  /**
    * @e rh-specific cleanup routine. Function called
    * upon completion of the request that should
    * clean up @a rh_ctx. Can be NULL.
@@ -74,6 +79,13 @@ struct TEKT_RequestContext
    * Can be NULL.
    */
   void *rh_ctx;
+
+  /**
+   * HTTP status to return upon resume if @e response
+   * is non-NULL.
+   */
+  unsigned int http_status;
+
 };
 
 
@@ -649,9 +661,16 @@ proof_cb (
 {
   struct ProofRequestState *rs = cls;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              "KYC legitimization %s completed with status %d (%u) for %s\n",
+              provider_legitimization_id,
+              status,
+              http_status,
+              provider_user_id);
   MHD_resume_connection (rs->rc->connection);
-  // FIXME: kick MHD event loop!
-  // FIXME: actually queue response...
+  TALER_MHD_daemon_trigger ();
+  rs->rc->response = response;
+  rs->rc->http_status = http_status;
   GNUNET_CONTAINER_DLL_remove (rs_head,
                                rs_tail,
                                rs);
@@ -921,6 +940,15 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
 }
 
 
+static void
+rh_cleaner_cb (struct TEKT_RequestContext *rc)
+{
+  if (NULL != rc->response)
+    MHD_destroy_response (rc->response);
+  GNUNET_free (rc);
+}
+
+
 /**
  * Handle incoming HTTP request.
  *
@@ -984,6 +1012,13 @@ handle_mhd_request (void *cls,
     rc = *con_cls = GNUNET_new (struct TEKT_RequestContext);
     rc->url = url;
     rc->connection = connection;
+    rc->rh_cleaner = &rh_cleaner_cb;
+  }
+  if (NULL != rc->response)
+  {
+    return MHD_queue_response (rc->connection,
+                               rc->http_status,
+                               rc->response);
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -993,7 +1028,6 @@ handle_mhd_request (void *cls,
   /* on repeated requests, check our cache first */
   if (NULL != rc->rh)
   {
-    MHD_RESULT ret;
     const char *start;
 
     if ('\0' == url[0])
@@ -1002,11 +1036,10 @@ handle_mhd_request (void *cls,
     start = strchr (url + 1, '/');
     if (NULL == start)
       start = "";
-    ret = proceed_with_handler (rc,
-                                start,
-                                upload_data,
-                                upload_data_size);
-    return ret;
+    return proceed_with_handler (rc,
+                                 start,
+                                 upload_data,
+                                 upload_data_size);
   }
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
@@ -1051,18 +1084,13 @@ handle_mhd_request (void *cls,
       GNUNET_assert (NULL != rh->method);
       if (0 == strcasecmp (method,
                            rh->method))
-      {
-        MHD_RESULT ret;
-
         /* cache to avoid the loop next time */
         rc->rh = rh;
-        /* run handler */
-        ret = proceed_with_handler (rc,
-                                    url + tok_size + 1,
-                                    upload_data,
-                                    upload_data_size);
-        return ret;
-      }
+      /* run handler */
+      return proceed_with_handler (rc,
+                                   url + tok_size + 1,
+                                   upload_data,
+                                   upload_data_size);
     }
 
     if (found)
@@ -1126,15 +1154,10 @@ handle_mhd_request (void *cls,
   }
 
   /* No handler matches, generate not found */
-  {
-    MHD_RESULT ret;
-
-    ret = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_NOT_FOUND,
-                                      TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                      url);
-    return ret;
-  }
+  return TALER_MHD_reply_with_error (connection,
+                                     MHD_HTTP_NOT_FOUND,
+                                     TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                     url);
 }
 
 
