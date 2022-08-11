@@ -7823,6 +7823,7 @@ postgres_aggregate (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto destination of the wire transfer
  * @param exchange_account_section exchange account to use
+ * @param merchant_pub public key of the merchant receiving the transfer
  * @param wtid the raw wire transfer identifier to be used
  * @param total amount to be wired in the future
  * @return transaction status
@@ -7857,6 +7858,7 @@ postgres_create_aggregation_transient (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param h_payto destination of the wire transfer
+ * @param merchant_pub public key of the merchant receiving the transfer
  * @param exchange_account_section exchange account to use
  * @param[out] wtid set to the raw wire transfer identifier to be used
  * @param[out] total existing amount to be wired in the future

@@ -309,7 +309,6 @@ template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
  * @param http_method HTTP method used for the webhook
  * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
- * @param body_size number of bytes in @a body
  * @param body HTTP request body
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
