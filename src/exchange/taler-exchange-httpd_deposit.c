@@ -184,7 +184,7 @@ deposit_transaction (void *cls,
   }
   if (in_conflict)
   {
-    /* FIXME #7267: conficting contract != insufficient funds */
+    /* FIXME #7267: conflicting contract != insufficient funds */
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
@@ -426,7 +426,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                    &h_wire,
                                    &deposit.h_contract_terms,
                                    &deposit.coin.h_age_commitment,
-                                   NULL /* h_extensions! */,
+                                   NULL /* FIXME: h_extensions! */,
                                    &deposit.coin.denom_pub_hash,
                                    deposit.timestamp,
                                    &deposit.merchant_pub,
@@ -481,7 +481,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     res = reply_deposit_success (connection,
                                  &deposit.coin.coin_pub,
                                  &h_wire,
-                                 NULL /* h_extensions! */,
+                                 NULL /* FIXME: h_extensions! */,
                                  &deposit.h_contract_terms,
                                  dc.exchange_timestamp,
                                  deposit.refund_deadline,

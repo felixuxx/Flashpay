@@ -27,6 +27,7 @@
 #include <sched.h>
 #include <sys/resource.h>
 #include <limits.h>
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
@@ -1215,13 +1216,14 @@ handle_mhd_request (void *cls,
       .url = "kyc-check",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_check,
-      .nargs = 1
+      .nargs = 2
     },
     {
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_proof,
-      .nargs = 1
+      .nargs = 128,
+      .nargs_is_upper_bound = true
     },
     {
       .url = "kyc-wallet",
@@ -1680,6 +1682,11 @@ parse_kyc_oauth_cfg (void)
 static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
+  if (GNUNET_OK !=
+      TALER_KYCLOGIC_kyc_init (TEH_cfg))
+  {
+    return GNUNET_SYSERR;
+  }
   {
     char *kyc_mode;
 
@@ -2094,8 +2101,12 @@ do_shutdown (void *cls)
   TEH_purses_get_cleanup ();
   TEH_kyc_check_cleanup ();
   TEH_kyc_proof_cleanup ();
+  TALER_KYCLOGIC_kyc_done ();
   if (NULL != mhd)
+  {
     MHD_stop_daemon (mhd);
+    mhd = NULL;
+  }
   TEH_wire_done ();
   TEH_extensions_done ();
   TEH_keys_finished ();

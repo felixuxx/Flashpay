@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler_dbevents.h"
@@ -54,6 +55,17 @@ struct KycPoller
   struct MHD_Connection *connection;
 
   /**
+   * Logic for @e ih
+   */
+  struct TALER_KYCLOGIC_Plugin *ih_logic;
+
+  /**
+   * Handle to asynchronously running KYC initiation
+   * request.
+   */
+  struct TALER_KYCLOGIC_InitiateHandle *ih;
+
+  /**
    * Subscription for the database event we are
    * waiting for.
    */
@@ -62,12 +74,7 @@ struct KycPoller
   /**
    * UUID being checked.
    */
-  uint64_t auth_payment_target_uuid;
-
-  /**
-   * Current KYC status.
-   */
-  struct TALER_EXCHANGEDB_KycStatus kyc;
+  uint64_t legitimization_uuid;
 
   /**
    * Hash of the payto:// URI we are confirming to
@@ -76,19 +83,44 @@ struct KycPoller
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Payto URL as a string, as given to us by t
-   */
-  const char *hps;
-
-  /**
    * When will this request time out?
    */
   struct GNUNET_TIME_Absolute timeout;
 
   /**
+   * Type of KYC check required for this client.
+   */
+  char *required;
+
+  /**
+   * Set to starting URL of KYC process if KYC is required.
+   */
+  char *kyc_url;
+
+  /**
+   * Set to error details, on error (@ec not TALER_EC_NONE).
+   */
+  char *hint;
+
+  /**
+   * Set to error encountered with KYC logic, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
    * True if we are still suspended.
    */
   bool suspended;
+
+  /**
+   * True if KYC was required but is fully satisfied.
+   */
+  bool found;
+
+  /**
+   * True if we once tried the KYC initiation.
+   */
+  bool ih_done;
 
 };
 
@@ -114,6 +146,11 @@ TEH_kyc_check_cleanup ()
     GNUNET_CONTAINER_DLL_remove (kyp_head,
                                  kyp_tail,
                                  kyp);
+    if (NULL != kyp->ih)
+    {
+      kyp->ih_logic->initiate_cancel (kyp->ih);
+      kyp->ih = NULL;
+    }
     if (kyp->suspended)
     {
       kyp->suspended = false;
@@ -143,7 +180,80 @@ kyp_cleanup (struct TEH_RequestContext *rc)
                                      kyp->eh);
     kyp->eh = NULL;
   }
+  if (NULL != kyp->ih)
+  {
+    kyp->ih_logic->initiate_cancel (kyp->ih);
+    kyp->ih = NULL;
+  }
+  GNUNET_free (kyp->kyc_url);
+  GNUNET_free (kyp->hint);
+  GNUNET_free (kyp->required);
   GNUNET_free (kyp);
+}
+
+
+/**
+ * Function called with the result of a KYC initiation
+ * operation.
+ *
+ * @param cls closure with our `struct KycPoller *`
+ * @param ec #TALER_EC_NONE on success
+ * @param redirect_url set to where to redirect the user on success, NULL on failure
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param error_msg_hint set to additional details to return to user, NULL on success
+ */
+static void
+initiate_cb (
+  void *cls,
+  enum TALER_ErrorCode ec,
+  const char *redirect_url,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  const char *error_msg_hint)
+{
+  struct KycPoller *kyp = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  kyp->ih = NULL;
+  kyp->ih_done = true;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC initiation completed with status %d (%s)\n",
+              ec,
+              (TALER_EC_NONE == ec)
+              ? redirect_url
+              : error_msg_hint);
+  kyp->ec = ec;
+  if (TALER_EC_NONE == ec)
+  {
+    kyp->kyc_url = GNUNET_strdup (redirect_url);
+  }
+  else
+  {
+    kyp->hint = GNUNET_strdup (error_msg_hint);
+  }
+  qs = TEH_plugin->update_kyc_requirement_by_row (
+    TEH_plugin->cls,
+    kyp->legitimization_uuid,
+    kyp->required,
+    &kyp->h_payto,
+    provider_user_id,
+    provider_legitimization_id,
+    GNUNET_TIME_UNIT_ZERO_ABS);
+  if (qs < 0)
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "KYC requirement update failed for %s with status %d at %s:%u\n",
+                TALER_B2S (&kyp->h_payto),
+                qs,
+                __FILE__,
+                __LINE__);
+  GNUNET_assert (kyp->suspended);
+  kyp->suspended = false;
+  GNUNET_CONTAINER_DLL_remove (kyp_head,
+                               kyp_tail,
+                               kyp);
+  MHD_resume_connection (kyp->connection);
+  TALER_MHD_daemon_trigger ();
 }
 
 
@@ -168,21 +278,82 @@ kyc_check (void *cls,
 {
   struct KycPoller *kyp = cls;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+  enum GNUNET_GenericReturnValue ret;
+  struct TALER_PaytoHashP h_payto;
+  struct GNUNET_TIME_Absolute expiration;
+  char *provider_account_id;
+  char *provider_legitimization_id;
 
-  qs = TEH_plugin->select_kyc_status (TEH_plugin->cls,
-                                      &kyp->h_payto,
-                                      &kyp->kyc);
-  if (qs < 0)
+  qs = TEH_plugin->lookup_kyc_requirement_by_row (
+    TEH_plugin->cls,
+    kyp->legitimization_uuid,
+    &kyp->required,
+    &h_payto,
+    &expiration,
+    &provider_account_id,
+    &provider_legitimization_id);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "inselect_wallet_status");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No KYC requirements open for %llu\n",
+                (unsigned long long) kyp->legitimization_uuid);
     return qs;
   }
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
+    return qs;
+  }
+  GNUNET_free (provider_account_id);
+  GNUNET_free (provider_legitimization_id);
+  if (0 !=
+      GNUNET_memcmp (&kyp->h_payto,
+                     &h_payto))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Account %llu provided, but h_payto does not match\n",
+                (unsigned long long) kyp->legitimization_uuid);
+    GNUNET_break_op (0);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_FORBIDDEN,
+                                           TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
+                                           "h_payto");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  kyp->found = true;
+  if (GNUNET_TIME_absolute_is_future (expiration))
+  {
+    /* kyc not required, we are done */
+    return qs;
+  }
+
+  ret = TALER_KYCLOGIC_kyc_get_logic (kyp->required,
+                                      &kyp->ih_logic,
+                                      &pd);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC logic for `%s' not configured but used in database!\n",
+                kyp->required);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_GONE,
+                                           kyp->required);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (kyp->ih_done)
+    return qs;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Initiating KYC check with logic %s\n",
+              kyp->required);
+  kyp->ih = kyp->ih_logic->initiate (kyp->ih_logic->cls,
+                                     pd,
+                                     &h_payto,
+                                     kyp->legitimization_uuid,
+                                     &initiate_cb,
+                                     kyp);
+  GNUNET_break (NULL != kyp->ih);
   return qs;
 }
 
@@ -230,7 +401,7 @@ db_event_cb (void *cls,
 MHD_RESULT
 TEH_handler_kyc_check (
   struct TEH_RequestContext *rc,
-  const char *const args[])
+  const char *const args[2])
 {
   struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
@@ -245,24 +416,37 @@ TEH_handler_kyc_check (
     rc->rh_cleaner = &kyp_cleanup;
 
     {
-      // FIXME: now 'legitimization_uuid'!
-      unsigned long long payment_target_uuid;
+      unsigned long long legitimization_uuid;
       char dummy;
 
       if (1 !=
           sscanf (args[0],
                   "%llu%c",
-                  &payment_target_uuid,
+                  &legitimization_uuid,
                   &dummy))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "payment_target_uuid");
+                                           "legitimization_uuid");
       }
-      kyp->auth_payment_target_uuid = (uint64_t) payment_target_uuid;
+      kyp->legitimization_uuid = (uint64_t) legitimization_uuid;
     }
+
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[1],
+                                       strlen (args[1]),
+                                       &kyp->h_payto,
+                                       sizeof (kyp->h_payto)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "h_payto");
+    }
+
     {
       const char *ts;
 
@@ -291,40 +475,7 @@ TEH_handler_kyc_check (
                                          tms));
       }
     }
-
-    // FIXME: replace with args[1]!
-    kyp->hps = MHD_lookup_connection_value (rc->connection,
-                                            MHD_GET_ARGUMENT_KIND,
-                                            "h_payto");
-    if (NULL == kyp->hps)
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MISSING,
-                                         "h_payto");
-    }
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (kyp->hps,
-                                       strlen (kyp->hps),
-                                       &kyp->h_payto,
-                                       sizeof (kyp->h_payto)))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "h_payto");
-    }
   }
-
-  if (TEH_KYC_NONE == TEH_kyc_config.mode)
-    return TALER_MHD_reply_static (
-      rc->connection,
-      MHD_HTTP_NO_CONTENT,
-      NULL,
-      NULL,
-      0);
 
   if ( (NULL == kyp->eh) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout) )
@@ -353,27 +504,48 @@ TEH_handler_kyc_check (
                                 &kyc_check,
                                 kyp);
   if (GNUNET_SYSERR == ret)
-    return res;
-
-  if (kyp->auth_payment_target_uuid !=
-      kyp->kyc.payment_target_uuid)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Account %llu provided, but payto %s is for %llu\n",
-                (unsigned long long) kyp->auth_payment_target_uuid,
-                kyp->hps,
-                (unsigned long long) kyp->kyc.payment_target_uuid);
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
-                                       "h_payto");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Transaction failed.\n");
+    return res;
+  }
+
+  if ( (NULL == kyp->ih) &&
+       (! kyp->found) )
+  {
+    /* KYC not required */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC not required %llu\n",
+                (unsigned long long) kyp->legitimization_uuid);
+    return TALER_MHD_reply_static (
+      rc->connection,
+      MHD_HTTP_NO_CONTENT,
+      NULL,
+      NULL,
+      0);
+  }
+
+  if (NULL != kyp->ih)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Suspending HTTP request on KYC logic...\n");
+    kyp->suspended = true;
+    GNUNET_CONTAINER_DLL_insert (kyp_head,
+                                 kyp_tail,
+                                 kyp);
+    MHD_suspend_connection (kyp->connection);
+    return MHD_YES;
   }
 
   /* long polling? */
-  if ( (! kyp->kyc.ok) &&
+  if ( (NULL != kyp->required) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Suspending HTTP request on timeout (%s) now...\n",
+                GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_duration (
+                                          kyp->timeout),
+                                        true));
     GNUNET_assert (NULL != kyp->eh);
     kyp->suspended = true;
     GNUNET_CONTAINER_DLL_insert (kyp_head,
@@ -383,37 +555,24 @@ TEH_handler_kyc_check (
     return MHD_YES;
   }
 
-  /* KYC failed? */
-  if (! kyp->kyc.ok)
+  /* KYC plugin generated reply? */
+  if (NULL != kyp->kyc_url)
   {
-    char *url;
-    char *redirect_uri;
-    char *redirect_uri_encoded;
-
-    GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
-    GNUNET_asprintf (&redirect_uri,
-                     "%s/kyc-proof/%s",
-                     TEH_base_url,
-                     kyp->hps);
-    redirect_uri_encoded = TALER_urlencode (redirect_uri);
-    GNUNET_free (redirect_uri);
-    GNUNET_asprintf (&url,
-                     "%s?client_id=%s&redirect_uri=%s",
-                     TEH_kyc_config.details.oauth2.login_url,
-                     TEH_kyc_config.details.oauth2.client_id,
-                     redirect_uri_encoded);
-    GNUNET_free (redirect_uri_encoded);
-
-    res = TALER_MHD_REPLY_JSON_PACK (
+    return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_ACCEPTED,
       GNUNET_JSON_pack_string ("kyc_url",
-                               url));
-    GNUNET_free (url);
-    return res;
+                               kyp->kyc_url));
   }
 
-  /* KYC succeeded! */
+  if (TALER_EC_NONE != kyp->ec)
+  {
+    return TALER_MHD_reply_with_ec (rc->connection,
+                                    kyp->ec,
+                                    kyp->hint);
+  }
+
+  /* KYC must have succeeded! */
   {
     struct TALER_ExchangePublicKeyP pub;
     struct TALER_ExchangeSignatureP sig;

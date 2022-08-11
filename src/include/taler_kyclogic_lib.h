@@ -163,6 +163,19 @@ typedef void
 
 
 /**
+ * Function called to iterate over KYC-relevant
+ * transaction thresholds amounts.
+ *
+ * @param cls closure, identifies the event type and
+ *        account to iterate over events for
+ * @param threshold a relevant threshold amount
+ */
+typedef void
+(*TALER_KYCLOGIC_KycThresholdIterator)(void *cls,
+                                       const struct TALER_Amount *threshold);
+
+
+/**
  * Call us on KYC processes satisfied for the given
  * account. Must match the ``select_satisfied_kyc_processes`` of the exchange database plugin.
  *
@@ -207,6 +220,21 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
                                   void *ki_cls,
                                   TALER_KYCLOGIC_KycAmountIterator ai,
                                   void *ai_cls);
+
+
+/**
+ * Iterate over all thresholds that are applicable
+ * to a particular type of @a event
+ *
+ * @param event tresholds to look up
+ * @param it function to call on each
+ * @param it_cls closure for @a it
+ */
+void
+TALER_KYCLOGIC_kyc_iterate_thresholds (
+  enum TALER_KYCLOGIC_KycTriggerEvent event,
+  TALER_KYCLOGIC_KycThresholdIterator it,
+  void *it_cls);
 
 
 /**

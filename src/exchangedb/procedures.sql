@@ -37,8 +37,6 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT nonce_ok BOOLEAN,
-  OUT kycok BOOLEAN,
-  OUT account_uuid INT8,
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
@@ -67,8 +65,6 @@ THEN
   -- denomination unknown, should be impossible!
   reserve_found=FALSE;
   balance_ok=FALSE;
-  kycok=FALSE;
-  account_uuid=0;
   ruuid=0;
   ASSERT false, 'denomination unknown';
   RETURN;
@@ -94,8 +90,6 @@ THEN
   reserve_found=FALSE;
   balance_ok=FALSE;
   nonce_ok=TRUE;
-  kycok=FALSE;
-  account_uuid=0;
   ruuid=2;
   RETURN;
 END IF;
@@ -128,8 +122,6 @@ THEN
   reserve_found=TRUE;
   balance_ok=TRUE;
   nonce_ok=TRUE;
-  kycok=TRUE;
-  account_uuid=0;
   RETURN;
 END IF;
 
@@ -153,8 +145,6 @@ ELSE
     reserve_found=TRUE;
     nonce_ok=TRUE; -- we do not really know
     balance_ok=FALSE;
-    kycok=FALSE; -- we do not really know or care
-    account_uuid=0;
     RETURN;
   END IF;
 END IF;
@@ -201,8 +191,6 @@ THEN
     THEN
       reserve_found=FALSE;
       balance_ok=FALSE;
-      kycok=FALSE;
-      account_uuid=0;
       nonce_ok=FALSE;
       RETURN;
     END IF;
@@ -211,39 +199,8 @@ ELSE
   nonce_ok=TRUE; -- no nonce, hence OK!
 END IF;
 
-
-
--- Obtain KYC status based on the last wire transfer into
--- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
--- SELECT
---    kyc_ok
---   ,wire_target_serial_id
---   INTO
---    kycok
---   ,account_uuid
---   FROM exchange.reserves_in
---   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
---  WHERE reserve_pub=rpub
---  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
-
-WITH my_reserves_in AS materialized (
-  SELECT wire_source_h_payto
-  FROM exchange.reserves_in
-  WHERE reserve_pub=rpub
-)
-SELECT
-  kyc_ok
-  ,wire_target_serial_id
-INTO
-  kycok
-  ,account_uuid
-FROM exchange.wire_targets
-  WHERE wire_target_h_payto = (
-    SELECT wire_source_h_payto
-      FROM my_reserves_in
-  );
-
 END $$;
+
 
 COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
@@ -259,8 +216,6 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
   IN min_reserve_gc INT8,
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
-  OUT kycok BOOLEAN,
-  OUT account_uuid INT8,
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
@@ -295,8 +250,6 @@ THEN
   -- reserve unknown
   reserve_found=FALSE;
   balance_ok=FALSE;
-  kycok=FALSE;
-  account_uuid=0;
   ruuid=2;
   RETURN;
 END IF;
@@ -320,8 +273,6 @@ ELSE
   ELSE
     reserve_found=TRUE;
     balance_ok=FALSE;
-    kycok=FALSE; -- we do not really know or care
-    account_uuid=0;
     RETURN;
   END IF;
 END IF;
@@ -339,37 +290,6 @@ WHERE
 
 reserve_found=TRUE;
 balance_ok=TRUE;
-
-
--- Obtain KYC status based on the last wire transfer into
--- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
--- SELECT
---    kyc_ok
---   ,wire_target_serial_id
---   INTO
---    kycok
---   ,account_uuid
---   FROM exchange.reserves_in
---   JOIN wire_targets ON (wire_source_h_payto = wire_target_h_payto)
---  WHERE reserve_pub=rpub
---  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
-
-WITH my_reserves_in AS materialized (
-  SELECT wire_source_h_payto
-  FROM exchange.reserves_in
-  WHERE reserve_pub=rpub
-)
-SELECT
-  kyc_ok
-  ,wire_target_serial_id
-INTO
-  kycok
-  ,account_uuid
-FROM exchange.wire_targets
-  WHERE wire_target_h_payto = (
-    SELECT wire_source_h_payto
-      FROM my_reserves_in
-  );
 
 END $$;
 

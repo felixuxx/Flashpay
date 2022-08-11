@@ -589,6 +589,14 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE reserve_pub=$1"
       " LIMIT 1;",
       1),
+    /* Used in #postgres_reserves_get_origin() */
+    GNUNET_PQ_make_prepare (
+      "get_h_wire_source_of_reserve",
+      "SELECT"
+      " wire_source_h_payto"
+      " FROM reserves_in"
+      " WHERE reserve_pub=$1",
+      1),
     /* Used in #postgres_set_kyc_ok() */
     GNUNET_PQ_make_prepare (
       "set_kyc_ok",
@@ -637,6 +645,18 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_target_serial_id"
       " FROM wire_targets"
       " WHERE wire_target_h_payto=$1;",
+      1),
+    /* Used in #postgres_drain_kyc_alert() */
+    GNUNET_PQ_make_prepare (
+      "drain_kyc_alert",
+      "DELETE FROM kyc_alerts"
+      " WHERE trigger_type=$1"
+      "   AND h_payto = "
+      "   (SELECT h_payto "
+      "      FROM kyc_alerts"
+      "     WHERE trigger_type=$1"
+      "     LIMIT 1)"
+      " RETURNING h_payto;",
       1),
     /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare (
@@ -876,8 +896,6 @@ prepare_statements (struct PostgresClosure *pg)
       " reserve_found"
       ",balance_ok"
       ",nonce_ok"
-      ",kycok AS kyc_ok"
-      ",account_uuid AS payment_target_uuid"
       ",ruuid"
       " FROM exchange_do_withdraw"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
@@ -889,8 +907,6 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT "
       " reserve_found"
       ",balance_ok"
-      ",kycok AS kyc_ok"
-      ",account_uuid AS payment_target_uuid"
       ",ruuid"
       " FROM exchange_do_batch_withdraw"
       " ($1,$2,$3,$4,$5);",
@@ -1719,8 +1735,8 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_deposit_without_wtid",
       "SELECT"
-      " wt.kyc_ok"
-      ",wt.wire_target_serial_id AS payment_target_uuid"
+      " legi.expiration_time"
+      ",legi.legitimization_serial_id"
       ",dep.wire_salt"
       ",wt.payto_uri"
       ",dep.amount_with_fee_val"
@@ -1732,9 +1748,12 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN wire_targets wt USING (wire_target_h_payto)"
       "    JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
       "    JOIN denominations denom USING (denominations_serial)"
+      "    LEFT JOIN legitimizations legi ON (wt.wire_target_h_payto = legi.h_payto)"
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
-      "   AND dep.h_contract_terms=$2;",
+      "   AND dep.h_contract_terms=$2"
+      " ORDER BY legi.expiration_time ASC"
+      " LIMIT 1;",
       3),
     /* Used in #postgres_get_ready_deposit() */
     GNUNET_PQ_make_prepare (
@@ -1744,18 +1763,18 @@ prepare_statements (struct PostgresClosure *pg)
       ",merchant_pub"
       " FROM deposits_by_ready dbr"
       "  JOIN deposits dep"
-      "    ON (dbr.coin_pub = dep.coin_pub AND dbr.deposit_serial_id = dep.deposit_serial_id)"
+      "    ON (dbr.coin_pub = dep.coin_pub AND"
+      "        dbr.deposit_serial_id = dep.deposit_serial_id)"
       "  JOIN wire_targets wt"
       "    USING (wire_target_h_payto)"
       " WHERE dbr.wire_deadline<=$1"
       "   AND dbr.shard >= $2"
       "   AND dbr.shard <= $3"
-      "   AND (wt.kyc_ok OR $4)"
       " ORDER BY "
       "   dbr.wire_deadline ASC"
       "  ,dbr.shard ASC"
       " LIMIT 1;",
-      4),
+      3),
     /* Used in #postgres_aggregate() */
     GNUNET_PQ_make_prepare (
       "aggregate",
@@ -1850,11 +1869,12 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO aggregation_transient"
       " (amount_val"
       " ,amount_frac"
+      " ,merchant_pub"
       " ,wire_target_h_payto"
       " ,exchange_account_section"
       " ,wtid_raw)"
-      " VALUES ($1, $2, $3, $4, $5);",
-      5),
+      " VALUES ($1, $2, $3, $4, $5, $6);",
+      6),
     /* Used in #postgres_select_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "select_aggregation_transient",
@@ -1864,8 +1884,22 @@ prepare_statements (struct PostgresClosure *pg)
       " ,wtid_raw"
       " FROM aggregation_transient"
       " WHERE wire_target_h_payto=$1"
-      "   AND exchange_account_section=$2;",
-      2),
+      "   AND merchant_pub=$2"
+      "   AND exchange_account_section=$3;",
+      3),
+    /* Used in #postgres_find_aggregation_transient() */
+    GNUNET_PQ_make_prepare (
+      "find_transient_aggregations",
+      "SELECT"
+      "  amount_val"
+      " ,amount_frac"
+      " ,wtid_raw"
+      " ,merchant_pub"
+      " ,payto_uri"
+      " FROM aggregation_transient atr"
+      " JOIN wire_targets wt USING (wire_target_h_payto)"
+      " WHERE atr.wire_target_h_payto=$1;",
+      1),
     /* Used in #postgres_update_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "update_aggregation_transient",
@@ -4525,6 +4559,8 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,provider_section"
       "  ) VALUES "
       "  ($1, $2)"
+      " ON CONFLICT (h_payto,provider_section) "
+      "   DO UPDATE SET h_payto=$1" /* syntax requirement: dummy op */
       " RETURNING legitimization_serial_id",
       2),
     /* Used in #postgres_update_kyc_requirement_by_row() */
@@ -4533,12 +4569,20 @@ prepare_statements (struct PostgresClosure *pg)
       "UPDATE legitimizations"
       " SET provider_user_id=$4"
       "    ,provider_legitimization_id=$5"
-      "    ,expiration_time=$6"
+      "    ,expiration_time=GREATEST(expiration_time,$6)"
       " WHERE"
       "      h_payto=$3"
       "  AND legitimization_serial_id=$1"
       "  AND provider_section=$2;",
       6),
+    GNUNET_PQ_make_prepare (
+      "alert_kyc_status_change",
+      "INSERT INTO kyc_alerts"
+      " (h_payto"
+      " ,trigger_type)"
+      " VALUES"
+      " ($1,$2);",
+      2),
     /* Used in #postgres_lookup_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "lookup_legitimization_by_row",
@@ -4598,7 +4642,6 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND ro.execution_date >= $2"
       " ORDER BY ro.execution_date DESC",
       2),
-
     /* Used in #postgres_select_aggregation_amounts_for_kyc_check (
 () */
     GNUNET_PQ_make_prepare (
@@ -5705,9 +5748,40 @@ postgres_reserves_get (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "reserves_get_with_kyc",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Get the origin of funds of a reserve.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param reserve_pub public key of the reserve
+ * @param[out] h_payto set to hash of the wire source payto://-URI
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_reserves_get_origin (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_PaytoHashP *h_payto)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("wire_source_h_payto",
+                                          h_payto),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_h_wire_source_of_reserve",
                                                    params,
                                                    rs);
 }
@@ -5767,6 +5841,37 @@ postgres_set_kyc_ok (void *cls,
 
 
 /**
+ * Extract next KYC alert.  Deletes the alert.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param trigger_type which type of alert to drain
+ * @param[out] h_payto set to hash of payto-URI where KYC status changed
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_drain_kyc_alert (void *cls,
+                          uint32_t trigger_type,
+                          struct TALER_PaytoHashP *h_payto)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint32 (&trigger_type),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                          h_payto),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "drain_kyc_alert",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
  * Get the @a kyc status and @a h_payto by UUID.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -5792,7 +5897,6 @@ postgres_select_kyc_status (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  kyc->type = TALER_EXCHANGEDB_KYC_UNKNOWN;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_kyc_status_by_payto",
                                                    params,
@@ -5863,7 +5967,6 @@ inselect_account_kyc_status (
       kyc->ok = false;
     }
   }
-  kyc->type = TALER_EXCHANGEDB_KYC_BALANCE;
   return qs;
 }
 
@@ -5888,7 +5991,7 @@ postgres_inselect_wallet_kyc_status (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP h_payto;
 
-  payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+  payto_uri = TALER_reserve_make_payto (pg->exchange_url,
                                         reserve_pub);
   qs = inselect_account_kyc_status (pg,
                                     payto_uri,
@@ -6284,7 +6387,6 @@ postgres_get_withdraw_info (
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] nonce_ok set to false if the nonce was reused
- * @param[out] kyc set to true if the kyc status of the reserve is satisfied
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
  * @return query execution status
  */
@@ -6297,7 +6399,6 @@ postgres_do_withdraw (
   bool *found,
   bool *balance_ok,
   bool *nonce_ok,
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
   uint64_t *ruuid)
 {
   struct PostgresClosure *pg = cls;
@@ -6321,12 +6422,8 @@ postgres_do_withdraw (
                                 found),
     GNUNET_PQ_result_spec_bool ("balance_ok",
                                 balance_ok),
-    GNUNET_PQ_result_spec_bool ("kyc_ok",
-                                &kyc->ok),
     GNUNET_PQ_result_spec_bool ("nonce_ok",
                                 nonce_ok),
-    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
-                                  &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
                                   ruuid),
     GNUNET_PQ_result_spec_end
@@ -6335,7 +6432,6 @@ postgres_do_withdraw (
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
-  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_withdraw",
                                                    params,
@@ -6354,7 +6450,6 @@ postgres_do_withdraw (
  * @param amount total amount to withdraw
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
- * @param[out] kyc set to the KYC status of the reserve
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
  * @return query execution status
  */
@@ -6366,7 +6461,6 @@ postgres_do_batch_withdraw (
   const struct TALER_Amount *amount,
   bool *found,
   bool *balance_ok,
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
   uint64_t *ruuid)
 {
   struct PostgresClosure *pg = cls;
@@ -6383,10 +6477,6 @@ postgres_do_batch_withdraw (
                                 found),
     GNUNET_PQ_result_spec_bool ("balance_ok",
                                 balance_ok),
-    GNUNET_PQ_result_spec_bool ("kyc_ok",
-                                &kyc->ok),
-    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
-                                  &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
                                   ruuid),
     GNUNET_PQ_result_spec_end
@@ -6395,7 +6485,6 @@ postgres_do_batch_withdraw (
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));
-  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_batch_withdraw",
                                                    params,
@@ -7743,12 +7832,14 @@ postgres_create_aggregation_transient (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
   const char *exchange_account_section,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const struct TALER_Amount *total)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (total),
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_string (exchange_account_section),
     GNUNET_PQ_query_param_auto_from_type (wtid),
@@ -7775,6 +7866,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_select_aggregation_transient (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *exchange_account_section,
   struct TALER_WireTransferIdentifierRawP *wtid,
   struct TALER_Amount *total)
@@ -7782,6 +7874,7 @@ postgres_select_aggregation_transient (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_string (exchange_account_section),
     GNUNET_PQ_query_param_end
   };
@@ -7797,6 +7890,129 @@ postgres_select_aggregation_transient (
                                                    "select_aggregation_transient",
                                                    params,
                                                    rs);
+}
+
+
+/**
+ * Closure for #get_refunds_cb().
+ */
+struct FindAggregationTransientContext
+{
+  /**
+   * Function to call on each result.
+   */
+  TALER_EXCHANGEDB_TransientAggregationCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Set to #GNUNET_SYSERR on error.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct SelectRefundContext *`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+get_transients_cb (void *cls,
+                   PGresult *result,
+                   unsigned int num_results)
+{
+  struct FindAggregationTransientContext *srctx = cls;
+  struct PostgresClosure *pg = srctx->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_Amount amount;
+    char *payto_uri;
+    struct TALER_WireTransferIdentifierRawP wtid;
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &merchant_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
+                                            &wtid),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &amount),
+      GNUNET_PQ_result_spec_end
+    };
+    bool cont;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      srctx->status = GNUNET_SYSERR;
+      return;
+    }
+    cont = srctx->cb (srctx->cb_cls,
+                      payto_uri,
+                      &wtid,
+                      &merchant_pub,
+                      &amount);
+    GNUNET_free (payto_uri);
+    if (! cont)
+      break;
+  }
+}
+
+
+/**
+ * Find existing entry in the transient aggregation table.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto destination of the wire transfer
+ * @param cb function to call on each matching entry
+ * @param cb_cls closure for @a cb
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_find_aggregation_transient (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_TransientAggregationCallback cb,
+  void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_end
+  };
+  struct FindAggregationTransientContext srctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "find_transient_aggregations",
+                                             params,
+                                             &get_transients_cb,
+                                             &srctx);
+  if (GNUNET_SYSERR == srctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
 }
 
 
@@ -7867,8 +8083,6 @@ postgres_delete_aggregation_transient (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param start_shard_row minimum shard row to select
  * @param end_shard_row maximum shard row to select (inclusive)
- * @param kyc_off true if we should not check the KYC status because
- *                this exchange does not need/support KYC checks.
  * @param[out] merchant_pub set to the public key of a merchant with a ready deposit
  * @param[out] payto_uri set to the account of the merchant, to be freed by caller
  * @return transaction status code
@@ -7877,7 +8091,6 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_ready_deposit (void *cls,
                             uint64_t start_shard_row,
                             uint64_t end_shard_row,
-                            bool kyc_off,
                             struct TALER_MerchantPublicKeyP *merchant_pub,
                             char **payto_uri)
 {
@@ -7887,7 +8100,6 @@ postgres_get_ready_deposit (void *cls,
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_uint64 (&start_shard_row),
     GNUNET_PQ_query_param_uint64 (&end_shard_row),
-    GNUNET_PQ_query_param_bool (kyc_off),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -9644,7 +9856,11 @@ postgres_lookup_transfer_by_deposit (
                                  deposit_fee),
     GNUNET_PQ_result_spec_end
   };
+  struct GNUNET_TIME_Absolute expiration;
 
+  memset (kyc,
+          0,
+          sizeof (*kyc));
   /* check if the aggregation record exists and get it */
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "lookup_deposit_wtid",
@@ -9663,10 +9879,6 @@ postgres_lookup_transfer_by_deposit (
                        h_wire))
     {
       *pending = false;
-      memset (kyc,
-              0,
-              sizeof (*kyc));
-      kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
       kyc->ok = true;
       return qs;
     }
@@ -9685,15 +9897,21 @@ postgres_lookup_transfer_by_deposit (
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet. In that case, return without wtid
        (by setting 'pending' true). */
+    bool no_kyc = false;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
-      GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
-                                    &kyc->payment_target_uuid),
-      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                            &kyc->ok),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint64 ("legitimization_serial_id",
+
+                                      &kyc->payment_target_uuid),
+        &no_kyc),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_absolute_time ("expiration_time",
+                                             &expiration),
+        &no_kyc),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
@@ -9711,6 +9929,10 @@ postgres_lookup_transfer_by_deposit (
     {
       struct TALER_MerchantWireHashP wh;
 
+      if (no_kyc)
+        kyc->payment_target_uuid = 0;
+      else
+        kyc->ok = GNUNET_TIME_absolute_is_future (expiration);
       TALER_merchant_wire_signature_hash (payto_uri,
                                           &wire_salt,
                                           &wh);
@@ -9720,7 +9942,6 @@ postgres_lookup_transfer_by_deposit (
                          h_wire))
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     }
-    kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
     return qs;
   }
 }
@@ -16149,7 +16370,7 @@ postgres_do_purse_merge (
   {
     char *payto_uri;
 
-    payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+    payto_uri = TALER_reserve_make_payto (pg->exchange_url,
                                           reserve_pub);
     TALER_payto_hash (payto_uri,
                       &h_payto);
@@ -16228,7 +16449,7 @@ postgres_do_reserve_purse (
   {
     char *payto_uri;
 
-    payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+    payto_uri = TALER_reserve_make_payto (pg->exchange_url,
                                           reserve_pub);
     TALER_payto_hash (payto_uri,
                       &h_payto);
@@ -16612,16 +16833,57 @@ postgres_update_kyc_requirement_by_row (
     GNUNET_PQ_query_param_uint64 (&legi_row),
     GNUNET_PQ_query_param_string (provider_section),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_account_id),
-    GNUNET_PQ_query_param_string (provider_legitimization_id),
+    (NULL != provider_account_id)
+    ? GNUNET_PQ_query_param_string (provider_account_id)
+    : GNUNET_PQ_query_param_null (),
+    (NULL != provider_legitimization_id)
+    ? GNUNET_PQ_query_param_string (provider_legitimization_id)
+    : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_absolute_time (&expiration),
     GNUNET_PQ_query_param_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
-  return GNUNET_PQ_eval_prepared_non_select (
+  qs = GNUNET_PQ_eval_prepared_non_select (
     pg->conn,
     "update_legitimization_requirement",
     params);
+  if (qs <= 0)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to update legitimization: %d\n",
+                qs);
+    return qs;
+  }
+  if (GNUNET_TIME_absolute_is_future (expiration))
+  {
+    enum GNUNET_DB_QueryStatus qs2;
+    struct TALER_KycCompletedEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+      .h_payto = *h_payto
+    };
+    uint32_t trigger_type = 1;
+    struct GNUNET_PQ_QueryParam params2[] = {
+      GNUNET_PQ_query_param_auto_from_type (h_payto),
+      GNUNET_PQ_query_param_uint32 (&trigger_type),
+      GNUNET_PQ_query_param_end
+    };
+
+    postgres_event_notify (pg,
+                           &rep.header,
+                           NULL,
+                           0);
+    qs2 = GNUNET_PQ_eval_prepared_non_select (
+      pg->conn,
+      "alert_kyc_status_change",
+      params2);
+    if (qs2 < 0)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to store KYC alert: %d\n",
+                  qs2);
+  }
+  return qs;
 }
 
 
@@ -16831,6 +17093,9 @@ get_legitimizations_cb (void *cls,
       ctx->status = GNUNET_SYSERR;
       return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found satisfied LEGI: %s\n",
+                provider_section);
     ctx->cb (ctx->cb_cls,
              provider_section);
     GNUNET_PQ_cleanup_result (rs);
@@ -16877,6 +17142,9 @@ postgres_select_satisfied_kyc_processes (
     params,
     &get_legitimizations_cb,
     &ctx);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Satisfied LEGI check returned %d\n",
+              qs);
   if (GNUNET_OK != ctx.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
@@ -17220,7 +17488,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     &postgres_iterate_auditor_denominations;
   plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->reserves_get = &postgres_reserves_get;
+  plugin->reserves_get_origin = &postgres_reserves_get_origin;
   plugin->set_kyc_ok = &postgres_set_kyc_ok;
+  plugin->drain_kyc_alert = &postgres_drain_kyc_alert;
   plugin->inselect_wallet_kyc_status = &postgres_inselect_wallet_kyc_status;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
@@ -17247,6 +17517,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_create_aggregation_transient;
   plugin->select_aggregation_transient
     = &postgres_select_aggregation_transient;
+  plugin->find_aggregation_transient
+    = &postgres_find_aggregation_transient;
   plugin->update_aggregation_transient
     = &postgres_update_aggregation_transient;
   plugin->delete_aggregation_transient

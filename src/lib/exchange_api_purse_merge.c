@@ -232,7 +232,6 @@ handle_purse_merge_finished (void *cls,
 
       GNUNET_CRYPTO_eddsa_key_get_public (&pch->merge_priv.eddsa_priv,
                                           &merge_pub.eddsa_pub);
-
       if (GNUNET_OK !=
           TALER_EXCHANGE_check_purse_merge_conflict_ (
             &pch->merge_sig,

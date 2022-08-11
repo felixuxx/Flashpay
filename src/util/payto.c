@@ -274,45 +274,6 @@ TALER_payto_hash (const char *payto,
 
 
 char *
-TALER_payto_from_reserve (const char *exchange_base_url,
-                          const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  char *payto_uri;
-  char *rps;
-  unsigned int skip;
-  const char *extra = "";
-  int url_len;
-
-  rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
-                                             sizeof (*reserve_pub));
-  skip = 0;
-  if (0 == strncasecmp (exchange_base_url,
-                        "http://",
-                        strlen ("http://")))
-  {
-    skip = strlen ("http://");
-    extra = "+http";
-  }
-  if (0 == strncasecmp (exchange_base_url,
-                        "https://",
-                        strlen ("https://")))
-    skip = strlen ("https://");
-  url_len = strlen (exchange_base_url);
-  if ('/' == exchange_base_url[url_len - 1])
-    url_len--;
-  url_len -= skip;
-  GNUNET_asprintf (&payto_uri,
-                   "taler%s://reserve/%.*s/%s",
-                   extra,
-                   url_len,
-                   exchange_base_url + skip,
-                   rps);
-  GNUNET_free (rps);
-  return payto_uri;
-}
-
-
-char *
 TALER_reserve_make_payto (const char *exchange_url,
                           const struct TALER_ReservePublicKeyP *reserve_pub)
 {
@@ -349,7 +310,7 @@ TALER_reserve_make_payto (const char *exchange_url,
   /* exchange_url includes trailing '/' */
   GNUNET_asprintf (&reserve_url,
                    "payto://%s/%s%s",
-                   is_http ? "taler+http" : "taler",
+                   is_http ? "taler-reserve+http" : "taler-reserve",
                    exchange_url,
                    pub_str);
   return reserve_url;

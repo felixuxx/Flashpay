@@ -30,6 +30,7 @@ taler_exchange_aggregator_SOURCES = \
   taler-exchange-aggregator.c
 taler_exchange_aggregator_LDADD = \
   $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \

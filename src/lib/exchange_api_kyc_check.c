@@ -207,7 +207,7 @@ handle_kyc_check_finished (void *cls,
 
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
-                          uint64_t payment_target,
+                          uint64_t legitimization_uuid,
                           const struct TALER_PaytoHashP *h_payto,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
@@ -238,8 +238,8 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
     timeout_ms = timeout.rel_value_us
                  / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
     GNUNET_asprintf (&arg_str,
-                     "/kyc-check/%llu?h_payto=%s&timeout_ms=%llu",
-                     (unsigned long long) payment_target,
+                     "/kyc-check/%llu/%s?timeout_ms=%llu",
+                     (unsigned long long) legitimization_uuid,
                      payto_str,
                      timeout_ms);
   }

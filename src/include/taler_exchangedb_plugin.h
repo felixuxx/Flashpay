@@ -2327,11 +2327,13 @@ struct TALER_EXCHANGEDB_KycStatus
    * Number that identifies the KYC target the operation
    * was about.
    */
+  // FIXME: rename to 'legitimization_uuid'
   uint64_t payment_target_uuid;
 
   /**
    * What kind of KYC operation is this?
    */
+  // FIXME: kill!
   enum TALER_EXCHANGEDB_KycType type;
 
   /**
@@ -2580,6 +2582,26 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const char *payto_uri,
   const struct TALER_Amount *amount);
+
+
+/**
+ * Function called on transient aggregations matching
+ * a particular hash of a payto URI.
+ *
+ * @param cls
+ * @param payto_uri corresponding payto URI
+ * @param wtid wire transfer identifier of transient aggregation
+ * @param merchant_pub public key of the merchant
+ * @param total amount aggregated so far
+ * @return true to continue iterating
+ */
+typedef bool
+(*TALER_EXCHANGEDB_TransientAggregationCallback)(
+  void *cls,
+  const char *payto_uri,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_Amount *total);
 
 
 /**
@@ -3098,6 +3120,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Get the origin of funds of a reserve.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param reserve_pub public key of the reserve
+   * @param[out] h_payto set to hash of the wire source payto://-URI
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*reserves_get_origin)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    struct TALER_PaytoHashP *h_payto);
+
+
+  /**
    * Set the KYC status to "OK" for a bank account.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -3109,6 +3146,20 @@ struct TALER_EXCHANGEDB_Plugin
   (*set_kyc_ok)(void *cls,
                 const struct TALER_PaytoHashP *h_payto,
                 const char *id);
+
+
+  /**
+   * Extract next KYC alert.  Deletes the alert.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param trigger_type which type of alert to drain
+   * @param[out] h_payto set to hash of payto-URI where KYC status changed
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*drain_kyc_alert)(void *cls,
+                     uint32_t trigger_type,
+                     struct TALER_PaytoHashP *h_payto);
 
 
   /**
@@ -3207,7 +3258,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] nonce_ok set to false if the nonce was reused
-   * @param[out] kyc set to the KYC status of the reserve
    * @param[out] ruuid set to the reserve's UUID (reserves table row)
    * @return query execution status
    */
@@ -3220,7 +3270,6 @@ struct TALER_EXCHANGEDB_Plugin
     bool *found,
     bool *balance_ok,
     bool *nonce_ok,
-    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
     uint64_t *ruuid);
 
 
@@ -3235,7 +3284,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param amount total amount to withdraw
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
-   * @param[out] kyc set to the KYC status of the reserve
    * @param[out] ruuid set to the reserve's UUID (reserves table row)
    * @return query execution status
    */
@@ -3247,7 +3295,6 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_Amount *amount,
     bool *found,
     bool *balance_ok,
-    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
     uint64_t *ruuid);
 
 
@@ -3692,8 +3739,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param start_shard_row minimum shard row to select
    * @param end_shard_row maximum shard row to select (inclusive)
-   * @param kyc_off true if we should not check the KYC status because
-   *                this exchange does not need/support KYC checks.
    * @param[out] merchant_pub set to the public key of a merchant with a ready deposit
    * @param[out] payto_uri set to the account of the merchant, to be freed by caller
    * @return transaction status code
@@ -3702,7 +3747,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_ready_deposit)(void *cls,
                        uint64_t start_shard_row,
                        uint64_t end_shard_row,
-                       bool kyc_off,
                        struct TALER_MerchantPublicKeyP *merchant_pub,
                        char **payto_uri);
 
@@ -3740,6 +3784,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param h_payto destination of the wire transfer
    * @param exchange_account_section exchange account to use
+   * @param merchant_pub public key of the merchant
    * @param wtid the raw wire transfer identifier to be used
    * @param total amount to be wired in the future
    * @return transaction status
@@ -3749,15 +3794,17 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
     const char *exchange_account_section,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
     const struct TALER_WireTransferIdentifierRawP *wtid,
     const struct TALER_Amount *total);
 
 
   /**
-   * Find existing entry in the transient aggregation table.
+   * Select existing entry in the transient aggregation table.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param h_payto destination of the wire transfer
+   * @param merchant_pub public key of the merchant
    * @param exchange_account_section exchange account to use
    * @param[out] wtid set to the raw wire transfer identifier to be used
    * @param[out] total existing amount to be wired in the future
@@ -3767,9 +3814,27 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_aggregation_transient)(
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_MerchantPublicKeyP *merchant_pub,
     const char *exchange_account_section,
     struct TALER_WireTransferIdentifierRawP *wtid,
     struct TALER_Amount *total);
+
+
+  /**
+   * Find existing entry in the transient aggregation table.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto destination of the wire transfer
+   * @param cb function to call on each matching entry
+   * @param cb_cls closure for @a cb
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*find_aggregation_transient)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_TransientAggregationCallback cb,
+    void *cb_cls);
 
 
   /**

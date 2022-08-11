@@ -70,6 +70,11 @@ struct KycWalletGetState
   struct TALER_EXCHANGE_KycWalletHandle *kwh;
 
   /**
+   * Balance to pass to the exchange.
+   */
+  struct TALER_Amount balance;
+
+  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -170,10 +175,11 @@ wallet_kyc_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
                                       &kwg->reserve_pub.eddsa_pub);
   kwg->reserve_payto_uri
-    = TALER_payto_from_reserve (TALER_EXCHANGE_get_base_url (is->exchange),
+    = TALER_reserve_make_payto (TALER_EXCHANGE_get_base_url (is->exchange),
                                 &kwg->reserve_pub);
   kwg->kwh = TALER_EXCHANGE_kyc_wallet (is->exchange,
                                         &kwg->reserve_priv,
+                                        &kwg->balance,
                                         &wallet_kyc_cb,
                                         kwg);
   GNUNET_assert (NULL != kwg->kwh);
@@ -242,6 +248,7 @@ wallet_kyc_traits (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wallet_kyc_get (const char *label,
                                   const char *reserve_reference,
+                                  const char *threshold_balance,
                                   unsigned int expected_response_code)
 {
   struct KycWalletGetState *kwg;
@@ -249,6 +256,9 @@ TALER_TESTING_cmd_wallet_kyc_get (const char *label,
   kwg = GNUNET_new (struct KycWalletGetState);
   kwg->reserve_reference = reserve_reference;
   kwg->expected_response_code = expected_response_code;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (threshold_balance,
+                                         &kwg->balance));
   {
     struct TALER_TESTING_Command cmd = {
       .cls = kwg,

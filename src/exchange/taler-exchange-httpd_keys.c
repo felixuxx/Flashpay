@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_keys.h"
@@ -1722,6 +1723,27 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
 
 
 /**
+ * Function called with wallet balance threshholds.
+ *
+ * @param[in,out] cls a `json **` where to put the array of json amounts discovered
+ * @param threshold another threshold amount to add
+ */
+static void
+wallet_threshold_cb (void *cls,
+                     const struct TALER_Amount *threshold)
+{
+  json_t **ret = cls;
+
+  if (NULL == *ret)
+    *ret = json_array ();
+  GNUNET_assert (0 ==
+                 json_array_append_new (*ret,
+                                        TALER_JSON_from_amount (
+                                          threshold)));
+}
+
+
+/**
  * Initialize @a krd using the given values for @a signkeys,
  * @a recoup and @a denoms.
  *
@@ -1854,17 +1876,20 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   GNUNET_assert (NULL != keys);
 
   /* Set wallet limit if KYC is configured */
-  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
-       (GNUNET_OK ==
-        TALER_amount_is_valid (&TEH_kyc_config.wallet_balance_limit)) )
   {
-    GNUNET_assert (
-      0 ==
-      json_object_set_new (
-        keys,
-        "wallet_balance_limit_without_kyc",
-        TALER_JSON_from_amount (
-          &TEH_kyc_config.wallet_balance_limit)));
+    json_t *wblwk = NULL;
+
+    TALER_KYCLOGIC_kyc_iterate_thresholds (
+      TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
+      &wallet_threshold_cb,
+      &wblwk);
+    if (NULL != wblwk)
+      GNUNET_assert (
+        0 ==
+        json_object_set_new (
+          keys,
+          "wallet_balance_limit_without_kyc",
+          wblwk));
   }
 
   /* Signal support for the configured, enabled extensions. */

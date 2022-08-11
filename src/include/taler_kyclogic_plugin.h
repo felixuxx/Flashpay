@@ -295,6 +295,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param url_path rest of the URL after `/kyc-webhook/$H_PAYTO/$LOGIC`
    * @param connection MHD connection object (for HTTP headers)
    * @param account_id which account to trigger process for
+   * @param legi_row row in the table the legitimization is for
    * @param provider_user_id user ID (or NULL) the proof is for
    * @param provider_legitimization_id legitimization ID the proof is for
    * @param cb function to call with the result
@@ -307,6 +308,7 @@ struct TALER_KYCLOGIC_Plugin
            const char *const url_path[],
            struct MHD_Connection *connection,
            const struct TALER_PaytoHashP *account_id,
+           uint64_t legi_row,
            const char *provider_user_id,
            const char *provider_legitimization_id,
            TALER_KYCLOGIC_ProofCallback cb,

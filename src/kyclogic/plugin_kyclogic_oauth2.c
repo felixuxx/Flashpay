@@ -69,6 +69,11 @@ struct TALER_KYCLOGIC_ProviderDetails
   struct PluginState *ps;
 
   /**
+   * Configuration section that configured us.
+   */
+  char *section;
+
+  /**
    * URL of the OAuth2.0 endpoint for KYC checks.
    * (token/auth)
    */
@@ -265,6 +270,7 @@ struct TALER_KYCLOGIC_WebhookHandle
 static void
 oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
 {
+  GNUNET_free (pd->section);
   GNUNET_free (pd->auth_url);
   GNUNET_free (pd->login_url);
   GNUNET_free (pd->info_url);
@@ -292,6 +298,7 @@ oauth2_load_configuration (void *cls,
 
   pd = GNUNET_new (struct TALER_KYCLOGIC_ProviderDetails);
   pd->ps = ps;
+  pd->section = GNUNET_strdup (provider_section_name);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (ps->cfg,
                                            provider_section_name,
@@ -467,9 +474,10 @@ initiate_task (void *cls)
   hps = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                              sizeof (ih->h_payto));
   GNUNET_asprintf (&redirect_uri,
-                   "%s/kyc-proof/%s/oauth2/%s",
+                   "%s/kyc-proof/%s/%s/%s",
                    ps->exchange_base_url,
                    hps,
+                   pd->section,
                    legi_s);
   redirect_uri_encoded = TALER_urlencode (redirect_uri);
   GNUNET_free (redirect_uri);
@@ -532,7 +540,11 @@ oauth2_initiate (void *cls,
 static void
 oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 {
-  GNUNET_SCHEDULER_cancel (ih->task);
+  if (NULL != ih->task)
+  {
+    GNUNET_SCHEDULER_cancel (ih->task);
+    ih->task = NULL;
+  }
   GNUNET_free (ih);
 }
 
@@ -659,6 +671,9 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
   if (GNUNET_OK != res)
   {
     GNUNET_break_op (0);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
     ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
     ph->response
       = TALER_MHD_make_error (
@@ -691,6 +706,9 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     if (GNUNET_OK != res)
     {
       GNUNET_break_op (0);
+      json_dumpf (data,
+                  stderr,
+                  JSON_INDENT (2));
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
       ph->response
         = TALER_MHD_make_error (
@@ -741,12 +759,156 @@ handle_curl_proof_finished (void *cls,
                                j);
     break;
   default:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "OAuth2.0 info URL returned HTTP status %u\n",
+                (unsigned int) response_code);
     handle_proof_error (ph,
                         j);
     break;
   }
   ph->task = GNUNET_SCHEDULER_add_now (&return_proof_response,
                                        ph);
+}
+
+
+/**
+ * After we are done with the CURL interaction we
+ * need to fetch the user's account details.
+ *
+ * @param cls our `struct KycProofContext`
+ * @param response_code HTTP response code from server, 0 on hard error
+ * @param response in JSON, NULL if response was not in JSON format
+ */
+static void
+handle_curl_login_finished (void *cls,
+                            long response_code,
+                            const void *response)
+{
+  struct TALER_KYCLOGIC_ProofHandle *ph = cls;
+  const json_t *j = response;
+
+  ph->job = NULL;
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    {
+      const char *access_token;
+      const char *token_type;
+      uint64_t expires_in_s;
+      const char *refresh_token;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_string ("access_token",
+                                 &access_token),
+        GNUNET_JSON_spec_string ("token_type",
+                                 &token_type),
+        GNUNET_JSON_spec_uint64 ("expires_in",
+                                 &expires_in_s),
+        GNUNET_JSON_spec_string ("refresh_token",
+                                 &refresh_token),
+        GNUNET_JSON_spec_end ()
+      };
+      CURL *eh;
+
+      {
+        enum GNUNET_GenericReturnValue res;
+        const char *emsg;
+        unsigned int line;
+
+        res = GNUNET_JSON_parse (j,
+                                 spec,
+                                 &emsg,
+                                 &line);
+        if (GNUNET_OK != res)
+        {
+          GNUNET_break_op (0);
+          ph->response
+            = TALER_MHD_make_error (
+                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+                "Unexpected response from KYC gateway");
+          ph->http_status
+            = MHD_HTTP_BAD_GATEWAY;
+          break;
+        }
+      }
+      if (0 != strcasecmp (token_type,
+                           "bearer"))
+      {
+        GNUNET_break_op (0);
+        ph->response
+          = TALER_MHD_make_error (
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+              "Unexpected token type in response from KYC gateway");
+        ph->http_status
+          = MHD_HTTP_BAD_GATEWAY;
+        break;
+      }
+
+      /* We guard against a few characters that could
+         conceivably be abused to mess with the HTTP header */
+      if ( (NULL != strchr (access_token,
+                            '\n')) ||
+           (NULL != strchr (access_token,
+                            '\r')) ||
+           (NULL != strchr (access_token,
+                            ' ')) ||
+           (NULL != strchr (access_token,
+                            ';')) )
+      {
+        GNUNET_break_op (0);
+        ph->response
+          = TALER_MHD_make_error (
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+              "Illegal character in access token");
+        ph->http_status
+          = MHD_HTTP_BAD_GATEWAY;
+        break;
+      }
+
+      eh = curl_easy_init ();
+      if (NULL == eh)
+      {
+        GNUNET_break_op (0);
+        ph->response
+          = TALER_MHD_make_error (
+              TALER_EC_GENERIC_ALLOCATION_FAILURE,
+              "curl_easy_init");
+        ph->http_status
+          = MHD_HTTP_INTERNAL_SERVER_ERROR;
+        break;
+      }
+      GNUNET_assert (CURLE_OK ==
+                     curl_easy_setopt (eh,
+                                       CURLOPT_URL,
+                                       ph->pd->info_url));
+      {
+        char *hdr;
+        struct curl_slist *slist;
+
+        GNUNET_asprintf (&hdr,
+                         "%s: Bearer %s",
+                         MHD_HTTP_HEADER_AUTHORIZATION,
+                         access_token);
+        slist = curl_slist_append (NULL,
+                                   hdr);
+        ph->job = GNUNET_CURL_job_add2 (ph->pd->ps->curl_ctx,
+                                        eh,
+                                        slist,
+                                        &handle_curl_proof_finished,
+                                        ph);
+        curl_slist_free_all (slist);
+        GNUNET_free (hdr);
+      }
+      return;
+    }
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "OAuth2.0 login URL returned HTTP status %u\n",
+                (unsigned int) response_code);
+    handle_proof_error (ph,
+                        j);
+    break;
+  }
+  return_proof_response (ph);
 }
 
 
@@ -758,6 +920,7 @@ handle_curl_proof_finished (void *cls,
  * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
+ * @param legi_row row in the table the legitimization is for
  * @param provider_user_id user ID (or NULL) the proof is for
  * @param provider_legitimization_id legitimization ID the proof is for
  * @param cb function to call with the result
@@ -770,6 +933,7 @@ oauth2_proof (void *cls,
               const char *const url_path[],
               struct MHD_Connection *connection,
               const struct TALER_PaytoHashP *account_id,
+              uint64_t legi_row,
               const char *provider_user_id,
               const char *provider_legitimization_id,
               TALER_KYCLOGIC_ProofCallback cb,
@@ -779,16 +943,20 @@ oauth2_proof (void *cls,
   struct TALER_KYCLOGIC_ProofHandle *ph;
   const char *code;
 
-  if (strlen (provider_legitimization_id) >=
-      sizeof (ph->provider_legitimization_id))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   GNUNET_break (NULL == provider_user_id);
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
-  strcpy (ph->provider_legitimization_id,
-          provider_legitimization_id);
+  GNUNET_snprintf (ph->provider_legitimization_id,
+                   sizeof (ph->provider_legitimization_id),
+                   "%llu",
+                   (unsigned long long) legi_row);
+  if ( (NULL != provider_legitimization_id) &&
+       (0 != strcmp (provider_legitimization_id,
+                     ph->provider_legitimization_id)))
+  {
+    GNUNET_break (0);
+    GNUNET_free (ph);
+    return NULL;
+  }
   ph->pd = pd;
   ph->connection = connection;
   ph->h_payto = *account_id;
@@ -891,7 +1059,7 @@ oauth2_proof (void *cls,
 
   ph->job = GNUNET_CURL_job_add (ps->curl_ctx,
                                  ph->eh,
-                                 &handle_curl_proof_finished,
+                                 &handle_curl_login_finished,
                                  ph);
   return ph;
 }

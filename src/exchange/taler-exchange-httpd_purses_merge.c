@@ -421,11 +421,11 @@ TEH_handler_purses_merge (
               "Received payto: `%s'\n",
               pcc.payto_uri);
   if ( (0 != strncmp (pcc.payto_uri,
-                      "payto://taler/",
-                      strlen ("payto://taler/"))) &&
+                      "payto://taler-reserve/",
+                      strlen ("payto://taler-reserve/"))) &&
        (0 != strncmp (pcc.payto_uri,
-                      "payto://taler+http/",
-                      strlen ("payto://taler+http/"))) )
+                      "payto://taler-reserve+http/",
+                      strlen ("payto://taler-reserve+http/"))) )
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
@@ -436,13 +436,13 @@ TEH_handler_purses_merge (
   }
 
   http = (0 == strncmp (pcc.payto_uri,
-                        "payto://taler+http/",
-                        strlen ("payto://taler+http/")));
+                        "payto://taler-reserve+http/",
+                        strlen ("payto://taler-reserve+http/")));
 
   {
     const char *host = &pcc.payto_uri[http
-                                      ? strlen ("payto://taler+http/")
-                                      : strlen ("payto://taler/")];
+                                      ? strlen ("payto://taler-reserve+http/")
+                                      : strlen ("payto://taler-reserve/")];
     const char *slash = strchr (host,
                                 '/');
 

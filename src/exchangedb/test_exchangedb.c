@@ -1399,7 +1399,6 @@ run (void *cls)
     bool found;
     bool nonce_ok;
     bool balance_ok;
-    struct TALER_EXCHANGEDB_KycStatus kyc;
     uint64_t ruuid;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1410,12 +1409,10 @@ run (void *cls)
                                  &found,
                                  &balance_ok,
                                  &nonce_ok,
-                                 &kyc,
                                  &ruuid));
     GNUNET_assert (found);
     GNUNET_assert (nonce_ok);
     GNUNET_assert (balance_ok);
-    GNUNET_assert (! kyc.ok);
   }
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
@@ -2159,7 +2156,6 @@ run (void *cls)
             plugin->get_ready_deposit (plugin->cls,
                                        0,
                                        INT32_MAX,
-                                       true,
                                        &merchant_pub2,
                                        &payto_uri2));
     FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
@@ -2205,6 +2201,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
+                                                  &deposit.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2212,11 +2209,13 @@ run (void *cls)
             plugin->create_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
                                                   "x-bank",
+                                                  &deposit.merchant_pub,
                                                   &wtid,
                                                   &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
+                                                  &deposit.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2237,6 +2236,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
+                                                  &deposit.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));
@@ -2253,6 +2253,7 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->select_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
+                                                  &deposit.merchant_pub,
                                                   "x-bank",
                                                   &wtid2,
                                                   &total2));

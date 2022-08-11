@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -25,6 +25,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_responses.h"
@@ -52,30 +53,36 @@ struct KycProofContext
   struct TEH_RequestContext *rc;
 
   /**
-   * Handle for the OAuth 2.0 CURL request.
+   * Proof logic to run.
    */
-  struct GNUNET_CURL_Job *job;
+  struct TALER_KYCLOGIC_Plugin *logic;
+
+  /**
+   * Configuration for @a logic.
+   */
+  struct TALER_KYCLOGIC_ProviderDetails *pd;
+
+  /**
+   * Asynchronous operation with the proof system.
+   */
+  struct TALER_KYCLOGIC_ProofHandle *ph;
+
+  /**
+   * Process information about the user for the plugin from the database, can
+   * be NULL.
+   */
+  char *provider_user_id;
+
+  /**
+   * Process information about the legitimization process for the plugin from the
+   * database, can be NULL.
+   */
+  char *provider_legitimization_id;
 
   /**
    * OAuth 2.0 authorization code.
    */
   const char *authorization_code;
-
-  /**
-   * OAuth 2.0 token URL we are using for the
-   * request.
-   */
-  char *token_url;
-
-  /**
-   * Body of the POST request.
-   */
-  char *post_body;
-
-  /**
-   * User ID extracted from the OAuth 2.0 service, or NULL.
-   */
-  char *id;
 
   /**
    * Hash of payment target URI this is about.
@@ -88,16 +95,24 @@ struct KycProofContext
   struct MHD_Response *response;
 
   /**
+   * Configuration section for the logic we are running.
+   */
+  char *provider_section;
+
+  /**
+   * Row in the database for this legitimization operation.
+   */
+  uint64_t legi_row;
+
+  /**
    * HTTP response code to return.
    */
   unsigned int response_code;
 
   /**
-   * #GNUNET_YES if we are suspended,
-   * #GNUNET_NO if not.
-   * #GNUNET_SYSERR if we had some error.
+   * True if we are suspended,
    */
-  enum GNUNET_GenericReturnValue suspended;
+  bool suspended;
 
 };
 
@@ -122,7 +137,7 @@ static void
 kpc_resume (struct KycProofContext *kpc)
 {
   GNUNET_assert (GNUNET_YES == kpc->suspended);
-  kpc->suspended = GNUNET_NO;
+  kpc->suspended = false;
   GNUNET_CONTAINER_DLL_remove (kpc_head,
                                kpc_tail,
                                kpc);
@@ -138,10 +153,10 @@ TEH_kyc_proof_cleanup (void)
 
   while (NULL != (kpc = kpc_head))
   {
-    if (NULL != kpc->job)
+    if (NULL != kpc->ph)
     {
-      GNUNET_CURL_job_cancel (kpc->job);
-      kpc->job = NULL;
+      kpc->logic->proof_cancel (kpc->ph);
+      kpc->ph = NULL;
     }
     kpc_resume (kpc);
   }
@@ -149,348 +164,69 @@ TEH_kyc_proof_cleanup (void)
 
 
 /**
- * Function implementing database transaction to check proof's KYC status.
- * Runs the transaction logic; IF it returns a non-error code, the transaction
- * logic MUST NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF it
- * returns the soft error code, the function MAY be called again to retry and
- * MUST not queue a MHD response.
+ * Function called with the result of a proof check operation.
  *
- * @param cls closure with a `struct KycProofContext *`
- * @param connection MHD proof which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-persist_kyc_ok (void *cls,
-                struct MHD_Connection *connection,
-                MHD_RESULT *mhd_ret)
-{
-  struct KycProofContext *kpc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = TEH_plugin->set_kyc_ok (TEH_plugin->cls,
-                               &kpc->h_payto,
-                               kpc->id);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                        TALER_EC_GENERIC_DB_STORE_FAILED,
-                                        "set_kyc_ok");
-  }
-  return qs;
-}
-
-
-/**
- * The request for @a kpc failed. We may have gotten a useful error
- * message in @a j. Generate a failure response.
+ * Note that the "decref" for the @a response
+ * will be done by the callee and MUST NOT be done by the plugin.
  *
- * @param[in,out] kpc request that failed
- * @param j reply from the server (or NULL)
+ * @param cls closure
+ * @param status KYC status
+ * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
+ * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param expiration until when is the KYC check valid
+ * @param http_status HTTP status code of @a response
+ * @param[in] response to return to the HTTP client
  */
 static void
-handle_error (struct KycProofContext *kpc,
-              const json_t *j)
+proof_cb (
+  void *cls,
+  enum TALER_KYCLOGIC_KycStatus status,
+  const char *provider_user_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration,
+  unsigned int http_status,
+  struct MHD_Response *response)
 {
-  const char *msg;
-  const char *desc;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("error",
-                             &msg),
-    GNUNET_JSON_spec_string ("error_description",
-                             &desc),
-    GNUNET_JSON_spec_end ()
-  };
+  struct KycProofContext *kpc = cls;
+  struct TEH_RequestContext *rc = kpc->rc;
+  struct GNUNET_AsyncScopeSave old_scope;
 
+  kpc->ph = NULL;
+  GNUNET_async_scope_enter (&rc->async_scope_id,
+                            &old_scope);
+
+  if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
   {
-    enum GNUNET_GenericReturnValue res;
-    const char *emsg;
-    unsigned int line;
+    enum GNUNET_DB_QueryStatus qs;
 
-    res = GNUNET_JSON_parse (j,
-                             spec,
-                             &emsg,
-                             &line);
-    if (GNUNET_OK != res)
+    qs = TEH_plugin->update_kyc_requirement_by_row (TEH_plugin->cls,
+                                                    kpc->legi_row,
+                                                    kpc->provider_section,
+                                                    &kpc->h_payto,
+                                                    provider_user_id,
+                                                    provider_legitimization_id,
+                                                    expiration);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
-      GNUNET_break_op (0);
-      kpc->response
-        = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway");
-      kpc->response_code
-        = MHD_HTTP_BAD_GATEWAY;
+      GNUNET_break (0);
+      kpc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      kpc->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
+                                            "set_kyc_ok");
+      GNUNET_async_scope_restore (&old_scope);
       return;
     }
   }
-  /* case TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_AUTHORZATION_FAILED,
-     we MAY want to in the future look at the requested content type
-     and possibly respond in JSON if indicated. */
+  else
   {
-    char *reply;
-
-    GNUNET_asprintf (&reply,
-                     "<html><head><title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>",
-                     msg,
-                     msg,
-                     desc);
-    kpc->response
-      = MHD_create_response_from_buffer (strlen (reply),
-                                         reply,
-                                         MHD_RESPMEM_MUST_COPY);
-    GNUNET_assert (NULL != kpc->response);
-    GNUNET_free (reply);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC logic #%llu failed with status %d\n",
+                (unsigned long long) kpc->legi_row,
+                status);
   }
-  kpc->response_code = MHD_HTTP_FORBIDDEN;
-}
-
-
-/**
- * The request for @a kpc succeeded (presumably).
- * Parse the user ID and store it in @a kpc (if possible).
- *
- * @param[in,out] kpc request that succeeded
- * @param j reply from the server
- */
-static void
-parse_success_reply (struct KycProofContext *kpc,
-                     const json_t *j)
-{
-  const char *state;
-  json_t *data;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("status",
-                             &state),
-    GNUNET_JSON_spec_json ("data",
-                           &data),
-    GNUNET_JSON_spec_end ()
-  };
-  enum GNUNET_GenericReturnValue res;
-  const char *emsg;
-  unsigned int line;
-
-  res = GNUNET_JSON_parse (j,
-                           spec,
-                           &emsg,
-                           &line);
-  if (GNUNET_OK != res)
-  {
-    GNUNET_break_op (0);
-    kpc->response
-      = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Unexpected response from KYC gateway");
-    kpc->response_code
-      = MHD_HTTP_BAD_GATEWAY;
-    return;
-  }
-  if (0 != strcasecmp (state,
-                       "success"))
-  {
-    GNUNET_break_op (0);
-    handle_error (kpc,
-                  j);
-    return;
-  }
-  {
-    const char *id;
-    struct GNUNET_JSON_Specification ispec[] = {
-      GNUNET_JSON_spec_string ("id",
-                               &id),
-      GNUNET_JSON_spec_end ()
-    };
-
-    res = GNUNET_JSON_parse (data,
-                             ispec,
-                             &emsg,
-                             &line);
-    if (GNUNET_OK != res)
-    {
-      GNUNET_break_op (0);
-      kpc->response
-        = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway");
-      kpc->response_code
-        = MHD_HTTP_BAD_GATEWAY;
-      return;
-    }
-    kpc->id = GNUNET_strdup (id);
-  }
-}
-
-
-/**
- * After we are done with the CURL interaction we
- * need to update our database state with the information
- * retrieved.
- *
- * @param cls our `struct KycProofContext`
- * @param response_code HTTP response code from server, 0 on hard error
- * @param response in JSON, NULL if response was not in JSON format
- */
-static void
-handle_curl_fetch_finished (void *cls,
-                            long response_code,
-                            const void *response)
-{
-  struct KycProofContext *kpc = cls;
-  const json_t *j = response;
-
-  kpc->job = NULL;
-  switch (response_code)
-  {
-  case MHD_HTTP_OK:
-    parse_success_reply (kpc,
-                         j);
-    break;
-  default:
-    handle_error (kpc,
-                  j);
-    break;
-  }
+  kpc->response_code = http_status;
+  kpc->response = response;
   kpc_resume (kpc);
-}
-
-
-/**
- * After we are done with the CURL interaction we
- * need to fetch the user's account details.
- *
- * @param cls our `struct KycProofContext`
- * @param response_code HTTP response code from server, 0 on hard error
- * @param response in JSON, NULL if response was not in JSON format
- */
-static void
-handle_curl_login_finished (void *cls,
-                            long response_code,
-                            const void *response)
-{
-  struct KycProofContext *kpc = cls;
-  const json_t *j = response;
-
-  kpc->job = NULL;
-  switch (response_code)
-  {
-  case MHD_HTTP_OK:
-    {
-      const char *access_token;
-      const char *token_type;
-      uint64_t expires_in_s;
-      const char *refresh_token;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("access_token",
-                                 &access_token),
-        GNUNET_JSON_spec_string ("token_type",
-                                 &token_type),
-        GNUNET_JSON_spec_uint64 ("expires_in",
-                                 &expires_in_s),
-        GNUNET_JSON_spec_string ("refresh_token",
-                                 &refresh_token),
-        GNUNET_JSON_spec_end ()
-      };
-      CURL *eh;
-
-      {
-        enum GNUNET_GenericReturnValue res;
-        const char *emsg;
-        unsigned int line;
-
-        res = GNUNET_JSON_parse (j,
-                                 spec,
-                                 &emsg,
-                                 &line);
-        if (GNUNET_OK != res)
-        {
-          GNUNET_break_op (0);
-          kpc->response
-            = TALER_MHD_make_error (
-                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-                "Unexpected response from KYC gateway");
-          kpc->response_code
-            = MHD_HTTP_BAD_GATEWAY;
-          break;
-        }
-      }
-      if (0 != strcasecmp (token_type,
-                           "bearer"))
-      {
-        GNUNET_break_op (0);
-        kpc->response
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Unexpected token type in response from KYC gateway");
-        kpc->response_code
-          = MHD_HTTP_BAD_GATEWAY;
-        break;
-      }
-
-      /* We guard against a few characters that could
-         conceivably be abused to mess with the HTTP header */
-      if ( (NULL != strchr (access_token,
-                            '\n')) ||
-           (NULL != strchr (access_token,
-                            '\r')) ||
-           (NULL != strchr (access_token,
-                            ' ')) ||
-           (NULL != strchr (access_token,
-                            ';')) )
-      {
-        GNUNET_break_op (0);
-        kpc->response
-          = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Illegal character in access token");
-        kpc->response_code
-          = MHD_HTTP_BAD_GATEWAY;
-        break;
-      }
-
-      eh = curl_easy_init ();
-      if (NULL == eh)
-      {
-        GNUNET_break_op (0);
-        kpc->response
-          = TALER_MHD_make_error (
-              TALER_EC_GENERIC_ALLOCATION_FAILURE,
-              "curl_easy_init");
-        kpc->response_code
-          = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        break;
-      }
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_URL,
-                                       TEH_kyc_config.details.oauth2.info_url));
-      {
-        char *hdr;
-        struct curl_slist *slist;
-
-        GNUNET_asprintf (&hdr,
-                         "%s: Bearer %s",
-                         MHD_HTTP_HEADER_AUTHORIZATION,
-                         access_token);
-        slist = curl_slist_append (NULL,
-                                   hdr);
-        kpc->job = GNUNET_CURL_job_add2 (TEH_curl_ctx,
-                                         eh,
-                                         slist,
-                                         &handle_curl_fetch_finished,
-                                         kpc);
-        curl_slist_free_all (slist);
-        GNUNET_free (hdr);
-      }
-      return;
-    }
-  default:
-    handle_error (kpc,
-                  j);
-    break;
-  }
-  kpc_resume (kpc);
+  GNUNET_async_scope_restore (&old_scope);
 }
 
 
@@ -504,19 +240,19 @@ clean_kpc (struct TEH_RequestContext *rc)
 {
   struct KycProofContext *kpc = rc->rh_ctx;
 
-  if (NULL != kpc->job)
+  if (NULL != kpc->ph)
   {
-    GNUNET_CURL_job_cancel (kpc->job);
-    kpc->job = NULL;
+    kpc->logic->proof_cancel (kpc->ph);
+    kpc->ph = NULL;
   }
   if (NULL != kpc->response)
   {
     MHD_destroy_response (kpc->response);
     kpc->response = NULL;
   }
-  GNUNET_free (kpc->post_body);
-  GNUNET_free (kpc->token_url);
-  GNUNET_free (kpc->id);
+  GNUNET_free (kpc->provider_user_id);
+  GNUNET_free (kpc->provider_legitimization_id);
+  GNUNET_free (kpc->provider_section);
   GNUNET_free (kpc);
 }
 
@@ -529,7 +265,18 @@ TEH_handler_kyc_proof (
   struct KycProofContext *kpc = rc->rh_ctx;
 
   if (NULL == kpc)
-  { /* first time */
+  {
+    /* first time */
+    if ( (NULL == args[0]) ||
+         (NULL == args[1]) )
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                         "'/kyc-proof/$H_PATYO/$LOGIC' required");
+    }
+
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
     rc->rh_ctx = kpc;
@@ -546,166 +293,98 @@ TEH_handler_kyc_proof (
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          "h_payto");
     }
-    kpc->authorization_code
-      = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "code");
-    if (NULL == kpc->authorization_code)
+    kpc->provider_section = GNUNET_strdup (args[1]);
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_get_logic (kpc->provider_section,
+                                      &kpc->logic,
+                                      &kpc->pd))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "code");
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
+                                         kpc->provider_section);
     }
-    if (TEH_KYC_NONE == TEH_kyc_config.mode)
-      return TALER_MHD_reply_static (
-        rc->connection,
-        MHD_HTTP_NO_CONTENT,
-        NULL,
-        NULL,
-        0);
 
     {
-      CURL *eh;
+      enum GNUNET_DB_QueryStatus qs;
+      struct GNUNET_TIME_Absolute expiration;
 
-      eh = curl_easy_init ();
-      if (NULL == eh)
+      qs = TEH_plugin->lookup_kyc_requirement_by_account (
+        TEH_plugin->cls,
+        kpc->provider_section,
+        &kpc->h_payto,
+        &kpc->legi_row,
+        &expiration,
+        &kpc->provider_user_id,
+        &kpc->provider_legitimization_id);
+      switch (qs)
       {
-        GNUNET_break (0);
+      case GNUNET_DB_STATUS_HARD_ERROR:
+      case GNUNET_DB_STATUS_SOFT_ERROR:
+        return TALER_MHD_reply_with_ec (rc->connection,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "lookup_kyc_requirement_by_account");
+      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
         return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_ALLOCATION_FAILURE,
-                                           "curl_easy_init");
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
+                                           kpc->provider_section);
+      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+        break;
       }
-      GNUNET_asprintf (&kpc->token_url,
-                       "%s",
-                       TEH_kyc_config.details.oauth2.auth_url);
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_URL,
-                                       kpc->token_url));
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_POST,
-                                       1));
+      if (GNUNET_TIME_absolute_is_future (expiration))
       {
-        char *client_id;
-        char *redirect_uri;
-        char *client_secret;
-        char *authorization_code;
-
-        client_id = curl_easy_escape (eh,
-                                      TEH_kyc_config.details.oauth2.client_id,
-                                      0);
-        GNUNET_assert (NULL != client_id);
-        {
-          char *request_uri;
-
-          GNUNET_asprintf (&request_uri,
-                           "%s?client_id=%s",
-                           TEH_kyc_config.details.oauth2.login_url,
-                           TEH_kyc_config.details.oauth2.client_id);
-          redirect_uri = curl_easy_escape (eh,
-                                           request_uri,
-                                           0);
-          GNUNET_free (request_uri);
-        }
-        GNUNET_assert (NULL != redirect_uri);
-        client_secret = curl_easy_escape (eh,
-                                          TEH_kyc_config.details.oauth2.
-                                          client_secret,
-                                          0);
-        GNUNET_assert (NULL != client_secret);
-        authorization_code = curl_easy_escape (eh,
-                                               kpc->authorization_code,
-                                               0);
-        GNUNET_assert (NULL != authorization_code);
-        GNUNET_asprintf (&kpc->post_body,
-                         "client_id=%s&redirect_uri=%s&client_secret=%s&code=%s&grant_type=authorization_code",
-                         client_id,
-                         redirect_uri,
-                         client_secret,
-                         authorization_code);
-        curl_free (authorization_code);
-        curl_free (client_secret);
-        curl_free (redirect_uri);
-        curl_free (client_id);
+        /* KYC not required */
+        return TALER_MHD_reply_static (
+          rc->connection,
+          MHD_HTTP_NO_CONTENT,
+          NULL,
+          NULL,
+          0);
       }
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_POSTFIELDS,
-                                       kpc->post_body));
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_FOLLOWLOCATION,
-                                       1L));
-      /* limit MAXREDIRS to 5 as a simple security measure against
-         a potential infinite loop caused by a malicious target */
-      GNUNET_assert (CURLE_OK ==
-                     curl_easy_setopt (eh,
-                                       CURLOPT_MAXREDIRS,
-                                       5L));
-
-      kpc->job = GNUNET_CURL_job_add (TEH_curl_ctx,
-                                      eh,
-                                      &handle_curl_login_finished,
-                                      kpc);
-      kpc->suspended = GNUNET_YES;
-      GNUNET_CONTAINER_DLL_insert (kpc_head,
-                                   kpc_tail,
-                                   kpc);
-      MHD_suspend_connection (rc->connection);
-      return MHD_YES;
     }
-  }
-
-  if (NULL != kpc->response)
-  {
-    /* handle _failed_ resumed cases */
-    return MHD_queue_response (rc->connection,
-                               kpc->response_code,
-                               kpc->response);
-  }
-
-  /* _successfully_ resumed case */
-  {
-    MHD_RESULT res;
-    enum GNUNET_GenericReturnValue ret;
-
-    ret = TEH_DB_run_transaction (kpc->rc->connection,
-                                  "check proof kyc",
-                                  TEH_MT_REQUEST_OTHER,
-                                  &res,
-                                  &persist_kyc_ok,
-                                  kpc);
-    if (GNUNET_SYSERR == ret)
-      return res;
-  }
-
-  {
-    struct MHD_Response *response;
-    MHD_RESULT res;
-
-    response = MHD_create_response_from_buffer (0,
-                                                "",
-                                                MHD_RESPMEM_PERSISTENT);
-    if (NULL == response)
+    kpc->ph = kpc->logic->proof (kpc->logic->cls,
+                                 kpc->pd,
+                                 &args[2],
+                                 rc->connection,
+                                 &kpc->h_payto,
+                                 kpc->legi_row,
+                                 kpc->provider_user_id,
+                                 kpc->provider_legitimization_id,
+                                 &proof_cb,
+                                 kpc);
+    if (NULL == kpc->ph)
     {
       GNUNET_break (0);
-      return MHD_NO;
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                         "could not start proof with KYC logic");
     }
-    GNUNET_break (MHD_YES ==
-                  MHD_add_response_header (
-                    response,
-                    MHD_HTTP_HEADER_LOCATION,
-                    TEH_kyc_config.details.oauth2.post_kyc_redirect_url));
-    res = MHD_queue_response (rc->connection,
-                              MHD_HTTP_SEE_OTHER,
-                              response);
-    MHD_destroy_response (response);
-    return res;
+
+
+    kpc->suspended = true;
+    GNUNET_CONTAINER_DLL_insert (kpc_head,
+                                 kpc_tail,
+                                 kpc);
+    MHD_suspend_connection (rc->connection);
+    return MHD_YES;
   }
+
+  if (NULL == kpc->response)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                       "handler resumed without response");
+  }
+
+  /* return response from KYC logic */
+  return MHD_queue_response (rc->connection,
+                             kpc->response_code,
+                             kpc->response);
 }
 
 

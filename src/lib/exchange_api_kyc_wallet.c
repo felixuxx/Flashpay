@@ -152,6 +152,7 @@ handle_kyc_wallet_finished (void *cls,
 struct TALER_EXCHANGE_KycWalletHandle *
 TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
                            const struct TALER_ReservePrivateKeyP *reserve_priv,
+                           const struct TALER_Amount *balance,
                            TALER_EXCHANGE_KycWalletCallback cb,
                            void *cb_cls)
 {
@@ -167,6 +168,8 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
   TALER_wallet_account_setup_sign (reserve_priv,
                                    &reserve_sig);
   req = GNUNET_JSON_PACK (
+    TALER_JSON_pack_amount ("balance",
+                            balance),
     GNUNET_JSON_pack_data_auto ("reserve_pub",
                                 &reserve_pub),
     GNUNET_JSON_pack_data_auto ("reserve_sig",

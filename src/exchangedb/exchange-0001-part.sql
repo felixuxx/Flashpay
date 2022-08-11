@@ -63,6 +63,22 @@ COMMENT ON TABLE denomination_revocations
   IS 'remembering which denomination keys have been revoked';
 
 
+
+-- -------------------------- kyc_alerts ----------------------------------------
+
+CREATE TABLE IF NOT EXISTS kyc_alerts
+  (h_payto BYTEA PRIMARY KEY CHECK (LENGTH(h_payto)=32)
+  ,trigger_type INT4 NOT NULL
+  ,UNIQUE(trigger_type,h_payto)
+  );
+COMMENT ON TABLE kyc_alerts
+  IS 'alerts about completed KYC events reliably notifying other components (even if they are not running)';
+COMMENT ON COLUMN kyc_alerts.h_payto
+  IS 'hash of the payto://-URI for which the KYC status changed';
+COMMENT ON COLUMN kyc_alerts.trigger_type
+  IS 'identifies the receiver of the alert, as the same h_payto may require multiple components to be notified';
+
+
 -- ------------------------------ profit drains ----------------------------------------
 
 CREATE TABLE IF NOT EXISTS profit_drains

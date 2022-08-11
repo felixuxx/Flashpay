@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -142,8 +142,8 @@ handle_kyc_proof_finished (void *cls,
 struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
                           const struct TALER_PaytoHashP *h_payto,
-                          const char *code,
-                          const char *state,
+                          const char *logic,
+                          const char *args,
                           TALER_EXCHANGE_KycProofCallback cb,
                           void *cb_cls)
 {
@@ -151,13 +151,17 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   char *arg_str;
 
+  if (NULL == args)
+    args = "";
+  else
+    GNUNET_assert ( (args[0] == '?') ||
+                    (args[0] == '/') );
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
   }
-  /* TODO: any escaping of code/state needed??? */
   {
     char hstr[sizeof (struct TALER_PaytoHashP) * 2];
     char *end;
@@ -168,10 +172,10 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
                                          sizeof (hstr));
     *end = '\0';
     GNUNET_asprintf (&arg_str,
-                     "/kyc-proof/%s?code=%s&state=%s",
+                     "/kyc-proof/%s/%s%s",
                      hstr,
-                     code,
-                     state);
+                     logic,
+                     args);
   }
   kph = GNUNET_new (struct TALER_EXCHANGE_KycProofHandle);
   kph->exchange = exchange;

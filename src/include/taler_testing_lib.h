@@ -2421,12 +2421,14 @@ TALER_TESTING_cmd_revoke_sign_key (
  *
  * @param label command label.
  * @param reserve_reference command with reserve private key to use (or NULL to create a fresh reserve key).
+ * @param threshold_balance balance amount to pass to the exchange
  * @param expected_response_code expected HTTP status
  * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wallet_kyc_get (const char *label,
                                   const char *reserve_reference,
+                                  const char *threshold_balance,
                                   unsigned int expected_response_code);
 
 
@@ -2445,21 +2447,26 @@ TALER_TESTING_cmd_check_kyc_get (const char *label,
 
 
 /**
- * Create a KYC proof request.
+ * Create a KYC proof request. Only useful in conjunction with the OAuth2.0
+ * logic, as it generates an OAuth2.0-specific request.
  *
  * @param label command label.
  * @param payment_target_reference command with a payment target to query
+ * @param logic_section name of the KYC provider section
+ *         in the exchange configuration for this proof
  * @param code OAuth 2.0 code to use
  * @param state OAuth 2.0 state to use
  * @param expected_response_code expected HTTP status
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_proof_kyc (const char *label,
-                             const char *payment_target_reference,
-                             const char *code,
-                             const char *state,
-                             unsigned int expected_response_code);
+TALER_TESTING_cmd_proof_kyc_oauth2 (
+  const char *label,
+  const char *payment_target_reference,
+  const char *logic_section,
+  const char *code,
+  const char *state,
+  unsigned int expected_response_code);
 
 
 /**

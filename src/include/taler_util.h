@@ -362,19 +362,6 @@ TALER_payto_get_method (const char *payto_uri);
 
 
 /**
- * Construct a payto://-URI from a Taler @a reserve_pub at
- * @a exchange_base_url
- *
- * @param exchange_base_url the URL of the exchange
- * @param reserve_pub public key of the reserve
- * @return payto:// URI encoding the reserve's address
- */
-char *
-TALER_payto_from_reserve (const char *exchange_base_url,
-                          const struct TALER_ReservePublicKeyP *reserve_pub);
-
-
-/**
  * Obtain the account name from a payto URL.
  *
  * @param payto an x-taler-bank payto URL

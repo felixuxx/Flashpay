@@ -283,7 +283,7 @@ batch_withdraw_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);
   ws->reserve_payto_uri
-    = TALER_payto_from_reserve (ws->exchange_url,
+    = TALER_reserve_make_payto (ws->exchange_url,
                                 &ws->reserve_pub);
 
   for (unsigned int i = 0; i<ws->num_coins; i++)

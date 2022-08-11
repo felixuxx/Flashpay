@@ -1458,50 +1458,6 @@ TALER_EXCHANGE_check_purse_create_conflict_ (
 }
 
 
-static char *
-make_payto (const char *exchange_url,
-            const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  char pub_str[sizeof (*reserve_pub) * 2];
-  char *end;
-  bool is_http;
-  char *reserve_url;
-
-  end = GNUNET_STRINGS_data_to_string (
-    reserve_pub,
-    sizeof (*reserve_pub),
-    pub_str,
-    sizeof (pub_str));
-  *end = '\0';
-  if (0 == strncmp (exchange_url,
-                    "http://",
-                    strlen ("http://")))
-  {
-    is_http = true;
-    exchange_url = &exchange_url[strlen ("http://")];
-  }
-  else if (0 == strncmp (exchange_url,
-                         "https://",
-                         strlen ("https://")))
-  {
-    is_http = false;
-    exchange_url = &exchange_url[strlen ("https://")];
-  }
-  else
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  /* exchange_url includes trailing '/' */
-  GNUNET_asprintf (&reserve_url,
-                   "payto://%s/%s%s",
-                   is_http ? "taler+http" : "taler",
-                   exchange_url,
-                   pub_str);
-  return reserve_url;
-}
-
-
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_check_purse_merge_conflict_ (
   const struct TALER_PurseMergeSignatureP *cmerge_sig,
@@ -1539,8 +1495,8 @@ TALER_EXCHANGE_check_purse_merge_conflict_ (
   }
   if (NULL == partner_url)
     partner_url = exchange_url;
-  payto_uri = make_payto (partner_url,
-                          &reserve_pub);
+  payto_uri = TALER_reserve_make_payto (partner_url,
+                                        &reserve_pub);
   if (GNUNET_OK !=
       TALER_wallet_purse_merge_verify (
         payto_uri,

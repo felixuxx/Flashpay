@@ -40,12 +40,12 @@ struct DepositWtidContext
   /**
    * Hash over the proposal data of the contract for which this deposit is made.
    */
-  struct TALER_PrivateContractHashP h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHashP h_wire;
 
   /**
    * The Merchant's public key.  The deposit inquiry request is to be
@@ -251,8 +251,12 @@ handle_track_transaction_request (
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_ACCEPTED,
-      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                               ctx->kyc.payment_target_uuid),
+      GNUNET_JSON_pack_allow_null (
+        (0 == ctx->kyc.payment_target_uuid)
+        ? GNUNET_JSON_pack_string ("legitimization_uuid",
+                                   NULL)
+        : GNUNET_JSON_pack_uint64 ("legitimization_uuid",
+                                   ctx->kyc.payment_target_uuid)),
       GNUNET_JSON_pack_bool ("kyc_ok",
                              ctx->kyc.ok),
       GNUNET_JSON_pack_timestamp ("execution_time",

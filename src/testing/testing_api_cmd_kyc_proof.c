@@ -49,6 +49,11 @@ struct KycProofGetState
   const char *state;
 
   /**
+   * Logic section name to pass to `/kyc-proof/` handler.
+   */
+  const char *logic;
+
+  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
@@ -133,6 +138,7 @@ proof_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const char **payto_uri;
   struct TALER_PaytoHashP h_payto;
+  char *uargs;
 
   (void) cmd;
   kps->is = is;
@@ -169,12 +175,17 @@ proof_kyc_run (void *cls,
     TALER_payto_hash (*payto_uri,
                       &h_payto);
   }
+  GNUNET_asprintf (&uargs,
+                   "?code=%s&state=%s",
+                   kps->code,
+                   kps->state);
   kps->kph = TALER_EXCHANGE_kyc_proof (is->exchange,
                                        &h_payto,
-                                       kps->code,
-                                       kps->state,
+                                       kps->logic,
+                                       uargs,
                                        &proof_kyc_cb,
                                        kps);
+  GNUNET_free (uargs);
   GNUNET_assert (NULL != kps->kph);
 }
 
@@ -236,17 +247,20 @@ proof_kyc_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_proof_kyc (const char *label,
-                             const char *payment_target_reference,
-                             const char *code,
-                             const char *state,
-                             unsigned int expected_response_code)
+TALER_TESTING_cmd_proof_kyc_oauth2 (
+  const char *label,
+  const char *payment_target_reference,
+  const char *logic_section,
+  const char *code,
+  const char *state,
+  unsigned int expected_response_code)
 {
   struct KycProofGetState *kps;
 
   kps = GNUNET_new (struct KycProofGetState);
   kps->code = code;
   kps->state = state;
+  kps->logic = logic_section;
   kps->payment_target_reference = payment_target_reference;
   kps->expected_response_code = expected_response_code;
   {

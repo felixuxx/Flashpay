@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
 #include "taler-exchange-httpd_responses.h"
@@ -87,6 +88,17 @@ struct BatchWithdrawContext
   struct PlanchetContext *planchets;
 
   /**
+   * Hash of the payto-URI representing the reserve
+   * from which we are withdrawing.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Current time for the DB transaction.
+   */
+  struct GNUNET_TIME_Timestamp now;
+
+  /**
    * Total amount from all coins with fees.
    */
   struct TALER_Amount batch_total;
@@ -97,6 +109,45 @@ struct BatchWithdrawContext
   unsigned int planchets_length;
 
 };
+
+
+/**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * @param cls closure, identifies the event type and
+ *        account to iterate over events for
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ */
+static void
+batch_withdraw_amount_cb (void *cls,
+                          struct GNUNET_TIME_Absolute limit,
+                          TALER_EXCHANGEDB_KycAmountCallback cb,
+                          void *cb_cls)
+{
+  struct BatchWithdrawContext *wc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  if (GNUNET_OK !=
+      cb (cb_cls,
+          &wc->batch_total,
+          wc->now.abs_time))
+    return;
+  qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
+    TEH_plugin->cls,
+    &wc->h_payto,
+    limit,
+    cb,
+    cb_cls);
+  GNUNET_break (qs >= 0);
+}
 
 
 /**
@@ -127,15 +178,46 @@ batch_withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   bool balance_ok = false;
   bool found = false;
+  const char *kyc_required;
 
-  now = GNUNET_TIME_timestamp_get ();
+  wc->now = GNUNET_TIME_timestamp_get ();
+  qs = TEH_plugin->reserves_get_origin (TEH_plugin->cls,
+                                        wc->reserve_pub,
+                                        &wc->h_payto);
+  if (qs < 0)
+    return qs;
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                           NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  kyc_required = TALER_KYCLOGIC_kyc_test_required (
+    TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
+    &wc->h_payto,
+    TEH_plugin->select_satisfied_kyc_processes,
+    TEH_plugin->cls,
+    &batch_withdraw_amount_cb,
+    wc);
+  if (NULL != kyc_required)
+  {
+    /* insert KYC requirement into DB! */
+    wc->kyc.ok = false;
+    return TEH_plugin->insert_kyc_requirement_for_account (
+      TEH_plugin->cls,
+      kyc_required,
+      &wc->h_payto,
+      &wc->kyc.payment_target_uuid);
+  }
+  wc->kyc.ok = true;
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,
                                       now,
                                       wc->reserve_pub,
                                       &wc->batch_total,
                                       &found,
                                       &balance_ok,
-                                      &wc->kyc,
                                       &ruuid);
   if (0 > qs)
   {
@@ -162,55 +244,6 @@ batch_withdraw_transaction (void *cls,
       &wc->batch_total,
       wc->reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
-       (! wc->kyc.ok) &&
-       (TALER_EXCHANGEDB_KYC_W2W == wc->kyc.type) )
-  {
-    /* Wallet-to-wallet payments _always_ require KYC */
-    *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                               wc->kyc.payment_target_uuid));
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
-       (! wc->kyc.ok) &&
-       (TALER_EXCHANGEDB_KYC_WITHDRAW == wc->kyc.type) &&
-       (! GNUNET_TIME_relative_is_zero (TEH_kyc_config.withdraw_period)) )
-  {
-    /* Withdraws require KYC if above threshold */
-    enum GNUNET_DB_QueryStatus qs2;
-    bool below_limit;
-
-    qs2 = TEH_plugin->do_withdraw_limit_check (
-      TEH_plugin->cls,
-      ruuid,
-      GNUNET_TIME_absolute_subtract (now.abs_time,
-                                     TEH_kyc_config.withdraw_period),
-      &TEH_kyc_config.withdraw_limit,
-      &below_limit);
-    if (0 > qs2)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs2);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs2)
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "do_withdraw_limit_check");
-      return qs2;
-    }
-    if (! below_limit)
-    {
-      *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
-        connection,
-        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-        GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                                 wc->kyc.payment_target_uuid));
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
   }
 
   /* Add information about each planchet in the batch */
@@ -290,6 +323,16 @@ generate_reply_success (const struct TEH_RequestContext *rc,
                         const struct BatchWithdrawContext *wc)
 {
   json_t *sigs;
+
+  if (! wc->kyc.ok)
+  {
+    /* KYC required */
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                               wc->kyc.payment_target_uuid));
+  }
 
   sigs = json_array ();
   GNUNET_assert (NULL != sigs);
@@ -633,7 +676,6 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
                  TALER_amount_set_zero (TEH_currency,
                                         &wc.batch_total));
   wc.reserve_pub = reserve_pub;
-
   {
     enum GNUNET_GenericReturnValue res;
 

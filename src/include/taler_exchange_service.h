@@ -304,10 +304,16 @@ struct TALER_EXCHANGE_Keys
   struct GNUNET_TIME_Relative reserve_closing_delay;
 
   /**
-   * Maximum amount a wallet is allowed to hold from
-   * this exchange before it must undergo a KYC check.
+   * Array of amounts a wallet is allowed to hold from
+   * this exchange before it must undergo further KYC checks.
    */
-  struct TALER_Amount wallet_balance_limit_without_kyc;
+  struct TALER_Amount *wallet_balance_limit_without_kyc;
+
+  /**
+   * Length of the @e wallet_balance_limit_without_kyc
+   * array.
+   */
+  unsigned int wblwk_length;
 
   /**
    * Timestamp indicating the /keys generation.
@@ -3422,7 +3428,7 @@ typedef void
  * of a merchant.
  *
  * @param eh exchange handle to use
- * @param payment_target number identifying the target
+ * @param legitimization_uuid number identifying the legitimization process
  * @param h_payto hash of the payto:// URI at @a payment_target
  * @param timeout how long to wait for a positive KYC status
  * @param cb function to call with the result
@@ -3431,7 +3437,7 @@ typedef void
  */
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
-                          uint64_t payment_target,
+                          uint64_t legitimization_uuid,
                           const struct TALER_PaytoHashP *h_payto,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
@@ -3500,8 +3506,10 @@ struct TALER_EXCHANGE_KycProofHandle;
  *
  * @param eh exchange handle to use
  * @param h_payto hash of payto URI identifying the target account
- * @param code OAuth 2.0 code argument
- * @param state OAuth 2.0 state argument
+ * @param logic name of the KYC logic to run
+ * @param args additional args to pass, can be NULL
+ *        or a string to append to the URL. Must
+ *        then begin with '/' or '?'.
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return NULL on error
@@ -3509,8 +3517,8 @@ struct TALER_EXCHANGE_KycProofHandle;
 struct TALER_EXCHANGE_KycProofHandle *
 TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *eh,
                           const struct TALER_PaytoHashP *h_payto,
-                          const char *code,
-                          const char *state,
+                          const char *logic,
+                          const char *args,
                           TALER_EXCHANGE_KycProofCallback cb,
                           void *cb_cls);
 
@@ -3573,6 +3581,7 @@ typedef void
  *
  * @param eh exchange handle to use
  * @param reserve_priv wallet private key to check
+ * @param balance balance (or balance threshold) crossed by the wallet
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return NULL on error
@@ -3580,6 +3589,7 @@ typedef void
 struct TALER_EXCHANGE_KycWalletHandle *
 TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *eh,
                            const struct TALER_ReservePrivateKeyP *reserve_priv,
+                           const struct TALER_Amount *balance,
                            TALER_EXCHANGE_KycWalletCallback cb,
                            void *cb_cls);
 

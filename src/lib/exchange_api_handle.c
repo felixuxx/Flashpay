@@ -736,6 +736,7 @@ decode_keys_json (const json_t *resp_obj,
   struct GNUNET_HashCode hash_xor = {0};
   struct TALER_ExchangePublicKeyP pub;
   const char *currency;
+  json_t *wblwk = NULL;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("denominations_sig",
                                  &denominations_sig),
@@ -750,8 +751,8 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_JSON_spec_string ("currency",
                              &currency),
     GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_amount_any ("wallet_balance_limit_without_kyc",
-                                  &key_data->wallet_balance_limit_without_kyc),
+      GNUNET_JSON_spec_json ("wallet_balance_limit_without_kyc",
+                             &wblwk),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -819,17 +820,6 @@ decode_keys_json (const json_t *resp_obj,
                              NULL, NULL));
   key_data->currency = GNUNET_strdup (currency);
 
-  if (GNUNET_OK ==
-      TALER_amount_is_valid (&key_data->wallet_balance_limit_without_kyc))
-  {
-    if (0 != strcasecmp (currency,
-                         key_data->wallet_balance_limit_without_kyc.currency))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-  }
-
   /* parse the global fees */
   {
     json_t *global_fees;
@@ -879,6 +869,32 @@ decode_keys_json (const json_t *resp_obj,
                                     sign_key_obj,
                                     &key_data->master_pub));
       }
+    }
+  }
+
+  /* Parse balance limits */
+  if (NULL != wblwk)
+  {
+    key_data->wblwk_length = json_array_size (wblwk);
+    key_data->wallet_balance_limit_without_kyc
+      = GNUNET_new_array (key_data->wblwk_length,
+                          struct TALER_Amount);
+    for (unsigned int i = 0; i<key_data->wblwk_length; i++)
+    {
+      struct TALER_Amount *a = &key_data->wallet_balance_limit_without_kyc[i];
+      const json_t *aj = json_array_get (wblwk,
+                                         i);
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount (NULL,
+                                currency,
+                                a),
+        GNUNET_JSON_spec_end ()
+      };
+
+      EXITIF (GNUNET_OK !=
+              GNUNET_JSON_parse (aj,
+                                 spec,
+                                 NULL, NULL));
     }
   }
 
@@ -1210,6 +1226,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
   GNUNET_array_grow (key_data->auditors,
                      key_data->auditors_size,
                      0);
+  GNUNET_free (key_data->wallet_balance_limit_without_kyc);
   GNUNET_free (key_data->version);
   GNUNET_free (key_data->currency);
   GNUNET_free (key_data->global_fees);
