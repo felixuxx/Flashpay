@@ -867,7 +867,7 @@ eval_trigger (void *cls,
                           &kt->threshold))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "KYC check #%u: amount is below treshold\n",
+                  "KYC check #%u: amount is below threshold\n",
                   i);
       if (bump)
         ttc->start = i;

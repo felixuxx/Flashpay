@@ -1723,7 +1723,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
 
 
 /**
- * Function called with wallet balance threshholds.
+ * Function called with wallet balance thresholds.
  *
  * @param[in,out] cls a `json **` where to put the array of json amounts discovered
  * @param threshold another threshold amount to add
