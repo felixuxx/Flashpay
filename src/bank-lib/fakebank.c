@@ -2514,6 +2514,267 @@ serve (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Handle GET /withdrawal-operation/ request.
+ *
+ * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param connection the connection
+ * @param wopid the withdrawal operation identifier
+ * @param con_cls closure for request
+ * @return MHD result code
+ */
+static MHD_RESULT
+get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
+                          struct MHD_Connection *connection,
+                          const char *wopid,
+                          struct GNUNET_TIME_Relative lp,
+                          void **con_cls)
+{
+  // FIXME: check if ready, if so, return reply.
+
+  if ( (NULL != *con_cls) ||
+       (GNUNET_TIME_relative_is_zero (lp)) )
+  {
+    // FIXME: timeout, return with negative status
+    struct TALER_Amount amount;
+
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_bool ("aborted",
+                             false),
+      GNUNET_JSON_pack_bool ("selection_done",
+                             false),
+      GNUNET_JSON_pack_bool ("transfer_done",
+                             false),
+      TALER_JSON_pack_amount ("amount",
+                              &amount),
+      GNUNET_JSON_pack_array_steal ("wire_types",
+                                    json_array ()));
+  }
+
+  // FIXME: needs variant of 'start_lp()'
+  // to resume on event!
+  *con_cls = &special_ptr;
+  GNUNET_break (0);
+  return MHD_NO;
+}
+
+
+/**
+ * Handle POST /withdrawal-operation/ request.
+ *
+ * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param connection the connection
+ * @param wopid the withdrawal operation identifier
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request
+ * @return MHD result code
+ */
+static MHD_RESULT
+do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
+                    struct MHD_Connection *connection,
+                    const char *wopid,
+                    const struct TALER_ReservePublicKeyP *reserve_pub,
+                    const void *exchange_url)
+{
+  GNUNET_break (0); // FIXME: not implemented!
+  if (0)
+  {
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_bool ("transfer_done",
+                             true));
+  }
+  return MHD_NO;
+}
+
+
+/**
+ * Handle POST /withdrawal-operation/ request.
+ *
+ * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param connection the connection
+ * @param wopid the withdrawal operation identifier
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request
+ * @return MHD result code
+ */
+static MHD_RESULT
+post_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
+                           struct MHD_Connection *connection,
+                           const char *wopid,
+                           const void *upload_data,
+                           size_t *upload_data_size,
+                           void **con_cls)
+{
+  enum GNUNET_JSON_PostResult pr;
+  json_t *json;
+  MHD_RESULT res;
+
+  pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+                                connection,
+                                con_cls,
+                                upload_data,
+                                upload_data_size,
+                                &json);
+  switch (pr)
+  {
+  case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_CONTINUE:
+    return MHD_YES;
+  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_SUCCESS:
+    break;
+  }
+
+  {
+    struct TALER_ReservePublicKeyP reserve_pub;
+    const char *exchange_url;
+    enum GNUNET_GenericReturnValue ret;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                   &reserve_pub),
+      GNUNET_JSON_spec_string ("selected_exchange",
+                               &exchange_url),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        (ret = TALER_MHD_parse_json_data (connection,
+                                          json,
+                                          spec)))
+    {
+      GNUNET_break_op (0);
+      json_decref (json);
+      return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
+    }
+    res = do_post_withdrawal (h,
+                              connection,
+                              wopid,
+                              &reserve_pub,
+                              exchange_url);
+  }
+  json_decref (json);
+  return res;
+}
+
+
+/**
+ * Handle incoming HTTP request to the bank integration API.
+ *
+ * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param connection the connection
+ * @param url the requested url
+ * @param method the method (POST, GET, ...)
+ * @param upload_data request data
+ * @param upload_data_size size of @a upload_data in bytes
+ * @param con_cls closure for request
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_bank_integration (struct TALER_FAKEBANK_Handle *h,
+                         struct MHD_Connection *connection,
+                         const char *url,
+                         const char *method,
+                         const char *upload_data,
+                         size_t *upload_data_size,
+                         void **con_cls)
+{
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_HEAD))
+    method = MHD_HTTP_METHOD_GET;
+  if ( (0 == strcmp (url,
+                     "/version")) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+  {
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string ("version",
+                               "0:0:0"),
+      GNUNET_JSON_pack_string ("currency",
+                               h->currency),
+      GNUNET_JSON_pack_string ("name",
+                               "taler-bank-integration"));
+  }
+  if ( (0 == strncmp (url,
+                      "/withdrawal-operation/",
+                      strlen ("/withdrawal-operation/"))) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_GET)) )
+  {
+    const char *wopid = &url[strlen ("/withdrawal-operation/")];
+    const char *lp_s
+      = MHD_lookup_connection_value (connection,
+                                     MHD_GET_ARGUMENT_KIND,
+                                     "long_poll_ms");
+    struct GNUNET_TIME_Relative lp = GNUNET_TIME_UNIT_ZERO;
+
+    if (NULL != lp_s)
+    {
+      unsigned long long d;
+      char dummy;
+
+      if (1 != sscanf (lp_s,
+                       "%lld%c",
+                       &d,
+                       &dummy))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                           "long_poll_ms");
+      }
+      lp = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
+                                          d);
+    }
+    return get_withdrawal_operation (h,
+                                     connection,
+                                     wopid,
+                                     lp,
+                                     con_cls);
+
+  }
+  if ( (0 == strncmp (url,
+                      "/withdrawal-operation/",
+                      strlen ("/withdrawal-operation/"))) &&
+       (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST)) )
+  {
+    const char *wopid = &url[strlen ("/withdrawal-operation/")];
+    return post_withdrawal_operation (h,
+                                      connection,
+                                      wopid,
+                                      upload_data,
+                                      upload_data_size,
+                                      con_cls);
+  }
+
+  TALER_LOG_ERROR ("Breaking URL: %s %s\n",
+                   method,
+                   url);
+  GNUNET_break_op (0);
+  return TALER_MHD_reply_with_error (
+    connection,
+    MHD_HTTP_NOT_FOUND,
+    TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+    url);
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls a `struct TALER_FAKEBANK_Handle`
@@ -2542,6 +2803,19 @@ handle_mhd_request (void *cls,
   MHD_RESULT ret;
 
   (void) version;
+  if (0 == strncmp (url,
+                    "/taler-bank-integration/",
+                    strlen ("/taler-bank-integration/")))
+  {
+    url += strlen ("/taler-bank-integration");
+    return handle_bank_integration (h,
+                                    connection,
+                                    url,
+                                    method,
+                                    upload_data,
+                                    upload_data_size,
+                                    con_cls);
+  }
   if (0 == strncmp (url,
                     "/taler-wire-gateway/",
                     strlen ("/taler-wire-gateway/")))
