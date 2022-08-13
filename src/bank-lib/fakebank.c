@@ -2516,9 +2516,10 @@ serve (struct TALER_FAKEBANK_Handle *h,
 /**
  * Handle GET /withdrawal-operation/ request.
  *
- * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param h the handle
  * @param connection the connection
  * @param wopid the withdrawal operation identifier
+ * @param lp how long is the long-polling timeout
  * @param con_cls closure for request
  * @return MHD result code
  */
@@ -2563,11 +2564,11 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
 /**
  * Handle POST /withdrawal-operation/ request.
  *
- * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param h our handle
  * @param connection the connection
  * @param wopid the withdrawal operation identifier
- * @param upload_data request data
- * @param upload_data_size size of @a upload_data in bytes
+ * @param reserve_pub public key of the reserve
+ * @param exchange_url URL of the exchange
  * @param con_cls closure for request
  * @return MHD result code
  */
@@ -2594,7 +2595,7 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
 /**
  * Handle POST /withdrawal-operation/ request.
  *
- * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param h our fakebank handle
  * @param connection the connection
  * @param wopid the withdrawal operation identifier
  * @param upload_data request data
@@ -2672,7 +2673,7 @@ post_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
 /**
  * Handle incoming HTTP request to the bank integration API.
  *
- * @param cls a `struct TALER_FAKEBANK_Handle`
+ * @param h our fakebank handle
  * @param connection the connection
  * @param url the requested url
  * @param method the method (POST, GET, ...)

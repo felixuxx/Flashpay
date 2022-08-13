@@ -22,8 +22,6 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - Test setup with KYC where purse merge is only
- *   allowed for reserves with KYC completed.
  * - Test purse creation with reserve purse quota
  */
 #include "platform.h"
