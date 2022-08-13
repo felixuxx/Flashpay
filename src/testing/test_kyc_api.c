@@ -220,12 +220,176 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  /**
+   * Test withdrawal for P2P
+   */
+  struct TALER_TESTING_Command p2p_withdraw[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("p2p_create-reserve-1",
+                              "EUR:5.04"),
+    CMD_TRANSFER_TO_EXCHANGE ("p2p_create-reserve-2",
+                              "EUR:5.01"),
+    TALER_TESTING_cmd_reserve_poll ("p2p_poll-reserve-1",
+                                    "p2p_create-reserve-1",
+                                    "EUR:5.04",
+                                    GNUNET_TIME_UNIT_MINUTES,
+                                    MHD_HTTP_OK),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("p2p_check-create-reserve-1",
+                                                 "EUR:5.04",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "p2p_create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("p2p_check-create-reserve-2",
+                                                 "EUR:5.01",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "p2p_create-reserve-2"),
+    /**
+     * Make a reserve exist, according to the previous
+     * transfer.
+     */
+    CMD_EXEC_WIREWATCH ("p2p_wirewatch-1"),
+    TALER_TESTING_cmd_reserve_poll_finish ("p2p_finish-poll-reserve-1",
+                                           GNUNET_TIME_UNIT_SECONDS,
+                                           "p2p_poll-reserve-1"),
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("p2p_withdraw-coin-1",
+                                       "p2p_create-reserve-1",
+                                       "EUR:5",
+                                       0, /* age restriction off */
+                                       MHD_HTTP_OK),
+    /**
+     * Check the reserve is depleted.
+     */
+    TALER_TESTING_cmd_status ("p2p_status-1",
+                              "p2p_create-reserve-1",
+                              "EUR:0.03",
+                              MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+  struct TALER_TESTING_Command push[] = {
+    TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "p2p_withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    TALER_TESTING_cmd_purse_poll (
+      "push-poll-purse-before-merge",
+      MHD_HTTP_OK,
+      "purse-with-deposit",
+      "EUR:1",
+      true,
+      GNUNET_TIME_UNIT_MINUTES),
+    TALER_TESTING_cmd_contract_get (
+      "push-get-contract",
+      MHD_HTTP_OK,
+      true, /* for merge */
+      "purse-with-deposit"),
+    TALER_TESTING_cmd_purse_merge (
+      "purse-merge-into-reserve",
+      MHD_HTTP_OK,
+      "push-get-contract",
+      "p2p_create-reserve-1"),
+    TALER_TESTING_cmd_purse_poll_finish (
+      "push-merge-purse-poll-finish",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        5),
+      "push-poll-purse-before-merge"),
+    TALER_TESTING_cmd_status (
+      "push-check-post-merge-reserve-balance-get",
+      "p2p_create-reserve-1",
+      "EUR:1.03",
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_status (
+      "push-check-post-merge-reserve-balance-post",
+      "p2p_create-reserve-1",
+      "EUR:1.03",
+      MHD_HTTP_OK),
+
+    TALER_TESTING_cmd_end ()
+  };
+  struct TALER_TESTING_Command pull[] = {
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "p2p_create-reserve-1"),
+    TALER_TESTING_cmd_contract_get (
+      "pull-get-contract",
+      MHD_HTTP_OK,
+      false, /* for deposit */
+      "purse-create-with-reserve"),
+    TALER_TESTING_cmd_purse_poll (
+      "pull-poll-purse-before-deposit",
+      MHD_HTTP_OK,
+      "purse-create-with-reserve",
+      "EUR:1",
+      false,
+      GNUNET_TIME_UNIT_MINUTES),
+    TALER_TESTING_cmd_purse_deposit_coins (
+      "purse-deposit-coins",
+      MHD_HTTP_OK,
+      0 /* min age */,
+      "purse-create-with-reserve",
+      "p2p_withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    TALER_TESTING_cmd_purse_poll_finish (
+      "pull-deposit-purse-poll-finish",
+      GNUNET_TIME_relative_multiply (
+        GNUNET_TIME_UNIT_SECONDS,
+        5),
+      "pull-poll-purse-before-deposit"),
+    TALER_TESTING_cmd_status (
+      "pull-check-post-merge-reserve-balance-get",
+      "p2p_create-reserve-1",
+      "EUR:2.02",
+      MHD_HTTP_OK),
+    /* POST history doesn't yet support P2P transfers */
+    TALER_TESTING_cmd_reserve_status (
+      "push-check-post-merge-reserve-balance-post",
+      "p2p_create-reserve-1",
+      "EUR:2.02",
+      MHD_HTTP_OK),
+    /* create 2nd purse for a deposit conflict */
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-2",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:4\",\"summary\":\"beer\"}",
+      true /* upload contract */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "p2p_create-reserve-1"),
+    TALER_TESTING_cmd_end ()
+  };
+
+
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
                                               CONFIG_FILE,
                                               "EUR:0.01",
                                               "EUR:0.01",
                                               "EUR:0.01"),
+    TALER_TESTING_cmd_exec_offline_sign_global_fees ("offline-sign-global-fees",
+                                                     CONFIG_FILE,
+                                                     "EUR:0.01",
+                                                     "EUR:0.01",
+                                                     "EUR:0.01",
+                                                     "EUR:0.01",
+                                                     GNUNET_TIME_UNIT_MINUTES,
+                                                     GNUNET_TIME_UNIT_MINUTES,
+                                                     GNUNET_TIME_UNIT_DAYS,
+                                                     1),
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
                                    MHD_HTTP_NO_CONTENT,
                                    false),
@@ -237,6 +401,7 @@ run (void *cls,
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 2),
+#if 1
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("spend",
@@ -247,6 +412,15 @@ run (void *cls,
                              withdraw_kyc),
     TALER_TESTING_cmd_batch ("wallet-kyc",
                              wallet_kyc),
+#endif
+    TALER_TESTING_cmd_batch ("p2p_withdraw",
+                             p2p_withdraw),
+#if 0
+    TALER_TESTING_cmd_batch ("push",
+                             push),
+    TALER_TESTING_cmd_batch ("pull",
+                             pull),
+#endif
     TALER_TESTING_cmd_end ()
   };
 
