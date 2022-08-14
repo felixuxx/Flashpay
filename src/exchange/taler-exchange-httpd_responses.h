@@ -79,7 +79,7 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
  * satisfied to proceed to client.
  *
  * @param connection connection to the client
- * @param pcc details about the request that succeeded
+ * @param kyc details about the KYC requirements
  * @return MHD result code
  */
 MHD_RESULT

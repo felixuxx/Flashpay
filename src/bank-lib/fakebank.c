@@ -2569,7 +2569,6 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
  * @param wopid the withdrawal operation identifier
  * @param reserve_pub public key of the reserve
  * @param exchange_url URL of the exchange
- * @param con_cls closure for request
  * @return MHD result code
  */
 static MHD_RESULT
