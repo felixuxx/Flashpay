@@ -215,7 +215,7 @@ reserve_batch_withdraw_cb (void *cls,
     break;
   case MHD_HTTP_ACCEPTED:
     /* nothing to check */
-    ws->kyc_uuid = wr->details.accepted.payment_target_uuid;
+    ws->kyc_uuid = wr->details.accepted.legitimization_uuid;
     break;
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
@@ -417,7 +417,7 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amounts (index,
                                       &cs->amount),
-    TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_legitimization_uuid (&ws->kyc_uuid),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (

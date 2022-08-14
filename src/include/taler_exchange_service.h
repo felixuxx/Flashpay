@@ -2141,7 +2141,7 @@ struct TALER_EXCHANGE_WithdrawResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
     } unavailable_for_legal_reasons;
 
     /**
@@ -2262,7 +2262,7 @@ struct TALER_EXCHANGE_BatchWithdrawResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
     } accepted;
 
     /**
@@ -3076,7 +3076,7 @@ struct TALER_EXCHANGE_GetDepositResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
     } success;
 
     /**
@@ -3094,7 +3094,7 @@ struct TALER_EXCHANGE_GetDepositResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
 
       /**
        * Set to 'true' if the KYC check is already finished and
@@ -3553,7 +3553,7 @@ struct TALER_EXCHANGE_WalletKycResponse
    * Wallet's payment target UUID. Only valid if
    * @e http_status is #MHD_HTTP_OK
    */
-  uint64_t payment_target_uuid;
+  uint64_t legitimization_uuid;
 
 };
 
@@ -4879,7 +4879,7 @@ struct TALER_EXCHANGE_AccountMergeResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
     } unavailable_for_legal_reasons;
 
 
@@ -4988,7 +4988,7 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
        * Payment target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t payment_target_uuid;
+      uint64_t legitimization_uuid;
     } unavailable_for_legal_reasons;
 
   } details;

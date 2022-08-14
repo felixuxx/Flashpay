@@ -9605,7 +9605,7 @@ postgres_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 ("legitimization_serial_id",
 
-                                      &kyc->payment_target_uuid),
+                                      &kyc->legitimization_uuid),
         &no_kyc),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_absolute_time ("expiration_time",
@@ -9629,7 +9629,7 @@ postgres_lookup_transfer_by_deposit (
       struct TALER_MerchantWireHashP wh;
 
       if (no_kyc)
-        kyc->payment_target_uuid = 0;
+        kyc->legitimization_uuid = 0;
       else
         kyc->ok = GNUNET_TIME_absolute_is_future (expiration);
       TALER_merchant_wire_signature_hash (payto_uri,

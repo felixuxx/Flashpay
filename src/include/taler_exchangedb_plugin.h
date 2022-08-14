@@ -2281,8 +2281,7 @@ struct TALER_EXCHANGEDB_KycStatus
    * Number that identifies the KYC target the operation
    * was about.
    */
-  // FIXME: rename to 'legitimization_uuid'
-  uint64_t payment_target_uuid;
+  uint64_t legitimization_uuid;
 
   /**
    * True if the KYC status is "satisfied".

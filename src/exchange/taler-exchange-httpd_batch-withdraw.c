@@ -209,7 +209,7 @@ batch_withdraw_transaction (void *cls,
       TEH_plugin->cls,
       kyc_required,
       &wc->h_payto,
-      &wc->kyc.payment_target_uuid);
+      &wc->kyc.legitimization_uuid);
   }
   wc->kyc.ok = true;
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,

@@ -112,7 +112,7 @@ wallet_kyc_cb (void *cls,
   switch (wkr->http_status)
   {
   case MHD_HTTP_OK:
-    kwg->kyc_uuid = wkr->payment_target_uuid;
+    kwg->kyc_uuid = wkr->legitimization_uuid;
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
@@ -232,7 +232,7 @@ wallet_kyc_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_reserve_priv (&kwg->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&kwg->reserve_pub),
-    TALER_TESTING_make_trait_payment_target_uuid (&kwg->kyc_uuid),
+    TALER_TESTING_make_trait_legitimization_uuid (&kwg->kyc_uuid),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()

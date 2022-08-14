@@ -182,7 +182,7 @@ withdraw_transaction (void *cls,
       TEH_plugin->cls,
       kyc_required,
       &wc->h_payto,
-      &wc->kyc.payment_target_uuid);
+      &wc->kyc.legitimization_uuid);
   }
   wc->kyc.ok = true;
   bp = &wc->blinded_planchet;

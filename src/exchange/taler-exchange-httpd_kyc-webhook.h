@@ -37,7 +37,7 @@ TEH_kyc_webhook_cleanup (void);
  * Handle a GET "/kyc-webhook" request.
  *
  * @param rc request to handle
- * @param args one argument with the payment_target_uuid
+ * @param args one argument with the legitimization_uuid
  * @return MHD result code
  */
 MHD_RESULT
@@ -51,7 +51,7 @@ TEH_handler_kyc_webhook_get (
  *
  * @param rc request to handle
  * @param root uploaded JSON body
- * @param args one argument with the payment_target_uuid
+ * @param args one argument with the legitimization_uuid
  * @return MHD result code
  */
 MHD_RESULT

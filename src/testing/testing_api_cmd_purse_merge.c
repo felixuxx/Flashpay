@@ -170,7 +170,7 @@ merge_cb (void *cls,
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* KYC required */
     ds->kyc_uuid =
-      dr->details.unavailable_for_legal_reasons.payment_target_uuid;
+      dr->details.unavailable_for_legal_reasons.legitimization_uuid;
     break;
   }
 
@@ -385,7 +385,7 @@ merge_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_timestamp (0,
                                         &ds->merge_timestamp),
-    TALER_TESTING_make_trait_payment_target_uuid (&ds->kyc_uuid),
+    TALER_TESTING_make_trait_legitimization_uuid (&ds->kyc_uuid),
     TALER_TESTING_make_trait_h_payto (&ds->h_payto),
     TALER_TESTING_trait_end ()
   };

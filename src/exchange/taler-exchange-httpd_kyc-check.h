@@ -30,7 +30,7 @@
  * status of the given account and returns it.
  *
  * @param rc details about the request to handle
- * @param args one argument with the payment_target_uuid
+ * @param args one argument with the legitimization_uuid
  * @return MHD result code
  */
 MHD_RESULT

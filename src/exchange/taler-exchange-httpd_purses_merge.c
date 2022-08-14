@@ -292,7 +292,7 @@ merge_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &pcc->h_payto,
-      &pcc->kyc.payment_target_uuid);
+      &pcc->kyc.legitimization_uuid);
   }
   pcc->kyc.ok = true;
   qs = TEH_plugin->do_purse_merge (

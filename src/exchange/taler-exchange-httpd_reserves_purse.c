@@ -206,7 +206,7 @@ purse_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &rpc->h_payto,
-      &rpc->kyc.payment_target_uuid);
+      &rpc->kyc.legitimization_uuid);
   }
   rpc->kyc.ok = true;
 

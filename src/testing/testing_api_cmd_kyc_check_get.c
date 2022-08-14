@@ -143,7 +143,7 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_payment_target_uuid (res_cmd,
+      TALER_TESTING_get_trait_legitimization_uuid (res_cmd,
                                                    &payment_target))
   {
     GNUNET_break (0);

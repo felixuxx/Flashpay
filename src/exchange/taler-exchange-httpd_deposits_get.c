@@ -252,11 +252,11 @@ handle_track_transaction_request (
       connection,
       MHD_HTTP_ACCEPTED,
       GNUNET_JSON_pack_allow_null (
-        (0 == ctx->kyc.payment_target_uuid)
+        (0 == ctx->kyc.legitimization_uuid)
         ? GNUNET_JSON_pack_string ("legitimization_uuid",
                                    NULL)
         : GNUNET_JSON_pack_uint64 ("legitimization_uuid",
-                                   ctx->kyc.payment_target_uuid)),
+                                   ctx->kyc.legitimization_uuid)),
       GNUNET_JSON_pack_bool ("kyc_ok",
                              ctx->kyc.ok),
       GNUNET_JSON_pack_timestamp ("execution_time",

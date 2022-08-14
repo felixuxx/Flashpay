@@ -242,7 +242,7 @@ clean_kwh (struct TEH_RequestContext *rc)
  * @param rc request to handle
  * @param method HTTP request method used by the client
  * @param root uploaded JSON body (can be NULL)
- * @param args one argument with the payment_target_uuid
+ * @param args one argument with the legitimization_uuid
  * @return MHD result code
  */
 static MHD_RESULT

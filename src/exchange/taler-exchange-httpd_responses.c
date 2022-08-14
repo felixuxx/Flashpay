@@ -985,7 +985,7 @@ TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
     connection,
     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
     GNUNET_JSON_pack_uint64 ("legitimization_uuid",
-                             kyc->payment_target_uuid));
+                             kyc->legitimization_uuid));
 }
 
 

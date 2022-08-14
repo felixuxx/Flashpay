@@ -319,7 +319,7 @@ reserve_withdraw_cb (void *cls,
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* KYC required */
     ws->kyc_uuid =
-      wr->details.unavailable_for_legal_reasons.payment_target_uuid;
+      wr->details.unavailable_for_legal_reasons.legitimization_uuid;
     break;
   default:
     /* Unsupported status code (by test harness) */
@@ -538,7 +538,7 @@ withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amount (&ws->amount),
-    TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_legitimization_uuid (&ws->kyc_uuid),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (

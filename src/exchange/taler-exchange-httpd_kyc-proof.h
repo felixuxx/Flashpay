@@ -37,7 +37,7 @@ TEH_kyc_proof_cleanup (void);
  * Handle a "/kyc-proof" request.
  *
  * @param rc request to handle
- * @param args one argument with the payment_target_uuid
+ * @param args one argument with the legitimization_uuid
  * @return MHD result code
  */
 MHD_RESULT

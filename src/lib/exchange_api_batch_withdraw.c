@@ -208,7 +208,7 @@ handle_reserve_batch_withdraw_finished (
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("legitimization_uuid",
-                                 &wr.details.accepted.payment_target_uuid),
+                                 &wr.details.accepted.legitimization_uuid),
         GNUNET_JSON_spec_end ()
       };
 
