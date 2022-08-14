@@ -96,6 +96,7 @@ MASTER_PRIV_FILE=`taler-config -f -c $CONF_ONCE -s exchange-offline -o MASTER_PR
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
+cp $MASTER_PRIV_FILE ${BASEDB}.mpriv
 MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/

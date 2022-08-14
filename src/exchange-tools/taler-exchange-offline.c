@@ -3056,6 +3056,8 @@ do_drain (char *const *args)
                                                account_section),
                       GNUNET_JSON_pack_string ("payto_uri",
                                                payto_uri),
+                      TALER_JSON_pack_amount ("amount",
+                                              &amount),
                       GNUNET_JSON_pack_timestamp ("date",
                                                   date),
                       GNUNET_JSON_pack_data_auto ("master_sig",

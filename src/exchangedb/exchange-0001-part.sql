@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS profit_drains
   ,payto_uri VARCHAR NOT NULL
   ,trigger_date INT8 NOT NULL
   ,amount_val INT8 NOT NULL
-  ,amount_frac INT8 NOT NULL
+  ,amount_frac INT4 NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,executed BOOLEAN NOT NULL DEFAULT FALSE
   );
