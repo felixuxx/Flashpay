@@ -580,14 +580,6 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves_in"
       " WHERE reserve_pub=$1",
       1),
-    /* Used in #postgres_set_kyc_ok() */
-    GNUNET_PQ_make_prepare (
-      "set_kyc_ok",
-      "UPDATE wire_targets"
-      " SET kyc_ok=TRUE"
-      ",external_id=$2"
-      " WHERE wire_target_h_payto=$1",
-      2),
     GNUNET_PQ_make_prepare (
       "get_kyc_h_payto",
       "SELECT"
@@ -611,7 +603,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ) VALUES "
       "  ($1, $2, $3, $4, $5, $6, $7, $8);",
       8),
-    /* Used in #postgres_inselect_wallet_kyc_status() */
+    /* Used in #setup_wire_target() */
     GNUNET_PQ_make_prepare (
       "insert_kyc_status",
       "INSERT INTO wire_targets"
@@ -619,16 +611,8 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,payto_uri"
       "  ) VALUES "
       "  ($1, $2)"
-      " RETURNING wire_target_serial_id",
+      " ON CONFLICT DO NOTHING",
       2),
-    GNUNET_PQ_make_prepare (
-      "select_kyc_status_by_payto",
-      "SELECT "
-      " kyc_ok"
-      ",wire_target_serial_id"
-      " FROM wire_targets"
-      " WHERE wire_target_h_payto=$1;",
-      1),
     /* Used in #postgres_drain_kyc_alert() */
     GNUNET_PQ_make_prepare (
       "drain_kyc_alert",
@@ -3254,8 +3238,6 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " wire_target_serial_id AS serial"
       ",payto_uri"
-      ",kyc_ok"
-      ",external_id"
       " FROM wire_targets"
       " WHERE wire_target_serial_id > $1"
       " ORDER BY wire_target_serial_id ASC;",
@@ -3773,11 +3755,9 @@ prepare_statements (struct PostgresClosure *pg)
       "(wire_target_serial_id"
       ",wire_target_h_payto"
       ",payto_uri"
-      ",kyc_ok"
-      ",external_id"
       ") VALUES "
-      "($1, $2, $3, $4, $5);",
-      5),
+      "($1, $2, $3);",
+      3),
     GNUNET_PQ_make_prepare (
       "insert_into_table_reserves",
       "INSERT INTO reserves"
@@ -5763,59 +5743,6 @@ postgres_reserves_get_origin (
 
 
 /**
- * Set the KYC status to "OK" for a bank account.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto which account has been checked
- * @param id external ID to persist
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_set_kyc_ok (void *cls,
-                     const struct TALER_PaytoHashP *h_payto,
-                     const char *id)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_QueryParam params2[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (id),
-    GNUNET_PQ_query_param_end
-  };
-  struct TALER_KycCompletedEventP rep = {
-    .header.size = htons (sizeof (rep)),
-    .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED)
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("wire_target_h_payto",
-                                          &rep.h_payto),
-    GNUNET_PQ_result_spec_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "set_kyc_ok",
-                                           params2);
-  if (qs <= 0)
-    return qs;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "get_kyc_h_payto",
-                                                 params,
-                                                 rs);
-  if (qs <= 0)
-    return qs;
-  postgres_event_notify (pg,
-                         &rep.header,
-                         NULL,
-                         0);
-  return qs;
-}
-
-
-/**
  * Extract next KYC alert.  Deletes the alert.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -5847,73 +5774,6 @@ postgres_drain_kyc_alert (void *cls,
 
 
 /**
- * Compute the hash of the @a payto_uri and use it to get the KYC status for a
- * wallet. If the status is unknown, inserts a new status record (hence
- * INsertSELECT).
- *
- * @param pg the plugin-specific state
- * @param payto_uri the payto URI to check
- * @param[out] h_payto set to the hash of @a payto_uri
- * @param[out] kyc set to the KYC status of the wallet
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-inselect_account_kyc_status (
-  struct PostgresClosure *pg,
-  const char *payto_uri,
-  struct TALER_PaytoHashP *h_payto,
-  struct TALER_EXCHANGEDB_KycStatus *kyc)
-{
-  enum GNUNET_DB_QueryStatus qs;
-
-  TALER_payto_hash (payto_uri,
-                    h_payto);
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (h_payto),
-      GNUNET_PQ_query_param_end
-    };
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
-                                    &kyc->payment_target_uuid),
-      GNUNET_PQ_result_spec_bool ("kyc_ok",
-                                  &kyc->ok),
-      GNUNET_PQ_result_spec_end
-    };
-
-    qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_kyc_status_by_payto",
-                                                   params,
-                                                   rs);
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      struct GNUNET_PQ_QueryParam iparams[] = {
-        GNUNET_PQ_query_param_auto_from_type (h_payto),
-        GNUNET_PQ_query_param_string (payto_uri),
-        GNUNET_PQ_query_param_end
-      };
-      struct GNUNET_PQ_ResultSpec irs[] = {
-        GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
-                                      &kyc->payment_target_uuid),
-        GNUNET_PQ_result_spec_end
-      };
-
-      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                     "insert_kyc_status",
-                                                     iparams,
-                                                     irs);
-      if (qs < 0)
-        return qs;
-      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-        return GNUNET_DB_STATUS_SOFT_ERROR;
-      kyc->ok = false;
-    }
-  }
-  return qs;
-}
-
-
-/**
  * Updates a reserve with the data from the given reserve structure.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -5937,6 +5797,34 @@ reserves_update (void *cls,
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "reserve_update",
                                              params);
+}
+
+
+/**
+ * Setup new wire target for @a payto_uri.
+ *
+ * @param pg the plugin-specific state
+ * @param payto_uri the payto URI to check
+ * @param[out] h_payto set to the hash of @a payto_uri
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+setup_wire_target (
+  struct PostgresClosure *pg,
+  const char *payto_uri,
+  struct TALER_PaytoHashP *h_payto)
+{
+  struct GNUNET_PQ_QueryParam iparams[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_end
+  };
+
+  TALER_payto_hash (payto_uri,
+                    h_payto);
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_kyc_status",
+                                             iparams);
 }
 
 
@@ -6043,23 +5931,14 @@ postgres_reserves_in_insert (void *cls,
      is again used to guard against duplicates. */
   {
     enum GNUNET_DB_QueryStatus qs2;
-    struct TALER_EXCHANGEDB_KycStatus kyc;
     enum GNUNET_DB_QueryStatus qs3;
     struct TALER_PaytoHashP h_payto;
 
-    memset (&kyc,
-            0,
-            sizeof (kyc));
-    qs3 = inselect_account_kyc_status (pg,
-                                       sender_account_details,
-                                       &h_payto,
-                                       &kyc);
-    if (qs3 <= 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs3);
+    qs3 = setup_wire_target (pg,
+                             sender_account_details,
+                             &h_payto);
+    if (qs3 < 0)
       return qs3;
-    }
-    GNUNET_assert (0 != kyc.payment_target_uuid);
     /* We do not have the UUID, so insert by public key */
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
@@ -8215,19 +8094,14 @@ postgres_insert_deposit (void *cls,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_EXCHANGEDB_KycStatus kyc;
-  enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP h_payto;
+  enum GNUNET_DB_QueryStatus qs;
 
-  qs = inselect_account_kyc_status (pg,
-                                    deposit->receiver_wire_account,
-                                    &h_payto,
-                                    &kyc);
-  if (qs <= 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+  qs = setup_wire_target (pg,
+                          deposit->receiver_wire_account,
+                          &h_payto);
+  if (qs < 0)
     return qs;
-  }
   if (GNUNET_TIME_timestamp_cmp (deposit->wire_deadline,
                                  <,
                                  deposit->refund_deadline))
@@ -10447,20 +10321,11 @@ postgres_insert_reserve_closed (
 {
   struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_Reserve reserve;
-  struct TALER_EXCHANGEDB_KycStatus kyc;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP h_payto;
 
-  qs = inselect_account_kyc_status (pg,
-                                    receiver_account,
-                                    &h_payto,
-                                    &kyc);
-  if (qs <= 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
+  TALER_payto_hash (receiver_account,
+                    &h_payto);
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -17348,7 +17213,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     &postgres_iterate_auditor_denominations;
   plugin->reserves_get = &postgres_reserves_get;
   plugin->reserves_get_origin = &postgres_reserves_get_origin;
-  plugin->set_kyc_ok = &postgres_set_kyc_ok;
   plugin->drain_kyc_alert = &postgres_drain_kyc_alert;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;

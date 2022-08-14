@@ -318,7 +318,6 @@ create_denom_key_pair (unsigned int size,
     return NULL;
   }
   memset (&issue2, 0, sizeof (issue2));
-  plugin->commit (plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_denomination_info (plugin->cls,
                                      &dki.issue.denom_hash,
@@ -1302,6 +1301,7 @@ run (void *cls)
                                       sndr,
                                       "exchange-account-1",
                                       4));
+
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          value.value,
@@ -1406,6 +1406,8 @@ run (void *cls)
     GNUNET_assert (nonce_ok);
     GNUNET_assert (balance_ok);
   }
+
+
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          0,
@@ -1909,6 +1911,7 @@ run (void *cls)
       }
     }
   }
+  GNUNET_assert (4 == cnt);
   FAILIF (4 != cnt);
 
   auditor_row_cnt = 0;
@@ -2290,6 +2293,9 @@ run (void *cls)
 
 
   /* test revocation */
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         "test-3b"));
   RND_BLK (&master_sig);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_revocation (plugin->cls,

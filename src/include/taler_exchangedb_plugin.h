@@ -279,8 +279,6 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       char *payto_uri;
-      bool kyc_ok;
-      char *external_id;
     } wire_targets;
 
     struct
@@ -3080,20 +3078,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     struct TALER_PaytoHashP *h_payto);
-
-
-  /**
-   * Set the KYC status to "OK" for a bank account.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param h_payto which account has been checked
-   * @param id ID data to persist
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*set_kyc_ok)(void *cls,
-                const struct TALER_PaytoHashP *h_payto,
-                const char *id);
 
 
   /**

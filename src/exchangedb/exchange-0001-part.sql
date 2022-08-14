@@ -120,12 +120,6 @@ COMMENT ON COLUMN wire_targets.payto_uri
   IS 'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)';
 COMMENT ON COLUMN wire_targets.wire_target_h_payto
   IS 'Unsalted hash of payto_uri';
--- FIXME: remove:
-COMMENT ON COLUMN wire_targets.kyc_ok
-  IS 'true if the KYC check was passed successfully';
--- FIXME: remove:
-COMMENT ON COLUMN wire_targets.external_id
-  IS 'Name of the user that was used for OAuth 2.0-based legitimization';
 
 CREATE TABLE IF NOT EXISTS wire_targets_default
   PARTITION OF wire_targets
@@ -175,10 +169,6 @@ COMMENT ON COLUMN reserves.purses_active
   IS 'Number of purses that were created by this reserve that are not expired and not fully paid.';
 COMMENT ON COLUMN reserves.purses_allowed
   IS 'Number of purses that this reserve is allowed to have active at most.';
-COMMENT ON COLUMN reserves.kyc_required
-  IS 'True if a KYC check must have been passed before withdrawing from this reserve. Set to true once a reserve received a P2P payment.';
-COMMENT ON COLUMN reserves.kyc_passed
-  IS 'True once KYC was passed for this reserve. The KYC details are then available via the wire_targets table under the key of wire_target_h_payto which is to be derived from the reserve_pub and the base URL of this exchange.';
 COMMENT ON COLUMN reserves.expiration_date
   IS 'Used to trigger closing of reserves that have not been drained after some time';
 COMMENT ON COLUMN reserves.gc_date

@@ -175,18 +175,11 @@ lrbt_cb_table_wire_targets (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    bool no_xid;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &td.details.wire_targets.payto_uri),
-      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                            &td.details.wire_targets.kyc_ok),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("external_id",
-                                      &td.details.wire_targets.external_id),
-        &no_xid),
       GNUNET_PQ_result_spec_end
     };
 
