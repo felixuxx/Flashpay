@@ -890,16 +890,6 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_batch_withdraw_insert"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
       9),
-    /* Used in #postgres_do_withdraw_limit_check() to check
-       if the withdrawals remain below the limit under which
-       KYC is not required. */
-    GNUNET_PQ_make_prepare (
-      "call_withdraw_limit_check",
-      "SELECT "
-      " below_limit"
-      " FROM exchange_do_withdraw_limit_check"
-      " ($1,$2,$3,$4);",
-      4),
     /* Used in #postgres_do_deposit() to execute a deposit,
        checking the coin's balance in the process as needed. */
     GNUNET_PQ_make_prepare (
@@ -6294,45 +6284,6 @@ postgres_do_batch_withdraw_insert (
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_batch_withdraw_insert",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Check that reserve remains below threshold for KYC
- * checks after withdraw operation.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param ruuid reserve to check
- * @param withdraw_start starting point to accumulate from
- * @param upper_limit maximum amount allowed
- * @param[out] below_limit set to true if the limit was not exceeded
- * @return query execution status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_withdraw_limit_check (
-  void *cls,
-  uint64_t ruuid,
-  struct GNUNET_TIME_Absolute withdraw_start,
-  const struct TALER_Amount *upper_limit,
-  bool *below_limit)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&ruuid),
-    GNUNET_PQ_query_param_absolute_time (&withdraw_start),
-    TALER_PQ_query_param_amount (upper_limit),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("below_limit",
-                                below_limit),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_withdraw_limit_check",
                                                    params,
                                                    rs);
 }
@@ -17219,7 +17170,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->do_withdraw = &postgres_do_withdraw;
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
   plugin->do_batch_withdraw_insert = &postgres_do_batch_withdraw_insert;
-  plugin->do_withdraw_limit_check = &postgres_do_withdraw_limit_check;
   plugin->do_deposit = &postgres_do_deposit;
   plugin->do_melt = &postgres_do_melt;
   plugin->do_refund = &postgres_do_refund;

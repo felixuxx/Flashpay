@@ -3227,26 +3227,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Check that reserve remains below threshold for KYC
-   * checks after withdraw operation.
-   *
-   * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param ruuid identifies the reserve to check
-   * @param withdraw_start starting point to accumulate from
-   * @param upper_limit maximum amount allowed
-   * @param[out] below_limit set to true if the limit was not exceeded
-   * @return query execution status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*do_withdraw_limit_check)(
-    void *cls,
-    uint64_t ruuid,
-    struct GNUNET_TIME_Absolute withdraw_start,
-    const struct TALER_Amount *upper_limit,
-    bool *below_limit);
-
-
-  /**
    * Perform deposit operation, checking for sufficient balance
    * of the coin and possibly persisting the deposit details.
    *

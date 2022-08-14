@@ -409,48 +409,6 @@ COMMENT ON FUNCTION exchange_do_batch_withdraw_insert(BYTEA, INT8, INT4, BYTEA, 
 
 
 
-CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
-  IN ruuid INT8,
-  IN start_time INT8,
-  IN upper_limit_val INT8,
-  IN upper_limit_frac INT4,
-  OUT below_limit BOOLEAN)
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  total_val INT8;
-DECLARE
-  total_frac INT8; -- INT4 could overflow during accumulation!
-BEGIN
--- NOTE: Read-only, but crosses shards.
--- Shards: reserves by reserve_pub
---         reserves_out by reserve_uuid -- crosses shards!!
-
-
-SELECT
-   SUM(amount_with_fee_val) -- overflow here is not plausible
-  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
-  INTO
-   total_val
-  ,total_frac
-  FROM exchange.reserves_out
- WHERE reserve_uuid=ruuid
-   AND execution_date > start_time;
-
--- normalize result
-total_val = total_val + total_frac / 100000000;
-total_frac = total_frac % 100000000;
-
--- compare to threshold
-below_limit = (total_val < upper_limit_val) OR
-            ( (total_val = upper_limit_val) AND
-              (total_frac <= upper_limit_frac) );
-END $$;
-
-COMMENT ON FUNCTION exchange_do_withdraw_limit_check(INT8, INT8, INT8, INT4)
-  IS 'Check whether the withdrawals from the given reserve since the given time are below the given threshold';
-
-
 -- NOTE: experiment, currently dead, see postgres_Start_deferred_wire_out;
 -- now done inline. FIXME: Remove code here once inline version is confirmed working nicely!
 CREATE OR REPLACE PROCEDURE defer_wire_out()
