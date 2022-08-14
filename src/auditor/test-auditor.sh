@@ -559,7 +559,7 @@ echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
 SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
 echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
@@ -1580,7 +1580,7 @@ echo "===========26: deposit wire target malformed ================="
 # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
 SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto, kyc_ok) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b', false);"  | psql $DB -Aqt`
+NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
 echo OLD_WIRE_ID=$OLD_WIRE_ID
 echo NEW_WIRE_ID=$NEW_WIRE_ID
 echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
