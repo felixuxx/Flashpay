@@ -220,18 +220,15 @@ check_reserve (const struct TALER_ReservePublicKeyP *pub,
                const char *currency)
 {
   struct TALER_EXCHANGEDB_Reserve reserve;
-  struct TALER_EXCHANGEDB_KycStatus kyc;
 
   reserve.pub = *pub;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_get (plugin->cls,
-                                &reserve,
-                                &kyc));
+                                &reserve));
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
   FAILIF (0 != strcmp (currency,
                        reserve.balance.currency));
-  FAILIF (kyc.ok);
   return GNUNET_OK;
 drop:
   return GNUNET_SYSERR;
@@ -1001,15 +998,10 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
   }
   {
     struct TALER_ReservePublicKeyP rpub;
-    struct TALER_EXCHANGEDB_KycStatus kyc;
 
     memset (&rpub,
             44,
             sizeof (rpub));
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->inselect_wallet_kyc_status (plugin->cls,
-                                                &rpub,
-                                                &kyc));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->store_wire_transfer_out (plugin->cls,
                                              wire_out_date,
@@ -1755,7 +1747,6 @@ run (void *cls)
     struct TALER_EXCHANGEDB_Reserve pre_reserve;
     struct TALER_EXCHANGEDB_Reserve post_reserve;
     struct TALER_Amount delta;
-    struct TALER_EXCHANGEDB_KycStatus kyc;
     bool recoup_ok;
     bool internal_failure;
     struct GNUNET_TIME_Timestamp recoup_timestamp
@@ -1764,8 +1755,7 @@ run (void *cls)
     pre_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  &pre_reserve,
-                                  &kyc));
+                                  &pre_reserve));
     FAILIF (! TALER_amount_is_zero (&pre_reserve.balance));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_recoup (plugin->cls,
@@ -1783,8 +1773,7 @@ run (void *cls)
     post_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  &post_reserve,
-                                  &kyc));
+                                  &post_reserve));
     FAILIF (0 >=
             TALER_amount_subtract (&delta,
                                    &post_reserve.balance,

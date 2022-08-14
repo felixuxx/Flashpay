@@ -27,6 +27,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_reserves_purse.h"
 #include "taler-exchange-httpd_responses.h"
@@ -101,6 +102,16 @@ struct ReservePurseContext
   struct TEH_PurseDetails pd;
 
   /**
+   * Hash of the @e payto_uri.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * KYC status of the operation.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
    * Minimum age for deposits into this purse.
    */
   uint32_t min_age;
@@ -116,6 +127,46 @@ struct ReservePurseContext
   bool no_econtract;
 
 };
+
+
+/**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * @param cls a `struct ReservePurseContext`
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ */
+static void
+amount_iterator (void *cls,
+                 struct GNUNET_TIME_Absolute limit,
+                 TALER_EXCHANGEDB_KycAmountCallback cb,
+                 void *cb_cls)
+{
+  struct ReservePurseContext *rpc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  cb (cb_cls,
+      &rpc->deposit_total,
+      GNUNET_TIME_absolute_get ());
+  qs = TEH_plugin->select_merge_amounts_for_kyc_check (
+    TEH_plugin->cls,
+    &rpc->h_payto,
+    limit,
+    cb,
+    cb_cls);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Got %d additional transactions for this merge and limit %llu\n",
+              qs,
+              (unsigned long long) limit.abs_value_us);
+  GNUNET_break (qs >= 0);
+}
 
 
 /**
@@ -138,6 +189,26 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
+
+  const char *required;
+
+  required = TALER_KYCLOGIC_kyc_test_required (
+    TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+    &rpc->h_payto,
+    TEH_plugin->select_satisfied_kyc_processes,
+    TEH_plugin->cls,
+    &amount_iterator,
+    rpc);
+  if (NULL != required)
+  {
+    rpc->kyc.ok = false;
+    return TEH_plugin->insert_kyc_requirement_for_account (
+      TEH_plugin->cls,
+      required,
+      &rpc->h_payto,
+      &rpc->kyc.payment_target_uuid);
+  }
+  rpc->kyc.ok = true;
 
   {
     bool in_conflict = true;
@@ -230,7 +301,6 @@ purse_transaction (void *cls,
     bool in_conflict = true;
     bool insufficient_funds = true;
     bool no_reserve = true;
-    bool no_kyc = true;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Creating purse with flags %d\n",
@@ -246,10 +316,8 @@ purse_transaction (void *cls,
       ? NULL
       : &rpc->gf->fees.purse,
       rpc->reserve_pub,
-      TEH_KYC_NONE != TEH_kyc_config.mode,
       &in_conflict,
       &no_reserve,
-      &no_kyc,
       &insufficient_funds);
     if (qs < 0)
     {
@@ -320,17 +388,6 @@ purse_transaction (void *cls,
             MHD_HTTP_NOT_FOUND,
             TALER_JSON_pack_ec (
               TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN));
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if ( (no_kyc) &&
-         (TEH_KYC_NONE != TEH_kyc_config.mode) )
-    {
-      *mhd_ret
-        = TALER_MHD_REPLY_JSON_PACK (
-            connection,
-            MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-            TALER_JSON_pack_ec (
-              TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (insufficient_funds)
@@ -471,6 +528,15 @@ TEH_handler_reserves_purse (
       GNUNET_break_op (0);
       return MHD_YES; /* failure */
     }
+  }
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_reserve_make_payto (TEH_base_url,
+                                          reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &rpc.h_payto);
+    GNUNET_free (payto_uri);
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TEH_currency,
@@ -641,6 +707,9 @@ TEH_handler_reserves_purse (
     }
   }
 
+  if (! rpc.kyc.ok)
+    return TEH_RESPONSE_reply_kyc_required (connection,
+                                            &rpc.kyc);
   /* generate regular response */
   {
     MHD_RESULT res;

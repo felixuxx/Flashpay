@@ -227,7 +227,7 @@ TEH_handler_kyc_wallet (
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+    GNUNET_JSON_pack_uint64 ("legitimization_uuid",
                              krc.legi_row));
 }
 

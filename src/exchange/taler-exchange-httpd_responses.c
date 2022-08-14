@@ -977,4 +977,16 @@ TEH_RESPONSE_reply_purse_created (
 }
 
 
+MHD_RESULT
+TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
+                                 const struct TALER_EXCHANGEDB_KycStatus *kyc)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+    GNUNET_JSON_pack_uint64 ("legitimization_uuid",
+                             kyc->payment_target_uuid));
+}
+
+
 /* end of taler-exchange-httpd_responses.c */

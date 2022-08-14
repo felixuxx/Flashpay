@@ -1648,10 +1648,8 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_partner_url VARCHAR,
   IN in_reserve_pub BYTEA,
   IN in_wallet_h_payto BYTEA,
-  IN in_require_kyc BOOLEAN,
   OUT out_no_partner BOOLEAN,
   OUT out_no_balance BOOLEAN,
-  OUT out_no_kyc BOOLEAN,
   OUT out_no_reserve BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
@@ -1686,7 +1684,6 @@ ELSE
   THEN
     out_no_partner=TRUE;
     out_conflict=FALSE;
-    out_no_kyc=FALSE;
     out_no_reserve=FALSE;
     RETURN;
   END IF;
@@ -1715,7 +1712,6 @@ IF NOT FOUND
 THEN
   out_no_balance=TRUE;
   out_conflict=FALSE;
-  out_no_kyc=FALSE;
   out_no_reserve=FALSE;
   RETURN;
 END IF;
@@ -1749,14 +1745,12 @@ THEN
   THEN
      -- Purse was merged, but to some other reserve. Not allowed.
      out_conflict=TRUE;
-     out_no_kyc=FALSE;
      out_no_reserve=FALSE;
      RETURN;
   END IF;
 
   -- "success"
   out_conflict=FALSE;
-  out_no_kyc=FALSE;
   out_no_reserve=FALSE;
   RETURN;
 END IF;
@@ -1764,33 +1758,16 @@ out_conflict=FALSE;
 
 ASSERT NOT my_finished, 'internal invariant failed';
 
-IF ( (in_partner_url IS NULL) AND
-     (in_require_kyc) )
+PERFORM
+   FROM exchange.reserves
+  WHERE reserve_pub=in_reserve_pub;
+
+IF NOT FOUND
 THEN
-  -- Need to do KYC check.
-  SELECT NOT kyc_passed
-    INTO out_no_kyc
-    FROM exchange.reserves
-   WHERE reserve_pub=in_reserve_pub;
-
-  IF NOT FOUND
-  THEN
-    out_no_kyc=TRUE;
-    out_no_reserve=TRUE;
-    RETURN;
-  END IF;
-  out_no_reserve=FALSE;
-
-  IF (out_no_kyc)
-  THEN
-    RETURN;
-  END IF;
-ELSE
-  -- KYC is not our responsibility
-  out_no_reserve=FALSE;
-  out_no_kyc=FALSE;
+  out_no_reserve=TRUE;
+  RETURN;
 END IF;
-
+out_no_reserve=FALSE;
 
 
 -- Store account merge signature.
@@ -1850,7 +1827,7 @@ RETURN;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 
@@ -1864,9 +1841,7 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_purse_fee_frac INT4,
   IN in_reserve_pub BYTEA,
   IN in_wallet_h_payto BYTEA,
-  IN in_require_kyc BOOLEAN,
   OUT out_no_funds BOOLEAN,
-  OUT out_no_kyc BOOLEAN,
   OUT out_no_reserve BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
@@ -1901,7 +1876,6 @@ THEN
   THEN
      -- Purse was merged, but to some other reserve. Not allowed.
      out_conflict=TRUE;
-     out_no_kyc=FALSE;
      out_no_reserve=FALSE;
      out_no_funds=FALSE;
      RETURN;
@@ -1910,38 +1884,28 @@ THEN
   -- "success"
   out_conflict=FALSE;
   out_no_funds=FALSE;
-  out_no_kyc=FALSE;
   out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_conflict=FALSE;
 
-SELECT NOT kyc_passed
-  INTO out_no_kyc
+PERFORM
   FROM exchange.reserves
  WHERE reserve_pub=in_reserve_pub;
 
 IF NOT FOUND
 THEN
-  out_no_kyc=TRUE;
   out_no_reserve=TRUE;
   out_no_funds=TRUE;
   RETURN;
 END IF;
 out_no_reserve=FALSE;
 
-IF (out_no_kyc AND in_require_kyc)
-THEN
-  out_no_funds=FALSE;
-  RETURN;
-END IF;
-
 IF (in_reserve_quota)
 THEN
   -- Increment active purses per reserve (and check this is allowed)
   UPDATE reserves
      SET purses_active=purses_active+1
-        ,kyc_required=TRUE
    WHERE reserve_pub=in_reserve_pub
      AND purses_active < purses_allowed;
   IF NOT FOUND
@@ -1965,7 +1929,6 @@ ELSE
          THEN 1
          ELSE 0
          END
-    ,kyc_required=TRUE
   WHERE reserve_pub=in_reserve_pub
     AND ( (current_balance_val > in_purse_fee_val) OR
           ( (current_balance_frac >= in_purse_fee_frac) AND
@@ -1994,7 +1957,7 @@ INSERT INTO exchange.account_merges
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA, BOOLEAN)
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA)
   IS 'Create a purse for a reserve.';
 
 

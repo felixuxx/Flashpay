@@ -304,10 +304,6 @@ reserve_withdraw_cb (void *cls,
                                                           GNUNET_YES));
     }
     break;
-  case MHD_HTTP_ACCEPTED:
-    /* nothing to check */
-    ws->kyc_uuid = wr->details.accepted.payment_target_uuid;
-    break;
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
     break;
@@ -322,6 +318,8 @@ reserve_withdraw_cb (void *cls,
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* KYC required */
+    ws->kyc_uuid =
+      wr->details.unavailable_for_legal_reasons.payment_target_uuid;
     break;
   default:
     /* Unsupported status code (by test harness) */
@@ -545,8 +543,10 @@ withdraw_traits (void *cls,
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (
       (const char **) &ws->exchange_url),
-    TALER_TESTING_make_trait_age_commitment_proof (0, ws->age_commitment_proof),
-    TALER_TESTING_make_trait_h_age_commitment (0, ws->h_age_commitment),
+    TALER_TESTING_make_trait_age_commitment_proof (0,
+                                                   ws->age_commitment_proof),
+    TALER_TESTING_make_trait_h_age_commitment (0,
+                                               ws->h_age_commitment),
     TALER_TESTING_trait_end ()
   };
 

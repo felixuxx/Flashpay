@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include "taler_dbevents.h"
 #include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_purses_merge.h"
 #include "taler-exchange-httpd_responses.h"
@@ -103,9 +104,19 @@ struct PurseMergeContext
 
   /**
    * URI of the account the purse is to be merged into.
-   * Must be of the form 'payto://taler/$EXCHANGE_URL/RESERVE_PUB'.
+   * Must be of the form 'payto://taler-reserve/$EXCHANGE_URL/RESERVE_PUB'.
    */
   const char *payto_uri;
+
+  /**
+   * Hash of the @e payto_uri.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * KYC status of the operation.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
    * Base URL of the exchange provider hosting the reserve.
@@ -202,6 +213,46 @@ reply_merge_success (struct MHD_Connection *connection,
 
 
 /**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * @param cls a `struct PurseMergeContext`
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ */
+static void
+amount_iterator (void *cls,
+                 struct GNUNET_TIME_Absolute limit,
+                 TALER_EXCHANGEDB_KycAmountCallback cb,
+                 void *cb_cls)
+{
+  struct PurseMergeContext *pcc = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  cb (cb_cls,
+      &pcc->target_amount,
+      GNUNET_TIME_absolute_get ());
+  qs = TEH_plugin->select_merge_amounts_for_kyc_check (
+    TEH_plugin->cls,
+    &pcc->h_payto,
+    limit,
+    cb,
+    cb_cls);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Got %d additional transactions for this merge and limit %llu\n",
+              qs,
+              (unsigned long long) limit.abs_value_us);
+  GNUNET_break (qs >= 0);
+}
+
+
+/**
  * Execute database transaction for /purses/$PID/merge.  Runs the transaction
  * logic; IF it returns a non-error code, the transaction logic MUST NOT queue
  * a MHD response.  IF it returns an hard error, the transaction logic MUST
@@ -224,9 +275,26 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
-  bool no_kyc = true;
   bool no_reserve = true;
+  const char *required;
 
+  required = TALER_KYCLOGIC_kyc_test_required (
+    TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
+    &pcc->h_payto,
+    TEH_plugin->select_satisfied_kyc_processes,
+    TEH_plugin->cls,
+    &amount_iterator,
+    pcc);
+  if (NULL != required)
+  {
+    pcc->kyc.ok = false;
+    return TEH_plugin->insert_kyc_requirement_for_account (
+      TEH_plugin->cls,
+      required,
+      &pcc->h_payto,
+      &pcc->kyc.payment_target_uuid);
+  }
+  pcc->kyc.ok = true;
   qs = TEH_plugin->do_purse_merge (
     TEH_plugin->cls,
     pcc->purse_pub,
@@ -235,11 +303,9 @@ merge_transaction (void *cls,
     &pcc->reserve_sig,
     pcc->provider_url,
     &pcc->reserve_pub,
-    TEH_KYC_NONE != TEH_kyc_config.mode,
     &no_partner,
     &no_balance,
     &no_reserve,
-    &no_kyc,
     &in_conflict);
   if (qs < 0)
   {
@@ -270,17 +336,6 @@ merge_transaction (void *cls,
                                   MHD_HTTP_NOT_FOUND,
                                   TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                   NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if ( (no_kyc) &&
-       (TEH_KYC_NONE != TEH_kyc_config.mode) )
-  {
-    *mhd_ret
-      = TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-          TALER_JSON_pack_ec (
-            TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (no_balance)
@@ -333,6 +388,7 @@ merge_transaction (void *cls,
     GNUNET_free (partner_url);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
   return qs;
 }
 
@@ -434,7 +490,6 @@ TEH_handler_purses_merge (
       TALER_EC_GENERIC_PARAMETER_MALFORMED,
       "payto_uri");
   }
-
   http = (0 == strncmp (pcc.payto_uri,
                         "payto://taler-reserve+http/",
                         strlen ("payto://taler-reserve+http/")));
@@ -477,6 +532,8 @@ TEH_handler_purses_merge (
     }
     slash++;
   }
+  TALER_payto_hash (pcc.payto_uri,
+                    &pcc.h_payto);
   if (0 == strcmp (pcc.provider_url,
                    TEH_base_url))
   {
@@ -615,6 +672,12 @@ TEH_handler_purses_merge (
     }
   }
 
+
+  GNUNET_free (pcc.provider_url);
+  if (! pcc.kyc.ok)
+    return TEH_RESPONSE_reply_kyc_required (connection,
+                                            &pcc.kyc);
+
   {
     struct TALER_PurseEventP rep = {
       .header.size = htons (sizeof (rep)),
@@ -630,7 +693,6 @@ TEH_handler_purses_merge (
                               0);
   }
 
-  GNUNET_free (pcc.provider_url);
   /* generate regular response */
   return reply_merge_success (connection,
                               &pcc);

@@ -75,6 +75,19 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
 
 
 /**
+ * Send information that a KYC check must be
+ * satisfied to proceed to client.
+ *
+ * @param connection connection to the client
+ * @param pcc details about the request that succeeded
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
+                                 const struct TALER_EXCHANGEDB_KycStatus *kyc);
+
+
+/**
  * Send assertion that the given denomination key hash
  * is not usable (typically expired) at this time.
  *

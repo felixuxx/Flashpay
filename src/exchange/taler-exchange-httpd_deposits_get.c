@@ -247,7 +247,7 @@ handle_track_transaction_request (
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
                                        "wire fees exceed aggregate in database");
-  if (GNUNET_YES == ctx->pending)
+  if (ctx->pending)
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_ACCEPTED,

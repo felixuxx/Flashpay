@@ -288,12 +288,12 @@ handle_reserve_batch_withdraw_finished (void *cls,
     GNUNET_assert (NULL == wh->cb);
     TALER_EXCHANGE_batch_withdraw2_cancel (wh);
     return;
-  case MHD_HTTP_ACCEPTED:
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* only validate reply is well-formed */
     {
       uint64_t ptu;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
+        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
                                  &ptu),
         GNUNET_JSON_spec_end ()
       };

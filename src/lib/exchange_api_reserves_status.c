@@ -98,8 +98,6 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rsh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
                                 &rs.details.ok.balance),
-    GNUNET_JSON_spec_bool ("kyc_passed",
-                           &rs.details.ok.kyc_ok),
     GNUNET_JSON_spec_json ("history",
                            &history),
     GNUNET_JSON_spec_end ()

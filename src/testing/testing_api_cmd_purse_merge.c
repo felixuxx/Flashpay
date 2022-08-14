@@ -72,6 +72,18 @@ struct PurseMergeState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Hash of the payto://-URI for the reserve we are
+   * merging into.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC UUID *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t kyc_uuid;
+
+  /**
    * Reserve history entry that corresponds to this operation.
    * Will be of type #TALER_EXCHANGE_RTT_MERGE.
    */
@@ -129,8 +141,9 @@ merge_cb (void *cls,
   struct PurseMergeState *ds = cls;
 
   ds->dh = NULL;
-  if (MHD_HTTP_OK == dr->hr.http_status)
+  switch (dr->hr.http_status)
   {
+  case MHD_HTTP_OK:
     ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
     ds->reserve_history.amount = ds->value_after_fees;
     GNUNET_assert (GNUNET_OK ==
@@ -153,6 +166,12 @@ merge_cb (void *cls,
       = ds->min_age;
     ds->reserve_history.details.merge_details.flags
       = TALER_WAMF_MODE_MERGE_FULLY_PAID_PURSE;
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* KYC required */
+    ds->kyc_uuid =
+      dr->details.unavailable_for_legal_reasons.payment_target_uuid;
+    break;
   }
 
 
@@ -281,6 +300,15 @@ merge_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->reserve_priv.eddsa_priv,
                                       &ds->reserve_pub.eddsa_pub);
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_reserve_make_payto (is->exchange_url,
+                                          &ds->reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &ds->h_payto);
+    GNUNET_free (payto_uri);
+  }
   GNUNET_CRYPTO_eddsa_key_get_public (&merge_priv->eddsa_priv,
                                       &ds->merge_pub.eddsa_pub);
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
@@ -357,6 +385,8 @@ merge_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_timestamp (0,
                                         &ds->merge_timestamp),
+    TALER_TESTING_make_trait_payment_target_uuid (&ds->kyc_uuid),
+    TALER_TESTING_make_trait_h_payto (&ds->h_payto),
     TALER_TESTING_trait_end ()
   };
 

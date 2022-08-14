@@ -256,6 +256,27 @@ handle_purse_merge_finished (void *cls,
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_uint64 (
+          "legitimization_uuid",
+          &dr.details.unavailable_for_legal_reasons.payment_target_uuid),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+    }
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);

@@ -98,6 +98,18 @@ struct ReservePurseState
   struct GNUNET_TIME_Timestamp purse_expiration;
 
   /**
+   * Hash of the payto://-URI for the reserve we are
+   * merging into.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC UUID *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t kyc_uuid;
+
+  /**
    * Contract terms for the purse.
    */
   json_t *contract_terms;
@@ -149,6 +161,14 @@ purse_cb (void *cls,
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
+  switch (dr->hr.http_status)
+  {
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* KYC required */
+    ds->kyc_uuid =
+      dr->details.unavailable_for_legal_reasons.payment_target_uuid;
+    break;
+  }
   TALER_TESTING_interpreter_next (ds->is);
 }
 
@@ -194,6 +214,17 @@ purse_run (void *cls,
   GNUNET_CRYPTO_ecdhe_key_create (&ds->contract_priv.ecdhe_priv);
   ds->purse_expiration = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_relative_to_absolute (ds->expiration_rel));
+
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_reserve_make_payto (is->exchange_url,
+                                          &ds->reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &ds->h_payto);
+    GNUNET_free (payto_uri);
+  }
+
   GNUNET_assert (0 ==
                  json_object_set_new (
                    ds->contract_terms,
@@ -278,6 +309,8 @@ purse_traits (void *cls,
     TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_reserve_sig (&ds->reserve_sig),
+    TALER_TESTING_make_trait_payment_target_uuid (&ds->kyc_uuid),
+    TALER_TESTING_make_trait_h_payto (&ds->h_payto),
     TALER_TESTING_trait_end ()
   };
 

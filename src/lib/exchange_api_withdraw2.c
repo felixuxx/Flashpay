@@ -316,7 +316,7 @@ handle_reserve_withdraw_finished (void *cls,
     {
       uint64_t ptu;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
+        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
                                  &ptu),
         GNUNET_JSON_spec_end ()
       };

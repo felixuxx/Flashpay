@@ -160,8 +160,9 @@ handle_reserve_withdraw_finished (
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
-                                 &wr.details.accepted.payment_target_uuid),
+        GNUNET_JSON_spec_uint64 (
+          "legitimization_uuid",
+          &wr.details.unavailable_for_legal_reasons.payment_target_uuid),
         GNUNET_JSON_spec_end ()
       };
 

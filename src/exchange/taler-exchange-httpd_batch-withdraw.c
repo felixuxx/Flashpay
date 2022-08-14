@@ -327,11 +327,8 @@ generate_reply_success (const struct TEH_RequestContext *rc,
   if (! wc->kyc.ok)
   {
     /* KYC required */
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                               wc->kyc.payment_target_uuid));
+    return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &wc->kyc);
   }
 
   sigs = json_array ();

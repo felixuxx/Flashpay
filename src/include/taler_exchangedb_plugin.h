@@ -2274,50 +2274,6 @@ struct TALER_EXCHANGEDB_CsRevealFreshCoinData
 
 
 /**
- * Types of operations that require KYC checks.
- * @deprecated FIXME - remove with new KYC logic
- */
-enum TALER_EXCHANGEDB_KycType
-{
-
-  /**
-   * It is unclear for which type of KYC operation
-   * this information is.
-   */
-  TALER_EXCHANGEDB_KYC_UNKNOWN = 0,
-
-  /**
-   * KYC to be applied for simple withdraws without
-   * the involvement of wallet-to-wallet payments.
-   * Tied to the payto:// of the debited account.
-   */
-  TALER_EXCHANGEDB_KYC_WITHDRAW = 1,
-
-  /**
-   * KYC to be applied for simple deposits to a
-   * merchant's bank account.  Tied to the payto://
-   * of the credited account.
-   */
-  TALER_EXCHANGEDB_KYC_DEPOSIT = 2,
-
-  /**
-   * KYC that is self-applied by a wallet that is exceeding the amount
-   * threshold.  Tied to the reserve-account public key that identifies the
-   * funds-holding wallet.
-   */
-  TALER_EXCHANGEDB_KYC_BALANCE = 3,
-
-  /**
-   * KYC that is triggered upon wallet-to-wallet
-   * payments for the recipient of funds. Tied to the
-   * reserve public key that identifies the receiving
-   * wallet.
-   */
-  TALER_EXCHANGEDB_KYC_W2W = 4
-};
-
-
-/**
  * Generic KYC status for some operation.
  * @deprecated FIXME - remove with new KYC logic
  */
@@ -2329,12 +2285,6 @@ struct TALER_EXCHANGEDB_KycStatus
    */
   // FIXME: rename to 'legitimization_uuid'
   uint64_t payment_target_uuid;
-
-  /**
-   * What kind of KYC operation is this?
-   */
-  // FIXME: kill!
-  enum TALER_EXCHANGEDB_KycType type;
 
   /**
    * True if the KYC status is "satisfied".
@@ -3110,13 +3060,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
-   * @param[out] kyc set to the KYC status of the reserve
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*reserves_get)(void *cls,
-                  struct TALER_EXCHANGEDB_Reserve *reserve,
-                  struct TALER_EXCHANGEDB_KycStatus *kyc);
+                  struct TALER_EXCHANGEDB_Reserve *reserve);
 
 
   /**
@@ -3160,36 +3108,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*drain_kyc_alert)(void *cls,
                      uint32_t trigger_type,
                      struct TALER_PaytoHashP *h_payto);
-
-
-  /**
-   * Get the @a kyc status and @a h_payto by UUID.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param h_payto set to the hash of the account's payto URI (unsalted)
-   * @param[out] kyc set to the KYC status of the account
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*select_kyc_status)(void *cls,
-                       const struct TALER_PaytoHashP *h_payto,
-                       struct TALER_EXCHANGEDB_KycStatus *kyc);
-
-
-  /**
-   * Get the KYC status for a wallet. If the status is unknown,
-   * inserts a new status record (hence INsertSELECT).
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub public key of the wallet
-   * @param[out] kyc set to the KYC status of the wallet
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*inselect_wallet_kyc_status)(
-    void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
-    struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
   /**
@@ -5496,11 +5414,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_sig signature of the reserve affirming the merge
    * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
    * @param reserve_pub public key of the reserve to credit
-   * @param require_kyc true if we should check for KYC
    * @param[out] no_partner set to true if @a partner_url is unknown
    * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
    * @param[out] no_reserve set to true if the @a reserve_pub is not known
-   * @param[out] no_kyc set to true if the @a reserve_pub lacks KYC
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
    * @return transaction status code
    */
@@ -5513,11 +5429,9 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReserveSignatureP *reserve_sig,
     const char *partner_url,
     const struct TALER_ReservePublicKeyP *reserve_pub,
-    bool require_kyc,
     bool *no_partner,
     bool *no_balance,
     bool *no_reserve,
-    bool *no_kyc,
     bool *in_conflict);
 
 
@@ -5533,10 +5447,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param reserve_sig signature of the reserve affirming the merge
    * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
    * @param reserve_pub public key of the reserve to credit
-   * @param require_kyc true if we should check for KYC
    * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
    * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
-   * @param[out] no_kyc set to true if @a reserve_pub has not passed KYC checks
    * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
    * @return transaction status code
    */
@@ -5549,10 +5461,8 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReserveSignatureP *reserve_sig,
     const struct TALER_Amount *purse_fee,
     const struct TALER_ReservePublicKeyP *reserve_pub,
-    bool require_kyc,
     bool *in_conflict,
     bool *no_reserve,
-    bool *no_kyc,
     bool *insufficient_funds);
 
 

@@ -98,7 +98,7 @@ handle_kyc_wallet_finished (void *cls,
   case MHD_HTTP_OK:
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
+        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
                                  &ks.payment_target_uuid),
         GNUNET_JSON_spec_end ()
       };

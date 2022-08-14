@@ -490,13 +490,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   GNUNET_JSON_parse_free (spec);
 
   if (! wc.kyc.ok)
-  {
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                               wc.kyc.payment_target_uuid));
-  }
+    return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &wc.kyc);
   {
     MHD_RESULT ret;
 

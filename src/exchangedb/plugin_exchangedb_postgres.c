@@ -572,23 +572,6 @@ prepare_statements (struct PostgresClosure *pg)
       "    FROM denominations"
       "    WHERE denom_pub_hash=$1);",
       1),
-    /* Used in #postgres_reserves_get() */
-    GNUNET_PQ_make_prepare (
-      "reserves_get_with_kyc",
-      "SELECT"
-      " current_balance_val"
-      ",current_balance_frac"
-      ",expiration_date"
-      ",gc_date"
-      ",kyc_ok"
-      ",wire_target_serial_id AS payment_target_uuid"
-      " FROM reserves"
-      " JOIN reserves_in ri USING (reserve_pub)"
-      " JOIN wire_targets wt "
-      "  ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
-      " WHERE reserve_pub=$1"
-      " LIMIT 1;",
-      1),
     /* Used in #postgres_reserves_get_origin() */
     GNUNET_PQ_make_prepare (
       "get_h_wire_source_of_reserve",
@@ -658,7 +641,7 @@ prepare_statements (struct PostgresClosure *pg)
       "     LIMIT 1)"
       " RETURNING h_payto;",
       1),
-    /* Used in #reserves_get() */
+    /* Used in #postgres_reserves_get() */
     GNUNET_PQ_make_prepare (
       "reserves_get",
       "SELECT"
@@ -4497,11 +4480,10 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " out_no_partner AS no_partner"
       ",out_no_balance AS no_balance"
-      ",out_no_kyc AS no_kyc"
       ",out_no_reserve AS no_reserve"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
+      "  ($1, $2, $3, $4, $5, $6, $7);",
       7),
     /* Used in #postgres_do_reserve_purse() */
     GNUNET_PQ_make_prepare (
@@ -4509,11 +4491,10 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " out_no_funds AS insufficient_funds"
       ",out_no_reserve AS no_reserve"
-      ",out_no_kyc AS no_kyc"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
-      10),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
@@ -5721,13 +5702,11 @@ postgres_iterate_auditor_denominations (
  * @param[in,out] reserve the reserve data.  The public key of the reserve should be
  *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
- * @param[out] kyc set to the KYC status of the reserve
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_reserves_get (void *cls,
-                       struct TALER_EXCHANGEDB_Reserve *reserve,
-                       struct TALER_EXCHANGEDB_KycStatus *kyc)
+                       struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5741,15 +5720,11 @@ postgres_reserves_get (void *cls,
                                      &reserve->expiry),
     GNUNET_PQ_result_spec_timestamp ("gc_date",
                                      &reserve->gc),
-    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
-                                  &kyc->payment_target_uuid),
-    GNUNET_PQ_result_spec_bool ("kyc_ok",
-                                &kyc->ok),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "reserves_get_with_kyc",
+                                                   "reserves_get",
                                                    params,
                                                    rs);
 }
@@ -5872,39 +5847,6 @@ postgres_drain_kyc_alert (void *cls,
 
 
 /**
- * Get the @a kyc status and @a h_payto by UUID.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto set to the hash of the account's payto URI (unsalted)
- * @param[out] kyc set to the KYC status of the account
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_kyc_status (void *cls,
-                            const struct TALER_PaytoHashP *h_payto,
-                            struct TALER_EXCHANGEDB_KycStatus *kyc)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
-                                  &kyc->payment_target_uuid),
-    GNUNET_PQ_result_spec_bool ("kyc_ok",
-                                &kyc->ok),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_kyc_status_by_payto",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
  * Compute the hash of the @a payto_uri and use it to get the KYC status for a
  * wallet. If the status is unknown, inserts a new status record (hence
  * INsertSELECT).
@@ -5968,76 +5910,6 @@ inselect_account_kyc_status (
     }
   }
   return qs;
-}
-
-
-/**
- * Get the KYC status for a wallet. If the status is unknown,
- * inserts a new status record (hence INsertSELECT).
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param reserve_pub public key of the wallet
- * @param[out] kyc set to the KYC status of the wallet
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_inselect_wallet_kyc_status (
-  void *cls,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct TALER_EXCHANGEDB_KycStatus *kyc)
-{
-  struct PostgresClosure *pg = cls;
-  char *payto_uri;
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_PaytoHashP h_payto;
-
-  payto_uri = TALER_reserve_make_payto (pg->exchange_url,
-                                        reserve_pub);
-  qs = inselect_account_kyc_status (pg,
-                                    payto_uri,
-                                    &h_payto,
-                                    kyc);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Wire account for `%s' is %llu\n",
-              payto_uri,
-              (unsigned long long) kyc->payment_target_uuid);
-  GNUNET_free (payto_uri);
-  return qs;
-}
-
-
-/**
- * Get the summary of a reserve.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param[in,out] reserve the reserve data.  The public key of the reserve should be
- *          set in this structure; it is used to query the database.  The balance
- *          and expiration are then filled accordingly.
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-reserves_get_internal (void *cls,
-                       struct TALER_EXCHANGEDB_Reserve *reserve)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
-                                 &reserve->balance),
-    GNUNET_PQ_result_spec_timestamp ("expiration_date",
-                                     &reserve->expiry),
-    GNUNET_PQ_result_spec_timestamp ("gc_date",
-                                     &reserve->gc),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "reserves_get",
-                                                   params,
-                                                   rs);
 }
 
 
@@ -6248,7 +6120,7 @@ postgres_reserves_in_insert (void *cls,
   {
     enum GNUNET_DB_QueryStatus reserve_exists;
 
-    reserve_exists = reserves_get_internal (pg,
+    reserve_exists = postgres_reserves_get (pg,
                                             &reserve);
     switch (reserve_exists)
     {
@@ -10610,7 +10482,7 @@ postgres_insert_reserve_closed (
   /* update reserve balance */
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = reserves_get_internal (cls,
+      (qs = postgres_reserves_get (cls,
                                    &reserve)))
   {
     /* Existence should have been checked before we got here... */
@@ -16316,11 +16188,9 @@ postgres_get_purse_deposit (
  * @param reserve_sig signature of the reserve affirming the merge
  * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
  * @param reserve_pub public key of the reserve to credit
- * @param require_kyc true if we should check for KYC
  * @param[out] no_partner set to true if @a partner_url is unknown
  * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
  * @param[out] no_reserve set to true if the @a reserve_pub is not known
- * @param[out] no_kyc set to true if the @a reserve_pub lacks KYC
  * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
   * @return transaction status code
  */
@@ -16333,11 +16203,9 @@ postgres_do_purse_merge (
   const struct TALER_ReserveSignatureP *reserve_sig,
   const char *partner_url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  bool require_kyc,
   bool *no_partner,
   bool *no_balance,
   bool *no_reserve,
-  bool *no_kyc,
   bool *in_conflict)
 {
   struct PostgresClosure *pg = cls;
@@ -16352,7 +16220,6 @@ postgres_do_purse_merge (
     : GNUNET_PQ_query_param_string (partner_url),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
-    GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -16360,8 +16227,6 @@ postgres_do_purse_merge (
                                 no_partner),
     GNUNET_PQ_result_spec_bool ("no_balance",
                                 no_balance),
-    GNUNET_PQ_result_spec_bool ("no_kyc",
-                                no_kyc),
     GNUNET_PQ_result_spec_bool ("no_reserve",
                                 no_reserve),
     GNUNET_PQ_result_spec_bool ("conflict",
@@ -16397,10 +16262,8 @@ postgres_do_purse_merge (
  * @param reserve_sig signature of the reserve affirming the merge
  * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
  * @param reserve_pub public key of the reserve to credit
- * @param require_kyc true if we should check for KYC
  * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
  * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
- * @param[out] no_kyc set to true if @a reserve_pub has not passed KYC checks
  * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
  * @return transaction status code
  */
@@ -16413,10 +16276,8 @@ postgres_do_reserve_purse (
   const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_Amount *purse_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
-  bool require_kyc,
   bool *in_conflict,
   bool *no_reserve,
-  bool *no_kyc,
   bool *insufficient_funds)
 {
   struct PostgresClosure *pg = cls;
@@ -16433,7 +16294,6 @@ postgres_do_reserve_purse (
                                  : purse_fee),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
-    GNUNET_PQ_query_param_bool (require_kyc),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -16441,8 +16301,6 @@ postgres_do_reserve_purse (
                                 insufficient_funds),
     GNUNET_PQ_result_spec_bool ("conflict",
                                 in_conflict),
-    GNUNET_PQ_result_spec_bool ("no_kyc",
-                                no_kyc),
     GNUNET_PQ_result_spec_bool ("no_reserve",
                                 no_reserve),
     GNUNET_PQ_result_spec_end
@@ -17488,12 +17346,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->iterate_active_auditors = &postgres_iterate_active_auditors;
   plugin->iterate_auditor_denominations =
     &postgres_iterate_auditor_denominations;
-  plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->reserves_get = &postgres_reserves_get;
   plugin->reserves_get_origin = &postgres_reserves_get_origin;
   plugin->set_kyc_ok = &postgres_set_kyc_ok;
   plugin->drain_kyc_alert = &postgres_drain_kyc_alert;
-  plugin->inselect_wallet_kyc_status = &postgres_inselect_wallet_kyc_status;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
   plugin->do_withdraw = &postgres_do_withdraw;

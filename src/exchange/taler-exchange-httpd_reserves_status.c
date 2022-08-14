@@ -54,11 +54,6 @@ struct ReserveStatusContext
   struct TALER_EXCHANGEDB_ReserveHistory *rh;
 
   /**
-   * Current KYC status.
-   */
-  struct TALER_EXCHANGEDB_KycStatus kyc;
-
-  /**
    * Sum of incoming transactions within the returned history.
    * (currently not used).
    */
@@ -102,8 +97,6 @@ reply_reserve_status_success (struct MHD_Connection *connection,
     MHD_HTTP_OK,
     TALER_JSON_pack_amount ("balance",
                             &rhc->balance),
-    GNUNET_JSON_pack_bool ("kyc_passed",
-                           rhc->kyc.ok),
     GNUNET_JSON_pack_array_steal ("history",
                                   json_history));
 }
@@ -133,20 +126,6 @@ reserve_status_transaction (void *cls,
   struct ReserveStatusContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = TEH_plugin->inselect_wallet_kyc_status (TEH_plugin->cls,
-                                               rsc->reserve_pub,
-                                               &rsc->kyc);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "inselect_wallet_status");
-    return qs;
-  }
   qs = TEH_plugin->get_reserve_status (TEH_plugin->cls,
                                        rsc->reserve_pub,
                                        &rsc->balance_in,

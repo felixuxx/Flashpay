@@ -1020,13 +1020,10 @@ verify_reserve_balance (void *cls,
        internal audit, as otherwise the balance of the 'reserves' table
        is not replicated at the auditor. */
     struct TALER_EXCHANGEDB_Reserve reserve;
-    struct TALER_EXCHANGEDB_KycStatus kyc;
 
     reserve.pub = rs->reserve_pub;
     qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
-                                      &reserve,
-                                      &kyc);
-    // FIXME: figure out what to do with KYC status!
+                                      &reserve);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       /* If the exchange doesn't have this reserve in the summary, it

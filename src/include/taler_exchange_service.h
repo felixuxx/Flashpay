@@ -1883,11 +1883,6 @@ struct TALER_EXCHANGE_ReserveStatus
        */
       unsigned int history_len;
 
-      /**
-       * KYC passed?
-       */
-      bool kyc_ok;
-
     } ok;
 
   } details;
@@ -2138,7 +2133,7 @@ struct TALER_EXCHANGE_WithdrawResponse
     struct TALER_EXCHANGE_PrivateCoinDetails success;
 
     /**
-     * Details if the status is #MHD_HTTP_ACCEPTED.
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
     struct
     {
@@ -2147,7 +2142,7 @@ struct TALER_EXCHANGE_WithdrawResponse
        * to check for its KYC status.
        */
       uint64_t payment_target_uuid;
-    } accepted;
+    } unavailable_for_legal_reasons;
 
     /**
      * Details if the status is #MHD_HTTP_CONFLICT.
@@ -4875,6 +4870,19 @@ struct TALER_EXCHANGE_AccountMergeResponse
 
     } success;
 
+    /**
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct
+    {
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } unavailable_for_legal_reasons;
+
+
   } details;
 
 };
@@ -4970,6 +4978,19 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
     {
 
     } success;
+
+    /**
+   * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+   */
+    struct
+    {
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } unavailable_for_legal_reasons;
+
   } details;
 
 };

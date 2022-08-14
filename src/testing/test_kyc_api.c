@@ -231,6 +231,8 @@ run (void *cls,
                               "EUR:5.04"),
     CMD_TRANSFER_TO_EXCHANGE ("p2p_create-reserve-2",
                               "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE ("p2p_create-reserve-3",
+                              "EUR:0.03"),
     TALER_TESTING_cmd_reserve_poll ("p2p_poll-reserve-1",
                                     "p2p_create-reserve-1",
                                     "EUR:5.04",
@@ -295,6 +297,17 @@ run (void *cls,
       "purse-with-deposit"),
     TALER_TESTING_cmd_purse_merge (
       "purse-merge-into-reserve",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+      "push-get-contract",
+      "p2p_create-reserve-1"),
+    TALER_TESTING_cmd_proof_kyc_oauth2 ("p2p_proof-kyc",
+                                        "purse-merge-into-reserve",
+                                        "kyc-provider-test-oauth2",
+                                        "pass",
+                                        "state",
+                                        MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_purse_merge (
+      "purse-merge-into-reserve",
       MHD_HTTP_OK,
       "push-get-contract",
       "p2p_create-reserve-1"),
@@ -320,11 +333,24 @@ run (void *cls,
   struct TALER_TESTING_Command pull[] = {
     TALER_TESTING_cmd_purse_create_with_reserve (
       "purse-create-with-reserve",
+      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "p2p_create-reserve-3"),
+    TALER_TESTING_cmd_proof_kyc_oauth2 ("p2p_proof-kyc-pull",
+                                        "purse-create-with-reserve",
+                                        "kyc-provider-test-oauth2",
+                                        "pass",
+                                        "state",
+                                        MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve",
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
-      "p2p_create-reserve-1"),
+      "p2p_create-reserve-3"),
     TALER_TESTING_cmd_contract_get (
       "pull-get-contract",
       MHD_HTTP_OK,
@@ -353,23 +379,14 @@ run (void *cls,
       "pull-poll-purse-before-deposit"),
     TALER_TESTING_cmd_status (
       "pull-check-post-merge-reserve-balance-get",
-      "p2p_create-reserve-1",
-      "EUR:2.02",
+      "p2p_create-reserve-3",
+      "EUR:1.02",
       MHD_HTTP_OK),
-    /* POST history doesn't yet support P2P transfers */
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
-      "p2p_create-reserve-1",
-      "EUR:2.02",
+      "p2p_create-reserve-3",
+      "EUR:1.02",
       MHD_HTTP_OK),
-    /* create 2nd purse for a deposit conflict */
-    TALER_TESTING_cmd_purse_create_with_reserve (
-      "purse-create-with-reserve-2",
-      MHD_HTTP_OK,
-      "{\"amount\":\"EUR:4\",\"summary\":\"beer\"}",
-      true /* upload contract */,
-      GNUNET_TIME_UNIT_MINUTES, /* expiration */
-      "p2p_create-reserve-1"),
     TALER_TESTING_cmd_end ()
   };
 
@@ -401,7 +418,6 @@ run (void *cls,
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 2),
-#if 1
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("spend",
@@ -412,15 +428,12 @@ run (void *cls,
                              withdraw_kyc),
     TALER_TESTING_cmd_batch ("wallet-kyc",
                              wallet_kyc),
-#endif
     TALER_TESTING_cmd_batch ("p2p_withdraw",
                              p2p_withdraw),
-#if 0
     TALER_TESTING_cmd_batch ("push",
                              push),
     TALER_TESTING_cmd_batch ("pull",
                              pull),
-#endif
     TALER_TESTING_cmd_end ()
   };
 
