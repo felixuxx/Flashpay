@@ -76,6 +76,31 @@ TALER_FAKEBANK_start2 (uint16_t port,
 
 
 /**
+ * Start the fake bank.  The fake bank will, like the normal bank, listen for
+ * requests for /admin/add/incoming and /transfer. However, instead of
+ * executing or storing those requests, it will simply allow querying whether
+ * such a request has been made via #TALER_FAKEBANK_check_debit() and
+ * #TALER_FAKEBANK_check_credit() as well as the history API.
+ *
+ * This is useful for writing testcases to check whether the exchange
+ * would have issued the correct wire transfer orders.
+ *
+ * @param hostname hostname to use in URLs and URIs.
+ * @param port port to listen to
+ * @param currency which currency should the bank offer
+ * @param ram_limit how much memory do we use at most
+ * @param num_threads size of the thread pool, 0 to use the GNUnet scheduler
+ * @return NULL on error
+ */
+struct TALER_FAKEBANK_Handle *
+TALER_FAKEBANK_start3 (const char *hostname,
+                       uint16_t port,
+                       const char *currency,
+                       uint64_t ram_limit,
+                       unsigned int num_threads);
+
+
+/**
  * Check that no wire transfers were ordered (or at least none
  * that have not been taken care of via #TALER_FAKEBANK_check_debit()
  * or #TALER_FAKEBANK_check_credit()).

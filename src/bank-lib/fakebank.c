@@ -65,7 +65,12 @@ enum LongPollType
   /**
    * Transfer FROM the exchange.
    */
-  LP_DEBIT
+  LP_DEBIT,
+
+  /**
+   * Withdraw operation completion/abort.
+   */
+  LP_WITHDRAW
 
 };
 
@@ -89,6 +94,12 @@ struct LongPoller
    * Account this long poller is waiting on.
    */
   struct Account *account;
+
+  /**
+   * Withdraw operation we are waiting on,
+   * only if @e type is #LP_WITHDRAW, otherwise NULL.
+   */
+  const struct WithdrawalOperation *wo;
 
   /**
    * Entry in the heap for this long poller.
@@ -478,6 +489,11 @@ struct TALER_FAKEBANK_Handle
   char *currency;
 
   /**
+   * Hostname of the fakebank.
+   */
+  char *hostname;
+
+  /**
    * BaseURL of the fakebank.
    */
   char *my_baseurl;
@@ -753,10 +769,10 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
     account = GNUNET_new (struct Account);
     account->account_name = GNUNET_strdup (name);
     account->receiver_name = GNUNET_strdup (receiver_name);
-    // FIXME: support hostnames other than localhost!
-    // extract hostname from use h->my_baseurl!
     GNUNET_asprintf (&account->payto_uri,
-                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     "payto://x-taler-bank/%s:%u/%s?receiver-name=%s",
+                     h->hostname,
+                     (unsigned int) h->port,
                      account->account_name,
                      account->receiver_name);
     GNUNET_assert (GNUNET_OK ==
@@ -1519,6 +1535,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
   GNUNET_free (h->transactions);
   GNUNET_free (h->my_baseurl);
   GNUNET_free (h->currency);
+  GNUNET_free (h->hostname);
   GNUNET_free (h);
 }
 
@@ -2095,19 +2112,23 @@ reschedule_lp_timeout (struct TALER_FAKEBANK_Handle *h,
  * @param[in,out] acc account affected
  * @param lp_timeout how long to suspend
  * @param dir direction of transfers to watch for
+ * @param wo withdraw operation to watch, only
+ *        if @a dir is #LP_WITHDRAW
  */
 static void
 start_lp (struct TALER_FAKEBANK_Handle *h,
           struct MHD_Connection *connection,
           struct Account *acc,
           struct GNUNET_TIME_Relative lp_timeout,
-          enum LongPollType dir)
+          enum LongPollType dir,
+          const struct WithdrawalOperation *wo)
 {
   struct LongPoller *lp;
   bool toc;
 
   lp = GNUNET_new (struct LongPoller);
   lp->account = acc;
+  lp->wo = wo;
   lp->conn = connection;
   lp->timeout = GNUNET_TIME_relative_to_absolute (lp_timeout);
   lp->type = dir;
@@ -2237,7 +2258,8 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                 connection,
                 acc,
                 ha.lp_timeout,
-                LP_DEBIT);
+                LP_DEBIT,
+                NULL);
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
       json_decref (history);
@@ -2337,7 +2359,8 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
               connection,
               acc,
               ha.lp_timeout,
-              LP_DEBIT);
+              LP_DEBIT,
+              NULL);
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
     json_decref (history);
@@ -2459,7 +2482,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                 connection,
                 acc,
                 ha.lp_timeout,
-                LP_CREDIT);
+                LP_CREDIT,
+                NULL);
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
       json_decref (history);
@@ -2539,7 +2563,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
               connection,
               acc,
               ha.lp_timeout,
-              LP_CREDIT);
+              LP_CREDIT,
+              NULL);
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
     json_decref (history);
@@ -2658,10 +2683,14 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
 {
   struct WithdrawalOperation *wo;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo = lookup_withdrawal_operation (h,
                                     wopid);
   if (NULL == wo)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -2679,6 +2708,8 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
     GNUNET_assert (0 ==
                    json_array_append_new (wt,
                                           json_string ("x-taler-bank")));
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
@@ -2694,11 +2725,16 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
                                     wt));
   }
 
-  // FIXME: needs variant of 'start_lp()'
-  // to resume on event!
   *con_cls = &special_ptr;
-  GNUNET_break (0);
-  return MHD_NO;
+  start_lp (h,
+            connection,
+            wo->debit_account,
+            lp,
+            LP_WITHDRAW,
+            wo);
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
+  return MHD_YES;
 }
 
 
@@ -2721,10 +2757,14 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
 {
   struct WithdrawalOperation *wo;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo = lookup_withdrawal_operation (h,
                                     wopid);
   if (NULL == wo)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -2734,6 +2774,8 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
        (0 != GNUNET_memcmp (&wo->reserve_pub,
                             reserve_pub)) )
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_CONFLICT,
                                        TALER_EC_BANK_WITHDRAWAL_OPERATION_RESERVE_SELECTION_CONFLICT,
@@ -2747,6 +2789,8 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
     if (GNUNET_CONTAINER_multipeermap_contains (h->rpubs,
                                                 pid))
     {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_CONFLICT,
                                          TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
@@ -2754,13 +2798,20 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
     }
   }
   wo->reserve_pub = *reserve_pub;
-  GNUNET_free (wo->exchange_account);       // FIXME: or conflict if changed?
-  wo->exchange_account = GNUNET_strdup ("FIXME");        // we have 'exchange_url', how is this useful?
+  GNUNET_free (wo->exchange_account);
+  // FIXME: or conflict if changed?
+  // we have 'exchange_url', how is this useful?
+  // Need the exchange *account*!
+  wo->exchange_account = GNUNET_strdup ("FIXME");
   wo->selection_done = true;
   GNUNET_break (0); // FIXME: not implemented!
-  // FIXME: do we auto-confirm? Or do we want to allow aborts?
+  // FIXME: do we auto-confirm?
+  // Or do we want to wait for confirm/abort calls?
   wo->confirmation_done = true;
-  // FIXME: trigger transfer? but we need the exchange account for that!
+  // FIXME: if auto-confirm: trigger transfer ---
+  // but we need the exchange account for that!
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -2970,17 +3021,23 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
 {
   struct Account *acc;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   acc = lookup_account (h,
                         account_name,
                         NULL);
   if (NULL == acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_UNKNOWN_ACCOUNT,
                                        account_name);
   }
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -3019,10 +3076,14 @@ get_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
   struct WithdrawalOperation *wo;
   struct Account *acc;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo = lookup_withdrawal_operation (h,
                                     withdrawal_id);
   if (NULL == wo)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -3033,6 +3094,8 @@ get_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                         NULL);
   if (NULL == acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_UNKNOWN_ACCOUNT,
@@ -3040,11 +3103,15 @@ get_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
   }
   if (wo->debit_account != acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
                                        account_name);
   }
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -3086,11 +3153,15 @@ do_post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
   struct Account *acc;
   struct WithdrawalOperation *wo;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   acc = lookup_account (h,
                         account_name,
                         NULL);
   if (NULL == acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_UNKNOWN_ACCOUNT,
@@ -3116,14 +3187,34 @@ do_post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
       break;
   }
+  {
+    char *wopids;
+    char *uri;
+    MHD_RESULT res;
 
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_string ("taler_withdraw_uri",
-                             "taler://withdraw/FIXME"),
-    GNUNET_JSON_pack_data_auto ("withdrawal_id",
-                                &wo->wopid));
+    wopids = GNUNET_STRINGS_data_to_string_alloc (&wo->wopid,
+                                                  sizeof (wo->wopid));
+    // FIXME-DOLD: is this the right format,
+    // or do we need some additional prefix
+    // (like "/taler-bank-access/") after the host:port?
+    GNUNET_asprintf (&uri,
+                     "taler+http://withdraw/%s:%u/%s",
+                     h->hostname,
+                     (unsigned int) h->port,
+                     wopids);
+    GNUNET_free (wopids);
+    res = TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_string ("taler_withdraw_uri",
+                               uri),
+      GNUNET_JSON_pack_data_auto ("withdrawal_id",
+                                  &wo->wopid));
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    GNUNET_free (uri);
+    return res;
+  }
 }
 
 
@@ -3203,6 +3294,37 @@ post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
+ * Notify long pollers that a @a wo was updated.
+ * Must be called with the "big_lock" still held.
+ *
+ * @param h fakebank handle
+ * @param wo withdraw operation that finished
+ */
+static void
+notify_withdrawal (struct TALER_FAKEBANK_Handle *h,
+                   const struct WithdrawalOperation *wo)
+{
+  struct Account *debit_acc = wo->debit_account;
+  struct LongPoller *nxt;
+
+  for (struct LongPoller *lp = debit_acc->lp_head;
+       NULL != lp;
+       lp = nxt)
+  {
+    nxt = lp->next;
+    if ( (LP_WITHDRAW == lp->type) &&
+         (wo == lp->wo) )
+    {
+      GNUNET_assert (lp ==
+                     GNUNET_CONTAINER_heap_remove_node (lp->hn));
+      lp_trigger (lp,
+                  h);
+    }
+  }
+}
+
+
+/**
  * Handle POST /accounts/{account_name}/withdrawals/{withdrawal_id}/abort request.
  *
  * @param h our fakebank handle
@@ -3226,10 +3348,14 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
   struct WithdrawalOperation *wo;
   struct Account *acc;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo = lookup_withdrawal_operation (h,
                                     withdrawal_id);
   if (NULL == wo)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -3240,6 +3366,8 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
                         NULL);
   if (NULL == acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_UNKNOWN_ACCOUNT,
@@ -3247,6 +3375,8 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
   }
   if (wo->debit_account != acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -3254,13 +3384,18 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
   }
   if (wo->confirmation_done)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_CONFLICT,
                                        TALER_EC_BANK_ABORT_CONFIRM_CONFLICT,
                                        account_name);
   }
   wo->aborted = true;
-  // FIXME: resume long-pollers here...
+  notify_withdrawal (h,
+                     wo);
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   return TALER_MHD_reply_json (connection,
                                json_object (),
                                MHD_HTTP_OK);
@@ -3291,10 +3426,14 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
   struct WithdrawalOperation *wo;
   struct Account *acc;
 
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo = lookup_withdrawal_operation (h,
                                     withdrawal_id);
   if (NULL == wo)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -3305,6 +3444,8 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                         NULL);
   if (NULL == acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_UNKNOWN_ACCOUNT,
@@ -3312,6 +3453,8 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
   }
   if (wo->debit_account != acc)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
@@ -3319,14 +3462,19 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
   }
   if (wo->aborted)
   {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_CONFLICT,
                                        TALER_EC_BANK_CONFIRM_ABORT_CONFLICT,
                                        account_name);
   }
   wo->confirmation_done = true;
-  // FIXME: resume long-pollers here...
+  notify_withdrawal (h,
+                     wo);
   // FIXME: trigger transaction here?
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   return TALER_MHD_reply_json (connection,
                                json_object (),
                                MHD_HTTP_OK);
@@ -3763,6 +3911,21 @@ TALER_FAKEBANK_start2 (uint16_t port,
                        uint64_t ram_limit,
                        unsigned int num_threads)
 {
+  return TALER_FAKEBANK_start3 ("localhost",
+                                port,
+                                currency,
+                                ram_limit,
+                                num_threads);
+}
+
+
+struct TALER_FAKEBANK_Handle *
+TALER_FAKEBANK_start3 (const char *hostname,
+                       uint16_t port,
+                       const char *currency,
+                       uint64_t ram_limit,
+                       unsigned int num_threads)
+{
   struct TALER_FAKEBANK_Handle *h;
 
   if (SIZE_MAX / sizeof (struct Transaction *) < ram_limit)
@@ -3830,8 +3993,10 @@ TALER_FAKEBANK_start2 (uint16_t port,
   }
   h->lp_heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MIN);
   h->currency = GNUNET_strdup (currency);
+  h->hostname = GNUNET_strdup (hostname);
   GNUNET_asprintf (&h->my_baseurl,
-                   "http://localhost:%u/",
+                   "http://%s:%u/",
+                   h->hostname,
                    (unsigned int) port);
   if (0 == num_threads)
   {
