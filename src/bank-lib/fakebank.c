@@ -118,6 +118,60 @@ struct LongPoller
  */
 struct Transaction;
 
+
+/**
+ * Information we keep per withdraw operation.
+ */
+struct WithdrawalOperation
+{
+  /**
+   * Unique (random) operation ID.
+   */
+  struct GNUNET_ShortHashCode wopid;
+
+  /**
+   * Debited account.
+   */
+  struct Account *debit_account;
+
+  /**
+   * Target exchange account, or NULL if unknown.
+   */
+  char *exchange_account;
+
+  /**
+   * Resulting transaction, if any. Otherwise NULL.
+   */
+  struct Transaction *transaction;
+
+  /**
+   * Amount transferred.
+   */
+  struct TALER_Amount amount;
+
+  /**
+   * Public key of the reserve, wire transfer subject.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Was the withdrawal aborted?
+   */
+  bool aborted;
+
+  /**
+   * Did the bank confirm the withdrawal?
+   */
+  bool confirmation_done;
+
+  /**
+   * Is @e reserve_pub initialized?
+   */
+  bool selection_done;
+
+};
+
+
 /**
  * Per account information.
  */
@@ -366,6 +420,13 @@ struct TALER_FAKEBANK_Handle
   struct GNUNET_CONTAINER_MultiPeerMap *rpubs;
 
   /**
+   * Hashmap of short hashes (wopids) to
+   * `struct WithdrawalOperation`.
+   * Used to lookup withdrawal operations.
+   */
+  struct GNUNET_CONTAINER_MultiShortmap *wops;
+
+  /**
    * Lock for accessing @a rpubs map.
    */
   pthread_mutex_t rpubs_lock;
@@ -479,6 +540,35 @@ static int special_ptr;
  */
 static void
 run_mhd (void *cls);
+
+
+/**
+ * Find withdrawal operation @a wopid in @a h.
+ *
+ * @param h fakebank handle
+ * @param wopid withdrawal operation ID as a string
+ * @return NULL if operation was not found
+ */
+static struct WithdrawalOperation *
+lookup_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
+                             const char *wopid)
+{
+  struct GNUNET_ShortHashCode sh;
+
+  if (NULL == h->wops)
+    return NULL;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (wopid,
+                                     strlen (wopid),
+                                     &sh,
+                                     sizeof (sh)))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  return GNUNET_CONTAINER_multishortmap_get (h->wops,
+                                             &sh);
+}
 
 
 /**
@@ -1268,7 +1358,14 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 }
 
 
-static int
+/**
+ * Helper function to free memory when finished.
+ *
+ * @param cls NULL
+ * @param key key of the account to free (ignored)
+ * @param val a `struct Account` to free.
+ */
+static enum GNUNET_GenericReturnValue
 free_account (void *cls,
               const struct GNUNET_HashCode *key,
               void *val)
@@ -1281,6 +1378,28 @@ free_account (void *cls,
   GNUNET_free (account->account_name);
   GNUNET_free (account->receiver_name);
   GNUNET_free (account);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Helper function to free memory when finished.
+ *
+ * @param cls NULL
+ * @param key key of the operation to free (ignored)
+ * @param val a `struct WithdrawalOperation *` to free.
+ */
+static enum GNUNET_GenericReturnValue
+free_withdraw_op (void *cls,
+                  const struct GNUNET_ShortHashCode *key,
+                  void *val)
+{
+  struct WithdrawalOperation *wo = val;
+
+  (void) cls;
+  (void) key;
+  GNUNET_free (wo->exchange_account);
+  GNUNET_free (wo);
   return GNUNET_OK;
 }
 
@@ -1364,6 +1483,13 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
                                            &free_account,
                                            NULL);
     GNUNET_CONTAINER_multihashmap_destroy (h->accounts);
+  }
+  if (NULL != h->wops)
+  {
+    GNUNET_CONTAINER_multishortmap_iterate (h->wops,
+                                            &free_withdraw_op,
+                                            NULL);
+    GNUNET_CONTAINER_multishortmap_destroy (h->wops);
   }
   GNUNET_CONTAINER_multihashmap_destroy (h->uuid_map);
   GNUNET_CONTAINER_multipeermap_destroy (h->rpubs);
@@ -2530,27 +2656,42 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
                           struct GNUNET_TIME_Relative lp,
                           void **con_cls)
 {
-  // FIXME: check if ready, if so, return reply.
+  struct WithdrawalOperation *wo;
 
-  if ( (NULL != *con_cls) ||
-       (GNUNET_TIME_relative_is_zero (lp)) )
+  wo = lookup_withdrawal_operation (h,
+                                    wopid);
+  if (NULL == wo)
   {
-    // FIXME: timeout, return with negative status
-    struct TALER_Amount amount;
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       wopid);
+  }
+  if ( (NULL != *con_cls) ||
+       (GNUNET_TIME_relative_is_zero (lp)) ||
+       wo->confirmation_done ||
+       wo->aborted)
+  {
+    json_t *wt;
 
+    wt = json_array ();
+    GNUNET_assert (NULL != wt);
+    GNUNET_assert (0 ==
+                   json_array_append_new (wt,
+                                          json_string ("x-taler-bank")));
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_bool ("aborted",
-                             false),
+                             wo->aborted),
       GNUNET_JSON_pack_bool ("selection_done",
-                             false),
+                             wo->selection_done),
       GNUNET_JSON_pack_bool ("transfer_done",
-                             false),
+                             wo->confirmation_done),
       TALER_JSON_pack_amount ("amount",
-                              &amount),
+                              &wo->amount),
       GNUNET_JSON_pack_array_steal ("wire_types",
-                                    json_array ()));
+                                    wt));
   }
 
   // FIXME: needs variant of 'start_lp()'
@@ -2576,18 +2717,49 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
                     struct MHD_Connection *connection,
                     const char *wopid,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
-                    const void *exchange_url)
+                    const char *exchange_url)
 {
-  GNUNET_break (0); // FIXME: not implemented!
+  struct WithdrawalOperation *wo;
+
+  wo = lookup_withdrawal_operation (h,
+                                    wopid);
+  if (NULL == wo)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       wopid);
+  }
+  if ( (wo->selection_done) &&
+       (0 != GNUNET_memcmp (&wo->reserve_pub,
+                            reserve_pub)) )
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_WITHDRAWAL_OPERATION_RESERVE_SELECTION_CONFLICT,
+                                       NULL);
+  }
+  // FIXME: check if reserve_pub is known. If so:
   if (0)
   {
-    return TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_bool ("transfer_done",
-                             true));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
+                                       NULL);
   }
-  return MHD_NO;
+  wo->reserve_pub = *reserve_pub;
+  GNUNET_free (wo->exchange_account);       // FIXME: or conflict if changed?
+  wo->exchange_account = GNUNET_strdup ("FIXME");        // we have 'exchange_url', how is this useful?
+  wo->selection_done = true;
+  GNUNET_break (0); // FIXME: not implemented!
+  // FIXME: do we auto-confirm? Or do we want to allow aborts?
+  wo->confirmation_done = true;
+  // FIXME: trigger transfer? but we need the exchange account for that!
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_bool ("transfer_done",
+                           wo->confirmation_done));
 }
 
 
@@ -2790,7 +2962,19 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
                     const char *account_name,
                     void **con_cls)
 {
-  struct TALER_Amount amount; // FIXME: balance...
+  struct Account *acc;
+
+  acc = lookup_account (h,
+                        account_name,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account_name);
+  }
+
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
@@ -2800,9 +2984,11 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
       "balance",
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_string ("credit_debit_indicator",
-                                 "credit"),
+                                 acc->is_negative
+                                 ? "debit"
+                                 : "credit"),
         TALER_JSON_pack_amount ("amount",
-                                &amount))));
+                                &acc->balance))));
 }
 
 
@@ -2824,19 +3010,55 @@ get_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                                 const char *withdrawal_id,
                                 void **con_cls)
 {
-  struct TALER_Amount amount; // FIXME: balance...
+  struct WithdrawalOperation *wo;
+  struct Account *acc;
+
+  wo = lookup_withdrawal_operation (h,
+                                    withdrawal_id);
+  if (NULL == wo)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       withdrawal_id);
+  }
+  acc = lookup_account (h,
+                        account_name,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account_name);
+  }
+  if (wo->debit_account != acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       account_name);
+  }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_string ("paytoUri",
-                             "payto://FIXME"),
-    GNUNET_JSON_pack_object_steal (
-      "balance",
-      GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_string ("credit_debit_indicator",
-                                 "credit"),
-        TALER_JSON_pack_amount ("amount",
-                                &amount))));
+    GNUNET_JSON_pack_bool ("aborted",
+                           wo->aborted),
+    GNUNET_JSON_pack_bool ("selection_done",
+                           wo->selection_done),
+    GNUNET_JSON_pack_bool ("transfer_done",
+                           wo->confirmation_done),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("selected_exchange_account",
+                               wo->exchange_account)),
+    GNUNET_JSON_pack_allow_null (
+      wo->selection_done
+      ? GNUNET_JSON_pack_data_auto ("selected_reserve_pub",
+                                    &wo->reserve_pub)
+      : GNUNET_JSON_pack_string ("selected_reserve_pub",
+                                 NULL)),
+    TALER_JSON_pack_amount ("amount",
+                            &wo->amount));
 }
 
 
@@ -2855,9 +3077,47 @@ do_post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                                     const char *account_name,
                                     const struct TALER_Amount *amount)
 {
-  GNUNET_break (0); // FIXME!
+  struct Account *acc;
+  struct WithdrawalOperation *wo;
 
-  return MHD_NO;
+  acc = lookup_account (h,
+                        account_name,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account_name);
+  }
+  wo = GNUNET_new (struct WithdrawalOperation);
+  wo->debit_account = acc;
+  wo->amount = *amount;
+  if (NULL == h->wops)
+  {
+    h->wops = GNUNET_CONTAINER_multishortmap_create (32,
+                                                     GNUNET_YES);
+  }
+  while (1)
+  {
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                                &wo->wopid,
+                                sizeof (wo->wopid));
+    if (GNUNET_OK ==
+        GNUNET_CONTAINER_multishortmap_put (h->wops,
+                                            &wo->wopid,
+                                            wo,
+                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+      break;
+  }
+
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_string ("taler_withdraw_uri",
+                             "taler://withdraw/FIXME"),
+    GNUNET_JSON_pack_data_auto ("withdrawal_id",
+                                &wo->wopid));
 }
 
 
@@ -2957,7 +3217,44 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
                           size_t *upload_data_size,
                           void **con_cls)
 {
-  // fIXME: actual abort logic here...
+  struct WithdrawalOperation *wo;
+  struct Account *acc;
+
+  wo = lookup_withdrawal_operation (h,
+                                    withdrawal_id);
+  if (NULL == wo)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       withdrawal_id);
+  }
+  acc = lookup_account (h,
+                        account_name,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account_name);
+  }
+  if (wo->debit_account != acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       account_name);
+  }
+  if (wo->confirmation_done)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_ABORT_CONFIRM_CONFLICT,
+                                       account_name);
+  }
+  wo->aborted = true;
+  // FIXME: resume long-pollers here...
   return TALER_MHD_reply_json (connection,
                                json_object (),
                                MHD_HTTP_OK);
@@ -2985,7 +3282,45 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                             size_t *upload_data_size,
                             void **con_cls)
 {
-  // FIXME: actual confirm logic here...
+  struct WithdrawalOperation *wo;
+  struct Account *acc;
+
+  wo = lookup_withdrawal_operation (h,
+                                    withdrawal_id);
+  if (NULL == wo)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       withdrawal_id);
+  }
+  acc = lookup_account (h,
+                        account_name,
+                        NULL);
+  if (NULL == acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                       account_name);
+  }
+  if (wo->debit_account != acc)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                       account_name);
+  }
+  if (wo->aborted)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_CONFLICT,
+                                       TALER_EC_BANK_CONFIRM_ABORT_CONFLICT,
+                                       account_name);
+  }
+  wo->confirmation_done = true;
+  // FIXME: resume long-pollers here...
+  // FIXME: trigger transaction here?
   return TALER_MHD_reply_json (connection,
                                json_object (),
                                MHD_HTTP_OK);
