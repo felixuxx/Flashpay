@@ -219,6 +219,11 @@ struct Account
   char *receiver_name;
 
   /**
+   * Payto URI for this account.
+   */
+  char *payto_uri;
+
+  /**
    * Current account balance.
    */
   struct TALER_Amount balance;
@@ -748,6 +753,12 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
     account = GNUNET_new (struct Account);
     account->account_name = GNUNET_strdup (name);
     account->receiver_name = GNUNET_strdup (receiver_name);
+    // FIXME: support hostnames other than localhost!
+    // extract hostname from use h->my_baseurl!
+    GNUNET_asprintf (&account->payto_uri,
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     account->account_name,
+                     account->receiver_name);
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (h->currency,
                                           &account->balance));
@@ -1377,6 +1388,7 @@ free_account (void *cls,
   GNUNET_assert (NULL == account->lp_head);
   GNUNET_free (account->account_name);
   GNUNET_free (account->receiver_name);
+  GNUNET_free (account->payto_uri);
   GNUNET_free (account);
   return GNUNET_OK;
 }
@@ -2361,7 +2373,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   struct Account *acc;
   const struct Transaction *pos;
   json_t *history;
-  char *credit_payto;
+  const char *credit_payto;
   enum GNUNET_GenericReturnValue ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -2391,11 +2403,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   }
   history = json_array ();
   GNUNET_assert (NULL != history);
-  GNUNET_asprintf (&credit_payto,
-                   "payto://x-taler-bank/localhost/%s?receiver-name=%s",
-                   account,
-                   acc->receiver_name);
-
+  credit_payto = acc->payto_uri;
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
   if (! ha.have_start)
@@ -2428,7 +2436,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     if ( (NULL == t) ||
          overflow)
     {
-      GNUNET_free (credit_payto);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "No transactions available, suspending request\n");
       if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
@@ -2484,7 +2491,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
           (NULL != pos) )
   {
     json_t *trans;
-    char *debit_payto;
 
     if (T_CREDIT != pos->type)
     {
@@ -2498,10 +2504,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
         pos = pos->next_in;
       continue;
     }
-    GNUNET_asprintf (&debit_payto,
-                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
-                     pos->debit_account->account_name,
-                     pos->debit_account->receiver_name);
     trans = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),
@@ -2512,11 +2514,10 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       GNUNET_JSON_pack_string ("credit_account",
                                credit_payto),   // FIXME #7275: inefficient to repeat this always here!
       GNUNET_JSON_pack_string ("debit_account",
-                               debit_payto),
+                               pos->debit_account->payto_uri),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
                                   &pos->subject.credit.reserve_pub));
     GNUNET_assert (NULL != trans);
-    GNUNET_free (debit_payto);
     GNUNET_assert (0 ==
                    json_array_append_new (history,
                                           trans));
@@ -2546,7 +2547,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
-  GNUNET_free (credit_payto);
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
                                     GNUNET_JSON_pack_array_steal (
@@ -2985,7 +2985,7 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
     connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_string ("paytoUri",
-                             "payto://FIXME"),
+                             acc->payto_uri),
     GNUNET_JSON_pack_object_steal (
       "balance",
       GNUNET_JSON_PACK (
