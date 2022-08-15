@@ -2739,13 +2739,19 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
                                        TALER_EC_BANK_WITHDRAWAL_OPERATION_RESERVE_SELECTION_CONFLICT,
                                        NULL);
   }
-  // FIXME: check if reserve_pub is known. If so:
-  if (0)
   {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_CONFLICT,
-                                       TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
-                                       NULL);
+    /* check if reserve_pub is already in use */
+    const struct GNUNET_PeerIdentity *pid;
+
+    pid = (const struct GNUNET_PeerIdentity *) &wo->reserve_pub;
+    if (GNUNET_CONTAINER_multipeermap_contains (h->rpubs,
+                                                pid))
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_CONFLICT,
+                                         TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
+                                         NULL);
+    }
   }
   wo->reserve_pub = *reserve_pub;
   GNUNET_free (wo->exchange_account);       // FIXME: or conflict if changed?
