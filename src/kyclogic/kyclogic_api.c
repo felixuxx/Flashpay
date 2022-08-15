@@ -288,10 +288,12 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
     }
   plugin = GNUNET_PLUGIN_load (lib_name,
                                (void *) cfg);
-  if (NULL != plugin)
-    plugin->library_name = lib_name;
-  else
+  if (NULL == plugin)
+  {
     GNUNET_free (lib_name);
+    return NULL;
+  }
+  plugin->library_name = lib_name;
   GNUNET_array_append (kyc_logics,
                        num_kyc_logics,
                        plugin);

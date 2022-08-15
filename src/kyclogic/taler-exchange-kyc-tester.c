@@ -1281,6 +1281,8 @@ initiate_cb (
     cmd_provider_user_id = GNUNET_strdup (provider_user_id);
   if (NULL != provider_legitimization_id)
     cmd_provider_legitimization_id = GNUNET_strdup (provider_legitimization_id);
+  if (! run_webservice)
+    GNUNET_SCHEDULER_shutdown ();
 }
 
 

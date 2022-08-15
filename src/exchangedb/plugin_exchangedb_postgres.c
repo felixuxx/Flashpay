@@ -4563,6 +4563,7 @@ prepare_statements (struct PostgresClosure *pg)
       "get_wire_target_by_legitimization_id",
       "SELECT "
       " h_payto"
+      ",legitimization_serial_id"
       " FROM legitimizations"
       " WHERE provider_legitimization_id=$1"
       "   AND provider_section=$2;",
@@ -16680,6 +16681,7 @@ postgres_lookup_kyc_requirement_by_account (
  * @param provider_section
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
+ * @param[out] legi_row where to write the row of the entry
  * @return database transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -16687,7 +16689,8 @@ postgres_kyc_provider_account_lookup (
   void *cls,
   const char *provider_section,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto)
+  struct TALER_PaytoHashP *h_payto,
+  uint64_t *legi_row)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -16698,6 +16701,8 @@ postgres_kyc_provider_account_lookup (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                           h_payto),
+    GNUNET_PQ_result_spec_uint64 ("legitimization_serial_id",
+                                  legi_row),
     GNUNET_PQ_result_spec_end
   };
 

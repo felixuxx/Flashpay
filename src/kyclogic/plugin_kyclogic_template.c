@@ -68,6 +68,11 @@ struct TALER_KYCLOGIC_ProviderDetails
    */
   struct PluginState *ps;
 
+  /**
+   * Configuration section that configured us.
+   */
+  char *section;
+
 };
 
 
@@ -130,6 +135,11 @@ struct TALER_KYCLOGIC_ProofHandle
    * Closure for @e cb.
    */
   void *cb_cls;
+
+  /**
+   * Connection we are handling.
+   */
+  struct MHD_Connection *connection;
 };
 
 
@@ -164,7 +174,23 @@ struct TALER_KYCLOGIC_WebhookHandle
    */
   const struct TALER_KYCLOGIC_ProviderDetails *pd;
 
+  /**
+   * Connection we are handling.
+   */
+  struct MHD_Connection *connection;
 };
+
+
+/**
+ * Release configuration resources previously loaded
+ *
+ * @param[in] pd configuration to release
+ */
+static void
+template_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
+{
+  GNUNET_free (pd);
+}
 
 
 /**
@@ -183,20 +209,22 @@ template_load_configuration (void *cls,
 
   pd = GNUNET_new (struct TALER_KYCLOGIC_ProviderDetails);
   pd->ps = ps;
+  pd->section = GNUNET_strdup (provider_section_name);
   GNUNET_break (0); // FIXME: parse config here!
   return pd;
 }
 
 
 /**
- * Release configuration resources previously loaded
+ * Cancel KYC check initiation.
  *
- * @param[in] pd configuration to release
+ * @param[in] ih handle of operation to cancel
  */
 static void
-template_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
+template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 {
-  GNUNET_free (pd);
+  GNUNET_break (0); // FIXME: add cancel logic here
+  GNUNET_free (ih);
 }
 
 
@@ -233,15 +261,15 @@ template_initiate (void *cls,
 
 
 /**
- * Cancel KYC check initiation.
+ * Cancel KYC proof.
  *
- * @param[in] ih handle of operation to cancel
+ * @param[in] ph handle of operation to cancel
  */
 static void
-template_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
+template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 {
-  GNUNET_break (0); // FIXME: add cancel logic here
-  GNUNET_free (ih);
+  GNUNET_break (0); // FIXME: stop activities...
+  GNUNET_free (ph);
 }
 
 
@@ -280,6 +308,7 @@ template_proof (void *cls,
   ph->pd = pd;
   ph->cb = cb;
   ph->cb_cls = cb_cls;
+  ph->connection = connection;
 
   GNUNET_break (0); // FIXME: start check!
   return ph;
@@ -287,15 +316,15 @@ template_proof (void *cls,
 
 
 /**
- * Cancel KYC proof.
+ * Cancel KYC webhook execution.
  *
- * @param[in] ph handle of operation to cancel
+ * @param[in] wh handle of operation to cancel
  */
 static void
-template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
+template_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
 {
-  GNUNET_break (0); // FIXME: stop activities...
-  GNUNET_free (ph);
+  GNUNET_break (0); /*  FIXME: stop activity */
+  GNUNET_free (wh);
 }
 
 
@@ -334,21 +363,9 @@ template_webhook (void *cls,
   wh->cb_cls = cb_cls;
   wh->ps = ps;
   wh->pd = pd;
+  wh->connection = connection;
   GNUNET_break (0); /* FIXME: start activity */
   return wh;
-}
-
-
-/**
- * Cancel KYC webhook execution.
- *
- * @param[in] wh handle of operation to cancel
- */
-static void
-template_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
-{
-  GNUNET_break (0); /*  FIXME: stop activity */
-  GNUNET_free (wh);
 }
 
 

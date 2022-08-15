@@ -210,6 +210,7 @@ typedef void
  * @param provider_section
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
+ * @param[out] legi_row where to write the row of the entry
  * @return database transaction status
  */
 typedef enum GNUNET_DB_QueryStatus
@@ -217,7 +218,8 @@ typedef enum GNUNET_DB_QueryStatus
   void *cls,
   const char *provider_section,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto);
+  struct TALER_PaytoHashP *h_payto,
+  uint64_t *legi_row);
 
 
 /**
