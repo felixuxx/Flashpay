@@ -489,7 +489,7 @@ handle_initiate_finished (void *cls,
             json_string_value (json_object_get (j,
                                                 "type")));
     break;
-  case MHD_HTTP_UNPROCESSABLE_CONTENT: /* validation */
+  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "KYCAID failed with response %u:\n",
                 (unsigned int) response_code);
@@ -772,7 +772,7 @@ handle_proof_finished (void *cls,
             MHD_HTTP_GATEWAY_TIMEOUT,
             resp);
     break;
-  case MHD_HTTP_UNPROCESSABLE_CONTENT: /* validation */
+  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "KYCAID failed with response %u:\n",
                 (unsigned int) response_code);
@@ -1066,7 +1066,7 @@ handle_webhook_finished (void *cls,
             MHD_HTTP_GATEWAY_TIMEOUT,
             resp);
     break;
-  case MHD_HTTP_UNPROCESSABLE_CONTENT: /* validation */
+  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "KYCAID failed with response %u:\n",
                 (unsigned int) response_code);
