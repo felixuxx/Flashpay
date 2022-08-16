@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>KYC credit exhausted</title>
+</head>
+<body>
+The KYC backend refused the process as the exchange operator's credit balance at the KYC provider is insufficient. Please inform the exchange operator about this failure.
+<pre>
+{{ kyc_http_status }}
+{{ kyc_logic }}
+{{ kyc_server_reply }}
+</pre>
+</body>
+</html>

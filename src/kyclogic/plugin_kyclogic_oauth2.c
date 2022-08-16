@@ -20,8 +20,8 @@
  */
 #include "platform.h"
 #include "taler_kyclogic_plugin.h"
-#include <taler/taler_mhd_lib.h>
-#include <taler/taler_json_lib.h>
+#include "taler_mhd_lib.h"
+#include "taler_json_lib.h"
 #include <regex.h>
 #include "taler_util.h"
 

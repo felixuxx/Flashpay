@@ -171,29 +171,15 @@ make_static_url (struct MHD_Connection *con,
 }
 
 
-/**
- * Load a @a template and substitute using @a root, returning
- * the result to the @a connection with the given
- * @a http_status code.
- *
- * @param connection the connection we act upon
- * @param http_status code to use on success
- * @param template basename of the template to load
- * @param instance_id instance ID, used to compute static files URL
- * @param taler_uri value for "Taler:" header to set, or NULL
- * @param root JSON object to pass as the root context
- * @return #GNUNET_OK on success (reply queued), #GNUNET_NO if an error was queued,
- *         #GNUNET_SYSERR on failure (to queue an error)
- */
 enum GNUNET_GenericReturnValue
-TALER_TEMPLATING_reply (struct MHD_Connection *connection,
-                        unsigned int http_status,
+TALER_TEMPLATING_build (struct MHD_Connection *connection,
+                        unsigned int *http_status,
                         const char *template,
                         const char *instance_id,
                         const char *taler_uri,
-                        json_t *root)
+                        json_t *root,
+                        struct MHD_Response **reply)
 {
-  struct MHD_Response *reply;
   char *body;
   size_t body_size;
 
@@ -205,24 +191,27 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
                             template);
     if (NULL == tmpl)
     {
+      /* FIXME: should this not be an
+         internal failure? The language
+         missmatch is not critical here! */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load template `%s'\n",
                   template);
-      if (MHD_YES !=
-          TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_NOT_ACCEPTABLE,
-                                      TALER_EC_GENERIC_FAILED_TO_LOAD_TEMPLATE,
-                                      template))
-        return GNUNET_SYSERR;
+      *http_status = MHD_HTTP_NOT_ACCEPTABLE;
+      *reply = TALER_MHD_make_error (TALER_EC_GENERIC_FAILED_TO_LOAD_TEMPLATE,
+                                     template);
       return GNUNET_NO;
     }
     /* Add default values to the context */
+    if (NULL != instance_id)
     {
       char *static_url = make_static_url (connection,
                                           instance_id);
-      json_object_set (root,
-                       "static_url",
-                       json_string (static_url));
+
+      GNUNET_break (0 ==
+                    json_object_set_new (root,
+                                         "static_url",
+                                         json_string (static_url)));
       GNUNET_free (static_url);
     }
     if (0 !=
@@ -235,12 +224,9 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
                   "mustach failed on template `%s' with error %d\n",
                   template,
                   eno);
-      if (MHD_YES !=
-          TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_FAILED_TO_EXPAND_TEMPLATE,
-                                      template))
-        return GNUNET_SYSERR;
+      *http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      *reply = TALER_MHD_make_error (TALER_EC_GENERIC_FAILED_TO_EXPAND_TEMPLATE,
+                                     template);
       return GNUNET_NO;
     }
   }
@@ -255,10 +241,10 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
       compressed = TALER_MHD_body_compress ((void **) &body,
                                             &body_size);
     }
-    reply = MHD_create_response_from_buffer (body_size,
-                                             body,
-                                             MHD_RESPMEM_MUST_FREE);
-    if (NULL == reply)
+    *reply = MHD_create_response_from_buffer (body_size,
+                                              body,
+                                              MHD_RESPMEM_MUST_FREE);
+    if (NULL == *reply)
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -266,12 +252,13 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
     if (compressed)
     {
       if (MHD_NO ==
-          MHD_add_response_header (reply,
+          MHD_add_response_header (*reply,
                                    MHD_HTTP_HEADER_CONTENT_ENCODING,
                                    "deflate"))
       {
         GNUNET_break (0);
-        MHD_destroy_response (reply);
+        MHD_destroy_response (*reply);
+        *reply = NULL;
         return GNUNET_SYSERR;
       }
     }
@@ -280,26 +267,47 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
   /* Add standard headers */
   if (NULL != taler_uri)
     GNUNET_break (MHD_NO !=
-                  MHD_add_response_header (reply,
+                  MHD_add_response_header (*reply,
                                            "Taler",
                                            taler_uri));
   GNUNET_break (MHD_NO !=
-                MHD_add_response_header (reply,
+                MHD_add_response_header (*reply,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          "text/html"));
-
-  /* Actually return reply */
-  {
-    MHD_RESULT ret;
-
-    ret = MHD_queue_response (connection,
-                              http_status,
-                              reply);
-    MHD_destroy_response (reply);
-    if (MHD_NO == ret)
-      return GNUNET_SYSERR;
-  }
   return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_TEMPLATING_reply (struct MHD_Connection *connection,
+                        unsigned int http_status,
+                        const char *template,
+                        const char *instance_id,
+                        const char *taler_uri,
+                        json_t *root)
+{
+  enum GNUNET_GenericReturnValue res;
+  struct MHD_Response *reply;
+  MHD_RESULT ret;
+
+  res = TALER_TEMPLATING_build (connection,
+                                &http_status,
+                                template,
+                                instance_id,
+                                taler_uri,
+                                root,
+                                &reply);
+  if (GNUNET_SYSERR == res)
+    return res;
+  ret = MHD_queue_response (connection,
+                            http_status,
+                            reply);
+  MHD_destroy_response (reply);
+  if (MHD_NO == ret)
+    return GNUNET_SYSERR;
+  return (res == GNUNET_OK)
+    ? GNUNET_OK
+    : GNUNET_NO;
 }
 
 

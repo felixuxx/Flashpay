@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>KYC server refused access</title>
+</head>
+<body>
+The KYC backend refused the authorization code used by the exchange operator. Please inform the exchange operator about this failure.
+<pre>
+{{ kyc_http_status }}
+{{ kyc_logic }}
+{{ kyc_server_reply }}
+</pre>
+</body>
+</html>

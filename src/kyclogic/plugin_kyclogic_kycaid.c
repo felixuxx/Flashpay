@@ -20,9 +20,10 @@
  */
 #include "platform.h"
 #include "taler_kyclogic_plugin.h"
-#include <taler/taler_mhd_lib.h>
-#include <taler/taler_curl_lib.h>
-#include <taler/taler_json_lib.h>
+#include "taler_mhd_lib.h"
+#include "taler_curl_lib.h"
+#include "taler_json_lib.h"
+#include "taler_templating_lib.h"
 #include <regex.h>
 #include "taler_util.h"
 
@@ -641,6 +642,43 @@ kycaid_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 
 
 /**
+ * Call @a ph callback with HTTP response generated
+ * from @a template_name using the given @a template_data.
+ *
+ * @param http_status http response status to use
+ * @param template_name template to load and return
+ * @param[in] template_data data for the template, freed by this function!
+ */
+static void
+proof_reply_with_template (struct TALER_KYCLOGIC_ProofHandle *ph,
+                           unsigned int http_status,
+                           const char *template_name,
+                           json_t *template_data)
+{
+  enum GNUNET_GenericReturnValue ret;
+  struct MHD_Response *resp;
+
+  ret = TALER_TEMPLATING_build (ph->connection,
+                                &http_status,
+                                template_name,
+                                NULL, /* no instance */
+                                NULL, /* no Taler URI */
+                                template_data,
+                                &resp);
+  json_decref (template_data);
+  if (GNUNET_SYSERR == ret)
+    http_status = 0;
+  ph->cb (ph->cb_cls,
+          TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
+          NULL, /* user id */
+          NULL, /* provider legi ID */
+          GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+          http_status,
+          resp);
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP "/verifications/{verification_id}" request.
  *
@@ -684,18 +722,19 @@ handle_proof_finished (void *cls,
                              spec,
                              NULL, NULL))
       {
+        json_t *template_data;
+
         GNUNET_break_op (0);
         json_dumpf (j,
                     stderr,
                     JSON_INDENT (2));
-        resp = NULL; // FIXME: generate response!
-        ph->cb (ph->cb_cls,
-                TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-                NULL, /* user id */
-                NULL, /* provider legi ID */
-                GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-                MHD_HTTP_BAD_GATEWAY,
-                resp);
+        template_data = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                          (json_t *) j));
+        proof_reply_with_template (ph,
+                                   MHD_HTTP_BAD_GATEWAY,
+                                   "bad_gateway",
+                                   template_data);
         break;
       }
       /* FIXME: comment out, unless debugging ... */
@@ -706,26 +745,35 @@ handle_proof_finished (void *cls,
                   JSON_INDENT (2));
       if (verified)
       {
-        resp = NULL; // FIXME: generate response!
+        // FIXME: or should we return an empty body? Redirect?
+        resp = TALER_MHD_make_json_steal (json_object ());
+        // FIXME: setup redirect?
         expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
         ph->cb (ph->cb_cls,
                 TALER_KYCLOGIC_STATUS_SUCCESS,
                 applicant_id,
                 verification_id,
                 expiration,
-                MHD_HTTP_OK,
+                MHD_HTTP_OK, // OK, or redirect???
                 resp);
       }
       else
       {
-        resp = NULL; // FIXME: generate response!
-        ph->cb (ph->cb_cls,
-                TALER_KYCLOGIC_STATUS_USER_ABORTED,
-                applicant_id,
-                verification_id,
-                GNUNET_TIME_UNIT_ZERO_ABS,
-                MHD_HTTP_OK,
-                resp);
+        json_t *template_data;
+
+        GNUNET_break_op (0);
+        json_dumpf (j,
+                    stderr,
+                    JSON_INDENT (2));
+        template_data = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("kyc_logic",
+                                   "kycaid"),
+          GNUNET_JSON_pack_object_incref ("verifiations",
+                                          (json_t *) verifications));
+        proof_reply_with_template (ph,
+                                   MHD_HTTP_OK,
+                                   "kyc_user_failed",
+                                   template_data);
       }
       GNUNET_JSON_parse_free (spec);
     }
@@ -733,97 +781,131 @@ handle_proof_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
   case MHD_HTTP_NOT_FOUND:
   case MHD_HTTP_CONFLICT:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
-                (unsigned int) response_code);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_INTERNAL_SERVER_ERROR,
-            resp);
-    break;
-  case MHD_HTTP_UNAUTHORIZED:
-  case MHD_HTTP_PAYMENT_REQUIRED:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Refused access with HTTP status code %u\n",
-                (unsigned int) response_code);
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_NETWORK_AUTHENTICATION_REQUIRED,
-            resp);
-    break;
-  case MHD_HTTP_REQUEST_TIMEOUT:
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_GATEWAY_TIMEOUT,
-            resp);
-    break;
   case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
-                (unsigned int) response_code);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_BAD_GATEWAY,
-            resp);
-    break;
+    {
+      json_t *template_data;
+
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "KYCAID failed with response %u:\n",
+                  (unsigned int) response_code);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_interaction_failed",
+                                 template_data);
+      break;
+    }
+  case MHD_HTTP_UNAUTHORIZED:
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_unauthorized",
+                                 template_data);
+      break;
+    }
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_unpaid",
+                                 template_data);
+      break;
+    }
+  case MHD_HTTP_REQUEST_TIMEOUT:
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_timeout",
+                                 template_data);
+      break;
+    }
   case MHD_HTTP_TOO_MANY_REQUESTS:
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_SERVICE_UNAVAILABLE,
-            resp);
-    break;
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_ratelimit",
+                                 template_data);
+      break;
+    }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    resp = NULL; // FIXME: generate response!
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_BAD_GATEWAY,
-            resp);
-    break;
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_internal_error",
+                                 template_data);
+      break;
+    }
   default:
-    resp = NULL; // FIXME: generate response!
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected KYCAID response %u:\n",
-                (unsigned int) response_code);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    ph->cb (ph->cb_cls,
-            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-            NULL, /* user id */
-            NULL, /* provider legi ID */
-            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-            MHD_HTTP_BAD_GATEWAY,
-            resp);
-    break;
+    {
+      json_t *template_data;
+
+      template_data = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_uint64 ("kyc_http_status",
+                                 response_code),
+        GNUNET_JSON_pack_string ("kyc_logic",
+                                 "kycaid"),
+        GNUNET_JSON_pack_object_incref ("kyc_server_reply",
+                                        (json_t *) j));
+      proof_reply_with_template (ph,
+                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                 "kyc_provider_unexpected_reply",
+                                 template_data);
+      break;
+    }
   }
   kycaid_proof_cancel (ph);
 }
@@ -970,7 +1052,11 @@ handle_webhook_finished (void *cls,
         json_dumpf (j,
                     stderr,
                     JSON_INDENT (2));
-        resp = NULL; // FIXME: generate response!
+        resp = TALER_MHD_MAKE_JSON_PACK (
+          GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                                   response_code),
+          GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                          (json_t *) j));
         wh->cb (wh->cb_cls,
                 wh->legi_row,
                 &wh->h_payto,
@@ -990,7 +1076,7 @@ handle_webhook_finished (void *cls,
                   JSON_INDENT (2));
       if (verified)
       {
-        resp = NULL; // FIXME: generate response!
+        resp = TALER_MHD_make_json_steal (json_object ());
         expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
         wh->cb (wh->cb_cls,
                 wh->legi_row,
@@ -1004,7 +1090,7 @@ handle_webhook_finished (void *cls,
       }
       else
       {
-        resp = NULL; // FIXME: generate response!
+        resp = TALER_MHD_make_json_steal (json_object ());
         wh->cb (wh->cb_cls,
                 wh->legi_row,
                 &wh->h_payto,
@@ -1027,7 +1113,9 @@ handle_webhook_finished (void *cls,
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1043,7 +1131,11 @@ handle_webhook_finished (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Refused access with HTTP status code %u\n",
                 (unsigned int) response_code);
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1055,7 +1147,11 @@ handle_webhook_finished (void *cls,
             resp);
     break;
   case MHD_HTTP_REQUEST_TIMEOUT:
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1073,7 +1169,11 @@ handle_webhook_finished (void *cls,
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1085,7 +1185,11 @@ handle_webhook_finished (void *cls,
             resp);
     break;
   case MHD_HTTP_TOO_MANY_REQUESTS:
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1097,7 +1201,11 @@ handle_webhook_finished (void *cls,
             resp);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
             &wh->h_payto,
@@ -1109,7 +1217,11 @@ handle_webhook_finished (void *cls,
             resp);
     break;
   default:
-    resp = NULL; // FIXME: generate response!
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) j));
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected KYCAID response %u:\n",
                 (unsigned int) response_code);
@@ -1226,7 +1338,9 @@ kycaid_webhook (void *cls,
     json_dumpf (body,
                 stderr,
                 JSON_INDENT (2));
-    wh->resp = NULL; // FIXME: generate response!
+    wh->resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_object_incref ("webhook_body",
+                                      (json_t *) body));
     wh->response_code = MHD_HTTP_BAD_REQUEST;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
@@ -1239,7 +1353,8 @@ kycaid_webhook (void *cls,
             &wh->legi_row);
   if (qs < 0)
   {
-    wh->resp = NULL; // FIXME: generate response!
+    wh->resp = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                     "provider-legitimization-lookup");
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
@@ -1250,7 +1365,9 @@ kycaid_webhook (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Received webhook for unknown verification ID `%s'\n",
                 verification_id);
-    wh->resp = NULL; // FIXME: generate response!
+    wh->resp = TALER_MHD_make_error (
+      TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
+      verification_id);
     wh->response_code = MHD_HTTP_NOT_FOUND;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
@@ -1263,8 +1380,10 @@ kycaid_webhook (void *cls,
   if (NULL == eh)
   {
     GNUNET_break (0);
-    wh->resp = NULL; // FIXME: generate response!
-    wh->response_code = MHD_HTTP_BAD_REQUEST;
+    wh->resp = TALER_MHD_make_error (
+      TALER_EC_GENERIC_ALLOCATION_FAILURE,
+      verification_id);
+    wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
     return wh;

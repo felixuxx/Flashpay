@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>KYC provider rate limit reached</title>
+</head>
+<body>
+The KYC backend interaction ran into a rate limit.
+<pre>
+{{ kyc_http_status }}
+{{ kyc_logic }}
+{{ kyc_server_reply }}
+</pre>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<html>
+<head>
+<title>KYC authentication failed</title>
+</head>
+<body>
+You failed the KYC check. See below for details.
+<!-- {{kyc_logic}} indicates the type of KYC provider
+     which generated the reply; for now, only
+     "kycaid" is possible. Switch on the
+     {{kyc_logic}} to render results in a provider-specific
+     way. (or introduce new templates per provider?) -->
+<!-- TODO: figure out exactly what the
+     format of 'verifications' is here
+     based on KYCAID documentation and parse
+     that here. -->
+<pre>
+{{ verifications }}
+</pre>
+</body>
+</html>

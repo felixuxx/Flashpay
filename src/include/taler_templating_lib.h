@@ -25,6 +25,34 @@
 
 
 /**
+ * Load a @a template and substitute using @a root, returning the result in a
+ * @a reply encoded suitable for the @a connection with the given @a
+ * http_status code.  On errors, the @a http_status code
+ * is updated to reflect the type of error encoded in the
+ * @a reply.
+ *
+ * @param connection the connection we act upon
+ * @param[in,out] http_status code to use on success,
+ *           set to alternative code on failure
+ * @param template basename of the template to load
+ * @param instance_id instance ID, used to compute static files URL
+ * @param taler_uri value for "Taler:" header to set, or NULL
+ * @param root JSON object to pass as the root context
+ * @param[out] reply where to write the response object
+ * @return #GNUNET_OK on success (reply queued), #GNUNET_NO if an error was queued,
+ *         #GNUNET_SYSERR on failure (to queue an error)
+ */
+enum GNUNET_GenericReturnValue
+TALER_TEMPLATING_build (struct MHD_Connection *connection,
+                        unsigned int *http_status,
+                        const char *template,
+                        const char *instance_id,
+                        const char *taler_uri,
+                        json_t *root,
+                        struct MHD_Response **reply);
+
+
+/**
  * Load a @a template and substitute using @a root, returning
  * the result to the @a connection with the given
  * @a http_status code.

@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>KYC server interaction failed</title>
+</head>
+<body>
+The KYC backend returned a response indicating a problem with the exchange logic. Please inform the exchange operator about this failure.
+<pre>
+{{ kyc_http_status }}
+{{ kyc_logic }}
+{{ kyc_server_reply }}
+</pre>
+</body>
+</html>

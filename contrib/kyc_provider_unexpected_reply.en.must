@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>KYC provider returned unexpected status code</title>
+</head>
+<body>
+The KYC backend returned an unexpected status code.
+<pre>
+{{ kyc_http_status }}
+{{ kyc_logic }}
+{{ kyc_server_reply }}
+</pre>
+</body>
+</html>

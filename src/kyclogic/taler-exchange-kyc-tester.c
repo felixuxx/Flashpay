@@ -27,6 +27,7 @@
 #include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
+#include "taler_templating_lib.h"
 #include "taler_crypto_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_kyclogic_plugin.h"
@@ -1239,6 +1240,7 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (exchange_curl_rc);
     exchange_curl_rc = NULL;
   }
+  TALER_TEMPLATING_done ();
 }
 
 
@@ -1309,6 +1311,12 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void ) cfgfile;
+  if (GNUNET_OK !=
+      TALER_TEMPLATING_init ("exchange"))
+  {
+    GNUNET_break (0);
+    return;
+  }
   if (print_h_payto)
   {
     char *s;
@@ -1322,6 +1330,8 @@ run (void *cls,
   }
   TALER_MHD_setup (TALER_MHD_GO_NONE);
   TEKT_cfg = config;
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
   if (GNUNET_OK !=
       TALER_KYCLOGIC_kyc_init (config))
   {
@@ -1329,8 +1339,6 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-                                 NULL);
   if (GNUNET_OK !=
       exchange_serve_process_config ())
   {
