@@ -310,7 +310,7 @@ TALER_reserve_make_payto (const char *exchange_url,
   /* exchange_url includes trailing '/' */
   GNUNET_asprintf (&reserve_url,
                    "payto://%s/%s%s",
-                   is_http ? "taler-reserve+http" : "taler-reserve",
+                   is_http ? "taler-reserve-http" : "taler-reserve",
                    exchange_url,
                    pub_str);
   return reserve_url;

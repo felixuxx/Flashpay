@@ -480,7 +480,7 @@ TEH_handler_purses_merge (
                       "payto://taler-reserve/",
                       strlen ("payto://taler-reserve/"))) &&
        (0 != strncmp (pcc.payto_uri,
-                      "payto://taler-reserve+http/",
+                      "payto://taler-reserve-http/",
                       strlen ("payto://taler-reserve+http/"))) )
   {
     GNUNET_break_op (0);
@@ -491,12 +491,12 @@ TEH_handler_purses_merge (
       "payto_uri");
   }
   http = (0 == strncmp (pcc.payto_uri,
-                        "payto://taler-reserve+http/",
-                        strlen ("payto://taler-reserve+http/")));
+                        "payto://taler-reserve-http/",
+                        strlen ("payto://taler-reserve-http/")));
 
   {
     const char *host = &pcc.payto_uri[http
-                                      ? strlen ("payto://taler-reserve+http/")
+                                      ? strlen ("payto://taler-reserve-http/")
                                       : strlen ("payto://taler-reserve/")];
     const char *slash = strchr (host,
                                 '/');
