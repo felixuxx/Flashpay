@@ -1606,9 +1606,9 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_merge(
   IN in_partner_url VARCHAR,
   IN in_reserve_pub BYTEA,
   IN in_wallet_h_payto BYTEA,
+  IN in_expiration_date INT8,
   OUT out_no_partner BOOLEAN,
   OUT out_no_balance BOOLEAN,
-  OUT out_no_reserve BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -1642,7 +1642,6 @@ ELSE
   THEN
     out_no_partner=TRUE;
     out_conflict=FALSE;
-    out_no_reserve=FALSE;
     RETURN;
   END IF;
 END IF;
@@ -1670,7 +1669,6 @@ IF NOT FOUND
 THEN
   out_no_balance=TRUE;
   out_conflict=FALSE;
-  out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_no_balance=FALSE;
@@ -1703,29 +1701,30 @@ THEN
   THEN
      -- Purse was merged, but to some other reserve. Not allowed.
      out_conflict=TRUE;
-     out_no_reserve=FALSE;
      RETURN;
   END IF;
 
   -- "success"
   out_conflict=FALSE;
-  out_no_reserve=FALSE;
   RETURN;
 END IF;
 out_conflict=FALSE;
 
 ASSERT NOT my_finished, 'internal invariant failed';
 
-PERFORM
-   FROM exchange.reserves
-  WHERE reserve_pub=in_reserve_pub;
 
-IF NOT FOUND
-THEN
-  out_no_reserve=TRUE;
-  RETURN;
-END IF;
-out_no_reserve=FALSE;
+-- Initialize reserve, if not yet exists.
+INSERT INTO reserves
+  (reserve_pub
+  ,expiration_date
+  ,gc_date)
+  VALUES
+  (in_reserve_pub
+  ,in_expiration_date
+  ,in_expiration_date)
+  ON CONFLICT DO NOTHING;
+
+
 
 
 -- Store account merge signature.
@@ -1785,7 +1784,7 @@ RETURN;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA)
+COMMENT ON FUNCTION exchange_do_purse_merge(BYTEA, BYTEA, INT8, BYTEA, VARCHAR, BYTEA, BYTEA, INT8)
   IS 'Checks that the partner exists, the purse has not been merged with a different reserve and that the purse is full. If so, persists the merge data and either merges the purse with the reserve or marks it as ready for the taler-exchange-router. Caller MUST abort the transaction on failures so as to not persist data by accident.';
 
 

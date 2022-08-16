@@ -275,7 +275,6 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
-  bool no_reserve = true;
   const char *required;
 
   required = TALER_KYCLOGIC_kyc_test_required (
@@ -305,7 +304,6 @@ merge_transaction (void *cls,
     &pcc->reserve_pub,
     &no_partner,
     &no_balance,
-    &no_reserve,
     &in_conflict);
   if (qs < 0)
   {
@@ -327,15 +325,6 @@ merge_transaction (void *cls,
                                   MHD_HTTP_NOT_FOUND,
                                   TALER_EC_EXCHANGE_MERGE_PURSE_PARTNER_UNKNOWN,
                                   pcc->provider_url);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (no_reserve)
-  {
-    *mhd_ret =
-      TALER_MHD_reply_with_error (connection,
-                                  MHD_HTTP_NOT_FOUND,
-                                  TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                  NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (no_balance)

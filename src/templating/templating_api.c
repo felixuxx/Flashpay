@@ -414,8 +414,8 @@ TALER_TEMPLATING_init (const char *subsystem)
     }
     GNUNET_asprintf (&dn,
                      "%s/%s/templates/",
-                     subsystem,
-                     path);
+                     path,
+                     subsystem);
     GNUNET_free (path);
   }
   ret = GNUNET_DISK_directory_scan (dn,

@@ -28,6 +28,7 @@
 #include <sys/resource.h>
 #include <limits.h>
 #include "taler_kyclogic_lib.h"
+#include "taler_templating_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
@@ -2125,6 +2126,7 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (exchange_curl_rc);
     exchange_curl_rc = NULL;
   }
+  TALER_TEMPLATING_done ();
 }
 
 
@@ -2159,6 +2161,13 @@ run (void *cls,
       exchange_serve_process_config ())
   {
     global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TALER_TEMPLATING_init ("exchange"))
+  {
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }

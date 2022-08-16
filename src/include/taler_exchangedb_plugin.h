@@ -5394,7 +5394,6 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReservePublicKeyP *reserve_pub,
     bool *no_partner,
     bool *no_balance,
-    bool *no_reserve,
     bool *in_conflict);
 
 

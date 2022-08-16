@@ -1,5 +1,14 @@
 SUBDIRS = .
 
+tmplpkgdatadir = $(prefix)/share/taler/exchange/templates/
+
+dist_tmplpkgdata_DATA = \
+  test.en.must
+
+# %%.must: merchant-backoffice/%.html
+# WTF: cp $< $@
+
+
 # English (en)
 tosendir=$(datadir)/taler/exchange/tos/en
 
