@@ -103,6 +103,8 @@ run (void *cls,
   unsigned long long port = 8082;
   unsigned long long ram = 1024 * 128; /* 128 k entries */
   char *currency_string;
+  char *hostname;
+  char *exchange_url;
 
   (void) cls;
   (void) args;
@@ -125,6 +127,23 @@ run (void *cls,
                 port);
   }
   if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "bank",
+                                             "SUGGESTED_EXCHANGE",
+                                             &exchange_url))
+  {
+    /* no suggested exchange */
+    exchange_url = NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "bank",
+                                             "HOSTNAME",
+                                             &hostname))
+  {
+    hostname = GNUNET_strdup ("localhost");
+  }
+  if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (cfg,
                                              "bank",
                                              "RAM_LIMIT",
@@ -142,17 +161,21 @@ run (void *cls,
       go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
     TALER_MHD_setup (go);
   }
-  fb = TALER_FAKEBANK_start2 ((uint16_t) port,
+  fb = TALER_FAKEBANK_start3 (hostname,
+                              (uint16_t) port,
+                              exchange_url,
                               currency_string,
                               ram,
                               num_threads);
+  GNUNET_free (hostname);
+  GNUNET_free (exchange_url);
+  GNUNET_free (currency_string);
   if (NULL == fb)
   {
     GNUNET_break (0);
     ret = EXIT_FAILURE;
     return;
   }
-  GNUNET_free (currency_string);
   keepalive = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
                                             &keepalive_task,
                                             NULL);

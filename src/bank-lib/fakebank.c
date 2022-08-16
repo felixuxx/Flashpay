@@ -448,6 +448,12 @@ struct TALER_FAKEBANK_Handle
   struct GNUNET_CONTAINER_MultiShortmap *wops;
 
   /**
+   * (Base) URL to suggest for the exchange.  Can
+   * be NULL if there is no suggestion to be made.
+   */
+  char *exchange_url;
+
+  /**
    * Lock for accessing @a rpubs map.
    */
   pthread_mutex_t rpubs_lock;
@@ -1539,6 +1545,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
   GNUNET_free (h->transactions);
   GNUNET_free (h->my_baseurl);
   GNUNET_free (h->currency);
+  GNUNET_free (h->exchange_url);
   GNUNET_free (h->hostname);
   GNUNET_free (h);
 }
@@ -2669,7 +2676,7 @@ serve (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Handle GET /withdrawal-operation/ request.
+ * Handle GET /withdrawal-operation/{wopid} request.
  *
  * @param h the handle
  * @param connection the connection
@@ -2723,6 +2730,9 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
                              wo->selection_done),
       GNUNET_JSON_pack_bool ("transfer_done",
                              wo->confirmation_done),
+      GNUNET_JSON_pack_allow_null (
+        GNUNET_JSON_pack_string ("suggested_exchange",
+                                 h->exchange_url)),
       TALER_JSON_pack_amount ("amount",
                               &wo->amount),
       GNUNET_JSON_pack_array_steal ("wire_types",
@@ -4036,6 +4046,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
 {
   return TALER_FAKEBANK_start3 ("localhost",
                                 port,
+                                NULL,
                                 currency,
                                 ram_limit,
                                 num_threads);
@@ -4045,6 +4056,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
 struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start3 (const char *hostname,
                        uint16_t port,
+                       const char *exchange_url,
                        const char *currency,
                        uint64_t ram_limit,
                        unsigned int num_threads)
@@ -4060,6 +4072,8 @@ TALER_FAKEBANK_start3 (const char *hostname,
   }
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
+  if (NULL != exchange_url)
+    h->exchange_url = GNUNET_strdup (exchange_url);
 #ifdef __linux__
   h->lp_event = -1;
 #else

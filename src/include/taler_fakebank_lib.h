@@ -87,6 +87,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
  *
  * @param hostname hostname to use in URLs and URIs.
  * @param port port to listen to
+ * @param exchange_url suggested exchange base URL
  * @param currency which currency should the bank offer
  * @param ram_limit how much memory do we use at most
  * @param num_threads size of the thread pool, 0 to use the GNUnet scheduler
@@ -95,6 +96,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
 struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start3 (const char *hostname,
                        uint16_t port,
+                       const char *exchange_url,
                        const char *currency,
                        uint64_t ram_limit,
                        unsigned int num_threads);
