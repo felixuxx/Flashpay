@@ -150,7 +150,6 @@ withdraw_transaction (void *cls,
   uint64_t ruuid;
   const struct TALER_CsNonce *nonce;
   const struct TALER_BlindedPlanchet *bp;
-  const char *kyc_required;
 
   wc->now = GNUNET_TIME_timestamp_get ();
   qs = TEH_plugin->reserves_get_origin (TEH_plugin->cls,
@@ -158,31 +157,30 @@ withdraw_transaction (void *cls,
                                         &wc->h_payto);
   if (qs < 0)
     return qs;
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  /* If no results, reserve was created by merge,
+     in which case no KYC check is required as the
+     merge already did that. */
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
+    const char *kyc_required;
 
-  kyc_required = TALER_KYCLOGIC_kyc_test_required (
-    TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
-    &wc->h_payto,
-    TEH_plugin->select_satisfied_kyc_processes,
-    TEH_plugin->cls,
-    &withdraw_amount_cb,
-    wc);
-  if (NULL != kyc_required)
-  {
-    /* insert KYC requirement into DB! */
-    wc->kyc.ok = false;
-    return TEH_plugin->insert_kyc_requirement_for_account (
-      TEH_plugin->cls,
-      kyc_required,
+    kyc_required = TALER_KYCLOGIC_kyc_test_required (
+      TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
       &wc->h_payto,
-      &wc->kyc.legitimization_uuid);
+      TEH_plugin->select_satisfied_kyc_processes,
+      TEH_plugin->cls,
+      &withdraw_amount_cb,
+      wc);
+    if (NULL != kyc_required)
+    {
+      /* insert KYC requirement into DB! */
+      wc->kyc.ok = false;
+      return TEH_plugin->insert_kyc_requirement_for_account (
+        TEH_plugin->cls,
+        kyc_required,
+        &wc->h_payto,
+        &wc->kyc.legitimization_uuid);
+    }
   }
   wc->kyc.ok = true;
   bp = &wc->blinded_planchet;
