@@ -26,6 +26,7 @@ talerinclude_HEADERS = \
   taler_pq_lib.h \
   taler_signatures.h \
   taler_sq_lib.h \
+  taler_templating_lib.h \
   taler_twister_testing_lib.h
 
 EXTRA_DIST = \

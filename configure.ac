@@ -541,6 +541,7 @@ AC_CONFIG_FILES([Makefile
                  src/mhd/Makefile
                  src/pq/Makefile
                  src/sq/Makefile
+                 src/templating/Makefile
                  src/util/Makefile
                  ])
 AC_OUTPUT

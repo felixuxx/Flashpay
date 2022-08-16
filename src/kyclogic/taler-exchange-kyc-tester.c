@@ -494,6 +494,7 @@ clean_kwh (struct TEKT_RequestContext *rc)
  * @param provider_section
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
+ * @param[out] legi_row where to write the row ID for the legitimization ID
  * @return database transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -501,13 +502,15 @@ kyc_provider_account_lookup (
   void *cls,
   const char *provider_section,
   const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto)
+  struct TALER_PaytoHashP *h_payto,
+  uint64_t *legi_row)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Simulated account lookup using `%s/%s'\n",
               provider_section,
               provider_legitimization_id);
   *h_payto = cmd_line_h_payto;
+  *legi_row = kyc_row_id;
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 

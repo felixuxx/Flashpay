@@ -1,0 +1,9 @@
+Cloned originally from https://gitlab.com/jobol/mustach/
+
+Changes:
+========
+
+Renamed original Makefile to Makefile.orig and wrote Makefile.am for us.
+
+Added run-original-tests.sh shell script as a wrapper around Makefile.org
+to us the original build process for the test suite.
