@@ -781,9 +781,8 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
     account->account_name = GNUNET_strdup (name);
     account->receiver_name = GNUNET_strdup (receiver_name);
     GNUNET_asprintf (&account->payto_uri,
-                     "payto://x-taler-bank/%s:%u/%s?receiver-name=%s",
+                     "payto://x-taler-bank/%s/%s?receiver-name=%s",
                      h->hostname,
-                     (unsigned int) h->port,
                      account->account_name,
                      account->receiver_name);
     GNUNET_assert (GNUNET_OK ==
