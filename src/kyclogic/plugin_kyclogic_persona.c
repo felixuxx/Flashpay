@@ -14,8 +14,8 @@
   Taler; see the file COPYING.GPL.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file plugin_kyclogic_kycaid.c
- * @brief kycaid for an authentication flow logic
+ * @file plugin_kyclogic_persona.c
+ * @brief persona for an authentication flow logic
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -26,6 +26,10 @@
 #include <regex.h>
 #include "taler_util.h"
 
+/**
+ * Which version of the persona API are we implementing?
+ */
+#define PERSONA_VERSION "2021-07-05"
 
 /**
  * Saves the state of a plugin.
@@ -81,9 +85,19 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *auth_token;
 
   /**
-   * Form ID for the KYC check to perform.
+   * Template ID for the KYC check to perform.
    */
-  char *form_id;
+  char *template_id;
+
+  /**
+   * Subdomain to use.
+   */
+  char *subdomain;
+
+  /**
+   * Where to redirect the client upon completion.
+   */
+  char *post_kyc_redirect_url;
 
   /**
    * Validity time for a successful KYC process.
@@ -105,8 +119,7 @@ struct TALER_KYCLOGIC_InitiateHandle
 {
 
   /**
-   * Hash of the payto:// URI we are initiating
-   * the KYC for.
+   * Hash of the payto:// URI we are initiating the KYC for.
    */
   struct TALER_PaytoHashP h_payto;
 
@@ -184,6 +197,36 @@ struct TALER_KYCLOGIC_ProofHandle
    * Task for asynchronous execution.
    */
   struct GNUNET_SCHEDULER_Task *task;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * URL of the cURL request.
+   */
+  char *url;
+
+  /**
+   * Hash of the payto:// URI we are checking the KYC for.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * UUID being checked.
+   */
+  uint64_t legitimization_uuid;
+
+  /**
+   * Account ID at the provider.
+   */
+  char *provider_user_id;
+
+  /**
+   * Inquiry ID at the provider.
+   */
+  char *provider_legitimization_id;
 };
 
 
@@ -226,12 +269,7 @@ struct TALER_KYCLOGIC_WebhookHandle
   /**
    * Verification ID from the service.
    */
-  char *verification_id;
-
-  /**
-   * Applicant ID from the service.
-   */
-  char *applicant_id;
+  char *inquiry_id;
 
   /**
    * URL of the cURL request.
@@ -272,12 +310,13 @@ struct TALER_KYCLOGIC_WebhookHandle
  * @param[in] pd configuration to release
  */
 static void
-kycaid_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
+persona_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
 {
   curl_slist_free_all (pd->slist);
   GNUNET_free (pd->auth_token);
-  GNUNET_free (pd->form_id);
+  GNUNET_free (pd->template_id);
   GNUNET_free (pd->section);
+  GNUNET_free (pd->post_kyc_redirect_url);
   GNUNET_free (pd);
 }
 
@@ -290,8 +329,8 @@ kycaid_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
  * @return NULL if configuration is invalid
  */
 static struct TALER_KYCLOGIC_ProviderDetails *
-kycaid_load_configuration (void *cls,
-                           const char *provider_section_name)
+persona_load_configuration (void *cls,
+                            const char *provider_section_name)
 {
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_ProviderDetails *pd;
@@ -302,48 +341,80 @@ kycaid_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (ps->cfg,
                                            provider_section_name,
-                                           "KYC_KYCAID_VALIDITY",
+                                           "PERSONA_VALIDITY",
                                            &pd->validity))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_KYCAID_VALIDITY");
-    kycaid_unload_configuration (pd);
+                               "PERSONA_VALIDITY");
+    persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_KYCAID_AUTH_TOKEN",
+                                             "PERSONA_AUTH_TOKEN",
                                              &pd->auth_token))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_KYCAID_AUTH_TOKEN");
-    kycaid_unload_configuration (pd);
+                               "PERSONA_AUTH_TOKEN");
+    persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_KYCAID_FORM_ID",
-                                             &pd->form_id))
+                                             "PERSONA_SUBDOMAIN",
+                                             &pd->subdomain))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_KYCAID_FORM_ID");
-    kycaid_unload_configuration (pd);
+                               "PERSONA_SUBDOMAIN");
+    persona_unload_configuration (pd);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_POST_URL",
+                                             &pd->post_kyc_redirect_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_POST_URL");
+    persona_unload_configuration (pd);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "PERSONA_TEMPLATE_ID",
+                                             &pd->template_id))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "PERSONA_TEMPLATE_ID");
+    persona_unload_configuration (pd);
     return NULL;
   }
   {
     char *auth;
 
     GNUNET_asprintf (&auth,
-                     "%s: Token %s",
+                     "%s: Bearer %s",
                      MHD_HTTP_HEADER_AUTHORIZATION,
                      pd->auth_token);
     pd->slist = curl_slist_append (NULL,
                                    auth);
+    GNUNET_free (auth);
+    GNUNET_asprintf (&auth,
+                     "%s: %s",
+                     MHD_HTTP_HEADER_ACCEPT,
+                     "application/json");
+    pd->slist = curl_slist_append (pd->slist,
+                                   "Persona-Version: "
+                                   PERSONA_VERSION);
     GNUNET_free (auth);
   }
   return pd;
@@ -356,7 +427,7 @@ kycaid_load_configuration (void *cls,
  * @param[in] ih handle of operation to cancel
  */
 static void
-kycaid_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
+persona_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 {
   if (NULL != ih->job)
   {
@@ -364,14 +435,13 @@ kycaid_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
     ih->job = NULL;
   }
   GNUNET_free (ih->url);
-  TALER_curl_easy_post_finished (&ih->ctx);
   GNUNET_free (ih);
 }
 
 
 /**
  * Function called when we're done processing the
- * HTTP "/forms/{form_id}/urls" request.
+ * HTTP POST "/api/v1/inquiries" request.
  *
  * @param cls the `struct TALER_KYCLOGIC_InitiateHandle`
  * @param response_code HTTP response code, 0 on error
@@ -383,126 +453,114 @@ handle_initiate_finished (void *cls,
                           const void *response)
 {
   struct TALER_KYCLOGIC_InitiateHandle *ih = cls;
+  const struct TALER_KYCLOGIC_ProviderDetails *pd = ih->pd;
   const json_t *j = response;
+  char *url;
+  json_t *data;
+  const char *type;
+  const char *inquiry_id;
+  const char *persona_account_id;
+  const char *ename;
+  unsigned int eline;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("type",
+                             &type),
+    GNUNET_JSON_spec_string ("id",
+                             &inquiry_id),
+    GNUNET_JSON_spec_end ()
+  };
 
   ih->job = NULL;
   switch (response_code)
   {
-  case MHD_HTTP_OK:
-    {
-      const char *verification_id;
-      const char *form_url;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("verification_id",
-                                 &verification_id),
-        GNUNET_JSON_spec_string ("form_url",
-                                 &form_url),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        json_dumpf (j,
-                    stderr,
-                    JSON_INDENT (2));
-        ih->cb (ih->cb_cls,
-                TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-                NULL,
-                NULL,
-                NULL,
-                json_string_value (json_object_get (j,
-                                                    "type")));
-        break;
-      }
-      ih->cb (ih->cb_cls,
-              TALER_EC_NONE,
-              form_url,
-              NULL, /* no provider_user_id */
-              verification_id,
-              NULL /* no error */);
-      GNUNET_JSON_parse_free (spec);
-    }
-    break;
-  case MHD_HTTP_BAD_REQUEST:
-  case MHD_HTTP_NOT_FOUND:
-  case MHD_HTTP_CONFLICT:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
-                (unsigned int) response_code);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_BUG,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
+  case MHD_HTTP_CREATED:
+    /* handled below */
     break;
   case MHD_HTTP_UNAUTHORIZED:
-  case MHD_HTTP_PAYMENT_REQUIRED:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Refused access with HTTP status code %u\n",
-                (unsigned int) response_code);
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_ACCESS_REFUSED,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_REQUEST_TIMEOUT:
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_TIMEOUT,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
-                (unsigned int) response_code);
-    json_dumpf (j,
-                stderr,
-                JSON_INDENT (2));
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_TOO_MANY_REQUESTS:
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_RATE_LIMIT_EXCEEDED,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ih->cb (ih->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
+  case MHD_HTTP_FORBIDDEN:
+    {
+      const char *msg;
+
+      msg = json_string_value (
+        json_object_get (
+          json_array_get (
+            json_object_get (j,
+                             "errors"),
+            0),
+          "title"));
+
+      ih->cb (ih->cb_cls,
+              TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
+              NULL,
+              NULL,
+              NULL,
+              msg);
+      persona_initiate_cancel (ih);
+      return;
+    }
+  case MHD_HTTP_NOT_FOUND:
+  case MHD_HTTP_CONFLICT:
+    {
+      const char *msg;
+
+      msg = json_string_value (
+        json_object_get (
+          json_array_get (
+            json_object_get (j,
+                             "errors"),
+            0),
+          "title"));
+
+      ih->cb (ih->cb_cls,
+              TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+              NULL,
+              NULL,
+              NULL,
+              msg);
+      persona_initiate_cancel (ih);
+      return;
+    }
   default:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected KYCAID response %u:\n",
-                (unsigned int) response_code);
+    {
+      char *err;
+
+      GNUNET_break_op (0);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
+      GNUNET_asprintf (&err,
+                       "Unexpected HTTP status %u from Persona\n",
+                       (unsigned int) response_code);
+      ih->cb (ih->cb_cls,
+              TALER_EC_NONE,
+              NULL,
+              NULL,
+              NULL,
+              err);
+      GNUNET_free (err);
+      persona_initiate_cancel (ih);
+      return;
+    }
+  }
+  data = json_object_get (j,
+                          "data");
+  if (NULL == data)
+  {
+    GNUNET_break_op (0);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    persona_initiate_cancel (ih);
+    return;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (data,
+                         spec,
+                         &ename,
+                         &eline))
+  {
+    GNUNET_break_op (0);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
@@ -511,11 +569,37 @@ handle_initiate_finished (void *cls,
             NULL,
             NULL,
             NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
+            ename);
+    persona_initiate_cancel (ih);
+    return;
   }
-  kycaid_initiate_cancel (ih);
+  persona_account_id
+    = json_string_value (
+        json_object_get (
+          json_object_get (
+            json_object_get (
+              json_object_get (data,
+                               "relationships"),
+              "account"),
+            "data"),
+          "id"));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting inquiry %s for Persona account %s\n",
+              inquiry_id,
+              persona_account_id);
+  GNUNET_asprintf (&url,
+                   "https://%s.withpersona.com/verify"
+                   "?inquiry-id=%s",
+                   pd->subdomain,
+                   inquiry_id);
+  ih->cb (ih->cb_cls,
+          TALER_EC_NONE,
+          url,
+          persona_account_id,
+          inquiry_id,
+          NULL);
+  GNUNET_free (url);
+  persona_initiate_cancel (ih);
 }
 
 
@@ -531,12 +615,12 @@ handle_initiate_finished (void *cls,
  * @return handle to cancel operation early
  */
 static struct TALER_KYCLOGIC_InitiateHandle *
-kycaid_initiate (void *cls,
-                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                 const struct TALER_PaytoHashP *account_id,
-                 uint64_t legitimization_uuid,
-                 TALER_KYCLOGIC_InitiateCallback cb,
-                 void *cb_cls)
+persona_initiate (void *cls,
+                  const struct TALER_KYCLOGIC_ProviderDetails *pd,
+                  const struct TALER_PaytoHashP *account_id,
+                  uint64_t legitimization_uuid,
+                  TALER_KYCLOGIC_InitiateCallback cb,
+                  void *cb_cls)
 {
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_InitiateHandle *ih;
@@ -556,16 +640,40 @@ kycaid_initiate (void *cls,
   ih->h_payto = *account_id;
   ih->pd = pd;
   GNUNET_asprintf (&ih->url,
-                   "https://api.kycaid.com/forms/%s/urls",
-                   pd->form_id);
-  body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_data64_auto ("external_applicant_id",
-                                  account_id)
-    );
+                   "https://withpersona.com/api/v1/inquiries");
+  {
+    char *payto_s;
+    char *proof_url;
+    char ref_s[24];
+
+    GNUNET_snprintf (ref_s,
+                     sizeof (ref_s),
+                     "%llu",
+                     (unsigned long long) ih->legitimization_uuid);
+    payto_s = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
+                                                   sizeof (ih->h_payto));
+    GNUNET_asprintf (&proof_url,
+                     "%s/kyc-proof/%s/%s",
+                     pd->ps->exchange_base_url,
+                     payto_s,
+                     pd->section);
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("inquiry_template_id",
+                               pd->template_id),
+      GNUNET_JSON_pack_string ("account_id",
+                               payto_s),
+      GNUNET_JSON_pack_string ("reference_id",
+                               ref_s),
+      GNUNET_JSON_pack_string ("redirect_uri",
+                               proof_url)
+      );
+    GNUNET_free (payto_s);
+    GNUNET_free (proof_url);
+  }
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  0));
+                                  1));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -603,43 +711,177 @@ kycaid_initiate (void *cls,
  * @param[in] ph handle of operation to cancel
  */
 static void
-kycaid_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
+persona_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 {
-  if (NULL != ph->task)
+  if (NULL != ph->job)
   {
-    GNUNET_SCHEDULER_cancel (ph->task);
-    ph->task = NULL;
+    GNUNET_CURL_job_cancel (ph->job);
+    ph->job = NULL;
   }
+  GNUNET_free (ph->url);
+  GNUNET_free (ph->provider_user_id);
+  GNUNET_free (ph->provider_legitimization_id);
   GNUNET_free (ph);
 }
 
 
 /**
- * Call @a ph callback with HTTP error response.
+ * Function called when we're done processing the
+ * HTTP "/api/v1/verifications/{verification-id}" request.
  *
- * @param cls proof handle to generate reply for
+ * @param cls the `struct TALER_KYCLOGIC_InitiateHandle`
+ * @param response_code HTTP response code, 0 on error
+ * @param response parsed JSON result, NULL on error
  */
 static void
-proof_reply (void *cls)
+handle_proof_finished (void *cls,
+                       long response_code,
+                       const void *response)
 {
   struct TALER_KYCLOGIC_ProofHandle *ph = cls;
-  struct MHD_Response *resp;
+  const json_t *j = response;
 
-  resp = TALER_MHD_make_error (TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                               "there is no '/kyc-proof' for kycaid");
-  ph->cb (ph->cb_cls,
-          TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-          NULL, /* user id */
-          NULL, /* provider legi ID */
-          GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-          MHD_HTTP_BAD_REQUEST,
-          resp);
+  ph->job = NULL;
+  json_dumpf (j,
+              stderr,
+              JSON_INDENT (2));
+#if 0
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    {
+      const char *verification_id;
+      const char *form_url;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_string ("verification_id",
+                                 &verification_id),
+        GNUNET_JSON_spec_string ("form_url",
+                                 &form_url),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        json_dumpf (j,
+                    stderr,
+                    JSON_INDENT (2));
+        ph->cb (ph->cb_cls,
+                TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+                NULL,
+                NULL,
+                NULL,
+                json_string_value (json_object_get (j,
+                                                    "type")));
+        break;
+      }
+      ph->cb (ph->cb_cls,
+              TALER_EC_NONE,
+              form_url,
+              NULL, /* no provider_user_id */
+              verification_id,
+              NULL /* no error */);
+      GNUNET_JSON_parse_free (spec);
+    }
+    break;
+  case MHD_HTTP_BAD_REQUEST:
+  case MHD_HTTP_NOT_FOUND:
+  case MHD_HTTP_CONFLICT:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "PERSONA failed with response %u:\n",
+                (unsigned int) response_code);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_BUG,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  case MHD_HTTP_UNAUTHORIZED:
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Refused access with HTTP status code %u\n",
+                (unsigned int) response_code);
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_ACCESS_REFUSED,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  case MHD_HTTP_REQUEST_TIMEOUT:
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_TIMEOUT,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "PERSONA failed with response %u:\n",
+                (unsigned int) response_code);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  case MHD_HTTP_TOO_MANY_REQUESTS:
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_RATE_LIMIT_EXCEEDED,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected PERSONA response %u:\n",
+                (unsigned int) response_code);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    ph->cb (ph->cb_cls,
+            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
+            NULL,
+            NULL,
+            NULL,
+            json_string_value (json_object_get (j,
+                                                "type")));
+    break;
+  }
+#endif
+  persona_proof_cancel (ph);
 }
 
 
 /**
- * Check KYC status and return status to human. Not
- * used by KYC AID!
+ * Check KYC status and return final result to human.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
@@ -654,28 +896,59 @@ proof_reply (void *cls)
  * @return handle to cancel operation early
  */
 static struct TALER_KYCLOGIC_ProofHandle *
-kycaid_proof (void *cls,
-              const struct TALER_KYCLOGIC_ProviderDetails *pd,
-              const char *const url_path[],
-              struct MHD_Connection *connection,
-              const struct TALER_PaytoHashP *account_id,
-              uint64_t legi_row,
-              const char *provider_user_id,
-              const char *provider_legitimization_id,
-              TALER_KYCLOGIC_ProofCallback cb,
-              void *cb_cls)
+persona_proof (void *cls,
+               const struct TALER_KYCLOGIC_ProviderDetails *pd,
+               const char *const url_path[],
+               struct MHD_Connection *connection,
+               const struct TALER_PaytoHashP *account_id,
+               uint64_t legi_row,
+               const char *provider_user_id,
+               const char *provider_legitimization_id,
+               TALER_KYCLOGIC_ProofCallback cb,
+               void *cb_cls)
 {
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_ProofHandle *ph;
+  CURL *eh;
 
+  eh = curl_easy_init ();
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
   ph->ps = ps;
   ph->pd = pd;
   ph->cb = cb;
   ph->cb_cls = cb_cls;
   ph->connection = connection;
-  ph->task = GNUNET_SCHEDULER_add_now (&proof_reply,
-                                       ph);
+  ph->legitimization_uuid = legi_row;
+  ph->h_payto = *account_id;
+  if (NULL != provider_user_id)
+    ph->provider_user_id = GNUNET_strdup (provider_user_id);
+  if (NULL != provider_legitimization_id)
+    ph->provider_legitimization_id = GNUNET_strdup (provider_legitimization_id);
+  GNUNET_asprintf (&ph->url,
+                   "https://withpersona.com/api/v1/inquiries/%s",
+                   provider_legitimization_id);
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_VERBOSE,
+                                  1));
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_MAXREDIRS,
+                                   1L));
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_URL,
+                                  ph->url));
+  ph->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
+                                  eh,
+                                  pd->slist,
+                                  &handle_proof_finished,
+                                  ph);
   return ph;
 }
 
@@ -686,7 +959,7 @@ kycaid_proof (void *cls,
  * @param[in] wh handle of operation to cancel
  */
 static void
-kycaid_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
+persona_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
 {
   if (NULL != wh->task)
   {
@@ -698,53 +971,9 @@ kycaid_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
     GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
   }
-  GNUNET_free (wh->verification_id);
-  GNUNET_free (wh->applicant_id);
+  GNUNET_free (wh->inquiry_id);
   GNUNET_free (wh->url);
   GNUNET_free (wh);
-}
-
-
-/**
- * Extract KYC failure reasons and log those
- *
- * @param verifications JSON object with failure details
- */
-static void
-log_failure (json_t *verifications)
-{
-  json_t *member;
-  const char *name;
-  json_object_foreach (verifications, name, member)
-  {
-    bool iverified;
-    const char *comment;
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_bool ("verified",
-                             &iverified),
-      GNUNET_JSON_spec_string ("comment",
-                               &comment),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (member,
-                           spec,
-                           NULL, NULL))
-    {
-      GNUNET_break_op (0);
-      json_dumpf (member,
-                  stderr,
-                  JSON_INDENT (2));
-      continue;
-    }
-    if (iverified)
-      continue;
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC verification of attribute `%s' failed: %s\n",
-                name,
-                comment);
-  }
 }
 
 
@@ -763,9 +992,14 @@ handle_webhook_finished (void *cls,
 {
   struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
   const json_t *j = response;
-  struct MHD_Response *resp;
 
   wh->job = NULL;
+  json_dumpf (j,
+              stderr,
+              JSON_INDENT (2));
+#if 0
+  struct MHD_Response *resp;
+
   switch (response_code)
   {
   case MHD_HTTP_OK:
@@ -800,9 +1034,9 @@ handle_webhook_finished (void *cls,
                     stderr,
                     JSON_INDENT (2));
         resp = TALER_MHD_MAKE_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+          GNUNET_JSON_pack_uint64 ("persona_http_status",
                                    response_code),
-          GNUNET_JSON_pack_object_incref ("kycaid_body",
+          GNUNET_JSON_pack_object_incref ("persona_body",
                                           (json_t *) j));
         wh->cb (wh->cb_cls,
                 wh->legi_row,
@@ -854,13 +1088,13 @@ handle_webhook_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
   case MHD_HTTP_CONFLICT:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
+                "PERSONA failed with response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -878,9 +1112,9 @@ handle_webhook_finished (void *cls,
                 "Refused access with HTTP status code %u\n",
                 (unsigned int) response_code);
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -894,9 +1128,9 @@ handle_webhook_finished (void *cls,
     break;
   case MHD_HTTP_REQUEST_TIMEOUT:
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -910,15 +1144,15 @@ handle_webhook_finished (void *cls,
     break;
   case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "KYCAID failed with response %u:\n",
+                "PERSONA failed with response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -932,9 +1166,9 @@ handle_webhook_finished (void *cls,
     break;
   case MHD_HTTP_TOO_MANY_REQUESTS:
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -948,9 +1182,9 @@ handle_webhook_finished (void *cls,
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
             wh->legi_row,
@@ -964,12 +1198,12 @@ handle_webhook_finished (void *cls,
     break;
   default:
     resp = TALER_MHD_MAKE_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+      GNUNET_JSON_pack_uint64 ("persona_http_status",
                                response_code),
-      GNUNET_JSON_pack_object_incref ("kycaid_body",
+      GNUNET_JSON_pack_object_incref ("persona_body",
                                       (json_t *) j));
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected KYCAID response %u:\n",
+                "Unexpected PERSONA response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
@@ -985,7 +1219,8 @@ handle_webhook_finished (void *cls,
             resp);
     break;
   }
-  kycaid_webhook_cancel (wh);
+#endif
+  persona_webhook_cancel (wh);
 }
 
 
@@ -1004,19 +1239,19 @@ async_webhook_reply (void *cls)
           (0 == wh->legi_row)
           ? NULL
           : &wh->h_payto,
-          wh->applicant_id, /* provider user ID */
-          wh->verification_id, /* provider legi ID */
+          NULL, /* FIXME: never known here, but maybe prevent clearing it in the DB as it should already be there? */
+          wh->inquiry_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
           wh->response_code,
           wh->resp);
-  kycaid_webhook_cancel (wh);
+  persona_webhook_cancel (wh);
 }
 
 
 /**
  * Check KYC status and return result for Webhook.  We do NOT implement the
- * authentication check proposed by the KYCAID documentation, as it would
+ * authentication check proposed by the PERSONA documentation, as it would
  * allow an attacker who learns the access token to easily bypass the KYC
  * checks. Instead, we insist on explicitly requesting the KYC status from the
  * provider (at least on success).
@@ -1034,45 +1269,22 @@ async_webhook_reply (void *cls)
  * @return handle to cancel operation early
  */
 static struct TALER_KYCLOGIC_WebhookHandle *
-kycaid_webhook (void *cls,
-                const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                TALER_KYCLOGIC_ProviderLookupCallback plc,
-                void *plc_cls,
-                const char *http_method,
-                const char *const url_path[],
-                struct MHD_Connection *connection,
-                const json_t *body,
-                TALER_KYCLOGIC_WebhookCallback cb,
-                void *cb_cls)
+persona_webhook (void *cls,
+                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
+                 TALER_KYCLOGIC_ProviderLookupCallback plc,
+                 void *plc_cls,
+                 const char *http_method,
+                 const char *const url_path[],
+                 struct MHD_Connection *connection,
+                 const json_t *body,
+                 TALER_KYCLOGIC_WebhookCallback cb,
+                 void *cb_cls)
 {
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_WebhookHandle *wh;
   CURL *eh;
-  const char *request_id;
-  const char *type;
-  const char *verification_id;
-  const char *applicant_id;
-  const char *status;
-  bool verified;
-  json_t *verifications;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("request_id",
-                             &request_id),
-    GNUNET_JSON_spec_string ("type",
-                             &type),
-    GNUNET_JSON_spec_string ("verification_id",
-                             &verification_id),
-    GNUNET_JSON_spec_string ("applicant_id",
-                             &applicant_id),
-    GNUNET_JSON_spec_string ("status",
-                             &status),
-    GNUNET_JSON_spec_bool ("verified",
-                           &verified),
-    GNUNET_JSON_spec_json ("verifications",
-                           &verifications),
-    GNUNET_JSON_spec_end ()
-  };
   enum GNUNET_DB_QueryStatus qs;
+  const char *persona_inquiry_id;
 
   wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
   wh->cb = cb;
@@ -1081,10 +1293,20 @@ kycaid_webhook (void *cls,
   wh->pd = pd;
   wh->connection = connection;
 
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (body,
-                         spec,
-                         NULL, NULL))
+  persona_inquiry_id
+    = json_string_value (
+        json_object_get (
+          json_object_get (
+            json_object_get (
+              json_object_get (
+                json_object_get (
+                  body,
+                  "data"),
+                "attributes"),
+              "payload"),
+            "data"),
+          "id"));
+  if (NULL == persona_inquiry_id)
   {
     GNUNET_break_op (0);
     json_dumpf (body,
@@ -1100,7 +1322,7 @@ kycaid_webhook (void *cls,
   }
   qs = plc (plc_cls,
             pd->section,
-            verification_id,
+            persona_inquiry_id,
             &wh->h_payto,
             &wh->legi_row);
   if (qs < 0)
@@ -1110,39 +1332,22 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Received webhook for unknown verification ID `%s'\n",
-                verification_id);
+                persona_inquiry_id);
     wh->resp = TALER_MHD_make_error (
       TALER_EC_EXCHANGE_KYC_PROOF_REQUEST_UNKNOWN,
-      verification_id);
+      persona_inquiry_id);
     wh->response_code = MHD_HTTP_NOT_FOUND;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
-  wh->verification_id = GNUNET_strdup (verification_id);
-  wh->applicant_id = GNUNET_strdup (applicant_id);
-  if (! verified)
-  {
-    /* We don't need to re-confirm the failure by
-       asking the API again. */
-    log_failure (verifications);
-    wh->response_code = MHD_HTTP_NO_CONTENT;
-    wh->resp = MHD_create_response_from_buffer (0,
-                                                "",
-                                                MHD_RESPMEM_PERSISTENT);
-    wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
-                                         wh);
-    GNUNET_JSON_parse_free (spec);
-    return wh;
-  }
+  wh->inquiry_id = GNUNET_strdup (persona_inquiry_id);
 
   eh = curl_easy_init ();
   if (NULL == eh)
@@ -1154,17 +1359,16 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
 
   GNUNET_asprintf (&wh->url,
-                   "https://api.kycaid.com/verifications/%s",
-                   verification_id);
+                   "https://withpersona.com/api/v1/inquiries/%s",
+                   persona_inquiry_id);
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  0));
+                                  1));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -1178,19 +1382,18 @@ kycaid_webhook (void *cls,
                                   pd->slist,
                                   &handle_webhook_finished,
                                   wh);
-  GNUNET_JSON_parse_free (spec);
   return wh;
 }
 
 
 /**
- * Initialize kycaid logic plugin
+ * Initialize persona logic plugin
  *
  * @param cls a configuration instance
  * @return NULL on error, otherwise a `struct TALER_KYCLOGIC_Plugin`
  */
 void *
-libtaler_plugin_kyclogic_kycaid_init (void *cls)
+libtaler_plugin_kyclogic_persona_init (void *cls)
 {
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_KYCLOGIC_Plugin *plugin;
@@ -1226,21 +1429,21 @@ libtaler_plugin_kyclogic_kycaid_init (void *cls)
   plugin = GNUNET_new (struct TALER_KYCLOGIC_Plugin);
   plugin->cls = ps;
   plugin->load_configuration
-    = &kycaid_load_configuration;
+    = &persona_load_configuration;
   plugin->unload_configuration
-    = &kycaid_unload_configuration;
+    = &persona_unload_configuration;
   plugin->initiate
-    = &kycaid_initiate;
+    = &persona_initiate;
   plugin->initiate_cancel
-    = &kycaid_initiate_cancel;
+    = &persona_initiate_cancel;
   plugin->proof
-    = &kycaid_proof;
+    = &persona_proof;
   plugin->proof_cancel
-    = &kycaid_proof_cancel;
+    = &persona_proof_cancel;
   plugin->webhook
-    = &kycaid_webhook;
+    = &persona_webhook;
   plugin->webhook_cancel
-    = &kycaid_webhook_cancel;
+    = &persona_webhook_cancel;
   return plugin;
 }
 
@@ -1252,7 +1455,7 @@ libtaler_plugin_kyclogic_kycaid_init (void *cls)
  * @return NULL (always)
  */
 void *
-libtaler_plugin_kyclogic_kycaid_done (void *cls)
+libtaler_plugin_kyclogic_persona_done (void *cls)
 {
   struct TALER_KYCLOGIC_Plugin *plugin = cls;
   struct PluginState *ps = plugin->cls;
@@ -1272,3 +1475,6 @@ libtaler_plugin_kyclogic_kycaid_done (void *cls)
   GNUNET_free (plugin);
   return NULL;
 }
+
+
+/* end of plugin_kyclogic_persona.c */

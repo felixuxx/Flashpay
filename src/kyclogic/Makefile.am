@@ -57,6 +57,7 @@ plugindir = $(libdir)/taler
 plugin_LTLIBRARIES = \
   libtaler_plugin_kyclogic_kycaid.la \
   libtaler_plugin_kyclogic_oauth2.la \
+  libtaler_plugin_kyclogic_persona.la \
   libtaler_plugin_kyclogic_template.la
 
 libtaler_plugin_kyclogic_template_la_SOURCES = \
@@ -81,6 +82,20 @@ libtaler_plugin_kyclogic_kycaid_la_SOURCES = \
 libtaler_plugin_kyclogic_kycaid_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_kycaid_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/curl/libtalercurl.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  -ljansson \
+  -lcurl \
+  $(XLIB)
+
+libtaler_plugin_kyclogic_persona_la_SOURCES = \
+  plugin_kyclogic_persona.c
+libtaler_plugin_kyclogic_persona_la_LIBADD = \
+  $(LTLIBINTL)
+libtaler_plugin_kyclogic_persona_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
