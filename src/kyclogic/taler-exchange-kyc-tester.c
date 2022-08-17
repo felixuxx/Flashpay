@@ -1458,12 +1458,6 @@ main (int argc,
       "initiate KYC check using provider configured in SECTION_NAME of the configuration",
       &initiate_section),
     GNUNET_GETOPT_option_string (
-      'i',
-      "initiate",
-      "SECTION_NAME",
-      "initiate KYC check using provider configured in SECTION_NAME of the configuration",
-      &initiate_section),
-    GNUNET_GETOPT_option_string (
       'u',
       "user",
       "ID",

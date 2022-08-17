@@ -80,11 +80,6 @@ struct KycProofContext
   char *provider_legitimization_id;
 
   /**
-   * OAuth 2.0 authorization code.
-   */
-  const char *authorization_code;
-
-  /**
    * Hash of payment target URI this is about.
    */
   struct TALER_PaytoHashP h_payto;

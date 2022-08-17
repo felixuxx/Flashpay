@@ -84,7 +84,6 @@ libtaler_plugin_kyclogic_kycaid_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
-  $(top_builddir)/src/templating/libtalertemplating.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson \
