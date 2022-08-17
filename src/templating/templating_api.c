@@ -193,7 +193,7 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
     {
       /* FIXME: should this not be an
          internal failure? The language
-         missmatch is not critical here! */
+         mismatch is not critical here! */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load template `%s'\n",
                   template);

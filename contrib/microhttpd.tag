@@ -72,6 +72,12 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>MHD_HTTP_NETWORK_AUTHENTICATION_REQUIRED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>MHD_HTTP_GONE</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>

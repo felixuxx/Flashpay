@@ -645,6 +645,7 @@ kycaid_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
  * Call @a ph callback with HTTP response generated
  * from @a template_name using the given @a template_data.
  *
+ * @param ph proof handle to generate reply for
  * @param http_status http response status to use
  * @param template_name template to load and return
  * @param[in] template_data data for the template, freed by this function!
