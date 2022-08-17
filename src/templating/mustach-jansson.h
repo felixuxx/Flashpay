@@ -23,7 +23,7 @@
 #ifndef _mustach_jansson_h_included_
 #define _mustach_jansson_h_included_
 
-#include <taler/taler_json_lib.h>
+#include "taler_json_lib.h"
 #include "mustach.h"
 
 /**
@@ -36,7 +36,7 @@
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int fmustach_jansson(const char *template, json_t *root, FILE *file);
+extern int fmustach_jansson (const char *template, json_t *root, FILE *file);
 
 /**
  * fmustach_jansson - Renders the mustache 'template' in 'fd' for 'root'.
@@ -48,7 +48,7 @@ extern int fmustach_jansson(const char *template, json_t *root, FILE *file);
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int fdmustach_jansson(const char *template, json_t *root, int fd);
+extern int fdmustach_jansson (const char *template, json_t *root, int fd);
 
 
 /**
@@ -62,7 +62,8 @@ extern int fdmustach_jansson(const char *template, json_t *root, int fd);
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-extern int mustach_jansson(const char *template, json_t *root, char **result, size_t *size);
+extern int mustach_jansson (const char *template, json_t *root, char **result,
+                            size_t *size);
 
 /**
  * umustach_jansson - Renders the mustache 'template' for 'root' to custom writer 'writecb' with 'closure'.
@@ -75,8 +76,9 @@ extern int mustach_jansson(const char *template, json_t *root, char **result, si
  * Returns 0 in case of success, -1 with errno set in case of system error
  * a other negative value in case of error.
  */
-typedef int (*mustach_jansson_write_cb)(void *closure, const char *buffer, size_t size);
-extern int umustach_jansson(const char *template, json_t *root, mustach_jansson_write_cb writecb, void *closure);
+typedef int (*mustach_jansson_write_cb)(void *closure, const char *buffer,
+                                        size_t size);
+extern int umustach_jansson (const char *template, json_t *root,
+                             mustach_jansson_write_cb writecb, void *closure);
 
 #endif
-
