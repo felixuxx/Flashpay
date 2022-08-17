@@ -82,6 +82,11 @@ struct TEKT_RequestContext
   void *rh_ctx;
 
   /**
+   * Uploaded JSON body, if any.
+   */
+  json_t *root;
+
+  /**
    * HTTP status to return upon resume if @e response
    * is non-NULL.
    */
@@ -555,6 +560,8 @@ handler_kyc_webhook_generic (
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          "$LOGIC");
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Calling KYC provider specific webhook\n");
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
                                     kwh->pd,
                                     &kyc_provider_account_lookup,
@@ -583,6 +590,8 @@ handler_kyc_webhook_generic (
 
   if (NULL != kwh->response)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning queued reply for KWH\n");
     /* handle _failed_ resumed cases */
     return MHD_queue_response (rc->connection,
                                kwh->response_code,
@@ -845,7 +854,6 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
   const struct TEKT_RequestHandler *rh = rc->rh;
   const char *args[rh->nargs + 2];
   size_t ulen = strlen (url) + 1;
-  json_t *root = NULL;
   MHD_RESULT ret;
 
   /* We do check for "ulen" here, because we'll later stack-allocate a buffer
@@ -866,8 +874,9 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
 
   /* All POST endpoints come with a body in JSON format. So we parse
      the JSON here. */
-  if (0 == strcasecmp (rh->method,
-                       MHD_HTTP_METHOD_POST))
+  if ( (NULL == rc->root) &&
+       (0 == strcasecmp (rh->method,
+                         MHD_HTTP_METHOD_POST)) )
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -875,16 +884,17 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
                                      &rc->opaque_post_parsing_context,
                                      upload_data,
                                      upload_data_size,
-                                     &root);
+                                     &rc->root);
     if (GNUNET_SYSERR == res)
     {
-      GNUNET_assert (NULL == root);
+      GNUNET_assert (NULL == rc->root);
+      GNUNET_break (0);
       return MHD_NO; /* bad upload, could not even generate error */
     }
     if ( (GNUNET_NO == res) ||
-         (NULL == root) )
+         (NULL == rc->root) )
     {
-      GNUNET_assert (NULL == root);
+      GNUNET_assert (NULL == rc->root);
       return MHD_YES; /* so far incomplete upload or parser error */
     }
   }
@@ -921,7 +931,6 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
                        rh->url,
                        url);
       GNUNET_break_op (0);
-      json_decref (root);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
@@ -931,16 +940,15 @@ proceed_with_handler (struct TEKT_RequestContext *rc,
 
     /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
        so we test for 'root' to decide which handler to invoke. */
-    if (NULL != root)
+    if (NULL != rc->root)
       ret = rh->handler.post (rc,
-                              root,
+                              rc->root,
                               args);
     else /* We also only have "POST" or "GET" in the API for at this point
       (OPTIONS/HEAD are taken care of earlier) */
       ret = rh->handler.get (rc,
                              args);
   }
-  json_decref (root);
   return ret;
 }
 
@@ -949,8 +957,15 @@ static void
 rh_cleaner_cb (struct TEKT_RequestContext *rc)
 {
   if (NULL != rc->response)
+  {
     MHD_destroy_response (rc->response);
-  GNUNET_free (rc);
+    rc->response = NULL;
+  }
+  if (NULL != rc->root)
+  {
+    json_decref (rc->root);
+    rc->root = NULL;
+  }
 }
 
 
@@ -1082,7 +1097,8 @@ handle_mhd_request (void *cls,
         continue;
       found = true;
       /* The URL is a match!  What we now do depends on the method. */
-      if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
+      if (0 == strcasecmp (method,
+                           MHD_HTTP_METHOD_OPTIONS))
       {
         return TALER_MHD_reply_cors_preflight (connection);
       }
@@ -1276,7 +1292,7 @@ initiate_cb (
     return;
   }
   fprintf (stdout,
-           "Visit `%s' to begin KYC process (-u: '%s', -l: '%s')\n",
+           "Visit `%s' to begin KYC process (-u: '%s', -U: '%s')\n",
            redirect_url,
            provider_user_id,
            provider_legitimization_id);
@@ -1393,6 +1409,9 @@ run (void *cls,
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Starting daemon on port %u\n",
+                (unsigned int) serve_port);
     mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
                             | MHD_USE_PIPE_FOR_SHUTDOWN
                             | MHD_USE_DEBUG | MHD_USE_DUAL_STACK

@@ -720,7 +720,51 @@ kycaid_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
   }
   GNUNET_free (wh->verification_id);
   GNUNET_free (wh->applicant_id);
+  GNUNET_free (wh->url);
   GNUNET_free (wh);
+}
+
+
+/**
+ * Extract KYC failure reasons and log those
+ *
+ * @param verifications JSON object with failure details
+ */
+static void
+log_failure (json_t *verifications)
+{
+  json_t *member;
+  const char *name;
+  json_object_foreach (verifications, name, member)
+  {
+    bool iverified;
+    const char *comment;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_bool ("verified",
+                             &iverified),
+      GNUNET_JSON_spec_string ("comment",
+                               &comment),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (member,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      json_dumpf (member,
+                  stderr,
+                  JSON_INDENT (2));
+      continue;
+    }
+    if (iverified)
+      continue;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC verification of attribute `%s' failed: %s\n",
+                name,
+                comment);
+  }
 }
 
 
@@ -749,7 +793,6 @@ handle_webhook_finished (void *cls,
       const char *applicant_id;
       const char *verification_id;
       const char *status;
-      const char *type;
       bool verified;
       json_t *verifications;
       struct GNUNET_JSON_Specification spec[] = {
@@ -757,10 +800,8 @@ handle_webhook_finished (void *cls,
                                  &applicant_id),
         GNUNET_JSON_spec_string ("verification_id",
                                  &verification_id),
-        GNUNET_JSON_spec_string ("type",
-                                 &type),
         GNUNET_JSON_spec_string ("status",
-                                 &status),
+                                 &status), /* completed, pending, ... */
         GNUNET_JSON_spec_bool ("verified",
                                &verified),
         GNUNET_JSON_spec_json ("verifications",
@@ -794,12 +835,10 @@ handle_webhook_finished (void *cls,
                 resp);
         break;
       }
-      /* FIXME: comment out, unless debugging ... */
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "The provider returned the following verifications:\n");
-      json_dumpf (verifications,
-                  stderr,
-                  JSON_INDENT (2));
+      if (! verified)
+      {
+        log_failure (verifications);
+      }
       resp = MHD_create_response_from_buffer (0,
                                               "",
                                               MHD_RESPMEM_PERSISTENT);
@@ -980,11 +1019,15 @@ async_webhook_reply (void *cls)
 {
   struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
 
+  fprintf (stderr,
+           "async reply\n");
   wh->cb (wh->cb_cls,
-          0LLU, /* legitimization row ID (unknown) */
-          NULL, /* our account ID */
-          NULL, /* provider user ID */
-          NULL, /* provider legi ID */
+          wh->legi_row,
+          (0 == wh->legi_row)
+          ? NULL
+          : &wh->h_payto,
+          wh->applicant_id, /* provider user ID */
+          wh->verification_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
           wh->response_code,
@@ -994,7 +1037,11 @@ async_webhook_reply (void *cls)
 
 
 /**
- * Check KYC status and return result for Webhook.
+ * Check KYC status and return result for Webhook.  We do NOT implement the
+ * authentication check proposed by the KYCAID documentation, as it would
+ * allow an attacker who learns the access token to easily bypass the KYC
+ * checks. Instead, we insist on explicitly requesting the KYC status from the
+ * provider (at least on success).
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
@@ -1085,6 +1132,7 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
+    GNUNET_JSON_parse_free (spec);
     return wh;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -1098,10 +1146,25 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_NOT_FOUND;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
+    GNUNET_JSON_parse_free (spec);
     return wh;
   }
   wh->verification_id = GNUNET_strdup (verification_id);
   wh->applicant_id = GNUNET_strdup (applicant_id);
+  if (! verified)
+  {
+    /* We don't need to re-confirm the failure by
+       asking the API again. */
+    log_failure (verifications);
+    wh->response_code = MHD_HTTP_NO_CONTENT;
+    wh->resp = MHD_create_response_from_buffer (0,
+                                                "",
+                                                MHD_RESPMEM_PERSISTENT);
+    wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
+                                         wh);
+    GNUNET_JSON_parse_free (spec);
+    return wh;
+  }
 
   eh = curl_easy_init ();
   if (NULL == eh)
@@ -1113,6 +1176,7 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
+    GNUNET_JSON_parse_free (spec);
     return wh;
   }
 
@@ -1122,7 +1186,7 @@ kycaid_webhook (void *cls,
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  1));
+                                  0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -1131,18 +1195,18 @@ kycaid_webhook (void *cls,
                 curl_easy_setopt (eh,
                                   CURLOPT_URL,
                                   wh->url));
-  wh->job = GNUNET_CURL_job_add (ps->curl_ctx,
-                                 eh,
-                                 &handle_webhook_finished,
-                                 wh);
-  GNUNET_CURL_extend_headers (wh->job,
-                              pd->slist);
+  wh->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
+                                  eh,
+                                  pd->slist,
+                                  &handle_webhook_finished,
+                                  wh);
+  GNUNET_JSON_parse_free (spec);
   return wh;
 }
 
 
 /**
- * Initialize Kycaid.0 KYC logic plugin
+ * Initialize kycaid logic plugin
  *
  * @param cls a configuration instance
  * @return NULL on error, otherwise a `struct TALER_KYCLOGIC_Plugin`

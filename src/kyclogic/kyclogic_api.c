@@ -748,6 +748,9 @@ TALER_KYCLOGIC_kyc_done (void)
   {
     struct TALER_KYCLOGIC_KycCheck *kc = kyc_checks[i];
 
+    GNUNET_array_grow (kc->providers,
+                       kc->num_providers,
+                       0);
     GNUNET_free (kc->name);
     GNUNET_free (kc);
   }
