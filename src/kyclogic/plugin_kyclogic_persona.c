@@ -593,8 +593,8 @@ handle_initiate_finished (void *cls,
     {
       const char *msg;
 
-      /* FIXME: figure out how to nicely extract
-         the rate limit data from the reply */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Rate limiting requested:\n");
       json_dumpf (j,
                   stderr,
                   JSON_INDENT (2));
@@ -1153,18 +1153,27 @@ handle_proof_finished (void *cls,
           break;
         }
 
-        // FIXME: do not generate kyc-completed from template, do redirect!
-        proof_generic_reply (ph,
-                             TALER_KYCLOGIC_STATUS_SUCCESS,
-                             account_id,
-                             inquiry_id,
-                             MHD_HTTP_OK,
-                             "persona-kyc-completed",
-                             GNUNET_JSON_PACK (
-                               GNUNET_JSON_pack_allow_null (
-                                 GNUNET_JSON_pack_object_incref ("attributes",
-                                                                 (json_t *)
-                                                                 data))));
+        {
+          struct MHD_Response *resp;
+          struct GNUNET_TIME_Absolute expiration;
+
+          expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
+          resp = MHD_create_response_from_buffer (0,
+                                                  "",
+                                                  MHD_RESPMEM_PERSISTENT);
+          GNUNET_break (MHD_YES ==
+                        MHD_add_response_header (resp,
+                                                 MHD_HTTP_HEADER_LOCATION,
+                                                 ph->pd->post_kyc_redirect_url));
+          TALER_MHD_add_global_headers (resp);
+          ph->cb (ph->cb_cls,
+                  TALER_KYCLOGIC_STATUS_SUCCESS,
+                  account_id,
+                  inquiry_id,
+                  expiration,
+                  MHD_HTTP_SEE_OTHER,
+                  resp);
+        }
         GNUNET_JSON_parse_free (ispec);
       }
       GNUNET_JSON_parse_free (spec);
@@ -1454,6 +1463,7 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
   resp = MHD_create_response_from_buffer (0,
                                           "",
                                           MHD_RESPMEM_PERSISTENT);
+  TALER_MHD_add_global_headers (resp);
   wh->cb (wh->cb_cls,
           wh->legitimization_uuid,
           &wh->h_payto,
@@ -1755,7 +1765,7 @@ async_webhook_reply (void *cls)
           (0 == wh->legitimization_uuid)
           ? NULL
           : &wh->h_payto,
-          NULL, /* FIXME: never known here, but maybe prevent clearing it in the DB as it should already be there? */
+          NULL,
           wh->inquiry_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
