@@ -18,8 +18,6 @@ libtalertemplating_la_SOURCES = \
   mustach-jansson.c mustach-jansson.h \
   templating_api.c
 libtalertemplating_la_LIBADD = \
-  -ltalermhd \
-  -ltalerutil \
   -lgnunetutil \
   $(XLIB)
 libtalertemplating_la_LDFLAGS = \
@@ -35,7 +33,8 @@ test_mustach_jansson_SOURCES = \
   test_mustach_jansson.c
 test_mustach_jansson_LDADD = \
   -lgnunetutil \
-  -lmustach.la \
+  -ljansson \
+  -lmustach \
   $(XLIB)
 
 check_PROGRAMS = \
