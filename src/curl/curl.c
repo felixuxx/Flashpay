@@ -46,7 +46,8 @@ TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
     return GNUNET_SYSERR;
   }
   slen = strlen (str);
-#if TALER_CURL_COMPRESS_BODIES
+  if (TALER_CURL_COMPRESS_BODIES &&
+      (! ctx->disable_compression) )
   {
     Bytef *cbuf;
     uLongf cbuf_size;
@@ -68,18 +69,21 @@ TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
     free (str);
     slen = (size_t) cbuf_size;
     ctx->json_enc = (char *) cbuf;
+    GNUNET_assert (
+      NULL !=
+      (ctx->headers = curl_slist_append (
+         ctx->headers,
+         "Content-Encoding: deflate")));
   }
-  GNUNET_assert (NULL != (ctx->headers = curl_slist_append (
-                            ctx->headers,
-                            "Content-Encoding: deflate")));
-#else
-  ctx->json_enc = str;
-#endif
-
-  GNUNET_assert
-    (NULL != (ctx->headers = curl_slist_append (
-                ctx->headers,
-                "Content-Type: application/json")));
+  else
+  {
+    ctx->json_enc = str;
+  }
+  GNUNET_assert (
+    NULL !=
+    (ctx->headers = curl_slist_append (
+       ctx->headers,
+       "Content-Type: application/json")));
 
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,

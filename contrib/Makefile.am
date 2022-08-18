@@ -3,15 +3,14 @@ SUBDIRS = .
 tmplpkgdatadir = $(prefix)/share/taler/exchange/templates/
 
 dist_tmplpkgdata_DATA = \
-  bad_gateway.en.must \
-  kyc_provider_unauthorized.en.must \
-  kyc_provider_unexpected_reply.en.must \
-  kyc_interaction_failed.en.must \
-  kyc_provider_unpaid.en.must \
-  kyc_provider_internal_error.en.must \
-  kyc_user_failed.en.must \
-  kyc_provider_ratelimit.en.must \
-  kyc_provider_timeout.en.must
+  persona-exchange-unauthorized.en.must \
+  persona-load-failure.en.must \
+  persona-exchange-unpaid.en.must \
+  persona-logic-failure.en.must \
+  persona-invalid-response.en.must \
+  persona-network-timeout.en.must \
+  persona-kyc-failed.en.must \
+  persona-provider-failure.en.must
 
 # %%.must: merchant-backoffice/%.html
 # WTF: cp $< $@

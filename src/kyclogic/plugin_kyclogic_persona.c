@@ -23,8 +23,10 @@
 #include "taler_mhd_lib.h"
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
+#include "taler_templating_lib.h"
 #include <regex.h>
 #include "taler_util.h"
+
 
 /**
  * Which version of the persona API are we implementing?
@@ -158,6 +160,11 @@ struct TALER_KYCLOGIC_InitiateHandle
    * URL of the cURL request.
    */
   char *url;
+
+  /**
+   * Request-specific headers to use.
+   */
+  struct curl_slist *slist;
 
 };
 
@@ -315,6 +322,7 @@ persona_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
   curl_slist_free_all (pd->slist);
   GNUNET_free (pd->auth_token);
   GNUNET_free (pd->template_id);
+  GNUNET_free (pd->subdomain);
   GNUNET_free (pd->section);
   GNUNET_free (pd->post_kyc_redirect_url);
   GNUNET_free (pd);
@@ -435,6 +443,8 @@ persona_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
     ih->job = NULL;
   }
   GNUNET_free (ih->url);
+  TALER_curl_easy_post_finished (&ih->ctx);
+  curl_slist_free_all (ih->slist);
   GNUNET_free (ih);
 }
 
@@ -520,6 +530,57 @@ handle_initiate_finished (void *cls,
       persona_initiate_cancel (ih);
       return;
     }
+  case MHD_HTTP_BAD_REQUEST:
+  case MHD_HTTP_UNPROCESSABLE_CONTENT:
+    {
+      const char *msg;
+
+      GNUNET_break (0);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
+      msg = json_string_value (
+        json_object_get (
+          json_array_get (
+            json_object_get (j,
+                             "errors"),
+            0),
+          "title"));
+
+      ih->cb (ih->cb_cls,
+              TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_BUG,
+              NULL,
+              NULL,
+              NULL,
+              msg);
+      persona_initiate_cancel (ih);
+      return;
+    }
+  case MHD_HTTP_TOO_MANY_REQUESTS:
+    {
+      const char *msg;
+
+      /* FIXME: figure out how to nicely extract
+         the rate limit data from the reply */
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
+      msg = json_string_value (
+        json_object_get (
+          json_array_get (
+            json_object_get (j,
+                             "errors"),
+            0),
+          "title"));
+      ih->cb (ih->cb_cls,
+              TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_RATE_LIMIT_EXCEEDED,
+              NULL,
+              NULL,
+              NULL,
+              msg);
+      persona_initiate_cancel (ih);
+      return;
+    }
   default:
     {
       char *err;
@@ -532,7 +593,7 @@ handle_initiate_finished (void *cls,
                        "Unexpected HTTP status %u from Persona\n",
                        (unsigned int) response_code);
       ih->cb (ih->cb_cls,
-              TALER_EC_NONE,
+              TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
               NULL,
               NULL,
               NULL,
@@ -652,28 +713,35 @@ persona_initiate (void *cls,
                      (unsigned long long) ih->legitimization_uuid);
     payto_s = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                                    sizeof (ih->h_payto));
+    /* NOTE: check here that exchange_base_url ends
+       with a '/'? */
     GNUNET_asprintf (&proof_url,
-                     "%s/kyc-proof/%s/%s",
+                     "%skyc-proof/%s/%s",
                      pd->ps->exchange_base_url,
                      payto_s,
                      pd->section);
     body = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_string ("inquiry_template_id",
-                               pd->template_id),
-      GNUNET_JSON_pack_string ("account_id",
-                               payto_s),
-      GNUNET_JSON_pack_string ("reference_id",
-                               ref_s),
-      GNUNET_JSON_pack_string ("redirect_uri",
-                               proof_url)
-      );
+      GNUNET_JSON_pack_object_steal (
+        "data",
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_object_steal (
+            "attributes",
+            GNUNET_JSON_PACK (
+              GNUNET_JSON_pack_string ("inquiry_template_id",
+                                       pd->template_id),
+              GNUNET_JSON_pack_string ("reference_id",
+                                       ref_s),
+              GNUNET_JSON_pack_string ("redirect_uri",
+                                       proof_url)
+              )))));
+    GNUNET_assert (NULL != body);
     GNUNET_free (payto_s);
     GNUNET_free (proof_url);
   }
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  1));
+                                  0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -682,6 +750,7 @@ persona_initiate (void *cls,
                 curl_easy_setopt (eh,
                                   CURLOPT_URL,
                                   ih->url));
+  ih->ctx.disable_compression = true;
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ih->ctx,
                             eh,
@@ -694,6 +763,7 @@ persona_initiate (void *cls,
     json_decref (body);
     return NULL;
   }
+  json_decref (body);
   ih->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
                                   eh,
                                   ih->ctx.headers,
@@ -701,6 +771,23 @@ persona_initiate (void *cls,
                                   ih);
   GNUNET_CURL_extend_headers (ih->job,
                               pd->slist);
+  /* FIXME: this should be used, but IF we use it,
+     the testing should be moved to random/noncy legi rows;
+     or better: add some additional noncy thing here from
+     the config that we randomize if not given! */
+  if (0)
+  {
+    char *ikh;
+
+    GNUNET_asprintf (&ikh,
+                     "Idempotency-Key: %llu",
+                     (unsigned long long) ih->legitimization_uuid);
+    ih->slist = curl_slist_append (NULL,
+                                   ikh);
+    GNUNET_free (ikh);
+  }
+  GNUNET_CURL_extend_headers (ih->job,
+                              ih->slist);
   return ih;
 }
 
@@ -726,6 +813,79 @@ persona_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 
 
 /**
+ * Call @a ph callback with the operation result.
+ *
+ * @param ph proof handle to generate reply for
+ * @param status status to return
+ * @param account_id account to return
+ * @param inquiry_id inquiry ID to supply
+ * @param http_status HTTP status to use
+ * @param template template to instantiate
+ * @param[in] body body for the template to use (reference
+ *         is consumed)
+ */
+static void
+proof_generic_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
+                     enum TALER_KYCLOGIC_KycStatus status,
+                     const char *account_id,
+                     const char *inquiry_id,
+                     unsigned int http_status,
+                     const char *template,
+                     json_t *body)
+{
+  struct MHD_Response *resp;
+  enum GNUNET_GenericReturnValue ret;
+
+  ret = TALER_TEMPLATING_build (ph->connection,
+                                &http_status,
+                                template,
+                                NULL,
+                                NULL,
+                                body,
+                                &resp);
+  if (GNUNET_SYSERR == ret)
+  {
+    GNUNET_break (0);
+    resp = NULL; /* good luck */
+  }
+  ph->cb (ph->cb_cls,
+          status,
+          account_id,
+          inquiry_id,
+          GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+          http_status,
+          resp);
+}
+
+
+/**
+ * Call @a ph callback with HTTP error response.
+ *
+ * @param ph proof handle to generate reply for
+ * @param inquiry_id inquiry ID to supply
+ * @param http_status HTTP status to use
+ * @param template template to instantiate
+ * @param[in] body body for the template to use (reference
+ *         is consumed)
+ */
+static void
+proof_reply_error (struct TALER_KYCLOGIC_ProofHandle *ph,
+                   const char *inquiry_id,
+                   unsigned int http_status,
+                   const char *template,
+                   json_t *body)
+{
+  proof_generic_reply (ph,
+                       TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
+                       NULL, /* user id */
+                       inquiry_id,
+                       http_status,
+                       template,
+                       body);
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP "/api/v1/verifications/{verification-id}" request.
  *
@@ -740,142 +900,396 @@ handle_proof_finished (void *cls,
 {
   struct TALER_KYCLOGIC_ProofHandle *ph = cls;
   const json_t *j = response;
+  const json_t *data = json_object_get (j,
+                                        "data");
 
   ph->job = NULL;
-  json_dumpf (j,
-              stderr,
-              JSON_INDENT (2));
-#if 0
   switch (response_code)
   {
   case MHD_HTTP_OK:
     {
-      const char *verification_id;
-      const char *form_url;
+      const char *inquiry_id;
+      const char *account_id;
+      const char *type = NULL;
+      json_t *attributes;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("verification_id",
-                                 &verification_id),
-        GNUNET_JSON_spec_string ("form_url",
-                                 &form_url),
+        GNUNET_JSON_spec_string ("type",
+                                 &type),
+        GNUNET_JSON_spec_string ("id",
+                                 &inquiry_id),
+        GNUNET_JSON_spec_json ("attributes",
+                               &attributes),
         GNUNET_JSON_spec_end ()
       };
 
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
+      if ( (NULL == data) ||
+           (GNUNET_OK !=
+            GNUNET_JSON_parse (data,
+                               spec,
+                               NULL, NULL)) ||
+           (0 != strcmp (type,
+                         "inquiry")) )
       {
         GNUNET_break_op (0);
         json_dumpf (j,
                     stderr,
                     JSON_INDENT (2));
-        ph->cb (ph->cb_cls,
-                TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-                NULL,
-                NULL,
-                NULL,
-                json_string_value (json_object_get (j,
-                                                    "type")));
+        proof_reply_error (ph,
+                           inquiry_id,
+                           MHD_HTTP_BAD_GATEWAY,
+                           "persona-logic-failure",
+                           GNUNET_JSON_PACK (
+                             GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                      response_code),
+                             GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                      inquiry_id),
+                             TALER_JSON_pack_ec (
+                               TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                             GNUNET_JSON_pack_string ("detail",
+                                                      "data"),
+                             GNUNET_JSON_pack_allow_null (
+                               GNUNET_JSON_pack_object_incref ("data",
+                                                               (json_t *) data))));
         break;
       }
-      ph->cb (ph->cb_cls,
-              TALER_EC_NONE,
-              form_url,
-              NULL, /* no provider_user_id */
-              verification_id,
-              NULL /* no error */);
+
+      {
+        const char *status; /* "completed", what else? */
+        const char *reference_id; /* or legitimization number */
+        const char *expired_at = NULL; /* often 'null' format: "2022-08-18T10:14:26.000Z" */
+        struct GNUNET_JSON_Specification ispec[] = {
+          GNUNET_JSON_spec_string ("status",
+                                   &status),
+          GNUNET_JSON_spec_string ("reference_id",
+                                   &reference_id),
+          GNUNET_JSON_spec_mark_optional (
+            GNUNET_JSON_spec_string ("expired_at",
+                                     &expired_at),
+            NULL),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (attributes,
+                               ispec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          json_dumpf (j,
+                      stderr,
+                      JSON_INDENT (2));
+          proof_reply_error (ph,
+                             inquiry_id,
+                             MHD_HTTP_BAD_GATEWAY,
+                             "persona-invalid-response",
+                             GNUNET_JSON_PACK (
+                               GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                        response_code),
+                               GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                        inquiry_id),
+                               TALER_JSON_pack_ec (
+                                 TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                               GNUNET_JSON_pack_string ("detail",
+                                                        "data-attributes"),
+                               GNUNET_JSON_pack_allow_null (
+                                 GNUNET_JSON_pack_object_incref ("data",
+                                                                 (json_t *) data))));
+          GNUNET_JSON_parse_free (ispec);
+          GNUNET_JSON_parse_free (spec);
+          break;
+        }
+        {
+          unsigned long long idr;
+          char dummy;
+
+          if ( (1 != sscanf (reference_id,
+                             "%llu%c",
+                             &idr,
+                             &dummy)) ||
+               (idr != ph->legitimization_uuid) )
+          {
+            GNUNET_break_op (0);
+            proof_reply_error (ph,
+                               inquiry_id,
+                               MHD_HTTP_BAD_GATEWAY,
+                               "persona-invalid-response",
+                               GNUNET_JSON_PACK (
+                                 GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                          response_code),
+                                 GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                          inquiry_id),
+                                 TALER_JSON_pack_ec (
+                                   TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                                 GNUNET_JSON_pack_string ("detail",
+                                                          "data-attributes-reference_id"),
+                                 GNUNET_JSON_pack_allow_null (
+                                   GNUNET_JSON_pack_object_incref ("data",
+                                                                   (json_t *)
+                                                                   data))));
+            GNUNET_JSON_parse_free (ispec);
+            GNUNET_JSON_parse_free (spec);
+            break;
+          }
+        }
+
+        if (0 != strcmp (inquiry_id,
+                         ph->provider_legitimization_id))
+        {
+          GNUNET_break_op (0);
+          proof_reply_error (ph,
+                             inquiry_id,
+                             MHD_HTTP_BAD_GATEWAY,
+                             "persona-invalid-response",
+                             GNUNET_JSON_PACK (
+                               GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                        response_code),
+                               GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                        inquiry_id),
+                               TALER_JSON_pack_ec (
+                                 TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                               GNUNET_JSON_pack_string ("detail",
+                                                        "data-id"),
+                               GNUNET_JSON_pack_allow_null (
+                                 GNUNET_JSON_pack_object_incref ("data",
+                                                                 (json_t *)
+                                                                 data))));
+          GNUNET_JSON_parse_free (ispec);
+          GNUNET_JSON_parse_free (spec);
+          break;
+        }
+
+        account_id = json_string_value (
+          json_object_get (
+            json_object_get (
+              json_object_get (
+                json_object_get (
+                  data,
+                  "relationships"),
+                "account"),
+              "data"),
+            "id"));
+
+        if (0 != strcmp (status,
+                         "completed"))
+        {
+          proof_generic_reply (ph,
+                               TALER_KYCLOGIC_STATUS_FAILED,
+                               account_id,
+                               inquiry_id,
+                               MHD_HTTP_OK,
+                               "persona-kyc-failed",
+                               GNUNET_JSON_PACK (
+                                 GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                          response_code),
+                                 GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                          inquiry_id),
+                                 GNUNET_JSON_pack_allow_null (
+                                   GNUNET_JSON_pack_object_incref ("data",
+                                                                   (json_t *)
+                                                                   data))));
+          GNUNET_JSON_parse_free (ispec);
+          GNUNET_JSON_parse_free (spec);
+          break;
+        }
+
+        if (NULL == account_id)
+        {
+          GNUNET_break_op (0);
+          json_dumpf (data,
+                      stderr,
+                      JSON_INDENT (2));
+          proof_reply_error (ph,
+                             inquiry_id,
+                             MHD_HTTP_BAD_GATEWAY,
+                             "persona-invalid-response",
+                             GNUNET_JSON_PACK (
+                               GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                        response_code),
+                               GNUNET_JSON_pack_string ("persona_inquiry_id",
+                                                        inquiry_id),
+                               TALER_JSON_pack_ec (
+                                 TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                               GNUNET_JSON_pack_string ("detail",
+                                                        "data-relationships-account-data-id"),
+                               GNUNET_JSON_pack_allow_null (
+                                 GNUNET_JSON_pack_object_incref ("data",
+                                                                 (json_t *)
+                                                                 data))));
+          break;
+        }
+
+        proof_generic_reply (ph,
+                             TALER_KYCLOGIC_STATUS_SUCCESS,
+                             account_id,
+                             inquiry_id,
+                             MHD_HTTP_OK,
+                             "kyc-completed",
+                             GNUNET_JSON_PACK (
+                               GNUNET_JSON_pack_allow_null (
+                                 GNUNET_JSON_pack_object_incref ("attributes",
+                                                                 (json_t *)
+                                                                 data))));
+        GNUNET_JSON_parse_free (ispec);
+      }
       GNUNET_JSON_parse_free (spec);
+      break;
     }
-    break;
   case MHD_HTTP_BAD_REQUEST:
   case MHD_HTTP_NOT_FOUND:
   case MHD_HTTP_CONFLICT:
+  case MHD_HTTP_UNPROCESSABLE_ENTITY:
+    /* These are errors with this code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "PERSONA failed with response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_BUG,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_BAD_GATEWAY,
+                       "persona-logic-failure",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
     break;
   case MHD_HTTP_UNAUTHORIZED:
-  case MHD_HTTP_PAYMENT_REQUIRED:
+    /* These are failures of the exchange operator */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Refused access with HTTP status code %u\n",
                 (unsigned int) response_code);
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_ACCESS_REFUSED,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                       "persona-exchange-unauthorized",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_ACCESS_REFUSED),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
+    break;
+  case MHD_HTTP_PAYMENT_REQUIRED:
+    /* These are failures of the exchange operator */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Refused access with HTTP status code %u\n",
+                (unsigned int) response_code);
+
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                       "persona-exchange-unpaid",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_ACCESS_REFUSED),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
     break;
   case MHD_HTTP_REQUEST_TIMEOUT:
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_TIMEOUT,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_UNPROCESSABLE_ENTITY: /* validation */
+    /* These are networking issues */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "PERSONA failed with response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_GATEWAY_TIMEOUT,
+                       "persona-network-timeout",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_TIMEOUT),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
     break;
   case MHD_HTTP_TOO_MANY_REQUESTS:
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_RATE_LIMIT_EXCEEDED,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
-    break;
-  default:
+    /* This is a load issue */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected PERSONA response %u:\n",
+                "PERSONA failed with response %u:\n",
                 (unsigned int) response_code);
     json_dumpf (j,
                 stderr,
                 JSON_INDENT (2));
-    ph->cb (ph->cb_cls,
-            TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY,
-            NULL,
-            NULL,
-            NULL,
-            json_string_value (json_object_get (j,
-                                                "type")));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_SERVICE_UNAVAILABLE,
+                       "persona-load-failure",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_RATE_LIMIT_EXCEEDED),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
+    break;
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    /* This is an issue with Persona */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "PERSONA failed with response %u:\n",
+                (unsigned int) response_code);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_BAD_GATEWAY,
+                       "persona-provider-failure",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_ERROR),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
+    break;
+  default:
+    /* This is an issue with Persona */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "PERSONA failed with response %u:\n",
+                (unsigned int) response_code);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
+    proof_reply_error (ph,
+                       ph->provider_legitimization_id,
+                       MHD_HTTP_BAD_GATEWAY,
+                       "persona-invalid-response",
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_uint64 ("persona_http_status",
+                                                  response_code),
+                         TALER_JSON_pack_ec (
+                           TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+                         GNUNET_JSON_pack_string ("detail",
+                                                  "data-relationships-account-data-id"),
+                         GNUNET_JSON_pack_allow_null (
+                           GNUNET_JSON_pack_object_incref ("data",
+                                                           (json_t *)
+                                                           data))));
     break;
   }
-#endif
   persona_proof_cancel (ph);
 }
 
@@ -925,8 +1339,10 @@ persona_proof (void *cls,
   ph->connection = connection;
   ph->legitimization_uuid = legi_row;
   ph->h_payto = *account_id;
+  /* NOTE: we do not expect this to be non-NULL */
   if (NULL != provider_user_id)
     ph->provider_user_id = GNUNET_strdup (provider_user_id);
+  /* This should be the inquiry ID; FIXME: rename variable? */
   if (NULL != provider_legitimization_id)
     ph->provider_legitimization_id = GNUNET_strdup (provider_legitimization_id);
   GNUNET_asprintf (&ph->url,
@@ -935,7 +1351,7 @@ persona_proof (void *cls,
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  1));
+                                  0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -1286,6 +1702,7 @@ persona_webhook (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   const char *persona_inquiry_id;
 
+  // FIXME: check webhook 'Authorization' header first!
   wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
   wh->cb = cb;
   wh->cb_cls = cb_cls;

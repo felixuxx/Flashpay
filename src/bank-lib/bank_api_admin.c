@@ -215,9 +215,10 @@ TALER_BANK_admin_add_incoming (
               "Requesting administrative transaction at `%s' for reserve %s\n",
               aai->request_url,
               TALER_B2S (reserve_pub));
-  aai->post_ctx.headers = curl_slist_append
-                            (aai->post_ctx.headers,
-                            "Content-Type: application/json");
+  aai->post_ctx.headers
+    = curl_slist_append (
+        aai->post_ctx.headers,
+        "Content-Type: application/json");
 
   eh = curl_easy_init ();
   if ( (NULL == eh) ||

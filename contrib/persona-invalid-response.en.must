@@ -1,9 +1,9 @@
 <html>
 <head>
-<title>KYC provider returned unexpected status code</title>
+<title>KYC provider returned unexpected response</title>
 </head>
 <body>
-The KYC backend returned an unexpected status code.
+The KYC backend returned an unexpected response.
 <pre>
 {{ kyc_http_status }}
 {{ kyc_logic }}

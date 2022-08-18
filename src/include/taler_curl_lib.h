@@ -47,6 +47,11 @@ struct TALER_CURL_PostContext
    * Custom headers.
    */
   struct curl_slist *headers;
+
+  /**
+   * Set to true to disable compression of the body.
+   */
+  bool disable_compression;
 };
 
 

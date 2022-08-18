@@ -1330,7 +1330,8 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_TEMPLATING_init ("exchange"))
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not load templates. Installation broken.\n");
     return;
   }
   if (print_h_payto)
