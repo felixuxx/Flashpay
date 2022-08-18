@@ -177,7 +177,7 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
                         const char *template,
                         const char *instance_id,
                         const char *taler_uri,
-                        json_t *root,
+                        const json_t *root,
                         struct MHD_Response **reply)
 {
   char *body;
@@ -209,14 +209,14 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
                                           instance_id);
 
       GNUNET_break (0 ==
-                    json_object_set_new (root,
+                    json_object_set_new ((json_t *) root,
                                          "static_url",
                                          json_string (static_url)));
       GNUNET_free (static_url);
     }
     if (0 !=
         (eno = mustach_jansson (tmpl,
-                                root,
+                                (json_t *) root,
                                 &body,
                                 &body_size)))
     {
@@ -284,7 +284,7 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
                         const char *template,
                         const char *instance_id,
                         const char *taler_uri,
-                        json_t *root)
+                        const json_t *root)
 {
   enum GNUNET_GenericReturnValue res;
   struct MHD_Response *reply;

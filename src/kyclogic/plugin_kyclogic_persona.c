@@ -89,6 +89,11 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *section;
 
   /**
+   * Salt to use for idempotency.
+   */
+  char *salt;
+
+  /**
    * Authorization token to use when talking
    * to the service.
    */
@@ -336,6 +341,7 @@ persona_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
   GNUNET_free (pd->auth_token);
   GNUNET_free (pd->template_id);
   GNUNET_free (pd->subdomain);
+  GNUNET_free (pd->salt);
   GNUNET_free (pd->section);
   GNUNET_free (pd->post_kyc_redirect_url);
   GNUNET_free (pd);
@@ -382,6 +388,20 @@ persona_load_configuration (void *cls,
                                "PERSONA_AUTH_TOKEN");
     persona_unload_configuration (pd);
     return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "SALT",
+                                             &pd->salt))
+  {
+    uint32_t salt[8];
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                                salt,
+                                sizeof (salt));
+    pd->salt = GNUNET_STRINGS_data_to_string_alloc (salt,
+                                                    sizeof (salt));
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
@@ -784,17 +804,13 @@ persona_initiate (void *cls,
                                   ih);
   GNUNET_CURL_extend_headers (ih->job,
                               pd->slist);
-  /* FIXME: this should be used, but IF we use it,
-     the testing should be moved to random/noncy legi rows;
-     or better: add some additional noncy thing here from
-     the config that we randomize if not given! */
-  if (0)
   {
     char *ikh;
 
     GNUNET_asprintf (&ikh,
-                     "Idempotency-Key: %llu",
-                     (unsigned long long) ih->legitimization_uuid);
+                     "Idempotency-Key: %llu-%s",
+                     (unsigned long long) ih->legitimization_uuid,
+                     pd->salt);
     ih->slist = curl_slist_append (NULL,
                                    ikh);
     GNUNET_free (ikh);
@@ -861,6 +877,7 @@ proof_generic_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                                 NULL,
                                 body,
                                 &resp);
+  json_decref (body);
   if (GNUNET_SYSERR == ret)
   {
     GNUNET_break (0);
@@ -1136,12 +1153,13 @@ handle_proof_finished (void *cls,
           break;
         }
 
+        // FIXME: do not generate kyc-completed from template, do redirect!
         proof_generic_reply (ph,
                              TALER_KYCLOGIC_STATUS_SUCCESS,
                              account_id,
                              inquiry_id,
                              MHD_HTTP_OK,
-                             "kyc-completed",
+                             "persona-kyc-completed",
                              GNUNET_JSON_PACK (
                                GNUNET_JSON_pack_allow_null (
                                  GNUNET_JSON_pack_object_incref ("attributes",
@@ -1487,9 +1505,6 @@ handle_webhook_finished (void *cls,
                                         "data");
 
   wh->job = NULL;
-  json_dumpf (j,
-              stderr,
-              JSON_INDENT (2));
   switch (response_code)
   {
   case MHD_HTTP_OK:
@@ -1734,6 +1749,7 @@ async_webhook_reply (void *cls)
 {
   struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
 
+  wh->task = NULL;
   wh->cb (wh->cb_cls,
           wh->legitimization_uuid,
           (0 == wh->legitimization_uuid)
@@ -1862,9 +1878,27 @@ persona_webhook (void *cls,
                     "payload"),
                   "data"),
                 "relationships"),
-              "template"),
+              "inquiry_template"),
             "data"),
           "id"));
+  if (NULL == wh->template_id)
+  {
+    GNUNET_break_op (0);
+    json_dumpf (body,
+                stderr,
+                JSON_INDENT (2));
+    wh->resp = TALER_MHD_MAKE_JSON_PACK (
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_KYC_GENERIC_PROVIDER_UNEXPECTED_REPLY),
+      GNUNET_JSON_pack_string ("detail",
+                               "data-attributes-payload-data-id"),
+      GNUNET_JSON_pack_object_incref ("webhook_body",
+                                      (json_t *) body));
+    wh->response_code = MHD_HTTP_BAD_REQUEST;
+    wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
+                                         wh);
+    return wh;
+  }
   TALER_KYCLOGIC_kyc_get_details ("persona",
                                   &locate_details_cb,
                                   wh);
@@ -1920,7 +1954,7 @@ persona_webhook (void *cls,
     return wh;
   }
   qs = plc (plc_cls,
-            pd->section,
+            wh->pd->section,
             persona_inquiry_id,
             &wh->h_payto,
             &wh->legitimization_uuid);
@@ -1967,7 +2001,7 @@ persona_webhook (void *cls,
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
-                                  1));
+                                  0));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_MAXREDIRS,
@@ -1978,7 +2012,7 @@ persona_webhook (void *cls,
                                   wh->url));
   wh->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
                                   eh,
-                                  pd->slist,
+                                  wh->pd->slist,
                                   &handle_webhook_finished,
                                   wh);
   return wh;

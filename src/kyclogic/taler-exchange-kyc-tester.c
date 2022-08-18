@@ -390,7 +390,6 @@ kwh_resume (struct KycWebhookContext *kwh)
                                kwh_tail,
                                kwh);
   MHD_resume_connection (kwh->rc->connection);
-  TALER_MHD_daemon_trigger ();
 }
 
 
@@ -464,6 +463,7 @@ webhook_finished_cb (
   kwh->response = response;
   kwh->response_code = http_status;
   kwh_resume (kwh);
+  TALER_MHD_daemon_trigger ();
 }
 
 
@@ -600,7 +600,7 @@ handler_kyc_webhook_generic (
 
   /* We resumed, but got no response? This should
      not happen. */
-  GNUNET_break (0);
+  GNUNET_assert (0);
   return TALER_MHD_reply_with_error (rc->connection,
                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
                                      TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
@@ -829,6 +829,8 @@ handle_mhd_completion_callback (void *cls,
 
   TALER_MHD_parse_post_cleanup_callback (rc->opaque_post_parsing_context);
   /* Sanity-check that we didn't leave any transactions hanging */
+  if (NULL != rc->root)
+    json_decref (rc->root);
   GNUNET_free (rc);
   *con_cls = NULL;
 }

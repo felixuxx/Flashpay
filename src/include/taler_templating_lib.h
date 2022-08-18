@@ -48,7 +48,7 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
                         const char *template,
                         const char *instance_id,
                         const char *taler_uri,
-                        json_t *root,
+                        const json_t *root,
                         struct MHD_Response **reply);
 
 
@@ -72,7 +72,7 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
                         const char *template,
                         const char *instance_id,
                         const char *taler_uri,
-                        json_t *root);
+                        const json_t *root);
 
 /**
  * Preload templates.

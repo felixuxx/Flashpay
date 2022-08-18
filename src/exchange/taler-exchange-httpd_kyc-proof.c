@@ -204,6 +204,8 @@ proof_cb (
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
+      if (NULL != response)
+        MHD_destroy_response (response);
       kpc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
       kpc->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
                                             "set_kyc_ok");
