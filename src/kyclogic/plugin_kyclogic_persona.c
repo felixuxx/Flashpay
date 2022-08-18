@@ -1418,9 +1418,6 @@ persona_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
  * @param account_id account to return
  * @param inquiry_id inquiry ID to supply
  * @param http_status HTTP status to use
- * @param template template to instantiate
- * @param[in] body body for the template to use (reference
- *         is consumed)
  */
 static void
 webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
@@ -1457,9 +1454,6 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
  * @param wh proof handle to generate reply for
  * @param inquiry_id inquiry ID to supply
  * @param http_status HTTP status to use
- * @param template template to instantiate
- * @param[in] body body for the template to use (reference
- *         is consumed)
  */
 static void
 webhook_reply_error (struct TALER_KYCLOGIC_WebhookHandle *wh,
