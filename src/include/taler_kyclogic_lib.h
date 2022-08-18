@@ -238,6 +238,37 @@ TALER_KYCLOGIC_kyc_iterate_thresholds (
 
 
 /**
+ * Function called with the provider details and
+ * associated plugin closures for matching logics.
+ *
+ * @param cls closure
+ * @param pd provider details of a matching logic
+ * @param plugin_cls closure of the plugin
+ * @return #GNUNET_OK to continue to iterate
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_KYCLOGIC_DetailsCallback)(
+  void *cls,
+  const struct TALER_KYCLOGIC_ProviderDetails *pd,
+  void *plugin_cls);
+
+
+/**
+ * Call @a cb for all logics with name @a logic_name,
+ * providing the plugin closure and the @a pd configurations.
+ *
+ * @param logic_name name of the logic to match
+ * @param cb function to call on matching results
+ * @param cb_cls closure for @a cb
+ */
+void
+TALER_KYCLOGIC_kyc_get_details (
+  const char *logic_name,
+  TALER_KYCLOGIC_DetailsCallback cb,
+  void *cb_cls);
+
+
+/**
  * Obtain the provider logic for a given @a provider_section_name.
  *
  * @param provider_section_name identifies a KYC provider process

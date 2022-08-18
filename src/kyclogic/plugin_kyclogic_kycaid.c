@@ -1081,6 +1081,21 @@ kycaid_webhook (void *cls,
   wh->pd = pd;
   wh->connection = connection;
 
+  if (NULL == pd)
+  {
+    GNUNET_break_op (0);
+    json_dumpf (body,
+                stderr,
+                JSON_INDENT (2));
+    wh->resp = TALER_MHD_make_error (
+      TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
+      "kycaid");
+    wh->response_code = MHD_HTTP_NOT_FOUND;
+    wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
+                                         wh);
+    return wh;
+  }
+
   if (GNUNET_OK !=
       GNUNET_JSON_parse (body,
                          spec,

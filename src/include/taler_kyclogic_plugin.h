@@ -77,6 +77,8 @@ enum TALER_KYCLOGIC_KycStatus
    * The provider is still checking.
    */
   TALER_KYCLOGIC_STATUS_PROVIDER_PENDING
+
+
     = TALER_KYCLOGIC_STATUS_PROVIDER
       | TALER_KYCLOGIC_STATUS_PENDING,
 
@@ -239,6 +241,12 @@ struct TALER_KYCLOGIC_Plugin
    * plugin loader.
    */
   char *library_name;
+
+  /**
+   * Name of the logic, for webhook matching. Set by the
+   * plugin loader.
+   */
+  char *name;
 
   /**
    * Load the configuration of the KYC provider.

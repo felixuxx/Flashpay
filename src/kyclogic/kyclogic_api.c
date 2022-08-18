@@ -294,6 +294,7 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
     return NULL;
   }
   plugin->library_name = lib_name;
+  plugin->name = GNUNET_strdup (name);
   GNUNET_array_append (kyc_logics,
                        num_kyc_logics,
                        plugin);
@@ -737,6 +738,7 @@ TALER_KYCLOGIC_kyc_done (void)
     struct TALER_KYCLOGIC_Plugin *lp = kyc_logics[i];
     char *lib_name = lp->library_name;
 
+    GNUNET_free (lp->name);
     GNUNET_assert (NULL == GNUNET_PLUGIN_unload (lib_name,
                                                  lp));
     GNUNET_free (lib_name);
@@ -1092,6 +1094,29 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
 }
 
 
+void
+TALER_KYCLOGIC_kyc_get_details (
+  const char *logic_name,
+  TALER_KYCLOGIC_DetailsCallback cb,
+  void *cb_cls)
+{
+  for (unsigned int i = 0; i<num_kyc_providers; i++)
+  {
+    struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
+
+    if (0 !=
+        strcmp (kp->logic->name,
+                logic_name))
+      continue;
+    if (GNUNET_OK !=
+        cb (cb_cls,
+            kp->pd,
+            kp->logic->cls))
+      return;
+  }
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_KYCLOGIC_kyc_get_logic (const char *provider_section_name,
                               struct TALER_KYCLOGIC_Plugin **plugin,
@@ -1107,6 +1132,18 @@ TALER_KYCLOGIC_kyc_get_logic (const char *provider_section_name,
       continue;
     *plugin = kp->logic;
     *pd = kp->pd;
+    return GNUNET_OK;
+  }
+  for (unsigned int i = 0; i<num_kyc_logics; i++)
+  {
+    struct TALER_KYCLOGIC_Plugin *logic = kyc_logics[i];
+
+    if (0 !=
+        strcasecmp (logic->name,
+                    provider_section_name))
+      continue;
+    *plugin = logic;
+    *pd = NULL;
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

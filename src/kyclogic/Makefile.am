@@ -11,7 +11,8 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   kyclogic.conf \
   kyclogic-kycaid.conf \
-  kyclogic-oauth2.conf
+  kyclogic-oauth2.conf \
+  kyclogic-persona.conf
 
 EXTRA_DIST = \
   kyclogic.conf \
@@ -97,6 +98,7 @@ libtaler_plugin_kyclogic_persona_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_persona_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  libtalerkyclogic.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/util/libtalerutil.la \
