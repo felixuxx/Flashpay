@@ -108,6 +108,11 @@ struct KycPoller
   enum TALER_ErrorCode ec;
 
   /**
+   * What kind of entity is doing the KYC check?
+   */
+  enum TALER_KYCLOGIC_KycUserType ut;
+
+  /**
    * True if we are still suspended.
    */
   bool suspended;
@@ -401,7 +406,7 @@ db_event_cb (void *cls,
 MHD_RESULT
 TEH_handler_kyc_check (
   struct TEH_RequestContext *rc,
-  const char *const args[2])
+  const char *const args[3])
 {
   struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
@@ -445,6 +450,17 @@ TEH_handler_kyc_check (
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          "h_payto");
+    }
+
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_kyc_user_type_from_string (args[2],
+                                                  &kyp->ut))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "usertype");
     }
 
     {

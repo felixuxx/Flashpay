@@ -226,7 +226,7 @@ TALER_KYCLOGIC_kyc_user_type_from_string (const char *ut_s,
   struct
   {
     const char *in;
-    enum TALER_KYCLOGIC_KycTriggerEvent out;
+    enum TALER_KYCLOGIC_KycUserType out;
   } map [] = {
     { "individual", TALER_KYCLOGIC_KYC_UT_INDIVIDUAL },
     { "business", TALER_KYCLOGIC_KYC_UT_BUSINESS  },

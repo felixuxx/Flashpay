@@ -65,6 +65,7 @@ struct TALER_EXCHANGE_KycCheckHandle
    * Hash of the payto:// URL that is being KYC'ed.
    */
   struct TALER_PaytoHashP h_payto;
+
 };
 
 
@@ -209,6 +210,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
                           uint64_t legitimization_uuid,
                           const struct TALER_PaytoHashP *h_payto,
+                          enum TALER_KYCLOGIC_KycUserType ut,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
                           void *cb_cls)
@@ -238,9 +240,10 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
     timeout_ms = timeout.rel_value_us
                  / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
     GNUNET_asprintf (&arg_str,
-                     "/kyc-check/%llu/%s?timeout_ms=%llu",
+                     "/kyc-check/%llu/%s/%s?timeout_ms=%llu",
                      (unsigned long long) legitimization_uuid,
                      payto_str,
+                     TALER_KYCLOGIC_kyc_user_type2s (ut),
                      timeout_ms);
   }
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);

@@ -70,6 +70,7 @@ libtalerexchange_la_SOURCES = \
 libtalerexchange_la_LIBADD = \
   libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
   $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/extensions/libtalerextensions.la \

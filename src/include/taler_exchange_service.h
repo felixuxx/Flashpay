@@ -25,6 +25,7 @@
 #include <jansson.h>
 #include "taler_util.h"
 #include "taler_error_codes.h"
+#include "taler_kyclogic_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 
 
@@ -3425,6 +3426,7 @@ typedef void
  * @param eh exchange handle to use
  * @param legitimization_uuid number identifying the legitimization process
  * @param h_payto hash of the payto:// URI at @a payment_target
+ * @param ut type of the entity performing the KYC check
  * @param timeout how long to wait for a positive KYC status
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
@@ -3434,6 +3436,7 @@ struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
                           uint64_t legitimization_uuid,
                           const struct TALER_PaytoHashP *h_payto,
+                          enum TALER_KYCLOGIC_KycUserType ut,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
                           void *cb_cls);

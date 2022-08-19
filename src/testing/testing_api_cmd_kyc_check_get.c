@@ -165,6 +165,7 @@ check_kyc_run (void *cls,
   kcg->kwh = TALER_EXCHANGE_kyc_check (is->exchange,
                                        *payment_target,
                                        &h_payto,
+                                       TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
                                        GNUNET_TIME_UNIT_SECONDS,
                                        &check_kyc_cb,
                                        kcg);
