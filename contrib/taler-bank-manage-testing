@@ -37,13 +37,13 @@ echo -n "Waiting for Sandbox.."
 for n in `seq 1 50`; do
   echo -n "."
   sleep 1
-  wget --timeout=1 \
+  if wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
-    $LIBEUFIN_SANDBOX_URL
-  break
+    $LIBEUFIN_SANDBOX_URL; then
+    break
+  fi
 done
-sleep 1  #7293
 echo OK
 
 register_sandbox_account() {
@@ -122,13 +122,13 @@ set +e
 for n in `seq 1 50`; do
   echo -n "."
   sleep 1
-  wget --timeout=1 \
+  if wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
-    $LIBEUFIN_NEXUS_URL
-  break
+    $LIBEUFIN_NEXUS_URL; then
+    break
+  fi
 done
-sleep 1 #7293
 set -e
 echo OK
 export LIBEUFIN_NEXUS_USERNAME=exchange
