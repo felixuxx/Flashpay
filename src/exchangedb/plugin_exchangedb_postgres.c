@@ -16546,7 +16546,7 @@ postgres_insert_kyc_requirement_process (
  * expiration data.
  *
  * @param cls closure
- * @param legi_row row to select by
+ * @param process_row row to select by
  * @param provider_section provider that must be checked (technically redundant)
  * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
  * @param provider_account_id provider account ID
@@ -16628,7 +16628,7 @@ postgres_update_kyc_process_by_row (
  *
  * @param cls closure
  * @param requirement_row identifies requirement to look up
- * @param[out] provider_section provider that must be checked
+ * @param[out] requirements provider that must be checked
  * @param[out] h_payto account that must be KYC'ed
  * @return database transaction status
  */
@@ -16722,7 +16722,7 @@ postgres_lookup_kyc_process_by_account (
  * @param provider_section
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
- * @param[out] legi_row where to write the row of the entry
+ * @param[out] process_row where to write the row of the entry
  * @return database transaction status
  */
 static enum GNUNET_DB_QueryStatus
