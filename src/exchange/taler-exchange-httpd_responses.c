@@ -979,13 +979,16 @@ TEH_RESPONSE_reply_purse_created (
 
 MHD_RESULT
 TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
+                                 const struct TALER_PaytoHashP *h_payto,
                                  const struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
-    GNUNET_JSON_pack_uint64 ("legitimization_uuid",
-                             kyc->legitimization_uuid));
+    GNUNET_JSON_pack_data_auto ("h_payto",
+                                h_payto),
+    GNUNET_JSON_pack_uint64 ("requirement_row",
+                             kyc->requirement_row));
 }
 
 

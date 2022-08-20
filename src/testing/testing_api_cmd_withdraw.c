@@ -171,10 +171,16 @@ struct WithdrawState
   struct GNUNET_TIME_Relative total_backoff;
 
   /**
-   * Set to the KYC UUID *if* the exchange replied with
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
    * a request for KYC.
    */
-  uint64_t kyc_uuid;
+  uint64_t requirement_row;
 
   /**
    * Expected HTTP response code to the request.
@@ -318,8 +324,10 @@ reserve_withdraw_cb (void *cls,
     break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* KYC required */
-    ws->kyc_uuid =
-      wr->details.unavailable_for_legal_reasons.legitimization_uuid;
+    ws->requirement_row =
+      wr->details.unavailable_for_legal_reasons.requirement_row;
+    ws->h_payto
+      = wr->details.unavailable_for_legal_reasons.h_payto;
     break;
   default:
     /* Unsupported status code (by test harness) */
@@ -538,7 +546,9 @@ withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amount (&ws->amount),
-    TALER_TESTING_make_trait_legitimization_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &ws->h_payto),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (

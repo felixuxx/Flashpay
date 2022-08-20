@@ -257,7 +257,7 @@ struct TALER_KYCLOGIC_WebhookHandle
    * Row in legitimizations for the given
    * @e verification_id.
    */
-  uint64_t legi_row;
+  uint64_t process_row;
 
   /**
    * HTTP response code to return asynchronously.
@@ -646,7 +646,7 @@ proof_reply (void *cls)
  * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
- * @param legi_row row in the table the legitimization is for
+ * @param process_row row in the legitimization processes table the legitimization is for
  * @param provider_user_id user ID (or NULL) the proof is for
  * @param provider_legitimization_id legitimization ID the proof is for
  * @param cb function to call with the result
@@ -659,7 +659,7 @@ kycaid_proof (void *cls,
               const char *const url_path[],
               struct MHD_Connection *connection,
               const struct TALER_PaytoHashP *account_id,
-              uint64_t legi_row,
+              uint64_t process_row,
               const char *provider_user_id,
               const char *provider_legitimization_id,
               TALER_KYCLOGIC_ProofCallback cb,
@@ -805,8 +805,9 @@ handle_webhook_finished (void *cls,
           GNUNET_JSON_pack_object_incref ("kycaid_body",
                                           (json_t *) j));
         wh->cb (wh->cb_cls,
-                wh->legi_row,
+                wh->process_row,
                 &wh->h_payto,
+                wh->pd->section,
                 wh->applicant_id,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -826,8 +827,9 @@ handle_webhook_finished (void *cls,
       {
         expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
         wh->cb (wh->cb_cls,
-                wh->legi_row,
+                wh->process_row,
                 &wh->h_payto,
+                wh->pd->section,
                 wh->applicant_id,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_SUCCESS,
@@ -838,8 +840,9 @@ handle_webhook_finished (void *cls,
       else
       {
         wh->cb (wh->cb_cls,
-                wh->legi_row,
+                wh->process_row,
                 &wh->h_payto,
+                wh->pd->section,
                 wh->applicant_id,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_USER_ABORTED,
@@ -863,8 +866,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_uint64 ("kycaid_http_status",
                                response_code));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -883,8 +887,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_object_incref ("kycaid_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -899,8 +904,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_object_incref ("kycaid_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -921,8 +927,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_object_incref ("kycaid_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -937,8 +944,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_object_incref ("kycaid_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -953,8 +961,9 @@ handle_webhook_finished (void *cls,
       GNUNET_JSON_pack_object_incref ("kycaid_body",
                                       (json_t *) j));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -975,8 +984,9 @@ handle_webhook_finished (void *cls,
                 stderr,
                 JSON_INDENT (2));
     wh->cb (wh->cb_cls,
-            wh->legi_row,
+            wh->process_row,
             &wh->h_payto,
+            wh->pd->section,
             wh->applicant_id,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -1000,10 +1010,11 @@ async_webhook_reply (void *cls)
   struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
 
   wh->cb (wh->cb_cls,
-          wh->legi_row,
-          (0 == wh->legi_row)
+          wh->process_row,
+          (0 == wh->process_row)
           ? NULL
           : &wh->h_payto,
+          wh->pd->section,
           wh->applicant_id, /* provider user ID */
           wh->verification_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -1117,7 +1128,7 @@ kycaid_webhook (void *cls,
             pd->section,
             verification_id,
             &wh->h_payto,
-            &wh->legi_row);
+            &wh->process_row);
   if (qs < 0)
   {
     wh->resp = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,

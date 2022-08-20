@@ -42,9 +42,9 @@ struct KycRequestContext
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Row with the legitimization requirement.
+   * KYC status, with row with the legitimization requirement.
    */
-  uint64_t legi_row;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
    * Balance threshold crossed by the wallet.
@@ -116,16 +116,20 @@ wallet_kyc_check (void *cls,
     TEH_plugin->cls,
     &balance_iterator,
     krc);
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC check required at %s is `%s'\n",
               TALER_amount2s (&krc->balance),
               krc->required);
   if (NULL == krc->required)
+  {
+    krc->kyc.ok = true;
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
+  krc->kyc.ok = false;
   qs = TEH_plugin->insert_kyc_requirement_for_account (TEH_plugin->cls,
                                                        krc->required,
                                                        &krc->h_payto,
-                                                       &krc->legi_row);
+                                                       &krc->kyc.requirement_row);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -140,7 +144,7 @@ wallet_kyc_check (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC requirement inserted for wallet %s (%llu, %d)\n",
               TALER_B2S (&krc->h_payto),
-              (unsigned long long) krc->legi_row,
+              (unsigned long long) krc->kyc.requirement_row,
               qs);
   return qs;
 }
@@ -200,7 +204,7 @@ TEH_handler_kyc_wallet (
                                           &reserve_pub);
     TALER_payto_hash (payto_uri,
                       &krc.h_payto);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "h_payto of wallet %s is %s\n",
                 payto_uri,
                 TALER_B2S (&krc.h_payto));
@@ -224,11 +228,9 @@ TEH_handler_kyc_wallet (
       NULL,
       0);
   }
-  return TALER_MHD_REPLY_JSON_PACK (
-    rc->connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_uint64 ("legitimization_uuid",
-                             krc.legi_row));
+  return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                          &krc.h_payto,
+                                          &krc.kyc);
 }
 
 

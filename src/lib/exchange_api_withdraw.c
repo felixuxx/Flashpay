@@ -160,9 +160,12 @@ handle_reserve_withdraw_finished (
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
       struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &wr.details.unavailable_for_legal_reasons.h_payto),
         GNUNET_JSON_spec_uint64 (
-          "legitimization_uuid",
-          &wr.details.unavailable_for_legal_reasons.legitimization_uuid),
+          "requirement_row",
+          &wr.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 

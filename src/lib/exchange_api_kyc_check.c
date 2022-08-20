@@ -98,11 +98,11 @@ handle_kyc_check_finished (void *cls,
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &ks.details.kyc_ok.exchange_sig),
+                                     &ks.details.success.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &ks.details.kyc_ok.exchange_pub),
+                                     &ks.details.success.exchange_pub),
         GNUNET_JSON_spec_timestamp ("now",
-                                    &ks.details.kyc_ok.timestamp),
+                                    &ks.details.success.timestamp),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -120,7 +120,7 @@ handle_kyc_check_finished (void *cls,
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &ks.details.kyc_ok.exchange_pub))
+                                           &ks.details.success.exchange_pub))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;
@@ -132,9 +132,9 @@ handle_kyc_check_finished (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_online_account_setup_success_verify (
             &kch->h_payto,
-            ks.details.kyc_ok.timestamp,
-            &ks.details.kyc_ok.exchange_pub,
-            &ks.details.kyc_ok.exchange_sig))
+            ks.details.success.timestamp,
+            &ks.details.success.exchange_pub,
+            &ks.details.success.exchange_sig))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;
@@ -152,7 +152,7 @@ handle_kyc_check_finished (void *cls,
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("kyc_url",
-                                 &ks.details.kyc_url),
+                                 &ks.details.accepted.kyc_url),
         GNUNET_JSON_spec_end ()
       };
 
@@ -208,7 +208,7 @@ handle_kyc_check_finished (void *cls,
 
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
-                          uint64_t legitimization_uuid,
+                          uint64_t requirement_row,
                           const struct TALER_PaytoHashP *h_payto,
                           enum TALER_KYCLOGIC_KycUserType ut,
                           struct GNUNET_TIME_Relative timeout,
@@ -241,7 +241,7 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
                  / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
     GNUNET_asprintf (&arg_str,
                      "/kyc-check/%llu/%s/%s?timeout_ms=%llu",
-                     (unsigned long long) legitimization_uuid,
+                     (unsigned long long) requirement_row,
                      payto_str,
                      TALER_KYCLOGIC_kyc_user_type2s (ut),
                      timeout_ms);

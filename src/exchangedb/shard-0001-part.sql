@@ -31,6 +31,13 @@ BEGIN
 
   PERFORM create_table_reserves(shard_suffix);
 
+  PERFORM create_table_legitimization_requirements(shard_suffix);
+  PERFORM add_constraints_to_legitimization_requirements_partition(shard_suffix);
+
+  PERFORM create_table_legitimization_processes(shard_suffix);
+  PERFORM add_constraints_to_legitimization_processes_partition(shard_suffix);
+
+
   PERFORM create_table_reserves_in(shard_suffix);
   PERFORM add_constraints_to_reserves_in_partition(shard_suffix);
 

@@ -234,9 +234,10 @@ struct TALER_KYCLOGIC_ProofHandle
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * UUID being checked.
+   * Row in the legitimization processes of the
+   * legitimization proof that is being checked.
    */
-  uint64_t legitimization_uuid;
+  uint64_t process_row;
 
   /**
    * Account ID at the provider.
@@ -320,7 +321,7 @@ struct TALER_KYCLOGIC_WebhookHandle
   /**
    * UUID being checked.
    */
-  uint64_t legitimization_uuid;
+  uint64_t process_row;
 
   /**
    * HTTP response code to return asynchronously.
@@ -1041,7 +1042,7 @@ handle_proof_finished (void *cls,
                              "%llu%c",
                              &idr,
                              &dummy)) ||
-               (idr != ph->legitimization_uuid) )
+               (idr != ph->process_row) )
           {
             GNUNET_break_op (0);
             proof_reply_error (ph,
@@ -1347,7 +1348,7 @@ handle_proof_finished (void *cls,
  * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
- * @param legi_row row in the table the legitimization is for
+ * @param process_row row in the legitimization processes table the legitimization is for
  * @param provider_user_id user ID (or NULL) the proof is for
  * @param inquiry_id legitimization ID the proof is for
  * @param cb function to call with the result
@@ -1360,7 +1361,7 @@ persona_proof (void *cls,
                const char *const url_path[],
                struct MHD_Connection *connection,
                const struct TALER_PaytoHashP *account_id,
-               uint64_t legi_row,
+               uint64_t process_row,
                const char *provider_user_id,
                const char *inquiry_id,
                TALER_KYCLOGIC_ProofCallback cb,
@@ -1382,7 +1383,7 @@ persona_proof (void *cls,
   ph->cb = cb;
   ph->cb_cls = cb_cls;
   ph->connection = connection;
-  ph->legitimization_uuid = legi_row;
+  ph->process_row = process_row;
   ph->h_payto = *account_id;
   /* Note: we do not expect this to be non-NULL */
   if (NULL != provider_user_id)
@@ -1465,9 +1466,10 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
                                           MHD_RESPMEM_PERSISTENT);
   TALER_MHD_add_global_headers (resp);
   wh->cb (wh->cb_cls,
-          wh->legitimization_uuid,
+          wh->process_row,
           &wh->h_payto,
           account_id,
+          wh->pd->section,
           inquiry_id,
           status,
           expiration,
@@ -1591,7 +1593,7 @@ handle_webhook_finished (void *cls,
                              "%llu%c",
                              &idr,
                              &dummy)) ||
-               (idr != wh->legitimization_uuid) )
+               (idr != wh->process_row) )
           {
             GNUNET_break_op (0);
             webhook_reply_error (wh,
@@ -1761,10 +1763,11 @@ async_webhook_reply (void *cls)
 
   wh->task = NULL;
   wh->cb (wh->cb_cls,
-          wh->legitimization_uuid,
-          (0 == wh->legitimization_uuid)
+          wh->process_row,
+          (0 == wh->process_row)
           ? NULL
           : &wh->h_payto,
+          wh->pd->section,
           NULL,
           wh->inquiry_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
@@ -1967,7 +1970,7 @@ persona_webhook (void *cls,
             wh->pd->section,
             persona_inquiry_id,
             &wh->h_payto,
-            &wh->legitimization_uuid);
+            &wh->process_row);
   if (qs < 0)
   {
     wh->resp = TALER_MHD_make_error (TALER_EC_GENERIC_DB_FETCH_FAILED,

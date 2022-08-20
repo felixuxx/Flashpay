@@ -180,8 +180,9 @@ typedef void
  * MUST NOT be done by the plugin!
  *
  * @param cls closure
- * @param legi_row legitimization request the webhook was about
+ * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
+ * @param provider_section name of the configuration section of the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
@@ -192,8 +193,9 @@ typedef void
 typedef void
 (*TALER_KYCLOGIC_WebhookCallback)(
   void *cls,
-  uint64_t legi_row,
+  uint64_t process_row,
   const struct TALER_PaytoHashP *account_id,
+  const char *provider_section,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
@@ -203,16 +205,15 @@ typedef void
 
 
 /**
- * Function the plugin can use to lookup an
- * @a h_payto by @a provider_legitimization_id.
- * Must match the `kyc_provider_account_lookup`
+ * Function the plugin can use to lookup an @a h_payto by @a
+ * provider_legitimization_id.  Must match the `kyc_provider_account_lookup`
  * of the exchange's database plugin.
  *
  * @param cls closure
  * @param provider_section
  * @param provider_legitimization_id legi to look up
  * @param[out] h_payto where to write the result
- * @param[out] legi_row where to write the row of the entry
+ * @param[out] process_row where to write the row of the entry
  * @return database transaction status
  */
 typedef enum GNUNET_DB_QueryStatus
@@ -221,7 +222,7 @@ typedef enum GNUNET_DB_QueryStatus
   const char *provider_section,
   const char *provider_legitimization_id,
   struct TALER_PaytoHashP *h_payto,
-  uint64_t *legi_row);
+  uint64_t *process_row);
 
 
 /**
@@ -274,7 +275,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param pd provider configuration details
    * @param account_id which account to trigger process for
-   * @param legitimization_uuid unique ID for the legitimization process
+   * @param process_row unique ID for the legitimization process
    * @param cb function to call with the result
    * @param cb_cls closure for @a cb
    * @return handle to cancel operation early
@@ -283,7 +284,7 @@ struct TALER_KYCLOGIC_Plugin
   (*initiate)(void *cls,
               const struct TALER_KYCLOGIC_ProviderDetails *pd,
               const struct TALER_PaytoHashP *account_id,
-              uint64_t legitimization_uuid,
+              uint64_t process_row,
               TALER_KYCLOGIC_InitiateCallback cb,
               void *cb_cls);
 
@@ -305,7 +306,7 @@ struct TALER_KYCLOGIC_Plugin
    * @param url_path rest of the URL after `/kyc-webhook/$H_PAYTO/$LOGIC`
    * @param connection MHD connection object (for HTTP headers)
    * @param account_id which account to trigger process for
-   * @param legi_row row in the table the legitimization is for
+   * @param process_row row in the legitimization processes table the legitimization is for
    * @param provider_user_id user ID (or NULL) the proof is for
    * @param provider_legitimization_id legitimization ID the proof is for
    * @param cb function to call with the result
@@ -318,7 +319,7 @@ struct TALER_KYCLOGIC_Plugin
            const char *const url_path[],
            struct MHD_Connection *connection,
            const struct TALER_PaytoHashP *account_id,
-           uint64_t legi_row,
+           uint64_t process_row,
            const char *provider_user_id,
            const char *provider_legitimization_id,
            TALER_KYCLOGIC_ProofCallback cb,

@@ -50,10 +50,18 @@ struct TrackTransactionState
   unsigned int expected_response_code;
 
   /**
-   * Set to the KYC UUID *if* the exchange replied with
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC (#MHD_HTTP_ACCEPTED).
+   * Note: set based on our @e merchant_payto_uri, as
+   * the exchange does not respond with the payto hash.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
    * a request for KYC (#MHD_HTTP_ACCEPTED).
    */
-  uint64_t kyc_uuid;
+  uint64_t requirement_row;
 
   /**
    * Reference to any operation that can provide a transaction.
@@ -158,7 +166,10 @@ deposit_wtid_cb (void *cls,
     break;
   case MHD_HTTP_ACCEPTED:
     /* allowed, nothing to check here */
-    tts->kyc_uuid = dr->details.accepted.legitimization_uuid;
+    TALER_payto_hash (tts->merchant_payto_uri,
+                      &tts->h_payto);
+    tts->requirement_row
+      = dr->details.accepted.requirement_row;
     break;
   case MHD_HTTP_NOT_FOUND:
     /* allowed, nothing to check here */
@@ -321,7 +332,10 @@ track_transaction_traits (void *cls,
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_wtid (&tts->wtid),
-    TALER_TESTING_make_trait_legitimization_uuid (&tts->kyc_uuid),
+    TALER_TESTING_make_trait_legi_requirement_row (
+      &tts->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &tts->h_payto),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &tts->merchant_payto_uri),
     TALER_TESTING_trait_end ()

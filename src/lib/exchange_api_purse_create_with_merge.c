@@ -298,8 +298,8 @@ handle_purse_create_with_merge_finished (void *cls,
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 (
-          "legitimization_uuid",
-          &dr.details.unavailable_for_legal_reasons.legitimization_uuid),
+          "requirement_row",
+          &dr.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 

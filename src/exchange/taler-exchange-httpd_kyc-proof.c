@@ -90,14 +90,14 @@ struct KycProofContext
   struct MHD_Response *response;
 
   /**
-   * Configuration section for the logic we are running.
+   * Provider configuration section name of the logic we are running.
    */
-  char *provider_section;
+  const char *provider_section;
 
   /**
    * Row in the database for this legitimization operation.
    */
-  uint64_t legi_row;
+  uint64_t process_row;
 
   /**
    * HTTP response code to return.
@@ -194,13 +194,13 @@ proof_cb (
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TEH_plugin->update_kyc_requirement_by_row (TEH_plugin->cls,
-                                                    kpc->legi_row,
-                                                    kpc->provider_section,
-                                                    &kpc->h_payto,
-                                                    provider_user_id,
-                                                    provider_legitimization_id,
-                                                    expiration);
+    qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
+                                                kpc->process_row,
+                                                kpc->provider_section,
+                                                &kpc->h_payto,
+                                                provider_user_id,
+                                                provider_legitimization_id,
+                                                expiration);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       GNUNET_break (0);
@@ -216,8 +216,8 @@ proof_cb (
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC logic #%llu failed with status %d\n",
-                (unsigned long long) kpc->legi_row,
+                "KYC process #%llu failed with status %d\n",
+                (unsigned long long) kpc->process_row,
                 status);
   }
   kpc->response_code = http_status;
@@ -249,7 +249,6 @@ clean_kpc (struct TEH_RequestContext *rc)
   }
   GNUNET_free (kpc->provider_user_id);
   GNUNET_free (kpc->provider_legitimization_id);
-  GNUNET_free (kpc->provider_section);
   GNUNET_free (kpc);
 }
 
@@ -257,7 +256,7 @@ clean_kpc (struct TEH_RequestContext *rc)
 MHD_RESULT
 TEH_handler_kyc_proof (
   struct TEH_RequestContext *rc,
-  const char *const args[])
+  const char *const args[3])
 {
   struct KycProofContext *kpc = rc->rh_ctx;
 
@@ -290,28 +289,38 @@ TEH_handler_kyc_proof (
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          "h_payto");
     }
-    kpc->provider_section = GNUNET_strdup (args[1]);
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_kyc_get_logic (kpc->provider_section,
-                                      &kpc->logic,
-                                      &kpc->pd))
+        TALER_KYCLOGIC_lookup_logic (args[1],
+                                     &kpc->logic,
+                                     &kpc->pd,
+                                     &kpc->provider_section))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         kpc->provider_section);
+                                         args[1]);
+    }
+    if (0 != strcmp (args[1],
+                     kpc->provider_section))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "PROVIDER_SECTION");
     }
 
+    if (NULL != kpc->provider_section)
     {
       enum GNUNET_DB_QueryStatus qs;
       struct GNUNET_TIME_Absolute expiration;
 
-      qs = TEH_plugin->lookup_kyc_requirement_by_account (
+      qs = TEH_plugin->lookup_kyc_process_by_account (
         TEH_plugin->cls,
         kpc->provider_section,
         &kpc->h_payto,
-        &kpc->legi_row,
+        &kpc->process_row,
         &expiration,
         &kpc->provider_user_id,
         &kpc->provider_legitimization_id);
@@ -346,7 +355,7 @@ TEH_handler_kyc_proof (
                                  &args[2],
                                  rc->connection,
                                  &kpc->h_payto,
-                                 kpc->legi_row,
+                                 kpc->process_row,
                                  kpc->provider_user_id,
                                  kpc->provider_legitimization_id,
                                  &proof_cb,

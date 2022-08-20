@@ -179,7 +179,7 @@ withdraw_transaction (void *cls,
         TEH_plugin->cls,
         kyc_required,
         &wc->h_payto,
-        &wc->kyc.legitimization_uuid);
+        &wc->kyc.requirement_row);
     }
   }
   wc->kyc.ok = true;
@@ -489,6 +489,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   if (! wc.kyc.ok)
     return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &wc.h_payto,
                                             &wc.kyc);
   {
     MHD_RESULT ret;

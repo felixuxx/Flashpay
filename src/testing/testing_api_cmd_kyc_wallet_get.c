@@ -59,10 +59,16 @@ struct KycWalletGetState
   unsigned int expected_response_code;
 
   /**
-   * Set to the KYC UUID *if* the exchange replied with
-   * a request for KYC (#MHD_HTTP_ACCEPTED).
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC (#MHD_HTTP_OK).
    */
-  uint64_t kyc_uuid;
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
+   * a request for KYC (#MHD_HTTP_OK).
+   */
+  uint64_t requirement_row;
 
   /**
    * Handle to the "track transaction" pending operation.
@@ -111,15 +117,18 @@ wallet_kyc_cb (void *cls,
   }
   switch (wkr->http_status)
   {
-  case MHD_HTTP_OK:
-    kwg->kyc_uuid = wkr->legitimization_uuid;
-    break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    kwg->requirement_row
+      = wkr->details.unavailable_for_legal_reasons.requirement_row;
+    kwg->h_payto
+      = wkr->details.unavailable_for_legal_reasons.h_payto;
+    break;
   default:
     GNUNET_break (0);
     break;
@@ -232,7 +241,8 @@ wallet_kyc_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_reserve_priv (&kwg->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&kwg->reserve_pub),
-    TALER_TESTING_make_trait_legitimization_uuid (&kwg->kyc_uuid),
+    TALER_TESTING_make_trait_legi_requirement_row (&kwg->requirement_row),
+    TALER_TESTING_make_trait_h_payto (&kwg->h_payto),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()

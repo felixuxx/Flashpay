@@ -128,30 +128,50 @@ CREATE TABLE IF NOT EXISTS wire_targets_default
 SELECT add_constraints_to_wire_targets_partition('default');
 
 
--- ------------------------------ legitimizations ----------------------------------------
+-- ------------------------------ legitimization_processes ----------------------------------------
 
-SELECT create_table_legitimizations();
+SELECT create_table_legitimization_processes();
 
-COMMENT ON TABLE legitimizations
-  IS 'List of legitimizations (required and completed) by account and provider';
-COMMENT ON COLUMN legitimizations.legitimization_serial_id
+COMMENT ON TABLE legitimization_processes
+  IS 'List of legitimization processes (ongoing and completed) by account and provider';
+COMMENT ON COLUMN legitimization_processes.legitimization_process_serial_id
   IS 'unique ID for this legitimization process at the exchange';
-COMMENT ON COLUMN legitimizations.h_payto
+COMMENT ON COLUMN legitimization_processes.h_payto
   IS 'foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)';
-COMMENT ON COLUMN legitimizations.expiration_time
+COMMENT ON COLUMN legitimization_processes.expiration_time
   IS 'in the future if the respective KYC check was passed successfully';
-COMMENT ON COLUMN legitimizations.provider_section
+COMMENT ON COLUMN legitimization_processes.provider_section
   IS 'Configuration file section with details about this provider';
-COMMENT ON COLUMN legitimizations.provider_user_id
+COMMENT ON COLUMN legitimization_processes.provider_user_id
   IS 'Identifier for the user at the provider that was used for the legitimization. NULL if provider is unaware.';
-COMMENT ON COLUMN legitimizations.provider_legitimization_id
+COMMENT ON COLUMN legitimization_processes.provider_legitimization_id
   IS 'Identifier for the specific legitimization process at the provider. NULL if legitimization was not started.';
 
-CREATE TABLE IF NOT EXISTS legitimizations_default
-  PARTITION OF legitimizations
+CREATE TABLE IF NOT EXISTS legitimization_processes_default
+  PARTITION OF legitimization_processes
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-SELECT add_constraints_to_legitimizations_partition('default');
+SELECT add_constraints_to_legitimization_processes_partition('default');
+
+
+-- ------------------------------ legitimization_requirements_ ----------------------------------------
+
+SELECT create_table_legitimization_requirements();
+
+COMMENT ON TABLE legitimization_requirements
+  IS 'List of required legitimization by account';
+COMMENT ON COLUMN legitimization_requirements.legitimization_requirement_serial_id
+  IS 'unique ID for this legitimization requirement at the exchange';
+COMMENT ON COLUMN legitimization_requirements.h_payto
+  IS 'foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)';
+COMMENT ON COLUMN legitimization_requirements.required_checks
+  IS 'space-separated list of required checks';
+
+CREATE TABLE IF NOT EXISTS legitimization_requirements_default
+  PARTITION OF legitimization_requirements
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_legitimization_requirements_partition('default');
 
 
 

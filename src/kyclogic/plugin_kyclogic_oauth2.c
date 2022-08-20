@@ -920,7 +920,7 @@ handle_curl_login_finished (void *cls,
  * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
- * @param legi_row row in the table the legitimization is for
+ * @param process_row row in the legitimization processes table the legitimization is for
  * @param provider_user_id user ID (or NULL) the proof is for
  * @param provider_legitimization_id legitimization ID the proof is for
  * @param cb function to call with the result
@@ -933,7 +933,7 @@ oauth2_proof (void *cls,
               const char *const url_path[],
               struct MHD_Connection *connection,
               const struct TALER_PaytoHashP *account_id,
-              uint64_t legi_row,
+              uint64_t process_row,
               const char *provider_user_id,
               const char *provider_legitimization_id,
               TALER_KYCLOGIC_ProofCallback cb,
@@ -948,7 +948,7 @@ oauth2_proof (void *cls,
   GNUNET_snprintf (ph->provider_legitimization_id,
                    sizeof (ph->provider_legitimization_id),
                    "%llu",
-                   (unsigned long long) legi_row);
+                   (unsigned long long) process_row);
   if ( (NULL != provider_legitimization_id) &&
        (0 != strcmp (provider_legitimization_id,
                      ph->provider_legitimization_id)))
@@ -1111,6 +1111,7 @@ wh_return_not_found (void *cls)
                                               MHD_RESPMEM_PERSISTENT);
   wh->cb (wh->cb_cls,
           0LLU,
+          NULL,
           NULL,
           NULL,
           NULL,

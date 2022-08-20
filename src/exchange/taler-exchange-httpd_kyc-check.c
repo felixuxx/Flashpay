@@ -72,9 +72,14 @@ struct KycPoller
   struct GNUNET_DB_EventHandler *eh;
 
   /**
-   * UUID being checked.
+   * Row of the requirement being checked.
    */
-  uint64_t legitimization_uuid;
+  uint64_t requirement_row;
+
+  /**
+   * Row of KYC process being initiated.
+   */
+  uint64_t process_row;
 
   /**
    * Hash of the payto:// URI we are confirming to
@@ -88,11 +93,6 @@ struct KycPoller
   struct GNUNET_TIME_Absolute timeout;
 
   /**
-   * Type of KYC check required for this client.
-   */
-  char *required;
-
-  /**
    * Set to starting URL of KYC process if KYC is required.
    */
   char *kyc_url;
@@ -101,6 +101,11 @@ struct KycPoller
    * Set to error details, on error (@ec not TALER_EC_NONE).
    */
   char *hint;
+
+  /**
+   * Name of the section of the provider in the configuration.
+   */
+  const char *section_name;
 
   /**
    * Set to error encountered with KYC logic, if any.
@@ -118,9 +123,9 @@ struct KycPoller
   bool suspended;
 
   /**
-   * True if KYC was required but is fully satisfied.
+   * False if KYC is not required.
    */
-  bool found;
+  bool kyc_required;
 
   /**
    * True if we once tried the KYC initiation.
@@ -192,7 +197,6 @@ kyp_cleanup (struct TEH_RequestContext *rc)
   }
   GNUNET_free (kyp->kyc_url);
   GNUNET_free (kyp->hint);
-  GNUNET_free (kyp->required);
   GNUNET_free (kyp);
 }
 
@@ -237,10 +241,10 @@ initiate_cb (
   {
     kyp->hint = GNUNET_strdup (error_msg_hint);
   }
-  qs = TEH_plugin->update_kyc_requirement_by_row (
+  qs = TEH_plugin->update_kyc_process_by_row (
     TEH_plugin->cls,
-    kyp->legitimization_uuid,
-    kyp->required,
+    kyp->process_row,
+    kyp->section_name,
     &kyp->h_payto,
     provider_user_id,
     provider_legitimization_id,
@@ -286,23 +290,18 @@ kyc_check (void *cls,
   struct TALER_KYCLOGIC_ProviderDetails *pd;
   enum GNUNET_GenericReturnValue ret;
   struct TALER_PaytoHashP h_payto;
-  struct GNUNET_TIME_Absolute expiration;
-  char *provider_account_id;
-  char *provider_legitimization_id;
+  char *requirements;
 
   qs = TEH_plugin->lookup_kyc_requirement_by_row (
     TEH_plugin->cls,
-    kyp->legitimization_uuid,
-    &kyp->required,
-    &h_payto,
-    &expiration,
-    &provider_account_id,
-    &provider_legitimization_id);
+    kyp->requirement_row,
+    &requirements,
+    &h_payto);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "No KYC requirements open for %llu\n",
-                (unsigned long long) kyp->legitimization_uuid);
+                (unsigned long long) kyp->requirement_row);
     return qs;
   }
   if (qs < 0)
@@ -310,52 +309,65 @@ kyc_check (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
     return qs;
   }
-  GNUNET_free (provider_account_id);
-  GNUNET_free (provider_legitimization_id);
   if (0 !=
       GNUNET_memcmp (&kyp->h_payto,
                      &h_payto))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Account %llu provided, but h_payto does not match\n",
-                (unsigned long long) kyp->legitimization_uuid);
+                "Requirement %llu provided, but h_payto does not match\n",
+                (unsigned long long) kyp->requirement_row);
     GNUNET_break_op (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_FORBIDDEN,
                                            TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
                                            "h_payto");
+    GNUNET_free (requirements);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  kyp->found = true;
-  if (GNUNET_TIME_absolute_is_future (expiration))
-  {
-    /* kyc not required, we are done */
-    return qs;
-  }
+  if (TALER_KYCLOGIC_check_satisfied (
+        requirements,
+        &h_payto,
+        TEH_plugin->select_satisfied_kyc_processes,
+        TEH_plugin->cls))
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 
-  ret = TALER_KYCLOGIC_kyc_get_logic (kyp->required,
-                                      &kyp->ih_logic,
-                                      &pd);
+  kyp->kyc_required = true;
+  ret = TALER_KYCLOGIC_requirements_to_logic (requirements,
+                                              kyp->ut,
+                                              &kyp->ih_logic,
+                                              &pd,
+                                              &kyp->section_name);
   if (GNUNET_OK != ret)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC logic for `%s' not configured but used in database!\n",
-                kyp->required);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "KYC requirements `%s' cannot be checked, but are set as required in database!\n",
+                requirements);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_GONE,
-                                           kyp->required);
+                                           requirements);
+    GNUNET_free (requirements);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  GNUNET_free (requirements);
+
   if (kyp->ih_done)
     return qs;
+
+  qs = TEH_plugin->insert_kyc_requirement_process (
+    TEH_plugin->cls,
+    &h_payto,
+    kyp->section_name,
+    NULL,
+    NULL,
+    &kyp->process_row);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Initiating KYC check with logic %s\n",
-              kyp->required);
+              kyp->ih_logic->name);
   kyp->ih = kyp->ih_logic->initiate (kyp->ih_logic->cls,
                                      pd,
                                      &h_payto,
-                                     kyp->legitimization_uuid,
+                                     kyp->process_row,
                                      &initiate_cb,
                                      kyp);
   GNUNET_break (NULL != kyp->ih);
@@ -421,22 +433,22 @@ TEH_handler_kyc_check (
     rc->rh_cleaner = &kyp_cleanup;
 
     {
-      unsigned long long legitimization_uuid;
+      unsigned long long requirement_row;
       char dummy;
 
       if (1 !=
           sscanf (args[0],
                   "%llu%c",
-                  &legitimization_uuid,
+                  &requirement_row,
                   &dummy))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "legitimization_uuid");
+                                           "requirement_row");
       }
-      kyp->legitimization_uuid = (uint64_t) legitimization_uuid;
+      kyp->requirement_row = (uint64_t) requirement_row;
     }
 
     if (GNUNET_OK !=
@@ -527,12 +539,12 @@ TEH_handler_kyc_check (
   }
 
   if ( (NULL == kyp->ih) &&
-       (! kyp->found) )
+       (! kyp->kyc_required) )
   {
     /* KYC not required */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC not required %llu\n",
-                (unsigned long long) kyp->legitimization_uuid);
+                (unsigned long long) kyp->requirement_row);
     return TALER_MHD_reply_static (
       rc->connection,
       MHD_HTTP_NO_CONTENT,
@@ -554,7 +566,7 @@ TEH_handler_kyc_check (
   }
 
   /* long polling? */
-  if ( (NULL != kyp->required) &&
+  if ( (NULL != kyp->section_name) &&
        GNUNET_TIME_absolute_is_future (kyp->timeout))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,

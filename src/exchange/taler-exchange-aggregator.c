@@ -92,6 +92,12 @@ struct AggregationUnit
   const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   /**
+   * Row in KYC table for legitimization requirements
+   * that are pending for this aggregation, or 0 if none.
+   */
+  uint64_t requirement_row;
+
+  /**
    * Set to #GNUNET_OK during transient checking
    * while everything is OK. Otherwise see return
    * value of #do_aggregate().
@@ -469,14 +475,13 @@ return_relevant_amounts (void *cls,
 /**
  * Test if KYC is required for a transfer to @a h_payto.
  *
- * @param au_active aggregation unit to check for
+ * @param[in,out] au_active aggregation unit to check for
  * @return true if KYC checks are satisfied
  */
 static bool
-kyc_satisfied (const struct AggregationUnit *au_active)
+kyc_satisfied (struct AggregationUnit *au_active)
 {
   const char *requirement;
-  uint64_t legi_row;
   enum GNUNET_DB_QueryStatus qs;
 
   requirement = TALER_KYCLOGIC_kyc_test_required (
@@ -496,7 +501,7 @@ kyc_satisfied (const struct AggregationUnit *au_active)
     db_plugin->cls,
     requirement,
     &au_active->h_payto,
-    &legi_row);
+    &au_active->requirement_row);
   if (qs < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -506,8 +511,8 @@ kyc_satisfied (const struct AggregationUnit *au_active)
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "New legitimization process %llu started\n",
-                (unsigned long long) legi_row);
+                "Legitimization process %llu started\n",
+                (unsigned long long) au_active->requirement_row);
   }
   return false;
 }
@@ -649,6 +654,7 @@ do_aggregate (struct AggregationUnit *au)
       qs = db_plugin->update_aggregation_transient (db_plugin->cls,
                                                     &au->h_payto,
                                                     &au->wtid,
+                                                    au->requirement_row,
                                                     &au->total_amount);
     else
       qs = db_plugin->create_aggregation_transient (db_plugin->cls,
@@ -656,6 +662,7 @@ do_aggregate (struct AggregationUnit *au)
                                                     au->wa->section_name,
                                                     &au->merchant_pub,
                                                     &au->wtid,
+                                                    au->requirement_row,
                                                     &au->total_amount);
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {

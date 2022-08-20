@@ -252,6 +252,12 @@ static char *cmd_provider_user_id;
 static char *cmd_provider_legitimization_id;
 
 /**
+ * Name of the configuration section with the
+ * configuration data of the selected provider.
+ */
+static const char *provider_section_name;
+
+/**
  * Row ID to use, override with '-r'
  */
 static unsigned int kyc_row_id = 42;
@@ -272,9 +278,14 @@ static int run_webservice;
 static int global_ret;
 
 /**
+ * -r command-line flag.
+ */
+static char *requirements;
+
+/**
  * -i command-line flag.
  */
-static char *initiate_section;
+static char *ut_s = "individual";
 
 /**
  * Handle for ongoing initiation operation.
@@ -345,10 +356,10 @@ struct KycWebhookContext
   struct MHD_Response *response;
 
   /**
-   * Logic the request is for. Name of the configuration
+   * Name of the configuration
    * section defining the KYC logic.
    */
-  char *logic;
+  const char *section_name;
 
   /**
    * HTTP response code to return.
@@ -418,8 +429,9 @@ kyc_webhook_cleanup (void)
  * will be done by the plugin.
  *
  * @param cls closure
- * @param legi_row legitimization request the webhook was about
+ * @param process_row legitimization process request the webhook was about
  * @param account_id account the webhook was about
+ * @param provider_section configuration section of the logic
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
@@ -430,8 +442,9 @@ kyc_webhook_cleanup (void)
 static void
 webhook_finished_cb (
   void *cls,
-  uint64_t legi_row,
+  uint64_t process_row,
   const struct TALER_PaytoHashP *account_id,
+  const char *provider_section,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
@@ -442,6 +455,7 @@ webhook_finished_cb (
   struct KycWebhookContext *kwh = cls;
 
   kwh->wh = NULL;
+  // FIXME: check arguments for validity?
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
@@ -453,10 +467,10 @@ webhook_finished_cb (
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "KYC status of %s/%s (Row #%llu) is %d\n",
+                "KYC status of %s/%s (process #%llu) is %d\n",
                 provider_user_id,
                 provider_legitimization_id,
-                (unsigned long long) legi_row,
+                (unsigned long long) process_row,
                 status);
     break;
   }
@@ -487,7 +501,6 @@ clean_kwh (struct TEKT_RequestContext *rc)
     MHD_destroy_response (kwh->response);
     kwh->response = NULL;
   }
-  GNUNET_free (kwh->logic);
   GNUNET_free (kwh);
 }
 
@@ -542,23 +555,31 @@ handler_kyc_webhook_generic (
   if (NULL == kwh)
   { /* first time */
     kwh = GNUNET_new (struct KycWebhookContext);
-    kwh->logic = GNUNET_strdup (args[0]);
     kwh->rc = rc;
     rc->rh_ctx = kwh;
     rc->rh_cleaner = &clean_kwh;
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_kyc_get_logic (kwh->logic,
-                                      &kwh->plugin,
-                                      &kwh->pd))
+        TALER_KYCLOGIC_lookup_logic (args[0],
+                                     &kwh->plugin,
+                                     &kwh->pd,
+                                     &kwh->section_name))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
-                  kwh->logic);
+                  args[0]);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         "$LOGIC");
+                                         args[0]);
+    }
+    if (0 != strcmp (args[0],
+                     kwh->section_name))
+    {
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "$PROVIDER_SECTION");
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Calling KYC provider specific webhook\n");
@@ -709,6 +730,7 @@ handler_kyc_proof_get (
   struct TALER_KYCLOGIC_ProviderDetails *pd;
   struct TALER_KYCLOGIC_Plugin *logic;
   struct ProofRequestState *rs;
+  const char *section_name;
 
   if ( (NULL == args[0]) ||
        (NULL == args[1]) )
@@ -743,13 +765,14 @@ handler_kyc_proof_get (
   }
 
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_kyc_get_logic (args[1],
-                                    &logic,
-                                    &pd))
+      TALER_KYCLOGIC_lookup_logic (args[1],
+                                   &logic,
+                                   &pd,
+                                   &section_name))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not initiate KYC with provider `%s' (configuration error?)\n",
-                initiate_section);
+                args[1]);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
@@ -1366,18 +1389,31 @@ run (void *cls,
     return;
   }
   global_ret = EXIT_SUCCESS;
-  if (NULL != initiate_section)
+  if (NULL != requirements)
   {
     struct TALER_KYCLOGIC_ProviderDetails *pd;
+    enum TALER_KYCLOGIC_KycUserType ut;
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_kyc_get_logic (initiate_section,
-                                      &ih_logic,
-                                      &pd))
+        TALER_KYCLOGIC_kyc_user_type_from_string (ut_s,
+                                                  &ut))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not initiate KYC with provider `%s' (configuration error?)\n",
-                  initiate_section);
+                  "Invalid user type specified ('-i')\n");
+      global_ret = EXIT_INVALIDARGUMENT;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_KYCLOGIC_requirements_to_logic (requirements,
+                                              ut,
+                                              &ih_logic,
+                                              &pd,
+                                              &provider_section_name))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not initiate KYC for requirements `%s' (configuration error?)\n",
+                  requirements);
       global_ret = EXIT_NOTCONFIGURED;
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -1474,11 +1510,17 @@ main (int argc,
       "run the integrated HTTP service",
       &run_webservice),
     GNUNET_GETOPT_option_string (
+      'R',
+      "requirements",
+      "CHECKS",
+      "initiate KYC check for the given list of (space-separated) checks",
+      &requirements),
+    GNUNET_GETOPT_option_string (
       'i',
-      "initiate",
-      "SECTION_NAME",
-      "initiate KYC check using provider configured in SECTION_NAME of the configuration",
-      &initiate_section),
+      "identify",
+      "USERTYPE",
+      "self-identify as USERTYPE 'business' or 'individual' (defaults to 'individual')",
+      &requirements),
     GNUNET_GETOPT_option_string (
       'u',
       "user",

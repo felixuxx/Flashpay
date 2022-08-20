@@ -209,7 +209,7 @@ batch_withdraw_transaction (void *cls,
       TEH_plugin->cls,
       kyc_required,
       &wc->h_payto,
-      &wc->kyc.legitimization_uuid);
+      &wc->kyc.requirement_row);
   }
   wc->kyc.ok = true;
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,
@@ -328,6 +328,7 @@ generate_reply_success (const struct TEH_RequestContext *rc,
   {
     /* KYC required */
     return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &wc->h_payto,
                                             &wc->kyc);
   }
 

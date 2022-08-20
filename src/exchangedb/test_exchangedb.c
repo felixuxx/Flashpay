@@ -2203,6 +2203,7 @@ run (void *cls)
                                                   "x-bank",
                                                   &deposit.merchant_pub,
                                                   &wtid,
+                                                  0,
                                                   &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,
@@ -2224,6 +2225,7 @@ run (void *cls)
             plugin->update_aggregation_transient (plugin->cls,
                                                   &wire_target_h_payto,
                                                   &wtid,
+                                                  0,
                                                   &total));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_aggregation_transient (plugin->cls,

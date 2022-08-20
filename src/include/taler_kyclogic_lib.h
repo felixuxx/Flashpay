@@ -194,9 +194,7 @@ typedef enum GNUNET_DB_QueryStatus
 
 
 /**
- * Check if KYC is provided for a particular operation. Returns the best
- * provider (configuration section name) that could perform the required
- * check.
+ * Check if KYC is provided for a particular operation. Returns the set of checks that still need to be satisfied.
  *
  * Called within a database transaction, so must
  * not start a new one.
@@ -211,7 +209,8 @@ typedef enum GNUNET_DB_QueryStatus
  *         amounts involved in this type of operation
  *         at the given account
  * @param ai_cls closure for @a ai
- * @return NULL if no check is needed
+ * @return NULL if no check is needed,
+ *   otherwise space-separated list of required checks
  */
 const char *
 TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
@@ -220,6 +219,23 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
                                   void *ki_cls,
                                   TALER_KYCLOGIC_KycAmountIterator ai,
                                   void *ai_cls);
+
+
+/**
+ * Check if the @a requirements are now satsified for
+ * @a h_payto account.
+ *
+ * @param requirements space-spearated list of requirements
+ * @param h_payto hash over the account
+ * @param ki iterator over satisfied providers
+ * @param ki_cls closure for @a ki
+ * @return true if the KYC check was satisfied
+ */
+bool
+TALER_KYCLOGIC_check_satisfied (const char *requirements,
+                                const struct TALER_PaytoHashP *h_payto,
+                                TALER_KYCLOGIC_KycSatisfiedIterator ki,
+                                void *ki_cls);
 
 
 /**
@@ -269,17 +285,36 @@ TALER_KYCLOGIC_kyc_get_details (
 
 
 /**
- * Obtain the provider logic for a given @a provider_section_name.
+ * Obtain the provider logic for a given set of @a requirments.
  *
- * @param provider_section_name identifies a KYC provider process
+ * @param requirements space-separated list of required checks
+ * @param ut type of the entity performing the check
  * @param[out] plugin set to the KYC logic API
  * @param[out] pd set to the specific operation context
+ * @param[out] configuration_section set to the name of the KYC logic configuration section * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
+                                      enum TALER_KYCLOGIC_KycUserType ut,
+                                      struct TALER_KYCLOGIC_Plugin **plugin,
+                                      struct TALER_KYCLOGIC_ProviderDetails **pd,
+                                      const char **configuration_section);
+
+
+/**
+ * Obtain the provider logic for a given @a name.
+ *
+ * @param name name of the logic or provider section
+ * @param[out] plugin set to the KYC logic API
+ * @param[out] pd set to the specific operation context
+ * @param[out] configuration_section set to the name of the KYC logic configuration section
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_KYCLOGIC_kyc_get_logic (const char *provider_section_name,
-                              struct TALER_KYCLOGIC_Plugin **plugin,
-                              struct TALER_KYCLOGIC_ProviderDetails **pd);
+TALER_KYCLOGIC_lookup_logic (const char *name,
+                             struct TALER_KYCLOGIC_Plugin **plugin,
+                             struct TALER_KYCLOGIC_ProviderDetails **pd,
+                             const char **configuration_section);
 
 
 #endif

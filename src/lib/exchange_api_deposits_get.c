@@ -181,8 +181,8 @@ handle_deposit_wtid_finished (void *cls,
         GNUNET_JSON_spec_timestamp ("execution_time",
                                     &dr.details.accepted.execution_time),
         GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_uint64 ("legitimization_uuid",
-                                   &dr.details.accepted.legitimization_uuid),
+          GNUNET_JSON_spec_uint64 ("requirement_row",
+                                   &dr.details.accepted.requirement_row),
           &no_legi),
         GNUNET_JSON_spec_bool ("kyc_ok",
                                &dr.details.accepted.kyc_ok),
@@ -200,7 +200,7 @@ handle_deposit_wtid_finished (void *cls,
         break;
       }
       if (no_legi)
-        dr.details.accepted.legitimization_uuid = 0;
+        dr.details.accepted.requirement_row = 0;
       dwh->cb (dwh->cb_cls,
                &dr);
       TALER_EXCHANGE_deposits_get_cancel (dwh);

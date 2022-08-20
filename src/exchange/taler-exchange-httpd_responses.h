@@ -79,11 +79,13 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
  * satisfied to proceed to client.
  *
  * @param connection connection to the client
+ * @param h_payto account identifier to include in reply
  * @param kyc details about the KYC requirements
  * @return MHD result code
  */
 MHD_RESULT
 TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
+                                 const struct TALER_PaytoHashP *h_payto,
                                  const struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 

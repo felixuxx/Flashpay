@@ -58,6 +58,12 @@ struct KycWebhookContext
   struct TALER_KYCLOGIC_Plugin *plugin;
 
   /**
+   * Section in the configuration of the configured
+   * KYC provider.
+   */
+  const char *provider_section;
+
+  /**
    * Configuration for the specific action.
    */
   struct TALER_KYCLOGIC_ProviderDetails *pd;
@@ -71,12 +77,6 @@ struct KycWebhookContext
    * HTTP response to return.
    */
   struct MHD_Response *response;
-
-  /**
-   * Logic the request is for. Name of the configuration
-   * section defining the KYC logic.
-   */
-  char *logic;
 
   /**
    * HTTP response code to return.
@@ -147,8 +147,9 @@ TEH_kyc_webhook_cleanup (void)
  * will be done by the plugin.
  *
  * @param cls closure
- * @param legi_row legitimization request the webhook was about
+ * @param process_row legitimization process the webhook was about
  * @param account_id account the webhook was about
+ * @param provider_section name of the configuration section of the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
@@ -159,8 +160,9 @@ TEH_kyc_webhook_cleanup (void)
 static void
 webhook_finished_cb (
   void *cls,
-  uint64_t legi_row,
+  uint64_t process_row,
   const struct TALER_PaytoHashP *account_id,
+  const char *provider_section,
   const char *provider_user_id,
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
@@ -178,13 +180,13 @@ webhook_finished_cb (
     {
       enum GNUNET_DB_QueryStatus qs;
 
-      qs = TEH_plugin->update_kyc_requirement_by_row (TEH_plugin->cls,
-                                                      legi_row,
-                                                      kwh->logic,
-                                                      account_id,
-                                                      provider_user_id,
-                                                      provider_legitimization_id,
-                                                      expiration);
+      qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
+                                                  process_row,
+                                                  provider_section,
+                                                  account_id,
+                                                  provider_user_id,
+                                                  provider_legitimization_id,
+                                                  expiration);
       if (qs < 0)
       {
         GNUNET_break (0);
@@ -201,7 +203,7 @@ webhook_finished_cb (
                 "KYC status of %s/%s (Row #%llu) is %d\n",
                 provider_user_id,
                 provider_legitimization_id,
-                (unsigned long long) legi_row,
+                (unsigned long long) process_row,
                 status);
     break;
   }
@@ -231,7 +233,6 @@ clean_kwh (struct TEH_RequestContext *rc)
     MHD_destroy_response (kwh->response);
     kwh->response = NULL;
   }
-  GNUNET_free (kwh->logic);
   GNUNET_free (kwh);
 }
 
@@ -257,23 +258,23 @@ handler_kyc_webhook_generic (
   if (NULL == kwh)
   { /* first time */
     kwh = GNUNET_new (struct KycWebhookContext);
-    kwh->logic = GNUNET_strdup (args[0]);
     kwh->rc = rc;
     rc->rh_ctx = kwh;
     rc->rh_cleaner = &clean_kwh;
 
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_kyc_get_logic (kwh->logic,
-                                      &kwh->plugin,
-                                      &kwh->pd))
+        TALER_KYCLOGIC_lookup_logic (args[0],
+                                     &kwh->plugin,
+                                     &kwh->pd,
+                                     &kwh->provider_section))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
-                  kwh->logic);
+                  args[0]);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         "$LOGIC");
+                                         "$NAME");
     }
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
                                     kwh->pd,

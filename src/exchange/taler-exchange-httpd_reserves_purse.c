@@ -206,7 +206,7 @@ purse_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &rpc->h_payto,
-      &rpc->kyc.legitimization_uuid);
+      &rpc->kyc.requirement_row);
   }
   rpc->kyc.ok = true;
 
@@ -709,6 +709,7 @@ TEH_handler_reserves_purse (
 
   if (! rpc.kyc.ok)
     return TEH_RESPONSE_reply_kyc_required (connection,
+                                            &rpc.h_payto,
                                             &rpc.kyc);
   /* generate regular response */
   {

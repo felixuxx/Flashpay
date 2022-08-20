@@ -2139,10 +2139,16 @@ struct TALER_EXCHANGE_WithdrawResponse
     struct
     {
       /**
-       * Payment target that the merchant should use
+       * Requirement row that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t legitimization_uuid;
+      uint64_t requirement_row;
+
+      /**
+       * Hash of the payto-URI of the account to KYC;
+       */
+      struct TALER_PaytoHashP h_payto;
+
     } unavailable_for_legal_reasons;
 
     /**
@@ -2255,16 +2261,22 @@ struct TALER_EXCHANGE_BatchWithdrawResponse
     } success;
 
     /**
-     * Details if the status is #MHD_HTTP_ACCEPTED.
+     * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
      */
     struct
     {
+
       /**
-       * Payment target that the merchant should use
-       * to check for its KYC status.
+       * Hash of the payto-URI of the account to KYC;
        */
-      uint64_t legitimization_uuid;
-    } accepted;
+      struct TALER_PaytoHashP h_payto;
+
+      /**
+       * Legitimization requirement that the merchant should use
+       * to check for its KYC status, 0 if not known.
+       */
+      uint64_t requirement_row;
+    } unavailable_for_legal_reasons;
 
     /**
      * Details if the status is #MHD_HTTP_CONFLICT.
@@ -3073,11 +3085,6 @@ struct TALER_EXCHANGE_GetDepositResponse
        */
       struct TALER_Amount coin_contribution;
 
-      /**
-       * Payment target that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t legitimization_uuid;
     } success;
 
     /**
@@ -3092,10 +3099,10 @@ struct TALER_EXCHANGE_GetDepositResponse
       struct GNUNET_TIME_Timestamp execution_time;
 
       /**
-       * Payment target that the merchant should use
-       * to check for its KYC status.
+       * KYC legitimization requirement that the merchant should use to check
+       * for its KYC status.
        */
-      uint64_t legitimization_uuid;
+      uint64_t requirement_row;
 
       /**
        * Set to 'true' if the KYC check is already finished and
@@ -3394,14 +3401,19 @@ struct TALER_EXCHANGE_KycStatus
        */
       struct TALER_ExchangeSignatureP exchange_sig;
 
-    } kyc_ok;
+    } success;
 
-    /**
-     * URL the user should open in a browser if
-     * the KYC process is to be run. Returned if
-     * @e http_status is #MHD_HTTP_ACCEPTED.
-     */
-    const char *kyc_url;
+    struct
+    {
+
+      /**
+       * URL the user should open in a browser if
+       * the KYC process is to be run. Returned if
+       * @e http_status is #MHD_HTTP_ACCEPTED.
+       */
+      const char *kyc_url;
+
+    } accepted;
 
   } details;
 
@@ -3424,7 +3436,7 @@ typedef void
  * of a merchant.
  *
  * @param eh exchange handle to use
- * @param legitimization_uuid number identifying the legitimization process
+ * @param requirement_row number identifying the KYC requirement
  * @param h_payto hash of the payto:// URI at @a payment_target
  * @param ut type of the entity performing the KYC check
  * @param timeout how long to wait for a positive KYC status
@@ -3434,7 +3446,7 @@ typedef void
  */
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
-                          uint64_t legitimization_uuid,
+                          uint64_t requirement_row,
                           const struct TALER_PaytoHashP *h_payto,
                           enum TALER_KYCLOGIC_KycUserType ut,
                           struct GNUNET_TIME_Relative timeout,
@@ -3553,10 +3565,29 @@ struct TALER_EXCHANGE_WalletKycResponse
   enum TALER_ErrorCode ec;
 
   /**
-   * Wallet's payment target UUID. Only valid if
-   * @e http_status is #MHD_HTTP_OK
+   * Variants depending on @e http_status.
    */
-  uint64_t legitimization_uuid;
+  union
+  {
+
+    /**
+     * In case @e http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct
+    {
+      /**
+       * Wallet's KYC requirement row.
+       */
+      uint64_t requirement_row;
+
+      /**
+       * Hash of the payto-URI identifying the wallet to KYC.
+       */
+      struct TALER_PaytoHashP h_payto;
+
+    } unavailable_for_legal_reasons;
+
+  } details;
 
 };
 
@@ -4879,10 +4910,10 @@ struct TALER_EXCHANGE_AccountMergeResponse
     struct
     {
       /**
-       * Payment target that the merchant should use
+       * Requirement row target that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t legitimization_uuid;
+      uint64_t requirement_row;
     } unavailable_for_legal_reasons;
 
 
@@ -4988,10 +5019,10 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
     struct
     {
       /**
-       * Payment target that the merchant should use
+       * Requirement row that the merchant should use
        * to check for its KYC status.
        */
-      uint64_t legitimization_uuid;
+      uint64_t requirement_row;
     } unavailable_for_legal_reasons;
 
   } details;

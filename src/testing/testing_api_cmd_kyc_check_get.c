@@ -93,7 +93,7 @@ check_kyc_cb (void *cls,
   case MHD_HTTP_OK:
     break;
   case MHD_HTTP_ACCEPTED:
-    kcg->kyc_url = GNUNET_strdup (ks->details.kyc_url);
+    kcg->kyc_url = GNUNET_strdup (ks->details.accepted.kyc_url);
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
@@ -119,9 +119,8 @@ check_kyc_run (void *cls,
 {
   struct KycCheckGetState *kcg = cls;
   const struct TALER_TESTING_Command *res_cmd;
-  const char **payto_uri;
-  const uint64_t *payment_target;
-  struct TALER_PaytoHashP h_payto;
+  const uint64_t *requirement_row;
+  const struct TALER_PaytoHashP *h_payto;
 
   (void) cmd;
   kcg->is = is;
@@ -135,36 +134,30 @@ check_kyc_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_payto_uri (res_cmd,
-                                         &payto_uri))
+      TALER_TESTING_get_trait_legi_requirement_row (res_cmd,
+                                                    &requirement_row))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_legitimization_uuid (res_cmd,
-                                                   &payment_target))
+      TALER_TESTING_get_trait_h_payto (res_cmd,
+                                       &h_payto))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
-  if ( (NULL == *payto_uri) ||
-       (0 == *payment_target) )
+  if (0 == *requirement_row)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Running KYC check for payto URI: %s\n",
-              *payto_uri);
-  TALER_payto_hash (*payto_uri,
-                    &h_payto);
   kcg->kwh = TALER_EXCHANGE_kyc_check (is->exchange,
-                                       *payment_target,
-                                       &h_payto,
+                                       *requirement_row,
+                                       h_payto,
                                        TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
                                        GNUNET_TIME_UNIT_SECONDS,
                                        &check_kyc_cb,

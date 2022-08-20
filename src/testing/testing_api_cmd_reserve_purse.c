@@ -104,10 +104,10 @@ struct ReservePurseState
   struct TALER_PaytoHashP h_payto;
 
   /**
-   * Set to the KYC UUID *if* the exchange replied with
+   * Set to the KYC requirement row *if* the exchange replied with
    * a request for KYC.
    */
-  uint64_t kyc_uuid;
+  uint64_t requirement_row;
 
   /**
    * Contract terms for the purse.
@@ -165,8 +165,8 @@ purse_cb (void *cls,
   {
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* KYC required */
-    ds->kyc_uuid =
-      dr->details.unavailable_for_legal_reasons.legitimization_uuid;
+    ds->requirement_row =
+      dr->details.unavailable_for_legal_reasons.requirement_row;
     break;
   }
   TALER_TESTING_interpreter_next (ds->is);
@@ -309,7 +309,7 @@ purse_traits (void *cls,
     TALER_TESTING_make_trait_reserve_priv (&ds->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&ds->reserve_pub),
     TALER_TESTING_make_trait_reserve_sig (&ds->reserve_sig),
-    TALER_TESTING_make_trait_legitimization_uuid (&ds->kyc_uuid),
+    TALER_TESTING_make_trait_legi_requirement_row (&ds->requirement_row),
     TALER_TESTING_make_trait_h_payto (&ds->h_payto),
     TALER_TESTING_trait_end ()
   };

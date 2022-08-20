@@ -141,10 +141,16 @@ struct BatchWithdrawState
   struct CoinState *coins;
 
   /**
-   * Set to the KYC UUID *if* the exchange replied with
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
    * a request for KYC.
    */
-  uint64_t kyc_uuid;
+  uint64_t requirement_row;
 
   /**
    * Length of the @e coins array.
@@ -213,10 +219,6 @@ reserve_batch_withdraw_cb (void *cls,
       cs->exchange_vals = pcd->exchange_vals;
     }
     break;
-  case MHD_HTTP_ACCEPTED:
-    /* nothing to check */
-    ws->kyc_uuid = wr->details.accepted.legitimization_uuid;
-    break;
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
     break;
@@ -228,6 +230,13 @@ reserve_batch_withdraw_cb (void *cls,
     break;
   case MHD_HTTP_GONE:
     /* theoretically could check that the key was actually */
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* nothing to check */
+    ws->requirement_row
+      = wr->details.unavailable_for_legal_reasons.requirement_row;
+    ws->h_payto
+      = wr->details.unavailable_for_legal_reasons.h_payto;
     break;
   default:
     /* Unsupported status code (by test harness) */
@@ -417,7 +426,9 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amounts (index,
                                       &cs->amount),
-    TALER_TESTING_make_trait_legitimization_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &ws->h_payto),
     TALER_TESTING_make_trait_payto_uri (
       (const char **) &ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (

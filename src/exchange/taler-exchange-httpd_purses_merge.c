@@ -291,7 +291,7 @@ merge_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &pcc->h_payto,
-      &pcc->kyc.legitimization_uuid);
+      &pcc->kyc.requirement_row);
   }
   pcc->kyc.ok = true;
   qs = TEH_plugin->do_purse_merge (
@@ -665,6 +665,7 @@ TEH_handler_purses_merge (
   GNUNET_free (pcc.provider_url);
   if (! pcc.kyc.ok)
     return TEH_RESPONSE_reply_kyc_required (connection,
+                                            &pcc.h_payto,
                                             &pcc.kyc);
 
   {

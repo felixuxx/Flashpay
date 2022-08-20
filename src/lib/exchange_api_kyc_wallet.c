@@ -95,11 +95,28 @@ handle_kyc_wallet_finished (void *cls,
   case 0:
     ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
-  case MHD_HTTP_OK:
+  case MHD_HTTP_NO_CONTENT:
+    break;
+  case MHD_HTTP_BAD_REQUEST:
+    ks.ec = TALER_JSON_get_error_code (j);
+    /* This should never happen, either us or the exchange is buggy
+       (or API version conflict); just pass JSON reply to the application */
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    ks.ec = TALER_JSON_get_error_code (j);
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    ks.ec = TALER_JSON_get_error_code (j);
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_uint64 ("legitimization_uuid",
-                                 &ks.legitimization_uuid),
+        GNUNET_JSON_spec_fixed_auto (
+          "h_payto",
+          &ks.details.unavailable_for_legal_reasons.h_payto),
+        GNUNET_JSON_spec_uint64 (
+          "requirement_row",
+          &ks.details.unavailable_for_legal_reasons.requirement_row),
         GNUNET_JSON_spec_end ()
       };
 
@@ -115,19 +132,6 @@ handle_kyc_wallet_finished (void *cls,
       }
       break;
     }
-  case MHD_HTTP_NO_CONTENT:
-    break;
-  case MHD_HTTP_BAD_REQUEST:
-    ks.ec = TALER_JSON_get_error_code (j);
-    /* This should never happen, either us or the exchange is buggy
-       (or API version conflict); just pass JSON reply to the application */
-    break;
-  case MHD_HTTP_FORBIDDEN:
-    ks.ec = TALER_JSON_get_error_code (j);
-    break;
-  case MHD_HTTP_NOT_FOUND:
-    ks.ec = TALER_JSON_get_error_code (j);
-    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     ks.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
