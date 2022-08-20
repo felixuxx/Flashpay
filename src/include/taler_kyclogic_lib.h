@@ -285,7 +285,7 @@ TALER_KYCLOGIC_kyc_get_details (
 
 
 /**
- * Obtain the provider logic for a given set of @a requirments.
+ * Obtain the provider logic for a given set of @a requirements.
  *
  * @param requirements space-separated list of required checks
  * @param ut type of the entity performing the check
