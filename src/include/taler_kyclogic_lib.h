@@ -22,8 +22,8 @@
 #define TALER_KYCLOGIC_LIB_H
 
 #include <microhttpd.h>
-#include <taler_exchangedb_plugin.h>
-#include <taler_kyclogic_plugin.h>
+#include "taler_exchangedb_plugin.h"
+#include "taler_kyclogic_plugin.h"
 
 
 /**
