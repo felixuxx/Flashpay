@@ -60,7 +60,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
     GNUNET_break (NULL == *json);
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Closing connection, upload too large\n");
-    return MHD_NO;
+    return GNUNET_SYSERR;
   case GNUNET_JSON_PR_JSON_INVALID:
     GNUNET_break (NULL == *json);
     return (MHD_YES ==

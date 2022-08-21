@@ -10210,6 +10210,7 @@ reserve_expired_cb (void *cls,
       ret = GNUNET_SYSERR;
       break;
     }
+    // FIXME: ret here is a qs! Bad enum conversion! FIX DESIGN!!!
     ret = erc->rec (erc->rec_cls,
                     &reserve_pub,
                     &remaining_balance,
@@ -15300,6 +15301,7 @@ postgres_delete_shard_locks (void *cls)
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  // FIXME: rval is a GNUNET_GenericReturnValue, not DB status!
   return GNUNET_PQ_exec_statements (pg->conn,
                                     es);
 }

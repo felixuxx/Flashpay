@@ -504,7 +504,7 @@ run (void *cls,
     {
       struct GNUNET_HashCode seed;
       struct TALER_AgeMask mask = {
-        .bits = 1 || 1 << 8 || 1 << 12 || 1 << 16 || 1 << 18
+        .bits = 1 | (1 << 8) | (1 << 12) | (1 << 16) | (1 << 18)
       };
       struct TALER_AgeCommitmentProof acp = {0};
 

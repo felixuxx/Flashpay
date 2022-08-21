@@ -173,7 +173,6 @@ batch_withdraw_transaction (void *cls,
                             MHD_RESULT *mhd_ret)
 {
   struct BatchWithdrawContext *wc = cls;
-  struct GNUNET_TIME_Timestamp now;
   uint64_t ruuid;
   enum GNUNET_DB_QueryStatus qs;
   bool balance_ok = false;
@@ -213,7 +212,7 @@ batch_withdraw_transaction (void *cls,
   }
   wc->kyc.ok = true;
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,
-                                      now,
+                                      wc->now,
                                       wc->reserve_pub,
                                       &wc->batch_total,
                                       &found,
@@ -262,7 +261,7 @@ batch_withdraw_transaction (void *cls,
     qs = TEH_plugin->do_batch_withdraw_insert (TEH_plugin->cls,
                                                nonce,
                                                &pc->collectable,
-                                               now,
+                                               wc->now,
                                                ruuid,
                                                &denom_unknown,
                                                &conflict,
