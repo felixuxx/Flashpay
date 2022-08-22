@@ -1983,6 +1983,16 @@ check_recoup (struct CoinContext *cc,
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue;
 
   if (GNUNET_OK !=
+      TALER_wallet_recoup_verify (&coin->denom_pub_hash,
+                                  coin_blind,
+                                  &coin->coin_pub,
+                                  coin_sig))
+  {
+    report_row_inconsistency (operation,
+                              rowid,
+                              "recoup signature invalid");
+  }
+  if (GNUNET_OK !=
       TALER_test_coin_valid (coin,
                              denom_pub))
   {

@@ -204,9 +204,11 @@ commit_or_warn (void)
  * @param account_payto_uri information about the bank account that initially
  *        caused the reserve to be created
  * @param expiration_date when did the reserve expire
- * @return transaction status code
+ * @return #GNUNET_OK on success (continue)
+ *         #GNUNET_NO on non-fatal errors (try again)
+ *         #GNUNET_SYSERR on fatal errors (abort)
  */
-static enum GNUNET_DB_QueryStatus
+static enum GNUNET_GenericReturnValue
 expired_reserve_cb (void *cls,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_Amount *left,
@@ -239,7 +241,7 @@ expired_reserve_cb (void *cls,
                 account_payto_uri);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
   }
 
   /* lookup `fees` from time of actual reserve expiration
@@ -257,13 +259,22 @@ expired_reserve_cb (void *cls,
                                   &end_date,
                                   &fees,
                                   &master_sig);
-    if (0 >= qs)
+    switch (qs)
     {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not get wire fees for %s at %s. Aborting run.\n",
                   wa->method,
                   GNUNET_TIME_timestamp2s (expiration_date));
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      return GNUNET_NO;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      /* continued below */
+      break;
     }
   }
 
@@ -281,8 +292,8 @@ expired_reserve_cb (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_set_zero (left->currency,
                                           &amount_without_fee));
+    ret = TALER_AAR_RESULT_ZERO;
   }
-  GNUNET_assert (TALER_AAR_RESULT_POSITIVE == ret);
   /* round down to enable transfer */
   if (GNUNET_SYSERR ==
       TALER_amount_round_down (&amount_without_fee,
@@ -291,7 +302,7 @@ expired_reserve_cb (void *cls,
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
   }
   /* NOTE: sizeof (*reserve_pub) == sizeof (wtid) right now, but to
      be future-compatible, we use the memset + min construction */
@@ -302,16 +313,13 @@ expired_reserve_cb (void *cls,
           reserve_pub,
           GNUNET_MIN (sizeof (wtid),
                       sizeof (*reserve_pub)));
-  if (TALER_AAR_INVALID_NEGATIVE_RESULT != ret)
-    qs = db_plugin->insert_reserve_closed (db_plugin->cls,
-                                           reserve_pub,
-                                           now,
-                                           account_payto_uri,
-                                           &wtid,
-                                           left,
-                                           &closing_fee);
-  else
-    qs = GNUNET_DB_STATUS_HARD_ERROR;
+  qs = db_plugin->insert_reserve_closed (db_plugin->cls,
+                                         reserve_pub,
+                                         now,
+                                         account_payto_uri,
+                                         &wtid,
+                                         left,
+                                         &closing_fee);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Closing reserve %s over %s (%d, %d)\n",
               TALER_B2S (reserve_pub),
@@ -319,22 +327,30 @@ expired_reserve_cb (void *cls,
               (int) ret,
               qs);
   /* Check for hard failure */
-  if ( (TALER_AAR_INVALID_NEGATIVE_RESULT == ret) ||
-       (GNUNET_DB_STATUS_HARD_ERROR == qs) )
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    return GNUNET_SYSERR;
   }
-  if ( (TALER_AAR_RESULT_ZERO == ret) ||
-       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs) )
+  if (TALER_amount_is_zero (&amount_without_fee))
   {
     /* Reserve balance was zero OR soft error */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
-    (void) commit_or_warn ();
-    return qs;
+    qs = commit_or_warn ();
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      return GNUNET_NO;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      return GNUNET_OK;
+    }
   }
 
   /* success, perform wire transfer */
@@ -355,19 +371,25 @@ expired_reserve_cb (void *cls,
                                               buf_size);
     GNUNET_free (buf);
   }
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  switch (qs)
   {
+  case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-  {
+    return GNUNET_SYSERR;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
     /* start again */
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    return GNUNET_NO;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return GNUNET_SYSERR;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
   }
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  return GNUNET_OK;
 }
 
 

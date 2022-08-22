@@ -419,7 +419,9 @@ parse_age_commitment (void *cls,
   unsigned int idx;
   size_t num;
 
-  if (NULL == root || ! json_is_array (root))
+  (void) cls;
+  if ( (NULL == root) ||
+       (! json_is_array (root)))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -645,7 +647,8 @@ parse_denom_pub_cipher (void *cls,
                         struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
-  enum TALER_DenominationCipher cipher = (enum TALER_DenominationCipher) cls;
+  enum TALER_DenominationCipher cipher =
+    (enum TALER_DenominationCipher) (long) cls;
   const char *emsg;
   unsigned int eline;
 

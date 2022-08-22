@@ -83,6 +83,8 @@ main (int argc,
   const char *xc_de = "summary: DEUTSCH";
   const char *xc_fr = "summary: FRANCAISE";
 
+  (void) argc;
+  (void) argv;
   GNUNET_assert (NULL != root);
   GNUNET_assert (NULL != arr);
   GNUNET_assert (NULL != obj);

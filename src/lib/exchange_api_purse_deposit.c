@@ -463,6 +463,8 @@ TALER_EXCHANGE_purse_deposit (
   CURL *eh;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
 
+  // FIXME: use purse_exchange_url for wad transfers (#7271)
+  (void) purse_exchange_url;
   if (0 == num_deposits)
   {
     GNUNET_break (0);

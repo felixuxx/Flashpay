@@ -2544,24 +2544,6 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare (
       "get_expired_reserves",
-      /*
-      "SELECT"
-      " expiration_date"
-      ",payto_uri AS account_details"
-      ",reserve_pub"
-      ",current_balance_val"
-      ",current_balance_frac"
-      " FROM reserves"
-      "   JOIN reserves_in ri"
-      "     USING (reserve_pub)"
-      "   JOIN wire_targets wt"
-      "     ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
-      " WHERE expiration_date<=$1"
-      "   AND (current_balance_val != 0 "
-      "        OR current_balance_frac != 0)"
-      " ORDER BY expiration_date ASC"
-      " LIMIT 1;",
-      */
       "WITH ed AS MATERIALIZED ( "
       " SELECT * "
       " FROM reserves "
@@ -4082,18 +4064,6 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7);",
       7),
-    // FIXME: dead!
-    GNUNET_PQ_make_prepare (
-      "insert_into_table_account_merges",
-      "INSERT INTO account_merges"
-      "(account_merge_request_serial_id"
-      ",reserve_pub"
-      ",reserve_sig"
-      ",purse_pub"
-      ",wallet_h_payto"
-      ") VALUES "
-      "($1, $2, $3, $4, $5);",
-      5),
     GNUNET_PQ_make_prepare (
       "insert_into_table_history_requests",
       "INSERT INTO history_requests"
@@ -10210,7 +10180,6 @@ reserve_expired_cb (void *cls,
       ret = GNUNET_SYSERR;
       break;
     }
-    // FIXME: ret here is a qs! Bad enum conversion! FIX DESIGN!!!
     ret = erc->rec (erc->rec_cls,
                     &reserve_pub,
                     &remaining_balance,
@@ -10258,8 +10227,15 @@ postgres_get_expired_reserves (void *cls,
                                              params,
                                              &reserve_expired_cb,
                                              &ectx);
-  if (GNUNET_OK != ectx.status)
+  switch (ectx.status)
+  {
+  case GNUNET_SYSERR:
     return GNUNET_DB_STATUS_HARD_ERROR;
+  case GNUNET_NO:
+    return GNUNET_DB_STATUS_SOFT_ERROR;
+  case GNUNET_OK:
+    break;
+  }
   return qs;
 }
 
@@ -15291,7 +15267,7 @@ postgres_release_revolving_shard (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @return transaction status code
  */
-enum GNUNET_DB_QueryStatus
+enum GNUNET_GenericReturnValue
 postgres_delete_shard_locks (void *cls)
 {
   struct PostgresClosure *pg = cls;
@@ -15301,7 +15277,6 @@ postgres_delete_shard_locks (void *cls)
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  // FIXME: rval is a GNUNET_GenericReturnValue, not DB status!
   return GNUNET_PQ_exec_statements (pg->conn,
                                     es);
 }

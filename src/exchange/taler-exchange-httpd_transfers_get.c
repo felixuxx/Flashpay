@@ -280,6 +280,7 @@ handle_deposit_data (void *cls,
 
   (void) rowid;
   (void) denom_pub;
+  (void) h_payto;
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
   if (GNUNET_NO == ctx->is_valid)

@@ -1183,6 +1183,7 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
   unsigned int max_checks = 0;
   const struct TALER_KYCLOGIC_KycProvider *kp_best = NULL;
 
+  // FIXME: use 'ut' to filter providers!
   if (NULL == requirements)
     return GNUNET_NO;
   {

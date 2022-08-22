@@ -445,16 +445,16 @@ static unsigned int auditor_row_cnt;
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
-audit_refresh_session_cb (void *cls,
-                          uint64_t rowid,
-                          const struct TALER_DenominationPublicKey *denom_pub,
-                          const struct
-                          TALER_AgeCommitmentHash *h_age_commitment,
-                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                          const struct TALER_CoinSpendSignatureP *coin_sig,
-                          const struct TALER_Amount *amount_with_fee,
-                          uint32_t noreveal_index,
-                          const struct TALER_RefreshCommitmentP *rc)
+audit_refresh_session_cb (
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_AgeCommitmentHash *h_age_commitment,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t noreveal_index,
+  const struct TALER_RefreshCommitmentP *rc)
 {
   (void) cls;
   (void) rowid;
@@ -464,6 +464,7 @@ audit_refresh_session_cb (void *cls,
   (void) amount_with_fee;
   (void) noreveal_index;
   (void) rc;
+  (void) h_age_commitment;
   auditor_row_cnt++;
   return GNUNET_OK;
 }
@@ -535,6 +536,7 @@ cb_wt_never (void *cls,
   (void) serial_id;
   (void) merchant_pub;
   (void) account_payto_uri;
+  (void) h_payto;
   (void) exec_time;
   (void) h_contract_terms;
   (void) denom_pub;
@@ -574,6 +576,7 @@ cb_wt_check (void *cls,
 {
   (void) rowid;
   (void) denom_pub;
+  (void) h_payto;
   GNUNET_assert (cls == &cb_wt_never);
   GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
                                      &merchant_pub_wt));

@@ -4237,58 +4237,72 @@ do_setup (char *const *args)
 }
 
 
-/*
+/**
  * Print the current extensions as configured
+ *
+ * @param args the array of command-line arguments to process next
  */
 static void
 do_extensions_show (char *const *args)
 {
-
-  json_t *obj = json_object ();
-  json_t *exts = json_object ();
   const struct TALER_Extension *it;
+  json_t *exts = json_object ();
+  json_t *obj;
 
+  GNUNET_assert (NULL != exts);
   for (it = TALER_extensions_get_head ();
        NULL != it;
        it = it->next)
-    json_object_set (exts, it->name, it->config_to_json (it));
-
-  json_object_set (obj, "extensions", exts);
-
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE, "%s\n",
-              json_dumps (obj, JSON_INDENT (2)));
-
+    GNUNET_assert (0 ==
+                   json_object_set_new (exts,
+                                        it->name,
+                                        it->config_to_json (it)));
+  obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_object_steal ("extensions",
+                                   exts));
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              "%s\n",
+              json_dumps (obj,
+                          JSON_INDENT (2)));
   json_decref (obj);
+  next (args);
 }
 
 
-/*
+/**
  * Sign the configurations of the enabled extensions
  */
 static void
 do_extensions_sign (char *const *args)
 {
-  json_t *obj = json_object ();
   json_t *extensions = json_object ();
   struct TALER_ExtensionConfigHashP h_config;
   struct TALER_MasterSignatureP sig;
   const struct TALER_Extension *it;
+  json_t *obj;
 
-  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
+  GNUNET_assert (NULL != extensions);
+  if (GNUNET_OK !=
+      TALER_extensions_load_taler_config (kcfg))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "error while loading taler config for extensions\n");
+    json_decref (extensions);
     return;
   }
-
   for (it = TALER_extensions_get_head ();
        NULL != it;
        it = it->next)
-    json_object_set (extensions, it->name, it->config_to_json (it));
+    GNUNET_assert (0 ==
+                   json_object_set_new (extensions,
+                                        it->name,
+                                        it->config_to_json (it)));
 
   if (GNUNET_OK !=
-      TALER_JSON_extensions_config_hash (extensions, &h_config))
+      TALER_JSON_extensions_config_hash (extensions,
+                                         &h_config))
   {
+    json_decref (extensions);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "error while hashing config for extensions\n");
     return;
@@ -4296,25 +4310,29 @@ do_extensions_sign (char *const *args)
 
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
+  {
+    json_decref (extensions);
     return;
-
+  }
 
   TALER_exchange_offline_extension_config_hash_sign (&h_config,
                                                      &master_priv,
                                                      &sig);
-  json_object_set (obj, "extensions", extensions);
-  json_object_update (obj,
-                      GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_data_auto (
-                          "extensions_sig",
-                          &sig)));
-
-  output_operation (OP_EXTENSIONS, obj);
+  obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_object_steal ("extensions",
+                                   extensions),
+    GNUNET_JSON_pack_data_auto (
+      "extensions_sig",
+      &sig));
+  output_operation (OP_EXTENSIONS,
+                    obj);
+  next (args);
 }
 
 
 static void
-cmd_handler (char *const *args, const struct SubCommand *cmds)
+cmd_handler (char *const *args,
+             const struct SubCommand *cmds)
 {
   nxt = NULL;
   for (unsigned int i = 0; NULL != cmds[i].name; i++)

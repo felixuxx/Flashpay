@@ -249,6 +249,7 @@ template_initiate (void *cls,
 {
   struct TALER_KYCLOGIC_InitiateHandle *ih;
 
+  (void) cls;
   ih = GNUNET_new (struct TALER_KYCLOGIC_InitiateHandle);
   ih->legitimization_uuid = legitimization_uuid;
   ih->cb = cb;
@@ -303,6 +304,11 @@ template_proof (void *cls,
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_ProofHandle *ph;
 
+  (void) url_path;
+  (void) account_id;
+  (void) process_row;
+  (void) provider_user_id;
+  (void) provider_legitimization_id;
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
   ph->ps = ps;
   ph->pd = pd;
@@ -358,6 +364,11 @@ template_webhook (void *cls,
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_WebhookHandle *wh;
 
+  (void) plc;
+  (void) plc_cls;
+  (void) http_method;
+  (void) url_path;
+  (void) body;
   wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
   wh->cb = cb;
   wh->cb_cls = cb_cls;

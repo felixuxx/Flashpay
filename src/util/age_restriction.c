@@ -39,7 +39,7 @@ TALER_age_commitment_hash (
   }
 
   GNUNET_assert (__builtin_popcount (commitment->mask.bits) - 1 ==
-                 commitment->num);
+                 (int) commitment->num);
 
   hash_context = GNUNET_CRYPTO_hash_context_start ();
 
@@ -178,7 +178,7 @@ TALER_age_commitment_derive (
   GNUNET_assert (NULL != newacp);
   GNUNET_assert (orig->proof.num <=
                  orig->commitment.num);
-  GNUNET_assert (orig->commitment.num ==
+  GNUNET_assert (((int) orig->commitment.num) ==
                  __builtin_popcount (orig->commitment.mask.bits) - 1);
 
   newacp->commitment.mask = orig->commitment.mask;

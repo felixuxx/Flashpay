@@ -114,6 +114,7 @@ auditor_version_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = cls;
 
   (void) hr;
+  (void) vi;
   if (TALER_AUDITOR_VC_MATCH != compat)
   {
     TALER_TESTING_interpreter_fail (is);

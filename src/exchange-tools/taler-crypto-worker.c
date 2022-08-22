@@ -50,6 +50,7 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
+  (void) cfg;
 
   json_t *req;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

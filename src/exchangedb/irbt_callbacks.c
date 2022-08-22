@@ -266,7 +266,7 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.auditors.auditor_pub),
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_name),
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_url),
-    GNUNET_PQ_query_param_bool (&td->details.auditors.is_active),
+    GNUNET_PQ_query_param_bool (td->details.auditors.is_active),
     GNUNET_PQ_query_param_timestamp (&td->details.auditors.last_change),
     GNUNET_PQ_query_param_end
   };

@@ -232,7 +232,7 @@ confirmation_cb (void *cls,
    * bounces the payment back in the same way it does for
    * malformed reserve public keys.
    */
-  if (-1 == fts->expected_http_status)
+  if (-1 == (int) fts->expected_http_status)
   {
     TALER_TESTING_interpreter_next (is);
     return;

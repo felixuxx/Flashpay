@@ -2673,9 +2673,11 @@ typedef void
  * @param left amount left in the reserve
  * @param account_details information about the reserve's bank account, in payto://-format
  * @param expiration_date when did the reserve expire
- * @return transaction status code to pass on
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO to retry
+ *         #GNUNET_SYSERR on hard failures (exit)
  */
-typedef enum GNUNET_DB_QueryStatus
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_ReserveExpiredCallback)(
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -5047,9 +5049,10 @@ struct TALER_EXCHANGEDB_Plugin
    * changed.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @return transaction status code
+   * @return #GNUNET_OK on success
+   *         #GNUNET_SYSERR on failure
    */
-  enum GNUNET_DB_QueryStatus
+  enum GNUNET_GenericReturnValue
   (*delete_shard_locks)(void *cls);
 
 

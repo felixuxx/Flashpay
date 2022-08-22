@@ -314,7 +314,7 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
 /**
  * Function called with a template's filename.
  *
- * @param cls closure
+ * @param cls closure, NULL
  * @param filename complete filename (absolute path)
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
@@ -331,6 +331,7 @@ load_template (void *cls,
   char *map;
   const char *name;
 
+  (void) cls;
   if ('.' == filename[0])
     return GNUNET_OK;
 

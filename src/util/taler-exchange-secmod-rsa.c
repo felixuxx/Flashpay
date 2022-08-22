@@ -583,6 +583,7 @@ sem_init (struct Semaphore *sem,
   GNUNET_assert (0 ==
                  pthread_cond_init (&sem->cv,
                                     NULL));
+  sem->ctr = val;
 }
 
 

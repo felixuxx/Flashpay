@@ -152,6 +152,8 @@ main (int argc,
   sqlite3 *db;
   int ret;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-pq",
                     "WARNING",
                     NULL);

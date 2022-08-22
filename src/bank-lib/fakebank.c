@@ -3040,14 +3040,12 @@ handle_bank_integration (struct TALER_FAKEBANK_Handle *h,
  * @param h the handle
  * @param connection the connection
  * @param account_name name of the account
- * @param con_cls closure for request
  * @return MHD result code
  */
 static MHD_RESULT
 get_account_access (struct TALER_FAKEBANK_Handle *h,
                     struct MHD_Connection *connection,
-                    const char *account_name,
-                    void **con_cls)
+                    const char *account_name)
 {
   struct Account *acc;
 
@@ -3093,15 +3091,13 @@ get_account_access (struct TALER_FAKEBANK_Handle *h,
  * @param connection the connection
  * @param account_name name of the account
  * @param withdrawal_id withdrawal ID to return status of
- * @param con_cls closure for request
  * @return MHD result code
  */
 static MHD_RESULT
 get_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                                 struct MHD_Connection *connection,
                                 const char *account_name,
-                                const char *withdrawal_id,
-                                void **con_cls)
+                                const char *withdrawal_id)
 {
   struct WithdrawalOperation *wo;
   struct Account *acc;
@@ -3435,19 +3431,13 @@ notify_withdrawal (struct TALER_FAKEBANK_Handle *h,
  * @param connection the connection
  * @param account_name name of the debited account
  * @param withdrawal_id the withdrawal operation identifier
- * @param upload_data request data
- * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request
  * @return MHD result code
  */
 static MHD_RESULT
 access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
                           struct MHD_Connection *connection,
                           const char *account_name,
-                          const char *withdrawal_id,
-                          const void *upload_data,
-                          size_t *upload_data_size,
-                          void **con_cls)
+                          const char *withdrawal_id)
 {
   struct WithdrawalOperation *wo;
   struct Account *acc;
@@ -3513,19 +3503,13 @@ access_withdrawals_abort (struct TALER_FAKEBANK_Handle *h,
  * @param connection the connection
  * @param account_name name of the debited account
  * @param withdrawal_id the withdrawal operation identifier
- * @param upload_data request data
- * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request
  * @return MHD result code
  */
 static MHD_RESULT
 access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                             struct MHD_Connection *connection,
                             const char *account_name,
-                            const char *withdrawal_id,
-                            const void *upload_data,
-                            size_t *upload_data_size,
-                            void **con_cls)
+                            const char *withdrawal_id)
 {
   struct WithdrawalOperation *wo;
   struct Account *acc;
@@ -3701,10 +3685,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
         ret = access_withdrawals_abort (h,
                                         connection,
                                         acc,
-                                        wi,
-                                        upload_data,
-                                        upload_data_size,
-                                        con_cls);
+                                        wi);
         GNUNET_free (wi);
         GNUNET_free (acc);
         return ret;
@@ -3715,10 +3696,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
         ret = access_withdrawals_confirm (h,
                                           connection,
                                           acc,
-                                          wi,
-                                          upload_data,
-                                          upload_data_size,
-                                          con_cls);
+                                          wi);
         GNUNET_free (wi);
         GNUNET_free (acc);
         return ret;
@@ -3752,8 +3730,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
     {
       ret = get_account_access (h,
                                 connection,
-                                acc_name,
-                                con_cls);
+                                acc_name);
       return ret;
     }
     if (0 != strncmp (end_acc,
@@ -3772,8 +3749,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
     ret = get_account_withdrawals_access (h,
                                           connection,
                                           acc,
-                                          wid,
-                                          con_cls);
+                                          wid);
     GNUNET_free (acc);
     return ret;
   }

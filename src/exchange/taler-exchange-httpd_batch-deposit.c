@@ -545,6 +545,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   };
   enum GNUNET_GenericReturnValue res;
 
+  (void) args;
   memset (&dc,
           0,
           sizeof (dc));

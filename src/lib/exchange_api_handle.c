@@ -310,7 +310,6 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  * prior to calling this function, otherwise the signature verification
  * performed within this function will fail.
  *
- * @param currency expected currency of all fees
  * @param[out] denom_key where to return the result
  * @param cipher cipher type to parse
  * @param check_sigs should we check signatures?
@@ -321,13 +320,13 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  *        invalid or the json malformed.
  */
 static enum GNUNET_GenericReturnValue
-parse_json_denomkey_partially (const char *currency,
-                               struct TALER_EXCHANGE_DenomPublicKey *denom_key,
-                               enum TALER_DenominationCipher cipher,
-                               bool check_sigs,
-                               json_t *denom_key_obj,
-                               struct TALER_MasterPublicKeyP *master_key,
-                               struct GNUNET_HashCode *hash_xor)
+parse_json_denomkey_partially (
+  struct TALER_EXCHANGE_DenomPublicKey *denom_key,
+  enum TALER_DenominationCipher cipher,
+  bool check_sigs,
+  json_t *denom_key_obj,
+  struct TALER_MasterPublicKeyP *master_key,
+  struct GNUNET_HashCode *hash_xor)
 {
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -961,16 +960,17 @@ decode_keys_json (const json_t *resp_obj,
             json_typeof (denominations_by_group));
 
     json_array_foreach (denominations_by_group, group_idx, group_obj) {
-      // Running XOR of each SHA512 hash of the denominations' public key in
-      // this group.  Used to compare against group.hash after all keys have
-      // been parsed.
+      /* Running XOR of each SHA512 hash of the denominations' public key in
+         this group.  Used to compare against group.hash after all keys have
+         been parsed. */
       struct GNUNET_HashCode group_hash_xor = {0};
 
-      // First, parse { cipher, fees, value, age_mask, hash } of the current
-      // group.
+      /* First, parse { cipher, fees, value, age_mask, hash } of the current
+         group. */
       struct TALER_DenominationGroup group = {0};
       struct GNUNET_JSON_Specification group_spec[] = {
-        TALER_JSON_spec_denomination_group (NULL, currency, &group),
+        TALER_JSON_spec_denomination_group (NULL,
+                                            currency, &group),
         GNUNET_JSON_spec_end ()
       };
       EXITIF (GNUNET_SYSERR ==
@@ -979,7 +979,7 @@ decode_keys_json (const json_t *resp_obj,
                                  NULL,
                                  NULL));
 
-      // Now, parse the individual denominations
+      /* Now, parse the individual denominations */
       {
         json_t *denom_keys_array;
         json_t *denom_key_obj;
@@ -993,24 +993,23 @@ decode_keys_json (const json_t *resp_obj,
 
           memset (&dk, 0, sizeof (dk));
 
-          // Set the common fields from the group for this particular
-          // denomination.  Required to make the validity check inside
-          // parse_json_denomkey_partially pass
+          /* Set the common fields from the group for this particular
+             denomination.  Required to make the validity check inside
+             parse_json_denomkey_partially pass */
           dk.key.cipher = group.cipher;
           dk.value = group.value;
           dk.fees = group.fees;
           dk.key.age_mask = group.age_mask;
 
           EXITIF (GNUNET_SYSERR ==
-                  parse_json_denomkey_partially (key_data->currency,
-                                                 &dk,
+                  parse_json_denomkey_partially (&dk,
                                                  group.cipher,
                                                  check_sig,
                                                  denom_key_obj,
                                                  &key_data->master_pub,
                                                  check_sig ? &hash_xor : NULL));
 
-          // Build the running xor of the SHA512-hash of the public keys
+          /* Build the running xor of the SHA512-hash of the public keys */
           {
             struct TALER_DenominationHashP hc = {0};
             TALER_denom_pub_hash (&dk.key, &hc);

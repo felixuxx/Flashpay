@@ -454,8 +454,15 @@ webhook_finished_cb (
 {
   struct KycWebhookContext *kwh = cls;
 
+  (void) expiration;
+  (void) provider_section;
   kwh->wh = NULL;
-  // FIXME: check arguments for validity?
+  GNUNET_break (0 == GNUNET_memcmp (account_id,
+                                    &cmd_line_h_payto));
+  GNUNET_break (0 == strcmp (provider_user_id,
+                             cmd_provider_user_id));
+  GNUNET_break (0 == strcmp (provider_legitimization_id,
+                             cmd_provider_legitimization_id));
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
@@ -524,6 +531,7 @@ kyc_provider_account_lookup (
   struct TALER_PaytoHashP *h_payto,
   uint64_t *legi_row)
 {
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Simulated account lookup using `%s/%s'\n",
               provider_section,
@@ -695,6 +703,7 @@ proof_cb (
 {
   struct ProofRequestState *rs = cls;
 
+  (void) expiration;
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
               "KYC legitimization %s completed with status %d (%u) for %s\n",
               provider_legitimization_id,
@@ -1305,6 +1314,7 @@ initiate_cb (
   const char *provider_legitimization_id,
   const char *error_msg_hint)
 {
+  (void) cls;
   ih = NULL;
   if (TALER_EC_NONE != ec)
   {

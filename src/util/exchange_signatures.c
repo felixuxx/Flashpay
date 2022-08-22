@@ -853,8 +853,9 @@ TALER_exchange_online_confirm_recoup_sign (
   struct TALER_RecoupConfirmationPS pc = {
     .purpose.size = htonl (sizeof (pc)),
     .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
-    .reserve_pub = *reserve_pub,
-    .coin_pub = *coin_pub
+    .timestamp = GNUNET_TIME_timestamp_hton (timestamp),
+    .coin_pub = *coin_pub,
+    .reserve_pub = *reserve_pub
   };
 
   TALER_amount_hton (&pc.recoup_amount,
@@ -877,8 +878,9 @@ TALER_exchange_online_confirm_recoup_verify (
   struct TALER_RecoupConfirmationPS pc = {
     .purpose.size = htonl (sizeof (pc)),
     .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
-    .reserve_pub = *reserve_pub,
-    .coin_pub = *coin_pub
+    .timestamp = GNUNET_TIME_timestamp_hton (timestamp),
+    .coin_pub = *coin_pub,
+    .reserve_pub = *reserve_pub
   };
 
   TALER_amount_hton (&pc.recoup_amount,

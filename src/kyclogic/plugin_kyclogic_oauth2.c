@@ -520,6 +520,7 @@ oauth2_initiate (void *cls,
 {
   struct TALER_KYCLOGIC_InitiateHandle *ih;
 
+  (void) cls;
   ih = GNUNET_new (struct TALER_KYCLOGIC_InitiateHandle);
   ih->legitimization_uuid = legitimization_uuid;
   ih->cb = cb;
@@ -943,6 +944,7 @@ oauth2_proof (void *cls,
   struct TALER_KYCLOGIC_ProofHandle *ph;
   const char *code;
 
+  (void) url_path;
   GNUNET_break (NULL == provider_user_id);
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
   GNUNET_snprintf (ph->provider_legitimization_id,
@@ -1153,6 +1155,13 @@ oauth2_webhook (void *cls,
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_WebhookHandle *wh;
 
+  (void) pd;
+  (void) plc;
+  (void) plc_cls;
+  (void) http_method;
+  (void) url_path;
+  (void) connection;
+  (void) body;
   wh = GNUNET_new (struct TALER_KYCLOGIC_WebhookHandle);
   wh->cb = cb;
   wh->cb_cls = cb_cls;

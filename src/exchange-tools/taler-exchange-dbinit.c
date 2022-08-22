@@ -171,7 +171,7 @@ run (void *cls,
     }
     if (clear_shards)
     {
-      if (0 >
+      if (GNUNET_OK !=
           plugin->delete_shard_locks (plugin->cls))
       {
         fprintf (stderr,
