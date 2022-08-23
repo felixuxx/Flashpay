@@ -2813,6 +2813,16 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
     }
   }
   credit_name = TALER_xtalerbank_account_from_payto (exchange_payto_uri);
+  if (NULL == credit_name)
+  {
+    GNUNET_break_op (0);
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
+                                       NULL);
+  }
   credit_account = lookup_account (h,
                                    credit_name,
                                    NULL);
