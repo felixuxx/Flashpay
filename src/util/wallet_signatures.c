@@ -1023,9 +1023,9 @@ TALER_wallet_purse_merge_sign (
   };
 
   GNUNET_assert (0 ==
-                 strcasecmp (reserve_uri,
-                             "payto://taler-reserve",
-                             strlen ("payto://taler-reserve")));
+                 strncasecmp (reserve_uri,
+                              "payto://taler-reserve",
+                              strlen ("payto://taler-reserve")));
   TALER_payto_hash (reserve_uri,
                     &pm.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&merge_priv->eddsa_priv,
@@ -1050,9 +1050,9 @@ TALER_wallet_purse_merge_verify (
   };
 
   if (0 !=
-      strcasecmp (reserve_uri,
-                  "payto://taler-reserve",
-                  strlen ("payto://taler-reserve")))
+      strncasecmp (reserve_uri,
+                   "payto://taler-reserve",
+                   strlen ("payto://taler-reserve")))
   {
     GNUNET_break (0);
     return GNUNET_NO;
