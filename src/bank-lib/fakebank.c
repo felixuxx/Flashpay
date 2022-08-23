@@ -3221,7 +3221,7 @@ do_post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
     wopids = GNUNET_STRINGS_data_to_string_alloc (&wo->wopid,
                                                   sizeof (wo->wopid));
     GNUNET_asprintf (&uri,
-                     "taler+http://withdraw/taler-bank-integration/%s:%u/%s",
+                     "taler+http://withdraw/%s:%u/taler-bank-integration/%s",
                      h->hostname,
                      (unsigned int) h->port,
                      wopids);
