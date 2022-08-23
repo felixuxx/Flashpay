@@ -1009,7 +1009,7 @@ struct TALER_PurseMergePS
 
 void
 TALER_wallet_purse_merge_sign (
-  const char *reserve_url,
+  const char *reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
@@ -1022,7 +1022,11 @@ TALER_wallet_purse_merge_sign (
     .purse_pub = *purse_pub
   };
 
-  TALER_payto_hash (reserve_url,
+  GNUNET_assert (0 ==
+                 strcasecmp (reserve_uri,
+                             "payto://taler-reserve",
+                             strlen ("payto://taler-reserve")));
+  TALER_payto_hash (reserve_uri,
                     &pm.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&merge_priv->eddsa_priv,
                             &pm,
@@ -1032,7 +1036,7 @@ TALER_wallet_purse_merge_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_merge_verify (
-  const char *reserve_url,
+  const char *reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
@@ -1045,7 +1049,15 @@ TALER_wallet_purse_merge_verify (
     .purse_pub = *purse_pub
   };
 
-  TALER_payto_hash (reserve_url,
+  if (0 !=
+      strcasecmp (reserve_uri,
+                  "payto://taler-reserve",
+                  strlen ("payto://taler-reserve")))
+  {
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+  TALER_payto_hash (reserve_uri,
                     &pm.h_payto);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_WALLET_PURSE_MERGE,

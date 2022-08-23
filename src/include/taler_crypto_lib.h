@@ -2929,7 +2929,7 @@ TALER_wallet_purse_deposit_verify (
 /**
  * Sign a request by a purse to merge it into an account.
  *
- * @param reserve_url identifies the location of the reserve
+ * @param reserve_uri identifies the location of the reserve
  * @param merge_timestamp time when the merge happened
  * @param purse_pub key identifying the purse
  * @param merge_priv key identifying the merge capability
@@ -2937,7 +2937,7 @@ TALER_wallet_purse_deposit_verify (
  */
 void
 TALER_wallet_purse_merge_sign (
-  const char *reserve_url,
+  const char *reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
@@ -2947,7 +2947,7 @@ TALER_wallet_purse_merge_sign (
 /**
  * Verify a purse merge request.
  *
- * @param reserve_url identifies the location of the reserve
+ * @param reserve_uri identifies the location of the reserve
  * @param merge_timestamp time when the merge happened
  * @param purse_pub public key of the purse to merge
  * @param merge_pub public key of the merge capability
@@ -2956,7 +2956,7 @@ TALER_wallet_purse_merge_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_merge_verify (
-  const char *reserve_url,
+  const char *reserve_uri,
   struct GNUNET_TIME_Timestamp merge_timestamp,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
