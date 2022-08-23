@@ -588,6 +588,9 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Running auditor against exchange master public key `%s'\n",
+                master_public_key_str);
     GNUNET_free (master_public_key_str);
   } /* end of -m not given */
 

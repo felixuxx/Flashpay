@@ -211,7 +211,8 @@ function run_audit () {
     pre_audit ${1:-no}
     if test ${2:-no} = "drain"
     then
-        echo -n "Running taler-exchange-offline drain ..."
+        echo -n "Running taler-exchange-offline drain with master public key "
+        gnunet-ecc -p ${DB}.mpriv
         cp "${CONF}" "${CONF}.tmp"
         taler-config -c "${CONF}.tmp" -s exchange-offline -o MASTER_PRIV_FILE -V ${DB}.mpriv
         echo -n "Starting exchange..."

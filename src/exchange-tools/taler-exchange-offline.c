@@ -4265,7 +4265,7 @@ do_extensions_show (char *const *args)
               json_dumps (obj,
                           JSON_INDENT (2)));
   json_decref (obj);
-  next (args);
+  next (args + 1);
 }
 
 
@@ -4326,10 +4326,16 @@ do_extensions_sign (char *const *args)
       &sig));
   output_operation (OP_EXTENSIONS,
                     obj);
-  next (args);
+  next (args + 1);
 }
 
 
+/**
+ * Dispatch @a args in the @a cmds array.
+ *
+ * @param args arguments with subcommand to dispatch
+ * @param cmds array of possible subcommands to call
+ */
 static void
 cmd_handler (char *const *args,
              const struct SubCommand *cmds)
@@ -4397,7 +4403,6 @@ do_work_extensions (char *const *args)
   }
 
   cmd_handler (args, cmds);
-  next (args + 1);
 }
 
 
