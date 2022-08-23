@@ -622,9 +622,6 @@ do_aggregate (struct AggregationUnit *au)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregation total is %s.\n",
               TALER_amount2s (&au->total_amount));
-  /* Deposit was 'ready', so clearly the total
-     aggregated must be non-zero. */
-  GNUNET_assert (! TALER_amount_is_zero (&au->total_amount));
   /* Subtract wire transfer fee and round to the unit supported by the
      wire transfer method; Check if after rounding down, we still have
      an amount to transfer, and if not mark as 'tiny'. */
