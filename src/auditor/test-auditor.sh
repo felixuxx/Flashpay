@@ -54,9 +54,10 @@ function cleanup()
     done
     wait
     # kill euFin
-    echo Killing euFin..
+    echo -n "Killing euFin.."
     kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
     kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    echo DONE
 }
 
 # Install cleanup handler (except for kill -9)
@@ -256,7 +257,7 @@ function run_audit () {
 # Do a full reload of the (original) database
 full_reload()
 {
-    echo "Doing full reload of the database... "
+    echo "Doing full reload of the database ($BASEDB)... "
     dropdb $DB 2> /dev/null || true
     rm -f $DB.sqlite3 2> /dev/null || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database"
@@ -1101,12 +1102,29 @@ then
     # have a wire_out to modify.
     pre_audit aggregator
 
+    # This function helps to retry when the database is locked by
+    # libEufin.
     # Modify wire amount, such that it is inconsistent with 'aggregation'
     # (Only one payment out exist, so the logic below should select the outgoing
     # wire transfer):
-    OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 $DB.sqlite3`
-    NEW_AMOUNT="TESTKUDOS:50"
-    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
+    function test_16_db () {
+      OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 $DB.sqlite3`
+      NEW_AMOUNT="TESTKUDOS:50"
+      echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
+    }
+    echo -n Trying to patch the SQLite database..
+    for try in `seq 1 10`; do
+      if test_16_db 2>&1 > /dev/null; then
+        break
+      fi
+      echo -n .
+      if test $try = 10; then
+        exit_fail "Could not modify the SQLite database"
+      fi
+      sleep 0.3
+    done
+    echo DONE
+
     audit_only
 
     echo -n "Testing inconsistency detection... "
@@ -1190,16 +1208,32 @@ then
     # have a wire_out to modify.
     pre_audit aggregator
 
+    # This function helps to retry when the database is locked
+    # already by libEufin.
     # Modify wire amount, such that it is inconsistent with 'aggregation'
     # (exchange paid only once, so the logic below should select the outgoing
-    # wire transfer):
-    OLD_ID=1
-    OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
-    OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
-    # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
-    # (due to rounding, if this machine is fast...)
-    NOW_1HR=$(expr $(date +%s) - 3600)
-    echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 $DB.sqlite3
+    # wire transfer).
+    function test_17_db () {
+      OLD_ID=1
+      OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
+      OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
+      # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+      # (due to rounding, if this machine is fast...)
+      NOW_1HR=$(expr $(date +%s) - 3600)
+      echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 $DB.sqlite3
+    }
+    echo -n Trying to patch the SQLite database..
+    for try in `seq 1 10`; do
+      if test_17_db 2>&1 > /dev/null; then
+        break
+      fi
+      echo -n .
+      if test $try = 10; then
+        exit_fail "Could not modify the SQLite database"
+      fi
+      sleep 0.3
+    done
+    echo DONE
     audit_only
     post_audit
 
