@@ -3656,12 +3656,21 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
     char *acc;
     MHD_RESULT ret;
 
-    if (NULL != acc_name)
-      acc = GNUNET_strndup (acc_name,
-                            end_acc - acc_name);
     if ( (NULL == end_acc) ||
-         (0 != strcmp (end_acc,
-                       "/withdrawals")) )
+         (0 != strncmp (end_acc,
+                        "/withdrawals",
+                        strlen ("/withdrawals"))) )
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                         acc_name);
+    }
+    acc = GNUNET_strndup (acc_name,
+                          end_acc - acc_name);
+    end_acc += strlen ("/withdrawals");
+    if ('/' == *end_acc)
     {
       const char *wid = end_acc + 1;
       char *wi;
@@ -3711,7 +3720,13 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
         GNUNET_free (acc);
         return ret;
       }
-      GNUNET_assert (0);
+      GNUNET_break_op (0);
+      GNUNET_free (wi);
+      GNUNET_free (acc);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                         acc_name);
     }
     ret = post_account_withdrawals_access (h,
                                            connection,
