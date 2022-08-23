@@ -454,11 +454,18 @@ TALER_EXCHANGE_purse_create_with_merge (
                                   &pcm->purse_value_after_fees,
                                   purse_priv,
                                   &pcm->purse_sig);
-  TALER_wallet_purse_merge_sign (exchange->url,
-                                 merge_timestamp,
-                                 &pcm->purse_pub,
-                                 merge_priv,
-                                 &pcm->merge_sig);
+  {
+    char *payto_uri;
+
+    payto_uri = TALER_reserve_make_payto (exchange->url,
+                                          &pcm->reserve_pub);
+    TALER_wallet_purse_merge_sign (payto_uri,
+                                   merge_timestamp,
+                                   &pcm->purse_pub,
+                                   merge_priv,
+                                   &pcm->merge_sig);
+    GNUNET_free (payto_uri);
+  }
   TALER_wallet_account_merge_sign (merge_timestamp,
                                    &pcm->purse_pub,
                                    pcm->purse_expiration,

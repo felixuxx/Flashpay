@@ -536,6 +536,23 @@ TEH_handler_reserves_purse (
                                           reserve_pub);
     TALER_payto_hash (payto_uri,
                       &rpc.h_payto);
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+    if (GNUNET_OK !=
+        TALER_wallet_purse_merge_verify (payto_uri,
+                                         rpc.merge_timestamp,
+                                         &rpc.pd.purse_pub,
+                                         &rpc.merge_pub,
+                                         &rpc.merge_sig))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      GNUNET_free (payto_uri);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
+        NULL);
+    }
     GNUNET_free (payto_uri);
   }
   GNUNET_assert (GNUNET_OK ==
@@ -625,21 +642,6 @@ TEH_handler_reserves_purse (
       connection,
       MHD_HTTP_FORBIDDEN,
       TALER_EC_EXCHANGE_PURSE_CREATE_SIGNATURE_INVALID,
-      NULL);
-  }
-  if (GNUNET_OK !=
-      TALER_wallet_purse_merge_verify (TEH_base_url,
-                                       rpc.merge_timestamp,
-                                       &rpc.pd.purse_pub,
-                                       &rpc.merge_pub,
-                                       &rpc.merge_sig))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
       NULL);
   }
   if (GNUNET_OK !=
