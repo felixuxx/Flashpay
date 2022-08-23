@@ -49,9 +49,9 @@ rm -f $WALLET_DB
 
 # Configuration file will be edited, so we create one
 # from the template.
-export CONF=generate-auditor-basedb-revocation.conf
+export CONF=${BASEDB}.conf
 cp generate-auditor-basedb.conf $CONF
-
+taler-config -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${BASEDB}.mpriv
 
 echo -n "Testing for libeufin(-cli)"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -73,9 +73,11 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 rm $TARGET_DB >/dev/null 2>/dev/null || true # libeufin
 
 # obtain key configuration data
-MASTER_PRIV_FILE=`taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE`
+MASTER_PRIV_FILE=${TARGET_DB}.priv
+taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 mkdir -p $MASTER_PRIV_DIR
+rm -f "${MASTER_PRIV_FILE}"
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
 export MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 export EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`

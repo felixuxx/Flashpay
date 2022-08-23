@@ -987,6 +987,9 @@ load_offline_key (int do_create)
   GNUNET_free (fn);
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
                                       &master_pub.eddsa_pub);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Using master public key %s\n",
+              TALER_B2S (&master_pub));
   done = true;
   return GNUNET_OK;
 }

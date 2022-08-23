@@ -211,13 +211,10 @@ function run_audit () {
     pre_audit ${1:-no}
     if test ${2:-no} = "drain"
     then
-        echo -n "Running taler-exchange-offline drain with master public key "
-        gnunet-ecc -p ${DB}.mpriv
-        cp "${CONF}" "${CONF}.tmp"
-        taler-config -c "${CONF}.tmp" -s exchange-offline -o MASTER_PRIV_FILE -V ${DB}.mpriv
         echo -n "Starting exchange..."
-        taler-exchange-httpd -c "${CONF}.tmp" -L INFO 2> exchange-httpd-drain.err &
+        taler-exchange-httpd -c "${CONF}" -L INFO 2> exchange-httpd-drain.err &
         EPID=$!
+
         # Wait for all services to be available
         for n in `seq 1 50`
         do
@@ -230,13 +227,20 @@ function run_audit () {
             break
         done
         echo "... DONE."
-        taler-exchange-offline -L DEBUG -c "${CONF}.tmp" \
+        export CONF
+        MASTER_PRIV_FILE=`taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE`
+        MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
+
+        echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
+
+        echo -n "Running taler-exchange-offline drain "
+
+        taler-exchange-offline -L DEBUG -c "${CONF}" \
           drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
           upload \
           2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
         kill -TERM $EPID
         wait $EPID
-        rm -f "${CONF}.tmp"
         echo -n "Running taler-exchange-drain ..."
         echo "\n" | taler-exchange-drain -L DEBUG -c $CONF 2> taler-exchange-drain.log || exit_fail "FAIL"
         echo " DONE"
@@ -249,7 +253,7 @@ function run_audit () {
         export LIBEUFIN_NEXUS_PASSWORD=x
         export LIBEUFIN_NEXUS_URL=http://localhost:8082/
         PAIN_UUID=`libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId`
-        libeufin-cli accounts submit-payments --payment-uuid $PAIN_UUID exchange-nexus
+        libeufin-cli accounts submit-payments --payment-uuid ${PAIN_UUID} exchange-nexus
 
     fi
     audit_only

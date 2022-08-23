@@ -69,6 +69,7 @@ rm -f $TARGET_DB
 # from the template.
 CONF_ONCE=${BASEDB}.conf
 cp generate-auditor-basedb.conf $CONF_ONCE
+taler-config -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${BASEDB}.mpriv
 echo -n "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
@@ -92,11 +93,12 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 
 # obtain key configuration data
-MASTER_PRIV_FILE=`taler-config -f -c $CONF_ONCE -s exchange-offline -o MASTER_PRIV_FILE`
+MASTER_PRIV_FILE=${TARGET_DB}.mpriv
+taler-config -f -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
+rm -f "${MASTER_PRIV_FILE}"
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
-cp $MASTER_PRIV_FILE ${BASEDB}.mpriv
 MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
@@ -110,7 +112,8 @@ EXCHANGE_URL=`taler-config -c $CONF_ONCE -s EXCHANGE -o BASE_URL`
 BANK_PORT=`taler-config -c $CONF_ONCE -s BANK -o HTTP_PORT`
 BANK_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 
-echo "AUDITOR PUB is $AUDITOR_PUB using file $AUDITOR_PRIV_FILE"
+echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
+echo "AUDITOR PUB is ${AUDITOR_PUB} using file ${AUDITOR_PRIV_FILE}"
 
 # patch configuration
 taler-config -c $CONF_ONCE -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
