@@ -2953,7 +2953,7 @@ handle_bank_integration (struct TALER_FAKEBANK_Handle *h,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET;
   if ( (0 == strcmp (url,
-                     "/version")) &&
+                     "/config")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
   {
@@ -3609,7 +3609,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET;
   if ( (0 == strcmp (url,
-                     "/version")) &&
+                     "/config")) &&
        (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_GET)) )
   {
