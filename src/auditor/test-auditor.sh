@@ -229,7 +229,6 @@ function run_audit () {
             break
         done
         echo "... DONE."
-        # FIXME-MS: need to make sure here that the target IBAN exists!
         taler-exchange-offline -L DEBUG -c "${CONF}.tmp" \
           drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
           upload \
@@ -244,10 +243,13 @@ function run_audit () {
         echo -n "Running taler-exchange-transfer ..."
         taler-exchange-transfer -L INFO -t -c $CONF 2> drain-transfer.log || exit_fail "FAIL"
         echo " DONE"
-        # FIXME-MS: transfer tool is happy here, but
-        # the wire transfer triggered here does NOT
-        # show up during the audit. Do we have to
-        # trigger some libeufin/sandbox job first?
+
+        export LIBEUFIN_NEXUS_USERNAME=exchange
+        export LIBEUFIN_NEXUS_PASSWORD=x
+        export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+        PAIN_UUID=`libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId`
+        libeufin-cli accounts submit-payments --payment-uuid $PAIN_UUID exchange-nexus
+
     fi
     audit_only
     post_audit
@@ -1921,50 +1923,9 @@ fi
 
 
 
-# Test where h_payto in the wire_targets table is wrong
 function test_33() {
-echo "===========33: h_payto wrong================="
 
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: this test is BRAND NEW and expected
-# to fail until we implement the check in the auditor!
-
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
-
-    # Modify h_payto hash, so it is inconsistent with 'wire'
-    WTSID=`echo "SELECT wire_target_serial_id FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
-    echo "UPDATE exchange.wire_targets SET h_payto='\x973e52d193a357940be9ef2939c19b0575ee1101f52188c3c01d9005b7d755c397e92624f09cfa709104b3b65605fe5130c90d7e1b7ee30f8fc570f39c16b853' WHERE wire_target_serial_id=$WTSID" | psql -Aqt $DB
-
-    # The auditor checks h_wire consistency only for
-    # coins where the wire transfer has happened, hence
-    # run aggregator first to get this test to work.
-    run_audit aggregator
-
-    echo -n "Testing inconsistency detection... "
-    TABLE=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
-    if test "x$TABLE" != "xwire_targets"
-    then
-        exit_fail "Reported table wrong: $TABLE"
-    fi
-    echo PASS
-
-    # cannot easily undo aggregator, hence full reload
-    full_reload
-
-else
-    echo "Test skipped (database too new)"
-fi
-}
-
-
-function test_34() {
-
-echo "===========34: normal run with aggregator and profit drain==========="
+echo "===========33: normal run with aggregator and profit drain==========="
 run_audit aggregator drain
 
 echo "Checking output"

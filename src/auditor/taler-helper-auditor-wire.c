@@ -1297,6 +1297,10 @@ complain_out_not_found (void *cls,
       /* not a profit drain */
       break;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Profit drain of %s to %s found!\n",
+                  TALER_amount2s (&amount),
+                  payto_uri);
       if (GNUNET_OK !=
           TALER_exchange_offline_profit_drain_verify (
             &roi->details.wtid,
@@ -1377,7 +1381,11 @@ complain_out_not_found (void *cls,
       }
       GNUNET_free (account_section);
       GNUNET_free (payto_uri);
-      break;
+      /* profit drain was correct */
+      TALER_ARL_amount_add (&total_drained,
+                            &total_drained,
+                            &amount);
+      return GNUNET_OK;
     }
   }
 

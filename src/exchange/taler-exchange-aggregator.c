@@ -491,12 +491,12 @@ kyc_satisfied (struct AggregationUnit *au_active)
     db_plugin->cls,
     &return_relevant_amounts,
     (void *) au_active);
+  if (NULL == requirement)
+    return true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "KYC requirement for %s is %s\n",
               TALER_amount2s (&au_active->total_amount),
               requirement);
-  if (NULL == requirement)
-    return true;
   qs = db_plugin->insert_kyc_requirement_for_account (
     db_plugin->cls,
     requirement,
@@ -622,7 +622,9 @@ do_aggregate (struct AggregationUnit *au)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregation total is %s.\n",
               TALER_amount2s (&au->total_amount));
-
+  /* Deposit was 'ready', so clearly the total
+     aggregated must be non-zero. */
+  GNUNET_assert (! TALER_amount_is_zero (&au->total_amount));
   /* Subtract wire transfer fee and round to the unit supported by the
      wire transfer method; Check if after rounding down, we still have
      an amount to transfer, and if not mark as 'tiny'. */
@@ -783,6 +785,8 @@ run_aggregation (void *cls)
     }
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     s->work_counter++;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Found ready deposit!\n");
     /* continued below */
     break;
   }
@@ -862,6 +866,8 @@ run_shard (void *cls)
 
   (void) cls;
   task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Running aggregation shard\n");
   if (GNUNET_SYSERR ==
       db_plugin->preflight (db_plugin->cls))
   {
@@ -955,6 +961,8 @@ drain_kyc_alerts (void *cls)
 
   (void) cls;
   task = NULL;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Draining KYC alerts\n");
   memset (&au,
           0,
           sizeof (au));
