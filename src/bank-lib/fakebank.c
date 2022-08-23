@@ -3567,6 +3567,8 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                                        TALER_EC_BANK_CONFIRM_ABORT_CONFLICT,
                                        account_name);
   }
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
   if (GNUNET_OK !=
       make_admin_transfer (h,
                            wo->debit_account->account_name,
@@ -3576,13 +3578,13 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                            &wo->row_id,
                            &wo->timestamp))
   {
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_CONFLICT,
                                        TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
                                        NULL);
   }
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   wo->confirmation_done = true;
   notify_withdrawal (h,
                      wo);
@@ -3697,7 +3699,6 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
       }
       wi = GNUNET_strndup (wid,
                            opid - wid);
-
       if (0 == strcmp (opid,
                        "/abort"))
       {
@@ -3720,13 +3721,7 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
         GNUNET_free (acc);
         return ret;
       }
-      GNUNET_break_op (0);
-      GNUNET_free (wi);
-      GNUNET_free (acc);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                         acc_name);
+      GNUNET_assert (0);
     }
     ret = post_account_withdrawals_access (h,
                                            connection,
