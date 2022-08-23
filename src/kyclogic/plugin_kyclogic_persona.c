@@ -565,7 +565,7 @@ handle_initiate_finished (void *cls,
       return;
     }
   case MHD_HTTP_BAD_REQUEST:
-  case MHD_HTTP_UNPROCESSABLE_CONTENT:
+  case MHD_HTTP_UNPROCESSABLE_ENTITY:
     {
       const char *msg;
 
