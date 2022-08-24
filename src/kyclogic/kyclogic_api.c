@@ -1179,7 +1179,7 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
-  unsigned long long min_cost = ULONG_LONG_MAX;
+  unsigned long long min_cost = ULLONG_MAX;
   unsigned int max_checks = 0;
   const struct TALER_KYCLOGIC_KycProvider *kp_best = NULL;
 
