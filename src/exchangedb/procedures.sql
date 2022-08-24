@@ -1850,17 +1850,16 @@ PERFORM
   FROM exchange.reserves
  WHERE reserve_pub=in_reserve_pub;
 
-IF NOT FOUND
-THEN
-  out_no_reserve=TRUE;
-  out_no_funds=TRUE;
-  RETURN;
-END IF;
-out_no_reserve=FALSE;
+out_no_reserve = NOT FOUND;
 
 IF (in_reserve_quota)
 THEN
   -- Increment active purses per reserve (and check this is allowed)
+  IF (out_no_reserve)
+  THEN
+    out_no_funds=TRUE;
+    RETURN;
+  END IF;
   UPDATE reserves
      SET purses_active=purses_active+1
    WHERE reserve_pub=in_reserve_pub
@@ -1872,28 +1871,38 @@ THEN
   END IF;
 ELSE
   --  UPDATE reserves balance (and check if balance is enough to pay the fee)
-  UPDATE reserves
-  SET
-    current_balance_frac=current_balance_frac-in_purse_fee_frac
-       + CASE
+  IF (out_no_reserve)
+  THEN
+    IF ( (0 != in_purse_fee_val) OR
+         (0 != in_purse_fee_frac) )
+    THEN
+      out_no_funds=TRUE;
+      RETURN;
+    END IF;
+  ELSE
+    UPDATE reserves
+      SET
+        current_balance_frac=current_balance_frac-in_purse_fee_frac
+         + CASE
          WHEN current_balance_frac < in_purse_fee_frac
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val-in_purse_fee_val
-       - CASE
+       current_balance_val=current_balance_val-in_purse_fee_val
+         - CASE
          WHEN current_balance_frac < in_purse_fee_frac
          THEN 1
          ELSE 0
          END
-  WHERE reserve_pub=in_reserve_pub
-    AND ( (current_balance_val > in_purse_fee_val) OR
-          ( (current_balance_frac >= in_purse_fee_frac) AND
-            (current_balance_val >= in_purse_fee_val) ) );
-  IF NOT FOUND
-  THEN
-    out_no_funds=TRUE;
-    RETURN;
+      WHERE reserve_pub=in_reserve_pub
+        AND ( (current_balance_val > in_purse_fee_val) OR
+              ( (current_balance_frac >= in_purse_fee_frac) AND
+                (current_balance_val >= in_purse_fee_val) ) );
+    IF NOT FOUND
+    THEN
+      out_no_funds=TRUE;
+      RETURN;
+    END IF;
   END IF;
 END IF;
 

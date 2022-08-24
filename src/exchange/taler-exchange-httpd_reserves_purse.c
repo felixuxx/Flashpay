@@ -380,7 +380,10 @@ purse_transaction (void *cls,
       GNUNET_free (partner_url);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    if (no_reserve)
+    if ( (no_reserve) &&
+         ( (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
+            == rpc->flags) ||
+           (! TALER_amount_is_zero (&rpc->gf->fees.purse)) ) )
     {
       *mhd_ret
         = TALER_MHD_REPLY_JSON_PACK (
