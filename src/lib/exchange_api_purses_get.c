@@ -95,6 +95,7 @@ handle_purse_get_finished (void *cls,
   case MHD_HTTP_OK:
     {
       bool no_merge = false;
+      bool no_deposit = false;
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
@@ -102,8 +103,10 @@ handle_purse_get_finished (void *cls,
           GNUNET_JSON_spec_timestamp ("merge_timestamp",
                                       &dr.details.success.merge_timestamp),
           &no_merge),
-        GNUNET_JSON_spec_timestamp ("deposit_timestamp",
-                                    &dr.details.success.deposit_timestamp),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_timestamp ("deposit_timestamp",
+                                      &dr.details.success.deposit_timestamp),
+          &no_deposit),
         TALER_JSON_spec_amount_any ("balance",
                                     &dr.details.success.balance),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",

@@ -431,8 +431,9 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
         GNUNET_JSON_pack_allow_null (
           GNUNET_JSON_pack_timestamp ("merge_timestamp",
                                       gc->merge_timestamp)),
-        GNUNET_JSON_pack_timestamp ("deposit_timestamp",
-                                    dt)
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_timestamp ("deposit_timestamp",
+                                      dt))
         );
   }
   return res;
