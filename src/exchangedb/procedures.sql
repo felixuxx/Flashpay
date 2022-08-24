@@ -1427,6 +1427,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_coin_sig BYTEA,
   IN in_amount_without_fee_val INT8,
   IN in_amount_without_fee_frac INT4,
+  IN in_reserve_expiration INT8,
   OUT out_balance_ok BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
@@ -1569,21 +1570,41 @@ THEN
    WHERE purse_pub=in_purse_pub;
 ELSE
   -- This is a local reserve, update balance immediately.
-  UPDATE reserves
-  SET
-    current_balance_frac=current_balance_frac+my_amount_frac
-       - CASE
-         WHEN current_balance_frac + my_amount_frac >= 100000000
-         THEN 100000000
-         ELSE 0
-         END,
-    current_balance_val=current_balance_val+my_amount_val
-       + CASE
-         WHEN current_balance_frac + my_amount_frac >= 100000000
-         THEN 1
-         ELSE 0
-         END
-  WHERE reserve_pub=my_reserve_pub;
+  INSERT INTO reserves
+    (reserve_pub
+    ,current_balance_frac
+    ,current_balance_val
+    ,expiration_date
+    ,gc_date)
+  VALUES
+    (my_reserve_pub
+    ,my_amount_frac
+    ,my_amount_val
+    ,in_reserve_expiration
+    ,in_reserve_expiration)
+  ON CONFLICT DO NOTHING;
+
+  IF NOT FOUND
+  THEN
+
+    UPDATE reserves
+      SET
+       current_balance_frac=current_balance_frac+my_amount_frac
+        - CASE
+          WHEN current_balance_frac + my_amount_frac >= 100000000
+            THEN 100000000
+          ELSE 0
+          END
+      ,current_balance_val=current_balance_val+my_amount_val
+        + CASE
+          WHEN current_balance_frac + my_amount_frac >= 100000000
+            THEN 1
+          ELSE 0
+          END
+      ,expiration_date=GREATEST(expiration_date,in_reserve_expiration)
+      ,gc_date=GREATEST(gc_date,in_reserve_expiration)
+      WHERE reserve_pub=my_reserve_pub;
+  END IF;
 
   -- ... and mark purse as finished.
   -- FIXME: combine with UPDATE above?

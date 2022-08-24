@@ -908,8 +908,8 @@ prepare_statements (struct PostgresClosure *pg)
       " out_balance_ok AS balance_ok"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_deposit"
-      " ($1,$2,$3,$4,$5,$6,$7,$8);",
-      8),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      9),
     /* Used in #postgres_update_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "set_purse_balance",
@@ -15875,6 +15875,7 @@ postgres_do_purse_deposit (
   bool *conflict)
 {
   struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Timestamp reserve_expiration;
   uint64_t partner_id = 0; /* FIXME #7271: WAD support... */
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&partner_id),
@@ -15883,6 +15884,7 @@ postgres_do_purse_deposit (
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     TALER_PQ_query_param_amount (amount_minus_fee),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -15893,6 +15895,10 @@ postgres_do_purse_deposit (
     GNUNET_PQ_result_spec_end
   };
 
+  reserve_expiration
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                  pg->legal_reserve_expiration_time));
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_purse_deposit",
                                                    params,
