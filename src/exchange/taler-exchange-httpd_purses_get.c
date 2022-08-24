@@ -428,8 +428,9 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                     &exchange_sig),
         GNUNET_JSON_pack_data_auto ("exchange_pub",
                                     &exchange_pub),
-        GNUNET_JSON_pack_timestamp ("merge_timestamp",
-                                    gc->merge_timestamp),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_timestamp ("merge_timestamp",
+                                      gc->merge_timestamp)),
         GNUNET_JSON_pack_timestamp ("deposit_timestamp",
                                     dt)
         );
