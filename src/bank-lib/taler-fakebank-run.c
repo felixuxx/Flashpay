@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016, 2017 Taler Systems SA
+  Copyright (C) 2016-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -52,6 +52,10 @@ static struct TALER_FAKEBANK_Handle *fb;
  */
 static struct GNUNET_SCHEDULER_Task *keepalive;
 
+/**
+ * Amount to credit an account with on /register.
+ */
+static struct TALER_Amount signup_bonus;
 
 /**
  * Stop the process.
@@ -161,12 +165,28 @@ run (void *cls,
       go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
     TALER_MHD_setup (go);
   }
+  if (GNUNET_OK !=
+      TALER_amount_is_valid (&signup_bonus))
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (currency_string,
+                                          &signup_bonus));
+  }
+  if (0 != strcmp (currency_string,
+                   signup_bonus.currency))
+  {
+    fprintf (stderr,
+             "Signup bonus and main currency do not match\n");
+    ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
   fb = TALER_FAKEBANK_start3 (hostname,
                               (uint16_t) port,
                               exchange_url,
                               currency_string,
                               ram,
-                              num_threads);
+                              num_threads,
+                              &signup_bonus);
   GNUNET_free (hostname);
   GNUNET_free (exchange_url);
   GNUNET_free (currency_string);
@@ -206,6 +226,11 @@ main (int argc,
                                "NUM_THREADS",
                                "size of the thread pool",
                                &num_threads),
+    TALER_getopt_get_amount ('s',
+                             "signup-bonus",
+                             "AMOUNT",
+                             "amount to credit newly registered account (created out of thin air)",
+                             &signup_bonus),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue iret;

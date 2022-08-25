@@ -490,6 +490,12 @@ struct TALER_FAKEBANK_Handle
   pthread_mutex_t big_lock;
 
   /**
+   * How much money should be put into new accounts
+   * on /register.
+   */
+  struct TALER_Amount signup_bonus;
+
+  /**
    * Current transaction counter.
    */
   uint64_t serial_counter;
@@ -3432,6 +3438,7 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
                             username,
                             username);
       acc->password = GNUNET_strdup (password);
+      acc->balance = h->signup_bonus; /* magic money creation! */
     }
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
@@ -4080,12 +4087,17 @@ TALER_FAKEBANK_start2 (uint16_t port,
                        uint64_t ram_limit,
                        unsigned int num_threads)
 {
+  struct TALER_Amount zero;
+
+  TALER_amount_set_zero (currency,
+                         &zero);
   return TALER_FAKEBANK_start3 ("localhost",
                                 port,
                                 NULL,
                                 currency,
                                 ram_limit,
-                                num_threads);
+                                num_threads,
+                                &zero);
 }
 
 
@@ -4095,7 +4107,8 @@ TALER_FAKEBANK_start3 (const char *hostname,
                        const char *exchange_url,
                        const char *currency,
                        uint64_t ram_limit,
-                       unsigned int num_threads)
+                       unsigned int num_threads,
+                       const struct TALER_Amount *signup_bonus)
 {
   struct TALER_FAKEBANK_Handle *h;
 
@@ -4107,7 +4120,14 @@ TALER_FAKEBANK_start3 (const char *hostname,
     return NULL;
   }
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
+  if (0 != strcmp (signup_bonus->currency,
+                   currency))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
+  h->signup_bonus = *signup_bonus;
   if (NULL != exchange_url)
     h->exchange_url = GNUNET_strdup (exchange_url);
 #ifdef __linux__

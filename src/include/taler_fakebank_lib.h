@@ -91,6 +91,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
  * @param currency which currency should the bank offer
  * @param ram_limit how much memory do we use at most
  * @param num_threads size of the thread pool, 0 to use the GNUnet scheduler
+ * @param signup_bonus how much to credit new users
  * @return NULL on error
  */
 struct TALER_FAKEBANK_Handle *
@@ -99,7 +100,8 @@ TALER_FAKEBANK_start3 (const char *hostname,
                        const char *exchange_url,
                        const char *currency,
                        uint64_t ram_limit,
-                       unsigned int num_threads);
+                       unsigned int num_threads,
+                       const struct TALER_Amount *signup_bonus);
 
 
 /**
