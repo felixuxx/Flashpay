@@ -664,7 +664,7 @@ TEH_handler_reserves_purse (
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
+      TALER_EC_EXCHANGE_RESERVES_RESERVE_MERGE_SIGNATURE_INVALID,
       NULL);
   }
   if ( (! rpc.no_econtract) &&
