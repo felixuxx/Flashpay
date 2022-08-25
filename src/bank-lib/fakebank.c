@@ -2864,16 +2864,6 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
                                        "exchange account changed");
   }
   wo->exchange_account = credit_account;
-  if (NULL == wo->exchange_account)
-  {
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
-                                       exchange_payto_uri);
-  }
-
   wo->reserve_pub = *reserve_pub;
   wo->selection_done = true;
   GNUNET_assert (0 ==
@@ -3606,6 +3596,15 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                                        TALER_EC_BANK_TRANSACTION_NOT_FOUND,
                                        account_name);
   }
+  if (NULL == wo->exchange_account)
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_BANK_POST_WITHDRAWAL_OPERATION_REQUIRED,
+                                       NULL);
+  }
   if (wo->aborted)
   {
     GNUNET_assert (0 ==
@@ -4089,8 +4088,13 @@ TALER_FAKEBANK_start2 (uint16_t port,
 {
   struct TALER_Amount zero;
 
-  TALER_amount_set_zero (currency,
-                         &zero);
+  if (GNUNET_OK !=
+      TALER_amount_set_zero (currency,
+                             &zero))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   return TALER_FAKEBANK_start3 ("localhost",
                                 port,
                                 NULL,
