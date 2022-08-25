@@ -240,6 +240,11 @@ struct Account
   char *payto_uri;
 
   /**
+   * Password set for the account (if any).
+   */
+  char *password;
+
+  /**
    * Current account balance.
    */
   struct TALER_Amount balance;
@@ -1415,6 +1420,7 @@ free_account (void *cls,
   GNUNET_free (account->account_name);
   GNUNET_free (account->receiver_name);
   GNUNET_free (account->payto_uri);
+  GNUNET_free (account->password);
   GNUNET_free (account);
   return GNUNET_OK;
 }
@@ -2826,6 +2832,20 @@ do_post_withdrawal (struct TALER_FAKEBANK_Handle *h,
   credit_account = lookup_account (h,
                                    credit_name,
                                    NULL);
+  if (NULL == credit_account)
+  {
+    MHD_RESULT res;
+
+    GNUNET_break_op (0);
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
+    res = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_NOT_FOUND,
+                                      TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                      credit_name);
+    GNUNET_free (credit_name);
+    return res;
+  }
   GNUNET_free (credit_name);
   if ( (NULL != wo->exchange_account) &&
        (credit_account != wo->exchange_account) )
@@ -3381,6 +3401,7 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue ret;
+    struct Account *acc;
 
     if (GNUNET_OK !=
         (ret = TALER_MHD_parse_json_data (connection,
@@ -3391,12 +3412,32 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       return (GNUNET_NO == ret) ? MHD_YES : MHD_NO;
     }
-    (void) lookup_account (h,
-                           username,
-                           username);
-    return TALER_MHD_reply_json (connection,
-                                 json_object (), /* FIXME: #7301 */
-                                 MHD_HTTP_OK);
+    acc = lookup_account (h,
+                          username,
+                          NULL);
+    if (NULL != acc)
+    {
+      if (0 != strcmp (password,
+                       acc->password))
+      {
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_CONFLICT,
+                                           TALER_EC_BANK_REGISTER_CONFLICT,
+                                           "password");
+      }
+    }
+    else
+    {
+      acc = lookup_account (h,
+                            username,
+                            username);
+      acc->password = GNUNET_strdup (password);
+    }
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
   }
   json_decref (json);
   return res;
