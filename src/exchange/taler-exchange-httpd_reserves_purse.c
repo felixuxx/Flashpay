@@ -547,14 +547,17 @@ TEH_handler_reserves_purse (
                                          &rpc.merge_pub,
                                          &rpc.merge_sig))
     {
+      MHD_RESULT ret;
+
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (payto_uri);
-      return TALER_MHD_reply_with_error (
+      ret = TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
         TALER_EC_EXCHANGE_RESERVES_PURSE_MERGE_SIGNATURE_INVALID,
-        NULL);
+        payto_uri);
+      GNUNET_free (payto_uri);
+      return ret;
     }
     GNUNET_free (payto_uri);
   }
