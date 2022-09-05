@@ -220,6 +220,9 @@ TEH_common_deposit_check_purse_deposit (
            : GNUNET_SYSERR;
   }
 
+  if (0 == min_age)
+    return GNUNET_OK; /* no need to apply age checks */
+
   /* Check and verify the age restriction. */
   if (coin->no_attest != coin->cpi.no_age_commitment)
   {
