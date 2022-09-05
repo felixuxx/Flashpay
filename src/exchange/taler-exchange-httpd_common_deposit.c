@@ -68,10 +68,6 @@ TEH_common_purse_deposit_parse_coin (
       return res;
   }
 
-  if (! coin->cpi.no_age_commitment)
-    TALER_age_commitment_hash (&coin->age_commitment,
-                               &coin->cpi.h_age_commitment);
-
   /* check denomination exists and is valid */
   {
     struct TEH_DenominationKey *dk;
@@ -84,6 +80,12 @@ TEH_common_purse_deposit_parse_coin (
     {
       GNUNET_JSON_parse_free (spec);
       return (MHD_YES == mret) ? GNUNET_NO : GNUNET_SYSERR;
+    }
+    if (! coin->cpi.no_age_commitment)
+    {
+      coin->age_commitment.mask = dk->meta.age_mask;
+      TALER_age_commitment_hash (&coin->age_commitment,
+                                 &coin->cpi.h_age_commitment);
     }
     if (0 > TALER_amount_cmp (&dk->meta.value,
                               &coin->amount))
