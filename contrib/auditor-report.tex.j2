@@ -901,7 +901,7 @@ actually received in some reserves.
 {% endif %}
 
 
-\subsection{Missattributed incoming wire transfers}
+\subsection{Misattributed incoming wire transfers}
 
 This section lists cases where the sender account record of an
 incoming wire transfer differs between the exchange and the bank.
@@ -911,7 +911,7 @@ account.
 
 % Table generation tested by testcase #9 in test-auditor.sh
 
-{% if wire.missattribution_in_inconsistencies|length() == 0 %}
+{% if wire.misattribution_in_inconsistencies|length() == 0 %}
   {\bf All incoming wire transfer sender accounts matched up.}
 {% else %}
   \begin{longtable}{p{8.5cm}|r}
@@ -926,11 +926,11 @@ account.
 \endfoot
   \hline
   {\bf Total amount}  &
-  {{ wire.total_missattribution_in}} \\
+  {{ wire.total_misattribution_in}} \\
   \caption{Incoming wire transfer sender accounts not matching up.}
   \label{table:wire_in:sender_account_inconsistencies}
 \endlastfoot
-{% for item in wire.missattribution_in_inconsistencies %}
+{% for item in wire.misattribution_in_inconsistencies %}
   {\tt \small \truncate{8.3cm}{ {{ item.reserve_pub }} } } &
   {{ item.amount }} \\ \hline
 {% endfor %}

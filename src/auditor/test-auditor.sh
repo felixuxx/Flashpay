@@ -292,7 +292,7 @@ jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail 
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
 jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
 jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
 jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
 jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
@@ -342,10 +342,10 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
+WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
-    exit_fail "Expected total missattribution in wrong, got $WIRED"
+    exit_fail "Expected total misattribution in wrong, got $WIRED"
 fi
 echo PASS
 
@@ -413,7 +413,7 @@ jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail 
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
 jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
 jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
 jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
 jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
@@ -466,10 +466,10 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
+WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
-    exit_fail "Expected total missattribution in wrong, got $WIRED"
+    exit_fail "Expected total misattribution in wrong, got $WIRED"
 fi
 # Database was unmodified, no need to undo
 echo "OK"
@@ -847,12 +847,12 @@ echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/D
 run_audit
 
 echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .missattribution_in_inconsistencies[0].amount < test-audit-wire.json`
+AMOUNT=`jq -r .misattribution_in_inconsistencies[0].amount < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .total_missattribution_in < test-audit-wire.json`
+AMOUNT=`jq -r .total_misattribution_in < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1945,7 +1945,7 @@ jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail 
 echo -n "Test for wire inconsistencies... "
 jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
 jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
 jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
 jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
 jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
@@ -1995,10 +1995,10 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
+WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
-    exit_fail "Expected total missattribution in wrong, got $WIRED"
+    exit_fail "Expected total misattribution in wrong, got $WIRED"
 fi
 echo PASS
 

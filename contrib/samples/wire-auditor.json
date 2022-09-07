@@ -38,8 +38,8 @@
     "value": 5,
     "fraction": 1000000
   },
-  "missattribution_in_inconsistencies": [],
-  "total_missattribution_in": {
+  "misattribution_in_inconsistencies": [],
+  "total_misattribution_in": {
     "currency": "KUDOS",
     "value": 0,
     "fraction": 0

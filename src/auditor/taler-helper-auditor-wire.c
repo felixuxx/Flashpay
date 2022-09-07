@@ -204,7 +204,7 @@ static json_t *report_reserve_in_inconsistencies;
  * Array of reports about wrong bank account being recorded for
  * incoming wire transfers.
  */
-static json_t *report_missattribution_in_inconsistencies;
+static json_t *report_misattribution_in_inconsistencies;
 
 /**
  * Array of reports about row inconsistencies.
@@ -267,7 +267,7 @@ static struct TALER_Amount total_bad_amount_in_minus;
  * for incoming funds and may thus wire funds to the wrong
  * destination when closing the reserve.
  */
-static struct TALER_Amount total_missattribution_in;
+static struct TALER_Amount total_misattribution_in;
 
 /**
  * Total amount which the exchange did not transfer in time.
@@ -499,11 +499,11 @@ do_shutdown (void *cls)
         TALER_JSON_pack_amount ("total_wire_in_delta_minus",
                                 &total_bad_amount_in_minus),
         /* Tested in test-auditor.sh #9 */
-        GNUNET_JSON_pack_array_steal ("missattribution_in_inconsistencies",
-                                      report_missattribution_in_inconsistencies),
+        GNUNET_JSON_pack_array_steal ("misattribution_in_inconsistencies",
+                                      report_misattribution_in_inconsistencies),
         /* Tested in test-auditor.sh #9 */
-        TALER_JSON_pack_amount ("total_missattribution_in",
-                                &total_missattribution_in),
+        TALER_JSON_pack_amount ("total_misattribution_in",
+                                &total_misattribution_in),
         GNUNET_JSON_pack_array_steal ("row_inconsistencies",
                                       report_row_inconsistencies),
         /* Tested in test-auditor.sh #10/#17 */
@@ -553,7 +553,7 @@ do_shutdown (void *cls)
     report_reserve_in_inconsistencies = NULL;
     report_row_inconsistencies = NULL;
     report_row_minor_inconsistencies = NULL;
-    report_missattribution_in_inconsistencies = NULL;
+    report_misattribution_in_inconsistencies = NULL;
     report_lags = NULL;
     report_closure_lags = NULL;
     report_account_progress = NULL;
@@ -1938,7 +1938,7 @@ history_credit_cb (void *cls,
   if (0 != strcasecmp (details->debit_account_uri,
                        rii->details.debit_account_uri))
   {
-    TALER_ARL_report (report_missattribution_in_inconsistencies,
+    TALER_ARL_report (report_misattribution_in_inconsistencies,
                       GNUNET_JSON_PACK (
                         TALER_JSON_pack_amount ("amount",
                                                 &rii->details.amount),
@@ -1949,8 +1949,8 @@ history_credit_cb (void *cls,
                         GNUNET_JSON_pack_data_auto (
                           "reserve_pub",
                           &rii->details.reserve_pub)));
-    TALER_ARL_amount_add (&total_missattribution_in,
-                          &total_missattribution_in,
+    TALER_ARL_amount_add (&total_misattribution_in,
+                          &total_misattribution_in,
                           &rii->details.amount);
   }
   if (GNUNET_TIME_timestamp_cmp (details->execution_date,
@@ -2342,7 +2342,7 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_missattribution_in_inconsistencies
+                 (report_misattribution_in_inconsistencies
                     = json_array ()));
   GNUNET_assert (NULL !=
                  (report_lags = json_array ()));
@@ -2364,7 +2364,7 @@ run (void *cls,
                                         &total_bad_amount_in_minus));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
-                                        &total_missattribution_in));
+                                        &total_misattribution_in));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_amount_lag));
