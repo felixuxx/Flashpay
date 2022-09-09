@@ -202,19 +202,10 @@ EXTRA_DIST = \
   auditor.conf \
   test-sync-in.conf \
   test-sync-out.conf \
+  auditor-basedb.conf \
+  revoke-basedb.conf \
   generate-auditor-basedb.sh \
   generate-revoke-basedb.sh \
   generate-auditor-basedb.conf \
   generate-auditor-basedb-template.conf \
-  $(check_SCRIPTS) \
-  auditor-basedb.age \
-  auditor-basedb.conf \
-  auditor-basedb.sql \
-  auditor-basedb-libeufin.sql \
-  auditor-basedb.mpub \
-  auditor-basedb.mpriv \
-  revoke-basedb.age \
-  revoke-basedb.conf \
-  revoke-basedb.sql \
-  revoke-basedb-libeufin.sql \
-  revoke-basedb.mpub
+  $(check_SCRIPTS)

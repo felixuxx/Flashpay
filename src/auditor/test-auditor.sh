@@ -66,40 +66,40 @@ trap cleanup EXIT
 function launch_libeufin () {
     export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
     libeufin-nexus serve --port 8082 \
-      2> libeufin-nexus-stderr.log \
-      > libeufin-nexus-stdout.log &
+                   2> libeufin-nexus-stderr.log \
+                   > libeufin-nexus-stdout.log &
     echo $! > libeufin-nexus.pid
     export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
     libeufin-sandbox serve --port 18082 \
-      > libeufin-sandbox-stdout.log \
-      2> libeufin-sandbox-stderr.log &
+                     > libeufin-sandbox-stdout.log \
+                     2> libeufin-sandbox-stderr.log &
     echo $! > libeufin-sandbox.pid
 }
 
 # Downloads new transactions from the bank.
 function nexus_fetch_transactions () {
-  export LIBEUFIN_NEXUS_USERNAME=exchange
-  export LIBEUFIN_NEXUS_PASSWORD=x
-  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
-  libeufin-cli accounts fetch-transactions \
-    --range-type since-last --level report exchange-nexus > /dev/null
-  unset LIBEUFIN_NEXUS_USERNAME
-  unset LIBEUFIN_NEXUS_PASSWORD
-  unset LIBEUFIN_NEXUS_URL
+    export LIBEUFIN_NEXUS_USERNAME=exchange
+    export LIBEUFIN_NEXUS_PASSWORD=x
+    export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+    libeufin-cli accounts fetch-transactions \
+                 --range-type since-last --level report exchange-nexus > /dev/null
+    unset LIBEUFIN_NEXUS_USERNAME
+    unset LIBEUFIN_NEXUS_PASSWORD
+    unset LIBEUFIN_NEXUS_URL
 }
 
 
 # Instruct Nexus to all the prepared payments (= those
 # POSTed to /transfer by the exchange).
 function nexus_submit_to_sandbox () {
-  export LIBEUFIN_NEXUS_USERNAME=exchange
-  export LIBEUFIN_NEXUS_PASSWORD=x
-  export LIBEUFIN_NEXUS_URL=http://localhost:8082/
-  libeufin-cli accounts submit-payments exchange-nexus
-  unset LIBEUFIN_NEXUS_USERNAME
-  unset LIBEUFIN_NEXUS_PASSWORD
-  unset LIBEUFIN_NEXUS_URL
+    export LIBEUFIN_NEXUS_USERNAME=exchange
+    export LIBEUFIN_NEXUS_PASSWORD=x
+    export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+    libeufin-cli accounts submit-payments exchange-nexus
+    unset LIBEUFIN_NEXUS_USERNAME
+    unset LIBEUFIN_NEXUS_PASSWORD
+    unset LIBEUFIN_NEXUS_URL
 }
 # Operations to run before the actual audit
 function pre_audit () {
@@ -144,13 +144,13 @@ function pre_audit () {
         echo -n "Running exchange transfer ..."
         taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
         echo " DONE"
-	echo -n "Running Nexus payment submitter ..."
-	nexus_submit_to_sandbox
-	echo " DONE"
-	# Make outgoing transactions appear in the TWG:
-	echo -n "Download bank transactions ..."
-	nexus_fetch_transactions
-	echo " DONE"
+	    echo -n "Running Nexus payment submitter ..."
+	    nexus_submit_to_sandbox
+	    echo " DONE"
+	    # Make outgoing transactions appear in the TWG:
+	    echo -n "Download bank transactions ..."
+	    nexus_fetch_transactions
+	    echo " DONE"
     fi
 }
 
@@ -236,9 +236,9 @@ function run_audit () {
         echo -n "Running taler-exchange-offline drain "
 
         taler-exchange-offline -L DEBUG -c "${CONF}" \
-          drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
-          upload \
-          2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
+                               drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
+                               upload \
+                               2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
         kill -TERM $EPID
         wait $EPID
         echo -n "Running taler-exchange-drain ..."
@@ -278,120 +278,120 @@ full_reload()
 
 function test_0() {
 
-echo "===========0: normal run with aggregator==========="
-run_audit aggregator
-echo "Checking output"
-# if an emergency was detected, that is a bug and we should fail
-echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
-echo -n "Test for deposit confirmation emergencies... "
-jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
-echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+    echo "===========0: normal run with aggregator==========="
+    run_audit aggregator
+    echo "Checking output"
+    # if an emergency was detected, that is a bug and we should fail
+    echo -n "Test for emergencies... "
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+    echo -n "Test for deposit confirmation emergencies... "
+    jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+    echo -n "Test for emergencies by count... "
+    jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
-echo -n "Test for wire inconsistencies... "
-jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
-jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo -n "Test for wire inconsistencies... "
+    jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+    jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+    jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
+    jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+    jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
+    jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+    jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
+    jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 
-# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
-# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
-echo PASS
+    echo PASS
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
-fi
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
-fi
-LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
-fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
+    fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
+    fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
+    fi
 
-echo -n "Test for wire amounts... "
-WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total misattribution in wrong, got $WIRED"
-fi
-echo PASS
+    echo -n "Test for wire amounts... "
+    WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total misattribution in wrong, got $WIRED"
+    fi
+    echo PASS
 
-echo -n "Checking for unexpected arithmetic differences "
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
-fi
+    echo -n "Checking for unexpected arithmetic differences "
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
+    fi
 
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
-echo PASS
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
+    echo PASS
 
-echo -n "Checking for unexpected wire out differences "
-jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
-echo PASS
+    echo -n "Checking for unexpected wire out differences "
+    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+    echo PASS
 
-# cannot easily undo aggregator, hence full reload
-full_reload
+    # cannot easily undo aggregator, hence full reload
+    full_reload
 
 }
 
@@ -400,39 +400,37 @@ full_reload
 # transfer lag!
 function test_1() {
 
-echo "===========1: normal run==========="
-run_audit
+    echo "===========1: normal run==========="
+    run_audit
 
-echo "Checking output"
-# if an emergency was detected, that is a bug and we should fail
-echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
-echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+    echo "Checking output"
+    # if an emergency was detected, that is a bug and we should fail
+    echo -n "Test for emergencies... "
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+    echo -n "Test for emergencies by count... "
+    jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
-echo -n "Test for wire inconsistencies... "
-jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo -n "Test for wire inconsistencies... "
+    jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+    jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+    jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
+    jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+    jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+    jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
-# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
-# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
-echo PASS
+    echo PASS
 
-echo -n "Check for lag detection... "
+    echo -n "Check for lag detection... "
 
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
-    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DELTA"
+    # Check wire transfer lag reported (no aggregator!)
+    # NOTE: This test is EXPECTED to fail for ~1h after
+    # re-generating the test database as we do not
+    # report lag of less than 1h (see GRACE_PERIOD in
+    # taler-helper-auditor-wire.c)
+    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator"
 
     LAG=`jq -r .total_amount_lag < test-audit-wire.json`
     if test $LAG = "TESTKUDOS:0"
@@ -440,81 +438,78 @@ then
         exit_fail "Expected total lag to be non-zero"
     fi
     echo "PASS"
-else
-    echo "SKIP (database too new)"
-fi
 
 
-echo -n "Test for wire amounts... "
-WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total misattribution in wrong, got $WIRED"
-fi
-# Database was unmodified, no need to undo
-echo "OK"
+    echo -n "Test for wire amounts... "
+    WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total misattribution in wrong, got $WIRED"
+    fi
+    # Database was unmodified, no need to undo
+    echo "OK"
 }
 
 
 # Change amount of wire transfer reported by exchange
 function test_2() {
 
-echo "===========2: reserves_in inconsistency ==========="
-echo "UPDATE exchange.reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
+    echo "===========2: reserves_in inconsistency ==========="
+    echo "UPDATE exchange.reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
-if test $ROW != 1
-then
-    exit_fail "Row $ROW is wrong"
-fi
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:10"
-then
-    exit_fail "Amount wrong"
-fi
-EXPECTED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
-if test $EXPECTED != "TESTKUDOS:5"
-then
-    exit_fail "Expected amount wrong"
-fi
+    echo -n "Testing inconsistency detection... "
+    ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
+    if test $ROW != 1
+    then
+        exit_fail "Row $ROW is wrong"
+    fi
+    WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:10"
+    then
+        exit_fail "Amount wrong"
+    fi
+    EXPECTED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
+    if test $EXPECTED != "TESTKUDOS:5"
+    then
+        exit_fail "Expected amount wrong"
+    fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-fi
-DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $DELTA != "TESTKUDOS:5"
-then
-    exit_fail "Expected total wire delta plus wrong, got $DELTA"
-fi
-echo PASS
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+    fi
+    DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $DELTA != "TESTKUDOS:5"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $DELTA"
+    fi
+    echo PASS
 
-# Undo database modification
-echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+    # Undo database modification
+    echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -523,61 +518,61 @@ echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1
 # lower than what exchange claims to have received.
 function test_3() {
 
-echo "===========3: reserves_in inconsistency==========="
-echo "UPDATE exchange.reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+    echo "===========3: reserves_in inconsistency==========="
+    echo "UPDATE exchange.reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit-reserves.json`
-if test $EXPECTED != "TESTKUDOS:5.01"
-then
-    exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
-fi
+    EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit-reserves.json`
+    if test $EXPECTED != "TESTKUDOS:5.01"
+    then
+        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
+    fi
 
-EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit-reserves.json`
-if test $EXPECTED != "TESTKUDOS:0.01"
-then
-    exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
-fi
+    EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit-reserves.json`
+    if test $EXPECTED != "TESTKUDOS:0.01"
+    then
+        exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
+    fi
 
-WIRED=`jq -r .total_loss_balance_insufficient < test-audit-reserves.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total loss from insufficient balance, got $WIRED"
-fi
+    WIRED=`jq -r .total_loss_balance_insufficient < test-audit-reserves.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total loss from insufficient balance, got $WIRED"
+    fi
 
-ROW=`jq -e .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
-if test $ROW != 1
-then
-    exit_fail "Row wrong, got $ROW"
-fi
+    ROW=`jq -e .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
+    if test $ROW != 1
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
 
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:15"
-then
-    exit_fail "Wrong amount_exchange_expected, got $WIRED"
-fi
+    WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:15"
+    then
+        exit_fail "Wrong amount_exchange_expected, got $WIRED"
+    fi
 
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:10"
-then
-    exit_fail "Wrong amount_wired, got $WIRED"
-fi
+    WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:10"
+    then
+        exit_fail "Wrong amount_wired, got $WIRED"
+    fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:5"
-then
-    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-fi
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:5"
+    then
+        exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+    fi
 
-WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total wire_in_delta_plus, got $WIRED"
-fi
+    WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total wire_in_delta_plus, got $WIRED"
+    fi
 
-# Undo database modification
-echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+    # Undo database modification
+    echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 }
 
@@ -586,46 +581,46 @@ echo "UPDATE exchange.reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1
 # lower than what exchange claims to have received.
 function test_4() {
 
-echo "===========4: deposit wire target wrong================="
-# Original target bank account was 43, changing to 44
-SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
-echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+    echo "===========4: deposit wire target wrong================="
+    # Original target bank account was 43, changing to 44
+    SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+    OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+    NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
+    echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
+    echo -n "Testing inconsistency detection... "
 
-jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
+    jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
-if test $ROW != ${SERIAL}
-then
-    exit_fail "Row wrong, got $ROW"
-fi
+    ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
+    if test $ROW != ${SERIAL}
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong deposit bad signature loss, got $LOSS"
-fi
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong deposit bad signature loss, got $LOSS"
+    fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test $OP != "deposit"
-then
-    exit_fail "Wrong operation, got $OP"
-fi
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test $OP != "deposit"
+    then
+        exit_fail "Wrong operation, got $OP"
+    fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong total bad sig loss, got $LOSS"
-fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong total bad sig loss, got $LOSS"
+    fi
 
-echo PASS
-# Undo:
-echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+    echo PASS
+    # Undo:
+    echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
@@ -634,42 +629,42 @@ echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE depo
 # Test where h_contract_terms in the deposit table is wrong
 # (=> bad signature)
 function test_5() {
-echo "===========5: deposit contract hash wrong================="
-# Modify h_wire hash, so it is inconsistent with 'wire'
-SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_H=`echo "SELECT h_contract_terms FROM exchange.deposits WHERE deposit_serial_id=$SERIAL;" | psql $DB -Aqt`
-echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
+    echo "===========5: deposit contract hash wrong================="
+    # Modify h_wire hash, so it is inconsistent with 'wire'
+    SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+    OLD_H=`echo "SELECT h_contract_terms FROM exchange.deposits WHERE deposit_serial_id=$SERIAL;" | psql $DB -Aqt`
+    echo "UPDATE exchange.deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d8c354a63330624d3d143222cf3bb8b8e16f69accd5a8773127059b804c1955696bf551dd7be62719870613332aa8d5' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Checking bad signature detection... "
-ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
-if test $ROW != $SERIAL
-then
-    exit_fail "Row wrong, got $ROW"
-fi
+    echo -n "Checking bad signature detection... "
+    ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
+    if test $ROW != $SERIAL
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong deposit bad signature loss, got $LOSS"
-fi
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong deposit bad signature loss, got $LOSS"
+    fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test $OP != "deposit"
-then
-    exit_fail "Wrong operation, got $OP"
-fi
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test $OP != "deposit"
+    then
+        exit_fail "Wrong operation, got $OP"
+    fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong total bad sig loss, got $LOSS"
-fi
-echo PASS
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong total bad sig loss, got $LOSS"
+    fi
+    echo PASS
 
-# Undo:
-echo "UPDATE exchange.deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
+    # Undo:
+    echo "UPDATE exchange.deposits SET h_contract_terms='${OLD_H}' WHERE deposit_serial_id=$SERIAL" | psql -Aqt $DB
 
 }
 
@@ -677,40 +672,40 @@ echo "UPDATE exchange.deposits SET h_contract_terms='${OLD_H}' WHERE deposit_ser
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature)
 function test_6() {
-echo "===========6: known_coins signature wrong================="
-# Modify denom_sig, so it is wrong
-OLD_SIG=`echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql $DB -Aqt`
-COIN_PUB=`echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
-echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    echo "===========6: known_coins signature wrong================="
+    # Modify denom_sig, so it is wrong
+    OLD_SIG=`echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql $DB -Aqt`
+    COIN_PUB=`echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
+    echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
-if test $ROW != "1"
-then
-    exit_fail "Row wrong, got $ROW"
-fi
+    ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
+    if test $ROW != "1"
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
-if test $LOSS == "TESTKUDOS:0"
-then
-    exit_fail "Wrong deposit bad signature loss, got $LOSS"
-fi
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+    if test $LOSS == "TESTKUDOS:0"
+    then
+        exit_fail "Wrong deposit bad signature loss, got $LOSS"
+    fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test $OP != "melt"
-then
-    exit_fail "Wrong operation, got $OP"
-fi
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test $OP != "melt"
+    then
+        exit_fail "Wrong operation, got $OP"
+    fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS == "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss, got $LOSS"
-fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS == "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss, got $LOSS"
+    fi
 
-# Undo
-echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    # Undo
+    echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
 }
 
@@ -718,51 +713,51 @@ echo "UPDATE exchange.known_coins SET denom_sig='$OLD_SIG' WHERE coin_pub='$COIN
 
 # Test where h_wire in the deposit table is wrong
 function test_7() {
-echo "===========7: reserves_out signature wrong================="
-# Modify reserve_sig, so it is bogus
-HBE=`echo 'SELECT h_blind_ev FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT reserve_sig FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
-A_VAL=`echo "SELECT amount_with_fee_val FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
-A_FRAC=`echo "SELECT amount_with_fee_frac FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
-# Normalize, we only deal with cents in this test-case
-A_FRAC=`expr $A_FRAC / 1000000 || true`
-echo "UPDATE exchange.reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+    echo "===========7: reserves_out signature wrong================="
+    # Modify reserve_sig, so it is bogus
+    HBE=`echo 'SELECT h_blind_ev FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
+    OLD_SIG=`echo "SELECT reserve_sig FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+    A_VAL=`echo "SELECT amount_with_fee_val FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+    A_FRAC=`echo "SELECT amount_with_fee_frac FROM exchange.reserves_out WHERE h_blind_ev='$HBE';" | psql $DB -Aqt`
+    # Normalize, we only deal with cents in this test-case
+    A_FRAC=`expr $A_FRAC / 1000000 || true`
+    echo "UPDATE exchange.reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708b2c52b7120d5a232a5b628f9ced6d497e6652d986b581188fb014ca857fd5e765a8ccc4eb7e2ce9edcde39accaa4b' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-reserves.json`
-if test $OP != "withdraw"
-then
-    exit_fail "Wrong operation, got $OP"
-fi
-
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-reserves.json`
-LOSS_TOTAL=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
-if test $LOSS != $LOSS_TOTAL
-then
-    exit_fail "Expected loss $LOSS and total loss $LOSS_TOTAL do not match"
-fi
-if test $A_FRAC != 0
-then
-    if [ $A_FRAC -lt 10 ]
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-reserves.json`
+    if test $OP != "withdraw"
     then
-        A_PREV="0"
+        exit_fail "Wrong operation, got $OP"
+    fi
+
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-reserves.json`
+    LOSS_TOTAL=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
+    if test $LOSS != $LOSS_TOTAL
+    then
+        exit_fail "Expected loss $LOSS and total loss $LOSS_TOTAL do not match"
+    fi
+    if test $A_FRAC != 0
+    then
+        if [ $A_FRAC -lt 10 ]
+        then
+            A_PREV="0"
+        else
+            A_PREV=""
+        fi
+        if test $LOSS != "TESTKUDOS:$A_VAL.$A_PREV$A_FRAC"
+        then
+            exit_fail "Expected loss TESTKUDOS:$A_VAL.$A_PREV$A_FRAC but got $LOSS"
+        fi
     else
-        A_PREV=""
+        if test $LOSS != "TESTKUDOS:$A_VAL"
+        then
+            exit_fail "Expected loss TESTKUDOS:$A_VAL but got $LOSS"
+        fi
     fi
-    if test $LOSS != "TESTKUDOS:$A_VAL.$A_PREV$A_FRAC"
-    then
-        exit_fail "Expected loss TESTKUDOS:$A_VAL.$A_PREV$A_FRAC but got $LOSS"
-    fi
-else
-    if test $LOSS != "TESTKUDOS:$A_VAL"
-    then
-        exit_fail "Expected loss TESTKUDOS:$A_VAL but got $LOSS"
-    fi
-fi
 
-# Undo:
-echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
+    # Undo:
+    echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='$HBE'" | psql -Aqt $DB
 
 }
 
@@ -770,68 +765,68 @@ echo "UPDATE exchange.reserves_out SET reserve_sig='$OLD_SIG' WHERE h_blind_ev='
 # Test wire transfer subject disagreement!
 function test_8() {
 
-echo "===========8: wire-transfer-subject disagreement==========="
-OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
-OLD_WTID=`echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
-NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
-echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
+    echo "===========8: wire-transfer-subject disagreement==========="
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+    OLD_WTID=`echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
+    NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
+    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
-if test "x$DIAG" != "xwire subject does not match"
-then
-    exit_fail "Diagnostic wrong: $DIAG (0)"
-fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-audit-wire.json`
-if test x$WTID != x"$OLD_WTID" -a x$WTID != x"$NEW_WTID"
-then
-    exit_fail "WTID reported wrong: $WTID"
-fi
-EX_A=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
-if test x$WTID = x$OLD_WTID -a x$EX_A != x"TESTKUDOS:10"
-then
-    exit_fail "Amount reported wrong: $EX_A"
-fi
-if test x$WTID = x$NEW_WTID -a x$EX_A != x"TESTKUDOS:0"
-then
-    exit_fail "Amount reported wrong: $EX_A"
-fi
-DIAG=`jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-audit-wire.json`
-if test "x$DIAG" != "xwire subject does not match"
-then
-    exit_fail "Diagnostic wrong: $DIAG (1)"
-fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-audit-wire.json`
-if test $WTID != "$OLD_WTID" -a $WTID != "$NEW_WTID"
-then
-    exit_fail "WTID reported wrong: $WTID (wanted: $NEW_WTID or $OLD_WTID)"
-fi
-EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-audit-wire.json`
-if test $WTID = "$OLD_WTID" -a $EX_A != "TESTKUDOS:10"
-then
-    exit_fail "Amount reported wrong: $EX_A"
-fi
-if test $WTID = "$NEW_WTID" -a $EX_A != "TESTKUDOS:0"
-then
-    exit_fail "Amount reported wrong: $EX_A"
-fi
+    echo -n "Testing inconsistency detection... "
+    DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
+    if test "x$DIAG" != "xwire subject does not match"
+    then
+        exit_fail "Diagnostic wrong: $DIAG (0)"
+    fi
+    WTID=`jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-audit-wire.json`
+    if test x$WTID != x"$OLD_WTID" -a x$WTID != x"$NEW_WTID"
+    then
+        exit_fail "WTID reported wrong: $WTID"
+    fi
+    EX_A=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
+    if test x$WTID = x$OLD_WTID -a x$EX_A != x"TESTKUDOS:10"
+    then
+        exit_fail "Amount reported wrong: $EX_A"
+    fi
+    if test x$WTID = x$NEW_WTID -a x$EX_A != x"TESTKUDOS:0"
+    then
+        exit_fail "Amount reported wrong: $EX_A"
+    fi
+    DIAG=`jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-audit-wire.json`
+    if test "x$DIAG" != "xwire subject does not match"
+    then
+        exit_fail "Diagnostic wrong: $DIAG (1)"
+    fi
+    WTID=`jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-audit-wire.json`
+    if test $WTID != "$OLD_WTID" -a $WTID != "$NEW_WTID"
+    then
+        exit_fail "WTID reported wrong: $WTID (wanted: $NEW_WTID or $OLD_WTID)"
+    fi
+    EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-audit-wire.json`
+    if test $WTID = "$OLD_WTID" -a $EX_A != "TESTKUDOS:10"
+    then
+        exit_fail "Amount reported wrong: $EX_A"
+    fi
+    if test $WTID = "$NEW_WTID" -a $EX_A != "TESTKUDOS:0"
+    then
+        exit_fail "Amount reported wrong: $EX_A"
+    fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:10"
-then
-    exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
-fi
-DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $DELTA != "TESTKUDOS:10"
-then
-    exit_fail "Expected total wire delta plus wrong, got $DELTA"
-fi
-echo PASS
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:10"
+    then
+        exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
+    fi
+    DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $DELTA != "TESTKUDOS:10"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $DELTA"
+    fi
+    echo PASS
 
-# Undo database modification
-echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
+    # Undo database modification
+    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 }
 
@@ -839,57 +834,57 @@ echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE paymen
 # Test wire origin disagreement!
 function test_9() {
 
-echo "===========9: wire-origin disagreement==========="
-OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
-OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
-echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
+    echo "===========9: wire-origin disagreement==========="
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+    OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
+    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .misattribution_in_inconsistencies[0].amount < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:10"
-then
-    exit_fail "Reported amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .total_misattribution_in < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:10"
-then
-    exit_fail "Reported total amount wrong: $AMOUNT"
-fi
-echo PASS
+    echo -n "Testing inconsistency detection... "
+    AMOUNT=`jq -r .misattribution_in_inconsistencies[0].amount < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:10"
+    then
+        exit_fail "Reported amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .total_misattribution_in < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:10"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
+    echo PASS
 
-# Undo database modification
-echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
+    # Undo database modification
+    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3
 
 }
 
 
 # Test wire_in timestamp disagreement!
 function test_10() {
-NOW_MS=`date +%s`000
-echo "===========10: wire-timestamp disagreement==========="
-OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
-OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
-echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
+    NOW_MS=`date +%s`000
+    echo "===========10: wire-timestamp disagreement==========="
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+    OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 $DB.sqlite3`
+    echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json`
-if test "x$DIAG" != "xexecution date mismatch"
-then
-    exit_fail "Reported diagnostic wrong: $DIAG"
-fi
-TABLE=`jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json`
-if test "x$TABLE" != "xreserves_in"
-then
-    exit_fail "Reported table wrong: $TABLE"
-fi
-echo PASS
+    echo -n "Testing inconsistency detection... "
+    DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json`
+    if test "x$DIAG" != "xexecution date mismatch"
+    then
+        exit_fail "Reported diagnostic wrong: $DIAG"
+    fi
+    TABLE=`jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json`
+    if test "x$TABLE" != "xreserves_in"
+    then
+        exit_fail "Reported table wrong: $TABLE"
+    fi
+    echo PASS
 
-# Undo database modification
-echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
+    # Undo database modification
+    echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | sqlite3 $DB.sqlite3
 
 }
 
@@ -898,91 +893,91 @@ echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OL
 # In case of changing the subject in the Nexus
 # ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
 function test_11() {
-echo "===========11: spurious outgoing transfer ==========="
-OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
-OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 $DB.sqlite3`
-# Change wire transfer to be FROM the exchange (#2) to elsewhere!
-# (Note: this change also causes a missing incoming wire transfer, but
-#  this test is only concerned about the outgoing wire transfer
-#  being detected as such, and we simply ignore the other
-#  errors being reported.)
-OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 $DB.sqlite3`
-NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'$OTHER_IBAN'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
-echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 $DB.sqlite3
-# Now fake that the exchange prepared this payment (= it POSTed to /transfer)
-# This step is necessary, because the TWG table that accounts for outgoing
-# payments needs it.  Worth noting here is the column 'rawConfirmation' that
-# points to the transaction from the main Nexus ledger; without that column set,
-# a prepared payment won't appear as actually outgoing.
-echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','"$OTHER_IBAN"','SANDBOXX','Forty Two','unused',1,$OLD_ID)" | sqlite3 $DB.sqlite3
-# Now populate the TWG table that accounts for outgoing payments, in
-# order to let /history/outgoing return one result.
-echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/"$OTHER_IBAN"?receiver-name=Forty+Two')" | sqlite3 $DB.sqlite3
+    echo "===========11: spurious outgoing transfer ==========="
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 $DB.sqlite3`
+    OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 $DB.sqlite3`
+    # Change wire transfer to be FROM the exchange (#2) to elsewhere!
+    # (Note: this change also causes a missing incoming wire transfer, but
+    #  this test is only concerned about the outgoing wire transfer
+    #  being detected as such, and we simply ignore the other
+    #  errors being reported.)
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 $DB.sqlite3`
+    NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'$OTHER_IBAN'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
+    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 $DB.sqlite3
+    # Now fake that the exchange prepared this payment (= it POSTed to /transfer)
+    # This step is necessary, because the TWG table that accounts for outgoing
+    # payments needs it.  Worth noting here is the column 'rawConfirmation' that
+    # points to the transaction from the main Nexus ledger; without that column set,
+    # a prepared payment won't appear as actually outgoing.
+    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','"$OTHER_IBAN"','SANDBOXX','Forty Two','unused',1,$OLD_ID)" | sqlite3 $DB.sqlite3
+    # Now populate the TWG table that accounts for outgoing payments, in
+    # order to let /history/outgoing return one result.
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/"$OTHER_IBAN"?receiver-name=Forty+Two')" | sqlite3 $DB.sqlite3
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:10"
-then
-    exit_fail "Reported wired amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:10"
-then
-    exit_fail "Reported total plus amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:0"
-then
-    exit_fail "Reported total minus amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
-if test "x$AMOUNT" != "xTESTKUDOS:0"
-then
-    exit_fail "Reported justified amount wrong: $AMOUNT"
-fi
-DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
-if test "x$DIAG" != "xjustification for wire transfer not found"
-then
-    exit_fail "Reported diagnostic wrong: $DIAG"
-fi
-echo PASS
+    echo -n "Testing inconsistency detection... "
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:10"
+    then
+        exit_fail "Reported wired amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:10"
+    then
+        exit_fail "Reported total plus amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total minus amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
+    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    then
+        exit_fail "Reported justified amount wrong: $AMOUNT"
+    fi
+    DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
+    if test "x$DIAG" != "xjustification for wire transfer not found"
+    then
+        exit_fail "Reported diagnostic wrong: $DIAG"
+    fi
+    echo PASS
 
-# Undo database modification
-echo -e "UPDATE NexusBankTransactions SET transactionJson='"$OLD_TX"' WHERE id=$OLD_ID;" | sqlite3 $DB.sqlite3
-# No other prepared payment should exist at this point,
-# so OK to remove the number 1.
-echo -e "DELETE FROM PaymentInitiations WHERE id=1" | sqlite3 $DB.sqlite3
-echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 $DB.sqlite3
+    # Undo database modification
+    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$OLD_TX"' WHERE id=$OLD_ID;" | sqlite3 $DB.sqlite3
+    # No other prepared payment should exist at this point,
+    # so OK to remove the number 1.
+    echo -e "DELETE FROM PaymentInitiations WHERE id=1" | sqlite3 $DB.sqlite3
+    echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 $DB.sqlite3
 }
 
 # Test for hanging/pending refresh.
 function test_12() {
 
-echo "===========12: incomplete refresh ==========="
-OLD_ACC=`echo "DELETE FROM exchange.refresh_revealed_coins;" | psql $DB -Aqt`
+    echo "===========12: incomplete refresh ==========="
+    OLD_ACC=`echo "DELETE FROM exchange.refresh_revealed_coins;" | psql $DB -Aqt`
 
-run_audit
+    run_audit
 
-echo -n "Testing hung refresh detection... "
+    echo -n "Testing hung refresh detection... "
 
-HANG=`jq -er .refresh_hanging[0].amount < test-audit-coins.json`
-TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit-coins.json`
-if test x$HANG = TESTKUDOS:0
-then
-    exit_fail "Hanging amount zero"
-fi
-if test x$TOTAL_HANG = TESTKUDOS:0
-then
-    exit_fail "Total hanging amount zero"
-fi
+    HANG=`jq -er .refresh_hanging[0].amount < test-audit-coins.json`
+    TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit-coins.json`
+    if test x$HANG = TESTKUDOS:0
+    then
+        exit_fail "Hanging amount zero"
+    fi
+    if test x$TOTAL_HANG = TESTKUDOS:0
+    then
+        exit_fail "Total hanging amount zero"
+    fi
 
-echo PASS
+    echo PASS
 
 
-# cannot easily undo DELETE, hence full reload
-full_reload
+    # cannot easily undo DELETE, hence full reload
+    full_reload
 
 }
 
@@ -990,53 +985,45 @@ full_reload
 # Test for wrong signature on refresh.
 function test_13() {
 
-echo "===========13: wrong melt signature ==========="
-# Modify denom_sig, so it is wrong
-COIN_PUB=`echo "SELECT old_coin_pub FROM exchange.refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT old_coin_sig FROM exchange.refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
-NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
-echo "UPDATE exchange.refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    echo "===========13: wrong melt signature ==========="
+    # Modify denom_sig, so it is wrong
+    COIN_PUB=`echo "SELECT old_coin_pub FROM exchange.refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
+    OLD_SIG=`echo "SELECT old_coin_sig FROM exchange.refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
+    NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
+    echo "UPDATE exchange.refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
+    echo -n "Testing inconsistency detection... "
 
-OP=`jq -er .bad_sig_losses[0].operation < test-audit-coins.json`
-if test x$OP != xmelt
-then
-    exit_fail "Operation wrong, got $OP"
-fi
+    OP=`jq -er .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test x$OP != xmelt
+    then
+        exit_fail "Operation wrong, got $OP"
+    fi
 
-LOSS=`jq -er .bad_sig_losses[0].loss < test-audit-coins.json`
-TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit-coins.json`
-if test x$LOSS != x$TOTAL_LOSS
-then
-    exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
-fi
-if test x$TOTAL_LOSS = TESTKUDOS:0
-then
-    exit_fail "Loss zero"
-fi
+    LOSS=`jq -er .bad_sig_losses[0].loss < test-audit-coins.json`
+    TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit-coins.json`
+    if test x$LOSS != x$TOTAL_LOSS
+    then
+        exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
+    fi
+    if test x$TOTAL_LOSS = TESTKUDOS:0
+    then
+        exit_fail "Loss zero"
+    fi
 
-echo PASS
+    echo PASS
 
-# cannot easily undo DELETE, hence full reload
-full_reload
+    # cannot easily undo DELETE, hence full reload
+    full_reload
 }
 
 
 # Test for wire fee disagreement
 function test_14() {
 
-echo "===========14: wire-fee disagreement==========="
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========14: wire-fee disagreement==========="
 
     # Wire fees are only checked/generated once there are
     # actual outgoing wire transfers, so we need to run the
@@ -1061,49 +1048,38 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-
-else
-    echo "Test skipped (database too new)"
-fi
-
 }
 
 
 # Test where salt in the deposit table is wrong
 function test_15() {
-echo "===========15: deposit wire salt wrong================="
+    echo "===========15: deposit wire salt wrong================="
 
-# Modify wire_salt hash, so it is inconsistent
-SALT=`echo "SELECT wire_salt FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
-echo "UPDATE exchange.deposits SET wire_salt='\x1197cd7f7b0e13ab1905fedb36c536a2' WHERE deposit_serial_id=1;" | psql -Aqt $DB
+    # Modify wire_salt hash, so it is inconsistent
+    SALT=`echo "SELECT wire_salt FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB`
+    echo "UPDATE exchange.deposits SET wire_salt='\x1197cd7f7b0e13ab1905fedb36c536a2' WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test "x$OP" != "xdeposit"
-then
-    exit_fail "Reported operation wrong: $OP"
-fi
-echo PASS
+    echo -n "Testing inconsistency detection... "
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test "x$OP" != "xdeposit"
+    then
+        exit_fail "Reported operation wrong: $OP"
+    fi
+    echo PASS
 
-# Restore DB
-echo "UPDATE exchange.deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt $DB
+    # Restore DB
+    echo "UPDATE exchange.deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
 }
 
 
 # Test where wired amount (wire out) is wrong
 function test_16() {
-echo "===========16: incorrect wire_out amount================="
+    echo "===========16: incorrect wire_out amount================="
 
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    # Check wire transfer lag reported (no aggregator!)
 
     # First, we need to run the aggregator so we even
     # have a wire_out to modify.
@@ -1115,20 +1091,20 @@ then
     # (Only one payment out exist, so the logic below should select the outgoing
     # wire transfer):
     function test_16_db () {
-      OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 $DB.sqlite3`
-      NEW_AMOUNT="TESTKUDOS:50"
-      echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
+        OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 $DB.sqlite3`
+        NEW_AMOUNT="TESTKUDOS:50"
+        echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 $DB.sqlite3
     }
     echo -n Trying to patch the SQLite database..
     for try in `seq 1 10`; do
-      if test_16_db 2>&1 > /dev/null; then
-        break
-      fi
-      echo -n .
-      if test $try = 10; then
-        exit_fail "Could not modify the SQLite database"
-      fi
-      sleep 0.3
+        if test_16_db 2>&1 > /dev/null; then
+            break
+        fi
+        echo -n .
+        if test $try = 10; then
+            exit_fail "Could not modify the SQLite database"
+        fi
+        sleep 0.3
     done
     echo DONE
 
@@ -1191,25 +1167,13 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-else
-    echo "Test skipped (database too new)"
-fi
-
 }
-
 
 
 
 # Test where wire-out timestamp is wrong
 function test_17() {
-echo "===========17: incorrect wire_out timestamp================="
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========17: incorrect wire_out timestamp================="
 
     # First, we need to run the aggregator so we even
     # have a wire_out to modify.
@@ -1221,24 +1185,24 @@ then
     # (exchange paid only once, so the logic below should select the outgoing
     # wire transfer).
     function test_17_db () {
-      OLD_ID=1
-      OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
-      OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
-      # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
-      # (due to rounding, if this machine is fast...)
-      NOW_1HR=$(expr $(date +%s) - 3600)
-      echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 $DB.sqlite3
+        OLD_ID=1
+        OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
+        OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 $DB.sqlite3`
+        # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+        # (due to rounding, if this machine is fast...)
+        NOW_1HR=$(expr $(date +%s) - 3600)
+        echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 $DB.sqlite3
     }
     echo -n Trying to patch the SQLite database..
     for try in `seq 1 10`; do
-      if test_17_db 2>&1 > /dev/null; then
-        break
-      fi
-      echo -n .
-      if test $try = 10; then
-        exit_fail "Could not modify the SQLite database"
-      fi
-      sleep 0.3
+        if test_17_db 2>&1 > /dev/null; then
+            break
+        fi
+        echo -n .
+        if test $try = 10; then
+            exit_fail "Could not modify the SQLite database"
+        fi
+        sleep 0.3
     done
     echo DONE
     audit_only
@@ -1260,11 +1224,6 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-
-else
-    echo "Test skipped (database too new)"
-fi
-
 }
 
 
@@ -1272,53 +1231,46 @@ fi
 
 # Test where we trigger an emergency.
 function test_18() {
-echo "===========18: emergency================="
+    echo "===========18: emergency================="
 
-echo "DELETE FROM exchange.reserves_out;" | psql -Aqt $DB
+    echo "DELETE FROM exchange.reserves_out;" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing emergency detection... "
+    echo -n "Testing emergency detection... "
 
-jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
+    jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
 
-jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency not detected"
-jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency by count not detected"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency not detected"
+    jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency by count not detected"
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
 
-echo PASS
+    echo PASS
 
-echo -n "Testing loss calculation... "
+    echo -n "Testing loss calculation... "
 
-AMOUNT=`jq -r .emergencies_loss < test-audit-coins.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported amount wrong: $AMOUNT"
-fi
-AMOUNT=`jq -r .emergencies_loss_by_count < test-audit-coins.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported amount wrong: $AMOUNT"
-fi
+    AMOUNT=`jq -r .emergencies_loss < test-audit-coins.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported amount wrong: $AMOUNT"
+    fi
+    AMOUNT=`jq -r .emergencies_loss_by_count < test-audit-coins.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported amount wrong: $AMOUNT"
+    fi
 
-echo  PASS
+    echo  PASS
 
-# cannot easily undo broad DELETE operation, hence full reload
-full_reload
+    # cannot easily undo broad DELETE operation, hence full reload
+    full_reload
 }
 
 
 
 # Test where reserve closure was done properly
 function test_19() {
-echo "===========19: reserve closure done properly ================="
-
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========19: reserve closure done properly ================="
 
     OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
@@ -1347,56 +1299,44 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-
-else
-    echo "Test skipped (database too new)"
-fi
 }
 
 
 # Test where reserve closure was not done properly
 function test_20() {
-echo "===========20: reserve closure missing ================="
+    echo "===========20: reserve closure missing ================="
 
-OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-RES_PUB=`echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
-NEW_CREDIT=`expr $OLD_VAL + 100 || true`
-echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE exchange.reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    RES_PUB=`echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
+    NEW_CREDIT=`expr $OLD_VAL + 100 || true`
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
-# This time, run without the aggregator so the reserve closure is skipped!
-run_audit
+    # This time, run without the aggregator so the reserve closure is skipped!
+    run_audit
 
-echo -n "Testing reserve closure missing detected... "
-jq -e .reserve_not_closed_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
-echo "PASS"
+    echo -n "Testing reserve closure missing detected... "
+    jq -e .reserve_not_closed_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
+    echo "PASS"
 
-AMOUNT=`jq -r .total_balance_reserve_not_closed < test-audit-reserves.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported total amount wrong: $AMOUNT"
-fi
+    AMOUNT=`jq -r .total_balance_reserve_not_closed < test-audit-reserves.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
 
-# Undo
-echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE exchange.reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    # Undo
+    echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
 
 }
 
 
 # Test reserve closure reported but wire transfer missing detection
 function test_21() {
-echo "===========21: reserve closure missreported ================="
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========21: reserve closure missreported ================="
 
     OLD_TIME=`echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
@@ -1437,35 +1377,32 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-else
-    echo "Test skipped (database too new)"
-fi
 }
 
 
 # Test use of withdraw-expired denomination key
 function test_22() {
-echo "===========22: denomination key expired ================="
+    echo "===========22: denomination key expired ================="
 
-S_DENOM=`echo 'SELECT denominations_serial FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
+    S_DENOM=`echo 'SELECT denominations_serial FROM exchange.reserves_out LIMIT 1;' | psql $DB -Aqt`
 
-OLD_START=`echo "SELECT valid_from FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
-OLD_WEXP=`echo "SELECT expire_withdraw FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
-# Basically expires 'immediately', so that the withdraw must have been 'invalid'
-NEW_WEXP=$OLD_START
+    OLD_START=`echo "SELECT valid_from FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
+    OLD_WEXP=`echo "SELECT expire_withdraw FROM exchange.denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
+    # Basically expires 'immediately', so that the withdraw must have been 'invalid'
+    NEW_WEXP=$OLD_START
 
-echo "UPDATE exchange.denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
+    echo "UPDATE exchange.denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
+    echo -n "Testing inconsistency detection... "
+    jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
 
-echo PASS
+    echo PASS
 
-# Undo modification
-echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
+    # Undo modification
+    echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 }
 
@@ -1473,15 +1410,7 @@ echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denomi
 
 # Test calculation of wire-out amounts
 function test_23() {
-echo "===========23: wire out calculations ================="
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========23: wire out calculations ================="
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
@@ -1543,12 +1472,8 @@ then
     fi
     echo PASS
 
-
     # cannot easily undo aggregator, hence full reload
     full_reload
-else
-    echo "Test skipped (database too new)"
-fi
 }
 
 
@@ -1556,52 +1481,45 @@ fi
 # Test for missing deposits in exchange database.
 function test_24() {
 
-echo "===========24: deposits missing ==========="
-# Modify denom_sig, so it is wrong
-CNT=`echo "SELECT COUNT(*) FROM exchange.deposit_confirmations;" | psql -Aqt $DB`
-if test x$CNT = x0
-then
-    echo "Skipping deposits missing test: no deposit confirmations in database!"
-else
-    echo "DELETE FROM exchange.deposits;" | psql -Aqt $DB
-    echo "DELETE FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
-
-    run_audit
-
-    echo -n "Testing inconsistency detection... "
-
-    jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
-
-    AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit-deposits.json`
-    if test x$AMOUNT = xTESTKUDOS:0
+    echo "===========24: deposits missing ==========="
+    # Modify denom_sig, so it is wrong
+    CNT=`echo "SELECT COUNT(*) FROM exchange.deposit_confirmations;" | psql -Aqt $DB`
+    if test x$CNT = x0
     then
-        exit_fail "Expected non-zero total missing deposit confirmation amount"
-    fi
-    COUNT=`jq -er .missing_deposit_confirmation_count < test-audit-deposits.json`
-    if test x$AMOUNT = x0
-    then
-        exit_fail "Expected non-zero total missing deposit confirmation count"
-    fi
+        echo "Skipping deposits missing test: no deposit confirmations in database!"
+    else
+        echo "DELETE FROM exchange.deposits;" | psql -Aqt $DB
+        echo "DELETE FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt $DB
 
-    echo PASS
+        run_audit
 
-    # cannot easily undo DELETE, hence full reload
-    full_reload
-fi
+        echo -n "Testing inconsistency detection... "
+
+        jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
+
+        AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit-deposits.json`
+        if test x$AMOUNT = xTESTKUDOS:0
+        then
+            exit_fail "Expected non-zero total missing deposit confirmation amount"
+        fi
+        COUNT=`jq -er .missing_deposit_confirmation_count < test-audit-deposits.json`
+        if test x$AMOUNT = x0
+        then
+            exit_fail "Expected non-zero total missing deposit confirmation count"
+        fi
+
+        echo PASS
+
+        # cannot easily undo DELETE, hence full reload
+        full_reload
+    fi
 }
 
 
 # Test for inconsistent coin history.
 function test_25() {
 
-echo "=========25: inconsistent coin history========="
-
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "=========25: inconsistent coin history========="
 
     # Drop refund, so coin history is bogus.
     echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" | psql -Aqt $DB
@@ -1632,70 +1550,59 @@ then
 
     # cannot easily undo DELETE, hence full reload
     full_reload
-else
-    echo "Test skipped (database too new)"
-fi
 }
 
 
 # Test for deposit wire target malformed
 function test_26() {
-echo "===========26: deposit wire target malformed ================="
-# Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
-SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
-OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
-NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
-echo OLD_WIRE_ID=$OLD_WIRE_ID
-echo NEW_WIRE_ID=$NEW_WIRE_ID
-echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+    echo "===========26: deposit wire target malformed ================="
+    # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
+    SERIAL=`echo "SELECT deposit_serial_id FROM exchange.deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
+    OLD_WIRE_ID=`echo "SELECT wire_target_h_payto FROM exchange.deposits WHERE deposit_serial_id=${SERIAL};"  | psql $DB -Aqt`
+    NEW_WIRE_ID=`echo "INSERT INTO exchange.wire_targets (payto_uri, wire_target_h_payto) VALUES ('payto://x-taler-bank/localhost/testuser-xxlargtp', '\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b');"  | psql $DB -Aqt`
+    echo OLD_WIRE_ID=$OLD_WIRE_ID
+    echo NEW_WIRE_ID=$NEW_WIRE_ID
+    echo "UPDATE exchange.deposits SET wire_target_h_payto='\x1e8f31936b3cee8f8afd3aac9e38b5db42d45b721ffc4eb1e5b9ddaf1565660b' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
+    echo -n "Testing inconsistency detection... "
 
-jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
+    jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
-if test $ROW != ${SERIAL}
-then
-    exit_fail "Row wrong, got $ROW"
-fi
+    ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
+    if test $ROW != ${SERIAL}
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong deposit bad signature loss, got $LOSS"
-fi
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong deposit bad signature loss, got $LOSS"
+    fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test $OP != "deposit"
-then
-    exit_fail "Wrong operation, got $OP"
-fi
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test $OP != "deposit"
+    then
+        exit_fail "Wrong operation, got $OP"
+    fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:3"
-then
-    exit_fail "Wrong total bad sig loss, got $LOSS"
-fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:3"
+    then
+        exit_fail "Wrong total bad sig loss, got $LOSS"
+    fi
 
-echo PASS
-# Undo:
-echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+    echo PASS
+    # Undo:
+    echo "UPDATE exchange.deposits SET wire_target_h_payto='$OLD_WIRE_ID' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 }
 
 # Test for duplicate wire transfer subject
 function test_27() {
-echo "===========27: duplicate WTID detection ================="
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
+    echo "===========27: duplicate WTID detection ================="
 
     pre_audit aggregator
 
@@ -1726,10 +1633,6 @@ then
 
     # cannot easily undo aggregator, hence full reload
     full_reload
-else
-    echo "Test skipped (database too new)"
-fi
-
 }
 
 
@@ -1738,12 +1641,6 @@ fi
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature) AND the coin is used in aggregation
 function test_28() {
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
 
     echo "===========28: known_coins signature wrong================="
     # Modify denom_sig, so it is wrong
@@ -1780,10 +1677,6 @@ then
     echo "OK"
     # cannot easily undo aggregator, hence full reload
     full_reload
-
-else
-    echo "Test skipped (database too new)"
-fi
 }
 
 
@@ -1791,27 +1684,27 @@ fi
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
 function test_29() {
-echo "===========29: withdraw fee inconsistency ================="
+    echo "===========29: withdraw fee inconsistency ================="
 
-echo "UPDATE exchange.denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
+    echo "UPDATE exchange.denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
 
-run_audit
+    run_audit
 
-echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .total_balance_summary_delta_minus < test-audit-reserves.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported total amount wrong: $AMOUNT"
-fi
+    echo -n "Testing inconsistency detection... "
+    AMOUNT=`jq -r .total_balance_summary_delta_minus < test-audit-reserves.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
 
-PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
-if test "x$PROFIT" != "x-1"
-then
-    exit_fail "Reported wrong profitability: $PROFIT"
-fi
-echo "OK"
-# Undo
-echo "UPDATE exchange.denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
+    PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
+    if test "x$PROFIT" != "x-1"
+    then
+        exit_fail "Reported wrong profitability: $PROFIT"
+    fi
+    echo "OK"
+    # Undo
+    echo "UPDATE exchange.denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 }
 
@@ -1819,28 +1712,28 @@ echo "UPDATE exchange.denominations SET fee_withdraw_frac=2000000 WHERE coin_val
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
 function test_30() {
-echo "===========30: melt fee inconsistency ================="
+    echo "===========30: melt fee inconsistency ================="
 
-echo "UPDATE exchange.denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
+    echo "UPDATE exchange.denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
 
-run_audit
-echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
-if test "x$AMOUNT" == "xTESTKUDOS:0"
-then
-    exit_fail "Reported total amount wrong: $AMOUNT"
-fi
+    run_audit
+    echo -n "Testing inconsistency detection... "
+    AMOUNT=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
 
-PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
-if test "x$PROFIT" != "x-1"
-then
-    exit_fail "Reported profitability wrong: $PROFIT"
-fi
+    PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
+    if test "x$PROFIT" != "x-1"
+    then
+        exit_fail "Reported profitability wrong: $PROFIT"
+    fi
 
-jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
-echo "OK"
-# Undo
-echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=10;" | psql -Aqt $DB
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
+    echo "OK"
+    # Undo
+    echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=10;" | psql -Aqt $DB
 
 }
 
@@ -1848,13 +1741,6 @@ echo "UPDATE exchange.denominations SET fee_refresh_frac=3000000 WHERE coin_val=
 # Test where fees known to the auditor differ from those
 # accounted for by the exchange
 function test_31() {
-
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
 
     echo "===========31: deposit fee inconsistency ================="
 
@@ -1877,11 +1763,6 @@ then
     echo "OK"
     # Undo
     echo "UPDATE exchange.denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
-
-else
-    echo "Test skipped (database too new)"
-fi
-
 }
 
 
@@ -1890,13 +1771,6 @@ fi
 # Test where denom_sig in known_coins table is wrong
 # (=> bad signature)
 function test_32() {
-
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
 
     echo "===========32: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
@@ -1922,135 +1796,133 @@ then
     echo "OK"
     # Cannot undo aggregation, do full reload
     full_reload
-
-fi
 }
 
 
 
 function test_33() {
 
-echo "===========33: normal run with aggregator and profit drain==========="
-run_audit aggregator drain
+    echo "===========33: normal run with aggregator and profit drain==========="
+    run_audit aggregator drain
 
-echo "Checking output"
-# if an emergency was detected, that is a bug and we should fail
-echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
-echo -n "Test for deposit confirmation emergencies... "
-jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
-echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+    echo "Checking output"
+    # if an emergency was detected, that is a bug and we should fail
+    echo -n "Test for emergencies... "
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+    echo -n "Test for deposit confirmation emergencies... "
+    jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+    echo -n "Test for emergencies by count... "
+    jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
-echo -n "Test for wire inconsistencies... "
-jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
-jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
-jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+    echo -n "Test for wire inconsistencies... "
+    jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+    jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+    jq -e .misattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected misattribution inconsistency detected in ordinary run"
+    jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+    jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
+    jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+    jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
+    jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 
-# TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
-# TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
+    # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
 
-echo PASS
+    echo PASS
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
-fi
-LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
-fi
-LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
-fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
+    fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
+    fi
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
+    fi
 
-echo -n "Test for wire amounts... "
-WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta plus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total wire delta minus wrong, got $WIRED"
-fi
-WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
-if test $WIRED != "TESTKUDOS:0"
-then
-    exit_fail "Expected total misattribution in wrong, got $WIRED"
-fi
-echo PASS
+    echo -n "Test for wire amounts... "
+    WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta plus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total wire delta minus wrong, got $WIRED"
+    fi
+    WIRED=`jq -r .total_misattribution_in < test-audit-wire.json`
+    if test $WIRED != "TESTKUDOS:0"
+    then
+        exit_fail "Expected total misattribution in wrong, got $WIRED"
+    fi
+    echo PASS
 
-echo -n "Checking for unexpected arithmetic differences "
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
-fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
-if test $LOSS != "TESTKUDOS:0"
-then
-    exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
-fi
+    echo -n "Checking for unexpected arithmetic differences "
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
+    fi
+    LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
+    if test $LOSS != "TESTKUDOS:0"
+    then
+        exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
+    fi
 
-DRAINED=`jq -r .total_drained < test-audit-wire.json`
-if test $DRAINED != "TESTKUDOS:0.1"
-then
-    exit_fail "Wrong amount drained, got unexpected drain of $DRAINED"
-fi
+    DRAINED=`jq -r .total_drained < test-audit-wire.json`
+    if test $DRAINED != "TESTKUDOS:0.1"
+    then
+        exit_fail "Wrong amount drained, got unexpected drain of $DRAINED"
+    fi
 
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
-echo PASS
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
+    echo PASS
 
-echo -n "Checking for unexpected wire out differences "
-jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
-echo PASS
+    echo -n "Checking for unexpected wire out differences "
+    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+    echo PASS
 
-# cannot easily undo aggregator, hence full reload
-full_reload
+    # cannot easily undo aggregator, hence full reload
+    full_reload
 
 }
 
@@ -2067,14 +1939,6 @@ check_with_database()
 
     # Setup database-specific globals
     MASTER_PUB=`cat ${BASEDB}.mpub`
-
-    # Determine database age
-    echo "Calculating database age based on ${BASEDB}.age"
-    AGE=`cat ${BASEDB}.age`
-    NOW=`date +%s`
-    # NOTE: expr "fails" if the result is zero.
-    DATABASE_AGE=`expr ${NOW} - ${AGE} || true`
-    echo "Database age is ${DATABASE_AGE} seconds"
 
     # Load database
     full_reload
@@ -2110,6 +1974,8 @@ CONF=${DB}.conf
 # test required commands exist
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
+echo "Testing for faketime"
+faketime -h > /dev/null || exit_skip "faketime required"
 # NOTE: really check for all three libeufin commands?
 echo "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip "libeufin required"
@@ -2117,41 +1983,23 @@ echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 
 # check if we should regenerate the database
-if test -n "${1:-}"
+echo "Testing for taler-wallet-cli"
+taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
+MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+echo "Generating fresh database at $MYDIR"
+if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/basedb
 then
-    echo "Custom run, will only run on existing DB."
-else
-    echo -n "Testing for taler-wallet-cli"
-    if taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null
+    check_with_database $MYDIR/basedb
+    if test x$fail != x0
     then
-        MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
-        echo " FOUND. Generating fresh database at $MYDIR"
-        pwd
-        if ./generate-auditor-basedb.sh $MYDIR/basedb
-        then
-            check_with_database $MYDIR/basedb
-            if test x$fail != x0
-            then
-                exit $fail
-            else
-                echo "Cleaning up $MYDIR..."
-                rm -rf $MYDIR || echo "Removing $MYDIR failed"
-            fi
-        else
-            echo "Generation failed, running only on existing DB"
-        fi
+        exit $fail
     else
-        echo " NOT FOUND, running only on existing DB"
+        echo "Cleaning up $MYDIR..."
+        rm -rf $MYDIR || echo "Removing $MYDIR failed"
     fi
-fi
-
-# run tests with pre-build database, if one is available
-if test -r auditor-basedb.mpub
-then
-  check_with_database "auditor-basedb"
 else
-  echo "Lacking auditor-basedb.mpub, skipping test"
-  fail=77
+    echo "Generation failed"
+    exit 1
 fi
 
-exit $fail
+exit 0
