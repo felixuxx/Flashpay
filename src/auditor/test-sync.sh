@@ -3,13 +3,13 @@
 set -eu
 
 # Exit, with status code "skip" (no 'real' failure)
-function exit_skip() {
+exit_skip() {
     echo $1
     exit 77
 }
 
 # Exit, with error message (hard failure)
-function exit_fail() {
+exit_fail() {
     echo $1
     exit 1
 }
