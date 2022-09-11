@@ -580,7 +580,7 @@ libeufin-cli --help >/dev/null </dev/null || exit_skip "libeufin required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 
-echo -n "Testing for taler-wallet-cli"
+echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
