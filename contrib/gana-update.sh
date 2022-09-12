@@ -1,4 +1,6 @@
 #!/bin/sh
+# This file is in the public domain.
+#
 # Helper script to recompute error codes based on submodule
 # Run from exchange/ main directory.
 set -eu

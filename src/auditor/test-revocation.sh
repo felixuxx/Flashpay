@@ -1,4 +1,19 @@
 #!/bin/bash
+#
+#  This file is part of TALER
+#  Copyright (C) 2014-2021 Taler Systems SA
+#
+#  TALER is free software; you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License as published by the Free Software
+#  Foundation; either version 3, or (at your option) any later version.
+#
+#  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+#  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along with
+#  TALER; see the file COPYING.  If not, If not, see <http://www.gnu.org/license>
+#
 # Setup database which was generated from a exchange-wallet interaction
 # with revocations and run the auditor against it.
 #
@@ -226,7 +241,7 @@ function run_audit () {
 
 
 # Do a full reload of the (original) database
-full_reload()
+function full_reload()
 {
     echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
@@ -534,7 +549,7 @@ function test_4() {
 
 # Run all the tests against the database given in $1.
 # Sets $fail to 0 on success, non-zero on failure.
-check_with_database()
+function check_with_database()
 {
     BASEDB=$1
     echo "Running test suite with database $BASEDB using configuration $CONF"
