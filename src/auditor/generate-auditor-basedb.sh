@@ -65,11 +65,14 @@ rm -f $WALLET_DB
 # delete libeufin database
 rm -f $TARGET_DB
 
+
 # Configuration file will be edited, so we create one
 # from the template.
 CONF_ONCE=${BASEDB}.conf
 cp generate-auditor-basedb.conf $CONF_ONCE
 taler-config -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${BASEDB}.mpriv
+
+
 echo -n "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
@@ -80,8 +83,6 @@ echo -n "Testing for curl"
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-
-pwd
 # Clean up
 
 DATA_DIR=`taler-config -f -c $CONF_ONCE -s PATHS -o TALER_HOME`

@@ -14,10 +14,18 @@ function cleanup()
     do
         kill $n 2> /dev/null || true
     done
-    echo Killing euFin..
-    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
     wait
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    fi
+    rm -f libeufin-sandbox.pid libeufin-nexus.pid
 }
 
 function get_payto_uri() {

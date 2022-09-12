@@ -29,39 +29,39 @@ VALGRIND=""
 
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
-    echo $1
+    echo "SKIPPING test: $1"
     exit 77
 }
 
 # Exit, with error message (hard failure)
 function exit_fail() {
-    echo $1
+    echo "FAILING test: $1"
     exit 1
 }
 
 # Cleanup to run whenever we exit
 function cleanup()
 {
+    if test ! -z ${POSTGRES_PATH:-}
+    then
+        ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
+    fi
     for n in `jobs -p`
     do
         kill $n 2> /dev/null || true
     done
     wait
-    # kill euFin
-    echo Killing euFin..
-    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
-    # So far only Sandbox gave exit issues / delays ..
-    count=0
-    while ps xo pid | grep `cat libeufin-sandbox.pid`; do
-        if test $count = 5; then
-            echo "Sandbox unkillable, failing now .."
-	        exit 1
-        fi
-        echo "Sandbox didn't exit yet.."
-        sleep 1;
-        count=`expr $count + 1`
-    done
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    fi
+    rm -f libeufin-sandbox.pid libeufin-nexus.pid
 }
 
 # Install cleanup handler (except for kill -9)
@@ -576,12 +576,39 @@ jq -h > /dev/null || exit_skip "jq required"
 echo "Testing for faketime"
 faketime -h > /dev/null || exit_skip "faketime required"
 echo "Testing for libeufin(-cli)"
-libeufin-cli --help >/dev/null </dev/null || exit_skip "libeufin required"
+libeufin-cli --help >/dev/null 2> /dev/null </dev/null || exit_skip "libeufin required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
-
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
+
+echo -n "Testing for Postgres"
+HAVE_INITDB=`find /usr -name "initdb" | grep postgres` || exit_skip " MISSING"
+echo " FOUND"
+echo -n "Setting up Postgres DB"
+INITDB_BIN=`find /usr -name "initdb" | grep bin/initdb | grep postgres | sort -n | tail -n1` 
+POSTGRES_PATH=`basename $INITDB_BIN`
+TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
+$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
+echo " DONE"
+mkdir ${TMPDIR}/sockets
+echo -n "Launching Postgres service"
+cat - >> $TMPDIR/postgresql.conf <<EOF
+unix_socket_directories='${TMPDIR}/sockets'
+fsync=off
+max_wal_senders=0
+synchronous_commit=off
+wal_level=minimal
+listen_addresses=''
+EOF
+cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
+mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
+${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
+echo " DONE"
+PGHOST="$TMPDIR/sockets"
+EXPORT PGHOST="@POSTGRES_SOCKET"
+
+
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/basedb
@@ -593,6 +620,7 @@ then
     else
         echo "Cleaning up $MYDIR..."
         rm -rf $MYDIR || echo "Removing $MYDIR failed"
+        rm -rf $TMPDIR || echo "Removing $TMPDIR failed"
     fi
 else
     echo "Generation failed"
