@@ -202,10 +202,7 @@ EXTRA_DIST = \
   auditor.conf \
   test-sync-in.conf \
   test-sync-out.conf \
-  auditor-basedb.conf \
-  revoke-basedb.conf \
   generate-auditor-basedb.sh \
-  generate-revoke-basedb.sh \
   generate-auditor-basedb.conf \
-  generate-auditor-basedb-template.conf \
+  generate-revoke-basedb.sh \
   $(check_SCRIPTS)

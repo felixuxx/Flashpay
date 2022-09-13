@@ -3,8 +3,8 @@
 # testing from a 'correct' interaction between exchange,
 # wallet and merchant.
 #
-# Creates $BASEDB.sql, $BASEDB.fees, $BASEDB.mpub and
-# $BASEDB.age.
+# Creates $BASEDB.sql, $BASEDB.fees,
+# $BASEDB.{mpub,mpriv}.
 # Default $BASEDB is "auditor-basedb", override via $1.
 #
 # Currently must be run online as it interacts with
@@ -68,10 +68,8 @@ rm -f $TARGET_DB
 
 # Configuration file will be edited, so we create one
 # from the template.
-CONF_ONCE=${BASEDB}.conf
+CONF_ONCE=$1.conf
 cp generate-auditor-basedb.conf $CONF_ONCE
-taler-config -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${BASEDB}.mpriv
-
 
 echo -n "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -86,17 +84,15 @@ echo " FOUND"
 # Clean up
 
 DATA_DIR=`taler-config -f -c $CONF_ONCE -s PATHS -o TALER_HOME`
-rm -rf $DATA_DIR || true
 
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
-
 # obtain key configuration data
-MASTER_PRIV_FILE=${TARGET_DB}.mpriv
-taler-config -f -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
+MASTER_PRIV_FILE=$1.mpriv
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
+taler-config -f -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 rm -f "${MASTER_PRIV_FILE}"
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
@@ -104,8 +100,9 @@ MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 AUDITOR_URL=http://localhost:8083/
-AUDITOR_PRIV_FILE=`taler-config -f -c $CONF_ONCE -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_FILE=$1.apriv
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
+taler-config -f -c ${CONF_ONCE} -s auditor -o AUDITOR_PRIV_FILE -V ${AUDITOR_PRIV_FILE}
 mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
@@ -120,6 +117,7 @@ echo "AUDITOR PUB is ${AUDITOR_PUB} using file ${AUDITOR_PRIV_FILE}"
 taler-config -c $CONF_ONCE -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
 taler-config -c $CONF_ONCE -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
 taler-config -c $CONF_ONCE -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
+
 taler-config -c $CONF_ONCE -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF_ONCE -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF_ONCE -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
@@ -232,7 +230,6 @@ echo " DONE"
 # run wallet CLI
 echo "Running wallet"
 
-
 taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
   "$(jq -n '
     {
@@ -257,13 +254,10 @@ sqlite3 $TARGET_DB ".dump" > ${BASEDB}-libeufin.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 
-date +%s > ${BASEDB}.age
-
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
 rm $TARGET_DB # libeufin DB
-rm -rf $DATA_DIR || true
 
 echo "====================================="
 echo "  Finished generation of $BASEDB"

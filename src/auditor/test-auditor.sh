@@ -255,10 +255,6 @@ function run_audit () {
         done
         echo "... DONE."
         export CONF
-        MASTER_PRIV_FILE=`taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE`
-        MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
-
-        echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
         echo -n "Running taler-exchange-offline drain "
 
@@ -280,8 +276,15 @@ function run_audit () {
         export LIBEUFIN_NEXUS_PASSWORD=x
         export LIBEUFIN_NEXUS_URL=http://localhost:8082/
         PAIN_UUID=`libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId`
-        libeufin-cli accounts submit-payments --payment-uuid ${PAIN_UUID} exchange-nexus
-
+        if test -z "${PAIN_UUID}"
+        then
+            echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
+            libeufin-cli accounts submit-payments exchange-nexus
+        else
+            echo -n "Running submitting payment ${PAIN_UUID} ..."
+            libeufin-cli accounts submit-payments --payment-uuid ${PAIN_UUID} exchange-nexus
+        fi
+        echo " DONE"
     fi
     audit_only
     post_audit
@@ -1959,13 +1962,16 @@ function test_33() {
 
 # Run all the tests against the database given in $1.
 # Sets $fail to 0 on success, non-zero on failure.
-check_with_database()
+function check_with_database()
 {
     BASEDB=$1
+    CONF=$1.conf
     echo "Running test suite with database $BASEDB using configuration $CONF"
+    MASTER_PRIV_FILE=${BASEDB}.mpriv
+    taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
+    MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 
-    # Setup database-specific globals
-    MASTER_PUB=`cat ${BASEDB}.mpub`
+    echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
     # Load database
     full_reload
@@ -1994,9 +2000,6 @@ check_with_database()
 # ####### Setup globals ######
 # Postgres database to use
 DB=auditor-basedb
-
-# Configuration file to use
-CONF=${DB}.conf
 
 # test required commands exist
 echo "Testing for jq"
@@ -2041,9 +2044,9 @@ EXPORT PGHOST="@POSTGRES_SOCKET"
 
 
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/basedb
+if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/auditor-basedb
 then
-    check_with_database $MYDIR/basedb
+    check_with_database $MYDIR/auditor-basedb
     if test x$fail != x0
     then
         exit $fail

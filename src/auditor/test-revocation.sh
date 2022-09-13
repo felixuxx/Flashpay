@@ -552,10 +552,15 @@ function test_4() {
 function check_with_database()
 {
     BASEDB=$1
+    # Configuration file to use
+    CONF=$1.conf
     echo "Running test suite with database $BASEDB using configuration $CONF"
 
-    # Setup database-specific globals
-    MASTER_PUB=`cat ${BASEDB}.mpub`
+    MASTER_PRIV_FILE=${BASEDB}.mpriv
+    taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
+    MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
+
+    echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
     # Load database
     full_reload
@@ -581,9 +586,6 @@ function check_with_database()
 # ####### Setup globals ######
 # Postgres database to use (must match revoke-basedb.conf)
 DB=taler-auditor-test
-
-# Configuration file to use
-CONF=revoke-basedb.conf
 
 # test required commands exist
 echo "Testing for jq"
@@ -626,9 +628,9 @@ EXPORT PGHOST="@POSTGRES_SOCKET"
 
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/basedb
+if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/revoke-basedb
 then
-    check_with_database $MYDIR/basedb
+    check_with_database $MYDIR/revoke-basedb
     if test x$fail != x0
     then
         exit $fail
