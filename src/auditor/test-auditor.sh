@@ -61,18 +61,18 @@ function exit_fail() {
     exit 1
 }
 
-# Cleanup to run whenever we exit
+# Cleanup exchange and libeufin between runs.
 function cleanup()
 {
-    if test ! -z ${POSTGRES_PATH:-}
+    if test ! -z ${EPID:-}
     then
-        ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
+        echo -n "Stopping exchange..."
+        kill -TERM $EPID
+        wait $EPID
+        echo " DONE"
+        unset EPID
     fi
-    for n in `jobs -p`
-    do
-        kill $n 2> /dev/null || true
-    done
-    wait
+
     echo "killing libeufin..."
     if test -f libeufin-sandbox.pid
     then
@@ -87,8 +87,26 @@ function cleanup()
     echo DONE
 }
 
+# Cleanup to run whenever we exit
+function exit_cleanup()
+{
+    echo "Running exit-cleanup"
+    if test ! -z ${POSTGRES_PATH:-}
+    then
+        echo "Stopping Postgres at ${POSTGRES_PATH}"
+        ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
+    fi
+    for n in `jobs -p`
+    do
+        kill $n 2> /dev/null || true
+    done
+    wait
+    cleanup
+    echo "DONE"
+}
+
 # Install cleanup handler (except for kill -9)
-trap cleanup EXIT
+trap exit_cleanup EXIT
 
 function launch_libeufin () {
     export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
@@ -294,12 +312,12 @@ function run_audit () {
 # Do a full reload of the (original) database
 function full_reload()
 {
-    echo "Doing full reload of the database ($BASEDB)... "
+    echo "Doing full reload of the database ($BASEDB - $DB)... "
     dropdb $DB 2> /dev/null || true
     rm -f $DB.sqlite3 2> /dev/null || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
-    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
+    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
     sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
     echo "DONE"
