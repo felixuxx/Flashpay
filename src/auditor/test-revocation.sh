@@ -600,16 +600,16 @@ echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 
 echo -n "Testing for Postgres"
-HAVE_INITDB=`find /usr -name "initdb" | grep postgres` || exit_skip " MISSING"
-echo " FOUND"
+HAVE_INITDB=`find /usr -name "initdb" 2> /dev/null | grep postgres 2> /dev/null` || exit_skip " MISSING"
+echo " FOUND at" `dirname $HAVE_INITDB`
 echo -n "Setting up Postgres DB"
-INITDB_BIN=`find /usr -name "initdb" | grep bin/initdb | grep postgres | sort -n | tail -n1` 
-POSTGRES_PATH=`basename $INITDB_BIN`
+INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1 2> /dev/null`
+POSTGRES_PATH=`dirname $INITDB_BIN`
 TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
 $INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
 echo " DONE"
 mkdir ${TMPDIR}/sockets
-echo -n "Launching Postgres service"
+echo -n "Launching Postgres service at $POSTGRES_PATH"
 cat - >> $TMPDIR/postgresql.conf <<EOF
 unix_socket_directories='${TMPDIR}/sockets'
 fsync=off
@@ -623,7 +623,9 @@ mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
 ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
-EXPORT PGHOST="@POSTGRES_SOCKET"
+export PGHOST
+
+bash
 
 
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`

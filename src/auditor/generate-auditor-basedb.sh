@@ -36,10 +36,18 @@ function cleanup()
     do
         kill $n 2> /dev/null || true
     done
-    echo Killing euFin..
-    kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
     wait
+    echo "Killing Libeufin..."
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    fi
 }
 
 # Install cleanup handler (except for kill -9)

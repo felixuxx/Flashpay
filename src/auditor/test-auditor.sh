@@ -73,7 +73,7 @@ function cleanup()
         kill $n 2> /dev/null || true
     done
     wait
-    # kill euFin
+    echo "killing libeufin..."
     if test -f libeufin-sandbox.pid
     then
         echo "Killing libeufin sandbox"
@@ -292,12 +292,12 @@ function run_audit () {
 
 
 # Do a full reload of the (original) database
-full_reload()
+function full_reload()
 {
     echo "Doing full reload of the database ($BASEDB)... "
     dropdb $DB 2> /dev/null || true
     rm -f $DB.sqlite3 2> /dev/null || true # libeufin
-    createdb -T template0 $DB || exit_skip "could not create database"
+    createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
     echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
@@ -2017,11 +2017,11 @@ MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 
 
 echo -n "Testing for Postgres"
-HAVE_INITDB=`find /usr -name "initdb" | grep postgres` || exit_skip " MISSING"
-echo " FOUND"
+HAVE_INITDB=`find /usr -name "initdb" 2> /dev/null | grep postgres` || exit_skip " MISSING"
+echo " FOUND at" `dirname $HAVE_INITDB`
 echo -n "Setting up Postgres DB"
-INITDB_BIN=`find /usr -name "initdb" | grep bin/initdb | grep postgres | sort -n | tail -n1` 
-POSTGRES_PATH=`basename $INITDB_BIN`
+INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
+POSTGRES_PATH=`dirname $INITDB_BIN`
 TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
 $INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
 echo " DONE"
@@ -2040,7 +2040,7 @@ mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
 ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
-EXPORT PGHOST="@POSTGRES_SOCKET"
+export PGHOST
 
 
 echo "Generating fresh database at $MYDIR"
