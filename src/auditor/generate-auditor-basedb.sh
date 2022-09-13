@@ -103,7 +103,7 @@ MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 taler-config -f -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 rm -f "${MASTER_PRIV_FILE}"
 mkdir -p $MASTER_PRIV_DIR
-gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
+gnunet-ecc -l/dev/null -g1 $MASTER_PRIV_FILE > /dev/null
 MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
 MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
 MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
@@ -112,7 +112,7 @@ AUDITOR_PRIV_FILE=$1.apriv
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
 taler-config -f -c ${CONF_ONCE} -s auditor -o AUDITOR_PRIV_FILE -V ${AUDITOR_PRIV_FILE}
 mkdir -p $AUDITOR_PRIV_DIR
-gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
+gnunet-ecc -l/dev/null -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
 EXCHANGE_URL=`taler-config -c $CONF_ONCE -s EXCHANGE -o BASE_URL`
 BANK_PORT=`taler-config -c $CONF_ONCE -s BANK -o HTTP_PORT`

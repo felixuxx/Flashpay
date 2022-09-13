@@ -625,9 +625,6 @@ echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-bash
-
-
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/revoke-basedb

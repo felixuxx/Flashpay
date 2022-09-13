@@ -66,7 +66,7 @@ function cleanup()
 {
     if test ! -z ${EPID:-}
     then
-        echo -n "Stopping exchange..."
+        echo -n "Stopping exchange $EPID..."
         kill -TERM $EPID
         wait $EPID
         echo " DONE"
@@ -96,12 +96,12 @@ function exit_cleanup()
         echo "Stopping Postgres at ${POSTGRES_PATH}"
         ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
     fi
+    cleanup
     for n in `jobs -p`
     do
         kill $n 2> /dev/null || true
     done
     wait
-    cleanup
     echo "DONE"
 }
 
@@ -282,6 +282,7 @@ function run_audit () {
                                2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
         kill -TERM $EPID
         wait $EPID
+        unset EPID
         echo -n "Running taler-exchange-drain ..."
         echo "\n" | taler-exchange-drain -L DEBUG -c $CONF 2> taler-exchange-drain.log || exit_fail "FAIL"
         echo " DONE"
@@ -1531,7 +1532,7 @@ function test_24() {
 
     echo "===========24: deposits missing ==========="
     # Modify denom_sig, so it is wrong
-    CNT=`echo "SELECT COUNT(*) FROM exchange.deposit_confirmations;" | psql -Aqt $DB`
+    CNT=`echo "SELECT COUNT(*) FROM auditor.deposit_confirmations;" | psql -Aqt $DB`
     if test x$CNT = x0
     then
         echo "Skipping deposits missing test: no deposit confirmations in database!"
