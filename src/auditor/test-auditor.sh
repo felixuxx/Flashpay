@@ -61,6 +61,21 @@ function exit_fail() {
     exit 1
 }
 
+function stop_libeufin()
+{
+    echo "killing libeufin..."
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+    fi
+}
+
 # Cleanup exchange and libeufin between runs.
 function cleanup()
 {
@@ -73,17 +88,7 @@ function cleanup()
         unset EPID
     fi
 
-    echo "killing libeufin..."
-    if test -f libeufin-sandbox.pid
-    then
-        echo "Killing libeufin sandbox"
-        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    fi
-    if test -f libeufin-nexus.pid
-    then
-        echo "Killing libeufin nexus"
-        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
-    fi
+    stop_libeufin
     echo DONE
 }
 
@@ -1657,10 +1662,12 @@ function test_27() {
     WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 $DB.sqlite3`
     echo WTID=$WTID
     OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 $DB.sqlite3`
+    stop_libeufin
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
     echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" | sqlite3 $DB.sqlite3
     echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" | sqlite3 $DB.sqlite3
+    launch_libeufin
     audit_only
     post_audit
 

@@ -1195,6 +1195,8 @@ TALER_wallet_account_merge_verify (
 
 void
 TALER_wallet_account_close_sign (
+  // FIXME: add max amount (optional)
+  // timestamp, target account (optional)
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -1212,6 +1214,8 @@ TALER_wallet_account_close_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_account_close_verify (
+  // FIXME: add max amount (optional),
+  // timestamp, target account (optional)
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
