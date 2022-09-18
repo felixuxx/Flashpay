@@ -23,6 +23,8 @@
 #include "taler_signatures.h"
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format used to generate the signature on a request to deposit
  * a coin into the account of a merchant.
@@ -109,6 +111,7 @@ struct TALER_DepositRequestPS
 
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_deposit_sign (
@@ -199,6 +202,8 @@ TALER_wallet_deposit_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Format used for to allow the wallet to authenticate
  * link data provided by the exchange.
@@ -233,6 +238,7 @@ struct TALER_LinkDataPS
   struct TALER_BlindedCoinHashP coin_envelope_hash;
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_link_sign (const struct TALER_DenominationHashP *h_denom_pub,
@@ -279,6 +285,8 @@ TALER_wallet_link_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Signed data to request that a coin should be refunded as part of
  * the "emergency" /recoup protocol.  The refund will go back to the bank
@@ -303,6 +311,8 @@ struct TALER_RecoupRequestPS
   union TALER_DenominationBlindingKeyP coin_blind;
 
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum GNUNET_GenericReturnValue
@@ -387,6 +397,8 @@ TALER_wallet_recoup_refresh_sign (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * @brief Message signed by a coin to indicate that the coin should be
  * melted.
@@ -438,6 +450,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
   struct TALER_AmountNBO melt_fee;
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_melt_sign (
@@ -504,6 +517,9 @@ TALER_wallet_melt_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+
 /**
  * @brief Format used for to generate the signature on a request to withdraw
  * coins from a reserve.
@@ -537,6 +553,8 @@ struct TALER_WithdrawRequestPS
   struct TALER_BlindedCoinHashP h_coin_envelope GNUNET_PACKED;
 };
 
+
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_withdraw_sign (
@@ -621,6 +639,8 @@ TALER_wallet_account_setup_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which a wallet requests a full
  * reserve history and indicates it is willing
@@ -645,6 +665,9 @@ struct TALER_ReserveHistoryRequestPS
   struct TALER_AmountNBO history_fee;
 
 };
+
+
+GNUNET_NETWORK_STRUCT_END
 
 
 enum GNUNET_GenericReturnValue
@@ -691,6 +714,8 @@ TALER_wallet_reserve_history_sign (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Response by which a wallet requests an account status.
  */
@@ -709,6 +734,7 @@ struct TALER_ReserveStatusRequestPS
 
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_status_verify (
@@ -748,6 +774,8 @@ TALER_wallet_reserve_status_sign (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Message signed to create a purse (without reserve).
  */
@@ -785,6 +813,9 @@ struct TALER_PurseCreatePS
   uint32_t min_age GNUNET_PACKED;
 
 };
+
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -877,6 +908,8 @@ TALER_wallet_purse_status_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Message signed to deposit a coin into a purse.
  */
@@ -916,6 +949,7 @@ struct TALER_PurseDepositPS
   struct GNUNET_HashCode h_exchange_base_url GNUNET_PACKED;
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_purse_deposit_sign (
@@ -977,6 +1011,8 @@ TALER_wallet_purse_deposit_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Message signed to merge a purse into a reserve.
  */
@@ -1006,6 +1042,7 @@ struct TALER_PurseMergePS
 
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_purse_merge_sign (
@@ -1067,6 +1104,8 @@ TALER_wallet_purse_merge_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
 /**
  * Message signed by account to merge a purse into a reserve.
  */
@@ -1121,6 +1160,8 @@ struct TALER_AccountMergePS
    */
   uint32_t flags GNUNET_PACKED;
 };
+
+GNUNET_NETWORK_STRUCT_END
 
 
 void
@@ -1193,43 +1234,330 @@ TALER_wallet_account_merge_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by
+ */
+struct TALER_ReserveOpenPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_OPEN
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Amount to be paid from the reserve balance to open
+   * the reserve.
+   */
+  struct TALER_AmountNBO reserve_payment;
+
+  /**
+   * When was the request created.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+  /**
+   * For how long should the reserve be kept open.
+   * (Determines amount to be paid.)
+   */
+  struct GNUNET_TIME_TimestampNBO reserve_expiration;
+
+  /**
+   * How many open purses should be included with the
+   * open reserve?
+   * (Determines amount to be paid.)
+   */
+  uint32_t purse_limit GNUNET_PACKED;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
 void
-TALER_wallet_account_close_sign (
-  // FIXME: add max amount (optional)
-  // timestamp, target account (optional)
+TALER_wallet_reserve_open_sign (
+  const struct TALER_Amount *reserve_payment,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  struct GNUNET_TIME_Timestamp reserve_expiration,
+  uint32_t purse_limit,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_CLOSE)
+  struct TALER_ReserveOpenPS rop = {
+    .purpose.size = htonl (sizeof (rop)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
+    .reserve_expiration = GNUNET_TIME_timestamp_hton (reserve_expiration),
+    .purse_limit = htonl (purse_limit)
   };
 
+  TALER_amount_hton (&rop.reserve_payment,
+                     reserve_payment);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
-                                            &purpose,
+                                            &rop.purpose,
                                             &reserve_sig->eddsa_signature));
 }
 
 
 enum GNUNET_GenericReturnValue
-TALER_wallet_account_close_verify (
-  // FIXME: add max amount (optional),
-  // timestamp, target account (optional)
+TALER_wallet_reserve_open_verify (
+  const struct TALER_Amount *reserve_payment,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  struct GNUNET_TIME_Timestamp reserve_expiration,
+  uint32_t purse_limit,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_CLOSE)
+  struct TALER_ReserveOpenPS rop = {
+    .purpose.size = htonl (sizeof (rop)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
+    .reserve_expiration = GNUNET_TIME_timestamp_hton (reserve_expiration),
+    .purse_limit = htonl (purse_limit)
   };
 
-  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_RESERVE_CLOSE,
-                                      &purpose,
+  TALER_amount_hton (&rop.reserve_payment,
+                     reserve_payment);
+  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_RESERVE_OPEN,
+                                      &rop.purpose,
                                       &reserve_sig->eddsa_signature,
                                       &reserve_pub->eddsa_pub);
 }
 
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by
+ */
+struct TALER_ReserveOpenDepositPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When was the request created.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+  /**
+   * Which reserve's opening should be paid for?
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Specifies how much of the coin's value should be spent on opening this
+   * reserve.
+   */
+  struct TALER_AmountNBO coin_contribution;
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_wallet_reserve_open_deposit_sign (
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_ReserveOpenDepositPS rod = {
+    .purpose.size = htonl (sizeof (rod)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
+    .reserve_pub = *reserve_pub
+  };
+
+  TALER_amount_hton (&rod.coin_contribution,
+                     coin_contribution);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign_ (&coin_priv->eddsa_priv,
+                                            &rod.purpose,
+                                            &coin_sig->eddsa_signature));
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_open_deposit_verify (
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_ReserveOpenDepositPS rod = {
+    .purpose.size = htonl (sizeof (rod)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
+    .reserve_pub = *reserve_pub
+  };
+
+  TALER_amount_hton (&rod.coin_contribution,
+                     coin_contribution);
+  return GNUNET_CRYPTO_eddsa_verify_ (
+    TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT,
+    &rod.purpose,
+    &coin_sig->eddsa_signature,
+    &coin_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by
+ */
+struct TALER_ReserveClosePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_RESERVE_CLOSE
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When was the request created.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+  /**
+   * Hash of the payto://-URI of the target account
+   * for the closure, or all zeros for the reserve
+   * origina ccount.
+   */
+  struct TALER_PaytoHashP target_account_h_payto;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_wallet_reserve_close_sign (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveClosePS rcp = {
+    .purpose.size = htonl (sizeof (rcp)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_CLOSE),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp)
+  };
+
+  if (NULL != h_payto)
+    rcp.target_account_h_payto = *h_payto;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
+                                            &rcp.purpose,
+                                            &reserve_sig->eddsa_signature));
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_close_verify (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveClosePS rcp = {
+    .purpose.size = htonl (sizeof (rcp)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_CLOSE),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp)
+  };
+
+  if (NULL != h_payto)
+    rcp.target_account_h_payto = *h_payto;
+  return GNUNET_CRYPTO_eddsa_verify_ (TALER_SIGNATURE_WALLET_RESERVE_CLOSE,
+                                      &rcp.purpose,
+                                      &reserve_sig->eddsa_signature,
+                                      &reserve_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by
+ */
+struct TALER_ReserveAttestRequestPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_ATTEST_REQUEST
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When was the request created.
+   */
+  struct GNUNET_TIME_TimestampNBO request_timestamp;
+
+  /**
+   * Hash over the JSON array of requested attributes.
+   */
+  struct GNUNET_HashCode h_details;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_wallet_reserve_attest_request_sign (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const json_t *details,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveAttestRequestPS rcp = {
+    .purpose.size = htonl (sizeof (rcp)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_ATTEST_DETAILS),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp)
+  };
+
+  TALER_json_hash (details,
+                   &rcp.h_details);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
+                                            &rcp.purpose,
+                                            &reserve_sig->eddsa_signature));
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_attest_request_verify (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const json_t *details,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_ReserveAttestRequestPS rcp = {
+    .purpose.size = htonl (sizeof (rcp)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_ATTEST_DETAILS),
+    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp)
+  };
+
+  TALER_json_hash (details,
+                   &rcp.h_details);
+  return GNUNET_CRYPTO_eddsa_verify_ (
+    TALER_SIGNATURE_WALLET_RESERVE_ATTEST_DETAILS,
+    &rcp.purpose,
+    &reserve_sig->eddsa_signature,
+    &reserve_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Message signed by purse to associate an encrypted contract.
@@ -1253,6 +1581,7 @@ struct TALER_PurseContractPS
   struct TALER_ContractDiffiePublicP contract_pub;
 };
 
+GNUNET_NETWORK_STRUCT_END
 
 void
 TALER_wallet_econtract_upload_sign (

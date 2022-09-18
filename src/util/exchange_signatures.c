@@ -1591,4 +1591,103 @@ TALER_exchange_online_purse_status_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed by the exchange to affirm that the
+ * owner of a reserve has certain attributes.
+ */
+struct TALER_ExchangeAttestPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_RESERVE_ATTEST_DETAILS
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time when the attestation was made.
+   */
+  struct GNUNET_TIME_TimestampNBO attest_timestamp;
+
+  /**
+   * Time when the attestation expires.
+   */
+  struct GNUNET_TIME_TimestampNBO expiration_time;
+
+  /**
+   * Public key of the reserve for which the attributes
+   * are attested.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Hash over the attributes.
+   */
+  struct GNUNET_HashCode h_attributes;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+enum TALER_ErrorCode
+TALER_exchange_online_reserve_attest_details_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp attest_timestamp,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *attributes,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_ExchangeAttestPS rap = {
+    .purpose.size = htonl (sizeof (rap)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_ATTEST_DETAILS),
+    .attest_timestamp = GNUNET_TIME_timestamp_hton (attest_timestamp),
+    .expiration_time = GNUNET_TIME_timestamp_hton (expiration_time),
+    .reserve_pub = *reserve_pub
+  };
+
+  TALER_json_hash (attributes,
+                   &rap.h_attributes);
+  return scb (&rap.purpose,
+              pub,
+              sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_reserve_attest_details_verify (
+  struct GNUNET_TIME_Timestamp attest_timestamp,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *attributes,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_ExchangeAttestPS rap = {
+    .purpose.size = htonl (sizeof (rap)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_ATTEST_DETAILS),
+    .attest_timestamp = GNUNET_TIME_timestamp_hton (attest_timestamp),
+    .expiration_time = GNUNET_TIME_timestamp_hton (expiration_time),
+    .reserve_pub = *reserve_pub
+  };
+
+  TALER_json_hash (attributes,
+                   &rap.h_attributes);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (
+        TALER_SIGNATURE_EXCHANGE_RESERVE_ATTEST_DETAILS,
+        &rap,
+        &sig->eddsa_signature,
+        &pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /* end of exchange_signatures.c */

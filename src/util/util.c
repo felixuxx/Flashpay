@@ -217,6 +217,31 @@ TALER_denom_fee_check_currency (
 }
 
 
+/**
+ * Hash normalized @a j JSON object or array and
+ * store the result in @a hc.
+ *
+ * @param j JSON to hash
+ * @param[out] hc where to write the hash
+ */
+void
+TALER_json_hash (const json_t *j,
+                 struct GNUNET_HashCode *hc)
+{
+  char *cstr;
+  size_t clen;
+
+  cstr = json_dumps (j,
+                     JSON_COMPACT | JSON_SORT_KEYS);
+  GNUNET_assert (NULL != cstr);
+  clen = strlen (cstr);
+  GNUNET_CRYPTO_hash (cstr,
+                      clen,
+                      hc);
+  free (cstr);
+}
+
+
 #ifdef __APPLE__
 char *
 strchrnul (const char *s,

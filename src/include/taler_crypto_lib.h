@@ -3059,13 +3059,65 @@ TALER_wallet_account_merge_verify (
 
 
 /**
- * Sign a request to delete/close an account.
+ * FIXME.
+ */
+void
+TALER_wallet_reserve_open_sign (
+  const struct TALER_Amount *reserve_payment,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  struct GNUNET_TIME_Timestamp reserve_expiration,
+  uint32_t purse_limit,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * FIXME.
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_open_verify (
+  const struct TALER_Amount *reserve_payment,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  struct GNUNET_TIME_Timestamp reserve_expiration,
+  uint32_t purse_limit,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * FIXME.
+ */
+void
+TALER_wallet_reserve_open_deposit_sign (
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * FIXME.
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_open_deposit_verify (
+  const struct TALER_Amount *coin_contribution,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Sign a request to close a reserve.
  *
  * @param reserve_priv key identifying the reserve
  * @param[out] reserve_sig resulting signature
  */
 void
-TALER_wallet_account_close_sign (
+TALER_wallet_reserve_close_sign (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3078,7 +3130,9 @@ TALER_wallet_account_close_sign (
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_wallet_account_close_verify (
+TALER_wallet_reserve_close_verify (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3104,6 +3158,28 @@ TALER_wallet_account_setup_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_account_setup_verify (
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * FIXME.
+ */
+void
+TALER_wallet_reserve_attest_request_sign (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const json_t *details,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * FIXME.
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_reserve_attest_request_verify (
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  const json_t *details,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3783,6 +3859,18 @@ TALER_exchange_online_account_setup_success_verify (
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Hash normalized @a j JSON object or array and
+ * store the result in @a hc.
+ *
+ * @param j JSON to hash
+ * @param[out] hc where to write the hash
+ */
+void
+TALER_json_hash (const json_t *j,
+                 struct GNUNET_HashCode *hc);
 
 
 /**
