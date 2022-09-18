@@ -233,6 +233,58 @@ CREATE TABLE IF NOT EXISTS reserves_close_default
 SELECT add_constraints_to_reserves_close_partition('default');
 
 
+
+
+
+
+-- ------------------------------ reserves_open_requests ----------------------------------------
+
+SELECT create_table_reserves_open_requests();
+
+COMMENT ON TABLE reserves_open_requests
+  IS 'requests to keep a reserve open';
+COMMENT ON COLUMN reserves_open_requests.reserve_payment_val
+  IS 'Funding to pay for the request from the reserve balance itself.';
+
+CREATE TABLE IF NOT EXISTS reserves_open_requests_default
+  PARTITION OF reserves_open_requests
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_reserves_open_request_partition('default');
+
+
+-- ------------------------------ reserves_open_deposits ----------------------------------------
+
+SELECT create_table_reserves_open_deposits();
+
+COMMENT ON TABLE reserves_open_deposits
+  IS 'coin contributions paying for a reserve to remain open';
+COMMENT ON COLUMN reserves_open_deposits.request_timestamp
+  IS 'Identifies the specific reserve open request being paid for.';
+
+CREATE TABLE IF NOT EXISTS reserves_open_deposits_default
+  PARTITION OF reserves_open_deposits
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_reserves_open_deposits_partition('default');
+
+
+-- ------------------------------ reserves_close_requests ----------------------------------------
+
+SELECT create_table_reserves_close_requests();
+
+COMMENT ON TABLE reserves_close_requests
+  IS 'explicit requests by clients to affect an immediate closure of a reserve';
+COMMENT ON COLUMN reserves_close_requests.wire_target_h_payto
+  IS 'Identifies the credited bank account. Optional.';
+
+CREATE TABLE IF NOT EXISTS reserves_close_requests_default
+  PARTITION OF reserves_close_requests
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+SELECT add_constraints_to_reserves_close_requests_partition('default');
+
+
 -- ------------------------------ reserves_out ----------------------------------------
 
 SELECT create_table_reserves_out();
