@@ -2042,7 +2042,7 @@ MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 
 echo -n "Testing for Postgres"
 # Available directly in path?
-INITDB_BIN=$(command -v initdb)
+INITDB_BIN=$(command -v initdb) || true
 if [[ ! -z $INITDB_BIN ]]; then
   echo " FOUND (in path) at" $INITDB_BIN
 else
