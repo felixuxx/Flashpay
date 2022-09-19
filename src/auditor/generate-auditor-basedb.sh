@@ -70,14 +70,12 @@ export WALLET_DB=${BASEDB:-"wallet"}.wdb
 
 # delete existing wallet database
 rm -f $WALLET_DB
-# delete libeufin database
-rm -f $TARGET_DB
-
 
 # Configuration file will be edited, so we create one
 # from the template.
-CONF_ONCE=$1.conf
-cp generate-auditor-basedb.conf $CONF_ONCE
+export CONF=$1.conf
+cp generate-auditor-basedb.conf $CONF
+echo "Created configuration at ${CONF}"
 
 echo -n "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -91,7 +89,7 @@ echo " FOUND"
 
 # Clean up
 
-DATA_DIR=`taler-config -f -c $CONF_ONCE -s PATHS -o TALER_HOME`
+DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
 
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
@@ -100,62 +98,62 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 # obtain key configuration data
 MASTER_PRIV_FILE=$1.mpriv
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
-taler-config -f -c ${CONF_ONCE} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
+taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 rm -f "${MASTER_PRIV_FILE}"
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -l/dev/null -g1 $MASTER_PRIV_FILE > /dev/null
-MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
-MERCHANT_PORT=`taler-config -c $CONF_ONCE -s MERCHANT -o PORT`
-MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
-AUDITOR_URL=http://localhost:8083/
+export MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
+export EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
+MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
+export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
+BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
+BANK_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+export AUDITOR_URL=http://localhost:8083/
 AUDITOR_PRIV_FILE=$1.apriv
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
-taler-config -f -c ${CONF_ONCE} -s auditor -o AUDITOR_PRIV_FILE -V ${AUDITOR_PRIV_FILE}
+taler-config -f -c ${CONF} -s auditor -o AUDITOR_PRIV_FILE -V ${AUDITOR_PRIV_FILE}
 mkdir -p $AUDITOR_PRIV_DIR
 gnunet-ecc -l/dev/null -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
-EXCHANGE_URL=`taler-config -c $CONF_ONCE -s EXCHANGE -o BASE_URL`
-BANK_PORT=`taler-config -c $CONF_ONCE -s BANK -o HTTP_PORT`
-BANK_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 
 echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 echo "AUDITOR PUB is ${AUDITOR_PUB} using file ${AUDITOR_PRIV_FILE}"
 
 # patch configuration
-taler-config -c $CONF_ONCE -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
-taler-config -c $CONF_ONCE -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
-taler-config -c $CONF_ONCE -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
+taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
+taler-config -c $CONF -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
+taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
 
-taler-config -c $CONF_ONCE -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF_ONCE -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF_ONCE -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
-taler-config -c $CONF_ONCE -s bank -o database -V postgres:///$TARGET_DB
+taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF -s merchantdb-postgres -o CONFIG -V postgres:///$TARGET_DB
+taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
 
 # setup exchange
 echo "Setting up exchange"
-taler-exchange-dbinit -c $CONF_ONCE
+taler-exchange-dbinit -c $CONF
 
 echo "Setting up merchant"
-taler-merchant-dbinit -c $CONF_ONCE
+taler-merchant-dbinit -c $CONF
 
 # setup auditor
 echo "Setting up auditor"
-taler-auditor-dbinit -c $CONF_ONCE || exit_skip "Failed to initialize auditor DB"
-taler-auditor-exchange -c $CONF_ONCE -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Failed to add exchange to auditor"
+taler-auditor-dbinit -c $CONF || exit_skip "Failed to initialize auditor DB"
+taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Failed to add exchange to auditor"
 
 # Launch services
 echo "Launching services (pre audit DB: $TARGET_DB)"
-taler-bank-manage-testing $BANK_PORT $TARGET_DB $EXCHANGE_URL $CONF_ONCE
+taler-bank-manage-testing $BANK_PORT $TARGET_DB $EXCHANGE_URL $CONF
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
-taler-exchange-secmod-eddsa -c $CONF_ONCE 2> taler-exchange-secmod-eddsa.log &
-taler-exchange-secmod-rsa -c $CONF_ONCE 2> taler-exchange-secmod-rsa.log &
-taler-exchange-secmod-cs -c $CONF_ONCE 2> taler-exchange-secmod-cs.log &
-taler-exchange-httpd -c $CONF_ONCE 2> taler-exchange-httpd.log &
-taler-merchant-httpd -c $CONF_ONCE -L INFO 2> taler-merchant-httpd.log &
-taler-exchange-wirewatch -c $CONF_ONCE 2> taler-exchange-wirewatch.log &
-taler-auditor-httpd -L INFO -c $CONF_ONCE 2> taler-auditor-httpd.log &
+taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
+taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
+taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
+taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
+taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
+taler-auditor-httpd -L INFO -c $CONF 2> taler-auditor-httpd.log &
 
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`
@@ -195,9 +193,9 @@ then
     exit_skip "Failed to launch services"
 fi
 echo -n "Setting up keys"
-taler-exchange-offline -c $CONF_ONCE \
+taler-exchange-offline -c $CONF \
   download sign \
-  enable-account `taler-config -c $CONF_ONCE -s exchange-account-1 -o PAYTO_URI` \
+  enable-account `taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI` \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now iban TESTKUDOS:0.07 TESTKUDOS:0.01 TESTKUDOS:0.01 \
   global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
@@ -222,7 +220,7 @@ fi
 echo " DONE"
 echo -n "Adding auditor signatures ..."
 
-taler-auditor-offline -c $CONF_ONCE \
+taler-auditor-offline -c $CONF \
   download sign upload &> taler-auditor-offline.log
 
 echo " DONE"

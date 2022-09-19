@@ -67,13 +67,20 @@ function stop_libeufin()
     if test -f libeufin-sandbox.pid
     then
         echo "Killing libeufin sandbox"
-        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
+        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        kill $PID || true
+        wait $PID
+        rm libeufin-sandbox.pid
     fi
     if test -f libeufin-nexus.pid
     then
         echo "Killing libeufin nexus"
-        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
+        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        kill $PID || true
+        wait $PID
+        rm libeufin-nexus.pid
     fi
+    echo "killing libeufin DONE"
 }
 
 # Cleanup exchange and libeufin between runs.
@@ -84,12 +91,10 @@ function cleanup()
         echo -n "Stopping exchange $EPID..."
         kill -TERM $EPID
         wait $EPID
-        echo " DONE"
+        echo "DONE"
         unset EPID
     fi
-
     stop_libeufin
-    echo DONE
 }
 
 # Cleanup to run whenever we exit
@@ -324,7 +329,8 @@ function full_reload()
     createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
-    echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
+    echo "DONE"
+    echo -n "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
     sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
     echo "DONE"
 }
@@ -2037,7 +2043,6 @@ echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 
 
 echo -n "Testing for Postgres"
@@ -2072,11 +2077,11 @@ echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-
+MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/auditor-basedb
+if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/$DB
 then
-    check_with_database $MYDIR/auditor-basedb
+    check_with_database $MYDIR/$DB
     if test x$fail != x0
     then
         exit $fail

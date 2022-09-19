@@ -54,33 +54,63 @@ function exit_fail() {
     exit 1
 }
 
+function stop_libeufin()
+{
+    echo "killing libeufin..."
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        kill $PID || true
+        wait $PID 
+        rm libeufin-sandbox.pid
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        kill $PID || true
+        wait $PID 
+        rm libeufin-nexus.pid
+    fi
+    echo "killing libeufin DONE"
+}
+
+
 # Cleanup to run whenever we exit
 function cleanup()
 {
+    if test ! -z ${EPID:-}
+    then
+        echo -n "Stopping exchange $EPID..."
+        kill -TERM $EPID
+        wait $EPID
+        echo " DONE"
+        unset EPID
+    fi
+    stop_libeufin
+}
+
+# Cleanup to run whenever we exit
+function exit_cleanup()
+{
+    echo "Running exit-cleanup"
     if test ! -z ${POSTGRES_PATH:-}
     then
+        echo "Stopping Postgres at ${POSTGRES_PATH}"
         ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
     fi
+    cleanup
     for n in `jobs -p`
     do
         kill $n 2> /dev/null || true
     done
     wait
-    if test -f libeufin-sandbox.pid
-    then
-        echo "Killing libeufin sandbox"
-        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    fi
-    if test -f libeufin-nexus.pid
-    then
-        echo "Killing libeufin nexus"
-        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
-    fi
-    rm -f libeufin-sandbox.pid libeufin-nexus.pid
+    echo "DONE"
 }
 
 # Install cleanup handler (except for kill -9)
-trap cleanup EXIT
+trap exit_cleanup EXIT
 
 # Downloads new transactions from the bank.
 function nexus_fetch_transactions () {
@@ -214,10 +244,8 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
-    echo -n "Cleanup ..."
     cleanup
-    echo " DONE"
-    echo -n "TeXing ."
+     echo -n "TeXing ."
     taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
     echo -n "."
@@ -246,9 +274,11 @@ function full_reload()
     echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
     rm -f $DB.sqlite3 || true # libeufin
-    createdb -T template0 $DB || exit_skip "could not create database"
+    createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
-    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database"
+    psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
+    echo "DONE"
+    echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
     sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
     echo "DONE"
     # Exchange payto URI contains the (dynamically generated)
@@ -584,8 +614,9 @@ function check_with_database()
 # *************** Main logic starts here **************
 
 # ####### Setup globals ######
-# Postgres database to use (must match revoke-basedb.conf)
-DB=taler-auditor-test
+# Postgres database to use
+DB=revoke-basedb
+
 
 # test required commands exist
 echo "Testing for jq"
@@ -633,9 +664,9 @@ export PGHOST
 
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/revoke-basedb
+if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/$DB
 then
-    check_with_database $MYDIR/revoke-basedb
+    check_with_database $MYDIR/$DB
     if test x$fail != x0
     then
         exit $fail

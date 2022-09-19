@@ -59,7 +59,7 @@ rm -f $WALLET_DB
 # from the template.
 export CONF=${BASEDB}.conf
 cp generate-auditor-basedb.conf $CONF
-taler-config -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${BASEDB}.mpriv
+echo "Created configuration at ${CONF}"
 
 echo -n "Testing for libeufin(-cli)"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -81,9 +81,9 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 rm $TARGET_DB >/dev/null 2>/dev/null || true # libeufin
 
 # obtain key configuration data
-MASTER_PRIV_FILE=${TARGET_DB}.priv
-taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
+MASTER_PRIV_FILE=$1.mpriv
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
+taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
 mkdir -p $MASTER_PRIV_DIR
 rm -f "${MASTER_PRIV_FILE}"
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
@@ -94,14 +94,20 @@ export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
 export BANK_URL=http://localhost:1${BANK_PORT}/demobanks/default
 export AUDITOR_URL=http://localhost:8083/
-AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_FILE=$1.apriv
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
+taler-config -f -c ${CONF} -s auditor -o AUDITOR_PRIV_FILE -V ${AUDITOR_PRIV_FILE}
 mkdir -p $AUDITOR_PRIV_DIR
-gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
+gnunet-ecc -l /dev/null -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
+
+echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
+echo "AUDITOR PUB is ${AUDITOR_PUB} using file ${AUDITOR_PRIV_FILE}"
+
 
 # patch configuration
 taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
+taler-config -c $CONF -s auditor -o PUBLIC_KEY -V $AUDITOR_PUB
 taler-config -c $CONF -s merchant-exchange-default -o MASTER_KEY -V $MASTER_PUB
 taler-config -c $CONF -s exchangedb-postgres -o CONFIG -V postgres:///$TARGET_DB
 taler-config -c $CONF -s auditordb-postgres -o CONFIG -V postgres:///$TARGET_DB
@@ -419,12 +425,9 @@ date +%s > ${BASEDB}.age
 echo "Final clean up"
 dropdb $TARGET_DB
 rm $TARGET_DB # libeufin
-rm -rf $DATA_DIR || true
-rm -f $CONF
-rm -r $TMP_DIR
 
 echo "====================================="
-echo "  Finished revocation DB generation  "
+echo "  Finished generation of $BASEDB "
 echo "====================================="
 
 exit 0
