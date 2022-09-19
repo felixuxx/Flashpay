@@ -109,10 +109,16 @@ echo "Testing for taler-wallet-cli"
 taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet-cli required"
 
 echo -n "Testing for Postgres"
-HAVE_INITDB=`find /usr -name "initdb" 2> /dev/null | grep postgres` || exit_skip " MISSING"
-echo " FOUND at" `dirname $HAVE_INITDB`
+# Available directly in path?
+INITDB_BIN=$(command -v initdb)
+if [[ ! -z $INITDB_BIN ]]; then
+  echo " FOUND (in path) at" $INITDB_BIN
+else
+  HAVE_INITDB=`find /usr -name "initdb" 2> /dev/null | grep postgres` || exit_skip " MISSING"
+  echo " FOUND at" `dirname $HAVE_INITDB`
+  INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
+fi
 echo -n "Setting up Postgres DB"
-INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
 POSTGRES_PATH=`dirname $INITDB_BIN`
 TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
 $INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
