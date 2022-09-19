@@ -110,7 +110,7 @@ taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet
 
 echo -n "Testing for Postgres"
 # Available directly in path?
-INITDB_BIN=$(command -v initdb)
+INITDB_BIN=$(command -v initdb) || true
 if [[ ! -z $INITDB_BIN ]]; then
   echo " FOUND (in path) at" $INITDB_BIN
 else
