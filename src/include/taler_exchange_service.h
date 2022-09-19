@@ -4788,7 +4788,7 @@ struct TALER_EXCHANGE_PurseCreateDepositHandle;
 
 
 /**
- * Information about a coin to be deposited into a purse.
+ * Information about a coin to be deposited into a purse or reserve.
  */
 struct TALER_EXCHANGE_PurseDeposit
 {
@@ -5190,5 +5190,403 @@ void
 TALER_EXCHANGE_purse_deposit_cancel (
   struct TALER_EXCHANGE_PurseDepositHandle *amh);
 
+
+/* *********************  /reserves/$RID/open *********************** */
+
+
+/**
+ * @brief A /reserves/$RID/open Handle
+ */
+struct TALER_EXCHANGE_ReservesOpenHandle;
+
+
+/**
+ * @brief Reserve open result details.
+ */
+struct TALER_EXCHANGE_ReserveOpenResult
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+      /**
+       * New expiration time
+       */
+      struct GNUNET_TIME_Timestamp expiration_time;
+
+      /**
+       * Actual cost of the open operation.
+       */
+      struct TALER_Amount open_cost;
+
+    } ok;
+
+
+    /**
+     * Information returned if the payment provided is insufficient, if
+     * @e hr.http_status is #MHD_HTTP_PAYMENT_REQUIRED
+     */
+    struct
+    {
+      /**
+       * Current expiration time of the reserve.
+       */
+      struct GNUNET_TIME_Timestamp expiration_time;
+
+      /**
+       * Actual cost of the open operation that should have been paid.
+       */
+      struct TALER_Amount open_cost;
+
+    } payment_required;
+
+
+    /**
+     * Information returned if KYC is required to proceed, set if
+     * @e hr.http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct
+    {
+      /**
+       * Requirement row that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t requirement_row;
+
+      /**
+       * Hash of the payto-URI of the account to KYC;
+       */
+      struct TALER_PaytoHashP h_payto;
+
+    } unavailable_for_legal_reasons;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve open request to a exchange.
+ *
+ * @param cls closure
+ * @param ror HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesOpenCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveOpenResult *ror);
+
+
+/**
+ * Submit a request to open a reserve.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to open
+ * @param reserve_contribution amount to pay from the reserve's balance for the operation
+ * @param coin_payments_length length of the @a coin_payments array
+ * @param coin_payments array of coin payments to use for opening the reserve
+ * @param expiration_time desired new expiration time for the reserve
+ * @param min_purses minimum number of purses to allow being concurrently opened per reserve
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesOpenHandle *
+TALER_EXCHANGE_reserves_open (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_Amount *reserve_contribution,
+  unsigned int coin_payments_length,
+  const struct TALER_EXCHANGE_PurseDeposit *coin_payments,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  uint32_t min_purses,
+  TALER_EXCHANGE_ReservesOpenCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a reserve status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_open_cancel (
+  struct TALER_EXCHANGE_ReservesOpenHandle *roh);
+
+
+/* *********************  /reserves/$RID/attest *********************** */
+
+
+/**
+ * @brief A Get /reserves/$RID/attest Handle
+ */
+struct TALER_EXCHANGE_ReservesGetAttestHandle;
+
+
+/**
+ * @brief Reserve GET attest result details.
+ */
+struct TALER_EXCHANGE_ReserveGetAttestResult
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Length of the @e attributes array.
+       */
+      unsigned int attributes_length;
+
+      /**
+       * Array of attributes available about the user.
+       */
+      const char **attributes;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve attest request to a exchange.
+ *
+ * @param cls closure
+ * @param ror HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesGetAttestCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveGetAttestResult *ror);
+
+
+/**
+ * Submit a request to get the list of attestable attributes for a reserve.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_pub public key of the reserve to get available attributes for
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesGetAttestHandle *
+TALER_EXCHANGE_reserves_get_attestable (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  TALER_EXCHANGE_ReservesGetAttestCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a request to get attestable attributes.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_get_attestable_cancel (
+  struct TALER_EXCHANGE_ReservesGetAttestHandle *roh);
+
+
+/**
+ * @brief A POST /reserves/$RID/attest Handle
+ */
+struct TALER_EXCHANGE_ReservesPostAttestHandle;
+
+
+/**
+ * @brief Reserve attest result details.
+ */
+struct TALER_EXCHANGE_ReservePostAttestResult
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve attest request to a exchange.
+ *
+ * @param cls closure
+ * @param ror HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesPostAttestCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReservePostAttestResult *ror);
+
+
+/**
+ * Submit a request to attest attributes about the owner of a reserve.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to attest
+ * @param attributes_length length of the @a attributes array
+ * @param attributes array of names of attributes to get attestations for
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesAttestHandle *
+TALER_EXCHANGE_reserves_attest (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  unsigned int attributes_length,
+  const char *const*attributes,
+  TALER_EXCHANGE_ReservesPostAttestCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a reserve status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_attest_cancel (
+  struct TALER_EXCHANGE_ReservesAttestHandle *roh);
+
+
+/* *********************  /reserves/$RID/close *********************** */
+
+
+/**
+ * @brief A /reserves/$RID/close Handle
+ */
+struct TALER_EXCHANGE_ReservesCloseHandle;
+
+
+/**
+ * @brief Reserve close result details.
+ */
+struct TALER_EXCHANGE_ReserveCloseResult
+{
+
+  /**
+   * High-level HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on @e hr.http_status.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success, if
+     * @e hr.http_status is #MHD_HTTP_OK
+     */
+    struct
+    {
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * reserve close request to a exchange.
+ *
+ * @param cls closure
+ * @param ror HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ReservesCloseCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveCloseResult *ror);
+
+
+/**
+ * Submit a request to close a reserve.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param reserve_priv private key of the reserve to close
+ * @param target_payto_uri where to send the payment, NULL to send to reserve origin
+ * @param cb the callback to call when a reply for this request is available
+ * @param cb_cls closure for the above callback
+ * @return a handle for this request; NULL if the inputs are invalid (i.e.
+ *         signatures fail to verify).  In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_ReservesCloseHandle *
+TALER_EXCHANGE_reserves_close (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const char *target_payto_uri,
+  TALER_EXCHANGE_ReservesCloseCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel a reserve status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param rsh the reserve request handle
+ */
+void
+TALER_EXCHANGE_reserves_close_cancel (
+  struct TALER_EXCHANGE_ReservesCloseHandle *roh);
 
 #endif  /* _TALER_EXCHANGE_SERVICE_H */
