@@ -969,7 +969,7 @@ function test_11() {
     #  this test is only concerned about the outgoing wire transfer
     #  being detected as such, and we simply ignore the other
     #  errors being reported.)
-    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-nexus.sqlite3`
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-sandbox.sqlite3`
     NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'$OTHER_IBAN'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
     echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 ${DB}-nexus.sqlite3
     # Now fake that the exchange prepared this payment (= it POSTed to /transfer)
@@ -1675,7 +1675,7 @@ function test_27() {
     # Obtain data to duplicate.
     WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 ${DB}-nexus.sqlite3`
     echo WTID=$WTID
-    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-nexus.sqlite3`
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-sandbox.sqlite3`
     stop_libeufin
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.

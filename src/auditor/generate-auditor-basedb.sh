@@ -418,6 +418,8 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
     --arg BANK_URL "$BANK_URL/access-api/"
   )" &> taler-wallet-cli.log
 
+bash
+
 echo "Shutting down services"
 exit_cleanup
 
