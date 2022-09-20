@@ -404,7 +404,7 @@ echo " DONE"
 # run wallet CLI
 echo "Running wallet"
 
-taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'runIntegrationTest' \
   "$(jq -n '
     {
       amountToSpend: "TESTKUDOS:4",

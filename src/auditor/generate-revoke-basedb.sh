@@ -396,7 +396,7 @@ curl -H "Content-Type: application/json" -X POST -d '{"auth": {"method": "extern
 # run wallet CLI
 echo "Running wallet"
 
-taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' \
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'withdrawTestBalance' \
   "$(jq -n '
     {
       amount: "TESTKUDOS:8",
