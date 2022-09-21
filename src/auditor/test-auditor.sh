@@ -61,6 +61,9 @@ function exit_fail() {
     exit 1
 }
 
+# Clean up leftovers on start
+rm -f libeufin-sandbox.pid libeufin-nexus.pid
+
 function stop_libeufin()
 {
     echo "killing libeufin..."
@@ -68,7 +71,7 @@ function stop_libeufin()
     then
         echo "Killing libeufin sandbox"
         PID=`cat libeufin-sandbox.pid 2> /dev/null`
-        kill $PID || true
+        kill $PID 2> /dev/null || true
         wait $PID
         rm libeufin-sandbox.pid
     fi
@@ -76,7 +79,7 @@ function stop_libeufin()
     then
         echo "Killing libeufin nexus"
         PID=`cat libeufin-nexus.pid 2> /dev/null`
-        kill $PID || true
+        kill $PID 2> /dev/null || true
         wait $PID
         rm libeufin-nexus.pid
     fi
@@ -2079,6 +2082,7 @@ export PGHOST
 
 MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
+rm -f $DB.sqlite3 2> /dev/null || true # libeufin
 if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/$DB
 then
     check_with_database $MYDIR/$DB

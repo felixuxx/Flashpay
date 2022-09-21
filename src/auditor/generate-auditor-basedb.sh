@@ -32,22 +32,29 @@ function get_payto_uri() {
 # Cleanup to run whenever we exit
 function cleanup()
 {
+    echo "Killing Libeufin..."
+    if test -f libeufin-sandbox.pid
+    then
+        echo "Killing libeufin sandbox"
+        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        kill $PID 2> /dev/null || true
+        wait $PID
+        rm libeufin-sandbox.pid
+    fi
+    if test -f libeufin-nexus.pid
+    then
+        echo "Killing libeufin nexus"
+        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        kill $PID 2> /dev/null || true
+        wait $PID
+        rm libeufin-nexus.pid
+    fi
+    echo "killing libeufin DONE"
     for n in `jobs -p`
     do
         kill $n 2> /dev/null || true
     done
     wait
-    echo "Killing Libeufin..."
-    if test -f libeufin-sandbox.pid
-    then
-        echo "Killing libeufin sandbox"
-        kill `cat libeufin-sandbox.pid 2> /dev/null` &> /dev/null || true
-    fi
-    if test -f libeufin-nexus.pid
-    then
-        echo "Killing libeufin nexus"
-        kill `cat libeufin-nexus.pid 2> /dev/null` &> /dev/null || true
-    fi
 }
 
 # Install cleanup handler (except for kill -9)
