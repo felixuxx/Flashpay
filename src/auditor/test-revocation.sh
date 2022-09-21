@@ -20,7 +20,7 @@
 # Check that the auditor report is as expected.
 #
 # Requires 'jq' tool and Postgres superuser rights!
-set -eu
+set -eux
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
@@ -65,7 +65,7 @@ function stop_libeufin()
         echo "Killing libeufin sandbox"
         PID=`cat libeufin-sandbox.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        wait $PID 
+        wait $PID || true
         rm libeufin-sandbox.pid
     fi
     if test -f libeufin-nexus.pid
@@ -73,7 +73,7 @@ function stop_libeufin()
         echo "Killing libeufin nexus"
         PID=`cat libeufin-nexus.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        wait $PID 
+        wait $PID || true
         rm libeufin-nexus.pid
     fi
     echo "killing libeufin DONE"
@@ -147,12 +147,12 @@ function get_payto_uri() {
 }
 
 function launch_libeufin () {
-    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${DB}-nexus.sqlite3"
     libeufin-nexus serve --port 8082 \
                    2> libeufin-nexus-stderr.log \
                    > libeufin-nexus-stdout.log &
     echo $! > libeufin-nexus.pid
-    export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:$DB.sqlite3"
+    export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${DB}-sandbox.sqlite3"
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
     libeufin-sandbox serve --port 18082 \
                      > libeufin-sandbox-stdout.log \
@@ -248,7 +248,7 @@ function audit_only () {
 # Cleanup to run after the auditor
 function post_audit () {
     cleanup
-     echo -n "TeXing ."
+    echo -n "TeXing ."
     taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
     echo -n "."
@@ -276,20 +276,23 @@ function full_reload()
 {
     echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
-    rm -f $DB.sqlite3 || true # libeufin
+    rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "DONE"
-    echo "Loading libeufin basedb: ${BASEDB}-libeufin.sql"
-    sqlite3 $DB.sqlite3 < ${BASEDB}-libeufin.sql || exit_skip "Failed to load libEufin database"
+    echo "Loading libeufin Nexus basedb: ${BASEDB}-libeufin-nexus.sql"
+    sqlite3 ${DB}-nexus.sqlite3 < ${BASEDB}-libeufin-nexus.sql || exit_skip "Failed to load Nexus database"
+    echo "DONE"
+    echo "Loading libeufin Sandbox basedb: ${BASEDB}-libeufin-nexus.sql"
+    sqlite3 ${DB}-sandbox.sqlite3 < ${BASEDB}-libeufin-sandbox.sql || exit_skip "Failed to load Sandbox database"
     echo "DONE"
     # Exchange payto URI contains the (dynamically generated)
     # IBAN, that can only be written in CONF after libeufin is
     # setup.
     taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI &> /dev/null || (
-        echo -n "Specifying exchange payto URI in the configuration ($CONF) (grab IBAN from $DB.sqlite3)...";
-        EXCHANGE_IBAN=`echo "SELECT iban FROM BankAccounts WHERE label='exchange'" | sqlite3 $DB.sqlite3`;
+        echo -n "Specifying exchange payto URI in the configuration ($CONF) (grab IBAN from ${DB}-sandbox.sqlite3)...";
+        EXCHANGE_IBAN=`echo "SELECT iban FROM BankAccounts WHERE label='exchange'" | sqlite3 ${DB}-sandbox.sqlite3`;
         taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI \
                      -V "payto://iban/SANDBOXX/$EXCHANGE_IBAN?receiver-name=Exchange+Company"
         echo " DONE"

@@ -13,7 +13,7 @@
 # user running this script must be Postgres superuser
 # and be allowed to create/drop databases.
 #
-set -eu
+set -eux
 
 function get_iban() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
@@ -30,40 +30,40 @@ function get_payto_uri() {
 }
 
 # Cleanup to run whenever we exit
-function cleanup()
+function exit_cleanup()
 {
-    echo "Killing Libeufin..."
+    echo "Running generate-auditor-basedb exit cleanup logic..."
     if test -f libeufin-sandbox.pid
     then
-        echo "Killing libeufin sandbox"
         PID=`cat libeufin-sandbox.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        wait $PID
         rm libeufin-sandbox.pid
+        echo "Killed libeufin sandbox $PID"
+        wait $PID || true
     fi
     if test -f libeufin-nexus.pid
     then
-        echo "Killing libeufin nexus"
         PID=`cat libeufin-nexus.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        wait $PID
         rm libeufin-nexus.pid
+        echo "Killed libeufin nexus $PID"
+        wait $PID || true
     fi
     echo "killing libeufin DONE"
     for n in `jobs -p`
     do
         kill $n 2> /dev/null || true
     done
-    wait
+    wait || true
 }
 
 # Install cleanup handler (except for kill -9)
-trap cleanup EXIT
+trap exit_cleanup EXIT
 
 
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
-    echo $1
+    echo "SKIPPING: $1"
     exit 77
 }
 # Where do we write the result?
@@ -150,7 +150,168 @@ taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Fa
 
 # Launch services
 echo "Launching services (pre audit DB: $TARGET_DB)"
-taler-bank-manage-testing $BANK_PORT $TARGET_DB $EXCHANGE_URL $CONF
+
+rm -f ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 2> /dev/null # libeufin DB
+export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
+# Create the default demobank.
+libeufin-sandbox config --currency "TESTKUDOS" default
+export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
+libeufin-sandbox serve --port "1${BANK_PORT}" \
+  > libeufin-sandbox-stdout.log \
+  2> libeufin-sandbox-stderr.log &
+echo $! > libeufin-sandbox.pid
+export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+set +e
+echo -n "Waiting for Sandbox..."
+OK=0
+for n in `seq 1 50`; do
+  echo -n "."
+  sleep 1
+  if wget --timeout=1 \
+    --tries=3 --waitretry=0 \
+    -o /dev/null -O /dev/null \
+    $LIBEUFIN_SANDBOX_URL;
+  then
+    OK=1
+    break
+  fi
+done
+if test $OK != 1
+then
+    exit_skip " Failed to launch sandbox"
+fi
+echo "OK"
+
+register_sandbox_account() {
+    export LIBEUFIN_SANDBOX_USERNAME=$1
+    export LIBEUFIN_SANDBOX_PASSWORD=$2
+    libeufin-cli sandbox \
+      demobank \
+      register --name "$3"
+    unset LIBEUFIN_SANDBOX_USERNAME
+    unset LIBEUFIN_SANDBOX_PASSWORD
+}
+set -e
+echo -n "Register the 'fortytwo' Sandbox user.."
+register_sandbox_account fortytwo x "Forty Two"
+echo OK
+echo -n "Register the 'fortythree' Sandbox user.."
+register_sandbox_account fortythree x "Forty Three"
+echo OK
+echo -n "Register 'exchange' Sandbox user.."
+register_sandbox_account exchange x "Exchange Company"
+echo OK
+echo -n "Specify exchange's PAYTO_URI in the config ..."
+export LIBEUFIN_SANDBOX_USERNAME=exchange
+export LIBEUFIN_SANDBOX_PASSWORD=x
+PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
+taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI -V $PAYTO
+echo " OK"
+echo -n "Setting this exchange as the bank's default ..."
+EXCHANGE_PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
+libeufin-sandbox default-exchange "$EXCHANGE_URL" "$EXCHANGE_PAYTO"
+echo " OK"
+# Prepare EBICS: create Ebics host and Exchange subscriber.
+# Shortly becoming admin to setup Ebics.
+export LIBEUFIN_SANDBOX_USERNAME=admin
+export LIBEUFIN_SANDBOX_PASSWORD=secret
+echo -n "Create EBICS host at Sandbox.."
+libeufin-cli sandbox \
+  --sandbox-url "http://localhost:1${BANK_PORT}" \
+  ebicshost create --host-id "talerebics"
+echo "OK"
+echo -n "Create exchange EBICS subscriber at Sandbox.."
+libeufin-cli sandbox \
+  demobank new-ebicssubscriber --host-id talerebics \
+  --user-id exchangeebics --partner-id talerpartner \
+  --bank-account exchange # that's a username _and_ a bank account name
+echo "OK"
+unset LIBEUFIN_SANDBOX_USERNAME
+unset LIBEUFIN_SANDBOX_PASSWORD
+# Prepare Nexus, which is the side actually talking
+# to the exchange.
+export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-nexus.sqlite3"
+# For convenience, username and password are
+# identical to those used at the Sandbox.
+echo -n "Create exchange Nexus user..."
+libeufin-nexus superuser exchange --password x
+echo " OK"
+libeufin-nexus serve --port ${BANK_PORT} \
+  2> libeufin-nexus-stderr.log \
+  > libeufin-nexus-stdout.log &
+echo $! > libeufin-nexus.pid
+export LIBEUFIN_NEXUS_URL="http://localhost:${BANK_PORT}"
+echo -n "Waiting for Nexus..."
+set +e
+OK=0
+for n in `seq 1 50`; do
+  echo -n "."
+  sleep 1
+  if wget --timeout=1 \
+    --tries=3 --waitretry=0 \
+    -o /dev/null -O /dev/null \
+    $LIBEUFIN_NEXUS_URL;
+  then
+    OK=1
+    break
+  fi
+done
+if test $OK != 1
+then
+    exit_skip " Failed to launch Nexus at $LIBEUFIN_NEXUS_URL"
+fi
+set -e
+echo "OK"
+export LIBEUFIN_NEXUS_USERNAME=exchange
+export LIBEUFIN_NEXUS_PASSWORD=x
+echo -n "Creating an EBICS connection at Nexus..."
+libeufin-cli connections new-ebics-connection \
+  --ebics-url "http://localhost:1${BANK_PORT}/ebicsweb" \
+  --host-id "talerebics" \
+  --partner-id "talerpartner" \
+  --ebics-user-id "exchangeebics" \
+  talerconn
+echo "OK"
+echo -n "Setup EBICS keying..."
+libeufin-cli connections connect "talerconn" > /dev/null
+echo "OK"
+echo -n "Download bank account name from Sandbox..."
+libeufin-cli connections download-bank-accounts "talerconn"
+echo "OK"
+echo -n "Importing bank account info into Nexus..."
+libeufin-cli connections import-bank-account \
+  --offered-account-id "exchange" \
+  --nexus-bank-account-id "exchange-nexus" \
+  "talerconn"
+echo "OK"
+echo -n "Setup payments submission task..."
+# Tries every second.
+libeufin-cli accounts task-schedule \
+  --task-type submit \
+  --task-name "exchange-payments" \
+  --task-cronspec "* * *" \
+  "exchange-nexus"
+echo "OK"
+# Tries every second.  Ask C52
+echo -n "Setup history fetch task..."
+libeufin-cli accounts task-schedule \
+  --task-type fetch \
+  --task-name "exchange-history" \
+  --task-cronspec "* * *" \
+  --task-param-level report \
+  --task-param-range-type latest \
+  "exchange-nexus"
+echo "OK"
+# create Taler facade.
+echo -n "Create the Taler facade at Nexus..."
+libeufin-cli facades \
+  new-taler-wire-gateway-facade \
+  --currency "TESTKUDOS" --facade-name "test-facade" \
+  "talerconn" "exchange-nexus"
+echo "OK"
+# Facade schema: http://localhost:$BANK_PORT/facades/test-facade/taler-wire-gateway/
+
+
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
@@ -258,19 +419,20 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
   )" &> taler-wallet-cli.log
 
 echo "Shutting down services"
-cleanup
+exit_cleanup
 
 # Dump database
 echo "Dumping database ${BASEDB}(-libeufin).sql"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
-sqlite3 $TARGET_DB ".dump" > ${BASEDB}-libeufin.sql
+sqlite3 ${TARGET_DB}-nexus.sqlite3 ".dump" > ${BASEDB}-libeufin-nexus.sql
+sqlite3 ${TARGET_DB}-sandbox.sqlite3 ".dump" > ${BASEDB}-libeufin-sandbox.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
-rm $TARGET_DB # libeufin DB
+rm ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 # libeufin DB
 
 echo "====================================="
 echo "  Finished generation of $BASEDB"
