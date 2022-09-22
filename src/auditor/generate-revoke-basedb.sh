@@ -11,19 +11,19 @@ set -eux
 function exit_cleanup()
 {
     echo "Running generate-revoke-basedb exit cleanup logic..."
-    if test -f libeufin-sandbox.pid
+    if test -f ${MY_TMP_DIR:-/}/libeufin-sandbox.pid
     then
-        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        PID=`cat ${MY_TMP_DIR}/libeufin-sandbox.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        rm libeufin-sandbox.pid
+        rm ${MY_TMP_DIR}/libeufin-sandbox.pid
         echo "Killed libeufin sandbox $PID"
         wait $PID || true
     fi
-    if test -f libeufin-nexus.pid
+    if test -f ${MY_TMP_DIR}/libeufin-nexus.pid
     then
-        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        PID=`cat ${MY_TMP_DIR}/libeufin-nexus.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        rm libeufin-nexus.pid
+        rm ${MY_TMP_DIR}/libeufin-nexus.pid
         echo "Killed libeufin nexus $PID"
         wait $PID || true
     fi
@@ -39,7 +39,9 @@ function get_payto_uri() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    cd $MY_TMP_DIR
     libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
+    cd $ORIGIN
 }
 
 # Install cleanup handler (except for kill -9)
@@ -67,6 +69,9 @@ rm -f $WALLET_DB
 export CONF=${BASEDB}.conf
 cp generate-auditor-basedb.conf $CONF
 echo "Created configuration at ${CONF}"
+DATA_DIR=$1/exchange-data-dir/
+mkdir -p $DATA_DIR
+taler-config -c $CONF -s PATHS -o TALER_HOME -V $DATA_DIR
 
 echo -n "Testing for libeufin(-cli)"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -78,14 +83,12 @@ echo -n "Testing for curl"
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-# Clean up
-DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
-rm -rf $DATA_DIR || true
-
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
-rm $TARGET_DB >/dev/null 2>/dev/null || true # libeufin
+ORIGIN=`pwd`
+MY_TMP_DIR=`dirname $1`
+
 
 # obtain key configuration data
 MASTER_PRIV_FILE=$1.mpriv
@@ -138,15 +141,16 @@ taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 # Launch services
 echo "Launching services"
 
-rm -f ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 2> /dev/null # libeufin DB
 export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
 # Create the default demobank.
+cd $MY_TMP_DIR
 libeufin-sandbox config --currency "TESTKUDOS" default
 export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
 libeufin-sandbox serve --port "1${BANK_PORT}" \
-  > libeufin-sandbox-stdout.log \
-  2> libeufin-sandbox-stderr.log &
-echo $! > libeufin-sandbox.pid
+  > ${MY_TMP_DIR}/libeufin-sandbox-stdout.log \
+  2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
+echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
+cd $ORIGIN
 export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 set +e
 echo -n "Waiting for Sandbox..."
@@ -172,9 +176,11 @@ echo "OK"
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
+    cd $MY_TMP_DIR
     libeufin-cli sandbox \
       demobank \
       register --name "$3"
+    cd $ORIGIN
     unset LIBEUFIN_SANDBOX_USERNAME
     unset LIBEUFIN_SANDBOX_PASSWORD
 }
@@ -191,6 +197,7 @@ echo OK
 echo -n "Specify exchange's PAYTO_URI in the config ..."
 export LIBEUFIN_SANDBOX_USERNAME=exchange
 export LIBEUFIN_SANDBOX_PASSWORD=x
+cd $MY_TMP_DIR
 PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
 taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI -V $PAYTO
 echo " OK"
@@ -224,9 +231,9 @@ echo -n "Create exchange Nexus user..."
 libeufin-nexus superuser exchange --password x
 echo " OK"
 libeufin-nexus serve --port ${BANK_PORT} \
-  2> libeufin-nexus-stderr.log \
-  > libeufin-nexus-stdout.log &
-echo $! > libeufin-nexus.pid
+  2> ${MY_TMP_DIR}/libeufin-nexus-stderr.log \
+  > ${MY_TMP_DIR}/libeufin-nexus-stdout.log &
+echo $! > ${MY_TMP_DIR}/libeufin-nexus.pid
 export LIBEUFIN_NEXUS_URL="http://localhost:${BANK_PORT}"
 echo -n "Waiting for Nexus..."
 set +e
@@ -296,23 +303,24 @@ libeufin-cli facades \
   --currency "TESTKUDOS" --facade-name "test-facade" \
   "talerconn" "exchange-nexus"
 echo "OK"
+cd $ORIGIN
 # Facade schema: http://localhost:$BANK_PORT/facades/test-facade/taler-wire-gateway/
 
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
-taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
+taler-exchange-secmod-eddsa -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
-taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-rsa -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-rsa.log &
 RSA_DENOM_HELPER_PID=$!
-taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
+taler-exchange-secmod-cs -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-cs.log &
 CS_DENOM_HELPER_PID=$!
-taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
+taler-exchange-httpd -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-httpd.log &
 EXCHANGE_PID=$!
-taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
+taler-merchant-httpd -c $CONF -L INFO 2> ${MY_TMP_DIR}/taler-merchant-httpd.log &
 MERCHANT_PID=$!
-taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
-taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
+taler-exchange-wirewatch -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-wirewatch.log &
+taler-auditor-httpd -c $CONF 2> ${MY_TMP_DIR}/taler-auditor-httpd.log &
 
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`
@@ -362,7 +370,7 @@ taler-exchange-offline -c $CONF \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now iban TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 \
   global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
-  upload &> taler-exchange-offline.log
+  upload &> ${MY_TMP_DIR}/taler-exchange-offline.log
 
 echo -n "."
 
@@ -383,7 +391,7 @@ fi
 
 
 taler-auditor-offline -c $CONF \
-  download sign upload &> taler-auditor-offline.log
+  download sign upload &> ${MY_TMP_DIR}/taler-auditor-offline.log
 
 echo " DONE"
 
@@ -424,13 +432,13 @@ export susp=$(echo "$coins" | jq --arg rc "$rc" '[.coins[] | select(.coin_pub !=
 
 # Do the revocation
 taler-exchange-offline -c $CONF \
-  revoke-denomination "${rd}" upload &> taler-exchange-offline-revoke.log
+  revoke-denomination "${rd}" upload &> ${MY_TMP_DIR}/taler-exchange-offline-revoke.log
 
 sleep 1 # Give exchange time to create replacmenent key
 
 # Re-sign replacement keys
 taler-auditor-offline -c $CONF \
-  download sign upload &> taler-auditor-offline.log
+  download sign upload &> ${MY_TMP_DIR}/taler-auditor-offline.log
 
 # Now we suspend the other coins, so later we will pay with the recouped coin
 taler-wallet-cli --wallet-db=$WALLET_DB advanced suspend-coins "$susp"
@@ -478,13 +486,13 @@ kill -TERM $EXCHANGE_PID
 kill -TERM $RSA_DENOM_HELPER_PID
 kill -TERM $CS_DENOM_HELPER_PID
 kill -TERM $SIGNKEY_HELPER_PID
-taler-exchange-secmod-eddsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-eddsa.log &
+taler-exchange-secmod-eddsa $TIMETRAVEL -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
-taler-exchange-secmod-rsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-rsa $TIMETRAVEL -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-rsa.log &
 RSA_DENOM_HELPER_PID=$!
-taler-exchange-secmod-cs $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-cs.log &
+taler-exchange-secmod-cs $TIMETRAVEL -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-cs.log &
 CS_DENOM_HELPER_PID=$!
-taler-exchange-httpd $TIMETRAVEL -c $CONF 2> taler-exchange-httpd.log &
+taler-exchange-httpd $TIMETRAVEL -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-httpd.log &
 export EXCHANGE_PID=$!
 
 # Wait for exchange to be available
@@ -525,13 +533,13 @@ export susp=$(echo "$coins" | jq --arg freshc "$freshc" '[.coins[] | select(.coi
 # Do the revocation of freshc
 echo "Revoking ${fresh_denom} (to affect coin ${freshc})"
 taler-exchange-offline -c $CONF \
-  revoke-denomination "${fresh_denom}" upload &> taler-exchange-offline-revoke-2.log
+  revoke-denomination "${fresh_denom}" upload &> ${MY_TMP_DIR}/taler-exchange-offline-revoke-2.log
 
 sleep 1 # Give exchange time to create replacmenent key
 
 # Re-sign replacement keys
 taler-auditor-offline -c $CONF \
-  download sign upload &> taler-auditor-offline.log
+  download sign upload &> ${MY_TMP_DIR}/taler-auditor-offline.log
 
 # Now we suspend the other coins, so later we will pay with the recouped coin
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced suspend-coins "$susp"
@@ -545,7 +553,7 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 
 echo "Restarting merchant (so new keys are known)"
 kill -TERM $MERCHANT_PID
-taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
+taler-merchant-httpd -c $CONF -L INFO 2> ${MY_TMP_DIR}/taler-merchant-httpd.log &
 MERCHANT_PID=$!
 # Wait for merchant to be again available
 for n in `seq 1 50`

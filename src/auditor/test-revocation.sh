@@ -54,27 +54,24 @@ function exit_fail() {
     exit 1
 }
 
-# Clean up leftovers on start
-rm -f libeufin-sandbox.pid libeufin-nexus.pid
-
 function stop_libeufin()
 {
     echo "killing libeufin..."
-    if test -f libeufin-sandbox.pid
+    if test -f ${MYDIR:-/}/libeufin-sandbox.pid
     then
         echo "Killing libeufin sandbox"
-        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        PID=`cat ${MYDIR}/libeufin-sandbox.pid 2> /dev/null`
+        rm ${MYDIR}/libeufin-sandbox.pid
         kill $PID 2> /dev/null || true
         wait $PID || true
-        rm libeufin-sandbox.pid
     fi
-    if test -f libeufin-nexus.pid
+    if test -f ${MYDIR:-/}/libeufin-nexus.pid
     then
         echo "Killing libeufin nexus"
-        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        PID=`cat ${MYDIR}/libeufin-nexus.pid 2> /dev/null`
+        rm ${MYDIR}/libeufin-nexus.pid
         kill $PID 2> /dev/null || true
         wait $PID || true
-        rm libeufin-nexus.pid
     fi
     echo "killing libeufin DONE"
 }
@@ -148,16 +145,18 @@ function get_payto_uri() {
 
 function launch_libeufin () {
     export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${DB}-nexus.sqlite3"
+    cd $MYDIR
     libeufin-nexus serve --port 8082 \
-                   2> libeufin-nexus-stderr.log \
-                   > libeufin-nexus-stdout.log &
-    echo $! > libeufin-nexus.pid
+                   2> ${MYDIR}/libeufin-nexus-stderr.log \
+                   > ${MYDIR}/libeufin-nexus-stdout.log &
+    echo $! > ${MYDIR}/libeufin-nexus.pid
     export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${DB}-sandbox.sqlite3"
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
     libeufin-sandbox serve --port 18082 \
-                     > libeufin-sandbox-stdout.log \
-                     2> libeufin-sandbox-stderr.log &
-    echo $! > libeufin-sandbox.pid
+                     > ${MYDIR}/libeufin-sandbox-stdout.log \
+                     2> ${MYDIR}/libeufin-sandbox-stderr.log &
+    echo $! > ${MYDIR}/libeufin-sandbox.pid
+    cd $ORIGIN
 }
 
 # Operations to run before the actual audit
@@ -195,13 +194,13 @@ function pre_audit () {
     then
         export CONF
 	    echo -n "Running exchange aggregator ... (config: $CONF)"
-        taler-exchange-aggregator -L INFO -t -c $CONF -y 2> aggregator.log || exit_fail "FAIL"
+        taler-exchange-aggregator -L INFO -t -c $CONF -y 2> ${MYDIR}/aggregator.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange closer ..."
-        taler-exchange-closer -L INFO -t -c $CONF 2> closer.log || exit_fail "FAIL"
+        taler-exchange-closer -L INFO -t -c $CONF 2> ${MYDIR}/closer.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange transfer ..."
-        taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
+        taler-exchange-transfer -L INFO -t -c $CONF 2> ${MYDIR}/transfer.log || exit_fail "FAIL"
         echo " DONE"
 	    echo -n "Running Nexus payment submitter ..."
 	    nexus_submit_to_sandbox
@@ -276,11 +275,12 @@ function full_reload()
 {
     echo -n "Doing full reload of the database... "
     dropdb $DB 2> /dev/null || true
-    rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "DONE"
+    cd $MYDIR
+    rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 || true # libeufin
     echo "Loading libeufin Nexus basedb: ${BASEDB}-libeufin-nexus.sql"
     sqlite3 ${DB}-nexus.sqlite3 < ${BASEDB}-libeufin-nexus.sql || exit_skip "Failed to load Nexus database"
     echo "DONE"
@@ -297,6 +297,7 @@ function full_reload()
                      -V "payto://iban/SANDBOXX/$EXCHANGE_IBAN?receiver-name=Exchange+Company"
         echo " DONE"
     )
+    cd $ORIGIN
 }
 
 
@@ -612,7 +613,6 @@ function check_with_database()
     done
     # echo "Cleanup (disabled, leaving database $DB behind)"
     dropdb $DB
-    rm -f test-audit.log test-wire-audit.log
 }
 
 
@@ -648,8 +648,12 @@ else
 fi
 echo -n "Setting up Postgres DB"
 POSTGRES_PATH=`dirname $INITDB_BIN`
-TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
-$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
+ORIGIN=`pwd`
+MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+TMPDIR="${MYDIR}/postgres/"
+mkdir -p $TMPDIR
+echo -n "Setting up Postgres DB at $TMPDIR ..."
+$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > ${MYDIR}/postgres-dbinit.log 2> ${MYDIR}/postgres-dbinit.err
 echo " DONE"
 mkdir ${TMPDIR}/sockets
 echo -n "Launching Postgres service at $POSTGRES_PATH"
@@ -663,12 +667,11 @@ listen_addresses=''
 EOF
 cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
 mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
-${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
+${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > ${MYDIR}/postgres-start.log 2> ${MYDIR}/postgres-start.err
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-revoke-basedb.sh $MYDIR/$DB
 then
@@ -679,7 +682,6 @@ then
     else
         echo "Cleaning up $MYDIR..."
         rm -rf $MYDIR || echo "Removing $MYDIR failed"
-        rm -rf $TMPDIR || echo "Removing $TMPDIR failed"
     fi
 else
     echo "Generation failed"

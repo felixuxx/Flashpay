@@ -122,17 +122,19 @@ function exit_cleanup()
 trap exit_cleanup EXIT
 
 function launch_libeufin () {
-    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${DB}-nexus.sqlite3"
-    libeufin-nexus serve --port 8082 \
-                   2> libeufin-nexus-stderr.log \
-                   > libeufin-nexus-stdout.log &
-    echo $! > libeufin-nexus.pid
+    cd $MYDIR
     export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${DB}-sandbox.sqlite3"
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
     libeufin-sandbox serve --port 18082 \
-                     > libeufin-sandbox-stdout.log \
-                     2> libeufin-sandbox-stderr.log &
-    echo $! > libeufin-sandbox.pid
+                     > ${MYDIR}/libeufin-sandbox-stdout.log \
+                     2> ${MYDIR}/libeufin-sandbox-stderr.log &
+    echo $! > ${MYDIR}/libeufin-sandbox.pid
+    export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${DB}-nexus.sqlite3"
+    libeufin-nexus serve --port 8082 \
+                   2> ${MYDIR}/libeufin-nexus-stderr.log \
+                   > ${MYDIR}/libeufin-nexus-stdout.log &
+    echo $! > ${MYDIR}/libeufin-nexus.pid
+    cd $ORIGIN
 }
 
 # Downloads new transactions from the bank.
@@ -140,8 +142,10 @@ function nexus_fetch_transactions () {
     export LIBEUFIN_NEXUS_USERNAME=exchange
     export LIBEUFIN_NEXUS_PASSWORD=x
     export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+    cd $MY_TMP_DIR
     libeufin-cli accounts fetch-transactions \
                  --range-type since-last --level report exchange-nexus > /dev/null
+    cd $ORIGIN
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
@@ -154,7 +158,9 @@ function nexus_submit_to_sandbox () {
     export LIBEUFIN_NEXUS_USERNAME=exchange
     export LIBEUFIN_NEXUS_PASSWORD=x
     export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+    cd $MY_TMP_DIR
     libeufin-cli accounts submit-payments exchange-nexus
+    cd $ORIGIN
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
@@ -196,13 +202,13 @@ function pre_audit () {
     if test ${1:-no} = "aggregator"
     then
         echo -n "Running exchange aggregator ..."
-        taler-exchange-aggregator -y -L INFO -t -c $CONF 2> aggregator.log || exit_fail "FAIL"
+        taler-exchange-aggregator -y -L INFO -t -c $CONF 2> ${MY_TMP_DIR}/aggregator.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange closer ..."
-        taler-exchange-closer -L INFO -t -c $CONF 2> closer.log || exit_fail "FAIL"
+        taler-exchange-closer -L INFO -t -c $CONF 2> ${MY_TMP_DIR}/closer.log || exit_fail "FAIL"
         echo " DONE"
         echo -n "Running exchange transfer ..."
-        taler-exchange-transfer -L INFO -t -c $CONF 2> transfer.log || exit_fail "FAIL"
+        taler-exchange-transfer -L INFO -t -c $CONF 2> ${MY_TMP_DIR}/transfer.log || exit_fail "FAIL"
         echo " DONE"
 	    echo -n "Running Nexus payment submitter ..."
 	    nexus_submit_to_sandbox
@@ -221,25 +227,25 @@ function audit_only () {
 
     # Restart so that first run is always fresh, and second one is incremental
     taler-auditor-dbinit -r -c $CONF
-    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation.json 2> test-audit-aggregation.log || exit_fail "aggregation audit failed"
+    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation.json 2> ${MY_TMP_DIR}/test-audit-aggregation.log || exit_fail "aggregation audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation-inc.json 2> test-audit-aggregation-inc.log || exit_fail "incremental aggregation audit failed"
+    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation-inc.json 2> ${MY_TMP_DIR}/test-audit-aggregation-inc.log || exit_fail "incremental aggregation audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins.json 2> test-audit-coins.log || exit_fail "coin audit failed"
+    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins.json 2> ${MY_TMP_DIR}/test-audit-coins.log || exit_fail "coin audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins-inc.json 2> test-audit-coins-inc.log || exit_fail "incremental coin audit failed"
+    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins-inc.json 2> ${MY_TMP_DIR}/test-audit-coins-inc.log || exit_fail "incremental coin audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits.json 2> test-audit-deposits.log || exit_fail "deposits audit failed"
+    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits.json 2> ${MY_TMP_DIR}/test-audit-deposits.log || exit_fail "deposits audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits-inc.json 2> test-audit-deposits-inc.log || exit_fail "incremental deposits audit failed"
+    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits-inc.json 2> ${MY_TMP_DIR}/test-audit-deposits-inc.log || exit_fail "incremental deposits audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-reserves -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves.json 2> test-audit-reserves.log || exit_fail "reserves audit failed"
+    $VALGRIND taler-helper-auditor-reserves -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves.json 2> ${MY_TMP_DIR}/test-audit-reserves.log || exit_fail "reserves audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-reserves -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves-inc.json 2> test-audit-reserves-inc.log || exit_fail "incremental reserves audit failed"
+    $VALGRIND taler-helper-auditor-reserves -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves-inc.json 2> ${MY_TMP_DIR}/test-audit-reserves-inc.log || exit_fail "incremental reserves audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> test-wire-audit.log || exit_fail "wire audit failed"
+    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> ${MY_TMP_DIR}/test-wire-audit.log || exit_fail "wire audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> test-wire-audit-inc.log || exit_fail "wire audit inc failed"
+    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> ${MY_TMP_DIR}/test-wire-audit-inc.log || exit_fail "wire audit inc failed"
     echo -n "."
 
     echo " DONE"
@@ -272,7 +278,7 @@ function run_audit () {
     if test ${2:-no} = "drain"
     then
         echo -n "Starting exchange..."
-        taler-exchange-httpd -c "${CONF}" -L INFO 2> exchange-httpd-drain.err &
+        taler-exchange-httpd -c "${CONF}" -L INFO 2> ${MYDIR}/exchange-httpd-drain.err &
         EPID=$!
 
         # Wait for all services to be available
@@ -294,21 +300,22 @@ function run_audit () {
         taler-exchange-offline -L DEBUG -c "${CONF}" \
                                drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
                                upload \
-                               2> taler-exchange-offline-drain.log || exit_fail "offline draining failed"
+                               2> ${MY_TMP_DIR}/taler-exchange-offline-drain.log || exit_fail "offline draining failed"
         kill -TERM $EPID
         wait $EPID || true
         unset EPID
         echo -n "Running taler-exchange-drain ..."
-        echo "\n" | taler-exchange-drain -L DEBUG -c $CONF 2> taler-exchange-drain.log || exit_fail "FAIL"
+        echo "\n" | taler-exchange-drain -L DEBUG -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-drain.log || exit_fail "FAIL"
         echo " DONE"
 
         echo -n "Running taler-exchange-transfer ..."
-        taler-exchange-transfer -L INFO -t -c $CONF 2> drain-transfer.log || exit_fail "FAIL"
+        taler-exchange-transfer -L INFO -t -c $CONF 2> ${MY_TMP_DIR}/drain-transfer.log || exit_fail "FAIL"
         echo " DONE"
 
         export LIBEUFIN_NEXUS_USERNAME=exchange
         export LIBEUFIN_NEXUS_PASSWORD=x
         export LIBEUFIN_NEXUS_URL=http://localhost:8082/
+        cd $MY_TMP_DIR
         PAIN_UUID=`libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId`
         if test -z "${PAIN_UUID}"
         then
@@ -318,6 +325,7 @@ function run_audit () {
             echo -n "Running submitting payment ${PAIN_UUID} ..."
             libeufin-cli accounts submit-payments --payment-uuid ${PAIN_UUID} exchange-nexus
         fi
+        cd $ORIGIN
         echo " DONE"
     fi
     audit_only
@@ -330,16 +338,18 @@ function full_reload()
 {
     echo "Doing full reload of the database ($BASEDB - $DB)... "
     dropdb $DB 2> /dev/null || true
-    rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 2> /dev/null || true # libeufin
     createdb -T template0 $DB || exit_skip "could not create database $DB (at $PGHOST)"
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "DONE"
+    cd $MYDIR
+    rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 2> /dev/null || true # libeufin
     echo -n "Loading libeufin Nexus basedb: ${BASEDB}-libeufin-nexus.sql "
     sqlite3 ${DB}-nexus.sqlite3 < ${BASEDB}-libeufin-nexus.sql || exit_skip "Failed to load Nexus database"
     echo "DONE"
     echo -n "Loading libeufin Sandbox basedb: ${BASEDB}-libeufin-sandbox.sql "
     sqlite3 ${DB}-sandbox.sqlite3 < ${BASEDB}-libeufin-sandbox.sql || exit_skip "Failed to load Sandbox database"
+    cd $ORIGIN
     echo "DONE"
 }
 
@@ -834,10 +844,12 @@ function test_7() {
 function test_8() {
 
     echo "===========8: wire-transfer-subject disagreement==========="
+    cd $MYDIR
     OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3`
     OLD_WTID=`echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3`
     NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
     echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3
+    cd $ORIGIN
 
     run_audit
 
@@ -894,7 +906,9 @@ function test_8() {
     echo PASS
 
     # Undo database modification
+    cd $MYDIR
     echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3
+    cd $ORIGIN
 
 }
 
@@ -903,9 +917,9 @@ function test_8() {
 function test_9() {
 
     echo "===========9: wire-origin disagreement==========="
-    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3`
-    OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3`
-    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 
     run_audit
 
@@ -923,7 +937,7 @@ function test_9() {
     echo PASS
 
     # Undo database modification
-    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3
+    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 
 }
 
@@ -932,9 +946,9 @@ function test_9() {
 function test_10() {
     NOW_MS=`date +%s`000
     echo "===========10: wire-timestamp disagreement==========="
-    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3`
-    OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3`
-    echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 ${DB}-nexus.sqlite3
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 
     run_audit
 
@@ -952,7 +966,7 @@ function test_10() {
     echo PASS
 
     # Undo database modification
-    echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | sqlite3 ${DB}-nexus.sqlite3
+    echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 
 }
 
@@ -962,25 +976,25 @@ function test_10() {
 # ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
 function test_11() {
     echo "===========11: spurious outgoing transfer ==========="
-    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3`
-    OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3`
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     # Change wire transfer to be FROM the exchange (#2) to elsewhere!
     # (Note: this change also causes a missing incoming wire transfer, but
     #  this test is only concerned about the outgoing wire transfer
     #  being detected as such, and we simply ignore the other
     #  errors being reported.)
-    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-sandbox.sqlite3`
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${MYDIR}/${DB}-sandbox.sqlite3`
     NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'$OTHER_IBAN'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
-    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$NEW_TX"' WHERE id=$OLD_ID" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     # Now fake that the exchange prepared this payment (= it POSTed to /transfer)
     # This step is necessary, because the TWG table that accounts for outgoing
     # payments needs it.  Worth noting here is the column 'rawConfirmation' that
     # points to the transaction from the main Nexus ledger; without that column set,
     # a prepared payment won't appear as actually outgoing.
-    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','"$OTHER_IBAN"','SANDBOXX','Forty Two','unused',1,$OLD_ID)" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','"$OTHER_IBAN"','SANDBOXX','Forty Two','unused',1,$OLD_ID)" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     # Now populate the TWG table that accounts for outgoing payments, in
     # order to let /history/outgoing return one result.
-    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/"$OTHER_IBAN"?receiver-name=Forty+Two')" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/"$OTHER_IBAN"?receiver-name=Forty+Two')" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 
     run_audit
 
@@ -1013,11 +1027,11 @@ function test_11() {
     echo PASS
 
     # Undo database modification
-    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$OLD_TX"' WHERE id=$OLD_ID;" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "UPDATE NexusBankTransactions SET transactionJson='"$OLD_TX"' WHERE id=$OLD_ID;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     # No other prepared payment should exist at this point,
     # so OK to remove the number 1.
-    echo -e "DELETE FROM PaymentInitiations WHERE id=1" | sqlite3 ${DB}-nexus.sqlite3
-    echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "DELETE FROM PaymentInitiations WHERE id=1" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
 }
 
 # Test for hanging/pending refresh.
@@ -1159,9 +1173,9 @@ function test_16() {
     # (Only one payment out exist, so the logic below should select the outgoing
     # wire transfer):
     function test_16_db () {
-        OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 ${DB}-nexus.sqlite3`
+        OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
         NEW_AMOUNT="TESTKUDOS:50"
-        echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${DB}-nexus.sqlite3
+        echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     }
     echo -n Trying to patch the SQLite database..
     for try in `seq 1 10`; do
@@ -1204,7 +1218,7 @@ function test_16() {
 
     echo "Second modification: wire nothing"
     NEW_AMOUNT="TESTKUDOS:0"
-    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${DB}-nexus.sqlite3
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     audit_only
 
     echo -n "Testing inconsistency detection... "
@@ -1254,12 +1268,12 @@ function test_17() {
     # wire transfer).
     function test_17_db () {
         OLD_ID=1
-        OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 ${DB}-nexus.sqlite3`
-        OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 ${DB}-nexus.sqlite3`
+        OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+        OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
         # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
         # (due to rounding, if this machine is fast...)
         NOW_1HR=$(expr $(date +%s) - 3600)
-        echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 ${DB}-nexus.sqlite3
+        echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     }
     echo -n Trying to patch the SQLite database..
     for try in `seq 1 10`; do
@@ -1422,7 +1436,7 @@ function test_21() {
 
     # remove transaction from bank DB
     # Currently emulating this (to be deleted):
-    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" | sqlite3 ${DB}-nexus.sqlite3
+    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     audit_only
     post_audit
 
@@ -1673,14 +1687,14 @@ function test_27() {
     pre_audit aggregator
 
     # Obtain data to duplicate.
-    WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 ${DB}-nexus.sqlite3`
+    WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     echo WTID=$WTID
-    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${DB}-sandbox.sqlite3`
+    OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${MYDIR}/${DB}-sandbox.sqlite3`
     stop_libeufin
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
-    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" | sqlite3 ${DB}-nexus.sqlite3
-    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" | sqlite3 ${DB}-nexus.sqlite3
+    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     launch_libeufin
     audit_only
     post_audit
@@ -2004,6 +2018,8 @@ function check_with_database()
 {
     BASEDB=$1
     CONF=$1.conf
+    ORIGIN=`pwd`
+    MY_TMP_DIR=`dirname $1`
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE=${BASEDB}.mpriv
     taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
@@ -2063,11 +2079,14 @@ else
   echo " FOUND at" `dirname $HAVE_INITDB`
   INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
 fi
-echo -n "Setting up Postgres DB"
 POSTGRES_PATH=`dirname $INITDB_BIN`
-TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
-$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
-echo " DONE"
+MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+echo "Using $MYDIR for logging and temporary data"
+TMPDIR="$MYDIR/postgres/"
+mkdir -p $TMPDIR
+echo -n "Setting up Postgres DB at $TMPDIR ..."
+$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > ${MYDIR}/postgres-dbinit.log 2> ${MYDIR}/postgres-dbinit.err
+echo "DONE"
 mkdir ${TMPDIR}/sockets
 echo -n "Launching Postgres service"
 cat - >> $TMPDIR/postgresql.conf <<EOF
@@ -2080,14 +2099,12 @@ listen_addresses=''
 EOF
 cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
 mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
-${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
+${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > ${MYDIR}/postgres-start.log 2> ${MYDIR}/postgres-start.err
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
-rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 2> /dev/null || true # libeufin
 if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/$DB
 then
     check_with_database $MYDIR/$DB
@@ -2097,7 +2114,6 @@ then
     else
         echo "Cleaning up $MYDIR..."
         rm -rf $MYDIR || echo "Removing $MYDIR failed"
-        rm -rf $TMPDIR || echo "Removing $TMPDIR failed"
     fi
 else
     echo "Generation failed"

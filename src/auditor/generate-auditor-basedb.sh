@@ -19,33 +19,37 @@ function get_iban() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    cd $MY_TMP_DIR
     libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.iban'
+    cd $ORIGIN
 }
 
 function get_payto_uri() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
     export LIBEUFIN_SANDBOX_URL=$BANK_URL
+    cd $MY_TMP_DIR
     libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
+    cd $ORIGIN
 }
 
 # Cleanup to run whenever we exit
 function exit_cleanup()
 {
     echo "Running generate-auditor-basedb exit cleanup logic..."
-    if test -f libeufin-sandbox.pid
+    if test -f ${MY_TMP_DIR:-/}/libeufin-sandbox.pid
     then
-        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        PID=`cat ${MY_TMP_DIR}/libeufin-sandbox.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        rm libeufin-sandbox.pid
+        rm ${MY_TMP_DIR}/libeufin-sandbox.pid
         echo "Killed libeufin sandbox $PID"
         wait $PID || true
     fi
-    if test -f libeufin-nexus.pid
+    if test -f ${MY_TMP_DIR:-/}/libeufin-nexus.pid
     then
-        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        PID=`cat ${MY_TMP_DIR}/libeufin-nexus.pid 2> /dev/null`
         kill $PID 2> /dev/null || true
-        rm libeufin-nexus.pid
+        rm ${MY_TMP_DIR}/libeufin-nexus.pid
         echo "Killed libeufin nexus $PID"
         wait $PID || true
     fi
@@ -83,6 +87,9 @@ rm -f $WALLET_DB
 export CONF=$1.conf
 cp generate-auditor-basedb.conf $CONF
 echo "Created configuration at ${CONF}"
+DATA_DIR=$1/exchange-data-dir/
+mkdir -p $DATA_DIR
+taler-config -c $CONF -s PATHS -o TALER_HOME -V $DATA_DIR
 
 echo -n "Testing for libeufin"
 libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -94,13 +101,11 @@ echo -n "Testing for curl"
 curl --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 
-# Clean up
-
-DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
-
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
+ORIGIN=`pwd`
+MY_TMP_DIR=`dirname $1`
 
 # obtain key configuration data
 MASTER_PRIV_FILE=$1.mpriv
@@ -151,15 +156,16 @@ taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Fa
 # Launch services
 echo "Launching services (pre audit DB: $TARGET_DB)"
 
-rm -f ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 2> /dev/null # libeufin DB
 export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
 # Create the default demobank.
+cd $MY_TMP_DIR
 libeufin-sandbox config --currency "TESTKUDOS" default
 export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
 libeufin-sandbox serve --port "1${BANK_PORT}" \
-  > libeufin-sandbox-stdout.log \
-  2> libeufin-sandbox-stderr.log &
-echo $! > libeufin-sandbox.pid
+  > ${MY_TMP_DIR}/libeufin-sandbox-stdout.log \
+  2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
+echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
+cd $ORIGIN
 export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 set +e
 echo -n "Waiting for Sandbox..."
@@ -185,9 +191,11 @@ echo "OK"
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
+    cd $MY_TMP_DIR
     libeufin-cli sandbox \
       demobank \
       register --name "$3"
+    cd $ORIGIN
     unset LIBEUFIN_SANDBOX_USERNAME
     unset LIBEUFIN_SANDBOX_PASSWORD
 }
@@ -204,6 +212,7 @@ echo OK
 echo -n "Specify exchange's PAYTO_URI in the config ..."
 export LIBEUFIN_SANDBOX_USERNAME=exchange
 export LIBEUFIN_SANDBOX_PASSWORD=x
+cd $MY_TMP_DIR
 PAYTO=`libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri'`
 taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI -V $PAYTO
 echo " OK"
@@ -237,9 +246,9 @@ echo -n "Create exchange Nexus user..."
 libeufin-nexus superuser exchange --password x
 echo " OK"
 libeufin-nexus serve --port ${BANK_PORT} \
-  2> libeufin-nexus-stderr.log \
-  > libeufin-nexus-stdout.log &
-echo $! > libeufin-nexus.pid
+  2> ${MY_TMP_DIR}/libeufin-nexus-stderr.log \
+  > ${MY_TMP_DIR}/libeufin-nexus-stdout.log &
+echo $! > ${MY_TMP_DIR}/libeufin-nexus.pid
 export LIBEUFIN_NEXUS_URL="http://localhost:${BANK_PORT}"
 echo -n "Waiting for Nexus..."
 set +e
@@ -309,19 +318,20 @@ libeufin-cli facades \
   --currency "TESTKUDOS" --facade-name "test-facade" \
   "talerconn" "exchange-nexus"
 echo "OK"
+cd $ORIGIN
 # Facade schema: http://localhost:$BANK_PORT/facades/test-facade/taler-wire-gateway/
 
 
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
-taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
-taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
-taler-exchange-secmod-cs -c $CONF 2> taler-exchange-secmod-cs.log &
-taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
-taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
-taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
-taler-auditor-httpd -L INFO -c $CONF 2> taler-auditor-httpd.log &
+taler-exchange-secmod-eddsa -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-eddsa.log &
+taler-exchange-secmod-rsa -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-rsa.log &
+taler-exchange-secmod-cs -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-secmod-cs.log &
+taler-exchange-httpd -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-httpd.log &
+taler-merchant-httpd -c $CONF -L INFO 2> ${MY_TMP_DIR}/taler-merchant-httpd.log &
+taler-exchange-wirewatch -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-wirewatch.log &
+taler-auditor-httpd -L INFO -c $CONF 2> ${MY_TMP_DIR}/taler-auditor-httpd.log &
 
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`
@@ -367,7 +377,7 @@ taler-exchange-offline -c $CONF \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now iban TESTKUDOS:0.07 TESTKUDOS:0.01 TESTKUDOS:0.01 \
   global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
-  upload &> taler-exchange-offline.log
+  upload &> ${MY_TMP_DIR}/taler-exchange-offline.log
 
 echo -n "."
 
@@ -389,7 +399,7 @@ echo " DONE"
 echo -n "Adding auditor signatures ..."
 
 taler-auditor-offline -c $CONF \
-  download sign upload &> taler-auditor-offline.log
+  download sign upload &> ${MY_TMP_DIR}/taler-auditor-offline.log
 
 echo " DONE"
 # Setup merchant
@@ -416,9 +426,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'runI
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
     --arg BANK_URL "$BANK_URL/access-api/"
-  )" &> taler-wallet-cli.log
-
-bash
+  )" &> ${MY_TMP_DIR}/taler-wallet-cli.log
 
 echo "Shutting down services"
 exit_cleanup
@@ -426,15 +434,17 @@ exit_cleanup
 # Dump database
 echo "Dumping database ${BASEDB}(-libeufin).sql"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
+cd $MY_TMP_DIR
 sqlite3 ${TARGET_DB}-nexus.sqlite3 ".dump" > ${BASEDB}-libeufin-nexus.sql
 sqlite3 ${TARGET_DB}-sandbox.sqlite3 ".dump" > ${BASEDB}-libeufin-sandbox.sql
+rm ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 # libeufin DB
+cd $ORIGIN
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 
 # clean up
 echo "Final clean up"
 dropdb $TARGET_DB
-rm ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 # libeufin DB
 
 echo "====================================="
 echo "  Finished generation of $BASEDB"
