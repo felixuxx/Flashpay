@@ -61,29 +61,27 @@ function exit_fail() {
     exit 1
 }
 
-# Clean up leftovers on start
-rm -f libeufin-sandbox.pid libeufin-nexus.pid
-
+# Stop libeufin sandbox and nexus (if running)
 function stop_libeufin()
 {
-    echo "killing libeufin..."
-    if test -f libeufin-sandbox.pid
+    echo "Stopping libeufin..."
+    if test -f ${MYDIR:-/}/libeufin-sandbox.pid
     then
-        echo "Killing libeufin sandbox"
-        PID=`cat libeufin-sandbox.pid 2> /dev/null`
+        PID=`cat ${MYDIR}/libeufin-sandbox.pid 2> /dev/null`
+        echo "Killing libeufin sandbox $PID"
+        rm ${MYDIR}/libeufin-sandbox.pid
         kill $PID 2> /dev/null || true
         wait $PID || true
-        rm libeufin-sandbox.pid
     fi
-    if test -f libeufin-nexus.pid
+    if test -f ${MYDIR:-/}/libeufin-nexus.pid
     then
-        echo "Killing libeufin nexus"
-        PID=`cat libeufin-nexus.pid 2> /dev/null`
+        PID=`cat ${MYDIR}/libeufin-nexus.pid 2> /dev/null`
+        echo "Killing libeufin nexus $PID"
+        rm ${MYDIR}/libeufin-nexus.pid
         kill $PID 2> /dev/null || true
         wait $PID || true
-        rm libeufin-nexus.pid
     fi
-    echo "killing libeufin DONE"
+    echo "Stopping libeufin DONE"
 }
 
 # Cleanup exchange and libeufin between runs.
@@ -342,6 +340,8 @@ function full_reload()
     # Import pre-generated database, -q(ietly) using single (-1) transaction
     psql -Aqt $DB -q -1 -f ${BASEDB}.sql > /dev/null || exit_skip "Failed to load database $DB from ${BASEDB}.sql"
     echo "DONE"
+    # Technically, this call shouldn't be needed as libeufin should already be stopped here...
+    stop_libeufin
     cd $MYDIR
     rm -f ${DB}-nexus.sqlite3 ${DB}-sandbox.sqlite3 2> /dev/null || true # libeufin
     echo -n "Loading libeufin Nexus basedb: ${BASEDB}-libeufin-nexus.sql "
@@ -844,11 +844,13 @@ function test_7() {
 function test_8() {
 
     echo "===========8: wire-transfer-subject disagreement==========="
+    # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
+    stop_libeufin
     cd $MYDIR
-    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3`
+    OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${DB}-nexus.sqlite3` || exit_fail "Failed to SELECT FROM NexusBankTransactions nexus DB!"
     OLD_WTID=`echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3`
     NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
-    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3
+    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" | sqlite3 ${DB}-nexus.sqlite3 || exit_fail "Failed to update TalerIncomingPayments"
     cd $ORIGIN
 
     run_audit
@@ -917,6 +919,8 @@ function test_8() {
 function test_9() {
 
     echo "===========9: wire-origin disagreement==========="
+    # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
+    stop_libeufin
     OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     OLD_ACC=`echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
@@ -946,6 +950,8 @@ function test_9() {
 function test_10() {
     NOW_MS=`date +%s`000
     echo "===========10: wire-timestamp disagreement==========="
+    # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
+    stop_libeufin
     OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     OLD_DATE=`echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
@@ -976,6 +982,8 @@ function test_10() {
 # ingested table: '.batches[0].batchTransactions[0].details.unstructuredRemittanceInformation'
 function test_11() {
     echo "===========11: spurious outgoing transfer ==========="
+    # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
+    stop_libeufin
     OLD_ID=`echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     OLD_TX=`echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     # Change wire transfer to be FROM the exchange (#2) to elsewhere!
@@ -1167,29 +1175,11 @@ function test_16() {
     # have a wire_out to modify.
     pre_audit aggregator
 
-    # This function helps to retry when the database is locked by
-    # libEufin.
-    # Modify wire amount, such that it is inconsistent with 'aggregation'
-    # (Only one payment out exist, so the logic below should select the outgoing
-    # wire transfer):
-    function test_16_db () {
-        OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
-        NEW_AMOUNT="TESTKUDOS:50"
-        echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
-    }
-    echo -n Trying to patch the SQLite database..
-    for try in `seq 1 10`; do
-        if test_16_db 2>&1 > /dev/null; then
-            break
-        fi
-        echo -n .
-        if test $try = 10; then
-            exit_fail "Could not modify the SQLite database"
-        fi
-        sleep 0.3
-    done
-    echo DONE
-
+    stop_libeufin
+    OLD_AMOUNT=`echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    NEW_AMOUNT="TESTKUDOS:50"
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    launch_libeufin
     audit_only
 
     echo -n "Testing inconsistency detection... "
@@ -1216,11 +1206,13 @@ function test_16() {
     fi
     echo PASS
 
-    echo "Second modification: wire nothing"
+    stop_libeufin
+    echo "Second modification: wire nothing" 
     NEW_AMOUNT="TESTKUDOS:0"
     echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    launch_libeufin
     audit_only
-
+    stop_libeufin
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
@@ -1260,32 +1252,15 @@ function test_17() {
     # First, we need to run the aggregator so we even
     # have a wire_out to modify.
     pre_audit aggregator
-
-    # This function helps to retry when the database is locked
-    # already by libEufin.
-    # Modify wire amount, such that it is inconsistent with 'aggregation'
-    # (exchange paid only once, so the logic below should select the outgoing
-    # wire transfer).
-    function test_17_db () {
-        OLD_ID=1
-        OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
-        OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
-        # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
-        # (due to rounding, if this machine is fast...)
-        NOW_1HR=$(expr $(date +%s) - 3600)
-        echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
-    }
-    echo -n Trying to patch the SQLite database..
-    for try in `seq 1 10`; do
-        if test_17_db 2>&1 > /dev/null; then
-            break
-        fi
-        echo -n .
-        if test $try = 10; then
-            exit_fail "Could not modify the SQLite database"
-        fi
-        sleep 0.3
-    done
+    stop_libeufin
+    OLD_ID=1
+    OLD_PREP=`echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    OLD_DATE=`echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
+    # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
+    # (due to rounding, if this machine is fast...)
+    NOW_1HR=$(expr $(date +%s) - 3600)
+    echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    launch_libeufin
     echo DONE
     audit_only
     post_audit
@@ -1433,10 +1408,11 @@ function test_21() {
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
-
+    stop_libeufin
     # remove transaction from bank DB
     # Currently emulating this (to be deleted):
     echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
+    launch_libeufin
     audit_only
     post_audit
 
@@ -1685,12 +1661,11 @@ function test_27() {
     echo "===========27: duplicate WTID detection ================="
 
     pre_audit aggregator
-
+    stop_libeufin
     # Obtain data to duplicate.
     WTID=`echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3`
     echo WTID=$WTID
     OTHER_IBAN=`echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | sqlite3 ${MYDIR}/${DB}-sandbox.sqlite3`
-    stop_libeufin
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
     echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
