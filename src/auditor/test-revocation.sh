@@ -20,7 +20,8 @@
 # Check that the auditor report is as expected.
 #
 # Requires 'jq' tool and Postgres superuser rights!
-set -eux
+set -eu
+# set -x
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:

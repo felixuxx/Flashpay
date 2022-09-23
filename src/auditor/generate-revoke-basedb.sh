@@ -5,7 +5,8 @@
 # user running this script must be Postgres superuser and be allowed to
 # create/drop databases.
 #
-set -eux
+set -eu
+# set -x
 
 # Cleanup to run whenever we exit
 function exit_cleanup()

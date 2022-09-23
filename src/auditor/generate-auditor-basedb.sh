@@ -13,7 +13,8 @@
 # user running this script must be Postgres superuser
 # and be allowed to create/drop databases.
 #
-set -eux
+set -eu
+# set -x
 
 function get_iban() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
