@@ -120,8 +120,10 @@ else
 fi
 echo -n "Setting up Postgres DB"
 POSTGRES_PATH=`dirname $INITDB_BIN`
-TMPDIR=`mktemp -d /tmp/taler-test-postgresXXXXXX`
-$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > postgres-dbinit.log 2> postgres-dbinit.err
+MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+TMPDIR="$MYDIR/postgres/"
+mkdir -p $TMPDIR
+$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > ${MYDIR}/postgres-dbinit.log 2> ${MYDIR}/postgres-dbinit.err
 echo " DONE"
 mkdir ${TMPDIR}/sockets
 echo -n "Launching Postgres service"
@@ -135,12 +137,11 @@ listen_addresses=''
 EOF
 cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
 mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
-${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > postgres-start.log 2> postgres-start.err
+${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > ${MYDIR}/postgres-start.log 2> ${MYDIR}/postgres-start.err
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/auditor-basedb
 then
@@ -151,7 +152,6 @@ then
     else
         echo "Cleaning up $MYDIR..."
         rm -rf $MYDIR || echo "Removing $MYDIR failed"
-        rm -rf $TMPDIR || echo "Removing $TMPDIR failed"
     fi
 else
     echo "Generation failed"
