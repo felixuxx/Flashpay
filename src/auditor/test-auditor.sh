@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #  This file is part of TALER
-#  Copyright (C) 2014-2021 Taler Systems SA
+#  Copyright (C) 2014-2022 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -1207,7 +1207,7 @@ function test_16() {
     echo PASS
 
     stop_libeufin
-    echo "Second modification: wire nothing" 
+    echo "Second modification: wire nothing"
     NEW_AMOUNT="TESTKUDOS:0"
     echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | sqlite3 ${MYDIR}/${DB}-nexus.sqlite3
     launch_libeufin
@@ -2028,7 +2028,7 @@ function check_with_database()
 
 # ####### Setup globals ######
 # Postgres database to use
-DB=auditor-basedb
+export DB=auditor-basedb
 
 # test required commands exist
 echo "Testing for jq"

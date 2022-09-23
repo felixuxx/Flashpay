@@ -591,16 +591,19 @@ exit_cleanup
 echo "Dumping database"
 echo "Dumping PostgreSQL database: ${BASEDB}.sql"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
-echo "Dumping libeufin database: ${BASEDB}-libeufin.sql"
+echo "Dumping libeufin database: ${TARGET_DB}-libeufin-*.sql"
+cd $MY_TMP_DIR
 sqlite3 ${TARGET_DB}-nexus.sqlite3 ".dump" > ${BASEDB}-libeufin-nexus.sql
 sqlite3 ${TARGET_DB}-sandbox.sqlite3 ".dump" > ${BASEDB}-libeufin-sandbox.sql
 
+rm ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 # libeufin DB
+
+cd $ORIGIN
+
 echo $MASTER_PUB > ${BASEDB}.mpub
 
-# clean up
 echo "Final clean up"
 dropdb $TARGET_DB
-rm ${TARGET_DB}-sandbox.sqlite3 ${TARGET_DB}-nexus.sqlite3 # libeufin DB
 
 echo "====================================="
 echo "  Finished generation of $BASEDB "

@@ -14,7 +14,7 @@
 # and be allowed to create/drop databases.
 #
 set -eu
-# set -x
+#set -x
 
 function get_iban() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
