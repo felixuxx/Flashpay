@@ -5324,7 +5324,7 @@ TALER_EXCHANGE_reserves_open (
  * Cancel a reserve status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the reserve request handle
+ * @param roh the reserve open request handle
  */
 void
 TALER_EXCHANGE_reserves_open_cancel (
@@ -5416,11 +5416,11 @@ TALER_EXCHANGE_reserves_get_attestable (
  * Cancel a request to get attestable attributes.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the reserve request handle
+ * @param rgah the reserve get attestable request handle
  */
 void
 TALER_EXCHANGE_reserves_get_attestable_cancel (
-  struct TALER_EXCHANGE_ReservesGetAttestHandle *roh);
+  struct TALER_EXCHANGE_ReservesGetAttestHandle *rgah);
 
 
 /**
@@ -5499,11 +5499,11 @@ TALER_EXCHANGE_reserves_attest (
  * Cancel a reserve status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the reserve request handle
+ * @param rah the reserve attest request handle
  */
 void
 TALER_EXCHANGE_reserves_attest_cancel (
-  struct TALER_EXCHANGE_ReservesAttestHandle *roh);
+  struct TALER_EXCHANGE_ReservesAttestHandle *rah);
 
 
 /* *********************  /reserves/$RID/close *********************** */
@@ -5583,10 +5583,10 @@ TALER_EXCHANGE_reserves_close (
  * Cancel a reserve status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param rsh the reserve request handle
+ * @param rch the reserve request handle
  */
 void
 TALER_EXCHANGE_reserves_close_cancel (
-  struct TALER_EXCHANGE_ReservesCloseHandle *roh);
+  struct TALER_EXCHANGE_ReservesCloseHandle *rch);
 
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

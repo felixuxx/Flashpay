@@ -3111,6 +3111,9 @@ TALER_wallet_reserve_open_deposit_verify (
 /**
  * Sign a request to close a reserve.
  *
+ * @param request_timestamp when was the request created
+ * @param h_payto where to send the funds (NULL allowed to send
+ *        to origin of the reserve)
  * @param reserve_priv key identifying the reserve
  * @param[out] reserve_sig resulting signature
  */
@@ -3125,6 +3128,9 @@ TALER_wallet_reserve_close_sign (
 /**
  * Verify wallet request to close an account.
  *
+ * @param request_timestamp when was the request created
+ * @param h_payto where to send the funds (NULL/all zeros
+ *        allowed to send to origin of the reserve)
  * @param reserve_pub account’s public key
  * @param reserve_sig the signature made with purpose #TALER_SIGNATURE_WALLET_RESERVE_CLOSE
  * @return #GNUNET_OK if the signature is valid
