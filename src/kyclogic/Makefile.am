@@ -28,6 +28,9 @@ libtalerkyclogic_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   $(XLIB)
+libtalerkyclogic_la_LDFLAGS = \
+  -version-info 0:0:0 \
+  -no-undefined
 
 
 bin_PROGRAMS = \
@@ -72,10 +75,14 @@ libtaler_plugin_kyclogic_oauth2_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_oauth2_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  -lcurl \
   $(XLIB)
 
 libtaler_plugin_kyclogic_kycaid_la_SOURCES = \
@@ -84,9 +91,12 @@ libtaler_plugin_kyclogic_kycaid_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_kycaid_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   -lcurl \
@@ -98,10 +108,14 @@ libtaler_plugin_kyclogic_persona_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_persona_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
-  libtalerkyclogic.la \
+  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
+  $(top_builddir)/src/templating/libtalertemplating.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   -lcurl \
