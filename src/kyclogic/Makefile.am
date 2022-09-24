@@ -106,9 +106,11 @@ libtaler_plugin_kyclogic_persona_la_SOURCES = \
   plugin_kyclogic_persona.c
 libtaler_plugin_kyclogic_persona_la_LIBADD = \
   $(LTLIBINTL)
+libtaler_plugin_kyclogic_persona_la_DEPENDENCIES = \
+  libtalerkyclogic.la
 libtaler_plugin_kyclogic_persona_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
-  $(top_builddir)/src/kyclogic/libtalerkyclogic.la \
+  libtalerkyclogic.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
