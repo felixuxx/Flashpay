@@ -22,8 +22,8 @@ SUBDIRS = \
   curl \
   $(PQ_DIR) \
   $(SQ_DIR) \
-  templating \
   mhd \
+  templating \
   bank-lib \
   exchangedb \
   kyclogic \

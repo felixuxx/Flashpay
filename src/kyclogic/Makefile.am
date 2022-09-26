@@ -68,6 +68,9 @@ libtaler_plugin_kyclogic_template_la_SOURCES = \
   plugin_kyclogic_template.c
 libtaler_plugin_kyclogic_template_la_LIBADD = \
   $(LTLIBINTL)
+libtaler_plugin_kyclogic_template_la_LDFLAGS = \
+  $(TALER_PLUGIN_LDFLAGS) \
+  $(XLIB)
 
 libtaler_plugin_kyclogic_oauth2_la_SOURCES = \
   plugin_kyclogic_oauth2.c

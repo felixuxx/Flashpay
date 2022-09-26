@@ -18,6 +18,9 @@ libtalertemplating_la_SOURCES = \
   mustach-jansson.c mustach-jansson.h \
   templating_api.c
 libtalertemplating_la_LIBADD = \
+  $(top_builddir)/src/mhd/libtalermhd.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -ljansson \
   -lgnunetutil \
   $(XLIB)
 libtalertemplating_la_LDFLAGS = \

@@ -1,6 +1,7 @@
 usr/bin/taler-exchange-aggregator
 usr/bin/taler-exchange-closer
 usr/bin/taler-exchange-dbinit
+usr/bin/taler-exchange-drain
 usr/bin/taler-exchange-expire
 usr/bin/taler-exchange-httpd
 usr/bin/taler-exchange-router
@@ -10,6 +11,7 @@ usr/bin/taler-exchange-secmod-rsa
 usr/bin/taler-exchange-transfer
 usr/bin/taler-exchange-wirewatch
 usr/bin/taler-exchange-wire-gateway-client
+usr/lib/*/taler/libtaler_plugin_kyclogic_*.so
 usr/share/man/man1/taler-exchange-aggregator*
 usr/share/man/man1/taler-exchange-closer*
 usr/share/man/man1/taler-exchange-dbinit*
@@ -26,6 +28,7 @@ usr/share/man/man1/taler-exchange-wire-gateway-client*
 usr/share/info/taler-bank*
 usr/share/info/taler-exchange*
 usr/share/taler/config.d/*
+usr/share/taler/exchange/templates/*.must
 
 # configuration files in /etc/taler
 debian/etc-taler-exchange/* etc/

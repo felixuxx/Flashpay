@@ -3,6 +3,7 @@ usr/bin/taler-aggregator-benchmark
 usr/bin/taler-exchange-benchmark
 usr/bin/taler-fakebank-run
 usr/bin/taler-bank-benchmark
+usr/bin/taler-exchange-kyc-tester
 
 # Only used in test cases.  Maybe these
 # shouldn't even be installed?
