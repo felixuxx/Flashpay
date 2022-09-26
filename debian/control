@@ -39,7 +39,12 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: libraries to talk to a GNU Taler exchange
+Description: Libraries to talk to a GNU Taler exchange.
+  The package also contains various files fundamental
+  to all GNU Taler installations, such as the
+  taler-config configuration command-line tool,
+  various base configuration files and associated
+  documentation.
 
 Package: taler-exchange-database
 Architecture: any
@@ -50,7 +55,10 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: programs and libraries to manage a GNU Taler exchange database
+Description: Programs and libraries to manage a GNU Taler exchange database.
+ This package contains only the code to setup the
+ (Postgresql) database interaction (taler-exchange-dbinit
+ and associated resource files).
 
 Package: taler-exchange
 Architecture: any
@@ -69,7 +77,22 @@ Depends:
 Recommends:
   taler-exchange-offline (= ${binary:Version}),
   postgresql (>=13.0)
-Description: GNU's payment system operator
+Description: GNU's payment system operator.
+  GNU Taler is the privacy-preserving digital payment
+  system from the GNU project. This package contains the
+  core logic that must be run by the payment service
+  provider or bank to offer payments to consumers and
+  merchants.  At least one exchange must be operated
+  per currency.
+  In addition to the core logic, an exchange operator
+  must also have a system running the "offline" logic
+  which is packaged as taler-exchange-offline. It is
+  recommended to keep the "offline" logic on a system
+  that is never connected to the Internet. However, it
+  is also possible to run the "offline" logic directly
+  on the production system, especially for testing.
+  Finally, an exchange operator should also be prepared
+  to run a taler-auditor.
 
 Package: taler-exchange-offline
 Architecture: any
@@ -82,7 +105,14 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: tools for managing the GNU Taler exchange offline keys
+Description: Tools for managing the GNU Taler exchange offline keys.
+ A GNU Taler exchange uses an offline key to sign its online
+ keys, fee structure, bank routing information and other meta
+ data. The offline signing key is the root of the Taler PKI
+ that is then embedded in consumer wallets and merchant backends.
+ This package includes the tool to download material to sign
+ from the exchange, create signatures, and upload the resulting
+ signatures to the exchange.
 
 Package: taler-auditor
 Architecture: any
@@ -98,7 +128,15 @@ Depends:
  python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: GNU's payment system auditor
+Description: GNU's payment system auditor.
+  GNU Taler is the privacy-preserving digital payment
+  system from the GNU project. This package contains the
+  auditor logic. It verifies that the taler-exchange run
+  by a payment service provider is correctly performing
+  its bank transactions and thus has the correct balance
+  in its escrow account.  Each exchange operator is
+  expected to make use of one or more auditors as part
+  of its regulatory compliance.
 
 Package: libtalerexchange-dev
 Section: libdevel
