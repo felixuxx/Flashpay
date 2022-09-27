@@ -4916,7 +4916,6 @@ struct TALER_EXCHANGE_AccountMergeResponse
       uint64_t requirement_row;
     } unavailable_for_legal_reasons;
 
-
   } details;
 
 };
@@ -5496,7 +5495,7 @@ TALER_EXCHANGE_reserves_attest (
 
 
 /**
- * Cancel a reserve status request.  This function cannot be used
+ * Cancel a reserve attestation request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
  * @param rah the reserve attest request handle
