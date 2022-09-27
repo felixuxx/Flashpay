@@ -3059,7 +3059,16 @@ TALER_wallet_account_merge_verify (
 
 
 /**
- * FIXME.
+ * Sign a request to keep a reserve open.
+ *
+ * @param reserve_payment how much to pay from the
+ *        reserve's own balance for opening the reserve
+ * @param request_timestamp when was the request created
+ * @param reserve_expiration desired expiration time for the reserve
+ * @param purse_limit minimum number of purses the client
+ *       wants to have concurrently open for this reserve
+ * @param reserve_priv key identifying the reserve
+ * @param[out] reserve_sig resulting signature
  */
 void
 TALER_wallet_reserve_open_sign (
@@ -3072,7 +3081,17 @@ TALER_wallet_reserve_open_sign (
 
 
 /**
- * FIXME.
+ * Verify a request to keep a reserve open.
+ *
+ * @param reserve_payment how much to pay from the
+ *        reserve's own balance for opening the reserve
+ * @param request_timestamp when was the request created
+ * @param reserve_expiration desired expiration time for the reserve
+ * @param purse_limit minimum number of purses the client
+ *       wants to have concurrently open for this reserve
+ * @param reserve_pub key identifying the reserve
+ * @param reserve_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_open_verify (
@@ -3085,7 +3104,13 @@ TALER_wallet_reserve_open_verify (
 
 
 /**
- * FIXME.
+ * Sign to deposit coin to pay for keeping a reserve open.
+ *
+ * @param coin_contribution how much the coin should contribute
+ * @param reserve_pub public key of the reserve
+ * @param request_timestamp time of the open request
+ * @param coin_priv private key of the coin
+ * @param[out] coin_sig signature by the coin
  */
 void
 TALER_wallet_reserve_open_deposit_sign (
@@ -3097,7 +3122,14 @@ TALER_wallet_reserve_open_deposit_sign (
 
 
 /**
- * FIXME.
+ * Verify signature that deposits coin to pay for keeping a reserve open.
+ *
+ * @param coin_contribution how much the coin should contribute
+ * @param reserve_pub public key of the reserve
+ * @param request_timestamp time of the open request
+ * @param coin_pub public key of the coin
+ * @param coin_sig signature by the coin
+ * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_open_deposit_verify (

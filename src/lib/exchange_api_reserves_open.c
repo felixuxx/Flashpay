@@ -278,6 +278,13 @@ handle_reserves_open_finished (void *cls,
     rs.hr.ec = TALER_JSON_get_error_code (j);
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_CONFLICT:
+    // FIXME: not yet specified, but needed in
+    // case of double-spending or insufficient
+    // reserve balance!
+    rs.hr.ec = TALER_JSON_get_error_code (j);
+    rs.hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     if (GNUNET_OK !=
         handle_reserves_open_kyc (roh,

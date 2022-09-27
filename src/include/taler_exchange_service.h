@@ -5538,7 +5538,30 @@ struct TALER_EXCHANGE_ReserveCloseResult
     struct
     {
 
+      /**
+       * Amount wired to the target account.
+       */
+      struct TALER_Amount wire_amount;
     } ok;
+
+    /**
+     * Information returned if KYC is required to proceed, set if
+     * @e hr.http_status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
+     */
+    struct
+    {
+      /**
+       * Requirement row that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t requirement_row;
+
+      /**
+       * Hash of the payto-URI of the account to KYC;
+       */
+      struct TALER_PaytoHashP h_payto;
+
+    } unavailable_for_legal_reasons;
 
   } details;
 
