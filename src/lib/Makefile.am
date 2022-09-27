@@ -60,6 +60,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_refresh_common.c exchange_api_refresh_common.h \
   exchange_api_refreshes_reveal.c \
   exchange_api_refund.c \
+  exchange_api_reserves_attest.c \
   exchange_api_reserves_close.c \
   exchange_api_reserves_get.c \
   exchange_api_reserves_get_attestable.c \

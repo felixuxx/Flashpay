@@ -5451,6 +5451,30 @@ struct TALER_EXCHANGE_ReservePostAttestResult
      */
     struct
     {
+      /**
+       * Time when the exchange made the signature.
+       */
+      struct GNUNET_TIME_Timestamp exchange_time;
+
+      /**
+       * Current expiration time of the reserve.
+       */
+      struct GNUNET_TIME_Timestamp expiration_time;
+
+      /**
+       * Signature by the exchange affirming the attributes.
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Online signing key used by the exchange.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * Attributes being confirmed by the exchange.
+       */
+      const json_t *attributes;
 
     } ok;
 

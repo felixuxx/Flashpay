@@ -3201,7 +3201,13 @@ TALER_wallet_account_setup_verify (
 
 
 /**
- * FIXME.
+ * Sign request to the exchange to confirm certain
+ * @a details about the owner of a reserve.
+ *
+ * @param request_timestamp when was the request created
+ * @param details which attributes are requested
+ * @param reserve_priv private key of the reserve
+ * @param[out] reserve_sig where to store the signature
  */
 void
 TALER_wallet_reserve_attest_request_sign (
@@ -3212,7 +3218,14 @@ TALER_wallet_reserve_attest_request_sign (
 
 
 /**
- * FIXME.
+ * Verify request to the exchange to confirm certain
+ * @a details about the owner of a reserve.
+ *
+ * @param request_timestamp when was the request created
+ * @param details which attributes are requested
+ * @param reserve_priv private key of the reserve
+ * @param reserve_sig where to store the signature
+ * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_attest_request_verify (
@@ -4248,6 +4261,53 @@ TALER_exchange_online_reserve_closed_verify (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Create signature by exchange affirming that a reserve
+ * has had certain attributes verified via KYC.
+ *
+ * @param scb function to call to create the signature
+ * @param attest_timestamp our time
+ * @param expiration_time when does the KYC data expire
+ * @param reserve_pub for which reserve are attributes attested
+ * @param attributes JSON object with attributes being attested to
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_reserve_attest_details_sign (
+  TALER_ExchangeSignCallback scb,
+  struct GNUNET_TIME_Timestamp attest_timestamp,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *attributes,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify signature by exchange affirming that a reserve
+ * has had certain attributes verified via KYC.
+ *
+ * @param scb function to call to create the signature
+ * @param attest_timestamp our time
+ * @param expiration_time when does the KYC data expire
+ * @param reserve_pub for which reserve are attributes attested
+ * @param attributes JSON object with attributes being attested to
+ * @param pub exchange public key
+ * @param sig exchange signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_reserve_attest_details_verify (
+  struct GNUNET_TIME_Timestamp attest_timestamp,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const json_t *attributes,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
 
 
 /**
