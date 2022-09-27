@@ -62,6 +62,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_refund.c \
   exchange_api_reserves_close.c \
   exchange_api_reserves_get.c \
+  exchange_api_reserves_get_attestable.c \
   exchange_api_reserves_history.c \
   exchange_api_reserves_open.c \
   exchange_api_reserves_status.c \
