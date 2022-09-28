@@ -28,6 +28,24 @@
 
 
 /**
+ * Information we track per coin used to pay for opening the
+ * reserve.
+ */
+struct CoinDetail
+{
+  /**
+   * Name of the command and index of the coin to use.
+   */
+  char *name;
+
+  /**
+   * Amount to charge to this coin.
+   */
+  struct TALER_Amount amount;
+};
+
+
+/**
  * State for a "open" CMD.
  */
 struct OpenState
@@ -39,6 +57,21 @@ struct OpenState
   const char *reserve_reference;
 
   /**
+   * Requested expiration time.
+   */
+  struct GNUNET_TIME_Relative req_expiration_time;
+
+  /**
+   * Requested minimum number of purses.
+   */
+  uint32_t min_purses;
+
+  /**
+   * Amount to pay for the opening from the reserve balance.
+   */
+  struct TALER_Amount reserve_pay;
+
+  /**
    * Handle to the "reserve open" operation.
    */
   struct TALER_EXCHANGE_ReservesOpenHandle *rsh;
@@ -47,6 +80,16 @@ struct OpenState
    * Expected reserve balance.
    */
   const char *expected_balance;
+
+  /**
+   * Length of the @e cd array.
+   */
+  unsigned int cpl;
+
+  /**
+   * Coin details, array of length @e cpl.
+   */
+  struct CoinDetail *cd;
 
   /**
    * Private key of the reserve being analyzed.
@@ -122,6 +165,7 @@ open_run (void *cls,
 {
   struct OpenState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
+  struct TALER_EXCHANGE_PurseDeposit cp[GNUNET_NZL (ss->cpl)];
 
   ss->is = is;
   create_reserve
@@ -145,10 +189,80 @@ open_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ss->reserve_priv->eddsa_priv,
                                       &ss->reserve_pub.eddsa_pub);
-  ss->rsh = TALER_EXCHANGE_reserves_open (is->exchange,
-                                          ss->reserve_priv,
-                                          &reserve_open_cb,
-                                          ss);
+  for (unsigned int i = 0; i<ss->cpl; i++)
+  {
+    struct TALER_EXCHANGE_PurseDeposit *cpi = &cp[i];
+    struct TALER_TESTING_Command *cmdi;
+    const struct TALER_AgeCommitmentProof *age_commitment_proof;
+    const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+    const struct TALER_DenominationSignature *denom_sig;
+    const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+    char *cref;
+    unsigned int cidx;
+
+    if (GNUNET_OK !=
+        TALER_TESTING_parse_coin_reference (ss->cd[i].name,
+                                            &cref,
+                                            &cidx))
+    {
+      GNUNET_break (0);
+      TALER_LOG_ERROR ("Failed to parse coin reference `%s'\n",
+                       ss->cd[i].name);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    cmdi = TALER_TESTING_interpreter_lookup_command (is,
+                                                     cref);
+    GNUNET_free (cref);
+    if (NULL == cmdi)
+    {
+      GNUNET_break (0);
+      TALER_LOG_ERROR ("Command `%s' not found\n",
+                       ss->cd[i].name);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if ( (GNUNET_OK !=
+          TALER_TESTING_get_trait_age_commitment_proof (cmdi,
+                                                        cidx,
+                                                        &age_commitment_proof))
+         ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_coin_priv (cmdi,
+                                             cidx,
+                                             &coin_priv)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_denom_sig_priv (cmdi,
+                                                  cidx,
+                                                  &denom_sig)) ||
+         (GNUNET_OK !=
+          TALER_TESTING_get_trait_denom_pub (cmdi,
+                                             cidx,
+                                             &denom_pub)) )
+    {
+      GNUNET_break (0);
+      TALER_LOG_ERROR ("Coin trait not found in `%s'\n",
+                       ss->cd[i].name);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    TALER_denom_pub_hash (denom_pub,
+                          &cpi->h_denom_pub);
+    cpi->age_commitment_proof = age_commitment_proof;
+    cpi->coin_priv = *coin_priv;
+    cpi->denom_sig = *denom_sig;
+    cpi->amount = ss->cd[i].amount;
+  }
+  ss->rsh = TALER_EXCHANGE_reserves_open (
+    is->exchange,
+    ss->reserve_priv,
+    &ss->reserve_pay,
+    ss->cpl,
+    cp,
+    GNUNET_TIME_relative_to_timestamp (ss->req_expiration_time),
+    ss->min_purses,
+    &reserve_open_cb,
+    ss);
 }
 
 
@@ -188,12 +302,40 @@ TALER_TESTING_cmd_reserve_open (const char *label,
                                 ...)
 {
   struct OpenState *ss;
+  va_list ap;
+  const char *name;
+  unsigned int i;
 
   GNUNET_assert (NULL != reserve_reference);
   ss = GNUNET_new (struct OpenState);
   ss->reserve_reference = reserve_reference;
-  ss->expected_balance = expected_balance;
+  ss->req_expiration_time = expiration_time;
+  ss->min_purses = min_purses;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (reserve_pay,
+                                         &ss->reserve_pay));
   ss->expected_response_code = expected_response_code;
+  va_start (ap,
+            expected_response_code);
+  while (NULL != (name = va_arg (ap, const char *)))
+    ss->cpl++;
+  va_end (ap);
+  GNUNET_assert (0 == (ss->cpl % 2));
+  ss->cd = GNUNET_new_array (ss->cpl,
+                             struct CoinDetail);
+  i = 0;
+  va_start (ap,
+            expected_response_code);
+  while (NULL != (name = va_arg (ap, const char *)))
+  {
+    ap[i].name = name;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_string_to_amount (va_arg (ap,
+                                                   const char *),
+                                           &ap[i].amount));
+    i++;
+  }
+  va_end (ap);
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ss,
