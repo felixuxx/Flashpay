@@ -36,7 +36,7 @@ struct CoinDetail
   /**
    * Name of the command and index of the coin to use.
    */
-  char *name;
+  const char *name;
 
   /**
    * Amount to charge to this coin.
@@ -122,11 +122,10 @@ struct OpenState
  */
 static void
 reserve_open_cb (void *cls,
-                 const struct TALER_EXCHANGE_ReserveOpen *rs)
+                 const struct TALER_EXCHANGE_ReserveOpenResult *rs)
 {
   struct OpenState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
-  struct TALER_Amount eb;
 
   ss->rsh = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
@@ -192,7 +191,7 @@ open_run (void *cls,
   for (unsigned int i = 0; i<ss->cpl; i++)
   {
     struct TALER_EXCHANGE_PurseDeposit *cpi = &cp[i];
-    struct TALER_TESTING_Command *cmdi;
+    const struct TALER_TESTING_Command *cmdi;
     const struct TALER_AgeCommitmentProof *age_commitment_proof;
     const struct TALER_CoinSpendPrivateKeyP *coin_priv;
     const struct TALER_DenominationSignature *denom_sig;
@@ -232,9 +231,9 @@ open_run (void *cls,
                                              cidx,
                                              &coin_priv)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_denom_sig_priv (cmdi,
-                                                  cidx,
-                                                  &denom_sig)) ||
+          TALER_TESTING_get_trait_denom_sig (cmdi,
+                                             cidx,
+                                             &denom_sig)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_pub (cmdi,
                                              cidx,
@@ -246,12 +245,11 @@ open_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    TALER_denom_pub_hash (denom_pub,
-                          &cpi->h_denom_pub);
     cpi->age_commitment_proof = age_commitment_proof;
     cpi->coin_priv = *coin_priv;
     cpi->denom_sig = *denom_sig;
     cpi->amount = ss->cd[i].amount;
+    cpi->h_denom_pub = denom_pub->h_key;
   }
   ss->rsh = TALER_EXCHANGE_reserves_open (
     is->exchange,
@@ -328,11 +326,11 @@ TALER_TESTING_cmd_reserve_open (const char *label,
             expected_response_code);
   while (NULL != (name = va_arg (ap, const char *)))
   {
-    ap[i].name = name;
+    ss->cd[i].name = name;
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (va_arg (ap,
                                                    const char *),
-                                           &ap[i].amount));
+                                           &ss->cd[i].amount));
     i++;
   }
   va_end (ap);
