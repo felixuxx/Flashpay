@@ -2,7 +2,7 @@
 
 # use as .git/hooks/pre-commit
 exec 1>&2
-
+return 0
 RET=0
 changed=$(git diff --cached --name-only)
 crustified=""

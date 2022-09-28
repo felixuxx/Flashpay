@@ -1525,6 +1525,76 @@ TALER_TESTING_cmd_reserve_status (const char *label,
 
 
 /**
+ * Create a POST "/reserves/$RID/open" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to open.
+ * @param reserve_pay amount to pay from the reserve balance
+ * @param expiration_time how long into the future should the reserve remain open
+ * @param min_purses minimum number of purses to allow
+ * @param expected_response_code expected HTTP response code.
+ * @param ... NULL terminated list of pairs of coin references and amounts
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_open (const char *label,
+                                const char *reserve_reference,
+                                const char *reserve_pay,
+                                struct GNUNET_TIME_Relative expiration_time,
+                                uint32_t min_purses,
+                                unsigned int expected_response_code,
+                                ...);
+
+
+/**
+ * Create a GET "/reserves/$RID/attest" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to get attestable attributes of.
+ * @param expected_response_code expected HTTP response code.
+ * @param ... NULL-terminated list of attributes expected
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_get_attestable (const char *label,
+                                          const char *reserve_reference,
+                                          unsigned int expected_response_code,
+                                          ...);
+
+
+/**
+ * Create a POST "/reserves/$RID/attest" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to get attests for
+ * @param expected_response_code expected HTTP response code.
+ * @param ... NULL-terminated list of attributes that should be attested
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_attest (const char *label,
+                                  const char *reserve_reference,
+                                  unsigned int expected_response_code,
+                                  ...);
+
+
+/**
+ * Create a POST "/reserves/$RID/close" command.
+ *
+ * @param label the command label.
+ * @param reserve_reference reference to the reserve to close.
+ * @param target_account where to wire funds remaining, can be NULL
+ * @param expected_response_code expected HTTP response code.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_reserve_close (const char *label,
+                                 const char *reserve_reference,
+                                 const char *target_account,
+                                 unsigned int expected_response_code);
+
+
+/**
  * Create a "deposit" command.
  *
  * @param label command label.
