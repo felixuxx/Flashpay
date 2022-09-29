@@ -131,7 +131,7 @@ TALER_age_mask_to_string (
  *
  * @param ext Pointer to the current extension
  */
-void
+static void
 age_restriction_disable (
   struct TALER_Extension *ext)
 {
@@ -282,12 +282,12 @@ age_restriction_load_json_config (
 
 
 /**
- * @brief implements the TALER_Extension.load_json_config interface.
+ * @brief implements the TALER_Extension.config_to_json interface.
  *
  * @param ext if NULL, only tests the configuration
- * @return configuration as json_t* object
+ * @return configuration as json_t* object, maybe NULL
  */
-json_t *
+static json_t *
 age_restriction_config_to_json (
   const struct TALER_Extension *ext)
 {
@@ -295,7 +295,13 @@ age_restriction_config_to_json (
   json_t *conf;
 
   GNUNET_assert (NULL != ext);
-  GNUNET_assert (NULL != ext->config);
+
+  if (NULL == ext->config)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "age restriction not configured");
+    return json_null ();
+  }
 
   if (NULL != ext->config_json)
   {
