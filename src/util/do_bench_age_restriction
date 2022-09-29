@@ -1,0 +1,8 @@
+#!/bin/sh
+
+gcc bench_age_restriction.c \
+   -lgnunetutil -lgnunetjson -lsodium -ljansson \
+   -L/usr/lib/x86_64-linux-gnu -lmicrohttpd -ltalerutil -lm \
+   -I../include \
+   -o bench_age_restriction && ./bench_age_restriction
+
