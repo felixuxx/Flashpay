@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -14,20 +14,19 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserves_history.h
- * @brief Handle /reserves/$RESERVE_PUB/history requests
- * @author Florian Dold
+ * @file taler-exchange-httpd_reserves_close.h
+ * @brief Handle /reserves/$RESERVE_PUB/close requests
  * @author Christian Grothoff
  */
-#ifndef TALER_EXCHANGE_HTTPD_RESERVES_HISTORY_H
-#define TALER_EXCHANGE_HTTPD_RESERVES_HISTORY_H
+#ifndef TALER_EXCHANGE_HTTPD_RESERVES_CLOSE_H
+#define TALER_EXCHANGE_HTTPD_RESERVES_CLOSE_H
 
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
 
 
 /**
- * Handle a POST "/reserves/$RID/history" request.
+ * Handle a POST "/reserves/$RID/close" request.
  *
  * @param rc request context
  * @param reserve_pub public key of the reserve
@@ -35,8 +34,8 @@
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reserves_history (struct TEH_RequestContext *rc,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const json_t *root);
+TEH_handler_reserves_close (struct TEH_RequestContext *rc,
+                            const struct TALER_ReservePublicKeyP *reserve_pub,
+                            const json_t *root);
 
 #endif

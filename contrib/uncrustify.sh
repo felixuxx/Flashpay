@@ -9,6 +9,6 @@ if ! uncrustify --version >/dev/null; then
   exit 1
 fi
 
-find "$DIR/../src" \( -name "*.cpp" -o -name "*.c" -o -name "*.h" \) | grep -v mustach \
+find "$DIR/../src" \( -name "*.cpp" -o -name "*.c" -o -name "*.h" \) \
   -exec uncrustify -c "$DIR/uncrustify.cfg" --replace --no-backup {} + \
   || true
