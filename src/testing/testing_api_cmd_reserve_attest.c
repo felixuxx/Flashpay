@@ -26,7 +26,6 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_testing_lib.h"
 
-
 /**
  * State for a "attest" CMD.
  */
@@ -44,11 +43,6 @@ struct AttestState
   struct TALER_EXCHANGE_ReservesAttestHandle *rsh;
 
   /**
-   * Expected reserve balance.
-   */
-  const char *expected_balance;
-
-  /**
    * Private key of the reserve being analyzed.
    */
   const struct TALER_ReservePrivateKeyP *reserve_priv;
@@ -57,6 +51,16 @@ struct AttestState
    * Public key of the reserve being analyzed.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Array of attributes to request, of length @e attrs_len.
+   */
+  const char **attrs;
+
+  /**
+   * Length of the @e attrs array.
+   */
+  unsigned int attrs_len;
 
   /**
    * Expected HTTP response code.
@@ -78,12 +82,12 @@ struct AttestState
  * @param rs HTTP response details
  */
 static void
-reserve_attest_cb (void *cls,
-                   const struct TALER_EXCHANGE_ReserveAttest *rs)
+reserve_attest_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_ReservePostAttestResult *rs)
 {
   struct AttestState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
-  struct TALER_Amount eb;
 
   ss->rsh = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
@@ -104,6 +108,7 @@ reserve_attest_cb (void *cls,
     TALER_TESTING_interpreter_next (is);
     return;
   }
+  /* FIXME: persist attestation... */
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -147,6 +152,8 @@ attest_run (void *cls,
                                       &ss->reserve_pub.eddsa_pub);
   ss->rsh = TALER_EXCHANGE_reserves_attest (is->exchange,
                                             ss->reserve_priv,
+                                            ss->attrs_len,
+                                            ss->attrs,
                                             &reserve_attest_cb,
                                             ss);
 }
@@ -174,6 +181,7 @@ attest_cleanup (void *cls,
     TALER_EXCHANGE_reserves_attest_cancel (ss->rsh);
     ss->rsh = NULL;
   }
+  GNUNET_free (ss->attrs);
   GNUNET_free (ss);
 }
 
@@ -185,12 +193,29 @@ TALER_TESTING_cmd_reserve_attest (const char *label,
                                   ...)
 {
   struct AttestState *ss;
+  unsigned int num_args;
+  const char *ea;
+  va_list ap;
+
+  num_args = 0;
+  va_start (ap, expected_response_code);
+  while (NULL != va_arg (ap, const char *))
+    num_args++;
+  va_end (ap);
 
   GNUNET_assert (NULL != reserve_reference);
   ss = GNUNET_new (struct AttestState);
   ss->reserve_reference = reserve_reference;
-  ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_response_code;
+  ss->attrs_len = num_args;
+  ss->attrs = GNUNET_new_array (num_args,
+                                const char *);
+  num_args = 0;
+  va_start (ap, expected_response_code);
+  while (NULL != (ea = va_arg (ap, const char *)))
+    ss->attrs[num_args++] = ea;
+  va_end (ap);
+
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ss,
