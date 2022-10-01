@@ -41,17 +41,17 @@ struct GetAttestableState
   /**
    * Handle to the "reserve get_attestable" operation.
    */
-  struct TALER_EXCHANGE_ReservesGetAttestableHandle *rsh;
+  struct TALER_EXCHANGE_ReservesGetAttestHandle *rgah;
 
   /**
-   * Expected reserve balance.
+   * Expected attestable attributes.
    */
-  const char *expected_balance;
+  const char **expected_attestables;
 
   /**
-   * Private key of the reserve being analyzed.
+   * Length of the @e expected_attestables array.
    */
-  const struct TALER_ReservePrivateKeyP *reserve_priv;
+  unsigned int expected_attestables_length;
 
   /**
    * Public key of the reserve being analyzed.
@@ -78,14 +78,14 @@ struct GetAttestableState
  * @param rs HTTP response details
  */
 static void
-reserve_get_attestable_cb (void *cls,
-                           const struct TALER_EXCHANGE_ReserveGetAttestable *rs)
+reserve_get_attestable_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_ReserveGetAttestResult *rs)
 {
   struct GetAttestableState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
-  struct TALER_Amount eb;
 
-  ss->rsh = NULL;
+  ss->rgah = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -104,6 +104,7 @@ reserve_get_attestable_cb (void *cls,
     TALER_TESTING_interpreter_next (is);
     return;
   }
+  // FIXME: check returned list matches expectations!
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -122,6 +123,8 @@ get_attestable_run (void *cls,
 {
   struct GetAttestableState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
+  const struct TALER_ReservePrivateKeyP *reserve_priv;
+  const struct TALER_ReservePublicKeyP *reserve_pub;
 
   ss->is = is;
   create_reserve
@@ -134,21 +137,31 @@ get_attestable_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  if (GNUNET_OK !=
+  if (GNUNET_OK ==
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
-                                            &ss->reserve_priv))
+                                            &reserve_priv))
   {
-    GNUNET_break (0);
-    TALER_LOG_ERROR ("Failed to find reserve_priv for get_attestable query\n");
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                        &ss->reserve_pub.eddsa_pub);
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (&ss->reserve_priv->eddsa_priv,
-                                      &ss->reserve_pub.eddsa_pub);
-  ss->rsh = TALER_EXCHANGE_reserves_get_attestable (is->exchange,
-                                                    ss->reserve_priv,
-                                                    &reserve_get_attestable_cb,
-                                                    ss);
+  else
+  {
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_reserve_pub (create_reserve,
+                                             &reserve_pub))
+    {
+      GNUNET_break (0);
+      TALER_LOG_ERROR (
+        "Failed to find reserve_priv for get_attestable query\n");
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    ss->reserve_pub = *reserve_pub;
+  }
+  ss->rgah = TALER_EXCHANGE_reserves_get_attestable (is->exchange,
+                                                     &ss->reserve_pub,
+                                                     &reserve_get_attestable_cb,
+                                                     ss);
 }
 
 
@@ -165,15 +178,16 @@ get_attestable_cleanup (void *cls,
 {
   struct GetAttestableState *ss = cls;
 
-  if (NULL != ss->rsh)
+  if (NULL != ss->rgah)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Command %u (%s) did not complete\n",
                 ss->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_reserves_get_attestable_cancel (ss->rsh);
-    ss->rsh = NULL;
+    TALER_EXCHANGE_reserves_get_attestable_cancel (ss->rgah);
+    ss->rgah = NULL;
   }
+  GNUNET_free (ss->expected_attestables);
   GNUNET_free (ss);
 }
 
@@ -185,12 +199,29 @@ TALER_TESTING_cmd_reserve_get_attestable (const char *label,
                                           ...)
 {
   struct GetAttestableState *ss;
+  va_list ap;
+  unsigned int num_expected;
+  const char *ea;
+
+  num_expected = 0;
+  va_start (ap, expected_response_code);
+  while (NULL != va_arg (ap, const char *))
+    num_expected++;
+  va_end (ap);
 
   GNUNET_assert (NULL != reserve_reference);
   ss = GNUNET_new (struct GetAttestableState);
   ss->reserve_reference = reserve_reference;
-  ss->expected_balance = expected_balance;
   ss->expected_response_code = expected_response_code;
+  ss->expected_attestables_length = num_expected;
+  ss->expected_attestables = GNUNET_new_array (num_expected,
+                                               const char *);
+  num_expected = 0;
+  va_start (ap, expected_response_code);
+  while (NULL != (ea = va_arg (ap, const char *)))
+    ss->expected_attestables[num_expected++] = ea;
+  va_end (ap);
+
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ss,

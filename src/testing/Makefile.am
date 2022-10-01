@@ -86,6 +86,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_refund.c \
   testing_api_cmd_refresh.c \
   testing_api_cmd_reserve_get.c \
+  testing_api_cmd_reserve_get_attestable.c \
   testing_api_cmd_reserve_history.c \
   testing_api_cmd_reserve_open.c \
   testing_api_cmd_reserve_purse.c \
