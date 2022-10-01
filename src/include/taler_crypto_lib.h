@@ -3223,7 +3223,7 @@ TALER_wallet_reserve_attest_request_sign (
  *
  * @param request_timestamp when was the request created
  * @param details which attributes are requested
- * @param reserve_priv private key of the reserve
+ * @param reserve_pub public key of the reserve
  * @param reserve_sig where to store the signature
  * @return #GNUNET_OK if the signature is valid
  */
@@ -4291,7 +4291,6 @@ TALER_exchange_online_reserve_attest_details_sign (
  * Verify signature by exchange affirming that a reserve
  * has had certain attributes verified via KYC.
  *
- * @param scb function to call to create the signature
  * @param attest_timestamp our time
  * @param expiration_time when does the KYC data expire
  * @param reserve_pub for which reserve are attributes attested
