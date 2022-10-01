@@ -131,8 +131,6 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
-  // FIXME: verify exchange signature!
-  // => needs crypto API first!
   rsh->cb (rsh->cb_cls,
            &rs);
   rsh->cb = NULL;
