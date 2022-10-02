@@ -23,6 +23,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
@@ -60,14 +61,14 @@ struct ReserveCloseContext
   struct TALER_ReserveSignatureP reserve_sig;
 
   /**
-   * Wire fees applying to the request.
-   */
-  const struct TALER_WireFeeSet *wf;
-
-  /**
    * Amount that will be wired (after closing fees).
    */
   struct TALER_Amount wire_amount;
+
+  /**
+   * Current balance of the reserve.
+   */
+  struct TALER_Amount balance;
 
   /**
    * Where to wire the funds, may be NULL.
@@ -75,10 +76,24 @@ struct ReserveCloseContext
   const char *payto_uri;
 
   /**
-   * Hash of the @e payto_uri.
+   * Hash of the @e payto_uri, if given (otherwise zero).
    */
   struct TALER_PaytoHashP h_payto;
 
+  /**
+   * KYC status for the request.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * Hash of the payto-URI that was used for the KYC decision.
+   */
+  struct TALER_PaytoHashP kyc_payto;
+
+  /**
+   * Query status from the amount_it() helper function.
+   */
+  enum GNUNET_DB_QueryStatus qs;
 };
 
 
@@ -98,6 +113,46 @@ reply_reserve_close_success (struct MHD_Connection *connection,
     MHD_HTTP_OK,
     TALER_JSON_pack_amount ("wire_amount",
                             &rhc->wire_amount));
+}
+
+
+/**
+ * Function called to iterate over KYC-relevant
+ * transaction amounts for a particular time range.
+ * Called within a database transaction, so must
+ * not start a new one.
+ *
+ * @param cls closure, identifies the event type and
+ *        account to iterate over events for
+ * @param limit maximum time-range for which events
+ *        should be fetched (timestamp in the past)
+ * @param cb function to call on each event found,
+ *        events must be returned in reverse chronological
+ *        order
+ * @param cb_cls closure for @a cb
+ */
+static void
+amount_it (void *cls,
+           struct GNUNET_TIME_Absolute limit,
+           TALER_EXCHANGEDB_KycAmountCallback cb,
+           void *cb_cls)
+{
+  struct ReserveCloseContext *rcc = cls;
+  enum GNUNET_GenericReturnValue ret;
+
+  ret = cb (cb_cls,
+            &rcc->balance,
+            GNUNET_TIME_absolute_get ());
+  GNUNET_break (GNUNET_SYSERR != ret);
+  if (GNUNET_OK != ret)
+    return;
+  rcc->qs
+    = TEH_plugin->iterate_reserve_close_info (
+        TEH_plugin->cls,
+        &rcc->kyc_payto,
+        limit,
+        cb,
+        cb_cls);
 }
 
 
@@ -124,17 +179,14 @@ reserve_close_transaction (void *cls,
   struct ReserveCloseContext *rcc = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount balance;
-  char *payto_uri;
+  char *payto_uri = NULL;
+  const struct TALER_WireFeeSet *wf;
 
-#if FIXME
-  qs = TEH_plugin->get_reserve_balance (TEH_plugin->cls,
-                                        rcc->reserve_pub,
-                                        &balance,
-                                        &payto_uri);
-#else
-  qs = GNUNET_DB_STATUS_HARD_ERROR;
-  payto_uri = NULL;
-#endif
+  qs = TEH_plugin->select_reserve_close_info (
+    TEH_plugin->cls,
+    rcc->reserve_pub,
+    &balance,
+    &payto_uri);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -143,7 +195,7 @@ reserve_close_transaction (void *cls,
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_reserve_balance");
+                                    "select_reserve_close_info");
     return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     return qs;
@@ -174,27 +226,66 @@ reserve_close_transaction (void *cls,
          (0 != strcmp (payto_uri,
                        rcc->payto_uri)) ) )
   {
-    struct TALER_EXCHANGEDB_KycStatus kyc;
-    struct TALER_PaytoHashP kyc_payto;
+    const char *kyc_needed;
 
-    /* FIXME: also fetch KYC status from reserve
-       in query above, and if payto_uri specified
-       and KYC not yet done (check KYC triggers!),
-       fail with 451 kyc required! */
-    *mhd_ret
-      = TEH_RESPONSE_reply_kyc_required (connection,
-                                         &kyc_payto,
-                                         &kyc);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    TALER_payto_hash (rcc->payto_uri,
+                      &rcc->kyc_payto);
+    rcc->qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    kyc_needed
+      = TALER_KYCLOGIC_kyc_test_required (
+          TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
+          &rcc->kyc_payto,
+          TEH_plugin->select_satisfied_kyc_processes,
+          TEH_plugin->cls,
+          &amount_it,
+          rcc);
+    if (rcc->qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == rcc->qs)
+        return rcc->qs;
+      GNUNET_break (0);
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                      "iterate_reserve_close_info");
+      return qs;
+    }
+    rcc->kyc.ok = false;
+    return TEH_plugin->insert_kyc_requirement_for_account (
+      TEH_plugin->cls,
+      kyc_needed,
+      &rcc->kyc_payto,
+      &rcc->kyc.requirement_row);
   }
 
+  rcc->kyc.ok = true;
   if (NULL == rcc->payto_uri)
     rcc->payto_uri = payto_uri;
+
+  {
+    char *method;
+
+    method = TALER_payto_get_method (rcc->payto_uri);
+    wf = TEH_wire_fees_by_time (rcc->timestamp,
+                                method);
+    if (NULL == wf)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
+                                             method);
+      GNUNET_free (method);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    GNUNET_free (method);
+  }
 
   if (0 >
       TALER_amount_subtract (&rcc->wire_amount,
                              &balance,
-                             &rcc->wf->closing))
+                             &wf->closing))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Client attempted to close reserve with insufficient balance.\n");
@@ -206,34 +297,29 @@ reserve_close_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
+
+  qs = TEH_plugin->insert_close_request (TEH_plugin->cls,
+                                         rcc->reserve_pub,
+                                         payto_uri,
+                                         &rcc->reserve_sig,
+                                         rcc->timestamp,
+                                         &wf->closing,
+                                         &rcc->wire_amount);
+  GNUNET_free (payto_uri);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
-#if FIXME
-    qs = TEH_plugin->insert_close_request (TEH_plugin->cls,
-                                           rcc->reserve_pub,
-                                           payto_uri,
-                                           &rcc->reserve_sig,
-                                           rcc->timestamp,
-                                           &rcc->wf->closing,
-                                           &rcc->wire_amount);
-#else
-    qs = GNUNET_DB_STATUS_HARD_ERROR;
-#endif
-    GNUNET_free (payto_uri);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "insert_close_request");
-      return qs;
-    }
-    if (qs <= 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
+    GNUNET_break (0);
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                    "insert_close_request");
+    return qs;
+  }
+  if (qs <= 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
   }
   return qs;
 }
@@ -295,18 +381,6 @@ TEH_handler_reserves_close (struct TEH_RequestContext *rc,
     }
   }
 
-  // FIXME: can only do this later, as we may get the payto://-URI
-  // with the method from the database!
-  rcc.wf = TEH_wire_fees_by_time (rcc.timestamp,
-                                  "FIXME-method");
-  if (NULL == rcc.wf)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
-                                       "FIXME-method");
-  }
   if (NULL != rcc.payto_uri)
     TALER_payto_hash (rcc.payto_uri,
                       &rcc.h_payto);
@@ -322,6 +396,7 @@ TEH_handler_reserves_close (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_RESERVES_CLOSE_BAD_SIGNATURE,
                                        NULL);
   }
+
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
                               "reserve close",
@@ -332,6 +407,11 @@ TEH_handler_reserves_close (struct TEH_RequestContext *rc,
   {
     return mhd_ret;
   }
+  if (! rcc.kyc.ok)
+    return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &rcc.kyc_payto,
+                                            &rcc.kyc);
+
   return reply_reserve_close_success (rc->connection,
                                       &rcc);
 }

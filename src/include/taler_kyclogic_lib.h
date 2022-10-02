@@ -68,7 +68,12 @@ enum TALER_KYCLOGIC_KycTriggerEvent
   /**
    * Wallet balance exceeds threshold.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 3
+  TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE = 3,
+
+  /**
+   * Reserve is being closed by force.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 4
 
 };
 

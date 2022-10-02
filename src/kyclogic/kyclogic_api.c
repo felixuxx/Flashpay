@@ -183,6 +183,7 @@ TALER_KYCLOGIC_kyc_trigger_from_string (const char *trigger_s,
     { "deposit", TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT  },
     { "merge", TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE },
     { "balance", TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
+    { "close", TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE },
     { NULL, 0 }
   };
 
@@ -213,6 +214,8 @@ TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger)
     return "merge";
   case TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE:
     return "balance";
+  case TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE:
+    return "close";
   }
   GNUNET_break (0);
   return NULL;

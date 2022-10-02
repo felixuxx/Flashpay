@@ -4093,6 +4093,47 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Select information needed to see if we can close
+   * a reserve.
+   *
+   * @param cls closure
+   * @param reserve_pub which reserve is this about?
+   * @param[out] balance current reserve balance
+   * @param[out] payto_uri set to URL of account that
+   *             originally funded the reserve;
+   *             could be set to NULL if not known
+   * @return transaction status code, 0 if reserve unknown
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_reserve_close_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    struct TALER_Amount *balance,
+    char **payto_uri);
+
+
+  /**
+   * Select information needed for KYC checks on reserve close: historic
+   * reserve closures going to the same account.
+   *
+   * @param cls closure
+   * @param h_payto which target account is this about?
+   * @param h_payto account identifier
+   * @param time_limit oldest transaction that could be relevant
+   * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
+   * @param kac_cls closure for @a kac
+   * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_reserve_close_info)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    struct GNUNET_TIME_Absolute time_limit,
+    TALER_EXCHANGEDB_KycAmountCallback kac,
+    void *kac_cls);
+
+
+  /**
    * Insert reserve close operation into database.
    *
    * @param cls closure
@@ -5537,16 +5578,20 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the account to close
+   * @param payto_uri where to wire the funds
    * @param reserve_sig signature affiming that the account is to be closed
    * @param request_timestamp timestamp of the close request
+   * @param closing_fee closing fee to charge
    * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*insert_close_request)(void *cls,
                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                          const char *payto_uri,
                           const struct TALER_ReserveSignatureP *reserve_sig,
                           struct GNUNET_TIME_Timestamp request_timestamp,
+                          const struct TALER_Amount *closing_fee,
                           struct TALER_Amount *final_balance);
 
 
