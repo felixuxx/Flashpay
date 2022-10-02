@@ -1342,14 +1342,9 @@ struct TALER_ReserveOpenDepositPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * When was the request created.
+   * Which reserve's opening signature should be paid for?
    */
-  struct GNUNET_TIME_TimestampNBO request_timestamp;
-
-  /**
-   * Which reserve's opening should be paid for?
-   */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_ReserveSignatureP reserve_sig;
 
   /**
    * Specifies how much of the coin's value should be spent on opening this
@@ -1364,16 +1359,14 @@ GNUNET_NETWORK_STRUCT_END
 void
 TALER_wallet_reserve_open_deposit_sign (
   const struct TALER_Amount *coin_contribution,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct TALER_ReserveOpenDepositPS rod = {
     .purpose.size = htonl (sizeof (rod)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT),
-    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
-    .reserve_pub = *reserve_pub
+    .reserve_sig = *reserve_sig
   };
 
   TALER_amount_hton (&rod.coin_contribution,
@@ -1388,16 +1381,14 @@ TALER_wallet_reserve_open_deposit_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_open_deposit_verify (
   const struct TALER_Amount *coin_contribution,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct TALER_ReserveOpenDepositPS rod = {
     .purpose.size = htonl (sizeof (rod)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT),
-    .request_timestamp = GNUNET_TIME_timestamp_hton (request_timestamp),
-    .reserve_pub = *reserve_pub
+    .reserve_sig = *reserve_sig
   };
 
   TALER_amount_hton (&rod.coin_contribution,

@@ -84,6 +84,11 @@ struct ReserveOpenContext
   struct TALER_Amount open_cost;
 
   /**
+   * Total amount that was deposited.
+   */
+  struct TALER_Amount total;
+
+  /**
    * Information about payments by coin.
    */
   struct TEH_PurseDepositedCoin *payments;
@@ -111,9 +116,16 @@ static MHD_RESULT
 reply_reserve_open_success (struct MHD_Connection *connection,
                             const struct ReserveOpenContext *rsc)
 {
+  unsigned int status;
+
+  status = MHD_HTTP_OK;
+  if (GNUNET_TIME_timestamp_cmp (rsc->reserve_expiration,
+                                 <,
+                                 rsc->desired_expiration))
+    status = MHD_HTTP_PAYMENT_REQUIRED;
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
-    MHD_HTTP_OK,
+    status,
     GNUNET_JSON_pack_timestamp ("reserve_expiration",
                                 rsc->reserve_expiration),
     TALER_JSON_pack_amount ("open_cost",
@@ -150,7 +162,7 @@ cleanup_rsc (struct ReserveOpenContext *rsc)
  * @param cls a `struct ReserveOpenContext *`
  * @param connection MHD request which triggered the transaction
  * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!); unused
+ *             if transaction failed (!)
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
@@ -161,15 +173,63 @@ reserve_open_transaction (void *cls,
   struct ReserveOpenContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) rsc;
-#if 0
-  // FIXME: implement!
+  for (unsigned int i = 0; i<rsc->payments_len; i++)
+  {
+    struct TEH_PurseDepositedCoin *coin = &rsc->payments[i];
+    bool insufficient_funds = true;
+
+    qs = TEH_make_coin_known (&coin->cpi,
+                              connection,
+                              &coin->known_coin_id,
+                              mhd_ret);
+    if (qs < 0)
+      return qs;
+    qs = TEH_plugin->insert_reserve_open_deposit (
+      TEH_plugin->cls,
+      &coin->cpi,
+      &coin->coin_sig,
+      coin->known_coin_id,
+      &coin->amount,
+      &rsc->reserve_sig,
+      &insufficient_funds);
+    /* 0 == qs is fine, then the coin was already
+       spent for this very operation as identified
+       by reserve_sig! */
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "insert_reserve_open_deposit");
+      return qs;
+    }
+    if (insufficient_funds)
+    {
+      *mhd_ret
+        = TEH_RESPONSE_reply_coin_insufficient_funds (
+            connection,
+            TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+            &coin->cpi.denom_pub_hash,
+            &coin->cpi.coin_pub);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
+
   qs = TEH_plugin->do_reserve_open (TEH_plugin->cls,
+                                    /* inputs */
                                     rsc->reserve_pub,
-                                    ...);
-#else
-  qs = GNUNET_DB_STATUS_HARD_ERROR;
-#endif
+                                    &rsc->total,
+                                    rsc->purse_limit,
+                                    &rsc->reserve_sig,
+                                    rsc->desired_expiration,
+                                    rsc->timestamp,
+                                    &rsc->gf->fees.account,
+                                    /* outputs */
+                                    &rsc->open_cost,
+                                    &rsc->reserve_expiration);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -178,7 +238,7 @@ reserve_open_transaction (void *cls,
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_reserve_open");
+                                    "do_reserve_open");
     return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     return qs;
@@ -258,6 +318,7 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
   rsc.payments_len = json_array_size (payments);
   rsc.payments = GNUNET_new_array (rsc.payments_len,
                                    struct TEH_PurseDepositedCoin);
+  rsc.total = rsc.reserve_payment;
   for (unsigned int i = 0; i<rsc.payments_len; i++)
   {
     struct TEH_PurseDepositedCoin *coin = &rsc.payments[i];
@@ -279,6 +340,21 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
       GNUNET_break_op (0);
       cleanup_rsc (&rsc);
       return MHD_YES;   /* failure */
+    }
+    /* FIXME-DOLD: Alternatively, we could here add coin->amount_minus_fee and
+       thereby charge the deposit fee even when paying the reserve-open fee.
+       To be decided... */
+    if (0 >
+        TALER_amount_add (&rsc.total,
+                          &rsc.total,
+                          &coin->amount))
+    {
+      GNUNET_break (0);
+      cleanup_rsc (&rsc);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_FAILED_COMPUTE_AMOUNT,
+                                         NULL);
     }
   }
 

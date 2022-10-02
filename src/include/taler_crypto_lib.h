@@ -3107,16 +3107,14 @@ TALER_wallet_reserve_open_verify (
  * Sign to deposit coin to pay for keeping a reserve open.
  *
  * @param coin_contribution how much the coin should contribute
- * @param reserve_pub public key of the reserve
- * @param request_timestamp time of the open request
+ * @param reserve_sig signature over the reserve open operation
  * @param coin_priv private key of the coin
  * @param[out] coin_sig signature by the coin
  */
 void
 TALER_wallet_reserve_open_deposit_sign (
   const struct TALER_Amount *coin_contribution,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -3125,8 +3123,7 @@ TALER_wallet_reserve_open_deposit_sign (
  * Verify signature that deposits coin to pay for keeping a reserve open.
  *
  * @param coin_contribution how much the coin should contribute
- * @param reserve_pub public key of the reserve
- * @param request_timestamp time of the open request
+ * @param reserve_sig signature over the reserve open operation
  * @param coin_pub public key of the coin
  * @param coin_sig signature by the coin
  * @return #GNUNET_OK if the signature is valid
@@ -3134,8 +3131,7 @@ TALER_wallet_reserve_open_deposit_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_reserve_open_deposit_verify (
   const struct TALER_Amount *coin_contribution,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  struct GNUNET_TIME_Timestamp request_timestamp,
+  const struct TALER_ReserveSignatureP *reserve_sig,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 

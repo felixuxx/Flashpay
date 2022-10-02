@@ -393,6 +393,12 @@ TALER_EXCHANGE_reserves_open (
     GNUNET_free (roh);
     return NULL;
   }
+  TALER_wallet_reserve_open_sign (reserve_contribution,
+                                  roh->ts,
+                                  expiration_time,
+                                  min_purses,
+                                  reserve_priv,
+                                  &roh->reserve_sig);
   cpa = json_array ();
   GNUNET_assert (NULL != cpa);
   for (unsigned int i = 0; i<coin_payments_length; i++)
@@ -412,8 +418,7 @@ TALER_EXCHANGE_reserves_open (
       achp = &ahac;
     }
     TALER_wallet_reserve_open_deposit_sign (&pd->amount,
-                                            &roh->reserve_pub,
-                                            roh->ts,
+                                            &roh->reserve_sig,
                                             &pd->coin_priv,
                                             &coin_sig);
     GNUNET_CRYPTO_eddsa_key_get_public (&pd->coin_priv.eddsa_priv,
@@ -437,12 +442,6 @@ TALER_EXCHANGE_reserves_open (
                    json_array_append_new (cpa,
                                           cp));
   }
-  TALER_wallet_reserve_open_sign (reserve_contribution,
-                                  roh->ts,
-                                  expiration_time,
-                                  min_purses,
-                                  reserve_priv,
-                                  &roh->reserve_sig);
   {
     json_t *open_obj = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_timestamp ("request_timestamp",

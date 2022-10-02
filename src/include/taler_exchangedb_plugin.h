@@ -4044,6 +4044,55 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Insert reserve open coin deposit data into database.
+   * Subtracts the @a coin_total from the coin's balance.
+   *
+   * @param cls closure
+   * @param cpi public information about the coin
+   * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_RESERVE_OPEN_DEPOSIT
+   * @param known_coin_id ID of the coin in the known_coins table
+   * @param coin_total amount to be spent of the coin (including deposit fee)
+   * @param reserve_sig signature by the reserve affirming the open operation
+   * @param[out] insufficient_funds set to true if the coin's balance is insufficient, otherwise to false
+   * @return transaction status code, 0 if operation is already in the DB
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_reserve_open_deposit)(
+    void *cls,
+    const struct TALER_CoinPublicInfo *cpi,
+    const struct TALER_CoinSpendSignatureP *coin_sig,
+    uint64_t known_coin_id,
+    const struct TALER_Amount *coin_total,
+    const struct TALER_ReserveSignatureP *reserve_sig,
+    bool *insufficient_funds);
+
+
+  /**
+   * Insert reserve close operation into database.
+   *
+   * @param cls closure
+   * @param reserve_pub which reserve is this about?
+   * @param execution_date when did we perform the transfer?
+   * @param receiver_account to which account do we transfer, in payto://-format
+   * @param wtid identifier for the wire transfer
+   * @param amount_with_fee amount we charged to the reserve
+   * @param closing_fee how high is the closing fee
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_reserve_open)(void *cls,
+                     const struct TALER_ReservePublicKeyP *reserve_pub,
+                     const struct TALER_Amount *total_paid,
+                     uint32_t min_purse_limit,
+                     const struct TALER_ReserveSignatureP *reserve_sig,
+                     struct GNUNET_TIME_Timestamp desired_expiration,
+                     struct GNUNET_TIME_Timestamp now,
+                     const struct TALER_Amount *open_fee,
+                     struct TALER_Amount *open_cost,
+                     const struct GNUNET_TIME_Timestamp *final_expiration);
+
+
+  /**
    * Insert reserve close operation into database.
    *
    * @param cls closure
