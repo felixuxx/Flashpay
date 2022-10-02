@@ -281,7 +281,7 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   {
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
+                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        NULL);
   }
   mhd_ret = reply_reserve_attest_success (rc->connection,

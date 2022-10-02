@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -24,6 +24,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
+#include "taler-exchange-httpd_common_deposit.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_open.h"
 #include "taler-exchange-httpd_responses.h"
@@ -48,6 +49,16 @@ struct ReserveOpenContext
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
   /**
+   * Desired (minimum) expiration time for the reserve.
+   */
+  struct GNUNET_TIME_Timestamp desired_expiration;
+
+  /**
+   * Actual expiration time for the reserve.
+   */
+  struct GNUNET_TIME_Timestamp reserve_expiration;
+
+  /**
    * Timestamp of the request.
    */
   struct GNUNET_TIME_Timestamp timestamp;
@@ -58,19 +69,34 @@ struct ReserveOpenContext
   struct TALER_ReserveSignatureP reserve_sig;
 
   /**
-   * Open of the reserve, set in the callback.
-   */
-  struct TALER_EXCHANGEDB_ReserveOpen *rh;
-
-  /**
    * Global fees applying to the request.
    */
   const struct TEH_GlobalFee *gf;
 
   /**
-   * Current reserve balance.
+   * Amount to be paid from the reserve.
    */
-  struct TALER_Amount balance;
+  struct TALER_Amount reserve_payment;
+
+  /**
+   * Actual cost to open the reserve.
+   */
+  struct TALER_Amount open_cost;
+
+  /**
+   * Information about payments by coin.
+   */
+  struct TEH_PurseDepositedCoin *payments;
+
+  /**
+   * Length of the @e payments array.
+   */
+  unsigned int payments_len;
+
+  /**
+   * Desired minimum purse limit.
+   */
+  uint32_t purse_limit;
 };
 
 
@@ -83,15 +109,32 @@ struct ReserveOpenContext
  */
 static MHD_RESULT
 reply_reserve_open_success (struct MHD_Connection *connection,
-                            const struct ReserveOpenContext *rhc)
+                            const struct ReserveOpenContext *rsc)
 {
-  const struct TALER_EXCHANGEDB_ReserveOpen *rh = rhc->rh;
-
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    TALER_JSON_pack_amount ("balance",
-                            &rhc->balance));
+    GNUNET_JSON_pack_timestamp ("reserve_expiration",
+                                rsc->reserve_expiration),
+    TALER_JSON_pack_amount ("open_cost",
+                            &rsc->open_cost));
+}
+
+
+/**
+ * Cleans up information in @a rsc, but does not
+ * free @a rsc itself (allocated on the stack!).
+ *
+ * @param[in] rsc struct with information to clean up
+ */
+static void
+cleanup_rsc (struct ReserveOpenContext *rsc)
+{
+  for (unsigned int i = 0; i<rsc->payments_len; i++)
+  {
+    TEH_common_purse_deposit_free_coin (&rsc->payments[i]);
+  }
+  GNUNET_free (rsc->payments);
 }
 
 
@@ -118,6 +161,8 @@ reserve_open_transaction (void *cls,
   struct ReserveOpenContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
+  (void) rsc;
+#if 0
   if (! TALER_amount_is_zero (&rsc->gf->fees.open))
   {
     bool balance_ok = false;
@@ -161,14 +206,29 @@ reserve_open_transaction (void *cls,
                                      rsc->reserve_pub,
                                      &rsc->balance,
                                      &rsc->rh);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+#endif
+  qs = GNUNET_DB_STATUS_HARD_ERROR;
+  switch (qs)
   {
+  case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     *mhd_ret
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
                                     "get_reserve_open");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return qs;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_NOT_FOUND,
+                                    TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                    NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
   }
   return qs;
 }
@@ -180,15 +240,23 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
                            const json_t *root)
 {
   struct ReserveOpenContext rsc;
-  MHD_RESULT mhd_ret;
+  json_t *payments;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("request_timestamp",
                                 &rsc.timestamp),
+    GNUNET_JSON_spec_timestamp ("reserve_expiration",
+                                &rsc.desired_expiration),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &rsc.reserve_sig),
+    GNUNET_JSON_spec_uint32 ("purse_limit",
+                             &rsc.purse_limit),
+    GNUNET_JSON_spec_json ("payments",
+                           &payments),
+    TALER_JSON_spec_amount ("reserve_payment",
+                            TEH_currency,
+                            &rsc.reserve_payment),
     GNUNET_JSON_spec_end ()
   };
-  struct GNUNET_TIME_Timestamp now;
 
   rsc.reserve_pub = reserve_pub;
   {
@@ -208,17 +276,50 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
       return MHD_YES; /* failure */
     }
   }
-  now = GNUNET_TIME_timestamp_get ();
-  if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
-                                        rsc.timestamp.abs_time,
-                                        TIMESTAMP_TOLERANCE))
+
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
-                                       NULL);
+    struct GNUNET_TIME_Timestamp now;
+
+    now = GNUNET_TIME_timestamp_get ();
+    if (! GNUNET_TIME_absolute_approx_eq (now.abs_time,
+                                          rsc.timestamp.abs_time,
+                                          TIMESTAMP_TOLERANCE))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
+                                         NULL);
+    }
   }
+
+  rsc.payments_len = json_array_size (payments);
+  rsc.payments = GNUNET_new_array (rsc.payments_len,
+                                   struct TEH_PurseDepositedCoin);
+  for (unsigned int i = 0; i<rsc.payments_len; i++)
+  {
+    struct TEH_PurseDepositedCoin *coin = &rsc.payments[i];
+    enum GNUNET_GenericReturnValue res;
+
+    res = TEH_common_purse_deposit_parse_coin (
+      rc->connection,
+      coin,
+      json_array_get (payments,
+                      i));
+    if (GNUNET_SYSERR == res)
+    {
+      GNUNET_break (0);
+      cleanup_rsc (&rsc);
+      return MHD_NO;   /* hard failure */
+    }
+    if (GNUNET_NO == res)
+    {
+      GNUNET_break_op (0);
+      cleanup_rsc (&rsc);
+      return MHD_YES;   /* failure */
+    }
+  }
+
   {
     struct TEH_KeyStateHandle *keys;
 
@@ -227,6 +328,7 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
     {
       GNUNET_break (0);
       GNUNET_JSON_parse_free (spec);
+      cleanup_rsc (&rsc);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -238,43 +340,53 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
   if (NULL == rsc.gf)
   {
     GNUNET_break (0);
+    cleanup_rsc (&rsc);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        NULL);
   }
+
   if (GNUNET_OK !=
-      TALER_wallet_reserve_open_verify (rsc.timestamp,
-                                        &rsc.gf->fees.open,
+      TALER_wallet_reserve_open_verify (&rsc.reserve_payment,
+                                        rsc.timestamp,
+                                        rsc.desired_expiration,
+                                        rsc.purse_limit,
                                         reserve_pub,
                                         &rsc.reserve_sig))
   {
     GNUNET_break_op (0);
+    cleanup_rsc (&rsc);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_RESERVES_OPEN_BAD_SIGNATURE,
                                        NULL);
   }
-  rsc.rh = NULL;
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (rc->connection,
-                              "reserve open",
-                              TEH_MT_REQUEST_OTHER,
-                              &mhd_ret,
-                              &reserve_open_transaction,
-                              &rsc))
+
   {
+    MHD_RESULT mhd_ret;
+
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (rc->connection,
+                                "reserve open",
+                                TEH_MT_REQUEST_OTHER,
+                                &mhd_ret,
+                                &reserve_open_transaction,
+                                &rsc))
+    {
+      cleanup_rsc (&rsc);
+      return mhd_ret;
+    }
+  }
+
+  {
+    MHD_RESULT mhd_ret;
+
+    mhd_ret = reply_reserve_open_success (rc->connection,
+                                          &rsc);
+    cleanup_rsc (&rsc);
     return mhd_ret;
   }
-  if (NULL == rsc.rh)
-  {
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
-                                       NULL);
-  }
-  return reply_reserve_open_success (rc->connection,
-                                     &rsc);
 }
 
 

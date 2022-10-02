@@ -110,7 +110,7 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
   {
@@ -132,7 +132,7 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
   {
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
+                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        args[0]);
   }
   return TALER_MHD_REPLY_JSON_PACK (

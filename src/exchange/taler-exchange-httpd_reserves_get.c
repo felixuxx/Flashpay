@@ -247,7 +247,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
   {

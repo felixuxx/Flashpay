@@ -148,7 +148,7 @@ reserve_close_transaction (void *cls,
     *mhd_ret
       = TALER_MHD_reply_with_error (rc->connection,
                                     MHD_HTTP_NOT_FOUND,
-                                    TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
+                                    TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                     NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

@@ -395,7 +395,7 @@ handle_post_reserves (struct TEH_RequestContext *rc,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_PUB_MALFORMED,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
   for (unsigned int i = 0; NULL != h[i].op; i++)
