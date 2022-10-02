@@ -1311,4 +1311,18 @@ TALER_KYCLOGIC_kyc_iterate_thresholds (
 }
 
 
+enum TALER_ErrorCode
+TALER_KYCLOGIC_user_to_attributes (const char *provider_section,
+                                   const char *provider_user_id,
+                                   const char *legitimization_id,
+                                   struct GNUNET_TIME_Timestamp *attr_expiration,
+                                   json_t **attrs)
+{
+  GNUNET_break (0); // FIXME: not yet implemented!!!
+  *attrs = json_object ();
+  *attr_expiration = GNUNET_TIME_UNIT_ZERO_TS;
+  return TALER_EC_NONE;
+}
+
+
 /* end of taler-exchange-httpd_kyc.c */

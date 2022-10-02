@@ -878,6 +878,25 @@ typedef void
 
 
 /**
+ * Function called on all legitimization operations
+ * we have performed for the given account so far
+ * (and that have not yet expired).
+ *
+ * @param cls closure
+ * @param kyc_provider_section_name configuration section
+ *        of the respective KYC process
+ * @param provider_user_id UID at a provider (can be NULL)
+ * @param legi_id legitimization process ID (can be NULL)
+ */
+typedef void
+(*TALER_EXCHANGEDB_LegitimizationProcessCallback)(
+  void *cls,
+  const char *kyc_provider_section_name,
+  const char *provider_user_id,
+  const char *legi_id);
+
+
+/**
  * Function called with information about the exchange's auditors.
  *
  * @param cls closure with a `struct TEH_KeyStateHandle *`
@@ -5817,6 +5836,24 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
     void *spc_cls);
+
+
+  /**
+   * Call us on KYC legitimization processes satisfied and not expired for the
+   * given account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param h_payto account identifier
+   * @param lpc function to call for each satisfied KYC legitimization process
+   * @param lpc_cls closure for @a lpc
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_kyc_reference)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_LegitimizationProcessCallback lpc,
+    void *lpc_cls);
 
 
   /**

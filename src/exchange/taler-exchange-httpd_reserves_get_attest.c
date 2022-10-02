@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -21,6 +21,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
+#include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
@@ -40,15 +41,81 @@ struct ReserveAttestContext
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
+   * Hash of the payto URI of this reserve.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
    * Available attributes.
    */
   json_t *attributes;
+
+  /**
+   * Error code encountered in interaction with KYC provider.
+   */
+  enum TALER_ErrorCode ec;
 
   /**
    * Set to true if we did not find the reserve.
    */
   bool not_found;
 };
+
+
+/**
+ * Function called with information about all applicable
+ * legitimization processes for the given user.
+ *
+ * @param cls our `struct ReserveAttestContext *`
+ * @param provider_section KYC provider configuration section
+ * @param provider_user_id UID at a provider (can be NULL)
+ * @param legi_id legitimization process ID (can be NULL)
+ */
+static void
+kyc_process_cb (void *cls,
+                const char *provider_section,
+                const char *provider_user_id,
+                const char *legi_id)
+{
+  struct ReserveAttestContext *rsc = cls;
+  struct GNUNET_TIME_Timestamp etime;
+  json_t *attrs;
+
+  rsc->ec = TALER_KYCLOGIC_user_to_attributes (provider_section,
+                                               provider_user_id,
+                                               legi_id,
+                                               &etime,
+                                               &attrs);
+  if (TALER_EC_NONE != rsc->ec)
+    return;
+
+  {
+    json_t *val;
+    const char *name;
+
+    json_object_foreach (attrs, name, val)
+    {
+      bool duplicate = false;
+      size_t idx;
+      json_t *str;
+
+      json_array_foreach (rsc->attributes, idx, str)
+      {
+        if (0 == strcmp (json_string_value (str),
+                         name))
+        {
+          duplicate = true;
+          break;
+        }
+      }
+      if (duplicate)
+        continue;
+      GNUNET_assert (0 ==
+                     json_array_append (rsc->attributes,
+                                        json_string (name)));
+    }
+  }
+}
 
 
 /**
@@ -75,26 +142,32 @@ reserve_attest_transaction (void *cls,
   struct ReserveAttestContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-#if FIXME
-  qs = TEH_plugin->get_reserve_attributes (TEH_plugin->cls,
-                                           &rsc->reserve_pub,
-                                           &rsc->attributes);
-#else
-  qs = GNUNET_DB_STATUS_HARD_ERROR;
-#endif
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  rsc->attributes = json_array ();
+  GNUNET_assert (NULL != rsc->attributes);
+  qs = TEH_plugin->iterate_kyc_reference (TEH_plugin->cls,
+                                          &rsc->h_payto,
+                                          &kyc_process_cb,
+                                          rsc);
+  switch (qs)
   {
+  case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
     *mhd_ret
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
                                     "get_reserve_attributes");
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return qs;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
+    return qs;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     rsc->not_found = true;
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    return qs;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     rsc->not_found = false;
+    break;
+  }
   return qs;
 }
 
@@ -103,7 +176,9 @@ MHD_RESULT
 TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
                                  const char *const args[1])
 {
-  struct ReserveAttestContext rsc;
+  struct ReserveAttestContext rsc = {
+    .attributes = NULL
+  };
 
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
@@ -118,6 +193,15 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
                                        args[0]);
   }
   {
+    char *payto_uri;
+
+    payto_uri = TALER_reserve_make_payto (TEH_base_url,
+                                          &rsc.reserve_pub);
+    TALER_payto_hash (payto_uri,
+                      &rsc.h_payto);
+    GNUNET_free (payto_uri);
+  }
+  {
     MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
@@ -128,16 +212,25 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
                                 &reserve_attest_transaction,
                                 &rsc))
     {
+      json_decref (rsc.attributes);
       return mhd_ret;
     }
   }
   /* generate proper response */
   if (rsc.not_found)
   {
+    json_decref (rsc.attributes);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        args[0]);
+  }
+  if (TALER_EC_NONE != rsc.ec)
+  {
+    json_decref (rsc.attributes);
+    return TALER_MHD_reply_with_ec (rc->connection,
+                                    rsc.ec,
+                                    NULL);
   }
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
