@@ -163,51 +163,13 @@ reserve_open_transaction (void *cls,
 
   (void) rsc;
 #if 0
-  if (! TALER_amount_is_zero (&rsc->gf->fees.open))
-  {
-    bool balance_ok = false;
-    bool idempotent = true;
-
-    qs = TEH_plugin->insert_open_request (TEH_plugin->cls,
-                                          rsc->reserve_pub,
-                                          &rsc->reserve_sig,
-                                          rsc->timestamp,
-                                          &rsc->gf->fees.open,
-                                          &balance_ok,
-                                          &idempotent);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "get_reserve_open");
-    }
-    if (qs <= 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    if (! balance_ok)
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_CONFLICT,
-                                         TALER_EC_EXCHANGE_WITHDRAW_OPEN_ERROR_INSUFFICIENT_FUNDS,
-                                         NULL);
-    }
-    if (idempotent)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Idempotent /reserves/open request observed. Is caching working?\n");
-    }
-  }
-  qs = TEH_plugin->get_reserve_open (TEH_plugin->cls,
-                                     rsc->reserve_pub,
-                                     &rsc->balance,
-                                     &rsc->rh);
-#endif
+  // FIXME: implement!
+  qs = TEH_plugin->do_reserve_open (TEH_plugin->cls,
+                                    rsc->reserve_pub,
+                                    ...);
+#else
   qs = GNUNET_DB_STATUS_HARD_ERROR;
+#endif
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
