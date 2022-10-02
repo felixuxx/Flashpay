@@ -75,9 +75,13 @@ reserve_attest_transaction (void *cls,
   struct ReserveAttestContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
+#if FIXME
   qs = TEH_plugin->get_reserve_attributes (TEH_plugin->cls,
                                            &rsc->reserve_pub,
                                            &rsc->attributes);
+#else
+  qs = GNUNET_DB_STATUS_HARD_ERROR;
+#endif
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -138,8 +142,8 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     MHD_HTTP_OK,
-    TALER_JSON_pack_object_steal ("attributes",
-                                  &rsc.attributes));
+    GNUNET_JSON_pack_object_steal ("attributes",
+                                   rsc.attributes));
 }
 
 
