@@ -161,6 +161,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_recoup-refresh.c taler-exchange-httpd_recoup-refresh.h \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
+  taler-exchange-httpd_reserves_attest.c taler-exchange-httpd_reserves_attest.h \
   taler-exchange-httpd_reserves_close.c taler-exchange-httpd_reserves_close.h \
   taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \
   taler-exchange-httpd_reserves_get_attest.c taler-exchange-httpd_reserves_get_attest.h \

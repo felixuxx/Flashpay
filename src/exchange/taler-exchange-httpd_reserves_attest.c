@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_reserves_close.c
- * @brief Handle /reserves/$RESERVE_PUB/close requests
+ * @file taler-exchange-httpd_reserves_attest.c
+ * @brief Handle /reserves/$RESERVE_PUB/attest requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -55,24 +55,25 @@ struct ReserveAttestContext
   struct GNUNET_TIME_Timestamp timestamp;
 
   /**
+   * Expiration time for the attestation.
+   */
+  struct GNUNET_TIME_Timestamp etime;
+
+  /**
+   * List of requested details.
+   */
+  json_t *details;
+
+  /**
    * Client signature approving the request.
    */
   struct TALER_ReserveSignatureP reserve_sig;
 
   /**
-   * Attest of the reserve, set in the callback.
+   * Attributes we are affirming.
    */
-  struct TALER_EXCHANGEDB_ReserveAttest *rh;
+  json_t *json_attest;
 
-  /**
-   * Global fees applying to the request.
-   */
-  const struct TEH_GlobalFee *gf;
-
-  /**
-   * Current reserve balance.
-   */
-  struct TALER_Amount balance;
 };
 
 
@@ -87,22 +88,44 @@ static MHD_RESULT
 reply_reserve_attest_success (struct MHD_Connection *connection,
                               const struct ReserveAttestContext *rhc)
 {
-  const struct TALER_EXCHANGEDB_ReserveAttest *rh = rhc->rh;
-  json_t *json_attest;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  enum TALER_ErrorCode ec;
+  struct GNUNET_TIME_Timestamp now;
 
-  json_attest = TEH_RESPONSE_compile_reserve_attest (rh);
-  if (NULL == json_attest)
+  if (NULL == rhc->json_attest)
+  {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        NULL);
+  }
+  now = GNUNET_TIME_timestamp_get ();
+  ec = TALER_exchange_online_reserve_attest_details_sign (
+    &TEH_keys_exchange_sign_,
+    now,
+    rhc->etime,
+    rhc->reserve_pub,
+    rhc->json_attest,
+    &exchange_pub,
+    &exchange_sig);
+  if (TALER_EC_NONE != ec)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
+  }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    TALER_JSON_pack_amount ("balance",
-                            &rhc->balance),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &exchange_sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &exchange_pub),
     GNUNET_JSON_pack_array_steal ("attest",
-                                  json_attest));
+                                  rhc->json_attest));
 }
 
 
@@ -129,49 +152,15 @@ reserve_attest_transaction (void *cls,
   struct ReserveAttestContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  if (! TALER_amount_is_zero (&rsc->gf->fees.attest))
-  {
-    bool balance_ok = false;
-    bool idempotent = true;
-
-    qs = TEH_plugin->insert_attest_request (TEH_plugin->cls,
-                                            rsc->reserve_pub,
-                                            &rsc->reserve_sig,
-                                            rsc->timestamp,
-                                            &rsc->gf->fees.attest,
-                                            &balance_ok,
-                                            &idempotent);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                      "get_reserve_attest");
-    }
-    if (qs <= 0)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      return qs;
-    }
-    if (! balance_ok)
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_CONFLICT,
-                                         TALER_EC_EXCHANGE_WITHDRAW_ATTEST_ERROR_INSUFFICIENT_FUNDS,
-                                         NULL);
-    }
-    if (idempotent)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Idempotent /reserves/attest request observed. Is caching working?\n");
-    }
-  }
+#if FIXME
   qs = TEH_plugin->get_reserve_attest (TEH_plugin->cls,
                                        rsc->reserve_pub,
-                                       &rsc->balance,
-                                       &rsc->rh);
+                                       &rsc->json_attest,
+                                       &etime);
+#else
+  qs = GNUNET_DB_STATUS_HARD_ERROR;
+  (void) rsc;
+#endif
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
@@ -181,6 +170,7 @@ reserve_attest_transaction (void *cls,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
                                     "get_reserve_attest");
   }
+  // FIXME: filter json_attest by requested attributes!
   return qs;
 }
 
@@ -195,6 +185,8 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("request_timestamp",
                                 &rsc.timestamp),
+    GNUNET_JSON_spec_json ("details",
+                           &rsc.details),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &rsc.reserve_sig),
     GNUNET_JSON_spec_end ()
@@ -230,35 +222,12 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_GENERIC_CLOCK_SKEW,
                                        NULL);
   }
-  {
-    struct TEH_KeyStateHandle *keys;
 
-    keys = TEH_keys_get_state ();
-    if (NULL == keys)
-    {
-      GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                         NULL);
-    }
-    rsc.gf = TEH_keys_global_fee_by_time (keys,
-                                          rsc.timestamp);
-  }
-  if (NULL == rsc.gf)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       NULL);
-  }
   if (GNUNET_OK !=
-      TALER_wallet_reserve_attest_verify (rsc.timestamp,
-                                          &rsc.gf->fees.attest,
-                                          reserve_pub,
-                                          &rsc.reserve_sig))
+      TALER_wallet_reserve_attest_request_verify (rsc.timestamp,
+                                                  rsc.details,
+                                                  reserve_pub,
+                                                  &rsc.reserve_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
@@ -266,10 +235,9 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_RESERVES_ATTEST_BAD_SIGNATURE,
                                        NULL);
   }
-  rsc.rh = NULL;
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
-                              "get reserve attest",
+                              "post reserve attest",
                               TEH_MT_REQUEST_OTHER,
                               &mhd_ret,
                               &reserve_attest_transaction,
@@ -277,17 +245,8 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   {
     return mhd_ret;
   }
-  if (NULL == rsc.rh)
-  {
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                       NULL);
-  }
   mhd_ret = reply_reserve_attest_success (rc->connection,
                                           &rsc);
-  TEH_plugin->free_reserve_attest (TEH_plugin->cls,
-                                   rsc.rh);
   return mhd_ret;
 }
 
