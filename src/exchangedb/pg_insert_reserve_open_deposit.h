@@ -36,6 +36,7 @@
  * @param known_coin_id ID of the coin in the known_coins table
  * @param coin_total amount to be spent of the coin (including deposit fee)
  * @param reserve_sig signature by the reserve affirming the open operation
+ * @param reserve_pub public key of the reserve being opened
  * @param[out] insufficient_funds set to true if the coin's balance is insufficient, otherwise to false
  * @return transaction status code, 0 if operation is already in the DB
  */
@@ -47,6 +48,7 @@ TEH_PG_insert_reserve_open_deposit (
   uint64_t known_coin_id,
   const struct TALER_Amount *coin_total,
   const struct TALER_ReserveSignatureP *reserve_sig,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   bool *insufficient_funds);
 
 #endif

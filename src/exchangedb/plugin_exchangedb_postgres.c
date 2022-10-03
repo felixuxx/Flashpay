@@ -32,6 +32,9 @@
 #include "pg_helper.h"
 #include "pg_insert_close_request.h"
 #include "pg_insert_reserve_open_deposit.h"
+#include "pg_iterate_kyc_reference.h"
+#include "pg_iterate_reserve_close_info.h"
+#include "pg_select_reserve_close_info.h"
 #include <poll.h>
 #include <pthread.h>
 #include <libpq-fe.h>
@@ -17264,8 +17267,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_purse_merge;
   plugin->insert_history_request
     = &postgres_insert_history_request;
-  plugin->insert_close_request
-    = &TEH_PG_insert_close_request;
   plugin->insert_drain_profit
     = &postgres_insert_drain_profit;
   plugin->profit_drains_get_pending
@@ -17294,6 +17295,16 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_aggregation_amounts_for_kyc_check;
   plugin->select_merge_amounts_for_kyc_check
     = &postgres_select_merge_amounts_for_kyc_check;
+  /* NEW style, sort alphabetically! */
+  plugin->insert_close_request
+    = &TEH_PG_insert_close_request;
+  plugin->iterate_reserve_close_info
+    = &TEH_PG_iterate_reserve_close_info;
+  plugin->iterate_kyc_reference
+    = &TEH_PG_iterate_kyc_reference;
+  plugin->select_reserve_close_info
+    = &TEH_PG_select_reserve_close_info;
+
   return plugin;
 }
 

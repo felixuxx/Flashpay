@@ -4072,6 +4072,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param known_coin_id ID of the coin in the known_coins table
    * @param coin_total amount to be spent of the coin (including deposit fee)
    * @param reserve_sig signature by the reserve affirming the open operation
+   * @param reserve_pub public key of the reserve being opened
    * @param[out] insufficient_funds set to true if the coin's balance is insufficient, otherwise to false
    * @return transaction status code, 0 if operation is already in the DB
    */
@@ -4083,6 +4084,7 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t known_coin_id,
     const struct TALER_Amount *coin_total,
     const struct TALER_ReserveSignatureP *reserve_sig,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
     bool *insufficient_funds);
 
 
@@ -5600,8 +5602,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param payto_uri where to wire the funds
    * @param reserve_sig signature affiming that the account is to be closed
    * @param request_timestamp timestamp of the close request
+   * @param balance balance at the time of closing
    * @param closing_fee closing fee to charge
-   * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -5610,8 +5612,8 @@ struct TALER_EXCHANGEDB_Plugin
                           const char *payto_uri,
                           const struct TALER_ReserveSignatureP *reserve_sig,
                           struct GNUNET_TIME_Timestamp request_timestamp,
-                          const struct TALER_Amount *closing_fee,
-                          struct TALER_Amount *final_balance);
+                          const struct TALER_Amount *balance,
+                          const struct TALER_Amount *closing_fee);
 
 
   /**

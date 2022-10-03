@@ -297,14 +297,13 @@ reserve_close_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-
   qs = TEH_plugin->insert_close_request (TEH_plugin->cls,
                                          rcc->reserve_pub,
                                          payto_uri,
                                          &rcc->reserve_sig,
                                          rcc->timestamp,
-                                         &wf->closing,
-                                         &rcc->wire_amount);
+                                         &balance,
+                                         &wf->closing);
   GNUNET_free (payto_uri);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {

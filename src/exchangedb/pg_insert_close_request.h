@@ -34,8 +34,8 @@
  * @param payto_uri where to wire the funds
  * @param reserve_sig signature affiming that the account is to be closed
  * @param request_timestamp time of the close request (client-side?)
+ * @param balance final balance in the reserve
  * @param closing_fee closing fee to charge
- * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
@@ -45,8 +45,8 @@ TEH_PG_insert_close_request (
   const char *payto_uri,
   const struct TALER_ReserveSignatureP *reserve_sig,
   struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_Amount *closing_fee,
-  struct TALER_Amount *final_balance);
+  const struct TALER_Amount *balance,
+  const struct TALER_Amount *closing_fee);
 
 
 #endif

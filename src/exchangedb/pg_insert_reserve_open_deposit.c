@@ -34,6 +34,7 @@ TEH_PG_insert_reserve_open_deposit (
   uint64_t known_coin_id,
   const struct TALER_Amount *coin_total,
   const struct TALER_ReserveSignatureP *reserve_sig,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   bool *insufficient_funds)
 {
   struct PostgresClosure *pg = cls;
@@ -42,11 +43,12 @@ TEH_PG_insert_reserve_open_deposit (
     GNUNET_PQ_query_param_uint64 (&known_coin_id),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     TALER_PQ_query_param_amount (coin_total),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
+    GNUNET_PQ_result_spec_bool ("out_insufficient_funds",
                                 insufficient_funds),
     GNUNET_PQ_result_spec_end
   };
@@ -54,9 +56,9 @@ TEH_PG_insert_reserve_open_deposit (
   PREPARE (pg,
            "insert_reserve_open_deposit",
            "SELECT "
-           " insufficient_funds"
+           " out_insufficient_funds"
            " FROM exchange_do_reserve_open_deposit"
-           " ($1,$2,$3,$4,$5,$6);");
+           " ($1,$2,$3,$4,$5,$6,$7);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "insert_reserve_open_deposit",
                                                    params,

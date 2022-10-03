@@ -39,7 +39,7 @@ TEH_PG_select_reserve_close_info (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+    TALER_PQ_RESULT_SPEC_AMOUNT ("close",
                                  balance),
     GNUNET_PQ_result_spec_string ("payto_uri",
                                   payto_uri),
@@ -49,10 +49,10 @@ TEH_PG_select_reserve_close_info (
   PREPARE (pg,
            "select_reserve_close_info",
            "SELECT "
-           " balance_frac"
-           ",balance_val"
+           " close_frac"
+           ",close_val"
            ",payto_uri"
-           " FROM FIXME"
+           " FROM close_requests"
            " WHERE reserve_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_reserve_close_info",

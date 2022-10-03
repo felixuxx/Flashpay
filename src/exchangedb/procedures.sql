@@ -1778,7 +1778,7 @@ ELSE
   my_amount_val = my_amount_val + my_amount_frac / 100000000;
   my_amount_frac = my_amount_frac % 100000000;
 
-  UPDATE reserves
+  UPDATE exchange.reserves
   SET
     current_balance_frac=current_balance_frac+my_amount_frac
        - CASE
@@ -1795,7 +1795,7 @@ ELSE
   WHERE reserve_pub=in_reserve_pub;
 
   -- ... and mark purse as finished.
-  UPDATE purse_requests
+  UPDATE exchange.purse_requests
      SET finished=true
   WHERE purse_pub=in_purse_pub;
 END IF;
@@ -1881,7 +1881,7 @@ THEN
     out_no_funds=TRUE;
     RETURN;
   END IF;
-  UPDATE reserves
+  UPDATE exchange.reserves
      SET purses_active=purses_active+1
    WHERE reserve_pub=in_reserve_pub
      AND purses_active < purses_allowed;
@@ -1901,7 +1901,7 @@ ELSE
       RETURN;
     END IF;
   ELSE
-    UPDATE reserves
+    UPDATE exchange.reserves
       SET
         current_balance_frac=current_balance_frac-in_purse_fee_frac
          + CASE
@@ -1993,7 +1993,7 @@ THEN
   RETURN;
 END IF;
 
-UPDATE purse_requests
+UPDATE exchange.purse_requests
  SET refunded=TRUE,
      finished=TRUE
  WHERE purse_pub=my_purse_pub;
@@ -2011,7 +2011,7 @@ FOR my_deposit IN
     FROM exchange.purse_deposits
   WHERE purse_pub = my_purse_pub
 LOOP
-  UPDATE known_coins SET
+  UPDATE exchange.known_coins SET
     remaining_frac=remaining_frac+my_deposit.amount_with_fee_frac
      - CASE
        WHEN remaining_frac+my_deposit.amount_with_fee_frac >= 100000000
@@ -2071,7 +2071,7 @@ BEGIN
   out_idempotent=FALSE;
 
   -- Update reserve balance.
-  UPDATE reserves
+  UPDATE exchange.reserves
    SET
     current_balance_frac=current_balance_frac-in_history_fee_frac
        + CASE
@@ -2103,57 +2103,76 @@ BEGIN
 END $$;
 
 
-CREATE OR REPLACE FUNCTION exchange_do_close_request(
-  IN in_reserve_pub BYTEA,
-  IN in_close_timestamp INT8,
+CREATE OR REPLACE FUNCTION exchange_do_reserve_open_deposit(
+  IN in_coin_pub BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_sig BYTEA,
   IN in_reserve_sig BYTEA,
-  OUT out_final_balance_val INT8,
-  OUT out_final_balance_frac INT4,
-  OUT out_balance_ok BOOLEAN,
-  OUT out_conflict BOOLEAN)
+  IN in_reserve_pub BYTEA,
+  IN in_coin_total_val INT8,
+  IN in_coin_total_frac INT4,
+  OUT out_insufficient_funds BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 BEGIN
 
-  SELECT
-    current_balance_val
-   ,current_balance_frac
-  INTO
-    out_final_balance_val
-   ,out_final_balance_frac
-  FROM exchange.reserves
-  WHERE reserve_pub=in_reserve_pub;
-
-  IF NOT FOUND
-  THEN
-    out_final_balance_val=0;
-    out_final_balance_frac=0;
-    out_balance_ok = FALSE;
-    out_conflict = FALSE;
-  END IF;
-
-  INSERT INTO exchange.close_requests
-    (reserve_pub
-    ,close_timestamp
-    ,reserve_sig
-    ,close_val
-    ,close_frac)
-    VALUES
-    (in_reserve_pub
-    ,in_close_timestamp
-    ,in_reserve_sig
-    ,out_final_balance_val
-    ,out_final_balance_frac)
+INSERT INTO exchange.reserves_open_deposits
+  (reserve_sig
+  ,reserve_pub
+  ,request_timestamp
+  ,coin_pub
+  ,coin_sig
+  ,contribution_val
+  ,contribution_frac
+  )
+  VALUES
+  (in_reserve_sig
+  ,in_reserve_pub
+  ,in_request_timestamp
+  ,in_coin_pub
+  ,in_coin_sig
+  ,in_coin_total_val
+  ,in_coin_total_frac)
   ON CONFLICT DO NOTHING;
-  out_conflict = NOT FOUND;
 
-  UPDATE reserves SET
-    current_balance_val=0
-   ,current_balance_frac=0
-  WHERE reserve_pub=in_reserve_pub;
-  out_balance_ok = TRUE;
+IF NOT FOUND
+THEN
+  -- Idempotent request known, return success.
+  out_insufficient_funds=FALSE;
+  RETURN;
+END IF;
+
+
+-- Check and update balance of the coin.
+UPDATE exchange.known_coins
+  SET
+    remaining_frac=remaining_frac-in_coin_total_frac
+       + CASE
+         WHEN remaining_frac < in_coin_total_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_coin_total_val
+       - CASE
+         WHEN remaining_frac < in_coin_total_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_coin_total_val) OR
+          ( (remaining_frac >= in_coin_total_frac) AND
+            (remaining_val >= in_coin_total_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_insufficient_funds=TRUE;
+  RETURN;
+END IF;
+
+-- Everything fine, return success!
+out_insufficient_funds=FALSE;
 
 END $$;
-
 
 COMMIT;

@@ -191,6 +191,7 @@ reserve_open_transaction (void *cls,
       coin->known_coin_id,
       &coin->amount,
       &rsc->reserve_sig,
+      rsc->reserve_pub,
       &insufficient_funds);
     /* 0 == qs is fine, then the coin was already
        spent for this very operation as identified

@@ -68,7 +68,7 @@ iterate_reserve_close_info_cb (void *cls,
     struct TALER_Amount amount;
     struct GNUNET_TIME_Absolute ts;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+      GNUNET_PQ_result_spec_absolute_time ("execution_date",
                                            &ts),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
@@ -115,14 +115,15 @@ TEH_PG_iterate_reserve_close_info (
            "SELECT"
            " amount_val"
            ",amount_frac"
-           ",timestamp"
-           " FROM FIXME"
-           " WHERE h_payto=$1"
-           "   AND timestamp >= $2"
-           " ORDER BY timestamp DESC");
-  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               "iterate_reserve_close_info",
-                                               params,
-                                               &iterate_reserve_close_info_cb,
-                                               &ic);
+           ",execution_date"
+           " FROM reserves_close"
+           " WHERE wire_target_h_payto=$1"
+           "   AND execution_date >= $2"
+           " ORDER BY execution_date DESC");
+  return GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "iterate_reserve_close_info",
+    params,
+    &iterate_reserve_close_info_cb,
+    &ic);
 }

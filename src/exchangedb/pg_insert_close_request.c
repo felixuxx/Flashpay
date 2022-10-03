@@ -33,32 +33,35 @@ TEH_PG_insert_close_request (
   const char *payto_uri,
   const struct TALER_ReserveSignatureP *reserve_sig,
   struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_Amount *closing_fee,
-  struct TALER_Amount *final_balance)
+  const struct TALER_Amount *balance,
+  const struct TALER_Amount *closing_fee)
 {
   struct PostgresClosure *pg = cls;
-  // FIXME: deal with payto_uri and closing_fee!!
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_timestamp (&request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
+    TALER_PQ_query_param_amount (balance),
+    TALER_PQ_query_param_amount (closing_fee),
+    GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("out_final_balance",
-                                 final_balance),
-    GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
-           "call_account_close",
-           "SELECT "
-           " out_final_balance_val"
-           ",out_final_balance_frac"
-           " FROM exchange_do_close_request"
-           "  ($1, $2, $3)");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_account_close",
-                                                   params,
-                                                   rs);
+           "insert_account_close",
+           "INSERT INTO close_requests"
+           "(reserve_pub"
+           ",close_timestamp"
+           ",reserve_sig"
+           ",close_val"
+           ",close_frac,"
+           ",close_fee_val"
+           ",close_fee_frac"
+           ",payto_uri"
+           ")"
+           "VALUES ($1, $2, $3, $4, $5, $6, $7)"
+           " ON CONFLICT DO NOTHING;");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_account_close",
+                                             params);
 }
