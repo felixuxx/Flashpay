@@ -34,29 +34,28 @@ TEH_PG_select_reserve_close_info (
   char **payto_uri)
 {
   struct PostgresClosure *pg = cls;
-  // FIXME: everything from here is copy*paste!
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&cpi->coin_pub),
-    GNUNET_PQ_query_param_uint64 (&known_coin_id),
-    GNUNET_PQ_query_param_auto_from_type (coin_sig),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount (coin_total),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
-                                insufficient_funds),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
+                                 balance),
+    GNUNET_PQ_result_spec_string ("payto_uri",
+                                  payto_uri),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
-           "insert_reserve_open_deposit",
+           "select_reserve_close_info",
            "SELECT "
-           " insufficient_funds"
-           " FROM exchange_do_reserve_open_deposit"
-           " ($1,$2,$3,$4,$5,$6);");
+           " balance_frac"
+           ",balance_val"
+           ",payto_uri"
+           " FROM FIXME"
+           " WHERE reserve_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "insert_reserve_open_deposit",
+                                                   "select_reserve_close_info",
                                                    params,
                                                    rs);
 }

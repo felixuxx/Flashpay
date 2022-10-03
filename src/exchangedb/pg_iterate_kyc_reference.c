@@ -26,6 +26,75 @@
 #include "pg_helper.h"
 
 
+/**
+ * Closure for #iterate_kyc_reference_cb()
+ */
+struct IteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_LegitimizationProcessCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+};
+
+
+/**
+ * Helper function for #TEH_PG_iterate_kyc_reference().
+ * Calls the callback with each denomination key.
+ *
+ * @param cls a `struct IteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+iterate_kyc_reference_cb (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct IteratorContext *ic = cls;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    char *kyc_provider_section_name;
+    char *provider_user_id;
+    char *legitimization_id;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_string ("section_name",
+                                    &kyc_provider_section_name),
+      GNUNET_PQ_result_spec_string ("provider_user_id",
+                                    &provider_user_id),
+      GNUNET_PQ_result_spec_string ("legi_id",
+                                    &legitimization_id),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    ic->cb (ic->cb_cls,
+            kyc_provider_section_name,
+            provider_user_id,
+            legitimization_id);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_kyc_reference (
   void *cls,
@@ -38,21 +107,23 @@ TEH_PG_iterate_kyc_reference (
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_end
   };
-  // FIXME: everything from here is copy*paste
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
-                                insufficient_funds),
-    GNUNET_PQ_result_spec_end
+  struct IteratorContext ic = {
+    .cb = lpc,
+    .cb_cls = lpc_cls,
+    .pg = pg
   };
 
   PREPARE (pg,
            "iterate_kyc_reference",
            "SELECT "
-           " insufficient_funds"
-           " FROM exchange_do_reserve_open_deposit"
-           " ($1,$2,$3,$4,$5,$6);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "iterate_kyc_reference",
-                                                   params,
-                                                   rs);
+           " section_name"
+           ",provider_user_id"
+           ",legi_id"
+           " FROM FIXME"
+           " WHERE h_payto=$1;");
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                               "iterate_kyc_reference",
+                                               params,
+                                               &iterate_kyc_reference_cb,
+                                               &ic);
 }

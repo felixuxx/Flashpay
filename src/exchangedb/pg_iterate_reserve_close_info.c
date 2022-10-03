@@ -25,6 +25,70 @@
 #include "pg_insert_reserve_open_deposit.h"
 #include "pg_helper.h"
 
+/**
+ * Closure for #iterate_reserve_close_info_cb()
+ */
+struct IteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_KycAmountCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+};
+
+
+/**
+ * Helper function for #TEH_PG_iterate_reserve_close_info().
+ * Calls the callback with each denomination key.
+ *
+ * @param cls a `struct IteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+iterate_reserve_close_info_cb (void *cls,
+                               PGresult *result,
+                               unsigned int num_results)
+{
+  struct IteratorContext *ic = cls;
+  struct PostgresClosure *pg = ic->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_Amount amount;
+    struct GNUNET_TIME_Absolute ts;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_absolute_time ("timestamp",
+                                           &ts),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &amount),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    ic->cb (ic->cb_cls,
+            &amount,
+            ts);
+  }
+}
+
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_reserve_close_info (
@@ -35,29 +99,30 @@ TEH_PG_iterate_reserve_close_info (
   void *kac_cls)
 {
   struct PostgresClosure *pg = cls;
-  // FIXME: everything from here is copy&paste
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&cpi->coin_pub),
-    GNUNET_PQ_query_param_uint64 (&known_coin_id),
-    GNUNET_PQ_query_param_auto_from_type (coin_sig),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount (coin_total),
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_absolute_time (&time_limit),
     GNUNET_PQ_query_param_end
   };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
-                                insufficient_funds),
-    GNUNET_PQ_result_spec_end
+  struct IteratorContext ic = {
+    .cb = kac,
+    .cb_cls = kac_cls,
+    .pg = pg
   };
 
   PREPARE (pg,
-           "insert_reserve_open_deposit",
-           "SELECT "
-           " insufficient_funds"
-           " FROM exchange_do_reserve_open_deposit"
-           " ($1,$2,$3,$4,$5,$6);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "insert_reserve_open_deposit",
-                                                   params,
-                                                   rs);
+           "iterate_reserve_close_info",
+           "SELECT"
+           " amount_val"
+           ",amount_frac"
+           ",timestamp"
+           " FROM FIXME"
+           " WHERE h_payto=$1"
+           "   AND timestamp >= $2"
+           " ORDER BY timestamp DESC");
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                               "iterate_reserve_close_info",
+                                               params,
+                                               &iterate_reserve_close_info_cb,
+                                               &ic);
 }
