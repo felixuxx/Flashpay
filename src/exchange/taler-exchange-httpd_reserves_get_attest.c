@@ -156,7 +156,7 @@ reserve_attest_transaction (void *cls,
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "get_reserve_attributes");
+                                    "iterate_kyc_reference");
     return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     GNUNET_break (0);
