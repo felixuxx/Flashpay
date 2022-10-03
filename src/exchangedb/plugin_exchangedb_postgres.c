@@ -29,6 +29,9 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "pg_helper.h"
+#include "pg_insert_close_request.h"
+#include "pg_insert_reserve_open_deposit.h"
 #include <poll.h>
 #include <pthread.h>
 #include <libpq-fe.h>
@@ -42,26 +45,6 @@
  */
 #define AUTO_EXPLAIN 1
 
-/**
- * Wrapper macro to add the currency from the plugin's state
- * when fetching amounts from the database.
- *
- * @param field name of the database field to fetch amount from
- * @param[out] amountp pointer to amount to set
- */
-#define TALER_PQ_RESULT_SPEC_AMOUNT(field,amountp) TALER_PQ_result_spec_amount ( \
-    field,pg->currency,amountp)
-
-/**
- * Wrapper macro to add the currency from the plugin's state
- * when fetching amounts from the database.  NBO variant.
- *
- * @param field name of the database field to fetch amount from
- * @param[out] amountp pointer to amount to set
- */
-#define TALER_PQ_RESULT_SPEC_AMOUNT_NBO(field,                          \
-                                        amountp) TALER_PQ_result_spec_amount_nbo ( \
-    field,pg->currency,amountp)
 
 /**
  * Log a really unexpected PQ error with all the details we can get hold of.
@@ -79,69 +62,6 @@
                 PQresStatus (PQresultStatus (result)),                  \
                 PQerrorMessage (conn));                                 \
 } while (0)
-
-
-/**
- * Type of the "cls" argument given to each of the functions in
- * our API.
- */
-struct PostgresClosure
-{
-
-  /**
-   * Our configuration.
-   */
-  const struct GNUNET_CONFIGURATION_Handle *cfg;
-
-  /**
-   * Directory with SQL statements to run to create tables.
-   */
-  char *sql_dir;
-
-  /**
-   * After how long should idle reserves be closed?
-   */
-  struct GNUNET_TIME_Relative idle_reserve_expiration_time;
-
-  /**
-   * After how long should reserves that have seen withdraw operations
-   * be garbage collected?
-   */
-  struct GNUNET_TIME_Relative legal_reserve_expiration_time;
-
-  /**
-   * What delay should we introduce before ready transactions
-   * are actually aggregated?
-   */
-  struct GNUNET_TIME_Relative aggregator_shift;
-
-  /**
-   * Which currency should we assume all amounts to be in?
-   */
-  char *currency;
-
-  /**
-   * Our base URL.
-   */
-  char *exchange_url;
-
-  /**
-   * Postgres connection handle.
-   */
-  struct GNUNET_PQ_Context *conn;
-
-  /**
-   * Name of the current transaction, for debugging.
-   */
-  const char *transaction_name;
-
-  /**
-   * Did we initialize the prepared statements
-   * for this session?
-   */
-  bool init;
-
-};
 
 
 /**
@@ -4467,15 +4387,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM exchange_do_history_request"
       "  ($1, $2, $3, $4, $5)",
       5),
-    /* Used in #postgres_insert_close_request() */
-    GNUNET_PQ_make_prepare (
-      "call_account_close",
-      "SELECT "
-      " out_final_balance_val"
-      ",out_final_balance_frac"
-      " FROM exchange_do_close_request"
-      "  ($1, $2, $3)",
-      3),
+
     /* Used in #postgres_insert_kyc_requirement_for_account() */
     GNUNET_PQ_make_prepare (
       "insert_legitimization_requirement",
@@ -4674,6 +4586,7 @@ internal_setup (struct PostgresClosure *pg,
                                           NULL);
     if (NULL == db_conn)
       return GNUNET_SYSERR;
+    pg->prep_gen++;
     pg->conn = db_conn;
   }
   if (NULL == pg->transaction_name)
@@ -16237,44 +16150,6 @@ postgres_insert_history_request (
 
 
 /**
- * Function called to initiate closure of an account.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param reserve_pub public key of the account to close
- * @param reserve_sig signature affiming that the account is to be closed
- * @param request_timestamp time of the close request (client-side?)
- * @param[out] final_balance set to the final balance in the account that will be wired back to the origin account
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_close_request (
-  void *cls,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig,
-  struct GNUNET_TIME_Timestamp request_timestamp,
-  struct TALER_Amount *final_balance)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("out_final_balance",
-                                 final_balance),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_account_close",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
  * Function called to persist a request to drain profits.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -17390,7 +17265,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_history_request
     = &postgres_insert_history_request;
   plugin->insert_close_request
-    = &postgres_insert_close_request;
+    = &TEH_PG_insert_close_request;
   plugin->insert_drain_profit
     = &postgres_insert_drain_profit;
   plugin->profit_drains_get_pending
