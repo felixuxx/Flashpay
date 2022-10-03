@@ -22,7 +22,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_insert_reserve_open_deposit.h"
+#include "pg_select_reserve_close_info.h"
 #include "pg_helper.h"
 
 

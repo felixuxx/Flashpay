@@ -69,11 +69,12 @@ endif
 
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_postgres.c pg_helper.h \
+  pg_do_reserve_open.c pg_do_reserve_open.h \
   pg_insert_close_request.c pg_insert_close_request.h \
   pg_insert_reserve_open_deposit.c pg_insert_reserve_open_deposit.h \
   pg_iterate_kyc_reference.c pg_iterate_kyc_reference.h \
   pg_iterate_reserve_close_info.c pg_iterate_reserve_close_info.h \
-  pg_select_reserve_close_info.c pg_select_reserve_close_info.h 
+  pg_select_reserve_close_info.c pg_select_reserve_close_info.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \

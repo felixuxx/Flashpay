@@ -4108,7 +4108,7 @@ struct TALER_EXCHANGEDB_Plugin
                      struct GNUNET_TIME_Timestamp now,
                      const struct TALER_Amount *open_fee,
                      struct TALER_Amount *open_cost,
-                     const struct GNUNET_TIME_Timestamp *final_expiration);
+                     struct GNUNET_TIME_Timestamp *final_expiration);
 
 
   /**

@@ -37,32 +37,37 @@ TEH_PG_do_reserve_open (
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_Amount *open_fee,
   struct TALER_Amount *open_cost,
-  const struct GNUNET_TIME_Timestamp *final_expiration)
+  struct GNUNET_TIME_Timestamp *final_expiration)
 {
   struct PostgresClosure *pg = cls;
-  // FIXME: everything from here is cut&paste
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&cpi->coin_pub),
-    GNUNET_PQ_query_param_uint64 (&known_coin_id),
-    GNUNET_PQ_query_param_auto_from_type (coin_sig),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    TALER_PQ_query_param_amount (total_paid),
+    GNUNET_PQ_query_param_uint32 (&min_purse_limit),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    TALER_PQ_query_param_amount (coin_total),
+    GNUNET_PQ_query_param_timestamp (&desired_expiration),
+    GNUNET_PQ_query_param_timestamp (&now),
+    TALER_PQ_query_param_amount (open_fee),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
-                                insufficient_funds),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("open_cost",
+                                 open_cost),
+    GNUNET_PQ_result_spec_timestamp ("final_expiration",
+                                     final_expiration),
     GNUNET_PQ_result_spec_end
   };
 
   PREPARE (pg,
-           "insert_reserve_open_deposit",
+           "do_reserve_open",
            "SELECT "
-           " insufficient_funds"
-           " FROM exchange_do_reserve_open_deposit"
-           " ($1,$2,$3,$4,$5,$6);");
+           " open_cost_val"
+           ",open_cost_frac"
+           ",final_expiration"
+           " FROM exchange_do_reserve_open"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "insert_reserve_open_deposit",
+                                                   "do_reserve_open",
                                                    params,
                                                    rs);
 }
