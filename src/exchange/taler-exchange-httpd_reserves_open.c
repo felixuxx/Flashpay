@@ -115,7 +115,7 @@ struct ReserveOpenContext
  * Send reserve open to client.
  *
  * @param connection connection to the client
- * @param rhc reserve open to return
+ * @param rsc reserve open data to return
  * @return MHD result code
  */
 static MHD_RESULT
