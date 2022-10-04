@@ -32,7 +32,6 @@
  *
  * @param cls closure
  * @param h_payto which target account is this about?
- * @param h_payto account identifier
  * @param time_limit oldest transaction that could be relevant
  * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
  * @param kac_cls closure for @a kac

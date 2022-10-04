@@ -312,7 +312,7 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
  *
  * @param provider_section configuration section of a
  *    provider that triggered KYC process for a user
- * @param provider_user user ID of the user at the provider
+ * @param provider_user_id user ID of the user at the provider
  * @param legitimization_id legitimizatin ID of a process
  *    of that user at the provider
  * @param[out] attr_expiration set to when the @a attrs expire
