@@ -2198,7 +2198,7 @@ BEGIN
 
 -- FIXME: implement!
 
-END $$
+END $$;
 
 
 COMMIT;
