@@ -4093,22 +4093,29 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param reserve_pub which reserve is this about?
-   * @param execution_date when did we perform the transfer?
-   * @param receiver_account to which account do we transfer, in payto://-format
-   * @param wtid identifier for the wire transfer
-   * @param amount_with_fee amount we charged to the reserve
-   * @param closing_fee how high is the closing fee
+   * @param total_paid total amount paid (coins and reserve)
+   * @param reserve_payment amount to be paid from the reserve
+   * @param min_purse_limit minimum number of purses we should be able to open
+   * @param reserve_sig signature by the reserve for the operation
+   * @param desired_expiration when should the reserve expire (earliest time)
+   * @param now when did we the client initiate the action
+   * @param open_fee annual fee to be charged for the open operation by the exchange
+   * @param[out] no_funds set to true if reserve balance is insufficient
+   * @param[out] open_cost set to the actual cost
+   * @param[out] final_expiration when will the reserve expire now
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*do_reserve_open)(void *cls,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
                      const struct TALER_Amount *total_paid,
+                     const struct TALER_Amount *reserve_payment,
                      uint32_t min_purse_limit,
                      const struct TALER_ReserveSignatureP *reserve_sig,
                      struct GNUNET_TIME_Timestamp desired_expiration,
                      struct GNUNET_TIME_Timestamp now,
                      const struct TALER_Amount *open_fee,
+                     bool *no_funds,
                      struct TALER_Amount *open_cost,
                      struct GNUNET_TIME_Timestamp *final_expiration);
 

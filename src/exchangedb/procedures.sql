@@ -2175,4 +2175,30 @@ out_insufficient_funds=FALSE;
 
 END $$;
 
+
+CREATE OR REPLACE FUNCTION exchange_do_reserve_open(
+  IN in_reserve_pub BYTEA,
+  IN in_total_paid_val INT8,
+  IN in_total_paid_frac INT4,
+  IN in_reserve_payment_val INT8,
+  IN in_reserve_payment_frac INT4,
+  IN in_min_purse_limit INT4,
+  IN in_reserve_sig BYTEA,
+  IN in_desired_expiration INT8,
+  IN in_now INT8,
+  IN in_open_fee_val INT8,
+  IN in_open_fee_frac INT4,
+  OUT out_open_cost_val INT8,
+  OUT out_open_cost_frac INT4,
+  OUT out_final_expiration INT8,
+  OUT out_no_funds BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+-- FIXME: implement!
+
+END $$
+
+
 COMMIT;

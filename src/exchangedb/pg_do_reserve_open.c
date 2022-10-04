@@ -31,11 +31,13 @@ TEH_PG_do_reserve_open (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *total_paid,
+  const struct TALER_Amount *reserve_payment,
   uint32_t min_purse_limit,
   const struct TALER_ReserveSignatureP *reserve_sig,
   struct GNUNET_TIME_Timestamp desired_expiration,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_Amount *open_fee,
+  bool *no_funds,
   struct TALER_Amount *open_cost,
   struct GNUNET_TIME_Timestamp *final_expiration)
 {
@@ -43,6 +45,7 @@ TEH_PG_do_reserve_open (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     TALER_PQ_query_param_amount (total_paid),
+    TALER_PQ_query_param_amount (reserve_payment),
     GNUNET_PQ_query_param_uint32 (&min_purse_limit),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&desired_expiration),
@@ -51,9 +54,11 @@ TEH_PG_do_reserve_open (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("open_cost",
+    GNUNET_PQ_result_spec_bool ("out_no_funds",
+                                no_funds),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("out_open_cost",
                                  open_cost),
-    GNUNET_PQ_result_spec_timestamp ("final_expiration",
+    GNUNET_PQ_result_spec_timestamp ("out_final_expiration",
                                      final_expiration),
     GNUNET_PQ_result_spec_end
   };
@@ -61,11 +66,12 @@ TEH_PG_do_reserve_open (
   PREPARE (pg,
            "do_reserve_open",
            "SELECT "
-           " open_cost_val"
-           ",open_cost_frac"
-           ",final_expiration"
+           " out_open_cost_val"
+           ",out_open_cost_frac"
+           ",out_final_expiration"
+           ",out_no_funds"
            " FROM exchange_do_reserve_open"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "do_reserve_open",
                                                    params,

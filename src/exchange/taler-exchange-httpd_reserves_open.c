@@ -102,6 +102,12 @@ struct ReserveOpenContext
    * Desired minimum purse limit.
    */
   uint32_t purse_limit;
+
+  /**
+   * Set to true if the reserve balance is too low
+   * for the operation.
+   */
+  bool no_funds;
 };
 
 
@@ -223,12 +229,14 @@ reserve_open_transaction (void *cls,
                                     /* inputs */
                                     rsc->reserve_pub,
                                     &rsc->total,
+                                    &rsc->reserve_payment,
                                     rsc->purse_limit,
                                     &rsc->reserve_sig,
                                     rsc->desired_expiration,
                                     rsc->timestamp,
                                     &rsc->gf->fees.account,
                                     /* outputs */
+                                    &rsc->no_funds,
                                     &rsc->open_cost,
                                     &rsc->reserve_expiration);
   switch (qs)
@@ -252,6 +260,15 @@ reserve_open_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     break;
+  }
+  if (rsc->no_funds)
+  {
+    *mhd_ret
+      = TEH_RESPONSE_reply_reserve_insufficient_balance (
+          connection,
+          &rsc->reserve_payment,
+          rsc->reserve_pub);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
 }
@@ -342,13 +359,10 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
       cleanup_rsc (&rsc);
       return MHD_YES;   /* failure */
     }
-    /* FIXME-DOLD: Alternatively, we could here add coin->amount_minus_fee and
-       thereby charge the deposit fee even when paying the reserve-open fee.
-       To be decided... */
     if (0 >
         TALER_amount_add (&rsc.total,
                           &rsc.total,
-                          &coin->amount))
+                          &coin->amount_minus_fee))
     {
       GNUNET_break (0);
       cleanup_rsc (&rsc);

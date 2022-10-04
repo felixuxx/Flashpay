@@ -17296,6 +17296,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_merge_amounts_for_kyc_check
     = &postgres_select_merge_amounts_for_kyc_check;
   /* NEW style, sort alphabetically! */
+  plugin->insert_reserve_open_deposit
+    = &TEH_PG_insert_reserve_open_deposit;
   plugin->insert_close_request
     = &TEH_PG_insert_close_request;
   plugin->iterate_reserve_close_info
