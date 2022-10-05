@@ -2190,7 +2190,7 @@ $$;
 
 COMMENT ON FUNCTION detach_default_partitions
   IS 'We need to drop default and create new one before deleting the default partitions
-      otherwise constraints get lost too. Might be needed in shardig too';
+      otherwise constraints get lost too. Might be needed in sharding too';
 
 
 CREATE OR REPLACE FUNCTION drop_default_partitions()

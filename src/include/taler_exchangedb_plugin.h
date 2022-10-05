@@ -195,9 +195,14 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_DENOMINATIONS,
   TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS,
   TALER_EXCHANGEDB_RT_WIRE_TARGETS,
+  TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES,
+  TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS,
   TALER_EXCHANGEDB_RT_RESERVES,
   TALER_EXCHANGEDB_RT_RESERVES_IN,
   TALER_EXCHANGEDB_RT_RESERVES_CLOSE,
+  TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS,
+  TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS,
+  TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS,
   TALER_EXCHANGEDB_RT_RESERVES_OUT,
   TALER_EXCHANGEDB_RT_AUDITORS,
   TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS,
@@ -283,6 +288,21 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
+      struct TALER_PaytoHashP h_payto;
+      struct GNUNET_TIME_Timestamp expiration_time;
+      char *provider_section;
+      char *provider_user_id;
+      char *provider_legitimization_id;
+    } legitimization_processes;
+
+    struct
+    {
+      struct TALER_PaytoHashP h_payto;
+      char *required_checks;
+    } legitimization_requirements;
+
+    struct
+    {
       struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp expiration_date;
       struct GNUNET_TIME_Timestamp gc_date;
@@ -297,6 +317,44 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_ReservePublicKeyP reserve_pub;
     } reserves_in;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp execution_date;
+      struct TALER_WireTransferIdentifierRawP wtid;
+      struct TALER_PaytoHashP wire_target_h_payto;
+      struct TALER_Amount amount;
+      struct TALER_Amount closing_fee;
+    } reserves_close;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp request_timestamp;
+      struct GNUNET_TIME_Timestamp expiration_date;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_Amount reserve_payment;
+      uint32_t requested_purse_limit;
+    } reserves_open_requests;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp request_timestamp;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_Amount contribution;
+    } reserves_open_deposits;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct GNUNET_TIME_Timestamp execution_date;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct TALER_PaytoHashP wire_target_h_payto;
+    } reserves_close_requests;
 
     struct
     {
