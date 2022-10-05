@@ -321,16 +321,6 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_TIME_Timestamp execution_date;
-      struct TALER_WireTransferIdentifierRawP wtid;
-      struct TALER_PaytoHashP wire_target_h_payto;
-      struct TALER_Amount amount;
-      struct TALER_Amount closing_fee;
-    } reserves_close;
-
-    struct
-    {
-      struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp request_timestamp;
       struct GNUNET_TIME_Timestamp expiration_date;
       struct TALER_ReserveSignatureP reserve_sig;

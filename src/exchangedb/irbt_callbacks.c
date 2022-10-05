@@ -132,6 +132,64 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
 
 
 /**
+ * Function called with records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_legitimization_processes (struct PostgresClosure *pg,
+                                        const struct
+                                        TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.legitimization_processes.h_payto),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.legitimization_processes.expiration_time),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_section),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_user_id),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_processes.provider_legitimization_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_legitimization_processes",
+                                             params);
+}
+
+
+/**
+ * Function called with records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_legitimization_requirements (struct PostgresClosure *pg,
+                                           const struct
+                                           TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.legitimization_requirements.h_payto),
+    GNUNET_PQ_query_param_string (
+      td->details.legitimization_requirements.required_checks),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_legitimization_requirements",
+                                             params);
+}
+
+
+/**
  * Function called with reserves records to insert into table.
  *
  * @param pg plugin context
@@ -181,6 +239,100 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_in",
+                                             params);
+}
+
+
+/**
+ * Function called with reserves_open_requests records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_reserves_open_requests (struct PostgresClosure *pg,
+                                      const struct
+                                      TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.reserves_open_requests.request_timestamp),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.reserves_open_requests.expiration_date),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_open_requests.reserve_sig),
+    TALER_PQ_query_param_amount (
+      &td->details.reserves_open_requests.reserve_payment),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.reserves_open_requests.requested_purse_limit),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_reserves_open_requests",
+                                             params);
+}
+
+
+/**
+ * Function called with reserves_open_requests records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_reserves_open_deposits (struct PostgresClosure *pg,
+                                      const struct
+                                      TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.reserves_open_deposits.request_timestamp),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_open_deposits.coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_open_deposits.coin_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_open_deposits.reserve_sig),
+    TALER_PQ_query_param_amount (
+      &td->details.reserves_open_deposits.contribution),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_reserves_open_deposits",
+                                             params);
+}
+
+
+/**
+ * Function called with reserves_close records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_reserves_close_requests (struct PostgresClosure *pg,
+                                       const struct
+                                       TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close_requests.reserve_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.reserves_close_requests.execution_date),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close_requests.reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close_requests.wire_target_h_payto),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_reserves_close_requests",
                                              params);
 }
 
