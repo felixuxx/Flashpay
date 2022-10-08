@@ -18,12 +18,28 @@
      SPDX-License-Identifier: AGPL3.0-or-later
  */
 /**
- * @file exchangedb/irbt_callbacks.c
- * @brief callbacks used by postgres_insert_records_by_table, to be
- *        inlined into the plugin
+ * @file exchangedb/insert_records_by_table.c
+ * @brief insert_records_by_table implementation
  * @author Christian Grothoff
  */
+#include "platform.h"
+#include "taler_error_codes.h"
+#include "taler_dbevents.h"
+#include "taler_pq_lib.h"
+#include "pg_insert_records_by_table.h"
 #include "pg_helper.h"
+
+
+/**
+ * Signature of helper functions of #postgres_insert_records_by_table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ * @return transaction status code
+ */
+typedef enum GNUNET_DB_QueryStatus
+(*InsertRecordCallback)(struct PostgresClosure *pg,
+                        const struct TALER_EXCHANGEDB_TableData *td);
 
 
 /**
@@ -1752,6 +1768,135 @@ irbt_cb_table_profit_drains (struct PostgresClosure *pg,
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_profit_drains",
                                              params);
+}
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_insert_records_by_table (void *cls,
+                                const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct PostgresClosure *pg = cls;
+  InsertRecordCallback rh;
+
+  switch (td->table)
+  {
+  case TALER_EXCHANGEDB_RT_DENOMINATIONS:
+    rh = &irbt_cb_table_denominations;
+    break;
+  case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
+    rh = &irbt_cb_table_denomination_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
+    rh = &irbt_cb_table_wire_targets;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES:
+    rh = &irbt_cb_table_reserves;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_IN:
+    rh = &irbt_cb_table_reserves_in;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
+    rh = &irbt_cb_table_reserves_close;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OUT:
+    rh = &irbt_cb_table_reserves_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITORS:
+    rh = &irbt_cb_table_auditors;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
+    rh = &irbt_cb_table_auditor_denom_sigs;
+    break;
+  case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
+    rh = &irbt_cb_table_exchange_sign_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
+    rh = &irbt_cb_table_signkey_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_KNOWN_COINS:
+    rh = &irbt_cb_table_known_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
+    rh = &irbt_cb_table_refresh_commitments;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
+    rh = &irbt_cb_table_refresh_revealed_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
+    rh = &irbt_cb_table_refresh_transfer_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_DEPOSITS:
+    rh = &irbt_cb_table_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_REFUNDS:
+    rh = &irbt_cb_table_refunds;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_OUT:
+    rh = &irbt_cb_table_wire_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
+    rh = &irbt_cb_table_aggregation_tracking;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_FEE:
+    rh = &irbt_cb_table_wire_fee;
+    break;
+  case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
+    rh = &irbt_cb_table_global_fee;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP:
+    rh = &irbt_cb_table_recoup;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
+    rh = &irbt_cb_table_recoup_refresh;
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSIONS:
+    rh = &irbt_cb_table_extensions;
+    break;
+  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
+    rh = &irbt_cb_table_extension_details;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
+    rh = &irbt_cb_table_purse_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
+    rh = &irbt_cb_table_purse_refunds;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_MERGES:
+    rh = &irbt_cb_table_purse_merges;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
+    rh = &irbt_cb_table_purse_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
+    rh = &irbt_cb_table_account_mergers;
+    break;
+  case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
+    rh = &irbt_cb_table_history_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
+    rh = &irbt_cb_table_close_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT:
+    rh = &irbt_cb_table_wads_out;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
+    rh = &irbt_cb_table_wads_out_entries;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN:
+    rh = &irbt_cb_table_wads_in;
+    break;
+  case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
+    rh = &irbt_cb_table_wads_in_entries;
+    break;
+  case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
+    rh = &irbt_cb_table_profit_drains;
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return rh (pg,
+             td);
 }
 
 

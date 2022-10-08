@@ -31,6 +31,7 @@
 #include "taler_exchangedb_plugin.h"
 #include "pg_helper.h"
 #include "pg_insert_close_request.h"
+#include "pg_insert_records_by_table.h"
 #include "pg_insert_reserve_open_deposit.h"
 #include "pg_iterate_kyc_reference.h"
 #include "pg_iterate_reserve_close_info.h"
@@ -14036,159 +14037,6 @@ postgres_lookup_records_by_table (void *cls,
 
 
 /**
- * Signature of helper functions of #postgres_insert_records_by_table.
- *
- * @param pg plugin context
- * @param td record to insert
- * @return transaction status code
- */
-typedef enum GNUNET_DB_QueryStatus
-(*InsertRecordCallback)(struct PostgresClosure *pg,
-                        const struct TALER_EXCHANGEDB_TableData *td);
-
-
-#include "irbt_callbacks.c"
-
-
-/**
- * Insert record set into @a table.  Used in exchange-auditor database
- * replication.
- *
- * @param cls closure
- * @param td table data to insert
- * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
- *         @e table in @a tr is not supported
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_records_by_table (void *cls,
-                                  const struct TALER_EXCHANGEDB_TableData *td)
-{
-  struct PostgresClosure *pg = cls;
-  InsertRecordCallback rh;
-
-  switch (td->table)
-  {
-  case TALER_EXCHANGEDB_RT_DENOMINATIONS:
-    rh = &irbt_cb_table_denominations;
-    break;
-  case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
-    rh = &irbt_cb_table_denomination_revocations;
-    break;
-  case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
-    rh = &irbt_cb_table_wire_targets;
-    break;
-  case TALER_EXCHANGEDB_RT_RESERVES:
-    rh = &irbt_cb_table_reserves;
-    break;
-  case TALER_EXCHANGEDB_RT_RESERVES_IN:
-    rh = &irbt_cb_table_reserves_in;
-    break;
-  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
-    rh = &irbt_cb_table_reserves_close;
-    break;
-  case TALER_EXCHANGEDB_RT_RESERVES_OUT:
-    rh = &irbt_cb_table_reserves_out;
-    break;
-  case TALER_EXCHANGEDB_RT_AUDITORS:
-    rh = &irbt_cb_table_auditors;
-    break;
-  case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
-    rh = &irbt_cb_table_auditor_denom_sigs;
-    break;
-  case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
-    rh = &irbt_cb_table_exchange_sign_keys;
-    break;
-  case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
-    rh = &irbt_cb_table_signkey_revocations;
-    break;
-  case TALER_EXCHANGEDB_RT_KNOWN_COINS:
-    rh = &irbt_cb_table_known_coins;
-    break;
-  case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
-    rh = &irbt_cb_table_refresh_commitments;
-    break;
-  case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
-    rh = &irbt_cb_table_refresh_revealed_coins;
-    break;
-  case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
-    rh = &irbt_cb_table_refresh_transfer_keys;
-    break;
-  case TALER_EXCHANGEDB_RT_DEPOSITS:
-    rh = &irbt_cb_table_deposits;
-    break;
-  case TALER_EXCHANGEDB_RT_REFUNDS:
-    rh = &irbt_cb_table_refunds;
-    break;
-  case TALER_EXCHANGEDB_RT_WIRE_OUT:
-    rh = &irbt_cb_table_wire_out;
-    break;
-  case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
-    rh = &irbt_cb_table_aggregation_tracking;
-    break;
-  case TALER_EXCHANGEDB_RT_WIRE_FEE:
-    rh = &irbt_cb_table_wire_fee;
-    break;
-  case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
-    rh = &irbt_cb_table_global_fee;
-    break;
-  case TALER_EXCHANGEDB_RT_RECOUP:
-    rh = &irbt_cb_table_recoup;
-    break;
-  case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
-    rh = &irbt_cb_table_recoup_refresh;
-    break;
-  case TALER_EXCHANGEDB_RT_EXTENSIONS:
-    rh = &irbt_cb_table_extensions;
-    break;
-  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
-    rh = &irbt_cb_table_extension_details;
-    break;
-  case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
-    rh = &irbt_cb_table_purse_requests;
-    break;
-  case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
-    rh = &irbt_cb_table_purse_refunds;
-    break;
-  case TALER_EXCHANGEDB_RT_PURSE_MERGES:
-    rh = &irbt_cb_table_purse_merges;
-    break;
-  case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
-    rh = &irbt_cb_table_purse_deposits;
-    break;
-  case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
-    rh = &irbt_cb_table_account_mergers;
-    break;
-  case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
-    rh = &irbt_cb_table_history_requests;
-    break;
-  case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
-    rh = &irbt_cb_table_close_requests;
-    break;
-  case TALER_EXCHANGEDB_RT_WADS_OUT:
-    rh = &irbt_cb_table_wads_out;
-    break;
-  case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
-    rh = &irbt_cb_table_wads_out_entries;
-    break;
-  case TALER_EXCHANGEDB_RT_WADS_IN:
-    rh = &irbt_cb_table_wads_in;
-    break;
-  case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
-    rh = &irbt_cb_table_wads_in_entries;
-    break;
-  case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
-    rh = &irbt_cb_table_profit_drains;
-    break;
-  default:
-    GNUNET_break (0);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  return rh (pg,
-             td);
-}
-
-
-/**
  * Function called to grab a work shard on an operation @a op. Runs in its
  * own transaction.
  *
@@ -16737,8 +16585,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_lookup_serial_by_table;
   plugin->lookup_records_by_table
     = &postgres_lookup_records_by_table;
-  plugin->insert_records_by_table
-    = &postgres_insert_records_by_table;
   plugin->begin_shard
     = &postgres_begin_shard;
   plugin->abort_shard
@@ -16816,6 +16662,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_merge_amounts_for_kyc_check
     = &postgres_select_merge_amounts_for_kyc_check;
   /* NEW style, sort alphabetically! */
+  plugin->insert_records_by_table
+    = &TEH_PG_insert_records_by_table;
   plugin->insert_reserve_open_deposit
     = &TEH_PG_insert_reserve_open_deposit;
   plugin->insert_close_request
