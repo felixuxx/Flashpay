@@ -23,6 +23,7 @@
  *        inlined into the plugin
  * @author Christian Grothoff
  */
+#include "pg_helper.h"
 
 
 /**
@@ -67,6 +68,33 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_denominations",
+           "INSERT INTO denominations"
+           "(denominations_serial"
+           ",denom_pub_hash"
+           ",denom_type"
+           ",age_mask"
+           ",denom_pub"
+           ",master_sig"
+           ",valid_from"
+           ",expire_withdraw"
+           ",expire_deposit"
+           ",expire_legal"
+           ",coin_val"
+           ",coin_frac"
+           ",fee_withdraw_val"
+           ",fee_withdraw_frac"
+           ",fee_deposit_val"
+           ",fee_deposit_frac"
+           ",fee_refresh_val"
+           ",fee_refresh_frac"
+           ",fee_refund_val"
+           ",fee_refund_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);");
+
   TALER_denom_pub_hash (
     &td->details.denominations.denom_pub,
     &denom_hash);
@@ -97,6 +125,14 @@ irbt_cb_table_denomination_revocations (
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_denomination_revocations",
+           "INSERT INTO denomination_revocations"
+           "(denom_revocations_serial_id"
+           ",master_sig"
+           ",denominations_serial"
+           ") VALUES "
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_denomination_revocations",
                                              params);
@@ -122,6 +158,14 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wire_targets",
+           "INSERT INTO wire_targets"
+           "(wire_target_serial_id"
+           ",wire_target_h_payto"
+           ",payto_uri"
+           ") VALUES "
+           "($1, $2, $3);");
   TALER_payto_hash (
     td->details.wire_targets.payto_uri,
     &payto_hash);
@@ -207,6 +251,15 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves",
+           "INSERT INTO reserves"
+           "(reserve_uuid"
+           ",reserve_pub"
+           ",expiration_date"
+           ",gc_date"
+           ") VALUES "
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves",
                                              params);
@@ -237,6 +290,19 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_in",
+           "INSERT INTO reserves_in"
+           "(reserve_in_serial_id"
+           ",wire_reference"
+           ",credit_val"
+           ",credit_frac"
+           ",wire_source_h_payto"
+           ",exchange_account_section"
+           ",execution_date"
+           ",reserve_pub"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_in",
                                              params);
@@ -362,6 +428,20 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_close",
+           "INSERT INTO reserves_close"
+           "(close_uuid"
+           ",execution_date"
+           ",wtid"
+           ",wire_target_h_payto"
+           ",amount_val"
+           ",amount_frac"
+           ",closing_fee_val"
+           ",closing_fee_frac"
+           ",reserve_pub"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_close",
                                              params);
@@ -397,6 +477,20 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_out",
+           "INSERT INTO reserves_out"
+           "(reserve_out_serial_id"
+           ",h_blind_ev"
+           ",denominations_serial"
+           ",denom_sig"
+           ",reserve_uuid"
+           ",reserve_sig"
+           ",execution_date"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_out",
                                              params);
@@ -423,6 +517,17 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_auditors",
+           "INSERT INTO auditors"
+           "(auditor_uuid"
+           ",auditor_pub"
+           ",auditor_name"
+           ",auditor_url"
+           ",is_active"
+           ",last_change"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_auditors",
                                              params);
@@ -449,6 +554,15 @@ irbt_cb_table_auditor_denom_sigs (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_auditor_denom_sigs",
+           "INSERT INTO auditor_denom_sigs"
+           "(auditor_denom_serial"
+           ",auditor_uuid"
+           ",denominations_serial"
+           ",auditor_sig"
+           ") VALUES "
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_auditor_denom_sigs",
                                              params);
@@ -480,6 +594,17 @@ irbt_cb_table_exchange_sign_keys (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_exchange_sign_keys",
+           "INSERT INTO exchange_sign_keys"
+           "(esk_serial"
+           ",exchange_pub"
+           ",master_sig"
+           ",valid_from"
+           ",expire_sign"
+           ",expire_legal"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_exchange_sign_keys",
                                              params);
@@ -504,6 +629,14 @@ irbt_cb_table_signkey_revocations (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_signkey_revocations",
+           "INSERT INTO signkey_revocations"
+           "(signkey_revocations_serial_id"
+           ",esk_serial"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_signkey_revocations",
                                              params);
@@ -531,6 +664,15 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_known_coins",
+           "INSERT INTO known_coins"
+           "(known_coin_id"
+           ",coin_pub"
+           ",denom_sig"
+           ",denominations_serial"
+           ") VALUES "
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_known_coins",
                                              params);
@@ -561,6 +703,18 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_refresh_commitments",
+           "INSERT INTO refresh_commitments"
+           "(melt_serial_id"
+           ",rc"
+           ",old_coin_sig"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",noreveal_index"
+           ",old_coin_pub"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_refresh_commitments",
                                              params);
@@ -601,6 +755,20 @@ irbt_cb_table_refresh_revealed_coins (
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_refresh_revealed_coins",
+           "INSERT INTO refresh_revealed_coins"
+           "(rrc_serial"
+           ",freshcoin_index"
+           ",link_sig"
+           ",coin_ev"
+           ",h_coin_ev"
+           ",ev_sig"
+           ",ewv"
+           ",denominations_serial"
+           ",melt_serial_id"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   GNUNET_CRYPTO_hash (td->details.refresh_revealed_coins.coin_ev,
                       td->details.refresh_revealed_coins.coin_ev_size,
                       &h_coin_ev);
@@ -634,6 +802,15 @@ irbt_cb_table_refresh_transfer_keys (
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_refresh_transfer_keys",
+           "INSERT INTO refresh_transfer_keys"
+           "(rtc_serial"
+           ",transfer_pub"
+           ",transfer_privs"
+           ",melt_serial_id"
+           ") VALUES "
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_refresh_transfer_keys",
                                              params);
@@ -677,6 +854,29 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_deposits",
+           "INSERT INTO deposits"
+           "(deposit_serial_id"
+           ",shard"
+           ",known_coin_id"
+           ",coin_pub"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",wallet_timestamp"
+           ",exchange_timestamp"
+           ",refund_deadline"
+           ",wire_deadline"
+           ",merchant_pub"
+           ",h_contract_terms"
+           ",coin_sig"
+           ",wire_salt"
+           ",wire_target_h_payto"
+           ",extension_blocked"
+           ",extension_details_serial_id"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+           " $11, $12, $13, $14, $15, $16, $17);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_deposits",
                                              params);
@@ -703,6 +903,18 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_refunds",
+           "INSERT INTO refunds"
+           "(refund_serial_id"
+           ",coin_pub"
+           ",merchant_sig"
+           ",rtransaction_id"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",deposit_serial_id"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_refunds",
                                              params);
@@ -731,6 +943,7 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_out",
                                              params);
@@ -756,6 +969,14 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_aggregation_tracking",
+           "INSERT INTO aggregation_tracking"
+           "(aggregation_serial_id"
+           ",deposit_serial_id"
+           ",wtid_raw"
+           ") VALUES "
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_aggregation_tracking",
                                              params);
@@ -784,6 +1005,22 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wire_fee",
+           "INSERT INTO wire_fee"
+           "(wire_fee_serial"
+           ",wire_method"
+           ",start_date"
+           ",end_date"
+           ",wire_fee_val"
+           ",wire_fee_frac"
+           ",closing_fee_val"
+           ",closing_fee_frac"
+           ",wad_fee_val"
+           ",wad_fee_frac"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_fee",
                                              params);
@@ -828,6 +1065,27 @@ irbt_cb_table_global_fee (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_global_fee",
+           "INSERT INTO global_fee"
+           "(global_fee_serial"
+           ",start_date"
+           ",end_date"
+           ",history_fee_val"
+           ",history_fee_frac"
+           ",kyc_fee_val"
+           ",kyc_fee_frac"
+           ",account_fee_val"
+           ",account_fee_frac"
+           ",purse_fee_val"
+           ",purse_fee_frac"
+           ",purse_timeout"
+           ",kyc_timeout"
+           ",history_expiration"
+           ",purse_account_limit"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_global_fee",
                                              params);
@@ -856,6 +1114,19 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_recoup",
+           "INSERT INTO recoup"
+           "(recoup_uuid"
+           ",coin_sig"
+           ",coin_blind"
+           ",amount_val"
+           ",amount_frac"
+           ",recoup_timestamp"
+           ",coin_pub"
+           ",reserve_out_serial_id"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_recoup",
                                              params);
@@ -886,6 +1157,20 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_recoup_refresh",
+           "INSERT INTO recoup_refresh"
+           "(recoup_refresh_uuid"
+           ",coin_sig"
+           ",coin_blind"
+           ",amount_val"
+           ",amount_frac"
+           ",recoup_timestamp"
+           ",known_coin_id"
+           ",coin_pub"
+           ",rrc_serial"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_recoup_refresh",
                                              params);
@@ -911,6 +1196,14 @@ irbt_cb_table_extensions (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_extensions",
+           "INSERT INTO extensions"
+           "(extension_id"
+           ",name"
+           ",config"
+           ") VALUES "
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_extensions",
                                              params);
@@ -937,6 +1230,13 @@ irbt_cb_table_extension_details (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_extension_details",
+           "INSERT INTO extension_details"
+           "(extension_details_serial_id"
+           ",extension_options"
+           ") VALUES "
+           "($1, $2);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_extension_details",
                                              params);
@@ -974,6 +1274,24 @@ irbt_cb_table_purse_requests (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_purse_requests",
+           "INSERT INTO purse_requests"
+           "(purse_requests_serial_id"
+           ",purse_pub"
+           ",merge_pub"
+           ",purse_creation"
+           ",purse_expiration"
+           ",h_contract_terms"
+           ",age_limit"
+           ",flags"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",purse_fee_val"
+           ",purse_fee_frac"
+           ",purse_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_purse_requests",
                                              params);
@@ -997,6 +1315,13 @@ irbt_cb_table_purse_refunds (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_purse_refunds",
+           "INSERT INTO purse_refunds"
+           "(purse_refunds_serial_id"
+           ",purse_pub"
+           ") VALUES "
+           "($1, $2);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_purse_refunds",
                                              params);
@@ -1024,6 +1349,17 @@ irbt_cb_table_purse_merges (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_purse_merges",
+           "INSERT INTO purse_merges"
+           "(purse_merge_request_serial_id"
+           ",partner_serial_id"
+           ",reserve_pub"
+           ",purse_pub"
+           ",merge_sig"
+           ",merge_timestamp"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_purse_merges",
                                              params);
@@ -1052,6 +1388,18 @@ irbt_cb_table_purse_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_purse_deposits",
+           "INSERT INTO purse_deposits"
+           "(purse_deposit_serial_id"
+           ",partner_serial_id"
+           ",purse_pub"
+           ",coin_pub"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",coin_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_purse_deposits",
                                              params);
@@ -1059,7 +1407,7 @@ irbt_cb_table_purse_deposits (struct PostgresClosure *pg,
 
 
 /**
- * Function called with account_mergers records to insert into table.
+x * Function called with account_mergers records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
@@ -1108,6 +1456,17 @@ irbt_cb_table_history_requests (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_history_requests",
+           "INSERT INTO history_requests"
+           "(history_request_serial_id"
+           ",reserve_pub"
+           ",request_timestamp"
+           ",reserve_sig"
+           ",history_fee_val"
+           ",history_fee_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_history_requests",
                                              params);
@@ -1137,6 +1496,17 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_close_requests",
+           "INSERT INTO close_requests"
+           "(close_request_serial_id"
+           ",reserve_pub"
+           ",close_timestamp"
+           ",reserve_sig"
+           ",close_val"
+           ",close_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_close_requests",
                                              params);
@@ -1162,6 +1532,17 @@ irbt_cb_table_wads_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wads_out",
+           "INSERT INTO wads_out"
+           "(wad_out_serial_id"
+           ",wad_id"
+           ",partner_serial_id"
+           ",amount_val"
+           ",amount_frac"
+           ",execution_time"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wads_out",
                                              params);
@@ -1205,6 +1586,26 @@ irbt_cb_table_wads_out_entries (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wad_out_entries",
+           "INSERT INTO wad_out_entries"
+           "(wad_out_entry_serial_id"
+           ",wad_out_serial_id"
+           ",reserve_pub"
+           ",purse_pub"
+           ",h_contract"
+           ",purse_expiration"
+           ",merge_timestamp"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",wad_fee_val"
+           ",wad_fee_frac"
+           ",deposit_fees_val"
+           ",deposit_fees_frac"
+           ",reserve_sig"
+           ",purse_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wads_out_entries",
                                              params);
@@ -1230,6 +1631,17 @@ irbt_cb_table_wads_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wads_in",
+           "INSERT INTO wads_in"
+           "(wad_in_serial_id"
+           ",wad_id"
+           ",origin_exchange_url"
+           ",amount_val"
+           ",amount_frac"
+           ",arrival_time"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wads_in",
                                              params);
@@ -1271,6 +1683,26 @@ irbt_cb_table_wads_in_entries (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_wad_in_entries",
+           "INSERT INTO wad_in_entries"
+           "(wad_in_entry_serial_id"
+           ",wad_in_serial_id"
+           ",reserve_pub"
+           ",purse_pub"
+           ",h_contract"
+           ",purse_expiration"
+           ",merge_timestamp"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",wad_fee_val"
+           ",wad_fee_frac"
+           ",deposit_fees_val"
+           ",deposit_fees_frac"
+           ",reserve_sig"
+           ",purse_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wads_in_entries",
                                              params);
@@ -1304,6 +1736,19 @@ irbt_cb_table_profit_drains (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_profit_drains",
+           "INSERT INTO profit_drains"
+           "(profit_drain_serial_id"
+           ",wtid"
+           ",account_section"
+           ",payto_uri"
+           ",trigger_date"
+           ",amount_val"
+           ",amount_frac"
+           ",master_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_profit_drains",
                                              params);
