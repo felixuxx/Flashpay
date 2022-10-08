@@ -2206,6 +2206,15 @@ lrbt_cb_table_profit_drains (void *cls,
 }
 
 
+/**
+ * Assign statement to @a n and PREPARE
+ * @a sql under name @a n.
+ */
+#define XPREPARE(n,sql) \
+  statement = n;        \
+  PREPARE (pg, n, sql);
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_records_by_table (void *cls,
                                 enum TALER_EXCHANGEDB_ReplicatedTable table,
@@ -2230,95 +2239,363 @@ TEH_PG_lookup_records_by_table (void *cls,
   switch (table)
   {
   case TALER_EXCHANGEDB_RT_DENOMINATIONS:
-    statement = "select_above_serial_by_table_denominations";
+    XPREPARE ("select_above_serial_by_table_denominations",
+              "SELECT"
+              " denominations_serial AS serial"
+              ",denom_type"
+              ",denom_pub"
+              ",master_sig"
+              ",valid_from"
+              ",expire_withdraw"
+              ",expire_deposit"
+              ",expire_legal"
+              ",coin_val"
+              ",coin_frac"
+              ",fee_withdraw_val"
+              ",fee_withdraw_frac"
+              ",fee_deposit_val"
+              ",fee_deposit_frac"
+              ",fee_refresh_val"
+              ",fee_refresh_frac"
+              ",fee_refund_val"
+              ",fee_refund_frac"
+              ",age_mask"
+              " FROM denominations"
+              " WHERE denominations_serial > $1"
+              " ORDER BY denominations_serial ASC;");
     rh = &lrbt_cb_table_denominations;
     break;
   case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
-    statement = "select_above_serial_by_table_denomination_revocations";
+    XPREPARE ("select_above_serial_by_table_denomination_revocations",
+              "SELECT"
+              " denom_revocations_serial_id AS serial"
+              ",master_sig"
+              ",denominations_serial"
+              " FROM denomination_revocations"
+              " WHERE denom_revocations_serial_id > $1"
+              " ORDER BY denom_revocations_serial_id ASC;");
     rh = &lrbt_cb_table_denomination_revocations;
     break;
   case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
-    statement = "select_above_serial_by_table_wire_targets";
+    XPREPARE ("select_above_serial_by_table_wire_targets",
+              "SELECT"
+              " wire_target_serial_id AS serial"
+              ",payto_uri"
+              " FROM wire_targets"
+              " WHERE wire_target_serial_id > $1"
+              " ORDER BY wire_target_serial_id ASC;");
     rh = &lrbt_cb_table_wire_targets;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES:
-    statement = "select_above_serial_by_table_reserves";
+    XPREPARE ("select_above_serial_by_table_reserves",
+              "SELECT"
+              " reserve_uuid AS serial"
+              ",reserve_pub"
+              ",expiration_date"
+              ",gc_date"
+              " FROM reserves"
+              " WHERE reserve_uuid > $1"
+              " ORDER BY reserve_uuid ASC;");
     rh = &lrbt_cb_table_reserves;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_IN:
-    statement = "select_above_serial_by_table_reserves_in";
+    XPREPARE ("select_above_serial_by_table_reserves_in",
+              "SELECT"
+              " reserve_in_serial_id AS serial"
+              ",reserve_pub"
+              ",wire_reference"
+              ",credit_val"
+              ",credit_frac"
+              ",wire_source_h_payto"
+              ",exchange_account_section"
+              ",execution_date"
+              " FROM reserves_in"
+              " WHERE reserve_in_serial_id > $1"
+              " ORDER BY reserve_in_serial_id ASC;");
     rh = &lrbt_cb_table_reserves_in;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
-    statement = "select_above_serial_by_table_reserves_close";
+    XPREPARE ("select_above_serial_by_table_reserves_close",
+              "SELECT"
+              " close_uuid AS serial"
+              ",reserve_pub"
+              ",execution_date"
+              ",wtid"
+              ",wire_target_h_payto"
+              ",amount_val"
+              ",amount_frac"
+              ",closing_fee_val"
+              ",closing_fee_frac"
+              " FROM reserves_close"
+              " WHERE close_uuid > $1"
+              " ORDER BY close_uuid ASC;");
     rh = &lrbt_cb_table_reserves_close;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
-    statement = "select_above_serial_by_table_reserves_out";
+    XPREPARE ("select_above_serial_by_table_reserves_out",
+              "SELECT"
+              " reserve_out_serial_id AS serial"
+              ",h_blind_ev"
+              ",denominations_serial"
+              ",denom_sig"
+              ",reserve_uuid"
+              ",reserve_sig"
+              ",execution_date"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              " FROM reserves_out"
+              " JOIN reserves USING (reserve_uuid)"
+              " WHERE reserve_out_serial_id > $1"
+              " ORDER BY reserve_out_serial_id ASC;");
     rh = &lrbt_cb_table_reserves_out;
     break;
   case TALER_EXCHANGEDB_RT_AUDITORS:
-    statement = "select_above_serial_by_table_auditors";
+    XPREPARE ("select_above_serial_by_table_auditors",
+              "SELECT"
+              " auditor_uuid AS serial"
+              ",auditor_pub"
+              ",auditor_name"
+              ",auditor_url"
+              ",is_active"
+              ",last_change"
+              " FROM auditors"
+              " WHERE auditor_uuid > $1"
+              " ORDER BY auditor_uuid ASC;");
     rh = &lrbt_cb_table_auditors;
     break;
   case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
-    statement = "select_above_serial_by_table_auditor_denom_sigs";
+    XPREPARE ("select_above_serial_by_table_auditor_denom_sigs",
+              "SELECT"
+              " auditor_denom_serial AS serial"
+              ",auditor_uuid"
+              ",denominations_serial"
+              ",auditor_sig"
+              " FROM auditor_denom_sigs"
+              " WHERE auditor_denom_serial > $1"
+              " ORDER BY auditor_denom_serial ASC;");
     rh = &lrbt_cb_table_auditor_denom_sigs;
     break;
   case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
-    statement = "select_above_serial_by_table_exchange_sign_keys";
+    XPREPARE ("select_above_serial_by_table_exchange_sign_keys",
+              "SELECT"
+              " esk_serial AS serial"
+              ",exchange_pub"
+              ",master_sig"
+              ",valid_from"
+              ",expire_sign"
+              ",expire_legal"
+              " FROM exchange_sign_keys"
+              " WHERE esk_serial > $1"
+              " ORDER BY esk_serial ASC;");
     rh = &lrbt_cb_table_exchange_sign_keys;
     break;
   case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
-    statement = "select_above_serial_by_table_signkey_revocations";
+    XPREPARE ("select_above_serial_by_table_signkey_revocations",
+              "SELECT"
+              " signkey_revocations_serial_id AS serial"
+              ",esk_serial"
+              ",master_sig"
+              " FROM signkey_revocations"
+              " WHERE signkey_revocations_serial_id > $1"
+              " ORDER BY signkey_revocations_serial_id ASC;");
     rh = &lrbt_cb_table_signkey_revocations;
     break;
   case TALER_EXCHANGEDB_RT_KNOWN_COINS:
-    statement = "select_above_serial_by_table_known_coins";
+    XPREPARE ("select_above_serial_by_table_known_coins",
+              "SELECT"
+              " known_coin_id AS serial"
+              ",coin_pub"
+              ",denom_sig"
+              ",denominations_serial"
+              " FROM known_coins"
+              " WHERE known_coin_id > $1"
+              " ORDER BY known_coin_id ASC;");
     rh = &lrbt_cb_table_known_coins;
     break;
   case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
-    statement = "select_above_serial_by_table_refresh_commitments";
+    XPREPARE ("select_above_serial_by_table_refresh_commitments",
+              "SELECT"
+              " melt_serial_id AS serial"
+              ",rc"
+              ",old_coin_sig"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",noreveal_index"
+              ",old_coin_pub"
+              " FROM refresh_commitments"
+              " WHERE melt_serial_id > $1"
+              " ORDER BY melt_serial_id ASC;");
     rh = &lrbt_cb_table_refresh_commitments;
     break;
   case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
-    statement = "select_above_serial_by_table_refresh_revealed_coins";
+    XPREPARE ("select_above_serial_by_table_refresh_revealed_coins",
+              "SELECT"
+              " rrc_serial AS serial"
+              ",freshcoin_index"
+              ",link_sig"
+              ",coin_ev"
+              ",ev_sig"
+              ",ewv"
+              ",denominations_serial"
+              ",melt_serial_id"
+              " FROM refresh_revealed_coins"
+              " WHERE rrc_serial > $1"
+              " ORDER BY rrc_serial ASC;");
     rh = &lrbt_cb_table_refresh_revealed_coins;
     break;
   case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
-    statement = "select_above_serial_by_table_refresh_transfer_keys";
+    XPREPARE ("select_above_serial_by_table_refresh_transfer_keys",
+              "SELECT"
+              " rtc_serial AS serial"
+              ",transfer_pub"
+              ",transfer_privs"
+              ",melt_serial_id"
+              " FROM refresh_transfer_keys"
+              " WHERE rtc_serial > $1"
+              " ORDER BY rtc_serial ASC;");
     rh = &lrbt_cb_table_refresh_transfer_keys;
     break;
   case TALER_EXCHANGEDB_RT_DEPOSITS:
-    statement = "select_above_serial_by_table_deposits";
+    XPREPARE ("select_above_serial_by_table_deposits",
+              "SELECT"
+              " deposit_serial_id AS serial"
+              ",shard"
+              ",coin_pub"
+              ",known_coin_id"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",wallet_timestamp"
+              ",exchange_timestamp"
+              ",refund_deadline"
+              ",wire_deadline"
+              ",merchant_pub"
+              ",h_contract_terms"
+              ",coin_sig"
+              ",wire_salt"
+              ",wire_target_h_payto"
+              ",done"
+              ",extension_blocked"
+              ",extension_details_serial_id"
+              " FROM deposits"
+              " WHERE deposit_serial_id > $1"
+              " ORDER BY deposit_serial_id ASC;");
     rh = &lrbt_cb_table_deposits;
     break;
   case TALER_EXCHANGEDB_RT_REFUNDS:
-    statement = "select_above_serial_by_table_refunds";
+    XPREPARE ("select_above_serial_by_table_refunds",
+              "SELECT"
+              " refund_serial_id AS serial"
+              ",coin_pub"
+              ",merchant_sig"
+              ",rtransaction_id"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",deposit_serial_id"
+              " FROM refunds"
+              " WHERE refund_serial_id > $1"
+              " ORDER BY refund_serial_id ASC;");
     rh = &lrbt_cb_table_refunds;
     break;
   case TALER_EXCHANGEDB_RT_WIRE_OUT:
-    statement = "select_above_serial_by_table_wire_out";
+    XPREPARE ("select_above_serial_by_table_wire_out",
+              "SELECT"
+              " wireout_uuid AS serial"
+              ",execution_date"
+              ",wtid_raw"
+              ",wire_target_h_payto"
+              ",exchange_account_section"
+              ",amount_val"
+              ",amount_frac"
+              " FROM wire_out"
+              " WHERE wireout_uuid > $1"
+              " ORDER BY wireout_uuid ASC;");
     rh = &lrbt_cb_table_wire_out;
     break;
   case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
-    statement = "select_above_serial_by_table_aggregation_tracking";
+    XPREPARE ("select_above_serial_by_table_aggregation_tracking",
+              "SELECT"
+              " aggregation_serial_id AS serial"
+              ",deposit_serial_id"
+              ",wtid_raw"
+              " FROM aggregation_tracking"
+              " WHERE aggregation_serial_id > $1"
+              " ORDER BY aggregation_serial_id ASC;");
     rh = &lrbt_cb_table_aggregation_tracking;
     break;
   case TALER_EXCHANGEDB_RT_WIRE_FEE:
-    statement = "select_above_serial_by_table_wire_fee";
+    XPREPARE ("select_above_serial_by_table_wire_fee",
+              "SELECT"
+              " wire_fee_serial AS serial"
+              ",wire_method"
+              ",start_date"
+              ",end_date"
+              ",wire_fee_val"
+              ",wire_fee_frac"
+              ",closing_fee_val"
+              ",closing_fee_frac"
+              ",wad_fee_val"
+              ",wad_fee_frac"
+              ",master_sig"
+              " FROM wire_fee"
+              " WHERE wire_fee_serial > $1"
+              " ORDER BY wire_fee_serial ASC;");
     rh = &lrbt_cb_table_wire_fee;
     break;
   case TALER_EXCHANGEDB_RT_GLOBAL_FEE:
-    statement = "select_above_serial_by_table_global_fee";
+    XPREPARE ("select_above_serial_by_table_global_fee",
+              "SELECT"
+              " global_fee_serial AS serial"
+              ",start_date"
+              ",end_date"
+              ",history_fee_val"
+              ",history_fee_frac"
+              ",kyc_fee_val"
+              ",kyc_fee_frac"
+              ",account_fee_val"
+              ",account_fee_frac"
+              ",purse_fee_val"
+              ",purse_fee_frac"
+              ",purse_timeout"
+              ",kyc_timeout"
+              ",history_expiration"
+              ",purse_account_limit"
+              ",master_sig"
+              " FROM global_fee"
+              " WHERE global_fee_serial > $1"
+              " ORDER BY global_fee_serial ASC;");
     rh = &lrbt_cb_table_global_fee;
     break;
   case TALER_EXCHANGEDB_RT_RECOUP:
-    statement = "select_above_serial_by_table_recoup";
+    XPREPARE ("select_above_serial_by_table_recoup",
+              "SELECT"
+              " recoup_uuid AS serial"
+              ",coin_sig"
+              ",coin_blind"
+              ",amount_val"
+              ",amount_frac"
+              ",recoup_timestamp"
+              ",coin_pub"
+              ",reserve_out_serial_id"
+              " FROM recoup"
+              " WHERE recoup_uuid > $1"
+              " ORDER BY recoup_uuid ASC;");
     rh = &lrbt_cb_table_recoup;
     break;
   case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
-    statement = "select_above_serial_by_table_recoup_refresh";
+    XPREPARE ("select_above_serial_by_table_recoup_refresh",
+              "SELECT"
+              " recoup_refresh_uuid AS serial"
+              ",coin_sig"
+              ",coin_blind"
+              ",amount_val"
+              ",amount_frac"
+              ",recoup_timestamp"
+              ",coin_pub"
+              ",known_coin_id"
+              ",rrc_serial"
+              " FROM recoup_refresh"
+              " WHERE recoup_refresh_uuid > $1"
+              " ORDER BY recoup_refresh_uuid ASC;");
     rh = &lrbt_cb_table_recoup_refresh;
     break;
   case TALER_EXCHANGEDB_RT_EXTENSIONS:
@@ -2330,51 +2607,191 @@ TEH_PG_lookup_records_by_table (void *cls,
     rh = &lrbt_cb_table_extension_details;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
-    statement = "select_above_serial_by_table_purse_requests";
+    XPREPARE ("select_above_serial_by_table_purse_requests",
+              "SELECT"
+              " purse_requests_serial_id"
+              ",purse_pub"
+              ",merge_pub"
+              ",purse_creation"
+              ",purse_expiration"
+              ",h_contract_terms"
+              ",age_limit"
+              ",flags"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",purse_fee_val"
+              ",purse_fee_frac"
+              ",purse_sig"
+              " FROM purse_requests"
+              " WHERE purse_requests_serial_id > $1"
+              " ORDER BY purse_requests_serial_id ASC;");
     rh = &lrbt_cb_table_purse_requests;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
-    statement = "select_above_serial_by_table_purse_refunds";
+    XPREPARE ("select_above_serial_by_table_purse_refunds",
+              "SELECT"
+              " purse_refunds_serial_id"
+              ",purse_pub"
+              " FROM purse_refunds"
+              " WHERE purse_refunds_serial_id > $1"
+              " ORDER BY purse_refunds_serial_id ASC;");
     rh = &lrbt_cb_table_purse_refunds;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_MERGES:
-    statement = "select_above_serial_by_table_purse_merges";
+    XPREPARE ("select_above_serial_by_table_purse_merges",
+              "SELECT"
+              " purse_merge_request_serial_id"
+              ",partner_serial_id"
+              ",reserve_pub"
+              ",purse_pub"
+              ",merge_sig"
+              ",merge_timestamp"
+              " FROM purse_merges"
+              " WHERE purse_merge_request_serial_id > $1"
+              " ORDER BY purse_merge_request_serial_id ASC;");
     rh = &lrbt_cb_table_purse_merges;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_DEPOSITS:
-    statement = "select_above_serial_by_table_purse_deposits";
+    XPREPARE ("select_above_serial_by_table_purse_deposits",
+              "SELECT"
+              " purse_deposit_serial_id"
+              ",partner_serial_id"
+              ",purse_pub"
+              ",coin_pub"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",coin_sig"
+              " FROM purse_deposits"
+              " WHERE purse_deposit_serial_id > $1"
+              " ORDER BY purse_deposit_serial_id ASC;");
     rh = &lrbt_cb_table_purse_deposits;
     break;
   case TALER_EXCHANGEDB_RT_ACCOUNT_MERGES:
-    statement = "select_above_serial_by_table_account_merges";
+    XPREPARE ("select_above_serial_by_table_account_merges",
+              "SELECT"
+              " account_merge_request_serial_id"
+              ",reserve_pub"
+              ",reserve_sig"
+              ",purse_pub"
+              " FROM account_merges"
+              " WHERE account_merge_request_serial_id > $1"
+              " ORDER BY account_merge_request_serial_id ASC;");
     rh = &lrbt_cb_table_account_merges;
     break;
   case TALER_EXCHANGEDB_RT_HISTORY_REQUESTS:
-    statement = "select_above_serial_by_table_history_requests";
+    XPREPARE ("select_above_serial_by_table_history_requests",
+              "SELECT"
+              " history_request_serial_id"
+              ",reserve_pub"
+              ",request_timestamp"
+              ",reserve_sig"
+              ",history_fee_val"
+              ",history_fee_frac"
+              " FROM history_requests"
+              " WHERE history_request_serial_id > $1"
+              " ORDER BY history_request_serial_id ASC;");
     rh = &lrbt_cb_table_history_requests;
     break;
   case TALER_EXCHANGEDB_RT_CLOSE_REQUESTS:
-    statement = "select_above_serial_by_table_close_requests";
+    XPREPARE ("select_above_serial_by_table_close_requests",
+              "SELECT"
+              " close_request_serial_id"
+              ",reserve_pub"
+              ",close_timestamp"
+              ",reserve_sig"
+              ",close_val"
+              ",close_frac"
+              " FROM close_requests"
+              " WHERE close_request_serial_id > $1"
+              " ORDER BY close_request_serial_id ASC;");
     rh = &lrbt_cb_table_close_requests;
     break;
   case TALER_EXCHANGEDB_RT_WADS_OUT:
-    statement = "select_above_serial_by_table_wads_out";
+    XPREPARE ("select_above_serial_by_table_wads_out",
+              "SELECT"
+              " wad_out_serial_id"
+              ",wad_id"
+              ",partner_serial_id"
+              ",amount_val"
+              ",amount_frac"
+              ",execution_time"
+              " FROM wads_out"
+              " WHERE wad_out_serial_id > $1"
+              " ORDER BY wad_out_serial_id ASC;");
     rh = &lrbt_cb_table_wads_out;
     break;
   case TALER_EXCHANGEDB_RT_WADS_OUT_ENTRIES:
-    statement = "select_above_serial_by_table_wads_out_entries";
+    XPREPARE ("select_above_serial_by_table_wads_out_entries",
+              "SELECT"
+              " wad_out_entry_serial_id"
+              ",reserve_pub"
+              ",purse_pub"
+              ",h_contract"
+              ",purse_expiration"
+              ",merge_timestamp"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",wad_fee_val"
+              ",wad_fee_frac"
+              ",deposit_fees_val"
+              ",deposit_fees_frac"
+              ",reserve_sig"
+              ",purse_sig"
+              " FROM wad_out_entries"
+              " WHERE wad_out_entry_serial_id > $1"
+              " ORDER BY wad_out_entry_serial_id ASC;");
     rh = &lrbt_cb_table_wads_out_entries;
     break;
   case TALER_EXCHANGEDB_RT_WADS_IN:
-    statement = "select_above_serial_by_table_wads_in";
+    XPREPARE ("select_above_serial_by_table_wads_in",
+              "SELECT"
+              " wad_in_serial_id"
+              ",wad_id"
+              ",origin_exchange_url"
+              ",amount_val"
+              ",amount_frac"
+              ",arrival_time"
+              " FROM wads_in"
+              " WHERE wad_in_serial_id > $1"
+              " ORDER BY wad_in_serial_id ASC;");
     rh = &lrbt_cb_table_wads_in;
     break;
   case TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES:
-    statement = "select_above_serial_by_table_wads_in_entries";
+    XPREPARE ("select_above_serial_by_table_wads_in_entries",
+              "SELECT"
+              " wad_in_entry_serial_id"
+              ",reserve_pub"
+              ",purse_pub"
+              ",h_contract"
+              ",purse_expiration"
+              ",merge_timestamp"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",wad_fee_val"
+              ",wad_fee_frac"
+              ",deposit_fees_val"
+              ",deposit_fees_frac"
+              ",reserve_sig"
+              ",purse_sig"
+              " FROM wad_in_entries"
+              " WHERE wad_in_entry_serial_id > $1"
+              " ORDER BY wad_in_entry_serial_id ASC;");
     rh = &lrbt_cb_table_wads_in_entries;
     break;
   case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
-    statement = "select_above_serial_by_table_profit_drains";
+    XPREPARE ("select_above_serial_by_table_profit_drains",
+              "SELECT"
+              " profit_drain_serial_id"
+              ",wtid"
+              ",account_section"
+              ",payto_uri"
+              ",trigger_date"
+              ",amount_val"
+              ",amount_frac"
+              ",master_sig"
+              " FROM profit_drains"
+              " WHERE profit_drain_serial_id > $1"
+              " ORDER BY profit_drain_serial_id ASC;");
     rh = &lrbt_cb_table_profit_drains;
     break;
   default:
@@ -2402,5 +2819,7 @@ TEH_PG_lookup_records_by_table (void *cls,
   return qs;
 }
 
+
+#undef XPREPARE
 
 /* end of lrbt_callbacks.c */
