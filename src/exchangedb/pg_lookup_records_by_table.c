@@ -1766,6 +1766,9 @@ lrbt_cb_table_account_merges (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "purse_pub",
         &td.details.account_merges.purse_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wallet_h_payto",
+        &td.details.account_merges.wallet_h_payto),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2673,6 +2676,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",reserve_pub"
               ",reserve_sig"
               ",purse_pub"
+              ",wallet_h_payto"
               " FROM account_merges"
               " WHERE account_merge_request_serial_id > $1"
               " ORDER BY account_merge_request_serial_id ASC;");
@@ -2822,4 +2826,4 @@ TEH_PG_lookup_records_by_table (void *cls,
 
 #undef XPREPARE
 
-/* end of lrbt_callbacks.c */
+/* end of pg_lookup_records_by_table.c */

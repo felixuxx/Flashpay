@@ -217,6 +217,17 @@ irbt_cb_table_legitimization_processes (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_legitimization_processes",
+           "INSERT INTO legitimization_processes"
+           "(legitimization_process_serial_id"
+           ",h_payto"
+           ",expiration_time"
+           ",provider_section"
+           ",provider_user_id"
+           ",provider_legitimization_id"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_legitimization_processes",
                                              params);
@@ -243,6 +254,14 @@ irbt_cb_table_legitimization_requirements (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_legitimization_requirements",
+           "INSERT INTO legitimization_requirements"
+           "(legitimization_requirement_serial_id"
+           ",h_payto"
+           ",required_checks"
+           ") VALUES "
+           "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_legitimization_requirements",
                                              params);
@@ -351,6 +370,19 @@ irbt_cb_table_reserves_open_requests (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_open_requests",
+           "INSERT INTO reserves_open_requests"
+           "(open_request_uuid"
+           ",reserve_pub"
+           ",request_timestamp"
+           ",expiration_date"
+           ",reserve_sig"
+           ",reserve_payment_val"
+           ",reserve_payment_frac"
+           ",requested_purse_limit"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_open_requests",
                                              params);
@@ -364,9 +396,9 @@ irbt_cb_table_reserves_open_requests (struct PostgresClosure *pg,
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_reserves_open_deposits (struct PostgresClosure *pg,
-                                      const struct
-                                      TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_reserves_open_deposits (
+  struct PostgresClosure *pg,
+  const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
@@ -383,6 +415,19 @@ irbt_cb_table_reserves_open_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_open_deposits",
+           "INSERT INTO reserves_open_deposits"
+           "(reserve_open_deposit_uuid"
+           ",reserve_sig"
+           ",reserve_pub"
+           ",request_timestamp"
+           ",coin_pub"
+           ",coin_sig"
+           ",contribution_val"
+           ",contribution_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_open_deposits",
                                              params);
@@ -396,9 +441,9 @@ irbt_cb_table_reserves_open_deposits (struct PostgresClosure *pg,
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_reserves_close_requests (struct PostgresClosure *pg,
-                                       const struct
-                                       TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_reserves_close_requests (
+  struct PostgresClosure *pg,
+  const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
@@ -413,6 +458,16 @@ irbt_cb_table_reserves_close_requests (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_reserves_close_requests",
+           "INSERT INTO reserves_close_requests"
+           "(close_request_uuid"
+           ",reserve_pub"
+           ",execution_date"
+           ",reserve_sig"
+           ",wire_target_h_payto"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_close_requests",
                                              params);
@@ -959,7 +1014,18 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
-
+  PREPARE (pg,
+           "insert_into_table_wire_out",
+           "INSERT INTO wire_out"
+           "(wireout_uuid"
+           ",execution_date"
+           ",wtid_raw"
+           ",wire_target_h_payto"
+           ",exchange_account_section"
+           ",amount_val"
+           ",amount_frac"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_out",
                                              params);
@@ -1440,11 +1506,23 @@ irbt_cb_table_account_mergers (struct PostgresClosure *pg,
       &td->details.account_merges.reserve_sig),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.account_merges.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.account_merges.wallet_h_payto),
     GNUNET_PQ_query_param_end
   };
 
+  PREPARE (pg,
+           "insert_into_table_account_merges",
+           "INSERT INTO account_merges"
+           "(account_merge_request_serial_id"
+           ",reserve_pub"
+           ",reserve_sig"
+           ",purse_pub"
+           ",wallet_h_payto"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_account_mergers",
+                                             "insert_into_table_account_merges",
                                              params);
 }
 
@@ -1789,6 +1867,12 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
     rh = &irbt_cb_table_wire_targets;
     break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    rh = &irbt_cb_table_legitimization_processes;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
+    rh = &irbt_cb_table_legitimization_requirements;
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     rh = &irbt_cb_table_reserves;
     break;
@@ -1797,6 +1881,15 @@ TEH_PG_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
     rh = &irbt_cb_table_reserves_close;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS:
+    rh = &irbt_cb_table_reserves_open_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS:
+    rh = &irbt_cb_table_reserves_open_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS:
+    rh = &irbt_cb_table_reserves_close_requests;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
     rh = &irbt_cb_table_reserves_out;

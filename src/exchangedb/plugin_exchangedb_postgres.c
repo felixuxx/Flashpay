@@ -2036,19 +2036,6 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6);",
       6),
-    GNUNET_PQ_make_prepare (
-      "insert_into_table_wire_out",
-      "INSERT INTO wire_out"
-      "(wireout_uuid"
-      ",execution_date"
-      ",wtid_raw"
-      ",wire_target_h_payto"
-      ",exchange_account_section"
-      ",amount_val"
-      ",amount_frac"
-      ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7);",
-      7),
     /* Used in #postgres_wire_prepare_data_insert() to store
        wire transfer information before actually committing it with the bank */
     GNUNET_PQ_make_prepare (

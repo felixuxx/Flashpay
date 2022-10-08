@@ -571,6 +571,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReservePublicKeyP reserve_pub;
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PaytoHashP wallet_h_payto;
     } account_merges;
 
     struct
