@@ -47,8 +47,10 @@ TEH_PG_do_reserve_open (
     TALER_PQ_query_param_amount (total_paid),
     TALER_PQ_query_param_amount (reserve_payment),
     GNUNET_PQ_query_param_uint32 (&min_purse_limit),
+    GNUNET_PQ_query_param_uint32 (&pg->def_purse_limit),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_timestamp (&desired_expiration),
+    GNUNET_PQ_query_param_relative_time (&pg->legal_reserve_expiration_time),
     GNUNET_PQ_query_param_timestamp (&now),
     TALER_PQ_query_param_amount (open_fee),
     GNUNET_PQ_query_param_end

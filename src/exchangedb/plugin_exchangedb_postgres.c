@@ -15567,6 +15567,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   const struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct PostgresClosure *pg;
   struct TALER_EXCHANGEDB_Plugin *plugin;
+  unsigned long long dpl;
 
   pg = GNUNET_new (struct PostgresClosure);
   pg->cfg = cfg;
@@ -15624,6 +15625,21 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                "exchangedb",
                                "AGGREGATOR_SHIFT");
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "exchangedb",
+                                             "DEFAULT_PURSE_LIMIT",
+                                             &dpl))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchangedb",
+                               "DEFAULT_PURSE_LIMIT");
+    pg->def_purse_limit = 1;
+  }
+  else
+  {
+    pg->def_purse_limit = (uint32_t) dpl;
   }
 
   if (GNUNET_OK !=

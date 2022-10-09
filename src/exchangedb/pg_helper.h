@@ -83,6 +83,12 @@ struct PostgresClosure
   unsigned long long prep_gen;
 
   /**
+   * Number of purses we allow to be opened concurrently
+   * for one year per annual fee payment.
+   */
+  uint32_t def_purse_limit;
+
+  /**
    * Did we initialize the prepared statements
    * for this session? (To be replaced with @e prep_gen.)
    */
