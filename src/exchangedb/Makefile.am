@@ -76,6 +76,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_iterate_kyc_reference.c pg_iterate_kyc_reference.h \
   pg_iterate_reserve_close_info.c pg_iterate_reserve_close_info.h \
   pg_lookup_records_by_table.c pg_lookup_records_by_table.h \
+  pg_lookup_serial_by_table.c pg_lookup_serial_by_table.h \
   pg_select_reserve_close_info.c pg_select_reserve_close_info.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
