@@ -18,7 +18,7 @@
      SPDX-License-Identifier: AGPL3.0-or-later
  */
 /**
- * @file exchangedb/insert_records_by_table.c
+ * @file exchangedb/pg_insert_records_by_table.c
  * @brief insert_records_by_table implementation
  * @author Christian Grothoff
  */
@@ -31,7 +31,7 @@
 
 
 /**
- * Signature of helper functions of #postgres_insert_records_by_table.
+ * Signature of helper functions of #TEH_PG_insert_records_by_table().
  *
  * @param pg plugin context
  * @param td record to insert
