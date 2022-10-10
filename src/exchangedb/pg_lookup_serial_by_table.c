@@ -77,6 +77,22 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY wire_target_serial_id DESC"
               " LIMIT 1;");
     break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    XPREPARE ("select_serial_by_table_legitimization_processes",
+              "SELECT"
+              " legitimization_process_serial_id AS serial"
+              " FROM legitimization_processes"
+              " ORDER BY legitimization_process_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
+    XPREPARE ("select_serial_by_table_legitimization_requiremetns",
+              "SELECT"
+              " legitimization_requirement_serial_id AS serial"
+              " FROM legitimization_requirements"
+              " ORDER BY legitimization_requirement_serial_id DESC"
+              " LIMIT 1;");
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     XPREPARE ("select_serial_by_table_reserves",
               "SELECT"
@@ -99,6 +115,30 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " close_uuid AS serial"
               " FROM reserves_close"
               " ORDER BY close_uuid DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS:
+    XPREPARE ("select_serial_by_table_reserves_open_requests",
+              "SELECT"
+              " open_request_uuid AS serial"
+              " FROM reserves_open_requests"
+              " ORDER BY open_request_uuid DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS:
+    XPREPARE ("select_serial_by_table_reserves_open_deposits",
+              "SELECT"
+              " open_request_uuid AS serial"
+              " FROM reserves_open_deposits"
+              " ORDER BY open_request_uuid DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS:
+    XPREPARE ("select_serial_by_table_reserves_close_requests",
+              "SELECT"
+              " close_request_uuid AS serial"
+              " FROM reserves_close_requests"
+              " ORDER BY close_request_uuid DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
