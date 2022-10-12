@@ -353,6 +353,9 @@ run (void *cls,
       NULL),
     TALER_TESTING_cmd_end ()
   };
+  struct TALER_TESTING_Command reserves[] = {
+    TALER_TESTING_cmd_end ()
+  };
 
   struct TALER_TESTING_Command commands[] = {
     /* setup exchange */
@@ -384,6 +387,9 @@ run (void *cls,
                                               config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
+    TALER_TESTING_cmd_batch ("reserves",
+                             reserves),
+    TALER_TESTING_cmd_end (), // FIXME
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("push",
