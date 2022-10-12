@@ -16,7 +16,7 @@
 */
 /**
  * @file lib/exchange_api_reserves_attest.c
- * @brief Implementation of the POST /reserves/$RESERVE_PUB/attest requests
+ * @brief Implementation of the POST /reserves-attest/$RESERVE_PUB requests
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -33,7 +33,7 @@
 
 
 /**
- * @brief A /reserves/$RID/attest Handle
+ * @brief A /reserves-attest/$RID Handle
  */
 struct TALER_EXCHANGE_ReservesAttestHandle
 {
@@ -141,7 +141,7 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
 
 /**
  * Function called when we're done processing the
- * HTTP /reserves/$RID/attest request.
+ * HTTP /reserves-attest/$RID request.
  *
  * @param cls the `struct TALER_EXCHANGE_ReservesAttestHandle`
  * @param response_code HTTP response code, 0 on error
@@ -280,7 +280,7 @@ TALER_EXCHANGE_reserves_attest (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/attest",
+                     "/reserves-attest/%s",
                      pub_str);
   }
   rsh->url = TEAH_path_to_url (exchange,

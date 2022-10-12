@@ -319,6 +319,7 @@ TALER_TESTING_cmd_reserve_open (const char *label,
     ss->cpl++;
   va_end (ap);
   GNUNET_assert (0 == (ss->cpl % 2));
+  ss->cpl /= 2; /* name and amount per coin */
   ss->cd = GNUNET_new_array (ss->cpl,
                              struct CoinDetail);
   i = 0;
@@ -326,11 +327,12 @@ TALER_TESTING_cmd_reserve_open (const char *label,
             expected_response_code);
   while (NULL != (name = va_arg (ap, const char *)))
   {
-    ss->cd[i].name = name;
+    struct CoinDetail *cd = &ss->cd[i];
+    cd->name = name;
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (va_arg (ap,
                                                    const char *),
-                                           &ss->cd[i].amount));
+                                           &cd->amount));
     i++;
   }
   va_end (ap);

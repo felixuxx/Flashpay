@@ -382,7 +382,7 @@ run (void *cls,
                                     MHD_HTTP_PAYMENT_REQUIRED, // FIXME: or CONFLICT?
                                     NULL,
                                     NULL),
-    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok",
+    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok-a",
                                     "create-reserve-101",
                                     "EUR:0.01",
                                     GNUNET_TIME_UNIT_MONTHS,
@@ -394,30 +394,32 @@ run (void *cls,
                               "create-reserve-101",
                               "EUR:1.03",
                               MHD_HTTP_OK),
-    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok",
+    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok-b",
                                     "create-reserve-101",
                                     "EUR:0",
                                     GNUNET_TIME_UNIT_MONTHS,
                                     2, /* min purses */
                                     MHD_HTTP_OK,
                                     "withdraw-coin-100",
-                                    "EUR:0.02",
+                                    "EUR:0.03", /* 0.02 for the reserve open, 0.01 for deposit fee */
                                     NULL,
                                     NULL),
-    /* FIXME: use purse quota here */
+    /* FIXME: use purse creation with purse quota here */
     TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attestable",
                                               "create-reserve-101",
-                                              MHD_HTTP_OK,
+                                              MHD_HTTP_NOT_FOUND,
                                               NULL),
     TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attest",
                                               "create-reserve-101",
-                                              MHD_HTTP_CONFLICT,
+                                              MHD_HTTP_NOT_FOUND,
                                               "nx-attribute-name",
                                               NULL),
+#if 0
     TALER_TESTING_cmd_reserve_close ("reserve-101-close",
                                      "create-reserve-101",
                                      NULL, /* to origin */
                                      MHD_HTTP_OK),
+#endif
     TALER_TESTING_cmd_end ()
   };
 

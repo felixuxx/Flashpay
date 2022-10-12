@@ -48,7 +48,7 @@ struct ReserveAttestContext
   /**
    * Public key of the reserve the inquiry is about.
    */
-  const struct TALER_ReservePublicKeyP *reserve_pub;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Hash of the payto URI of this reserve.
@@ -122,7 +122,7 @@ reply_reserve_attest_success (struct MHD_Connection *connection,
     &TEH_keys_exchange_sign_,
     now,
     rhc->etime,
-    rhc->reserve_pub,
+    &rhc->reserve_pub,
     rhc->json_attest,
     &exchange_pub,
     &exchange_sig);
@@ -273,8 +273,8 @@ reserve_attest_transaction (void *cls,
 
 MHD_RESULT
 TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
-                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                             const json_t *root)
+                             const json_t *root,
+                             const char *const args[1])
 {
   struct ReserveAttestContext rsc = {
     .etime = GNUNET_TIME_UNIT_FOREVER_TS
@@ -291,7 +291,18 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   };
   struct GNUNET_TIME_Timestamp now;
 
-  rsc.reserve_pub = reserve_pub;
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &rsc.reserve_pub,
+                                     sizeof (rsc.reserve_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
+                                       args[0]);
+  }
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -324,7 +335,7 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   if (GNUNET_OK !=
       TALER_wallet_reserve_attest_request_verify (rsc.timestamp,
                                                   rsc.details,
-                                                  reserve_pub,
+                                                  &rsc.reserve_pub,
                                                   &rsc.reserve_sig))
   {
     GNUNET_break_op (0);
@@ -338,7 +349,7 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
     char *payto_uri;
 
     payto_uri = TALER_reserve_make_payto (TEH_base_url,
-                                          rsc.reserve_pub);
+                                          &rsc.reserve_pub);
     TALER_payto_hash (payto_uri,
                       &rsc.h_payto);
     GNUNET_free (payto_uri);
@@ -360,7 +371,7 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                       NULL);
+                                       args[0]);
   }
   if (TALER_EC_NONE != rsc.ec)
   {

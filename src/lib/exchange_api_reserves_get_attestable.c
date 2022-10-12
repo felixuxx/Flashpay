@@ -133,7 +133,7 @@ handle_reserves_get_attestable_ok (
 
 /**
  * Function called when we're done processing the
- * HTTP GET /reserves/$RID/attest request.
+ * HTTP GET /reserves-attest/$RID request.
  *
  * @param cls the `struct TALER_EXCHANGE_ReservesGetAttestableHandle`
  * @param response_code HTTP response code, 0 on error
@@ -241,7 +241,7 @@ TALER_EXCHANGE_reserves_get_attestable (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/attest",
+                     "/reserves-attest/%s",
                      pub_str);
   }
   rgah = GNUNET_new (struct TALER_EXCHANGE_ReservesGetAttestHandle);

@@ -2119,7 +2119,6 @@ BEGIN
 INSERT INTO exchange.reserves_open_deposits
   (reserve_sig
   ,reserve_pub
-  ,request_timestamp
   ,coin_pub
   ,coin_sig
   ,contribution_val
@@ -2128,7 +2127,6 @@ INSERT INTO exchange.reserves_open_deposits
   VALUES
   (in_reserve_sig
   ,in_reserve_pub
-  ,in_request_timestamp
   ,in_coin_pub
   ,in_coin_sig
   ,in_coin_total_val
@@ -2237,8 +2235,9 @@ WHERE
 
 IF NOT FOUND
 THEN
-  -- FIXME: do we need to set a 'not found'? 
-  RETURN;  
+  -- FIXME: do we need to set a 'not found'?
+  RAISE NOTICE 'reserve not found';
+  RETURN;
 END IF;
 
 -- Do not allow expiration time to start in the past already
@@ -2272,9 +2271,10 @@ THEN
   my_purses_allowed = my_purses_allowed + (in_default_purse_limit * my_years_tmp);
 END IF;
 
+
 -- Compute cost based on annual fees
 IF (my_years > 0)
-THEN 
+THEN
   my_cost_val = my_years * in_open_fee_val;
   my_cost_tmp = my_years * in_open_fee_frac / 100000000;
   IF (CAST (my_cost_val + my_cost_tmp AS INT8) < my_cost_val)
@@ -2282,8 +2282,9 @@ THEN
     out_open_cost_val=9223372036854775807;
     out_open_cost_frac=2147483647;
     out_final_expiration=my_expiration_date;
-    out_no_funds=true;
-    RETURN;
+    out_no_funds=FALSE;
+    RAISE NOTICE 'arithmetic issue computing amount';
+  RETURN;
   END IF;
   my_cost_val = CAST (my_cost_val + my_cost_tmp AS INT8);
   my_cost_frac = my_years * in_open_fee_frac % 100000000;
@@ -2297,6 +2298,7 @@ THEN
   out_open_cost_val = 0;
   out_open_cost_frac = 0;
   out_no_funds=FALSE;
+  RAISE NOTICE 'no change required';
   RETURN;
 END IF;
 
@@ -2305,10 +2307,22 @@ IF ( (in_total_paid_val < my_cost_val) OR
      ( (in_total_paid_val = my_cost_val) AND
        (in_total_paid_frac < my_cost_frac) ) )
 THEN
-  out_final_expiration=my_reserve_expiration;
   out_open_cost_val = my_cost_val;
   out_open_cost_frac = my_cost_frac;
-  out_no_funds=TRUE;
+  out_no_funds=FALSE;
+  -- We must return a failure, which is indicated by
+  -- the expiration being below the desired expiration.
+  IF (my_reserve_expiration >= in_desired_expiration)
+  THEN
+    -- This case is relevant especially if the purse
+    -- count was to be increased and the payment was
+    -- insufficient to cover this for the full period.
+    RAISE NOTICE 'forcing low expiration time';
+    out_final_expiration = 0;
+  ELSE
+    out_final_expiration = my_reserve_expiration;
+  END IF;
+  RAISE NOTICE 'amount paid too low';
   RETURN;
 END IF;
 
@@ -2329,11 +2343,12 @@ ELSE
     my_balance_val=0;
     my_balance_frac=my_balance_frac - in_reserve_payment_frac;
   ELSE
-    out_final_expiration=my_reserve_expiration;
+    out_final_expiration = my_reserve_expiration;
     out_open_cost_val = my_cost_val;
     out_open_cost_frac = my_cost_frac;
     out_no_funds=TRUE;
-    RETURN;
+    RAISE NOTICE 'reserve balance too low';
+  RETURN;
   END IF;
 END IF;
 
@@ -2341,12 +2356,12 @@ UPDATE reserves SET
   current_balance_val=my_balance_val
  ,current_balance_frac=my_balance_frac
  ,gc_date=my_reserve_expiration + in_reserve_gc_delay
- ,expiration_date=my_reserve_expiration
+ ,expiration_date=my_expiration_date
  ,purses_allowed=my_purses_allowed
 WHERE
  reserve_pub=in_reserve_pub;
 
-out_final_expiration=my_reserve_expiration;
+out_final_expiration=my_expiration_date;
 out_open_cost_val = my_cost_val;
 out_open_cost_frac = my_cost_frac;
 out_no_funds=FALSE;

@@ -108,6 +108,7 @@ struct ReserveOpenContext
    * for the operation.
    */
   bool no_funds;
+
 };
 
 
@@ -122,6 +123,8 @@ static MHD_RESULT
 reply_reserve_open_success (struct MHD_Connection *connection,
                             const struct ReserveOpenContext *rsc)
 {
+  struct GNUNET_TIME_Timestamp now;
+  struct GNUNET_TIME_Timestamp re;
   unsigned int status;
 
   status = MHD_HTTP_OK;
@@ -129,11 +132,18 @@ reply_reserve_open_success (struct MHD_Connection *connection,
                                  <,
                                  rsc->desired_expiration))
     status = MHD_HTTP_PAYMENT_REQUIRED;
+  now = GNUNET_TIME_timestamp_get ();
+  if (GNUNET_TIME_timestamp_cmp (rsc->reserve_expiration,
+                                 <,
+                                 now))
+    re = now;
+  else
+    re = rsc->reserve_expiration;
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     status,
     GNUNET_JSON_pack_timestamp ("reserve_expiration",
-                                rsc->reserve_expiration),
+                                re),
     TALER_JSON_pack_amount ("open_cost",
                             &rsc->open_cost));
 }
@@ -234,7 +244,8 @@ reserve_open_transaction (void *cls,
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Do reserve open\n");
+              "Do reserve open with reserve payment of %s\n",
+              TALER_amount2s (&rsc->total));
   qs = TEH_plugin->do_reserve_open (TEH_plugin->cls,
                                     /* inputs */
                                     rsc->reserve_pub,

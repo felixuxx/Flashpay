@@ -259,8 +259,8 @@ SELECT create_table_reserves_open_deposits();
 
 COMMENT ON TABLE reserves_open_deposits
   IS 'coin contributions paying for a reserve to remain open';
-COMMENT ON COLUMN reserves_open_deposits.request_timestamp
-  IS 'Identifies the specific reserve open request being paid for.';
+COMMENT ON COLUMN reserves_open_deposits.reserve_pub
+  IS 'Identifies the specific reserve being paid for (possibly together with reserve_sig).';
 
 CREATE TABLE IF NOT EXISTS reserves_open_deposits_default
   PARTITION OF reserves_open_deposits

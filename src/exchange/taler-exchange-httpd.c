@@ -389,10 +389,6 @@ handle_post_reserves (struct TEH_RequestContext *rc,
       .handler = &TEH_handler_reserves_open
     },
     {
-      .op = "attest",
-      .handler = &TEH_handler_reserves_attest
-    },
-    {
       .op = "close",
       .handler = &TEH_handler_reserves_close
     },
@@ -1055,27 +1051,6 @@ handle_post_auditors (struct TEH_RequestContext *rc,
 
 
 /**
- * Handle a GET "/reserves/$RID/$XXX" request.
- *
- * @param rc request context
- * @param args array of additional options (length: 1, just the reserve_pub)
- * @return MHD result code
- */
-static MHD_RESULT
-handler_reserves_get3 (struct TEH_RequestContext *rc,
-                       const char *const args[3])
-{
-  if (0 == strcmp (args[2],
-                   "attest"))
-    return TEH_handler_reserves_get_attest (rc,
-                                            args);
-  GNUNET_break_op (0);
-  return r404 (rc->connection,
-               "/reserves/$RID/*");
-}
-
-
-/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -1190,15 +1165,21 @@ handle_mhd_request (void *cls,
     },
     {
       .url = "reserves",
-      .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &handler_reserves_get3,
-      .nargs = 3
-    },
-    {
-      .url = "reserves",
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &handle_post_reserves,
       .nargs = 2
+    },
+    {
+      .url = "reserves-attest",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_reserves_get_attest,
+      .nargs = 1
+    },
+    {
+      .url = "reserves-attest",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_reserves_attest,
+      .nargs = 1
     },
     /* coins */
     {
@@ -1441,7 +1422,8 @@ handle_mhd_request (void *cls,
         continue;
       found = true;
       /* The URL is a match!  What we now do depends on the method. */
-      if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
+      if (0 == strcasecmp (method,
+                           MHD_HTTP_METHOD_OPTIONS))
       {
         GNUNET_async_scope_restore (&old_scope);
         return TALER_MHD_reply_cors_preflight (connection);

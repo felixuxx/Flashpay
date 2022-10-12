@@ -358,8 +358,6 @@ irbt_cb_table_reserves_open_requests (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_timestamp (
-      &td->details.reserves_open_requests.request_timestamp),
-    GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_open_requests.expiration_date),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_open_requests.reserve_sig),
@@ -402,8 +400,6 @@ irbt_cb_table_reserves_open_deposits (
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_timestamp (
-      &td->details.reserves_open_deposits.request_timestamp),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_open_deposits.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (
@@ -421,13 +417,12 @@ irbt_cb_table_reserves_open_deposits (
            "(reserve_open_deposit_uuid"
            ",reserve_sig"
            ",reserve_pub"
-           ",request_timestamp"
            ",coin_pub"
            ",coin_sig"
            ",contribution_val"
            ",contribution_frac"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8);");
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_reserves_open_deposits",
                                              params);

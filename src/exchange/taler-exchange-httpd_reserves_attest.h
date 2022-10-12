@@ -26,16 +26,16 @@
 
 
 /**
- * Handle a POST "/reserves/$RID/attest" request.
+ * Handle a POST "/reserves-attest/$RID" request.
  *
  * @param rc request context
- * @param reserve_pub public key of the reserve
  * @param root uploaded body from the client
+ * @param args args[0] has public key of the reserve
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
-                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                             const json_t *root);
+                             const json_t *root,
+                             const char *const args[1]);
 
 #endif

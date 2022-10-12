@@ -331,7 +331,6 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_TIME_Timestamp request_timestamp;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_ReserveSignatureP reserve_sig;
