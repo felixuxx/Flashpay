@@ -414,11 +414,14 @@ run (void *cls,
                                               MHD_HTTP_NOT_FOUND,
                                               "nx-attribute-name",
                                               NULL),
+    /* FIXME: do KYC for reserve, then get actual attributes attested */
 #if 0
     TALER_TESTING_cmd_reserve_close ("reserve-101-close",
                                      "create-reserve-101",
                                      NULL, /* to origin */
                                      MHD_HTTP_OK),
+    /* FIXME: trigger helper to close reserve here */
+    /* FIXME: check reserve was actually closed (money wired back) */
 #endif
     TALER_TESTING_cmd_end ()
   };
