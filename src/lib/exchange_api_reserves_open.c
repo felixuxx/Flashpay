@@ -252,6 +252,9 @@ handle_reserves_open_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break (0);
+    json_dumpf (j,
+                stderr,
+                JSON_INDENT (2));
     rs.hr.ec = TALER_JSON_get_error_code (j);
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
@@ -452,7 +455,7 @@ TALER_EXCHANGE_reserves_open (
                                     cpa),
       TALER_JSON_pack_amount ("reserve_payment",
                               reserve_contribution),
-      GNUNET_JSON_pack_uint64 ("min_purses",
+      GNUNET_JSON_pack_uint64 ("purse_limit",
                                min_purses),
       GNUNET_JSON_pack_data_auto ("reserve_sig",
                                   &roh->reserve_sig));

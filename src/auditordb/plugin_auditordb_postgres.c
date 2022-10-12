@@ -157,28 +157,24 @@ setup_connection (struct PostgresClosure *pg)
   struct GNUNET_PQ_PreparedStatement ps[] = {
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare ("do_commit",
-                            "COMMIT",
-                            0),
+                            "COMMIT"),
     /* used in #postgres_insert_exchange */
     GNUNET_PQ_make_prepare ("auditor_insert_exchange",
                             "INSERT INTO auditor_exchanges "
                             "(master_pub"
                             ",exchange_url"
-                            ") VALUES ($1,$2);",
-                            2),
+                            ") VALUES ($1,$2);"),
     /* used in #postgres_delete_exchange */
     GNUNET_PQ_make_prepare ("auditor_delete_exchange",
                             "DELETE"
                             " FROM auditor_exchanges"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* used in #postgres_list_exchanges */
     GNUNET_PQ_make_prepare ("auditor_list_exchanges",
                             "SELECT"
                             " master_pub"
                             ",exchange_url"
-                            " FROM auditor_exchanges",
-                            0),
+                            " FROM auditor_exchanges"),
     /* used in #postgres_insert_exchange_signkey */
     GNUNET_PQ_make_prepare ("auditor_insert_exchange_signkey",
                             "INSERT INTO auditor_exchange_signkeys "
@@ -188,8 +184,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",ep_end"
                             ",exchange_pub"
                             ",master_sig"
-                            ") VALUES ($1,$2,$3,$4,$5,$6);",
-                            6),
+                            ") VALUES ($1,$2,$3,$4,$5,$6);"),
     /* Used in #postgres_insert_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_insert",
                             "INSERT INTO deposit_confirmations "
@@ -207,8 +202,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",exchange_sig"
                             ",exchange_pub"
                             ",master_sig" /* master_sig could be normalized... */
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);",
-                            14),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);"),
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
                             "SELECT"
@@ -228,8 +222,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",master_sig" /* master_sig could be normalized... */
                             " FROM deposit_confirmations"
                             " WHERE master_pub=$1"
-                            " AND serial_id>$2",
-                            2),
+                            " AND serial_id>$2"),
     /* Used in #postgres_update_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_reserve",
                             "UPDATE auditor_progress_reserve SET "
@@ -242,8 +235,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_account_merges_serial_id=$7"
                             ",last_history_requests_serial_id=$8"
                             ",last_close_requests_serial_id=$9"
-                            " WHERE master_pub=$10",
-                            10),
+                            " WHERE master_pub=$10"),
     /* Used in #postgres_get_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_reserve",
                             "SELECT"
@@ -257,8 +249,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_history_requests_serial_id"
                             ",last_close_requests_serial_id"
                             " FROM auditor_progress_reserve"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_reserve",
                             "INSERT INTO auditor_progress_reserve "
@@ -272,48 +263,41 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_account_merges_serial_id"
                             ",last_history_requests_serial_id"
                             ",last_close_requests_serial_id"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
-                            10),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
     /* Used in #postgres_update_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_aggregation",
                             "UPDATE auditor_progress_aggregation SET "
                             " last_wire_out_serial_id=$1"
-                            " WHERE master_pub=$2",
-                            2),
+                            " WHERE master_pub=$2"),
     /* Used in #postgres_get_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_aggregation",
                             "SELECT"
                             " last_wire_out_serial_id"
                             " FROM auditor_progress_aggregation"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_aggregation",
                             "INSERT INTO auditor_progress_aggregation "
                             "(master_pub"
                             ",last_wire_out_serial_id"
-                            ") VALUES ($1,$2);",
-                            2),
+                            ") VALUES ($1,$2);"),
     /* Used in #postgres_update_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_deposit_confirmation",
                             "UPDATE auditor_progress_deposit_confirmation SET "
                             " last_deposit_confirmation_serial_id=$1"
-                            " WHERE master_pub=$2",
-                            2),
+                            " WHERE master_pub=$2"),
     /* Used in #postgres_get_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_deposit_confirmation",
                             "SELECT"
                             " last_deposit_confirmation_serial_id"
                             " FROM auditor_progress_deposit_confirmation"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress_deposit_confirmation() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_deposit_confirmation",
                             "INSERT INTO auditor_progress_deposit_confirmation "
                             "(master_pub"
                             ",last_deposit_confirmation_serial_id"
-                            ") VALUES ($1,$2);",
-                            2),
+                            ") VALUES ($1,$2);"),
     /* Used in #postgres_update_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_coin",
                             "UPDATE auditor_progress_coin SET "
@@ -325,8 +309,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_refresh_serial_id=$6"
                             ",last_purse_deposits_serial_id=$7"
                             ",last_purse_refunds_serial_id=$8"
-                            " WHERE master_pub=$9",
-                            9),
+                            " WHERE master_pub=$9"),
     /* Used in #postgres_get_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
                             "SELECT"
@@ -339,8 +322,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_purse_deposits_serial_id"
                             ",last_purse_refunds_serial_id"
                             " FROM auditor_progress_coin"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress() */
     GNUNET_PQ_make_prepare ("auditor_progress_insert_coin",
                             "INSERT INTO auditor_progress_coin "
@@ -353,8 +335,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_refresh_serial_id"
                             ",last_purse_deposits_serial_id"
                             ",last_purse_refunds_serial_id"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-                            9),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_insert_wire_auditor_account_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_account_progress_insert",
                             "INSERT INTO wire_auditor_account_progress "
@@ -364,8 +345,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_wire_wire_out_serial_id"
                             ",wire_in_off"
                             ",wire_out_off"
-                            ") VALUES ($1,$2,$3,$4,$5,$6);",
-                            6),
+                            ") VALUES ($1,$2,$3,$4,$5,$6);"),
     /* Used in #postgres_update_wire_auditor_account_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_account_progress_update",
                             "UPDATE wire_auditor_account_progress SET "
@@ -373,8 +353,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_wire_wire_out_serial_id=$2"
                             ",wire_in_off=$3"
                             ",wire_out_off=$4"
-                            " WHERE master_pub=$5 AND account_name=$6",
-                            6),
+                            " WHERE master_pub=$5 AND account_name=$6"),
     /* Used in #postgres_get_wire_auditor_account_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_account_progress_select",
                             "SELECT"
@@ -383,31 +362,27 @@ setup_connection (struct PostgresClosure *pg)
                             ",wire_in_off"
                             ",wire_out_off"
                             " FROM wire_auditor_account_progress"
-                            " WHERE master_pub=$1 AND account_name=$2;",
-                            2),
+                            " WHERE master_pub=$1 AND account_name=$2;"),
     /* Used in #postgres_insert_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_insert",
                             "INSERT INTO wire_auditor_progress "
                             "(master_pub"
                             ",last_timestamp"
                             ",last_reserve_close_uuid"
-                            ") VALUES ($1,$2,$3);",
-                            3),
+                            ") VALUES ($1,$2,$3);"),
     /* Used in #postgres_update_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_update",
                             "UPDATE wire_auditor_progress SET "
                             " last_timestamp=$1"
                             ",last_reserve_close_uuid=$2"
-                            " WHERE master_pub=$3",
-                            3),
+                            " WHERE master_pub=$3"),
     /* Used in #postgres_get_wire_auditor_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_progress_select",
                             "SELECT"
                             " last_timestamp"
                             ",last_reserve_close_uuid"
                             " FROM wire_auditor_progress"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_insert",
                             "INSERT INTO auditor_reserves "
@@ -419,8 +394,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",withdraw_fee_balance_frac"
                             ",expiration_date"
                             ",origin_account"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);",
-                            8),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);"),
     /* Used in #postgres_update_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_update",
                             "UPDATE auditor_reserves SET"
@@ -429,8 +403,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",withdraw_fee_balance_val=$3"
                             ",withdraw_fee_balance_frac=$4"
                             ",expiration_date=$5"
-                            " WHERE reserve_pub=$6 AND master_pub=$7;",
-                            7),
+                            " WHERE reserve_pub=$6 AND master_pub=$7;"),
     /* Used in #postgres_get_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_select",
                             "SELECT"
@@ -442,14 +415,12 @@ setup_connection (struct PostgresClosure *pg)
                             ",auditor_reserves_rowid"
                             ",origin_account"
                             " FROM auditor_reserves"
-                            " WHERE reserve_pub=$1 AND master_pub=$2;",
-                            2),
+                            " WHERE reserve_pub=$1 AND master_pub=$2;"),
     /* Used in #postgres_del_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_delete",
                             "DELETE"
                             " FROM auditor_reserves"
-                            " WHERE reserve_pub=$1 AND master_pub=$2;",
-                            2),
+                            " WHERE reserve_pub=$1 AND master_pub=$2;"),
     /* Used in #postgres_insert_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_insert",
                             "INSERT INTO auditor_reserve_balance"
@@ -462,8 +433,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",purse_fee_balance_frac"
                             ",history_fee_balance_val"
                             ",history_fee_balance_frac"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-                            9),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)"),
     /* Used in #postgres_update_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_update",
                             "UPDATE auditor_reserve_balance SET"
@@ -475,8 +445,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",purse_fee_balance_frac=$6"
                             ",history_fee_balance_val=$7"
                             ",history_fee_balance_frac=$8"
-                            " WHERE master_pub=$9;",
-                            9),
+                            " WHERE master_pub=$9;"),
     /* Used in #postgres_get_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_select",
                             "SELECT"
@@ -489,31 +458,27 @@ setup_connection (struct PostgresClosure *pg)
                             ",history_fee_balance_val"
                             ",history_fee_balance_frac"
                             " FROM auditor_reserve_balance"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_insert",
                             "INSERT INTO auditor_wire_fee_balance"
                             "(master_pub"
                             ",wire_fee_balance_val"
                             ",wire_fee_balance_frac"
-                            ") VALUES ($1,$2,$3)",
-                            3),
+                            ") VALUES ($1,$2,$3)"),
     /* Used in #postgres_update_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_update",
                             "UPDATE auditor_wire_fee_balance SET"
                             " wire_fee_balance_val=$1"
                             ",wire_fee_balance_frac=$2"
-                            " WHERE master_pub=$3;",
-                            3),
+                            " WHERE master_pub=$3;"),
     /* Used in #postgres_get_wire_fee_summary() */
     GNUNET_PQ_make_prepare ("auditor_wire_fee_balance_select",
                             "SELECT"
                             " wire_fee_balance_val"
                             ",wire_fee_balance_frac"
                             " FROM auditor_wire_fee_balance"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_insert",
                             "INSERT INTO auditor_denomination_pending "
@@ -529,8 +494,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",recoup_loss_frac"
                             ") VALUES ("
                             "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10"
-                            ");",
-                            10),
+                            ");"),
     /* Used in #postgres_update_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_update",
                             "UPDATE auditor_denomination_pending SET"
@@ -543,8 +507,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",denom_risk_frac=$7"
                             ",recoup_loss_val=$8"
                             ",recoup_loss_frac=$9"
-                            " WHERE denom_pub_hash=$10",
-                            10),
+                            " WHERE denom_pub_hash=$10"),
     /* Used in #postgres_get_denomination_balance() */
     GNUNET_PQ_make_prepare ("auditor_denomination_pending_select",
                             "SELECT"
@@ -558,8 +521,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",recoup_loss_val"
                             ",recoup_loss_frac"
                             " FROM auditor_denomination_pending"
-                            " WHERE denom_pub_hash=$1",
-                            1),
+                            " WHERE denom_pub_hash=$1"),
     /* Used in #postgres_insert_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_insert",
                             "INSERT INTO auditor_balance_summary "
@@ -579,8 +541,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",irregular_recoup_val"
                             ",irregular_recoup_frac"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
-                            "          $11,$12,$13,$14,$15);",
-                            15),
+                            "          $11,$12,$13,$14,$15);"),
     /* Used in #postgres_update_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
                             "UPDATE auditor_balance_summary SET"
@@ -598,8 +559,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",loss_frac=$12"
                             ",irregular_recoup_val=$13"
                             ",irregular_recoup_frac=$14"
-                            " WHERE master_pub=$15;",
-                            15),
+                            " WHERE master_pub=$15;"),
     /* Used in #postgres_get_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
                             "SELECT"
@@ -618,8 +578,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",irregular_recoup_val"
                             ",irregular_recoup_frac"
                             " FROM auditor_balance_summary"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_historic_denom_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_insert",
                             "INSERT INTO auditor_historic_denomination_revenue"
@@ -630,8 +589,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",revenue_balance_frac"
                             ",loss_balance_val"
                             ",loss_balance_frac"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);",
-                            7),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7);"),
     /* Used in #postgres_select_historic_denom_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_denomination_revenue_select",
                             "SELECT"
@@ -642,8 +600,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",loss_balance_val"
                             ",loss_balance_frac"
                             " FROM auditor_historic_denomination_revenue"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_historic_reserve_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_insert",
                             "INSERT INTO auditor_historic_reserve_summary"
@@ -652,8 +609,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",end_date"
                             ",reserve_profits_val"
                             ",reserve_profits_frac"
-                            ") VALUES ($1,$2,$3,$4,$5);",
-                            5),
+                            ") VALUES ($1,$2,$3,$4,$5);"),
     /* Used in #postgres_select_historic_reserve_revenue() */
     GNUNET_PQ_make_prepare ("auditor_historic_reserve_summary_select",
                             "SELECT"
@@ -662,8 +618,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",reserve_profits_val"
                             ",reserve_profits_frac"
                             " FROM auditor_historic_reserve_summary"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_predicted_result() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_insert",
                             "INSERT INTO auditor_predicted_result"
@@ -672,8 +627,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",balance_frac"
                             ",drained_val"
                             ",drained_frac"
-                            ") VALUES ($1,$2,$3,$4,$5);",
-                            5),
+                            ") VALUES ($1,$2,$3,$4,$5);"),
     /* Used in #postgres_update_predicted_result() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_update",
                             "UPDATE auditor_predicted_result SET"
@@ -681,8 +635,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",balance_frac=$2"
                             ",drained_val=$3"
                             ",drained_frac=$4"
-                            " WHERE master_pub=$5;",
-                            5),
+                            " WHERE master_pub=$5;"),
     /* Used in #postgres_get_predicted_balance() */
     GNUNET_PQ_make_prepare ("auditor_predicted_result_select",
                             "SELECT"
@@ -691,8 +644,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",drained_val"
                             ",drained_frac"
                             " FROM auditor_predicted_result"
-                            " WHERE master_pub=$1;",
-                            1),
+                            " WHERE master_pub=$1;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement es[] = {

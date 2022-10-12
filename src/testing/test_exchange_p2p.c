@@ -354,6 +354,70 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command reserves[] = {
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-100",
+                              "EUR:1.04"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-100",
+                                                 "EUR:1.04",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-100"),
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-101",
+                              "EUR:1.04"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-101",
+                                                 "EUR:1.04",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-101"),
+    CMD_EXEC_WIREWATCH ("wirewatch-100"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-100",
+                                       "create-reserve-100",
+                                       "EUR:1",
+                                       0, /* age restriction off */
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_open ("reserve-open-101-fail",
+                                    "create-reserve-101",
+                                    "EUR:0",
+                                    GNUNET_TIME_UNIT_YEARS,
+                                    5, /* min purses */
+                                    MHD_HTTP_PAYMENT_REQUIRED, // FIXME: or CONFLICT?
+                                    NULL,
+                                    NULL),
+    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok",
+                                    "create-reserve-101",
+                                    "EUR:0.01",
+                                    GNUNET_TIME_UNIT_MONTHS,
+                                    1, /* min purses */
+                                    MHD_HTTP_OK,
+                                    NULL,
+                                    NULL),
+    TALER_TESTING_cmd_status ("status-101-open-paid",
+                              "create-reserve-101",
+                              "EUR:1.03",
+                              MHD_HTTP_OK),
+    TALER_TESTING_cmd_reserve_open ("reserve-open-101-ok",
+                                    "create-reserve-101",
+                                    "EUR:0",
+                                    GNUNET_TIME_UNIT_MONTHS,
+                                    2, /* min purses */
+                                    MHD_HTTP_OK,
+                                    "withdraw-coin-100",
+                                    "EUR:0.02",
+                                    NULL,
+                                    NULL),
+    /* FIXME: use purse quota here */
+    TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attestable",
+                                              "create-reserve-101",
+                                              MHD_HTTP_OK,
+                                              NULL),
+    TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attest",
+                                              "create-reserve-101",
+                                              MHD_HTTP_CONFLICT,
+                                              "nx-attribute-name",
+                                              NULL),
+    TALER_TESTING_cmd_reserve_close ("reserve-101-close",
+                                     "create-reserve-101",
+                                     NULL, /* to origin */
+                                     MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
@@ -387,9 +451,11 @@ run (void *cls,
                                               config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
+#if 0
     TALER_TESTING_cmd_batch ("reserves",
                              reserves),
     TALER_TESTING_cmd_end (), // FIXME
+#endif
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("push",

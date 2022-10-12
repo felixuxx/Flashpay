@@ -56,12 +56,12 @@ TEH_PG_do_reserve_open (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("out_no_funds",
-                                no_funds),
     TALER_PQ_RESULT_SPEC_AMOUNT ("out_open_cost",
                                  open_cost),
     GNUNET_PQ_result_spec_timestamp ("out_final_expiration",
                                      final_expiration),
+    GNUNET_PQ_result_spec_bool ("out_no_funds",
+                                no_funds),
     GNUNET_PQ_result_spec_end
   };
 
@@ -73,7 +73,7 @@ TEH_PG_do_reserve_open (
            ",out_final_expiration"
            ",out_no_funds"
            " FROM exchange_do_reserve_open"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "do_reserve_open",
                                                    params,

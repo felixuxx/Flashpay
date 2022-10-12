@@ -184,12 +184,18 @@ reserve_open_transaction (void *cls,
     struct TEH_PurseDepositedCoin *coin = &rsc->payments[i];
     bool insufficient_funds = true;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Make coin %u known\n",
+                i);
     qs = TEH_make_coin_known (&coin->cpi,
                               connection,
                               &coin->known_coin_id,
                               mhd_ret);
     if (qs < 0)
       return qs;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Insert open deposit %u known\n",
+                i);
     qs = TEH_plugin->insert_reserve_open_deposit (
       TEH_plugin->cls,
       &coin->cpi,
@@ -215,6 +221,8 @@ reserve_open_transaction (void *cls,
     }
     if (insufficient_funds)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Handle insufficient funds\n");
       *mhd_ret
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,
@@ -225,6 +233,8 @@ reserve_open_transaction (void *cls,
     }
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Do reserve open\n");
   qs = TEH_plugin->do_reserve_open (TEH_plugin->cls,
                                     /* inputs */
                                     rsc->reserve_pub,
@@ -263,6 +273,7 @@ reserve_open_transaction (void *cls,
   }
   if (rsc->no_funds)
   {
+    TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret
       = TEH_RESPONSE_reply_reserve_insufficient_balance (
           connection,

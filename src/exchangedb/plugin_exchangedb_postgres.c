@@ -30,6 +30,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include "pg_helper.h"
+#include "pg_do_reserve_open.h"
 #include "pg_insert_close_request.h"
 #include "pg_insert_records_by_table.h"
 #include "pg_insert_reserve_open_deposit.h"
@@ -157,8 +158,7 @@ postgres_create_shard_tables (void *cls,
     GNUNET_PQ_make_prepare ("create_shard_tables",
                             "SELECT"
                             " setup_shard"
-                            " ($1);",
-                            1),
+                            " ($1);"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -200,8 +200,7 @@ postgres_setup_partitions (void *cls,
     GNUNET_PQ_make_prepare ("setup_partitions",
                             "SELECT"
                             " create_partitions"
-                            " ($1);",
-                            1),
+                            " ($1);"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
   struct GNUNET_PQ_ExecuteStatement es[] = {
@@ -296,8 +295,7 @@ postgres_setup_foreign_servers (void *cls,
     GNUNET_PQ_make_prepare ("create_foreign_servers",
                             "SELECT"
                             " create_foreign_servers"
-                            " ($1, $2, $3, $4);",
-                            4),
+                            " ($1, $2, $3, $4);"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -360,8 +358,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",age_mask"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-      " $11, $12, $13, $14, $15, $16, $17, $18);",
-      18),
+      " $11, $12, $13, $14, $15, $16, $17, $18);"),
     /* Used in #postgres_iterate_denomination_info() */
     GNUNET_PQ_make_prepare (
       "denomination_iterate",
@@ -384,8 +381,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refund_frac"
       ",denom_pub"
       ",age_mask"
-      " FROM denominations;",
-      0),
+      " FROM denominations;"),
     /* Used in #postgres_iterate_denominations() */
     GNUNET_PQ_make_prepare (
       "select_denominations",
@@ -411,8 +407,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom_pub"
       " FROM denominations"
       " LEFT JOIN "
-      "   denomination_revocations USING (denominations_serial);",
-      0),
+      "   denomination_revocations USING (denominations_serial);"),
     /* Used in #postgres_iterate_active_signkeys() */
     GNUNET_PQ_make_prepare (
       "select_signkeys",
@@ -428,8 +423,7 @@ prepare_statements (struct PostgresClosure *pg)
       " AND NOT EXISTS "
       "  (SELECT esk_serial "
       "     FROM signkey_revocations skr"
-      "    WHERE esk.esk_serial = skr.esk_serial);",
-      1),
+      "    WHERE esk.esk_serial = skr.esk_serial);"),
     /* Used in #postgres_iterate_auditor_denominations() */
     GNUNET_PQ_make_prepare (
       "select_auditor_denoms",
@@ -440,8 +434,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM auditor_denom_sigs"
       " JOIN auditors USING (auditor_uuid)"
       " JOIN denominations USING (denominations_serial)"
-      " WHERE auditors.is_active;",
-      0),
+      " WHERE auditors.is_active;"),
     /* Used in #postgres_iterate_active_auditors() */
     GNUNET_PQ_make_prepare (
       "select_auditors",
@@ -451,8 +444,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",auditor_name"
       " FROM auditors"
       " WHERE"
-      "   is_active;",
-      0),
+      "   is_active;"),
     /* Used in #postgres_get_denomination_info() */
     GNUNET_PQ_make_prepare (
       "denomination_get",
@@ -474,8 +466,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refund_frac"
       ",age_mask"
       " FROM denominations"
-      " WHERE denom_pub_hash=$1;",
-      1),
+      " WHERE denom_pub_hash=$1;"),
     /* Used in #postgres_insert_denomination_revocation() */
     GNUNET_PQ_make_prepare (
       "denomination_revocation_insert",
@@ -484,8 +475,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",master_sig"
       ") SELECT denominations_serial,$2"
       "    FROM denominations"
-      "   WHERE denom_pub_hash=$1;",
-      2),
+      "   WHERE denom_pub_hash=$1;"),
     /* Used in #postgres_get_denomination_revocation() */
     GNUNET_PQ_make_prepare (
       "denomination_revocation_get",
@@ -496,24 +486,21 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE denominations_serial="
       "  (SELECT denominations_serial"
       "    FROM denominations"
-      "    WHERE denom_pub_hash=$1);",
-      1),
+      "    WHERE denom_pub_hash=$1);"),
     /* Used in #postgres_reserves_get_origin() */
     GNUNET_PQ_make_prepare (
       "get_h_wire_source_of_reserve",
       "SELECT"
       " wire_source_h_payto"
       " FROM reserves_in"
-      " WHERE reserve_pub=$1",
-      1),
+      " WHERE reserve_pub=$1"),
     GNUNET_PQ_make_prepare (
       "get_kyc_h_payto",
       "SELECT"
       " wire_target_h_payto"
       " FROM wire_targets"
       " WHERE wire_target_h_payto=$1"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     /* Used in #postgres_insert_partner() */
     GNUNET_PQ_make_prepare (
       "insert_partner",
@@ -527,8 +514,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,master_sig"
       "  ,partner_base_url"
       "  ) VALUES "
-      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);"),
     /* Used in #setup_wire_target() */
     GNUNET_PQ_make_prepare (
       "insert_kyc_status",
@@ -537,8 +523,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,payto_uri"
       "  ) VALUES "
       "  ($1, $2)"
-      " ON CONFLICT DO NOTHING",
-      2),
+      " ON CONFLICT DO NOTHING"),
     /* Used in #postgres_drain_kyc_alert() */
     GNUNET_PQ_make_prepare (
       "drain_kyc_alert",
@@ -549,8 +534,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      FROM kyc_alerts"
       "     WHERE trigger_type=$1"
       "     LIMIT 1)"
-      " RETURNING h_payto;",
-      1),
+      " RETURNING h_payto;"),
     /* Used in #postgres_reserves_get() */
     GNUNET_PQ_make_prepare (
       "reserves_get",
@@ -561,8 +545,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",gc_date"
       " FROM reserves"
       " WHERE reserve_pub=$1"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     GNUNET_PQ_make_prepare (
       "reserve_create",
       "INSERT INTO reserves "
@@ -574,8 +557,7 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5)"
       " ON CONFLICT DO NOTHING"
-      " RETURNING reserve_uuid;",
-      5),
+      " RETURNING reserve_uuid;"),
     /* Used in #postgres_insert_reserve_closed() */
     GNUNET_PQ_make_prepare (
       "reserves_close_insert",
@@ -588,8 +570,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8);"),
     /* Used in #postgres_insert_drain_profit() */
     GNUNET_PQ_make_prepare (
       "drain_profit_insert",
@@ -601,8 +582,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_val"
       ",amount_frac"
       ",master_sig"
-      ") VALUES ($1, $2, $3, $4, $5, $6, $7);",
-      7),
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7);"),
     /* Used in #postgres_profit_drains_get_pending() */
     GNUNET_PQ_make_prepare (
       "get_ready_profit_drain",
@@ -617,8 +597,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",master_sig"
       " FROM profit_drains"
       " WHERE NOT executed"
-      " ORDER BY trigger_date ASC;",
-      0),
+      " ORDER BY trigger_date ASC;"),
     /* Used in #postgres_profit_drains_get() */
     GNUNET_PQ_make_prepare (
       "get_profit_drain",
@@ -631,16 +610,14 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",master_sig"
       " FROM profit_drains"
-      " WHERE wtid=$1;",
-      1),
+      " WHERE wtid=$1;"),
     /* Used in #postgres_profit_drains_set_finished() */
     GNUNET_PQ_make_prepare (
       "drain_profit_set_finished",
       "UPDATE profit_drains"
       " SET"
       " executed=TRUE"
-      " WHERE profit_drain_serial_id=$1;",
-      1),
+      " WHERE profit_drain_serial_id=$1;"),
     /* Used in #postgres_reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
       "reserve_update",
@@ -650,8 +627,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",gc_date=$2"
       ",current_balance_val=$3"
       ",current_balance_frac=$4"
-      " WHERE reserve_pub=$5;",
-      5),
+      " WHERE reserve_pub=$5;"),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
     GNUNET_PQ_make_prepare (
       "reserves_in_add_transaction",
@@ -664,8 +640,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_source_h_payto"
       ",execution_date"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
-      " ON CONFLICT DO NOTHING;",
-      7),
+      " ON CONFLICT DO NOTHING;"),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -684,8 +659,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN wire_targets"
       "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1"
-      " ORDER BY reserve_in_serial_id;",
-      1),
+      " ORDER BY reserve_in_serial_id;"),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -704,8 +678,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN wire_targets"
       "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
-      " ORDER BY reserve_in_serial_id;",
-      2),
+      " ORDER BY reserve_in_serial_id;"),
     /* Used in #postgres_get_reserve_history() to obtain inbound transactions
        for a reserve */
     GNUNET_PQ_make_prepare (
@@ -738,8 +711,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ON (wire_target_h_payto = wire_source_h_payto) "
       "WHERE wire_target_h_payto = ( "
       "  SELECT wire_source_h_payto FROM ri "
-      "); ",
-      1),
+      "); "),
     /* Used in #postgres_get_reserve_status() to obtain inbound transactions
        for a reserve */
     GNUNET_PQ_make_prepare (
@@ -774,8 +746,7 @@ prepare_statements (struct PostgresClosure *pg)
       "WHERE execution_date >= $2"
       "  AND wire_target_h_payto = ( "
       "  SELECT wire_source_h_payto FROM ri "
-      "); ",
-      2),
+      "); "),
     /* Used in #postgres_do_withdraw() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -791,8 +762,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",nonce_ok"
       ",ruuid"
       " FROM exchange_do_withdraw"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);",
-      10),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
     /* Used in #postgres_do_batch_withdraw() to
        update the reserve balance and check its status */
     GNUNET_PQ_make_prepare (
@@ -802,8 +772,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",balance_ok"
       ",ruuid"
       " FROM exchange_do_batch_withdraw"
-      " ($1,$2,$3,$4,$5);",
-      5),
+      " ($1,$2,$3,$4,$5);"),
     /* Used in #postgres_do_batch_withdraw_insert() to store
        the signature of a blinded coin with the blinded coin's
        details. */
@@ -814,8 +783,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_conflict AS conflict"
       ",out_nonce_reuse AS nonce_reuse"
       " FROM exchange_do_batch_withdraw_insert"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_do_deposit() to execute a deposit,
        checking the coin's balance in the process as needed. */
     GNUNET_PQ_make_prepare (
@@ -825,8 +793,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_balance_ok AS balance_ok"
       ",out_conflict AS conflicted"
       " FROM exchange_do_deposit"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);",
-      17),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);"),
     /* used in postgres_do_purse_deposit() */
     GNUNET_PQ_make_prepare (
       "call_purse_deposit",
@@ -834,24 +801,21 @@ prepare_statements (struct PostgresClosure *pg)
       " out_balance_ok AS balance_ok"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_deposit"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_update_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "set_purse_balance",
       "UPDATE purse_requests"
       " SET balance_val=$2"
       "    ,balance_frac=$3"
-      " WHERE purse_pub=$1;",
-      3),
+      " WHERE purse_pub=$1;"),
     /* used in #postgres_expire_purse() */
     GNUNET_PQ_make_prepare (
       "call_expire_purse",
       "SELECT "
       " out_found AS found"
       " FROM exchange_do_expire_purse"
-      " ($1,$2);",
-      2),
+      " ($1,$2);"),
     /* Used in #postgres_do_melt() to melt a coin. */
     GNUNET_PQ_make_prepare (
       "call_melt",
@@ -860,8 +824,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_zombie_bad AS zombie_required"
       ",out_noreveal_index AS noreveal_index"
       " FROM exchange_do_melt"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_do_refund() to refund a deposit. */
     GNUNET_PQ_make_prepare (
       "call_refund",
@@ -871,8 +834,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_gone AS gone"
       ",out_conflict AS conflict"
       " FROM exchange_do_refund"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
-      13),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);"),
     /* Used in #postgres_do_recoup() to recoup a coin to a reserve. */
     GNUNET_PQ_make_prepare (
       "call_recoup",
@@ -881,8 +843,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_recoup_ok AS recoup_ok"
       ",out_internal_failure AS internal_failure"
       " FROM exchange_do_recoup_to_reserve"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_do_recoup_refresh() to recoup a coin to a zombie coin. */
     GNUNET_PQ_make_prepare (
       "call_recoup_refresh",
@@ -891,8 +852,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_recoup_ok AS recoup_ok"
       ",out_internal_failure AS internal_failure"
       " FROM exchange_do_recoup_to_coin"
-      " ($1,$2,$3,$4,$5,$6,$7);",
-      7),
+      " ($1,$2,$3,$4,$5,$6,$7);"),
     /* Used in #postgres_get_withdraw_info() to
        locate the response for a /reserve/withdraw request
        using the hash of the blinded message.  Used to
@@ -915,8 +875,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (reserve_uuid)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
-      " WHERE h_blind_ev=$1;",
-      1),
+      " WHERE h_blind_ev=$1;"),
     /* Used during #postgres_get_reserve_history() to
        obtain all of the /reserve/withdraw operations that
        have been performed on a given reserve. (i.e. to
@@ -965,8 +924,7 @@ prepare_statements (struct PostgresClosure *pg)
       "JOIN reserves_out ro "
       "  ON (ro.h_blind_ev = robr.h_blind_ev) "
       "JOIN denominations denom "
-      "  ON (ro.denominations_serial = denom.denominations_serial); ",
-      1),
+      "  ON (ro.denominations_serial = denom.denominations_serial);"),
     /* Used during #postgres_get_reserve_status() to
        obtain all of the /reserve/withdraw operations that
        have been performed on a given reserve. (i.e. to
@@ -1017,8 +975,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ON (ro.h_blind_ev = robr.h_blind_ev) "
       "JOIN denominations denom "
       "  ON (ro.denominations_serial = denom.denominations_serial)"
-      " WHERE ro.execution_date>=$2;",
-      2),
+      " WHERE ro.execution_date>=$2;"),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
 
     GNUNET_PQ_make_prepare (
@@ -1027,8 +984,7 @@ prepare_statements (struct PostgresClosure *pg)
       " current_balance_val"
       ",current_balance_frac"
       " FROM reserves"
-      " WHERE reserve_pub=$1;",
-      1),
+      " WHERE reserve_pub=$1;"),
     /* Fetch deposits with rowid '\geq' the given parameter */
 
     GNUNET_PQ_make_prepare (
@@ -1048,8 +1004,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       " WHERE reserve_out_serial_id>=$1"
-      " ORDER BY reserve_out_serial_id ASC;",
-      1),
+      " ORDER BY reserve_out_serial_id ASC;"),
 
     /* Used in #postgres_count_known_coins() */
     GNUNET_PQ_make_prepare (
@@ -1060,8 +1015,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE denominations_serial="
       "  (SELECT denominations_serial"
       "    FROM denominations"
-      "    WHERE denom_pub_hash=$1);",
-      1),
+      "    WHERE denom_pub_hash=$1);"),
     /* Used in #postgres_get_known_coin() to fetch
        the denomination public key and signature for
        a coin known to the exchange. */
@@ -1073,8 +1027,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom_sig"
       " FROM known_coins"
       " JOIN denominations USING (denominations_serial)"
-      " WHERE coin_pub=$1;",
-      1),
+      " WHERE coin_pub=$1;"),
     /* Used in #postgres_ensure_coin_known() */
     GNUNET_PQ_make_prepare (
       "get_known_coin_dh",
@@ -1082,8 +1035,7 @@ prepare_statements (struct PostgresClosure *pg)
       " denominations.denom_pub_hash"
       " FROM known_coins"
       " JOIN denominations USING (denominations_serial)"
-      " WHERE coin_pub=$1;",
-      1),
+      " WHERE coin_pub=$1;"),
     /* Used in #postgres_get_coin_denomination() to fetch
        the denomination public key hash for
        a coin known to the exchange. */
@@ -1095,8 +1047,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM known_coins"
       " JOIN denominations USING (denominations_serial)"
       " WHERE coin_pub=$1"
-      " FOR SHARE;",
-      1),
+      " FOR SHARE;"),
     /* Used in #postgres_insert_known_coin() to store the denomination public
        key and signature for a coin known to the exchange.
 
@@ -1154,8 +1105,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  FROM input_rows"
       "  JOIN known_coins kc USING (coin_pub)"
       "  JOIN denominations USING (denominations_serial)"
-      "  LIMIT 1",
-      4),
+      "  LIMIT 1"),
 
     /* Used in #postgres_get_melt() to fetch
        high-level information about a melt operation */
@@ -1203,8 +1153,7 @@ prepare_statements (struct PostgresClosure *pg)
       "JOIN rc"
       "  ON (kc.coin_pub=rc.old_coin_pub) "
       "JOIN denominations denoms"
-      "  USING (denominations_serial);",
-      1),
+      "  USING (denominations_serial);"),
     /* Used in #postgres_select_refreshes_above_serial_id() to fetch
        refresh session with id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -1225,8 +1174,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN denominations denom"
       "     ON (kc.denominations_serial = denom.denominations_serial)"
       " WHERE melt_serial_id>=$1"
-      " ORDER BY melt_serial_id ASC;",
-      1),
+      " ORDER BY melt_serial_id ASC;"),
     /* Query the 'refresh_commitments' by coin public key,
        used in #postgres_get_coin_transactions() */
     GNUNET_PQ_make_prepare (
@@ -1246,8 +1194,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
       " JOIN denominations denoms"
       "   USING (denominations_serial)"
-      " WHERE old_coin_pub=$1;",
-      1),
+      " WHERE old_coin_pub=$1;"),
     /* Find purse deposits by coin,
        used in #postgres_get_coin_transactions() */
     GNUNET_PQ_make_prepare (
@@ -1274,8 +1221,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   USING (denominations_serial)"
       // FIXME: use to-be-created materialized index
       // on coin_pub (query crosses partitions!)
-      " WHERE pd.coin_pub=$1;",
-      1),
+      " WHERE pd.coin_pub=$1;"),
     /* Store information about the desired denominations for a
        refresh operation, used in #postgres_insert_refresh_reveal() */
     GNUNET_PQ_make_prepare (
@@ -1293,8 +1239,7 @@ prepare_statements (struct PostgresClosure *pg)
       "         denominations_serial, $5, $6, $7, $8"
       "    FROM denominations"
       "   WHERE denom_pub_hash=$4"
-      " ON CONFLICT DO NOTHING;",
-      8),
+      " ON CONFLICT DO NOTHING;"),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
     GNUNET_PQ_make_prepare (
@@ -1312,8 +1257,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (melt_serial_id)"
       "    JOIN denominations denom "
       "      USING (denominations_serial)"
-      " WHERE rc=$1;",
-      1),
+      " WHERE rc=$1;"),
 
     /* Used in #postgres_insert_refresh_reveal() to store the transfer
        keys we learned */
@@ -1324,8 +1268,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",transfer_pub"
       ",transfer_privs"
       ") VALUES ($1, $2, $3)"
-      " ON CONFLICT DO NOTHING;",
-      3),
+      " ON CONFLICT DO NOTHING;"),
     /* Used in #postgres_insert_refund() to store refund information */
     GNUNET_PQ_make_prepare (
       "insert_refund",
@@ -1340,8 +1283,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    FROM deposits"
       "   WHERE coin_pub=$1"
       "     AND h_contract_terms=$4"
-      "     AND merchant_pub=$2",
-      7),
+      "     AND merchant_pub=$2"),
     /* Query the 'refunds' by coin public key */
     GNUNET_PQ_make_prepare (
       "get_refunds_by_coin",
@@ -1362,8 +1304,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   ON (ref.coin_pub = kc.coin_pub)"
       " JOIN denominations denom"
       "   USING (denominations_serial)"
-      " WHERE ref.coin_pub=$1;",
-      1),
+      " WHERE ref.coin_pub=$1;"),
     /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
     GNUNET_PQ_make_prepare (
       "get_refunds_by_coin_and_contract",
@@ -1375,8 +1316,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   USING (coin_pub,deposit_serial_id)"
       " WHERE ref.coin_pub=$1"
       "   AND dep.merchant_pub=$2"
-      "   AND dep.h_contract_terms=$3;",
-      3),
+      "   AND dep.h_contract_terms=$3;"),
     /* Fetch refunds with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
       "audit_get_refunds_incr",
@@ -1398,8 +1338,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN denominations denom"
       "     ON (kc.denominations_serial=denom.denominations_serial)"
       " WHERE ref.refund_serial_id>=$1"
-      " ORDER BY ref.refund_serial_id ASC;",
-      1),
+      " ORDER BY ref.refund_serial_id ASC;"),
     GNUNET_PQ_make_prepare (
       "test_refund_full",
       "SELECT"
@@ -1411,8 +1350,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN deposits dep"
       "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
       " WHERE ref.refund_serial_id=$1"
-      " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);",
-      1),
+      " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);"),
 
     /* Store information about a /deposit the exchange is to execute.
        Used in #postgres_insert_deposit().  Only used in test cases. */
@@ -1437,8 +1375,7 @@ prepare_statements (struct PostgresClosure *pg)
       " $7, $8, $9, $10, $11, $12, $13"
       "    FROM known_coins"
       "   WHERE coin_pub=$1"
-      " ON CONFLICT DO NOTHING;",
-      13),
+      " ON CONFLICT DO NOTHING;"),
     /* Fetch an existing deposit request, used to ensure idempotency
        during /deposit processing. Used in #postgres_have_deposit(). */
     GNUNET_PQ_make_prepare (
@@ -1461,8 +1398,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN wire_targets wt USING (wire_target_h_payto)"
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
-      "   AND dep.h_contract_terms=$2;",
-      3),
+      "   AND dep.h_contract_terms=$2;"),
     /* Fetch deposits with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
       "audit_get_deposits_incr",
@@ -1490,8 +1426,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (deposit_serial_id>=$1)"
       " )"
-      " ORDER BY deposit_serial_id ASC;",
-      1),
+      " ORDER BY deposit_serial_id ASC;"),
     /* Fetch purse deposits with rowid '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
       "audit_get_purse_deposits_incr",
@@ -1520,8 +1455,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (purse_deposit_serial_id>=$1)"
       " )"
-      " ORDER BY purse_deposit_serial_id ASC;",
-      1),
+      " ORDER BY purse_deposit_serial_id ASC;"),
 
     GNUNET_PQ_make_prepare (
       "audit_get_account_merge_incr",
@@ -1545,8 +1479,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (account_merge_request_serial_id>=$1)"
       " )"
-      " ORDER BY account_merge_request_serial_id ASC;",
-      1),
+      " ORDER BY account_merge_request_serial_id ASC;"),
 
     GNUNET_PQ_make_prepare (
       "audit_get_purse_merge_incr",
@@ -1569,8 +1502,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (purse_merge_request_serial_id>=$1)"
       " )"
-      " ORDER BY purse_merge_request_serial_id ASC;",
-      1),
+      " ORDER BY purse_merge_request_serial_id ASC;"),
 
     GNUNET_PQ_make_prepare (
       "audit_get_history_requests_incr",
@@ -1585,9 +1517,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (history_request_serial_id>=$1)"
       " )"
-      " ORDER BY history_request_serial_id ASC;",
-      1),
-
+      " ORDER BY history_request_serial_id ASC;"),
 
     GNUNET_PQ_make_prepare (
       "audit_get_purse_deposits_by_purse",
@@ -1600,8 +1530,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM purse_deposits pd"
       " JOIN known_coins kc USING (coin_pub)"
       " JOIN denominations denom USING (denominations_serial)"
-      " WHERE purse_pub=$1;",
-      1),
+      " WHERE purse_pub=$1;"),
     GNUNET_PQ_make_prepare (
       "audit_get_purse_refunds_incr",
       "SELECT"
@@ -1611,8 +1540,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE ("
       "  (purse_refunds_serial_id>=$1)"
       " )"
-      " ORDER BY purse_refunds_serial_id ASC;",
-      1),
+      " ORDER BY purse_refunds_serial_id ASC;"),
     /* Fetch an existing deposit request.
        Used in #postgres_lookup_transfer_by_deposit(). */
     GNUNET_PQ_make_prepare (
@@ -1639,8 +1567,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2"
-      " LIMIT 1;",
-      3),
+      " LIMIT 1;"),
     /* Used in #postgres_get_ready_deposit() */
     GNUNET_PQ_make_prepare (
       "deposits_get_ready",
@@ -1659,8 +1586,7 @@ prepare_statements (struct PostgresClosure *pg)
       " ORDER BY "
       "   dbr.wire_deadline ASC"
       "  ,dbr.shard ASC"
-      " LIMIT 1;",
-      3),
+      " LIMIT 1;"),
     /* Used in #postgres_aggregate() */
     GNUNET_PQ_make_prepare (
       "aggregate",
@@ -1745,8 +1671,7 @@ prepare_statements (struct PostgresClosure *pg)
       " ,COALESCE(SUM(fees.fee_frac),0) AS sum_fee_fraction"
       " FROM dep "
       "   FULL OUTER JOIN ref ON (FALSE)"    /* We just want all sums */
-      "   FULL OUTER JOIN fees ON (FALSE);",
-      4),
+      "   FULL OUTER JOIN fees ON (FALSE);"),
 
 
     /* Used in #postgres_create_aggregation_transient() */
@@ -1760,8 +1685,7 @@ prepare_statements (struct PostgresClosure *pg)
       " ,legitimization_requirement_serial_id"
       " ,exchange_account_section"
       " ,wtid_raw)"
-      " VALUES ($1, $2, $3, $4, $5, $6, $7);",
-      7),
+      " VALUES ($1, $2, $3, $4, $5, $6, $7);"),
     /* Used in #postgres_select_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "select_aggregation_transient",
@@ -1772,8 +1696,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM aggregation_transient"
       " WHERE wire_target_h_payto=$1"
       "   AND merchant_pub=$2"
-      "   AND exchange_account_section=$3;",
-      3),
+      "   AND exchange_account_section=$3;"),
     /* Used in #postgres_find_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "find_transient_aggregations",
@@ -1785,8 +1708,7 @@ prepare_statements (struct PostgresClosure *pg)
       " ,payto_uri"
       " FROM aggregation_transient atr"
       " JOIN wire_targets wt USING (wire_target_h_payto)"
-      " WHERE atr.wire_target_h_payto=$1;",
-      1),
+      " WHERE atr.wire_target_h_payto=$1;"),
     /* Used in #postgres_update_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "update_aggregation_transient",
@@ -1795,15 +1717,13 @@ prepare_statements (struct PostgresClosure *pg)
       "    ,amount_frac=$2"
       "    ,legitimization_requirement_serial_id=$5"
       " WHERE wire_target_h_payto=$3"
-      "   AND wtid_raw=$4",
-      5),
+      "   AND wtid_raw=$4"),
     /* Used in #postgres_delete_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "delete_aggregation_transient",
       "DELETE FROM aggregation_transient"
       " WHERE wire_target_h_payto=$1"
-      "   AND wtid_raw=$2",
-      2),
+      "   AND wtid_raw=$2"),
 
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
@@ -1833,8 +1753,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      ON (kc.coin_pub = dep.coin_pub)"
       "    JOIN denominations denoms"
       "      USING (denominations_serial)"
-      " WHERE dep.coin_pub=$1;",
-      1),
+      " WHERE dep.coin_pub=$1;"),
 
     /* Used in #postgres_get_link_data(). */
     GNUNET_PQ_make_prepare (
@@ -1855,8 +1774,7 @@ prepare_statements (struct PostgresClosure *pg)
       "     JOIN denominations denoms"
       "       ON (rrc.denominations_serial = denoms.denominations_serial)"
       " WHERE old_coin_pub=$1"
-      " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC",
-      1),
+      " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC"),
     /* Used in #postgres_lookup_wire_transfer */
     GNUNET_PQ_make_prepare (
       "lookup_transactions",
@@ -1884,8 +1802,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (denominations_serial)"
       "    JOIN wire_out"
       "      USING (wtid_raw)"
-      " WHERE wtid_raw=$1;",
-      1),
+      " WHERE wtid_raw=$1;"),
     /* Used in #postgres_lookup_transfer_by_deposit */
     GNUNET_PQ_make_prepare (
       "lookup_deposit_wtid",
@@ -1911,8 +1828,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (wtid_raw)"
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
-      "   AND dep.h_contract_terms=$2",
-      3),
+      "   AND dep.h_contract_terms=$2"),
     /* Used in #postgres_insert_aggregation_tracking */
     GNUNET_PQ_make_prepare (
       "insert_aggregation_tracking",
@@ -1920,8 +1836,7 @@ prepare_statements (struct PostgresClosure *pg)
       "(deposit_serial_id"
       ",wtid_raw"
       ") VALUES "
-      "($1, $2);",
-      2),
+      "($1, $2);"),
     /* Used in #postgres_get_wire_fee() */
     GNUNET_PQ_make_prepare (
       "get_wire_fee",
@@ -1938,8 +1853,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM wire_fee"
       " WHERE wire_method=$1"
       "   AND start_date <= $2"
-      "   AND end_date > $2;",
-      2),
+      "   AND end_date > $2;"),
     /* Used in #postgres_get_global_fee() */
     GNUNET_PQ_make_prepare (
       "get_global_fee",
@@ -1961,8 +1875,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",master_sig"
       " FROM global_fee"
       " WHERE start_date <= $1"
-      "   AND end_date > $1;",
-      1),
+      "   AND end_date > $1;"),
     /* Used in #postgres_get_global_fees() */
     GNUNET_PQ_make_prepare (
       "get_global_fees",
@@ -1983,8 +1896,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_account_limit"
       ",master_sig"
       " FROM global_fee"
-      " WHERE start_date >= $1",
-      1),
+      " WHERE start_date >= $1"),
     /* Used in #postgres_insert_wire_fee */
     GNUNET_PQ_make_prepare (
       "insert_wire_fee",
@@ -2000,8 +1912,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wad_fee_frac"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
-      10),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);"),
     /* Used in #postgres_insert_global_fee */
     GNUNET_PQ_make_prepare (
       "insert_global_fee",
@@ -2022,8 +1933,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_account_limit"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);",
-      15),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);"),
     /* Used in #postgres_store_wire_transfer_out */
     GNUNET_PQ_make_prepare (
       "insert_wire_out",
@@ -2035,8 +1945,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_val"
       ",amount_frac"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6);",
-      6),
+      "($1, $2, $3, $4, $5, $6);"),
     /* Used in #postgres_wire_prepare_data_insert() to store
        wire transfer information before actually committing it with the bank */
     GNUNET_PQ_make_prepare (
@@ -2045,22 +1954,19 @@ prepare_statements (struct PostgresClosure *pg)
       "(wire_method"
       ",buf"
       ") VALUES "
-      "($1, $2);",
-      2),
+      "($1, $2);"),
     /* Used in #postgres_wire_prepare_data_mark_finished() */
     GNUNET_PQ_make_prepare (
       "wire_prepare_data_mark_done",
       "UPDATE prewire"
       " SET finished=TRUE"
-      " WHERE prewire_uuid=$1;",
-      1),
+      " WHERE prewire_uuid=$1;"),
     /* Used in #postgres_wire_prepare_data_mark_failed() */
     GNUNET_PQ_make_prepare (
       "wire_prepare_data_mark_failed",
       "UPDATE prewire"
       " SET failed=TRUE"
-      " WHERE prewire_uuid=$1;",
-      1),
+      " WHERE prewire_uuid=$1;"),
     /* Used in #postgres_wire_prepare_data_get() */
     GNUNET_PQ_make_prepare (
       "wire_prepare_data_get",
@@ -2073,8 +1979,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND finished=FALSE"
       "   AND failed=FALSE"
       " ORDER BY prewire_uuid ASC"
-      " LIMIT $2;",
-      2),
+      " LIMIT $2;"),
     /* Used in #postgres_select_deposits_missing_wire */
     // FIXME: used by the auditor; can probably be done
     // smarter by checking if 'done' or 'blocked'
@@ -2103,8 +2008,7 @@ prepare_statements (struct PostgresClosure *pg)
       "       OR EXISTS (SELECT 1"
       "            FROM aggregation_tracking"
       "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
-      " ORDER BY wire_deadline ASC",
-      2),
+      " ORDER BY wire_deadline ASC"),
     /* Used in #postgres_select_wire_out_above_serial_id() */
     GNUNET_PQ_make_prepare (
       "audit_get_wire_incr",
@@ -2119,8 +2023,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN wire_targets"
       "     USING (wire_target_h_payto)"
       " WHERE wireout_uuid>=$1"
-      " ORDER BY wireout_uuid ASC;",
-      1),
+      " ORDER BY wireout_uuid ASC;"),
     /* Used in #postgres_select_wire_out_above_serial_id_by_account() */
     GNUNET_PQ_make_prepare (
       "audit_get_wire_incr_by_account",
@@ -2137,8 +2040,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE "
       "      wireout_uuid>=$1 "
       "  AND exchange_account_section=$2"
-      " ORDER BY wireout_uuid ASC;",
-      2),
+      " ORDER BY wireout_uuid ASC;"),
     /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
     GNUNET_PQ_make_prepare (
       "recoup_get_incr",
@@ -2166,8 +2068,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN denominations denoms"
       "      ON (coins.denominations_serial = denoms.denominations_serial)"
       " WHERE recoup_uuid>=$1"
-      " ORDER BY recoup_uuid ASC;",
-      1),
+      " ORDER BY recoup_uuid ASC;"),
     /* Used in #postgres_select_recoup_refresh_above_serial_id() to obtain
        recoup-refresh transactions */
     GNUNET_PQ_make_prepare (
@@ -2201,8 +2102,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    INNER JOIN denominations old_denoms"
       "      ON (old_coins.denominations_serial = old_denoms.denominations_serial)"
       " WHERE recoup_refresh_uuid>=$1"
-      " ORDER BY recoup_refresh_uuid ASC;",
-      1),
+      " ORDER BY recoup_refresh_uuid ASC;"),
     /* Used in #postgres_select_reserve_closed_above_serial_id() to
        obtain information about closed reserves */
     GNUNET_PQ_make_prepare (
@@ -2223,8 +2123,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN reserves"
       "     USING (reserve_pub)"
       " WHERE close_uuid>=$1"
-      " ORDER BY close_uuid ASC;",
-      1),
+      " ORDER BY close_uuid ASC;"),
     /* Used in #postgres_get_reserve_history() to obtain recoup transactions
        for a reserve - query optimization should be disabled i.e.
        BEGIN; SET LOCAL join_collapse_limit=1; query; COMMIT; */
@@ -2266,8 +2165,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,robr.denom_sig "
       "FROM denominations "
       "  JOIN exchange_do_recoup_by_reserve($1) robr"
-      " USING (denominations_serial);",
-      1),
+      " USING (denominations_serial);"),
     /* Used in #postgres_get_reserve_status() to obtain recoup transactions
        for a reserve - query optimization should be disabled i.e.
        BEGIN; SET LOCAL join_collapse_limit=1; query; COMMIT; */
@@ -2311,8 +2209,7 @@ prepare_statements (struct PostgresClosure *pg)
       "FROM denominations "
       "  JOIN exchange_do_recoup_by_reserve($1) robr"
       "    USING (denominations_serial)"
-      " WHERE recoup_timestamp>=$2;",
-      2),
+      " WHERE recoup_timestamp>=$2;"),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        affecting old coins of refreshed coins */
     GNUNET_PQ_make_prepare (
@@ -2337,8 +2234,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    FROM refresh_commitments"
       "       JOIN refresh_revealed_coins rrc"
       "           USING (melt_serial_id)"
-      "    WHERE old_coin_pub=$1);",
-      1),
+      "    WHERE old_coin_pub=$1);"),
     /* Used in #postgres_get_reserve_history() */
     GNUNET_PQ_make_prepare (
       "close_by_reserve",
@@ -2353,8 +2249,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves_close"
       "   JOIN wire_targets"
       "     USING (wire_target_h_payto)"
-      " WHERE reserve_pub=$1;",
-      1),
+      " WHERE reserve_pub=$1;"),
     /* Used in #postgres_get_reserve_status() */
     GNUNET_PQ_make_prepare (
       "close_by_reserve_truncated",
@@ -2370,8 +2265,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN wire_targets"
       "     USING (wire_target_h_payto)"
       " WHERE reserve_pub=$1"
-      "   AND execution_date>=$2;",
-      2),
+      "   AND execution_date>=$2;"),
     /* Used in #postgres_get_reserve_history() */
     GNUNET_PQ_make_prepare (
       "merge_by_reserve",
@@ -2399,8 +2293,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE pm.reserve_pub=$1"
       "  AND pm.partner_serial_id=0" /* must be local! */
       "  AND pr.finished"
-      "  AND NOT pr.refunded;",
-      1),
+      "  AND NOT pr.refunded;"),
     /* Used in #postgres_get_reserve_status() */
     GNUNET_PQ_make_prepare (
       "merge_by_reserve_truncated",
@@ -2429,8 +2322,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  AND pm.merge_timestamp >= $2"
       "  AND pm.partner_serial_id=0" /* must be local! */
       "  AND pr.finished"
-      "  AND NOT pr.refunded;",
-      2),
+      "  AND NOT pr.refunded;"),
     /* Used in #postgres_get_reserve_history() */
     GNUNET_PQ_make_prepare (
       "history_by_reserve",
@@ -2440,8 +2332,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",request_timestamp"
       ",reserve_sig"
       " FROM history_requests"
-      " WHERE reserve_pub=$1;",
-      1),
+      " WHERE reserve_pub=$1;"),
     /* Used in #postgres_get_reserve_status() */
     GNUNET_PQ_make_prepare (
       "history_by_reserve_truncated",
@@ -2452,8 +2343,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_sig"
       " FROM history_requests"
       " WHERE reserve_pub=$1"
-      "  AND request_timestamp>=$2;",
-      2),
+      "  AND request_timestamp>=$2;"),
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare (
       "get_expired_reserves",
@@ -2479,8 +2369,7 @@ prepare_statements (struct PostgresClosure *pg)
       "     SELECT reserve_pub FROM ed) "
       " ) ri "
       "JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto) "
-      "JOIN ed ON (ri.reserve_pub = ed.reserve_pub); ",
-      1),
+      "JOIN ed ON (ri.reserve_pub = ed.reserve_pub);"),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        for a coin */
     GNUNET_PQ_make_prepare (
@@ -2507,8 +2396,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   USING (coin_pub)"
       " JOIN denominations denoms"
       "   ON (denoms.denominations_serial = coins.denominations_serial)"
-      " WHERE coins.coin_pub=$1;",
-      1),
+      " WHERE coins.coin_pub=$1;"),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        for a refreshed coin */
     GNUNET_PQ_make_prepare (
@@ -2534,8 +2422,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      ON (recoup_refresh.coin_pub = coins.coin_pub)"
       "    JOIN denominations denoms"
       "      ON (denoms.denominations_serial = coins.denominations_serial)"
-      " WHERE coins.coin_pub=$1;",
-      1),
+      " WHERE coins.coin_pub=$1;"),
     /* Used in #postgres_get_reserve_by_h_blind() */
     GNUNET_PQ_make_prepare (
       "reserve_by_h_blind",
@@ -2546,8 +2433,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves"
       "   USING (reserve_uuid)"
       " WHERE h_blind_ev=$1"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     /* Used in #postgres_get_old_coin_by_h_blind() */
     GNUNET_PQ_make_prepare (
       "old_coin_by_h_blind",
@@ -2558,16 +2444,14 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN refresh_commitments rcom USING (melt_serial_id)"
       " JOIN known_coins okc ON (rcom.old_coin_pub = okc.coin_pub)"
       " WHERE h_coin_ev=$1"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     /* Used in #postgres_lookup_auditor_timestamp() */
     GNUNET_PQ_make_prepare (
       "lookup_auditor_timestamp",
       "SELECT"
       " last_change"
       " FROM auditors"
-      " WHERE auditor_pub=$1;",
-      1),
+      " WHERE auditor_pub=$1;"),
     /* Used in #postgres_lookup_auditor_status() */
     GNUNET_PQ_make_prepare (
       "lookup_auditor_status",
@@ -2575,16 +2459,14 @@ prepare_statements (struct PostgresClosure *pg)
       " auditor_url"
       ",is_active"
       " FROM auditors"
-      " WHERE auditor_pub=$1;",
-      1),
+      " WHERE auditor_pub=$1;"),
     /* Used in #postgres_lookup_wire_timestamp() */
     GNUNET_PQ_make_prepare (
       "lookup_wire_timestamp",
       "SELECT"
       " last_change"
       " FROM wire_accounts"
-      " WHERE payto_uri=$1;",
-      1),
+      " WHERE payto_uri=$1;"),
     /* used in #postgres_insert_auditor() */
     GNUNET_PQ_make_prepare (
       "insert_auditor",
@@ -2595,8 +2477,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",is_active"
       ",last_change"
       ") VALUES "
-      "($1, $2, $3, true, $4);",
-      4),
+      "($1, $2, $3, true, $4);"),
     /* used in #postgres_update_auditor() */
     GNUNET_PQ_make_prepare (
       "update_auditor",
@@ -2606,8 +2487,7 @@ prepare_statements (struct PostgresClosure *pg)
       " ,auditor_name=$3"
       " ,is_active=$4"
       " ,last_change=$5"
-      " WHERE auditor_pub=$1",
-      5),
+      " WHERE auditor_pub=$1"),
     /* used in #postgres_insert_wire() */
     GNUNET_PQ_make_prepare (
       "insert_wire",
@@ -2617,8 +2497,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",is_active"
       ",last_change"
       ") VALUES "
-      "($1, $2, true, $3);",
-      3),
+      "($1, $2, true, $3);"),
     /* used in #postgres_update_wire() */
     GNUNET_PQ_make_prepare (
       "update_wire",
@@ -2626,8 +2505,7 @@ prepare_statements (struct PostgresClosure *pg)
       " SET"
       "  is_active=$2"
       " ,last_change=$3"
-      " WHERE payto_uri=$1",
-      3),
+      " WHERE payto_uri=$1"),
     /* used in #postgres_update_wire() */
     GNUNET_PQ_make_prepare (
       "get_wire_accounts",
@@ -2635,8 +2513,7 @@ prepare_statements (struct PostgresClosure *pg)
       " payto_uri"
       ",master_sig"
       " FROM wire_accounts"
-      " WHERE is_active",
-      0),
+      " WHERE is_active"),
     /* used in #postgres_update_wire() */
     GNUNET_PQ_make_prepare (
       "get_wire_fees",
@@ -2651,8 +2528,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_date"
       ",master_sig"
       " FROM wire_fee"
-      " WHERE wire_method=$1",
-      1),
+      " WHERE wire_method=$1"),
     /* used in #postgres_insert_signkey_revocation() */
     GNUNET_PQ_make_prepare (
       "insert_signkey_revocation",
@@ -2661,8 +2537,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",master_sig"
       ") SELECT esk_serial, $2 "
       "    FROM exchange_sign_keys"
-      "   WHERE exchange_pub=$1;",
-      2),
+      "   WHERE exchange_pub=$1;"),
     /* used in #postgres_insert_signkey_revocation() */
     GNUNET_PQ_make_prepare (
       "lookup_signkey_revocation",
@@ -2672,8 +2547,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE esk_serial="
       "   (SELECT esk_serial"
       "      FROM exchange_sign_keys"
-      "     WHERE exchange_pub=$1);",
-      1),
+      "     WHERE exchange_pub=$1);"),
     /* used in #postgres_insert_signkey() */
     GNUNET_PQ_make_prepare (
       "insert_signkey",
@@ -2684,8 +2558,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_legal"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5);",
-      5),
+      "($1, $2, $3, $4, $5);"),
     /* used in #postgres_lookup_signing_key() */
     GNUNET_PQ_make_prepare (
       "lookup_signing_key",
@@ -2694,8 +2567,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_sign"
       ",expire_legal"
       " FROM exchange_sign_keys"
-      " WHERE exchange_pub=$1",
-      1),
+      " WHERE exchange_pub=$1"),
     /* used in #postgres_lookup_denomination_key() */
     GNUNET_PQ_make_prepare (
       "lookup_denomination_key",
@@ -2716,8 +2588,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",fee_refund_frac"
       ",age_mask"
       " FROM denominations"
-      " WHERE denom_pub_hash=$1;",
-      1),
+      " WHERE denom_pub_hash=$1;"),
     /* used in #postgres_insert_auditor_denom_sig() */
     GNUNET_PQ_make_prepare (
       "insert_auditor_denom_sig",
@@ -2732,8 +2603,7 @@ prepare_statements (struct PostgresClosure *pg)
       ") SELECT ax.auditor_uuid, denominations_serial, $3 "
       "    FROM denominations"
       "   CROSS JOIN ax"
-      "   WHERE denom_pub_hash=$2;",
-      3),
+      "   WHERE denom_pub_hash=$2;"),
     /* used in #postgres_select_auditor_denom_sig() */
     GNUNET_PQ_make_prepare (
       "select_auditor_denom_sig",
@@ -2747,8 +2617,7 @@ prepare_statements (struct PostgresClosure *pg)
       " AND denominations_serial="
       "  (SELECT denominations_serial"
       "    FROM denominations"
-      "    WHERE denom_pub_hash=$2);",
-      2),
+      "    WHERE denom_pub_hash=$2);"),
     /* used in #postgres_lookup_wire_fee_by_time() */
     GNUNET_PQ_make_prepare (
       "lookup_wire_fee_by_time",
@@ -2762,8 +2631,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM wire_fee"
       " WHERE wire_method=$1"
       " AND end_date > $2"
-      " AND start_date < $3;",
-      1),
+      " AND start_date < $3;"),
     /* used in #postgres_lookup_wire_fee_by_time() */
     GNUNET_PQ_make_prepare (
       "lookup_global_fee_by_time",
@@ -2782,13 +2650,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_account_limit"
       " FROM global_fee"
       " WHERE end_date > $1"
-      "   AND start_date < $2;",
-      1),
+      "   AND start_date < $2;"),
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare (
       "do_commit",
-      "COMMIT",
-      0),
+      "COMMIT"),
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_open_shard",
@@ -2800,8 +2666,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND completed=FALSE"
       "   AND last_attempt<$2"
       " ORDER BY last_attempt ASC"
-      " LIMIT 1;",
-      2),
+      " LIMIT 1;"),
     /* Used in #postgres_begin_revolving_shard() */
     GNUNET_PQ_make_prepare (
       "get_open_revolving_shard",
@@ -2812,8 +2677,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE job_name=$1"
       "   AND active=FALSE"
       " ORDER BY last_attempt ASC"
-      " LIMIT 1;",
-      2),
+      " LIMIT 1;"),
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "reclaim_shard",
@@ -2821,8 +2685,7 @@ prepare_statements (struct PostgresClosure *pg)
       " SET last_attempt=$2"
       " WHERE job_name=$1"
       "   AND start_row=$3"
-      "   AND end_row=$4",
-      4),
+      "   AND end_row=$4"),
     /* Used in #postgres_begin_revolving_shard() */
     GNUNET_PQ_make_prepare (
       "reclaim_revolving_shard",
@@ -2831,8 +2694,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    ,active=TRUE"
       " WHERE job_name=$1"
       "   AND start_row=$3"
-      "   AND end_row=$4",
-      4),
+      "   AND end_row=$4"),
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_last_shard",
@@ -2841,8 +2703,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM work_shards"
       " WHERE job_name=$1"
       " ORDER BY end_row DESC"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     /* Used in #postgres_begin_revolving_shard() */
     GNUNET_PQ_make_prepare (
       "get_last_revolving_shard",
@@ -2851,8 +2712,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM revolving_work_shards"
       " WHERE job_name=$1"
       " ORDER BY end_row DESC"
-      " LIMIT 1;",
-      1),
+      " LIMIT 1;"),
     /* Used in #postgres_abort_shard() */
     GNUNET_PQ_make_prepare (
       "abort_shard",
@@ -2860,8 +2720,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   SET last_attempt=0"
       " WHERE job_name = $1 "
       "    AND start_row = $2 "
-      "    AND end_row = $3;",
-      3),
+      "    AND end_row = $3;"),
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "claim_next_shard",
@@ -2871,8 +2730,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",start_row"
       ",end_row"
       ") VALUES "
-      "($1, $2, $3, $4);",
-      4),
+      "($1, $2, $3, $4);"),
     /* Used in #postgres_claim_revolving_shard() */
     GNUNET_PQ_make_prepare (
       "create_revolving_shard",
@@ -2883,8 +2741,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_row"
       ",active"
       ") VALUES "
-      "($1, $2, $3, $4, TRUE);",
-      4),
+      "($1, $2, $3, $4, TRUE);"),
     /* Used in #postgres_complete_shard() */
     GNUNET_PQ_make_prepare (
       "complete_shard",
@@ -2892,8 +2749,7 @@ prepare_statements (struct PostgresClosure *pg)
       " SET completed=TRUE"
       " WHERE job_name=$1"
       "   AND start_row=$2"
-      "   AND end_row=$3",
-      3),
+      "   AND end_row=$3"),
     /* Used in #postgres_complete_shard() */
     GNUNET_PQ_make_prepare (
       "release_revolving_shard",
@@ -2901,23 +2757,20 @@ prepare_statements (struct PostgresClosure *pg)
       " SET active=FALSE"
       " WHERE job_name=$1"
       "   AND start_row=$2"
-      "   AND end_row=$3",
-      3),
+      "   AND end_row=$3"),
     /* Used in #postgres_set_extension_config */
     GNUNET_PQ_make_prepare (
       "set_extension_config",
       "INSERT INTO extensions (name, config) VALUES ($1, $2) "
       "ON CONFLICT (name) "
-      "DO UPDATE SET config=$2",
-      2),
+      "DO UPDATE SET config=$2"),
     /* Used in #postgres_get_extension_config */
     GNUNET_PQ_make_prepare (
       "get_extension_config",
       "SELECT "
       " config "
       "FROM extensions"
-      "   WHERE name=$1;",
-      1),
+      "   WHERE name=$1;"),
     /* Used in #postgres_insert_contract() */
     GNUNET_PQ_make_prepare (
       "insert_contract",
@@ -2931,8 +2784,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  $1, $2, $3, $4, purse_expiration"
       "  FROM purse_requests"
       "  WHERE purse_pub=$1"
-      "  ON CONFLICT DO NOTHING;",
-      4),
+      "  ON CONFLICT DO NOTHING;"),
     /* Used in #postgres_select_contract */
     GNUNET_PQ_make_prepare (
       "select_contract",
@@ -2941,8 +2793,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",e_contract"
       ",contract_sig"
       " FROM contracts"
-      "   WHERE pub_ckey=$1;",
-      1),
+      "   WHERE pub_ckey=$1;"),
     /* Used in #postgres_select_contract_by_purse */
     GNUNET_PQ_make_prepare (
       "select_contract_by_purse",
@@ -2951,8 +2802,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",e_contract"
       ",contract_sig"
       " FROM contracts"
-      "   WHERE purse_pub=$1;",
-      1),
+      "   WHERE purse_pub=$1;"),
     /* Used in #postgres_insert_purse_request() */
     GNUNET_PQ_make_prepare (
       "insert_purse_request",
@@ -2972,8 +2822,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ,purse_sig"
       "  ) VALUES "
       "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
-      "  ON CONFLICT DO NOTHING;",
-      13),
+      "  ON CONFLICT DO NOTHING;"),
     /* Used in #postgres_select_purse */
     GNUNET_PQ_make_prepare (
       "select_purse",
@@ -2988,8 +2837,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",merge_timestamp"
       " FROM purse_requests"
       " LEFT JOIN purse_merges USING (purse_pub)"
-      " WHERE purse_pub=$1;",
-      1),
+      " WHERE purse_pub=$1;"),
     /* Used in #postgres_select_purse_request */
     GNUNET_PQ_make_prepare (
       "select_purse_request",
@@ -3004,8 +2852,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",balance_frac"
       ",purse_sig"
       " FROM purse_requests"
-      " WHERE purse_pub=$1;",
-      1),
+      " WHERE purse_pub=$1;"),
     /* Used in #postgres_select_purse_by_merge_pub */
     GNUNET_PQ_make_prepare (
       "select_purse_by_merge_pub",
@@ -3020,8 +2867,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",balance_frac"
       ",purse_sig"
       " FROM purse_requests"
-      " WHERE merge_pub=$1;",
-      1),
+      " WHERE merge_pub=$1;"),
     /* Used in #postgres_get_purse_deposit */
     GNUNET_PQ_make_prepare (
       "select_purse_deposit_by_coin_pub",
@@ -3037,8 +2883,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN known_coins kc USING (coin_pub)"
       " JOIN denominations USING (denominations_serial)"
       " WHERE coin_pub=$2"
-      "   AND purse_pub=$1;",
-      2),
+      "   AND purse_pub=$1;"),
     /* Used in #postgres_do_purse_merge() */
     GNUNET_PQ_make_prepare (
       "call_purse_merge",
@@ -3047,8 +2892,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_balance AS no_balance"
       ",out_conflict AS conflict"
       " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8);",
-      7),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8);"),
     /* Used in #postgres_do_reserve_purse() */
     GNUNET_PQ_make_prepare (
       "call_reserve_purse",
@@ -3057,8 +2901,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_no_reserve AS no_reserve"
       ",out_conflict AS conflict"
       " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-      9),
+      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);"),
     /* Used in #postgres_select_purse_merge */
     GNUNET_PQ_make_prepare (
       "select_purse_merge",
@@ -3069,15 +2912,13 @@ prepare_statements (struct PostgresClosure *pg)
       ",partner_base_url"
       " FROM purse_merges"
       " LEFT JOIN partners USING (partner_serial_id)"
-      " WHERE purse_pub=$1;",
-      1),
+      " WHERE purse_pub=$1;"),
     /* Used in #postgres_do_account_merge() */
     GNUNET_PQ_make_prepare (
       "call_account_merge",
       "SELECT 1"
       " FROM exchange_do_account_merge"
-      "  ($1, $2, $3);",
-      3),
+      "  ($1, $2, $3);"),
     /* Used in #postgres_insert_history_request() */
     GNUNET_PQ_make_prepare (
       "call_history_request",
@@ -3085,8 +2926,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  out_balance_ok AS balance_ok"
       " ,out_idempotent AS idempotent"
       " FROM exchange_do_history_request"
-      "  ($1, $2, $3, $4, $5)",
-      5),
+      "  ($1, $2, $3, $4, $5)"),
 
     /* Used in #postgres_insert_kyc_requirement_for_account() */
     GNUNET_PQ_make_prepare (
@@ -3098,8 +2938,7 @@ prepare_statements (struct PostgresClosure *pg)
       "  ($1, $2)"
       " ON CONFLICT (h_payto,required_checks) "
       "   DO UPDATE SET h_payto=$1" /* syntax requirement: dummy op */
-      " RETURNING legitimization_requirement_serial_id",
-      2),
+      " RETURNING legitimization_requirement_serial_id"),
     /* Used in #postgres_insert_kyc_requirement_process() */
     GNUNET_PQ_make_prepare (
       "insert_legitimization_process",
@@ -3114,8 +2953,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   DO UPDATE SET"
       "      provider_user_id=$3"
       "     ,provider_legitimization_id=$4"
-      " RETURNING legitimization_process_serial_id",
-      4),
+      " RETURNING legitimization_process_serial_id"),
     /* Used in #postgres_update_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "update_legitimization_process",
@@ -3126,16 +2964,14 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE"
       "      h_payto=$3"
       "  AND legitimization_process_serial_id=$1"
-      "  AND provider_section=$2;",
-      6),
+      "  AND provider_section=$2;"),
     GNUNET_PQ_make_prepare (
       "alert_kyc_status_change",
       "INSERT INTO kyc_alerts"
       " (h_payto"
       " ,trigger_type)"
       " VALUES"
-      " ($1,$2);",
-      2),
+      " ($1,$2);"),
     /* Used in #postgres_lookup_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "lookup_legitimization_requirement_by_row",
@@ -3143,8 +2979,7 @@ prepare_statements (struct PostgresClosure *pg)
       " required_checks"
       ",h_payto"
       " FROM legitimization_requirements"
-      " WHERE legitimization_requirement_serial_id=$1;",
-      1),
+      " WHERE legitimization_requirement_serial_id=$1;"),
     /* Used in #postgres_lookup_kyc_process_by_account() */
     GNUNET_PQ_make_prepare (
       "lookup_process_by_account",
@@ -3155,8 +2990,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",provider_legitimization_id"
       " FROM legitimization_processes"
       " WHERE h_payto=$1"
-      "   AND provider_section=$2;",
-      2),
+      "   AND provider_section=$2;"),
     /* Used in #postgres_kyc_provider_account_lookup() */
     GNUNET_PQ_make_prepare (
       "get_wire_target_by_legitimization_id",
@@ -3165,8 +2999,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",legitimization_process_serial_id"
       " FROM legitimization_processes"
       " WHERE provider_legitimization_id=$1"
-      "   AND provider_section=$2;",
-      2),
+      "   AND provider_section=$2;"),
     /* Used in #postgres_select_satisfied_kyc_processes() */
     GNUNET_PQ_make_prepare (
       "get_satisfied_legitimizations",
@@ -3174,8 +3007,7 @@ prepare_statements (struct PostgresClosure *pg)
       " provider_section"
       " FROM legitimization_processes"
       " WHERE h_payto=$1"
-      "   AND expiration_time>=$2;",
-      2),
+      "   AND expiration_time>=$2;"),
 
     /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
 () */
@@ -3191,8 +3023,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves_in ri ON (res.reserve_pub = ri.reserve_pub)"
       " WHERE wire_source_h_payto=$1"
       "   AND ro.execution_date >= $2"
-      " ORDER BY ro.execution_date DESC",
-      2),
+      " ORDER BY ro.execution_date DESC"),
     /* Used in #postgres_select_aggregation_amounts_for_kyc_check (
 () */
     GNUNET_PQ_make_prepare (
@@ -3204,8 +3035,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM wire_out"
       " WHERE wire_target_h_payto=$1"
       "   AND execution_date >= $2"
-      " ORDER BY execution_date DESC",
-      2),
+      " ORDER BY execution_date DESC"),
 
     /* Used in #postgres_select_merge_amounts_for_kyc_check (
 () */
@@ -3221,8 +3051,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE wallet_h_payto=$1"
       "   AND merge_timestamp >= $2"
       "   AND finished"
-      " ORDER BY merge_timestamp DESC",
-      2),
+      " ORDER BY merge_timestamp DESC"),
 
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -9242,8 +9071,7 @@ postgres_gc (void *cls)
       GNUNET_PQ_make_prepare ("run_gc",
                               "CALL"
                               " exchange_do_gc"
-                              " ($1,$2);",
-                              2),
+                              " ($1,$2);"),
       GNUNET_PQ_PREPARED_STATEMENT_END
     };
 
@@ -15460,6 +15288,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->select_merge_amounts_for_kyc_check
     = &postgres_select_merge_amounts_for_kyc_check;
   /* NEW style, sort alphabetically! */
+  plugin->do_reserve_open
+    = &TEH_PG_do_reserve_open;
   plugin->insert_records_by_table
     = &TEH_PG_insert_records_by_table;
   plugin->insert_reserve_open_deposit

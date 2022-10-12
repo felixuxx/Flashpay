@@ -113,7 +113,7 @@ struct PostgresClosure
     if (prep_cnt < pg->prep_gen)                  \
     {                                             \
       struct GNUNET_PQ_PreparedStatement ps[] = { \
-        GNUNET_PQ_make_prepare (name, sql, 0),    \
+        GNUNET_PQ_make_prepare (name, sql),       \
         GNUNET_PQ_PREPARED_STATEMENT_END          \
       };                                          \
                                                   \
