@@ -44,9 +44,9 @@ struct CloseState
   struct TALER_EXCHANGE_ReservesCloseHandle *rsh;
 
   /**
-   * Expected reserve balance.
+   * payto://-URI where to wire the funds.
    */
-  const char *expected_balance;
+  const char *target_account;
 
   /**
    * Private key of the reserve being analyzed.
@@ -79,11 +79,10 @@ struct CloseState
  */
 static void
 reserve_close_cb (void *cls,
-                  const struct TALER_EXCHANGE_ReserveClose *rs)
+                  const struct TALER_EXCHANGE_ReserveCloseResult *rs)
 {
   struct CloseState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
-  struct TALER_Amount eb;
 
   ss->rsh = NULL;
   if (ss->expected_response_code != rs->hr.http_status)
@@ -147,6 +146,7 @@ close_run (void *cls,
                                       &ss->reserve_pub.eddsa_pub);
   ss->rsh = TALER_EXCHANGE_reserves_close (is->exchange,
                                            ss->reserve_priv,
+                                           ss->target_account,
                                            &reserve_close_cb,
                                            ss);
 }
@@ -189,7 +189,7 @@ TALER_TESTING_cmd_reserve_close (const char *label,
   GNUNET_assert (NULL != reserve_reference);
   ss = GNUNET_new (struct CloseState);
   ss->reserve_reference = reserve_reference;
-  ss->expected_balance = expected_balance;
+  ss->target_account = target_account;
   ss->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {
