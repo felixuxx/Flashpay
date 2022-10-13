@@ -133,14 +133,6 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY open_request_uuid DESC"
               " LIMIT 1;");
     break;
-  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS:
-    XPREPARE ("select_serial_by_table_reserves_close_requests",
-              "SELECT"
-              " close_request_uuid AS serial"
-              " FROM reserves_close_requests"
-              " ORDER BY close_request_uuid DESC"
-              " LIMIT 1;");
-    break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
     XPREPARE ("select_serial_by_table_reserves_out",
               "SELECT"

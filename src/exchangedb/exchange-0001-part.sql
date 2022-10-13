@@ -269,22 +269,6 @@ CREATE TABLE IF NOT EXISTS reserves_open_deposits_default
 SELECT add_constraints_to_reserves_open_deposits_partition('default');
 
 
--- ------------------------------ reserves_close_requests ----------------------------------------
-
-SELECT create_table_reserves_close_requests();
-
-COMMENT ON TABLE reserves_close_requests
-  IS 'explicit requests by clients to affect an immediate closure of a reserve';
-COMMENT ON COLUMN reserves_close_requests.wire_target_h_payto
-  IS 'Identifies the credited bank account. Optional.';
-
-CREATE TABLE IF NOT EXISTS reserves_close_requests_default
-  PARTITION OF reserves_close_requests
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
-SELECT add_constraints_to_reserves_close_requests_partition('default');
-
-
 -- ------------------------------ reserves_out ----------------------------------------
 
 SELECT create_table_reserves_out();
@@ -1284,11 +1268,14 @@ COMMENT ON COLUMN close_requests.reserve_sig
   IS 'Signature affirming that the reserve is to be closed';
 COMMENT ON COLUMN close_requests.close_val
   IS 'Balance of the reserve at the time of closing, to be wired to the associated bank account (minus the closing fee)';
+COMMENT ON COLUMN close_requests.payto_uri
+  IS 'Identifies the credited bank account. Optional.';
 
 CREATE TABLE IF NOT EXISTS close_requests_default
   PARTITION OF close_requests
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
+SELECT add_constraints_to_close_requests_partition('default');
 
 -- ------------------------------ purse_deposits ----------------------------------------
 

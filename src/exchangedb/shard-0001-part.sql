@@ -50,9 +50,6 @@ BEGIN
   PERFORM create_table_reserves_open_deposits(shard_suffix);
   PERFORM add_constraints_to_reserves_open_deposits_partition(shard_suffix);
 
-  PERFORM create_table_reserves_close_requests(shard_suffix);
-  PERFORM add_constraints_to_reserves_close_requests_partition(shard_suffix);
-
   PERFORM create_table_reserves_out(shard_suffix);
   PERFORM add_constraints_to_reserves_out_partition(shard_suffix);
 
@@ -119,6 +116,8 @@ BEGIN
   PERFORM create_table_history_requests(shard_suffix);
 
   PERFORM create_table_close_requests(shard_suffix);
+  PERFORM add_constraints_to_close_requests_partition(shard_suffix);
+
 
   PERFORM create_table_purse_deposits(shard_suffix);
   PERFORM add_constraints_to_purse_deposits_partition(shard_suffix);

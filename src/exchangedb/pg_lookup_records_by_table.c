@@ -1867,12 +1867,21 @@ lrbt_cb_table_close_requests (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
         &td.details.close_requests.reserve_pub),
+      GNUNET_PQ_result_spec_timestamp (
+        "close_timestamp",
+        &td.details.close_requests.close_timestamp),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_sig",
         &td.details.close_requests.reserve_sig),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "close",
         &td.details.close_requests.close),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "close_fee",
+        &td.details.close_requests.close_fee),
+      GNUNET_PQ_result_spec_string (
+        "payto_uri",
+        &td.details.close_requests.payto_uri),
       GNUNET_PQ_result_spec_end
     };
 

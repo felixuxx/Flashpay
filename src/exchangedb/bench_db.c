@@ -51,32 +51,28 @@ prepare (struct GNUNET_PQ_Context *conn)
       "(hc"
       ",expiration_date"
       ") VALUES "
-      "($1, $2);",
-      2),
+      "($1, $2);"),
     /* Used in #postgres_iterate_denomination_info() */
     GNUNET_PQ_make_prepare (
       "bm_select",
       "SELECT"
       " expiration_date"
       " FROM benchmap"
-      " WHERE hc=$1;",
-      1),
+      " WHERE hc=$1;"),
     GNUNET_PQ_make_prepare (
       "bhm_insert",
       "INSERT INTO benchhmap "
       "(hc"
       ",expiration_date"
       ") VALUES "
-      "($1, $2);",
-      2),
+      "($1, $2);"),
     /* Used in #postgres_iterate_denomination_info() */
     GNUNET_PQ_make_prepare (
       "bhm_select",
       "SELECT"
       " expiration_date"
       " FROM benchhmap"
-      " WHERE hc=$1;",
-      1),
+      " WHERE hc=$1;"),
     GNUNET_PQ_make_prepare (
       "bem_insert",
       "INSERT INTO benchemap "
@@ -84,16 +80,14 @@ prepare (struct GNUNET_PQ_Context *conn)
       ",ihc"
       ",expiration_date"
       ") VALUES "
-      "($1, $2, $3);",
-      3),
+      "($1, $2, $3);"),
     /* Used in #postgres_iterate_denomination_info() */
     GNUNET_PQ_make_prepare (
       "bem_select",
       "SELECT"
       " expiration_date"
       " FROM benchemap"
-      " WHERE ihc=$1 AND hc=$2;",
-      2),
+      " WHERE ihc=$1 AND hc=$2;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
   enum GNUNET_GenericReturnValue ret;

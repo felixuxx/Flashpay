@@ -446,8 +446,6 @@ run (void *cls,
                                      "create-reserve-101",
                                      NULL, /* to origin */
                                      MHD_HTTP_OK),
-#if FIXME
-    /* reserve close logic is not yet implemented, hence this fails: */
     TALER_TESTING_cmd_exec_closer ("close-reserves-101",
                                    config_file,
                                    "EUR:1.02",
@@ -459,7 +457,6 @@ run (void *cls,
                               "create-reserve-101",
                               "EUR:0",
                               MHD_HTTP_OK),
-#endif
     TALER_TESTING_cmd_end ()
   };
 

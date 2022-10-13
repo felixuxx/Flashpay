@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2021 Taler Systems SA
+  Copyright (C) 2016-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -431,11 +431,18 @@ run_reserve_closures (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for reserves to close by date %s\n",
               GNUNET_TIME_timestamp2s (now));
-  qs = db_plugin->get_expired_reserves (db_plugin->cls,
-                                        now,
-                                        &expired_reserve_cb,
-                                        NULL);
-  GNUNET_assert (1 >= qs);
+  qs = db_plugin->get_unfinished_close_requests (db_plugin->cls,
+                                                 &expired_reserve_cb,
+                                                 NULL);
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* Try expired reserves as well */
+    qs = db_plugin->get_expired_reserves (
+      db_plugin->cls,
+      now,
+      &expired_reserve_cb,
+      NULL);
+  }
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:

@@ -70,6 +70,8 @@ endif
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_postgres.c pg_helper.h \
   pg_do_reserve_open.c pg_do_reserve_open.h \
+  pg_get_expired_reserves.c pg_get_expired_reserves.h \
+  pg_get_unfinished_close_requests.c pg_get_unfinished_close_requests.h \
   pg_insert_close_request.c pg_insert_close_request.h \
   pg_insert_records_by_table.c pg_insert_records_by_table.h \
   pg_insert_reserve_open_deposit.c pg_insert_reserve_open_deposit.h \

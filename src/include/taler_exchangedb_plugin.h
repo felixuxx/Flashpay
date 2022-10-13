@@ -202,7 +202,6 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_RESERVES_CLOSE,
   TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS,
   TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS,
-  TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS,
   TALER_EXCHANGEDB_RT_RESERVES_OUT,
   TALER_EXCHANGEDB_RT_AUDITORS,
   TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS,
@@ -336,14 +335,6 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_Amount contribution;
     } reserves_open_deposits;
-
-    struct
-    {
-      struct TALER_ReservePublicKeyP reserve_pub;
-      struct GNUNET_TIME_Timestamp execution_date;
-      struct TALER_ReserveSignatureP reserve_sig;
-      struct TALER_PaytoHashP wire_target_h_payto;
-    } reserves_close_requests;
 
     struct
     {
@@ -587,6 +578,8 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Timestamp close_timestamp;
       struct TALER_ReserveSignatureP reserve_sig;
       struct TALER_Amount close;
+      struct TALER_Amount close_fee;
+      char *payto_uri;
     } close_requests;
 
     struct
@@ -4108,6 +4101,24 @@ struct TALER_EXCHANGEDB_Plugin
                           struct GNUNET_TIME_Timestamp now,
                           TALER_EXCHANGEDB_ReserveExpiredCallback rec,
                           void *rec_cls);
+
+
+  /**
+   * Obtain information about force-closed reserves
+   * where the close was not yet done (and their remaining
+   * balances).  Updates the returned reserve's close
+   * status to "done".
+   *
+   * @param cls closure of the plugin
+   * @param rec function to call on (to be) closed reserves
+   * @param rec_cls closure for @a rec
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_unfinished_close_requests)(
+    void *cls,
+    TALER_EXCHANGEDB_ReserveExpiredCallback rec,
+    void *rec_cls);
 
 
   /**

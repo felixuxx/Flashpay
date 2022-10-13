@@ -436,46 +436,6 @@ irbt_cb_table_reserves_open_deposits (
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_reserves_close_requests (
-  struct PostgresClosure *pg,
-  const struct TALER_EXCHANGEDB_TableData *td)
-{
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.reserves_close_requests.reserve_pub),
-    GNUNET_PQ_query_param_timestamp (
-      &td->details.reserves_close_requests.execution_date),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.reserves_close_requests.reserve_sig),
-    GNUNET_PQ_query_param_auto_from_type (
-      &td->details.reserves_close_requests.wire_target_h_payto),
-    GNUNET_PQ_query_param_end
-  };
-
-  PREPARE (pg,
-           "insert_into_table_reserves_close_requests",
-           "INSERT INTO reserves_close_requests"
-           "(close_request_uuid"
-           ",reserve_pub"
-           ",execution_date"
-           ",reserve_sig"
-           ",wire_target_h_payto"
-           ") VALUES "
-           "($1, $2, $3, $4, $5);");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_reserves_close_requests",
-                                             params);
-}
-
-
-/**
- * Function called with reserves_close records to insert into table.
- *
- * @param pg plugin context
- * @param td record to insert
- */
-static enum GNUNET_DB_QueryStatus
 irbt_cb_table_reserves_close (struct PostgresClosure *pg,
                               const struct TALER_EXCHANGEDB_TableData *td)
 {
@@ -1582,6 +1542,10 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
       &td->details.close_requests.reserve_sig),
     TALER_PQ_query_param_amount (
       &td->details.close_requests.close),
+    TALER_PQ_query_param_amount (
+      &td->details.close_requests.close_fee),
+    GNUNET_PQ_query_param_string (
+      td->details.close_requests.payto_uri),
     GNUNET_PQ_query_param_end
   };
 
@@ -1594,8 +1558,11 @@ irbt_cb_table_close_requests (struct PostgresClosure *pg,
            ",reserve_sig"
            ",close_val"
            ",close_frac"
+           ",close_fee_val"
+           ",close_fee_frac"
+           ",payto_uri"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_close_requests",
                                              params);
@@ -1882,9 +1849,6 @@ TEH_PG_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS:
     rh = &irbt_cb_table_reserves_open_deposits;
-    break;
-  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE_REQUESTS:
-    rh = &irbt_cb_table_reserves_close_requests;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
     rh = &irbt_cb_table_reserves_out;
