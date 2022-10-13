@@ -152,6 +152,14 @@ TEH_COMMON_free_coin_transaction_list (
         GNUNET_free (deposit);
         break;
       }
+    case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
+      {
+        struct TALER_EXCHANGEDB_ReserveOpenListEntry *role;
+
+        role = tl->details.reserve_open;
+        GNUNET_free (role);
+        break;
+      }
     }
     {
       struct TALER_EXCHANGEDB_TransactionList *next;

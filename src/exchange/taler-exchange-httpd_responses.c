@@ -424,6 +424,31 @@ TEH_RESPONSE_compile_transaction_history (
         }
         break;
       }
+
+    case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
+      {
+        struct TALER_EXCHANGEDB_ReserveOpenListEntry *role
+          = pos->details.reserve_open;
+
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "RESERVE-OPEN-DEPOSIT"),
+                TALER_JSON_pack_amount ("coin_contribution",
+                                        &role->coin_contribution),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &role->reserve_sig),
+                GNUNET_JSON_pack_data_auto ("coin_sig",
+                                            &role->coin_sig))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        break;
+      }
     }
   }
   return history;
