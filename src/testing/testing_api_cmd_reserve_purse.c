@@ -129,6 +129,10 @@ struct ReservePurseState
    */
   unsigned int expected_response_code;
 
+  /**
+   * True to pay the purse fee.
+   */
+  bool pay_purse_fee;
 };
 
 
@@ -239,7 +243,7 @@ purse_run (void *cls,
     &ds->contract_priv,
     ds->contract_terms,
     true /* upload contract */,
-    true /* do pay purse fee -- FIXME #7274: make this a choice to test this case; then update testing_api_cmd_purse_deposit flags logic to match! */,
+    ds->pay_purse_fee,
     ds->merge_timestamp,
     &purse_cb,
     ds);
@@ -327,6 +331,7 @@ TALER_TESTING_cmd_purse_create_with_reserve (
   unsigned int expected_http_status,
   const char *contract_terms,
   bool upload_contract,
+  bool pay_purse_fee,
   struct GNUNET_TIME_Relative expiration,
   const char *reserve_ref)
 {
@@ -339,6 +344,7 @@ TALER_TESTING_cmd_purse_create_with_reserve (
                                    0 /* flags */,
                                    &err);
   GNUNET_assert (NULL != ds->contract_terms);
+  ds->pay_purse_fee = pay_purse_fee;
   ds->reserve_ref = reserve_ref;
   ds->expected_response_code = expected_http_status;
 

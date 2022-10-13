@@ -39,7 +39,7 @@ TEH_PG_select_reserve_close_info (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("close",
+    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
                                  balance),
     GNUNET_PQ_result_spec_string ("payto_uri",
                                   payto_uri),
@@ -49,10 +49,12 @@ TEH_PG_select_reserve_close_info (
   PREPARE (pg,
            "select_reserve_close_info",
            "SELECT "
-           " close_frac"
-           ",close_val"
-           ",payto_uri"
-           " FROM close_requests"
+           " r.current_balance_val"
+           ",r.current_balance_frac"
+           ",wt.payto_uri"
+           " FROM reserves r"
+           " LEFT JOIN reserves_in ri USING (reserve_pub)"
+           " LEFT JOIN wire_targets wt ON (ri.wire_source_h_payto = wt.wire_target_h_payto)"
            " WHERE reserve_pub=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_reserve_close_info",

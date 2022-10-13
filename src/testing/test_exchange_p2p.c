@@ -22,7 +22,7 @@
  * @author Christian Grothoff
  *
  * TODO:
- * - Test purse creation with reserve purse quota
+ * - enable reserve close test once implementation is complete!
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -216,6 +216,7 @@ run (void *cls,
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
+      true /* pay purse fee */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-1"),
     TALER_TESTING_cmd_contract_get (
@@ -260,6 +261,7 @@ run (void *cls,
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:4\",\"summary\":\"beer\"}",
       true /* upload contract */,
+      true /* pay purse fee */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "create-reserve-1"),
     TALER_TESTING_cmd_purse_deposit_coins (
@@ -279,6 +281,7 @@ run (void *cls,
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:2\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
+      true /* pay purse fee */,
       GNUNET_TIME_relative_multiply (
         GNUNET_TIME_UNIT_SECONDS,
         1), /* expiration */
@@ -404,7 +407,31 @@ run (void *cls,
                                     "EUR:0.03", /* 0.02 for the reserve open, 0.01 for deposit fee */
                                     NULL,
                                     NULL),
-    /* FIXME: use purse creation with purse quota here */
+    /* Use purse creation with purse quota here */
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-101-a",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      false /* pay purse fee */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "create-reserve-101"),
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-101-b",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      false /* pay purse fee */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "create-reserve-101"),
+    TALER_TESTING_cmd_purse_create_with_reserve (
+      "purse-create-with-reserve-101-fail",
+      MHD_HTTP_CONFLICT,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true /* upload contract */,
+      false /* pay purse fee */,
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "create-reserve-101"),
     TALER_TESTING_cmd_reserve_get_attestable ("reserve-101-attestable",
                                               "create-reserve-101",
                                               MHD_HTTP_NOT_FOUND,
@@ -415,13 +442,23 @@ run (void *cls,
                                               "nx-attribute-name",
                                               NULL),
     /* FIXME: do KYC for reserve, then get actual attributes attested */
-#if 0
     TALER_TESTING_cmd_reserve_close ("reserve-101-close",
                                      "create-reserve-101",
                                      NULL, /* to origin */
                                      MHD_HTTP_OK),
-    /* FIXME: trigger helper to close reserve here */
-    /* FIXME: check reserve was actually closed (money wired back) */
+#if FIXME
+    /* reserve close logic is not yet implemented, hence this fails: */
+    TALER_TESTING_cmd_exec_closer ("close-reserves-101",
+                                   config_file,
+                                   "EUR:1.02",
+                                   "EUR:0.01",
+                                   "create-reserve-101"),
+    TALER_TESTING_cmd_exec_transfer ("close-reserves-101-transfer",
+                                     config_file),
+    TALER_TESTING_cmd_status ("reserve-101-closed-status",
+                              "create-reserve-101",
+                              "EUR:0",
+                              MHD_HTTP_OK),
 #endif
     TALER_TESTING_cmd_end ()
   };
@@ -456,11 +493,6 @@ run (void *cls,
                                               config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
-#if 0
-    TALER_TESTING_cmd_batch ("reserves",
-                             reserves),
-    TALER_TESTING_cmd_end (), // FIXME
-#endif
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("push",
@@ -469,6 +501,8 @@ run (void *cls,
                              pull),
     TALER_TESTING_cmd_batch ("expire",
                              expire),
+    TALER_TESTING_cmd_batch ("reserves",
+                             reserves),
     /* End the suite. */
     TALER_TESTING_cmd_end ()
   };

@@ -54,12 +54,12 @@ TEH_PG_insert_close_request (
            ",close_timestamp"
            ",reserve_sig"
            ",close_val"
-           ",close_frac,"
+           ",close_frac"
            ",close_fee_val"
            ",close_fee_frac"
            ",payto_uri"
            ")"
-           "VALUES ($1, $2, $3, $4, $5, $6, $7)"
+           "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
            " ON CONFLICT DO NOTHING;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_account_close",
