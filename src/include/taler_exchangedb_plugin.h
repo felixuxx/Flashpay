@@ -1789,6 +1789,31 @@ struct TALER_EXCHANGEDB_PurseDepositListEntry
 
 
 /**
+ * Information about a /reserves/$RID/open operation in a coin transaction history.
+ */
+struct TALER_EXCHANGEDB_ReserveOpenListEntry
+{
+
+  /**
+   * Signature of the reserve.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
+   * Contribution of the coin to the open fee, including
+   * deposit fee.
+   */
+  struct TALER_Amount coin_contribution;
+
+  /**
+   * Signature by the coin affirming the open deposit.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+};
+
+
+/**
  * Information about a /purses/$PID/deposit operation.
  */
 struct TALER_EXCHANGEDB_PurseDeposit
@@ -1947,7 +1972,12 @@ enum TALER_EXCHANGEDB_TransactionType
   /**
    * Purse deposit operation.
    */
-  TALER_EXCHANGEDB_TT_PURSE_DEPOSIT = 6
+  TALER_EXCHANGEDB_TT_PURSE_DEPOSIT = 6,
+
+  /**
+   * Reserve open deposit operation.
+   */
+  TALER_EXCHANGEDB_TT_RESERVE_OPEN = 7
 
 };
 
@@ -2022,6 +2052,12 @@ struct TALER_EXCHANGEDB_TransactionList
      * (#TALER_EXCHANGEDB_TT_PURSE_DEPOSIT)
      */
     struct TALER_EXCHANGEDB_PurseDepositListEntry *purse_deposit;
+
+    /**
+     * Coin was used to pay to open a reserve.
+     * (#TALER_EXCHANGEDB_TT_RESERVE_OPEN)
+     */
+    struct TALER_EXCHANGEDB_ReserveOpenListEntry *reserve_open;
 
   } details;
 

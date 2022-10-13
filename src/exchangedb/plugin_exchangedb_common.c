@@ -19,16 +19,14 @@
  *        included in each plugin.
  * @author Christian Grothoff
  */
+#include "platform.h"
+#include "plugin_exchangedb_common.h"
 
-/**
- * Free memory associated with the given reserve history.
- *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param rh history to free.
- */
-static void
-common_free_reserve_history (void *cls,
-                             struct TALER_EXCHANGEDB_ReserveHistory *rh)
+
+void
+TEH_COMMON_free_reserve_history (
+  void *cls,
+  struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   (void) cls;
   while (NULL != rh)
@@ -99,15 +97,10 @@ common_free_reserve_history (void *cls,
 }
 
 
-/**
- * Free linked list of transactions.
- *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param tl list to free
- */
-static void
-common_free_coin_transaction_list (void *cls,
-                                   struct TALER_EXCHANGEDB_TransactionList *tl)
+void
+TEH_COMMON_free_coin_transaction_list (
+  void *cls,
+  struct TALER_EXCHANGEDB_TransactionList *tl)
 {
   (void) cls;
   while (NULL != tl)
