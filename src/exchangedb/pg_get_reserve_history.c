@@ -27,7 +27,7 @@
 #include "pg_helper.h"
 
 /**
- * Closure for callbacks invoked via #postgres_get_reserve_history.
+ * Closure for callbacks invoked via #TEH_PG_get_reserve_history().
  */
 struct ReserveHistoryContext
 {
@@ -98,7 +98,7 @@ append_rh (struct ReserveHistoryContext *rhc)
 
 
 /**
- * Add bank transfers to result set for #postgres_get_reserve_history.
+ * Add bank transfers to result set for #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -155,7 +155,7 @@ add_bank_to_exchange (void *cls,
 
 
 /**
- * Add coin withdrawals to result set for #postgres_get_reserve_history.
+ * Add coin withdrawals to result set for #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -216,7 +216,7 @@ add_withdraw_coin (void *cls,
 
 
 /**
- * Add recoups to result set for #postgres_get_reserve_history.
+ * Add recoups to result set for #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -281,7 +281,7 @@ add_recoup (void *cls,
 
 /**
  * Add exchange-to-bank transfers to result set for
- * #postgres_get_reserve_history.
+ * #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -341,7 +341,7 @@ add_exchange_to_bank (void *cls,
 
 /**
  * Add purse merge transfers to result set for
- * #postgres_get_reserve_history.
+ * #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -426,7 +426,7 @@ add_p2p_merge (void *cls,
 
 /**
  * Add paid for history requests to result set for
- * #postgres_get_reserve_history.
+ * #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -482,7 +482,7 @@ add_history_requests (void *cls,
 
 /**
  * Add paid for history requests to result set for
- * #postgres_get_reserve_history.
+ * #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -542,7 +542,7 @@ add_open_requests (void *cls,
 
 /**
  * Add paid for history requests to result set for
- * #postgres_get_reserve_history.
+ * #TEH_PG_get_reserve_history.
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param result SQL result
@@ -679,7 +679,6 @@ TEH_PG_get_reserve_history (void *cls,
            "WHERE wire_target_h_payto = ( "
            "  SELECT wire_source_h_payto FROM ri "
            "); ");
-
   PREPARE (pg,
            "get_reserves_out",
            /*
@@ -764,7 +763,6 @@ TEH_PG_get_reserve_history (void *cls,
            "FROM denominations "
            "  JOIN exchange_do_recoup_by_reserve($1) robr"
            " USING (denominations_serial);");
-
   PREPARE (pg,
            "close_by_reserve",
            "SELECT"
@@ -779,7 +777,6 @@ TEH_PG_get_reserve_history (void *cls,
            "   JOIN wire_targets"
            "     USING (wire_target_h_payto)"
            " WHERE reserve_pub=$1;");
-
   PREPARE (pg,
            "merge_by_reserve",
            "SELECT"
@@ -807,7 +804,6 @@ TEH_PG_get_reserve_history (void *cls,
            "  AND pm.partner_serial_id=0" /* must be local! */
            "  AND pr.finished"
            "  AND NOT pr.refunded;");
-
   PREPARE (pg,
            "history_by_reserve",
            "SELECT"
@@ -817,7 +813,6 @@ TEH_PG_get_reserve_history (void *cls,
            ",reserve_sig"
            " FROM history_requests"
            " WHERE reserve_pub=$1;");
-
   PREPARE (pg,
            "open_request_by_reserve",
            "SELECT"
@@ -829,7 +824,6 @@ TEH_PG_get_reserve_history (void *cls,
            ",reserve_sig"
            " FROM reserves_open_requests"
            " WHERE reserve_pub=$1;");
-
   PREPARE (pg,
            "close_request_by_reserve",
            "SELECT"
@@ -1019,7 +1013,6 @@ TEH_PG_get_reserve_status (void *cls,
            "JOIN denominations denom "
            "  ON (ro.denominations_serial = denom.denominations_serial)"
            " WHERE ro.execution_date>=$2;");
-
   PREPARE (pg,
            "recoup_by_reserve_truncated",
            /*
@@ -1061,7 +1054,6 @@ TEH_PG_get_reserve_status (void *cls,
            "  JOIN exchange_do_recoup_by_reserve($1) robr"
            "    USING (denominations_serial)"
            " WHERE recoup_timestamp>=$2;");
-  /* Used in #postgres_get_reserve_status() */
   PREPARE (pg,
            "close_by_reserve_truncated",
            "SELECT"
@@ -1077,8 +1069,6 @@ TEH_PG_get_reserve_status (void *cls,
            "     USING (wire_target_h_payto)"
            " WHERE reserve_pub=$1"
            "   AND execution_date>=$2;");
-
-  /* Used in #postgres_get_reserve_status() */
   PREPARE (pg,
            "merge_by_reserve_truncated",
            "SELECT"
@@ -1107,8 +1097,6 @@ TEH_PG_get_reserve_status (void *cls,
            "  AND pm.partner_serial_id=0" /* must be local! */
            "  AND pr.finished"
            "  AND NOT pr.refunded;");
-
-  /* Used in #postgres_get_reserve_status() */
   PREPARE (pg,
            "history_by_reserve_truncated",
            "SELECT"
@@ -1119,7 +1107,6 @@ TEH_PG_get_reserve_status (void *cls,
            " FROM history_requests"
            " WHERE reserve_pub=$1"
            "  AND request_timestamp>=$2;");
-
   PREPARE (pg,
            "open_request_by_reserve_truncated",
            "SELECT"
