@@ -340,7 +340,7 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  rh->type = TALER_EXCHANGE_RTT_CLOSE;
+  rh->type = TALER_EXCHANGE_RTT_CLOSING;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (transaction,
                          closing_spec,
@@ -531,6 +531,120 @@ parse_history (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
 }
 
 
+/**
+ * Parse "open" reserve open entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_open (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+            struct HistoryParseContext *uc,
+            const json_t *transaction)
+{
+  struct GNUNET_JSON_Specification open_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &rh->details.open_request.reserve_sig),
+    TALER_JSON_spec_amount_any ("open_payment",
+                                &rh->details.open_request.reserve_payment),
+    GNUNET_JSON_spec_uint32 ("requested_min_purses",
+                             &rh->details.open_request.purse_limit),
+    GNUNET_JSON_spec_timestamp ("request_timestamp",
+                                &rh->details.open_request.request_timestamp),
+    GNUNET_JSON_spec_timestamp ("requested_expiration",
+                                &rh->details.open_request.reserve_expiration),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_OPEN;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         open_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_reserve_open_verify (
+        &rh->amount,
+        rh->details.open_request.request_timestamp,
+        rh->details.open_request.reserve_expiration,
+        rh->details.open_request.purse_limit,
+        uc->reserve_pub,
+        &rh->details.open_request.reserve_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 >
+      TALER_amount_add (uc->total_out,
+                        uc->total_out,
+                        &rh->amount))
+  {
+    /* overflow in history already!? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse "close" reserve close entry.
+ *
+ * @param[in,out] rh entry to parse
+ * @param uc our context
+ * @param transaction the transaction to parse
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_close (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
+             struct HistoryParseContext *uc,
+             const json_t *transaction)
+{
+  struct GNUNET_JSON_Specification close_spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &rh->details.close_request.reserve_sig),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_payto",
+                                   &rh->details.close_request.
+                                   target_account_h_payto),
+      NULL),
+    GNUNET_JSON_spec_timestamp ("request_timestamp",
+                                &rh->details.close_request.request_timestamp),
+    GNUNET_JSON_spec_end ()
+  };
+
+  rh->type = TALER_EXCHANGE_RTT_CLOSE;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         close_spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  /* force amount to invalid */
+  memset (&rh->amount,
+          0,
+          sizeof (rh->amount));
+  if (GNUNET_OK !=
+      TALER_wallet_reserve_close_verify (
+        rh->details.close_request.request_timestamp,
+        &rh->details.close_request.target_account_h_payto,
+        uc->reserve_pub,
+        &rh->details.close_request.reserve_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -553,6 +667,8 @@ TALER_EXCHANGE_parse_reserve_history (
     { "MERGE", &parse_merge },
     { "CLOSING", &parse_closing },
     { "HISTORY", &parse_history },
+    { "OPEN", &parse_open },
+    { "CLOSE", &parse_close },
     { NULL, NULL }
   };
   struct GNUNET_HashCode uuid[history_length];
@@ -651,11 +767,15 @@ TALER_EXCHANGE_free_reserve_history (
       break;
     case TALER_EXCHANGE_RTT_RECOUP:
       break;
-    case TALER_EXCHANGE_RTT_CLOSE:
+    case TALER_EXCHANGE_RTT_CLOSING:
       break;
     case TALER_EXCHANGE_RTT_HISTORY:
       break;
     case TALER_EXCHANGE_RTT_MERGE:
+      break;
+    case TALER_EXCHANGE_RTT_OPEN:
+      break;
+    case TALER_EXCHANGE_RTT_CLOSE:
       break;
     }
   }
@@ -1253,6 +1373,8 @@ TALER_EXCHANGE_verify_coin_history (
     { "RECOUP-REFRESH", &help_recoup_refresh },
     { "OLD-COIN-RECOUP", &help_old_coin_recoup },
     { "PURSE-DEPOSIT", &help_purse_deposit },
+    // FIXME: PURSE-REFUND missing here!
+    // FIXME: RESERVE-DEPOSIT missing here!
     { NULL, NULL }
   };
   struct CoinHistoryParseContext pc = {

@@ -1237,7 +1237,7 @@ TALER_wallet_account_merge_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Message signed by
+ * Message signed by reserve key.
  */
 struct TALER_ReserveOpenPS
 {
@@ -1404,7 +1404,7 @@ TALER_wallet_reserve_open_deposit_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Message signed by
+ * Message signed by reserve key.
  */
 struct TALER_ReserveClosePS
 {

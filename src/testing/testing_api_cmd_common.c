@@ -70,7 +70,7 @@ TALER_TESTING_history_entry_cmp (
                          &h2->details.recoup_details.coin_pub)) )
       return 0;
     return 1;
-  case TALER_EXCHANGE_RTT_CLOSE:
+  case TALER_EXCHANGE_RTT_CLOSING:
     /* testing_api_cmd_exec_closer doesn't set the
        receiver_account_details, exchange_sig, exchange_pub or wtid or timestamp
        so we cannot test for it here. but if the amount matches,
@@ -129,6 +129,12 @@ TALER_TESTING_history_entry_cmp (
          (h1->details.merge_details.flags ==
           h2->details.merge_details.flags) )
       return 0;
+    return 1;
+  case TALER_EXCHANGE_RTT_OPEN:
+    // FIXME: verify response...
+    return 1;
+  case TALER_EXCHANGE_RTT_CLOSE:
+    // FIXME: verify response...
     return 1;
   }
   GNUNET_assert (0);

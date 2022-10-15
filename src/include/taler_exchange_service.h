@@ -1505,7 +1505,7 @@ enum TALER_EXCHANGE_ReserveTransactionType
   /**
    * Reserve closed operation.
    */
-  TALER_EXCHANGE_RTT_CLOSE,
+  TALER_EXCHANGE_RTT_CLOSING,
 
   /**
    * Reserve history request.
@@ -1513,9 +1513,19 @@ enum TALER_EXCHANGE_ReserveTransactionType
   TALER_EXCHANGE_RTT_HISTORY,
 
   /**
-   * Reserve purese merge operation.
+   * Reserve purse merge operation.
    */
-  TALER_EXCHANGE_RTT_MERGE
+  TALER_EXCHANGE_RTT_MERGE,
+
+  /**
+   * Reserve open request operation.
+   */
+  TALER_EXCHANGE_RTT_OPEN,
+
+  /**
+   * Reserve close request operation.
+   */
+  TALER_EXCHANGE_RTT_CLOSE
 
 };
 
@@ -1729,6 +1739,71 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
       bool merged;
 
     } merge_details;
+
+    /**
+     * Information about an open request operation on the reserve.
+     * @e type is #TALER_EXCHANGE_RTT_OPEN.
+     */
+    struct
+    {
+
+      /**
+       * Signature by the reserve approving the open.
+       */
+      struct TALER_ReserveSignatureP reserve_sig;
+
+      /**
+       * Amount to be paid from the reserve balance to open
+       * the reserve.
+       */
+      struct TALER_Amount reserve_payment;
+
+      /**
+       * When was the request created.
+       */
+      struct GNUNET_TIME_Timestamp request_timestamp;
+
+      /**
+       * For how long should the reserve be kept open.
+       * (Determines amount to be paid.)
+       */
+      struct GNUNET_TIME_Timestamp reserve_expiration;
+
+      /**
+       * How many open purses should be included with the
+       * open reserve?
+       * (Determines amount to be paid.)
+       */
+      uint32_t purse_limit;
+
+    } open_request;
+
+    /**
+     * Information about an close request operation on the reserve.
+     * @e type is #TALER_EXCHANGE_RTT_CLOSE.
+     */
+    struct
+    {
+
+      /**
+       * Signature by the reserve approving the close.
+       */
+      struct TALER_ReserveSignatureP reserve_sig;
+
+      /**
+       * When was the request created.
+       */
+      struct GNUNET_TIME_Timestamp request_timestamp;
+
+      /**
+       * Hash of the payto://-URI of the target account
+       * for the closure, or all zeros for the reserve
+       * origin account.
+       */
+      struct TALER_PaytoHashP target_account_h_payto;
+
+    } close_request;
+
 
   } details;
 
