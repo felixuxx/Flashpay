@@ -70,7 +70,7 @@ src/exchange/
 src/exchange-tools/
   -- taler exchange helper programs
 
-src/exchange-lib/
+src/lib/
   -- libtalerexchange: C API to issue HTTP requests to exchange
 
 src/auditor/
