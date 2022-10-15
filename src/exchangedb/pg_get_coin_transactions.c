@@ -352,6 +352,63 @@ add_coin_refund (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
+add_coin_purse_refund (void *cls,
+                       PGresult *result,
+                       unsigned int num_results)
+{
+  struct CoinHistoryContext *chc = cls;
+  struct PostgresClosure *pg = chc->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_PurseRefundListEntry *prefund;
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+    uint64_t serial_id;
+
+    prefund = GNUNET_new (struct TALER_EXCHANGEDB_PurseRefundListEntry);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                              &prefund->purse_pub),
+        TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                     &prefund->refund_amount),
+        TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                     &prefund->refund_fee),
+        GNUNET_PQ_result_spec_uint64 ("purse_refunds_serial_id",
+                                      &serial_id),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    i))
+      {
+        GNUNET_break (0);
+        GNUNET_free (prefund);
+        chc->failed = true;
+        return;
+      }
+    }
+    tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
+    tl->next = chc->head;
+    tl->type = TALER_EXCHANGEDB_TT_PURSE_REFUND;
+    tl->details.purse_refund = prefund;
+    tl->serial_id = serial_id;
+    chc->head = tl;
+  }
+}
+
+
+/**
+ * Function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct CoinHistoryContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
 add_old_coin_recoup (void *cls,
                      PGresult *result,
                      unsigned int num_results)
@@ -629,6 +686,9 @@ TEH_PG_get_coin_transactions (
     /** #TALER_EXCHANGEDB_TT_PURSE_DEPOSIT */
     { "get_purse_deposit_by_coin_pub",
       &add_coin_purse_deposit },
+    /** #TALER_EXCHANGEDB_TT_PURSE_REFUND */
+    { "get_purse_refund_by_coin_pub",
+      &add_coin_purse_refund },
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },
@@ -748,6 +808,23 @@ TEH_PG_get_coin_transactions (
            " JOIN denominations denom"
            "   USING (denominations_serial)"
            " WHERE ref.coin_pub=$1;");
+  PREPARE (pg,
+           "get_purse_refund_by_coin",
+           "SELECT"
+           " pr.purse_pub"
+           ",pd.amount_with_fee_val"
+           ",pd.amount_with_fee_frac"
+           ",denom.fee_refund_val "
+           ",denom.fee_refund_frac "
+           ",pr.purse_refunds_serial_id"
+           " FROM purse_deposits pd"
+           " JOIN purse_refunds pr"
+           "   USING (purse_pub)"
+           " JOIN known_coins kc"
+           "   ON (pd.coin_pub = kc.coin_pub)"
+           " JOIN denominations denom"
+           "   USING (denominations_serial)"
+           " WHERE pd.coin_pub=$1;");
   PREPARE (pg,
            "recoup_by_old_coin",
            "SELECT"

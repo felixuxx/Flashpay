@@ -131,6 +131,26 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
       }
       deposit_fee = pos->details.purse_deposit->deposit_fee;
       break;
+    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
+      /* refunded += pos->refund_amount - pos->refund_fee */
+      if (0 >
+          TALER_amount_add (&refunded,
+                            &refunded,
+                            &pos->details.purse_refund->refund_amount))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      if (0 >
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.purse_refund->refund_fee))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      have_refund = true;
+      break;
     case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
       /* spent += pos->amount_with_fee */
       if (0 >

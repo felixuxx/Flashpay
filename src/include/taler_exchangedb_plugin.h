@@ -1789,6 +1789,31 @@ struct TALER_EXCHANGEDB_PurseDepositListEntry
 
 
 /**
+ * @brief Specification for a purse refund operation in a coin's transaction list.
+ */
+struct TALER_EXCHANGEDB_PurseRefundListEntry
+{
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Fraction of the original deposit's value to be refunded, including
+   * refund fee (if any).  The coin is identified by @e coin_pub.
+   */
+  struct TALER_Amount refund_amount;
+
+  /**
+   * Refund fee to be covered by the customer.
+   */
+  struct TALER_Amount refund_fee;
+
+};
+
+
+/**
  * Information about a /reserves/$RID/open operation in a coin transaction history.
  */
 struct TALER_EXCHANGEDB_ReserveOpenListEntry
@@ -1975,9 +2000,14 @@ enum TALER_EXCHANGEDB_TransactionType
   TALER_EXCHANGEDB_TT_PURSE_DEPOSIT = 6,
 
   /**
+   * Purse deposit operation.
+   */
+  TALER_EXCHANGEDB_TT_PURSE_REFUND = 7,
+
+  /**
    * Reserve open deposit operation.
    */
-  TALER_EXCHANGEDB_TT_RESERVE_OPEN = 7
+  TALER_EXCHANGEDB_TT_RESERVE_OPEN = 8
 
 };
 
@@ -2052,6 +2082,12 @@ struct TALER_EXCHANGEDB_TransactionList
      * (#TALER_EXCHANGEDB_TT_PURSE_DEPOSIT)
      */
     struct TALER_EXCHANGEDB_PurseDepositListEntry *purse_deposit;
+
+    /**
+     * Coin was refunded upon purse expiration
+     * (#TALER_EXCHANGEDB_TT_PURSE_REFUND)
+     */
+    struct TALER_EXCHANGEDB_PurseRefundListEntry *purse_refund;
 
     /**
      * Coin was used to pay to open a reserve.

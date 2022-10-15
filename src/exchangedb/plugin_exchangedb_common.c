@@ -152,6 +152,14 @@ TEH_COMMON_free_coin_transaction_list (
         GNUNET_free (deposit);
         break;
       }
+    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
+      {
+        struct TALER_EXCHANGEDB_PurseRefundListEntry *prefund;
+
+        prefund = tl->details.purse_refund;
+        GNUNET_free (prefund);
+        break;
+      }
     case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
       {
         struct TALER_EXCHANGEDB_ReserveOpenListEntry *role;
