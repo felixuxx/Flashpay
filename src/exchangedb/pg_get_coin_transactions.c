@@ -809,7 +809,7 @@ TEH_PG_get_coin_transactions (
            "   USING (denominations_serial)"
            " WHERE ref.coin_pub=$1;");
   PREPARE (pg,
-           "get_purse_refund_by_coin",
+           "get_purse_refund_by_coin_pub",
            "SELECT"
            " pr.purse_pub"
            ",pd.amount_with_fee_val"

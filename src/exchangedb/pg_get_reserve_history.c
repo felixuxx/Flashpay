@@ -480,6 +480,121 @@ add_history_requests (void *cls,
 }
 
 
+/**
+ * Add paid for history requests to result set for
+ * #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_open_requests (void *cls,
+                   PGresult *result,
+                   unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+  struct PostgresClosure *pg = rhc->pg;
+
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_OpenRequest *orq;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    orq = GNUNET_new (struct TALER_EXCHANGEDB_OpenRequest);
+    {
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        TALER_PQ_RESULT_SPEC_AMOUNT ("open_fee",
+                                     &orq->open_fee),
+        GNUNET_PQ_result_spec_timestamp ("request_timestamp",
+                                         &orq->request_timestamp),
+        GNUNET_PQ_result_spec_timestamp ("expiration_date",
+                                         &orq->reserve_expiration),
+        GNUNET_PQ_result_spec_uint32 ("requested_purse_limit",
+                                      &orq->purse_limit),
+        GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                              &orq->reserve_sig),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    --num_results))
+      {
+        GNUNET_break (0);
+        GNUNET_free (orq);
+        rhc->status = GNUNET_SYSERR;
+        return;
+      }
+    }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &orq->open_fee));
+    orq->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_OPEN_REQUEST;
+    tail->details.open_request = orq;
+  }
+}
+
+
+/**
+ * Add paid for history requests to result set for
+ * #postgres_get_reserve_history.
+ *
+ * @param cls a `struct ReserveHistoryContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+add_close_requests (void *cls,
+                    PGresult *result,
+                    unsigned int num_results)
+{
+  struct ReserveHistoryContext *rhc = cls;
+
+  while (0 < num_results)
+  {
+    struct TALER_EXCHANGEDB_CloseRequest *crq;
+    struct TALER_EXCHANGEDB_ReserveHistory *tail;
+
+    crq = GNUNET_new (struct TALER_EXCHANGEDB_CloseRequest);
+    {
+      char *payto_uri;
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        GNUNET_PQ_result_spec_timestamp ("close_timestamp",
+                                         &crq->request_timestamp),
+        GNUNET_PQ_result_spec_string ("payto_uri",
+                                      &payto_uri),
+        GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                              &crq->reserve_sig),
+        GNUNET_PQ_result_spec_end
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_PQ_extract_result (result,
+                                    rs,
+                                    --num_results))
+      {
+        GNUNET_break (0);
+        GNUNET_free (crq);
+        rhc->status = GNUNET_SYSERR;
+        return;
+      }
+      TALER_payto_hash (payto_uri,
+                        &crq->target_account_h_payto);
+      GNUNET_free (payto_uri);
+    }
+    crq->reserve_pub = *rhc->reserve_pub;
+    tail = append_rh (rhc);
+    tail->type = TALER_EXCHANGEDB_RO_CLOSE_REQUEST;
+    tail->details.close_request = crq;
+  }
+}
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_reserve_history (void *cls,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -517,6 +632,12 @@ TEH_PG_get_reserve_history (void *cls,
     /** #TALER_EXCHANGEDB_RO_HISTORY_REQUEST */
     { "history_by_reserve",
       &add_history_requests },
+    /** #TALER_EXCHANGEDB_RO_OPEN_REQUEST */
+    { "open_request_by_reserve",
+      &add_open_requests },
+    /** #TALER_EXCHANGEDB_RO_CLOSE_REQUEST */
+    { "close_request_by_reserve",
+      &add_close_requests },
     /* List terminator */
     { NULL,
       NULL }
@@ -697,6 +818,27 @@ TEH_PG_get_reserve_history (void *cls,
            " FROM history_requests"
            " WHERE reserve_pub=$1;");
 
+  PREPARE (pg,
+           "open_request_by_reserve",
+           "SELECT"
+           " reserve_payment_val"
+           ",reserve_payment_frac"
+           ",request_timestamp"
+           ",expiration_date"
+           ",requested_purse_limit"
+           ",reserve_sig"
+           " FROM reserves_open_requests"
+           " WHERE reserve_pub=$1;");
+
+  PREPARE (pg,
+           "close_request_by_reserve",
+           "SELECT"
+           " close_timestamp"
+           ",payto_uri"
+           ",reserve_sig"
+           " FROM close_requests"
+           " WHERE reserve_pub=$1;");
+
   rhc.reserve_pub = reserve_pub;
   rhc.rh = NULL;
   rhc.rh_tail = NULL;
@@ -779,6 +921,12 @@ TEH_PG_get_reserve_status (void *cls,
     /** #TALER_EXCHANGEDB_RO_HISTORY_REQUEST */
     { "history_by_reserve_truncated",
       &add_history_requests },
+    /** #TALER_EXCHANGEDB_RO_OPEN_REQUEST */
+    { "open_request_by_reserve_truncated",
+      &add_open_requests },
+    /** #TALER_EXCHANGEDB_RO_CLOSE_REQUEST */
+    { "close_request_by_reserve_truncated",
+      &add_close_requests },
     /* List terminator */
     { NULL,
       NULL }
@@ -971,6 +1119,29 @@ TEH_PG_get_reserve_status (void *cls,
            " FROM history_requests"
            " WHERE reserve_pub=$1"
            "  AND request_timestamp>=$2;");
+
+  PREPARE (pg,
+           "open_request_by_reserve_truncated",
+           "SELECT"
+           " reserve_payment_val"
+           ",reserve_payment_frac"
+           ",request_timestamp"
+           ",expiration_date"
+           ",requested_purse_limit"
+           ",reserve_sig"
+           " FROM reserves_open_requests"
+           " WHERE reserve_pub=$1"
+           "   AND request_timestamp>=$2;");
+
+  PREPARE (pg,
+           "close_request_by_reserve_truncated",
+           "SELECT"
+           " close_timestamp"
+           ",payto_uri"
+           ",reserve_sig"
+           " FROM close_requests"
+           " WHERE reserve_pub=$1"
+           "   AND close_timestamp>=$2;");
 
   timelimit = GNUNET_TIME_absolute_subtract (
     GNUNET_TIME_absolute_get (),

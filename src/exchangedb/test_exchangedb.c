@@ -1912,6 +1912,16 @@ run (void *cls)
         /* FIXME: not yet tested */
         break;
       }
+    case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
+      {
+        /* FIXME: not yet tested */
+        break;
+      }
+    case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
+      {
+        /* FIXME: not yet tested */
+        break;
+      }
     }
   }
   GNUNET_assert (4 == cnt);
