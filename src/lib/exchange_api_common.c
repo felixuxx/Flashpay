@@ -1353,6 +1353,125 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
 }
 
 
+/**
+ * Handle purse refund entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_purse_refund (struct CoinHistoryParseContext *pc,
+                   const struct TALER_Amount *amount,
+                   json_t *transaction)
+{
+  struct TALER_PurseContractPublicKeyP purse_pub;
+  struct TALER_Amount refund_fee;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount_any ("refund_fee",
+                                &refund_fee),
+    GNUNET_JSON_spec_fixed_auto ("purse_pub",
+                                 &purse_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &exchange_pub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_exchange_online_purse_refund_verify (
+        amount,
+        &refund_fee,
+        pc->coin_pub,
+        &purse_pub,
+        &exchange_pub,
+        &exchange_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (GNUNET_YES !=
+        TALER_amount_cmp_currency (&refund_fee,
+                                   &pc->dk->fees.refund)) ||
+       (0 !=
+        TALER_amount_cmp (&refund_fee,
+                          &pc->dk->fees.refund)) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 >
+      TALER_amount_add (&pc->rtotal,
+                        &pc->rtotal,
+                        amount))
+  {
+    /* overflow in refund history? inconceivable! Bad exchange! */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Handle reserve deposit entry in the coin's history.
+ *
+ * @param[in,out] pc overall context
+ * @param amount main amount of this operation
+ * @param transaction JSON details for the operation
+ * @return #GNUNET_SYSERR on error,
+ *         #GNUNET_OK to add, #GNUNET_NO to subtract
+ */
+static enum GNUNET_GenericReturnValue
+help_reserve_open_deposit (struct CoinHistoryParseContext *pc,
+                           const struct TALER_Amount *amount,
+                           json_t *transaction)
+{
+  struct TALER_ReserveSignatureP reserve_sig;
+  struct TALER_CoinSpendSignatureP coin_sig;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &reserve_sig),
+    GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                 &coin_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (transaction,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_wallet_reserve_open_deposit_verify (
+        amount,
+        &reserve_sig,
+        pc->coin_pub,
+        &coin_sig))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_YES;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
@@ -1373,8 +1492,8 @@ TALER_EXCHANGE_verify_coin_history (
     { "RECOUP-REFRESH", &help_recoup_refresh },
     { "OLD-COIN-RECOUP", &help_old_coin_recoup },
     { "PURSE-DEPOSIT", &help_purse_deposit },
-    // FIXME: PURSE-REFUND missing here!
-    // FIXME: RESERVE-DEPOSIT missing here!
+    { "PURSE-REFUND", &help_purse_refund },
+    { "RESERVE-OPEN-DEPOSIT", &help_reserve_open_deposit },
     { NULL, NULL }
   };
   struct CoinHistoryParseContext pc = {
