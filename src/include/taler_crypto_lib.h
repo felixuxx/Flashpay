@@ -3835,6 +3835,51 @@ TALER_exchange_online_melt_confirmation_verify (
 
 
 /**
+ * Create exchange purse refund confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param amount_without_fee refunded amount
+ * @param refund_fee refund fee charged
+ * @param coin_pub coin that was refunded
+ * @param purse_pub public key of the expired purse
+ * @param[out] pub where to write the public key
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_purse_refund_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_Amount *refund_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verify signature of exchange affirming purse refund
+ * from purse expiration.
+ *
+ * @param amount_without_fee refunded amount
+ * @param refund_fee refund fee charged
+ * @param coin_pub coin that was refunded
+ * @param purse_pub public key of the expired purse
+ * @param pub public key to verify signature against
+ * @param sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_purse_refund_verify (
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_Amount *refund_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig);
+
+
+/**
  * Create exchange key set signature.
  *
  * @param scb function to call to create the signature
@@ -3860,8 +3905,8 @@ TALER_exchange_online_key_set_sign (
  *
  * @param timestamp time when the key set was issued
  * @param hc hash over all the keys
- * @param pub where to write the public key
- * @param sig where to write the signature
+ * @param pub public key to verify signature against
+ * @param sig signature to verify
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue

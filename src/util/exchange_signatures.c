@@ -1383,6 +1383,100 @@ GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Response by which the exchange affirms that it has
+ * received funds deposited into a purse.
+ */
+struct TALER_CoinPurseRefundConfirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Public key of the purse.
+   */
+  struct TALER_PurseContractPublicKeyP purse_pub;
+
+  /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * How much will be refunded to the purse.
+   */
+  struct TALER_AmountNBO refunded_amount;
+
+  /**
+   * How much was the refund fee.
+   */
+  struct TALER_AmountNBO refund_fee;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+enum TALER_ErrorCode
+TALER_exchange_online_purse_refund_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_Amount *refund_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_CoinPurseRefundConfirmationPS dc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND),
+    .purpose.size = htonl (sizeof (dc)),
+    .coin_pub = *coin_pub,
+    .purse_pub = *purse_pub,
+  };
+
+  TALER_amount_hton (&dc.refunded_amount,
+                     amount_without_fee);
+  TALER_amount_hton (&dc.refund_fee,
+                     refund_fee);
+  return scb (&dc.purpose,
+              pub,
+              sig);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_purse_refund_verify (
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_Amount *refund_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ExchangePublicKeyP *pub,
+  const struct TALER_ExchangeSignatureP *sig)
+{
+  struct TALER_CoinPurseRefundConfirmationPS dc = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND),
+    .purpose.size = htonl (sizeof (dc)),
+    .coin_pub = *coin_pub,
+    .purse_pub = *purse_pub,
+  };
+
+  TALER_amount_hton (&dc.refunded_amount,
+                     amount_without_fee);
+  TALER_amount_hton (&dc.refund_fee,
+                     refund_fee);
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_PURSE_REFUND,
+                                &dc,
+                                &sig->eddsa_signature,
+                                &pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Response by which the exchange affirms that it has
  * merged a purse into a reserve.
  */
 struct TALER_PurseMergedConfirmationPS

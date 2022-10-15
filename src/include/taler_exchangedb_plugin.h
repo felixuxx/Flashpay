@@ -1271,6 +1271,75 @@ struct TALER_EXCHANGEDB_HistoryRequest
 
 
 /**
+ * Details about a (paid for) reserve open request.
+ */
+struct TALER_EXCHANGEDB_OpenRequest
+{
+  /**
+   * Public key of the reserve the open request was for.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Fee paid for the request from the reserve.
+   */
+  struct TALER_Amount open_fee;
+
+  /**
+   * When was the request made.
+   */
+  struct GNUNET_TIME_Timestamp request_timestamp;
+
+  /**
+   * How long was the reserve supposed to be open.
+   */
+  struct GNUNET_TIME_Timestamp reserve_expiration;
+
+  /**
+   * Signature by the reserve approving the open request.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
+   * How many open purses should be included with the
+   * open reserve?
+   */
+  uint32_t purse_limit;
+
+};
+
+
+/**
+ * Details about an (explicit) reserve close request.
+ */
+struct TALER_EXCHANGEDB_CloseRequest
+{
+  /**
+   * Public key of the reserve the history request was for.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * When was the request made.
+   */
+  struct GNUNET_TIME_Timestamp request_timestamp;
+
+  /**
+   * Hash of the payto://-URI of the target account
+   * for the closure, or all zeros for the reserve
+   * origin account.
+   */
+  struct TALER_PaytoHashP target_account_h_payto;
+
+  /**
+   * Signature by the reserve approving the history request.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+};
+
+
+/**
  * @brief Types of operations on a reserve.
  */
 enum TALER_EXCHANGEDB_ReserveOperation
@@ -1306,7 +1375,17 @@ enum TALER_EXCHANGEDB_ReserveOperation
   /**
    * Event where a wallet paid for a full reserve history.
    */
-  TALER_EXCHANGEDB_RO_HISTORY_REQUEST = 5
+  TALER_EXCHANGEDB_RO_HISTORY_REQUEST = 5,
+
+  /**
+   * Event where a wallet paid to open a reserve for longer.
+   */
+  TALER_EXCHANGEDB_RO_OPEN_REQUEST = 6,
+
+  /**
+   * Event where a wallet requested a reserve to be closed.
+   */
+  TALER_EXCHANGEDB_RO_CLOSE_REQUEST = 7
 };
 
 
@@ -1366,6 +1445,16 @@ struct TALER_EXCHANGEDB_ReserveHistory
      * Details about a (paid for) reserve history request.
      */
     struct TALER_EXCHANGEDB_HistoryRequest *history;
+
+    /**
+     * Details about a (paid for) open reserve request.
+     */
+    struct TALER_EXCHANGEDB_OpenRequest *open_request;
+
+    /**
+     * Details about an (explicit) reserve close request.
+     */
+    struct TALER_EXCHANGEDB_CloseRequest *close_request;
 
   } details;
 

@@ -425,6 +425,62 @@ TEH_RESPONSE_compile_transaction_history (
         break;
       }
 
+    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
+      {
+        const struct TALER_EXCHANGEDB_PurseRefundListEntry *prefund =
+          pos->details.purse_refund;
+        struct TALER_Amount value;
+        enum TALER_ErrorCode ec;
+        struct TALER_ExchangePublicKeyP epub;
+        struct TALER_ExchangeSignatureP esig;
+
+        if (0 >
+            TALER_amount_subtract (&value,
+                                   &prefund->refund_amount,
+                                   &prefund->refund_fee))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        ec = TALER_exchange_online_purse_refund_sign (
+          &TEH_keys_exchange_sign_,
+          &value,
+          &prefund->refund_fee,
+          coin_pub,
+          &prefund->purse_pub,
+          &epub,
+          &esig);
+        if (TALER_EC_NONE != ec)
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "PURSE-REFUND"),
+                TALER_JSON_pack_amount ("amount",
+                                        &value),
+                TALER_JSON_pack_amount ("refund_fee",
+                                        &prefund->refund_fee),
+                GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                            &esig),
+                GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                            &epub),
+                GNUNET_JSON_pack_data_auto ("purse_pub",
+                                            &prefund->purse_pub))))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
+      }
+      break;
+
     case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
       {
         struct TALER_EXCHANGEDB_ReserveOpenListEntry *role

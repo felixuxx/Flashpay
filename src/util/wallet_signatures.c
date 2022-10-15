@@ -1422,7 +1422,7 @@ struct TALER_ReserveClosePS
   /**
    * Hash of the payto://-URI of the target account
    * for the closure, or all zeros for the reserve
-   * origina ccount.
+   * origin account.
    */
   struct TALER_PaytoHashP target_account_h_payto;
 

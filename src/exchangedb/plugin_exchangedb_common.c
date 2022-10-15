@@ -85,6 +85,22 @@ TEH_COMMON_free_reserve_history (
         GNUNET_free (history);
         break;
       }
+    case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
+      {
+        struct TALER_EXCHANGEDB_OpenRequest *or;
+
+        or = rh->details.open_request;
+        GNUNET_free (or);
+        break;
+      }
+    case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
+      {
+        struct TALER_EXCHANGEDB_CloseRequest *cr;
+
+        cr = rh->details.close_request;
+        GNUNET_free (cr);
+        break;
+      }
     }
     {
       struct TALER_EXCHANGEDB_ReserveHistory *next;
