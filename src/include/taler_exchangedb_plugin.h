@@ -1296,7 +1296,8 @@ struct TALER_EXCHANGEDB_OpenRequest
   struct GNUNET_TIME_Timestamp reserve_expiration;
 
   /**
-   * Signature by the reserve approving the open request.
+   * Signature by the reserve approving the open request,
+   * with purpose #TALER_SIGNATURE_WALLET_RESERVE_OPEN.
    */
   struct TALER_ReserveSignatureP reserve_sig;
 

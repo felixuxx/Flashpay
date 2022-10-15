@@ -923,6 +923,64 @@ TEH_RESPONSE_compile_reserve_history (
         }
       }
       break;
+
+    case TALER_EXCHANGEDB_RO_OPEN_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_OpenRequest *orq =
+          pos->details.open_request;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "OPEN"),
+                GNUNET_JSON_pack_uint64 ("requested_min_purses",
+                                         orq->purse_limit),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &orq->reserve_sig),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            orq->request_timestamp),
+                GNUNET_JSON_pack_timestamp ("requested_expiration",
+                                            orq->reserve_expiration),
+                TALER_JSON_pack_amount ("open_fee",
+                                        &orq->open_fee))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
+
+    case TALER_EXCHANGEDB_RO_CLOSE_REQUEST:
+      {
+        const struct TALER_EXCHANGEDB_CloseRequest *crq =
+          pos->details.close_request;
+
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              GNUNET_JSON_PACK (
+                GNUNET_JSON_pack_string ("type",
+                                         "CLOSE"),
+                GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                            &crq->reserve_sig),
+                GNUNET_is_zero (&crq->target_account_h_payto)
+                ? GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_string ("h_payto",
+                                           NULL))
+                : GNUNET_JSON_pack_data_auto ("h_payto",
+                                              &crq->target_account_h_payto),
+                GNUNET_JSON_pack_timestamp ("request_timestamp",
+                                            crq->request_timestamp))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+      }
+      break;
     }
   }
 
