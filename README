@@ -13,15 +13,14 @@ spend their digital coins.  Naturally, each Merchant is different, but
 Taler includes code examples to help Merchants integrate Taler as a
 payment system.
 
-Taler is currently developed by a worldwide group of independent free
-software developers and the DECENTRALISE team at Inria Rennes.  Taler
-is free software and a GNU package (https://www.gnu.org/).
+Taler is currently developed by a worldwide group of independent free software
+developers and Taler Systems SA.  Taler is free software and an official GNU
+package (https://www.gnu.org/).
 
-This is an alpha release with a few known bugs, lacking a few
-important features, documentation, testing, performance tuning and an
-external security audit.  However, you can run the code and it largely
-works fine.  that does not work yet.  This package also only includes
-the Taler exchange, not the other components of the system.
+This is an alpha release with a few known bugs, lacking a few important
+features, documentation, testing, performance tuning and an external security
+audit.  However, you can run the code and it largely works fine.  This package
+also only includes the Taler exchange, not the other components of the system.
 
 Documentation about Taler can be found at https://taler.net/.
 Our bug tracker is at https://bugs.taler.net/.
@@ -63,7 +62,7 @@ src/pq/
   -- Postgres-specific utility functions
 
 src/exchangedb/
-  -- Exchange database backend (with DB-specific plugins)
+  -- Exchange database backend (with database-specific plugins)
 
 src/exchange/
   -- taler exchange server
@@ -78,64 +77,43 @@ src/auditor/
   -- tools to generate reports about financial performance and
      to validate that the exchange has been operating correctly
 
+src/auditordb/
+  -- database logic for the auditor component (with database-specific
+     plugins)
+
 src/benchmark/
   -- tool to run performance measurements
 
+src/templating/
+  -- logic to generate HTML pages from templates at runtime
+
+src/kyclogic/
+  -- core logic and plugins to trigger and manage KYC processes
+     as required by banking regulation
+
+src/bank-lib/
+  -- bank REST client logic and implementation of an in-memory
+     RTGS emulator ("fakebank") for testing.
+
+src/extensions/
+  -- extensions to the core logic of an exchange
+
+src/json/
+  -- helper functions for generating and parsing JSON
+
+src/mhd/
+  -- helper functions for interacting with GNU libmicrohttpd
+
+src/curl/
+  -- helper functions for interacting with libcurl
 
 
 Getting Started
 ===============
 
-The following steps illustrate how to set up a exchange HTTP server.
-They take as a stub for configuring the exchange the content of 'contrib/exchange-template/config/'.
+Please follow the exchange manual you can view after
+installing using
 
-1) Create a 'test/' directory and copy the stubs in it:
+$ info taler-exchange
 
-mkdir -p test/config/
-cp exchange/contrib/exchange-template/config/* test/config/
-cd test/
-
-2) Create the exchange's master with the tool 'gnunet-ecc':
-
-gnunet-ecc -g1 master.priv
-
-3) Edit config/exchange-common.conf by replacing the right value on the line with the
-MASTER_PUBLIC_KEY entry with the fresh generated (ASCII version of) master.priv.
-This ASCII version is obtained by issuing:
-
-gnunet-ecc -p master.priv
-
-4) Generate other exchange related keys ('denomination' and 'signing' keys), by issuing:
-
-taler-exchange-keyup -m master.priv -o auditor.in
-
-5) A exchange needs a database to operate, so the following instructions relate to
-how to set up PostgreSQL. On debian, the two packages needed are:
-
-* postgresql
-* postgresql-client
-
-For other operating systems, please refer to the relevant documentation.
-
-In this settlement, the exchange will use a database called 'talercheck' and will
-run under the username through which 'taler-exchange-httpd' is launched. Thus assuming
-that this user is 'demo', we need to create a 'demo' role for postgresql and make
-him the owner of 'talercheck' database.
-
-To perform these administrative tasks we have to impersonate the 'postgres' (by default,
-postgres installation assigns privileges to such a user) user, then connect to the running DBMS.
-Issue the following:
-
-su # give your root password
-su - postgres
-psql # this is the command-line client to the DMBS
-# the following lines are SQL
-CREATE USER demo;
-CREATE DATABASE talercheck OWNER demo;
-# quit with CTRL-D
-
-7) If any previous step has been successful, it is now possbile to start up the
-exchange web server (by default it will listen on port 4241); issue:
-
-
-taler-exchange-httpd -d `pwd` # assuming we did not move outside of the 'test' directory
+or by visiting https://docs.taler.net/.
