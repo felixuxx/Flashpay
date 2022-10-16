@@ -593,7 +593,45 @@ check_transaction_history_for_deposit (
                                 amount_with_fee);
         break;
       }
-    }
+
+    case TALER_EXCHANGEDB_TT_PURSE_REFUND:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.purse_refund->refund_amount;
+        fee_claimed = &tl->details.purse_refund->refund_fee;
+        TALER_ARL_amount_add (&refunds,
+                              &refunds,
+                              amount_with_fee);
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              fee_claimed);
+        /* Check that the fees given in the transaction list and in dki match */
+        if (0 !=
+            TALER_amount_cmp (&issue->fees.refund,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between exchange and auditor! */
+          report_amount_arithmetic_inconsistency ("refund fee",
+                                                  0,
+                                                  fee_claimed,
+                                                  &issue->fees.refund,
+                                                  1);
+        }
+        break;
+      }
+
+    case TALER_EXCHANGEDB_TT_RESERVE_OPEN:
+      {
+        const struct TALER_Amount *amount_with_fee;
+
+        amount_with_fee = &tl->details.reserve_open->coin_contribution;
+        TALER_ARL_amount_add (&expenditures,
+                              &expenditures,
+                              amount_with_fee);
+        break;
+      }
+    } /* switch (tl->type) */
   } /* for 'tl' */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
