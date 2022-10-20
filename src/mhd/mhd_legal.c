@@ -390,7 +390,7 @@ load_terms (struct TALER_MHD_Legal *legal,
                       name,
                       ext - name - 1)) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Filename `%s' does not match Etag `%s' in directory `%s/%s'. Ignoring it.\n",
                 name,
                 legal->terms_etag,
