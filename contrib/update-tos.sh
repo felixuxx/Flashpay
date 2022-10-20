@@ -15,6 +15,7 @@ for l in $@
 do
     mkdir -p $l
     echo Generating TOS for language $l
+    cat conf.py.in | sed -e "s/%VERSION%/$VERSION/g" > conf.py
     # 'f' is for the supported formats, note that the 'make' target
     # MUST match the file extension.
     for f in html txt pdf epub xml
@@ -22,7 +23,8 @@ do
         rm -rf _build
         echo "  Generating format $f"
         make -e SPHINXOPTS="-D language='$l'" $f >>sphinx.log 2>>sphinx.err < /dev/null
-        mv _build/$f/tos.$f $l/${VERSION}.$f
+        mv _build/$f/${VERSION}.$f $l/${VERSION}.$f
     done
 done
 cd ..
+echo "Success"

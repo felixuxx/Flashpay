@@ -17,6 +17,7 @@
   @author Benedikt Muller
   @author Sree Harsha Totakura
   @author Marcello Stanisci
+  @author Christian Grothoff
 """
 # -*- coding: utf-8 -*-
 #
@@ -68,11 +69,11 @@ source_suffix = {
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'tos'
+master_doc = '%VERSION%'
 
 # General information about the project.
-project = u'tos'
-copyright = u'2014-2020 Taler Systems SA (GPLv3+ or GFDL 1.3+)'
+project = u'%VERSION%'
+copyright = u'2014-2022 Taler Systems SA (GPLv3+ or GFDL 1.3+)'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -231,7 +232,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('tos', 'tos.tex',
+    ('%VERSION%', '%VERSION%.tex',
      'Terms of Service', 'GNU Taler team', 'manual'),
 ]
 
@@ -277,6 +278,6 @@ latex_documents = [
 
 # -- Options for epub output  ----------------------------
 
-epub_basename = "tos"
+epub_basename = "%VERSION%"
 
 epub_title = "Terms of Service"

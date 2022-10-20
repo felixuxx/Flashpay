@@ -25,18 +25,18 @@ ppendir=$(datadir)/taler/exchange/pp/en
 rdatadir=$(datadir)/taler/exchange
 
 tosen_DATA = \
-  tos/en/0.txt \
-  tos/en/0.pdf \
-  tos/en/0.epub \
-  tos/en/0.xml \
-  tos/en/0.html
+  tos/en/*.txt \
+  tos/en/*.pdf \
+  tos/en/*.epub \
+  tos/en/*.xml \
+  tos/en/*.html
 
 ppen_DATA = \
-  pp/en/0.txt \
-  pp/en/0.pdf \
-  pp/en/0.epub \
-  pp/en/0.xml \
-  pp/en/0.html
+  pp/en/*.txt \
+  pp/en/*.pdf \
+  pp/en/*.epub \
+  pp/en/*.xml \
+  pp/en/*.html
 
 rdata_DATA = \
   auditor-report.tex.j2
@@ -56,8 +56,9 @@ EXTRA_DIST = \
   gana/gnu-taler-error-codes/Makefile \
   tos/Makefile \
   tos/README \
+  tos/bfh.rst \
   tos/tos.rst \
-  tos/conf.py \
+  tos/conf.py.in \
   tos/locale/de/LC_MESSAGES/tos.po \
   pp/Makefile \
   pp/README \

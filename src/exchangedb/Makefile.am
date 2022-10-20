@@ -52,9 +52,6 @@ shard-0001.sql: common-0001.sql shard-0001-part.sql exchange-0001.sql.in
 EXTRA_DIST = \
   exchangedb.conf \
   exchangedb-postgres.conf \
-  plugin_exchangedb_common.c \
-  irbt_callbacks.c \
-  lrbt_callbacks.c \
   bench-db-postgres.conf \
   test-exchange-db-postgres.conf \
   $(sqlinputs) \

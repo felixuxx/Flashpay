@@ -166,3 +166,4 @@ src/exchange/taler-exchange-drain
 src/kyclogic/taler-exchange-kyc-tester
 src/auditor/exchange-httpd-drain.err
 src/templating/libmustach.a
+contrib/tos/conf.py
