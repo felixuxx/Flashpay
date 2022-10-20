@@ -455,6 +455,9 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_free (fn);
       return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Loading legal information from file `%s'\n",
+                fn);
     {
       void *buf;
       size_t bsize;
