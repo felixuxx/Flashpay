@@ -301,20 +301,20 @@ TEH_handler_kyc_proof (
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          args[1]);
     }
-    if (0 != strcmp (args[1],
-                     kpc->provider_section))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "PROVIDER_SECTION");
-    }
-
     if (NULL != kpc->provider_section)
     {
       enum GNUNET_DB_QueryStatus qs;
       struct GNUNET_TIME_Absolute expiration;
+
+      if (0 != strcmp (args[1],
+                       kpc->provider_section))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                           "PROVIDER_SECTION");
+      }
 
       qs = TEH_plugin->lookup_kyc_process_by_account (
         TEH_plugin->cls,

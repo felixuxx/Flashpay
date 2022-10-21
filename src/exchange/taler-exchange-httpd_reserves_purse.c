@@ -613,8 +613,9 @@ TEH_handler_reserves_purse (
   if (no_purse_fee)
   {
     rpc.flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
-    TALER_amount_set_zero (TEH_currency,
-                           &rpc.purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TEH_currency,
+                                          &rpc.purse_fee));
   }
   else
   {
