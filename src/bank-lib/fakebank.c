@@ -3722,16 +3722,11 @@ handle_bank_access (struct TALER_FAKEBANK_Handle *h,
     if ('/' == *end_acc)
     {
       const char *wid = end_acc + 1;
+      const char *opid = strchr (wid,
+                                 '/');
       char *wi;
-      const char *opid;
 
-      if (NULL != end_acc)
-        opid = strchr (wid,
-                       '/');
-      else
-        opid = NULL;
-      if ( (NULL == end_acc) ||
-           (NULL == opid) ||
+      if ( (NULL == opid) ||
            ( (0 != strcmp (opid,
                            "/abort")) &&
              (0 != strcmp (opid,
