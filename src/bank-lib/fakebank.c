@@ -3430,11 +3430,11 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
       acc->password = GNUNET_strdup (password);
       acc->balance = h->signup_bonus; /* magic money creation! */
     }
-    return TALER_MHD_reply_static (connection,
-                                   MHD_HTTP_NO_CONTENT,
-                                   NULL,
-                                   NULL,
-                                   0);
+    res = TALER_MHD_reply_static (connection,
+                                  MHD_HTTP_NO_CONTENT,
+                                  NULL,
+                                  NULL,
+                                  0);
   }
   json_decref (json);
   return res;
