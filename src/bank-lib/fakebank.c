@@ -3630,6 +3630,10 @@ access_withdrawals_confirm (struct TALER_FAKEBANK_Handle *h,
                                        TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
                                        NULL);
   }
+  /* Re-acquiring the lock and continuing to operate on 'wo'
+     is currently (!) acceptable because we NEVER free 'wo'
+     until shutdown. We may want to revise this if keeping
+     all withdraw operations in RAM becomes an issue... */
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
   wo->confirmation_done = true;
