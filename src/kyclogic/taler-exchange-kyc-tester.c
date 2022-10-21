@@ -1148,7 +1148,7 @@ handle_mhd_request (void *cls,
                                    upload_data_size);
     }
 
-    if (found)
+    if (found) /* FIXME: this can never be true right now */
     {
       /* we found a matching address, but the method is wrong */
       struct MHD_Response *reply;
