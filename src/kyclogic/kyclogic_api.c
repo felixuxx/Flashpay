@@ -1186,7 +1186,6 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
   unsigned int max_checks = 0;
   const struct TALER_KYCLOGIC_KycProvider *kp_best = NULL;
 
-  // FIXME: use 'ut' to filter providers!
   if (NULL == requirements)
     return GNUNET_NO;
   {
@@ -1206,6 +1205,8 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
     const struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
     unsigned int matched = 0;
 
+    if (kp->user_type != ut)
+      continue;
     for (unsigned int j = 0; j<kp->num_checks; j++)
     {
       const struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[j];
@@ -1229,6 +1230,8 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
     const struct TALER_KYCLOGIC_KycProvider *kp = kyc_providers[i];
     unsigned int matched = 0;
 
+    if (kp->user_type != ut)
+      continue;
     for (unsigned int j = 0; j<kp->num_checks; j++)
     {
       const struct TALER_KYCLOGIC_KycCheck *kc = kp->provided_checks[j];
@@ -1247,6 +1250,7 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
       kp_best = kp;
     }
   }
+  GNUNET_assert (NULL != kp_best);
   *plugin = kp_best->logic;
   *pd = kp_best->pd;
   *configuration_section = kp_best->provider_section_name;
