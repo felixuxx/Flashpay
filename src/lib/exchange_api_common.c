@@ -902,19 +902,16 @@ help_deposit (struct CoinHistoryParseContext *pc,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (NULL != pc->dk)
+  /* check that deposit fee matches our expectations from /keys! */
+  if ( (GNUNET_YES !=
+        TALER_amount_cmp_currency (&deposit_fee,
+                                   &pc->dk->fees.deposit)) ||
+       (0 !=
+        TALER_amount_cmp (&deposit_fee,
+                          &pc->dk->fees.deposit)) )
   {
-    /* check that deposit fee matches our expectations from /keys! */
-    if ( (GNUNET_YES !=
-          TALER_amount_cmp_currency (&deposit_fee,
-                                     &pc->dk->fees.deposit)) ||
-         (0 !=
-          TALER_amount_cmp (&deposit_fee,
-                            &pc->dk->fees.deposit)) )
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
   return GNUNET_YES;
 }
