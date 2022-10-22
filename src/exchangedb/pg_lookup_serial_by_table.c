@@ -128,9 +128,9 @@ TEH_PG_lookup_serial_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS:
     XPREPARE ("select_serial_by_table_reserves_open_deposits",
               "SELECT"
-              " open_request_uuid AS serial"
+              " reserve_open_deposit_uuid AS serial"
               " FROM reserves_open_deposits"
-              " ORDER BY open_request_uuid DESC"
+              " ORDER BY reserve_open_deposit_uuid DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
