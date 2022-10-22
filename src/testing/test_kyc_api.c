@@ -343,6 +343,7 @@ run (void *cls,
       MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
+      false /* pay purse fee */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "p2p_create-reserve-3"),
     TALER_TESTING_cmd_check_kyc_get ("check-kyc-purse-create",
@@ -359,6 +360,7 @@ run (void *cls,
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
       true /* upload contract */,
+      false /* pay purse fee */,
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "p2p_create-reserve-3"),
     TALER_TESTING_cmd_contract_get (
