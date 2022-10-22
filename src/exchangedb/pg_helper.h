@@ -108,9 +108,19 @@ struct PostgresClosure
  */
 #define PREPARE(pg,name,sql)                      \
   do {                                            \
-    static unsigned long long prep_cnt;           \
+    static struct {                               \
+      unsigned long long cnt;                     \
+      struct PostgresClosure *pg;                 \
+    } preps[2]; /* 2 ctrs for taler-auditor-sync*/ \
+    unsigned int off = 0;                         \
                                                   \
-    if (prep_cnt < pg->prep_gen)                  \
+    while ( (NULL != preps[off].pg) &&            \
+            (pg != preps[off].pg) &&              \
+            (off < sizeof(preps) / sizeof(*preps)) ) \
+    off++;                                      \
+    GNUNET_assert (off <                          \
+                   sizeof(preps) / sizeof(*preps)); \
+    if (preps[off].cnt < pg->prep_gen)            \
     {                                             \
       struct GNUNET_PQ_PreparedStatement ps[] = { \
         GNUNET_PQ_make_prepare (name, sql),       \
@@ -124,7 +134,8 @@ struct PostgresClosure
         GNUNET_break (0);                         \
         return GNUNET_DB_STATUS_HARD_ERROR;       \
       }                                           \
-      prep_cnt = pg->prep_gen;                    \
+      preps[off].pg = pg;                         \
+      preps[off].cnt = pg->prep_gen;              \
     }                                             \
   } while (0)
 

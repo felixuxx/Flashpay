@@ -392,7 +392,7 @@ do_sync (void *cls)
  * @param value actual value of the option (a string)
  * @return #GNUNET_OK
  */
-static int
+static enum GNUNET_GenericReturnValue
 set_filename (struct GNUNET_GETOPT_CommandLineProcessorContext *ctx,
               void *scls,
               const char *option,
