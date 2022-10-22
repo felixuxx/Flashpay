@@ -62,9 +62,6 @@ function check_with_database()
     psql -Aqt talercheck-in -q -1 -f $1.sql >/dev/null || exit_skip "Failed to load database"
 
     echo -n "."
-    echo "Please run:"
-    echo "taler-auditor-sync -s test-sync-in.conf -d test-sync-out.conf -t"
-    bash
     taler-auditor-sync -s test-sync-in.conf -d test-sync-out.conf -t
 
     # cs_nonce_locks excluded: no point
