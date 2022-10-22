@@ -41,8 +41,7 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
                             ",namount_frac"
                             ",json"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5);",
-                            5),
+                            "($1, $2, $3, $4, $5);"),
     GNUNET_PQ_make_prepare ("test_select",
                             "SELECT"
                             " hamount_val"
@@ -50,8 +49,7 @@ postgres_prepare (struct GNUNET_PQ_Context *db)
                             ",namount_val"
                             ",namount_frac"
                             ",json"
-                            " FROM test_pq;",
-                            0),
+                            " FROM test_pq;"),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
