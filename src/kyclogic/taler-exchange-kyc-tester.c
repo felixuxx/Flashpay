@@ -1137,10 +1137,14 @@ handle_mhd_request (void *cls,
         return TALER_MHD_reply_cors_preflight (connection);
       }
       GNUNET_assert (NULL != rh->method);
-      if (0 == strcasecmp (method,
+      if (0 != strcasecmp (method,
                            rh->method))
-        /* cache to avoid the loop next time */
-        rc->rh = rh;
+      {
+        found = true;
+        continue;
+      }
+      /* cache to avoid the loop next time */
+      rc->rh = rh;
       /* run handler */
       return proceed_with_handler (rc,
                                    url + tok_size + 1,
