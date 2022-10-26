@@ -768,10 +768,6 @@ wire_transfer_information_cb (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_PaytoHashP hpt;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "DEPFEE: %s\n",
-              TALER_amount2s (deposit_fee));
-
   TALER_payto_hash (account_pay_uri,
                     &hpt);
   if (0 !=
