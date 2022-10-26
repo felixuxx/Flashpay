@@ -827,6 +827,8 @@ lock_shard (void *cls)
   struct WireAccount *wa = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Relative delay;
+  uint64_t last_shard_start = wa->shard_start;
+  uint64_t last_shard_end = wa->shard_end;
 
   task = NULL;
   if (GNUNET_SYSERR ==
@@ -904,6 +906,7 @@ lock_shard (void *cls)
                   GNUNET_YES));
     wa->delayed_until = GNUNET_TIME_relative_to_absolute (
       wirewatch_idle_sleep_interval);
+    wa->shard_open = false;
     GNUNET_assert (NULL == task);
     schedule_transfers (wa->next);
     return;
@@ -912,7 +915,6 @@ lock_shard (void *cls)
     break;
   }
   wa->shard_end_time = GNUNET_TIME_relative_to_absolute (delay);
-  wa->shard_open = true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting with shard %s at (%llu,%llu] locked for %s\n",
               wa->job_name,
@@ -923,7 +925,13 @@ lock_shard (void *cls)
   wa->delay = true; /* default is to delay, unless
                        we find out that we're really busy */
   wa->batch_start = wa->shard_start;
-  wa->latest_row_off = wa->batch_start;
+  if ( (wa->shard_open) &&
+       (wa->shard_start == last_shard_start) &&
+       (wa->shard_end == last_shard_end) )
+    GNUNET_break (wa->latest_row_off >= wa->batch_start); /* resume where we left things */
+  else
+    wa->latest_row_off = wa->batch_start;
+  wa->shard_open = true;
   task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
                                    wa);
 }
