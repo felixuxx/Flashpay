@@ -728,6 +728,12 @@ commit (enum GNUNET_DB_QueryStatus qs)
                                                    &total_drained);
     }
   }
+  else
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &final_balance));
+  }
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
