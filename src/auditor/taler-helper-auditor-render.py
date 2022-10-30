@@ -53,4 +53,14 @@ jinjaEnv = jinja2.Environment(loader=StdinLoader(),
                               autoescape=False)
 tmpl = jinjaEnv.get_template('stdin');
 
-print(tmpl.render(aggregation = jsonData1, coins = jsonData2, deposits = jsonData3, reserves = jsonData4, wire = jsonData5))
+try:
+     print(tmpl.render(aggregation = jsonData1, coins = jsonData2, deposits = jsonData3, reserves = jsonData4, wire = jsonData5))
+except jinja2.TemplateSyntaxError as error:
+     print("Template syntax error: {error.message} on line {error.lineno}.".format(error=error))
+     exit(1)
+except jinja2.UndefinedError as error:
+     print("Template undefined error: {error.message}.".format(error=error))
+     exit(1)
+except TypeError as error:
+     print("Template type error: {0}.".format(error.args[0]))
+     exit(1)

@@ -293,12 +293,12 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY purse_requests_serial_id DESC"
               " LIMIT 1;")
     break;
-  case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
-    XPREPARE ("select_serial_by_table_purse_refunds",
+  case TALER_EXCHANGEDB_RT_PURSE_DECISION:
+    XPREPARE ("select_serial_by_table_purse_decision",
               "SELECT"
-              " purse_refunds_serial_id AS serial"
-              " FROM purse_refunds"
-              " ORDER BY purse_refunds_serial_id DESC"
+              " purse_decision_serial_id AS serial"
+              " FROM purse_decision"
+              " ORDER BY purse_decision_serial_id DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_PURSE_MERGES:

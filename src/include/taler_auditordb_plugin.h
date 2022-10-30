@@ -130,6 +130,25 @@ struct TALER_AUDITORDB_WireAccountProgressPoint
 
 
 /**
+ * Structure for remembering the wire auditor's progress
+ * with respect to the bank transaction histories.
+ */
+struct TALER_AUDITORDB_BankAccountProgressPoint
+{
+  /**
+   * How far are we in the incoming wire transaction history
+   */
+  uint64_t in_wire_off;
+
+  /**
+   * How far are we in the outgoing wire transaction history
+   */
+  uint64_t out_wire_off;
+
+};
+
+
+/**
  * Structure for remembering the auditor's progress over the various
  * tables and (auditor) transactions when analyzing reserves.
  */
@@ -141,7 +160,7 @@ struct TALER_AUDITORDB_ProgressPointReserve
   uint64_t last_reserve_in_serial_id;
 
   /**
-   * serial ID of the last reserve_out the auditor processed
+   * serial ID of the last reserve_out (withdraw) the auditor processed
    */
   uint64_t last_reserve_out_serial_id;
 
@@ -152,40 +171,64 @@ struct TALER_AUDITORDB_ProgressPointReserve
   uint64_t last_reserve_recoup_serial_id;
 
   /**
-   * serial ID of the last reserve_close
-   * entry the auditor processed.
+   * serial ID of the last open_requests entry the auditor processed.
+   */
+  uint64_t last_reserve_open_serial_id;
+
+  /**
+   * serial ID of the last reserve_close entry the auditor processed.
    */
   uint64_t last_reserve_close_serial_id;
 
   /**
-   * serial ID of the last purse_merges
-   * entry the auditor processed.
+   * Serial ID of the last purse_decisions entry the auditor processed.
    */
-  uint64_t last_purse_merges_serial_id;
+  uint64_t last_purse_decisions_serial_id;
 
   /**
-   * Serial ID of the last purse_deposits
-   * entry the auditor processed.
-   */
-  uint64_t last_purse_deposits_serial_id;
-
-  /**
-   * serial ID of the last account_merges
-   * entry the auditor processed.
+   * serial ID of the last account_merges entry the auditor processed.
    */
   uint64_t last_account_merges_serial_id;
 
   /**
-   * serial ID of the last history_requests
-   * entry the auditor processed.
+   * serial ID of the last history_requests entry the auditor processed.
    */
   uint64_t last_history_requests_serial_id;
 
+};
+
+
+/**
+ * Structure for remembering the auditor's progress over the various
+ * tables and (auditor) transactions when analyzing purses.
+ */
+struct TALER_AUDITORDB_ProgressPointPurse
+{
   /**
-   * serial ID of the last close_requests
-   * entry the auditor processed.
+   * serial ID of the last purse_request transfer the auditor processed
    */
-  uint64_t last_close_requests_serial_id;
+  uint64_t last_purse_request_serial_id;
+
+  /**
+   * serial ID of the last purse_decision the auditor processed
+   */
+  uint64_t last_purse_decision_serial_id;
+
+  /**
+   * serial ID of the last purse_merge entry the auditor processed when
+   * considering reserves.
+   */
+  uint64_t last_purse_merge_serial_id;
+
+  /**
+   * serial ID of the last account_merge entry the auditor processed.
+   */
+  uint64_t last_account_merge_serial_id;
+
+  /**
+   * serial ID of the last purse_deposits entry the auditor processed.
+   */
+  uint64_t last_purse_deposits_serial_id;
 
 };
 
@@ -253,6 +296,11 @@ struct TALER_AUDITORDB_ProgressPointCoin
    * Serial ID of the last recoup-of-refresh operation the auditor processed.
    */
   uint64_t last_recoup_refresh_serial_id;
+
+  /**
+   * Serial ID of the last reserve_open_deposits operation the auditor processed.
+   */
+  uint64_t last_open_deposits_serial_id;
 
   /**
    * Serial ID of the last purse_deposits operation the auditor processed.
@@ -386,6 +434,140 @@ struct TALER_AUDITORDB_DepositConfirmation
    */
   struct TALER_MasterPublicKeyP master_public_key;
 
+};
+
+
+/**
+ * Balance values for a reserve (or all reserves).
+ */
+struct TALER_AUDITORDB_ReserveFeeBalance
+{
+  /**
+   * Remaining funds.
+   */
+  struct TALER_Amount reserve_balance;
+
+  /**
+   * Losses from operations that should not have
+   * happened (e.g. negative balance).
+   */
+  struct TALER_Amount reserve_loss;
+
+  /**
+   * Fees charged for withdraw.
+   */
+  struct TALER_Amount withdraw_fee_balance;
+
+  /**
+   * Fees charged for closing.
+   */
+  struct TALER_Amount close_fee_balance;
+
+  /**
+   * Fees charged for purse creation.
+   */
+  struct TALER_Amount purse_fee_balance;
+
+  /**
+   * Opening fees charged.
+   */
+  struct TALER_Amount open_fee_balance;
+
+  /**
+   * History fees charged.
+   */
+  struct TALER_Amount history_fee_balance;
+};
+
+
+/**
+ * Balance data for denominations in circulation.
+ */
+struct TALER_AUDITORDB_DenominationCirculationData
+{
+  /**
+   * Amount of outstanding coins in circulation.
+   */
+  struct TALER_Amount denom_balance;
+
+  /**
+   * Amount lost due coins illicitly accepted (effectively, a
+   * negative @a denom_balance).
+   */
+  struct TALER_Amount denom_loss;
+
+  /**
+   * Total amount that could still be theoretically lost in the future due to
+   * recoup operations.  (Total put into circulation minus @e recoup_loss).
+   */
+  struct TALER_Amount denom_risk;
+
+  /**
+   * Amount lost due to recoups.
+   */
+  struct TALER_Amount recoup_loss;
+
+  /**
+   * Number of coins of this denomination that the exchange signed into
+   * existence.
+   */
+  uint64_t num_issued;
+};
+
+
+/**
+ * Balance values for all denominations.
+ */
+struct TALER_AUDITORDB_GlobalCoinBalance
+{
+  /**
+   * Amount of outstanding coins in circulation.
+   */
+  struct TALER_Amount total_escrowed;
+
+  /**
+   * Amount collected in deposit fees.
+   */
+  struct TALER_Amount deposit_fee_balance;
+
+  /**
+   * Amount collected in melt fees.
+   */
+  struct TALER_Amount melt_fee_balance;
+
+  /**
+   * Amount collected in refund fees.
+   */
+  struct TALER_Amount refund_fee_balance;
+
+  /**
+   * Amount collected in purse fees from coins.
+   */
+  struct TALER_Amount purse_fee_balance;
+
+  /**
+   * Amount collected in reserve open deposit fees from coins.
+   */
+  struct TALER_Amount open_deposit_fee_balance;
+
+  /**
+   * Total amount that could still be theoretically
+   * lost in the future due to recoup operations.
+   * (Total put into circulation minus @e loss
+   * and @e irregular_recoup.)
+   */
+  struct TALER_Amount risk;
+
+  /**
+   * Amount lost due to recoups.
+   */
+  struct TALER_Amount loss;
+
+  /**
+   * Amount lost due to coin operations that the exchange
+   * should not have permitted.
+   */
+  struct TALER_Amount irregular_loss;
 };
 
 
@@ -639,14 +821,14 @@ struct TALER_AUDITORDB_Plugin
                                struct TALER_AUDITORDB_ProgressPointCoin *ppc);
 
   /**
- * Insert information about the auditor's progress with an exchange's
- * data.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master key of the exchange
- * @param ppr where is the auditor in processing
- * @return transaction status code
- */
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param ppr where is the auditor in processing
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_auditor_progress_reserve)(
     void *cls,
@@ -683,6 +865,53 @@ struct TALER_AUDITORDB_Plugin
     void *cls,
     const struct TALER_MasterPublicKeyP *master_pub,
     struct TALER_AUDITORDB_ProgressPointReserve *ppr);
+
+  /**
+   * Insert information about the auditor's progress with an exchange's
+   * data.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param ppp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_progress_purse)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointPurse *ppp);
+
+
+  /**
+   * Update information about the progress of the auditor.  There
+   * must be an existing record for the exchange.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param ppp where is the auditor in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_auditor_progress_purse)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ProgressPointPurse *ppp);
+
+
+  /**
+   * Get information about the progress of the auditor.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master key of the exchange
+   * @param[out] ppp set to where the auditor is in processing
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_auditor_progress_purse)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct TALER_AUDITORDB_ProgressPointPurse *ppp);
+
 
   /**
    * Insert information about the auditor's progress with an exchange's
@@ -786,8 +1015,7 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param account_name name of the wire account we are auditing
    * @param pp where is the auditor in processing
-   * @param in_wire_off how far are we in the incoming wire transaction history
-   * @param out_wire_off how far are we in the outgoing wire transaction history
+   * @param bapp progress in wire transaction histories
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -796,8 +1024,7 @@ struct TALER_AUDITORDB_Plugin
     const struct TALER_MasterPublicKeyP *master_pub,
     const char *account_name,
     const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-    uint64_t in_wire_off,
-    uint64_t out_wire_off);
+    const struct TALER_AUDITORDB_BankAccountProgressPoint *bapp);
 
 
   /**
@@ -808,8 +1035,7 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param account_name name of the wire account we are auditing
    * @param pp where is the auditor in processing
-   * @param in_wire_off how far are we in the incoming wire transaction history
-   * @param out_wire_off how far are we in the outgoing wire transaction history
+   * @param bapp progress in wire transaction histories
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -818,8 +1044,7 @@ struct TALER_AUDITORDB_Plugin
     const struct TALER_MasterPublicKeyP *master_pub,
     const char *account_name,
     const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-    uint64_t in_wire_off,
-    uint64_t out_wire_off);
+    const struct TALER_AUDITORDB_BankAccountProgressPoint *bapp);
 
 
   /**
@@ -829,8 +1054,7 @@ struct TALER_AUDITORDB_Plugin
    * @param master_pub master key of the exchange
    * @param account_name name of the wire account we are auditing
    * @param[out] pp where is the auditor in processing
-   * @param[out] in_wire_off how far are we in the incoming wire transaction history
-   * @param[out] out_wire_off how far are we in the outgoing wire transaction history
+   * @param[out] bapp how far are we in the wire transaction histories
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -839,8 +1063,7 @@ struct TALER_AUDITORDB_Plugin
     const struct TALER_MasterPublicKeyP *master_pub,
     const char *account_name,
     struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-    uint64_t *in_wire_off,
-    uint64_t *out_wire_off);
+    struct TALER_AUDITORDB_BankAccountProgressPoint *bapp);
 
 
   /**
@@ -887,9 +1110,10 @@ struct TALER_AUDITORDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_wire_auditor_progress)(void *cls,
-                               const struct TALER_MasterPublicKeyP *master_pub,
-                               struct TALER_AUDITORDB_WireProgressPoint *pp);
+  (*get_wire_auditor_progress)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    struct TALER_AUDITORDB_WireProgressPoint *pp);
 
 
   /**
@@ -899,21 +1123,19 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
    * @param master_pub master public key of the exchange
-   * @param reserve_balance amount stored in the reserve
-   * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param rfb balance amounts for the reserve
    * @param expiration_date expiration date of the reserve
    * @param origin_account where did the money in the reserve originally come from
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_reserve_info)(void *cls,
-                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                         const struct TALER_MasterPublicKeyP *master_pub,
-                         const struct TALER_Amount *reserve_balance,
-                         const struct TALER_Amount *withdraw_fee_balance,
-                         struct GNUNET_TIME_Timestamp expiration_date,
-                         const char *origin_account);
+  (*insert_reserve_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
+    struct GNUNET_TIME_Timestamp expiration_date,
+    const char *origin_account);
 
 
   /**
@@ -923,19 +1145,17 @@ struct TALER_AUDITORDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
    * @param master_pub master public key of the exchange
-   * @param reserve_balance amount stored in the reserve
-   * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param rfb balance amounts for the reserve
    * @param expiration_date expiration date of the reserve
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_reserve_info)(void *cls,
-                         const struct TALER_ReservePublicKeyP *reserve_pub,
-                         const struct TALER_MasterPublicKeyP *master_pub,
-                         const struct TALER_Amount *reserve_balance,
-                         const struct TALER_Amount *withdraw_fee_balance,
-                         struct GNUNET_TIME_Timestamp expiration_date);
+  (*update_reserve_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
+    struct GNUNET_TIME_Timestamp expiration_date);
 
 
   /**
@@ -945,22 +1165,20 @@ struct TALER_AUDITORDB_Plugin
    * @param reserve_pub public key of the reserve
    * @param master_pub master public key of the exchange
    * @param[out] rowid which row did we get the information from
-   * @param[out] reserve_balance amount stored in the reserve
-   * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
-   *                             due to withdrawals from this reserve
+   * @param[out] rfb set to balances associated with the reserve
    * @param[out] expiration_date expiration date of the reserve
    * @param[out] sender_account from where did the money in the reserve originally come from
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_reserve_info)(void *cls,
-                      const struct TALER_ReservePublicKeyP *reserve_pub,
-                      const struct TALER_MasterPublicKeyP *master_pub,
-                      uint64_t *rowid,
-                      struct TALER_Amount *reserve_balance,
-                      struct TALER_Amount *withdraw_fee_balance,
-                      struct GNUNET_TIME_Timestamp *expiration_date,
-                      char **sender_account);
+  (*get_reserve_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    uint64_t *rowid,
+    struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
+    struct GNUNET_TIME_Timestamp *expiration_date,
+    char **sender_account);
 
 
   /**
@@ -983,19 +1201,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master public key of the exchange
-   * @param reserve_balance amount stored in the reserve
-   * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   * @param purse_fee_balance amount the exchange gained in purse fees
-   * @param history_fee_balance amount the exchange gained in history fees
+   * @param rfb reserve balances summary to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_reserve_summary)(void *cls,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            const struct TALER_Amount *reserve_balance,
-                            const struct TALER_Amount *withdraw_fee_balance,
-                            const struct TALER_Amount *purse_fee_balance,
-                            const struct TALER_Amount *history_fee_balance);
+  (*insert_reserve_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ReserveFeeBalance *rfb);
 
 
   /**
@@ -1004,19 +1217,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master public key of the exchange
-   * @param reserve_balance amount stored in the reserve
-   * @param withdraw_fee_balance amount the exchange gained in withdraw fees
-   * @param purse_fee_balance amount the exchange gained in purse fees
-   * @param history_fee_balance amount the exchange gained in history fees
+   * @param rfb reserve balances summary to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_reserve_summary)(void *cls,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            const struct TALER_Amount *reserve_balance,
-                            const struct TALER_Amount *withdraw_fee_balance,
-                            const struct TALER_Amount *purse_fee_balance,
-                            const struct TALER_Amount *history_fee_balance);
+  (*update_reserve_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_ReserveFeeBalance *rfb);
 
 
   /**
@@ -1024,19 +1232,13 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master public key of the exchange
-   * @param[out] reserve_balance amount stored in reserves
-   * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
-   * @param[out] purse_fee_balance amount the exchange gained in purse fees
-   * @param[out] history_fee_balance amount the exchange gained in history fees
+   * @param[out] rfb reserve balances summary to initialize
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_summary)(void *cls,
                          const struct TALER_MasterPublicKeyP *master_pub,
-                         struct TALER_Amount *reserve_balance,
-                         struct TALER_Amount *withdraw_fee_balance,
-                         struct TALER_Amount *purse_fee_balance,
-                         struct TALER_Amount *history_fee_balance);
+                         struct TALER_AUDITORDB_ReserveFeeBalance *rfb);
 
 
   /**
@@ -1089,22 +1291,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding with this denomination key
-   * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
-   * @param denom_risk value of coins issued with this denomination key
-   * @param denom_recoup value of coins paid back if this denomination key was revoked
-   * @param num_issued how many coins of this denomination did the exchange blind-sign
+   * @param dcd denomination circulation data to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*insert_denomination_balance)(
     void *cls,
     const struct TALER_DenominationHashP *denom_pub_hash,
-    const struct TALER_Amount *denom_balance,
-    const struct TALER_Amount *denom_loss,
-    const struct TALER_Amount *denom_risk,
-    const struct TALER_Amount *recoup_loss,
-    uint64_t num_issued);
+    const struct TALER_AUDITORDB_DenominationCirculationData *dcd);
 
 
   /**
@@ -1113,22 +1307,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param denom_pub_hash hash of the denomination public key
-   * @param denom_balance value of coins outstanding with this denomination key
-   * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
-   * @param denom_risk value of coins issued with this denomination key
-   * @param denom_recoup value of coins paid back if this denomination key was revoked
-   * @param num_issued how many coins of this denomination did the exchange blind-sign
+   * @param dcd denomination circulation data to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*update_denomination_balance)(
     void *cls,
     const struct TALER_DenominationHashP *denom_pub_hash,
-    const struct TALER_Amount *denom_balance,
-    const struct TALER_Amount *denom_loss,
-    const struct TALER_Amount *denom_risk,
-    const struct TALER_Amount *recoup_loss,
-    uint64_t num_issued);
+    const struct TALER_AUDITORDB_DenominationCirculationData *dcd);
 
 
   /**
@@ -1136,22 +1322,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param denom_pub_hash hash of the denomination public key
-   * @param[out] denom_balance value of coins outstanding with this denomination key
-   * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
-   * @param[out] denom_risk value of coins issued with this denomination key
-   * @param[out] denom_recoup value of coins paid back if this denomination key was revoked
-   * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
+   * @param[out] dcd denomination circulation data to initialize
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_denomination_balance)(
     void *cls,
     const struct TALER_DenominationHashP *denom_pub_hash,
-    struct TALER_Amount *denom_balance,
-    struct TALER_Amount *denom_loss,
-    struct TALER_Amount *denom_risk,
-    struct TALER_Amount *recoup_loss,
-    uint64_t *num_issued);
+    struct TALER_AUDITORDB_DenominationCirculationData *dcd);
 
 
   /**
@@ -1173,26 +1351,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
-   * @param denom_balance value of coins outstanding with this denomination key
-   * @param deposit_fee_balance total deposit fees collected for this DK
-   * @param melt_fee_balance total melt fees collected for this DK
-   * @param refund_fee_balance total refund fees collected for this DK
-   * @param risk maximum risk exposure of the exchange
-   * @param recoup_loss actual losses from recoup (actualized @a risk)
-   * @param irregular_recoups recoups made of non-revoked coins (reduces
-   *             risk, but should never happen)
+   * @param dfb denomination balance data to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_balance_summary)(void *cls,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            const struct TALER_Amount *denom_balance,
-                            const struct TALER_Amount *deposit_fee_balance,
-                            const struct TALER_Amount *melt_fee_balance,
-                            const struct TALER_Amount *refund_fee_balance,
-                            const struct TALER_Amount *risk,
-                            const struct TALER_Amount *recoup_loss,
-                            const struct TALER_Amount *irregular_recoups);
+  (*insert_balance_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_GlobalCoinBalance *dfb);
 
 
   /**
@@ -1201,26 +1367,14 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
-   * @param denom_balance value of coins outstanding with this denomination key
-   * @param deposit_fee_balance total deposit fees collected for this DK
-   * @param melt_fee_balance total melt fees collected for this DK
-   * @param refund_fee_balance total refund fees collected for this DK
-   * @param risk maximum risk exposure of the exchange
-   * @param recoup_loss actual losses from recoup (actualized @a risk)
-   * @param irregular_recoups recoups made of non-revoked coins (reduces
-   *             risk, but should never happen)
+   * @param dfb denomination balance data to store
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*update_balance_summary)(void *cls,
-                            const struct TALER_MasterPublicKeyP *master_pub,
-                            const struct TALER_Amount *denom_balance,
-                            const struct TALER_Amount *deposit_fee_balance,
-                            const struct TALER_Amount *melt_fee_balance,
-                            const struct TALER_Amount *refund_fee_balance,
-                            const struct TALER_Amount *risk,
-                            const struct TALER_Amount *recoup_loss,
-                            const struct TALER_Amount *irregular_recoups);
+  (*update_balance_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_GlobalCoinBalance *dfb);
 
 
   /**
@@ -1228,26 +1382,13 @@ struct TALER_AUDITORDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param master_pub master key of the exchange
-   * @param[out] denom_balance value of coins outstanding with this denomination key
-   * @param[out] deposit_fee_balance total deposit fees collected for this DK
-   * @param[out] melt_fee_balance total melt fees collected for this DK
-   * @param[out] refund_fee_balance total refund fees collected for this DK
-   * @param[out] risk maximum risk exposure of the exchange
-   * @param[out] recoup_loss actual losses from recoup (actualized @a risk)
-   * @param[out] irregular_recoups recoups made of non-revoked coins (reduces
-   *             risk, but should never happen)
+   * @param[out] dfb where to return the denomination balances
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_balance_summary)(void *cls,
                          const struct TALER_MasterPublicKeyP *master_pub,
-                         struct TALER_Amount *denom_balance,
-                         struct TALER_Amount *deposit_fee_balance,
-                         struct TALER_Amount *melt_fee_balance,
-                         struct TALER_Amount *refund_fee_balance,
-                         struct TALER_Amount *risk,
-                         struct TALER_Amount *recoup_loss,
-                         struct TALER_Amount *irregular_recoup);
+                         struct TALER_AUDITORDB_GlobalCoinBalance *dfb);
 
 
   /**

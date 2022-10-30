@@ -91,6 +91,7 @@ done
 
 taler-helper-auditor-wire $INF ${ARGS[*]} > ${DIR}/wire.json
 
+echo "Generating auditor report in ${DIR}."
 taler-helper-auditor-render.py \
     ${DIR}/aggregation.json \
     ${DIR}/coins.json \

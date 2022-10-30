@@ -229,13 +229,12 @@ setup_connection (struct PostgresClosure *pg)
                             " last_reserve_in_serial_id=$1"
                             ",last_reserve_out_serial_id=$2"
                             ",last_reserve_recoup_serial_id=$3"
-                            ",last_reserve_close_serial_id=$4"
-                            ",last_purse_merges_serial_id=$5"
-                            ",last_purse_deposits_serial_id=$6"
+                            ",last_reserve_open_serial_id=$4"
+                            ",last_reserve_close_serial_id=$5"
+                            ",last_purse_decision_serial_id=$6"
                             ",last_account_merges_serial_id=$7"
                             ",last_history_requests_serial_id=$8"
-                            ",last_close_requests_serial_id=$9"
-                            " WHERE master_pub=$10"),
+                            " WHERE master_pub=$9"),
     /* Used in #postgres_get_auditor_progress_reserve() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_reserve",
                             "SELECT"
@@ -243,11 +242,10 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_reserve_out_serial_id"
                             ",last_reserve_recoup_serial_id"
                             ",last_reserve_close_serial_id"
-                            ",last_purse_merges_serial_id"
-                            ",last_purse_deposits_serial_id"
+                            ",last_purse_decision_serial_id"
                             ",last_account_merges_serial_id"
                             ",last_history_requests_serial_id"
-                            ",last_close_requests_serial_id"
+                            ",last_reserve_open_serial_id"
                             " FROM auditor_progress_reserve"
                             " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress_reserve() */
@@ -257,13 +255,41 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_reserve_in_serial_id"
                             ",last_reserve_out_serial_id"
                             ",last_reserve_recoup_serial_id"
+                            ",last_reserve_open_serial_id"
                             ",last_reserve_close_serial_id"
-                            ",last_purse_merges_serial_id"
-                            ",last_purse_deposits_serial_id"
+                            ",last_purse_decision_serial_id"
                             ",last_account_merges_serial_id"
                             ",last_history_requests_serial_id"
-                            ",last_close_requests_serial_id"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
+    /* Used in #postgres_update_auditor_progress_purse() */
+    GNUNET_PQ_make_prepare ("auditor_progress_update_purse",
+                            "UPDATE auditor_progress_purse SET "
+                            " last_purse_request_serial_id=$1"
+                            ",last_purse_decision_serial_id=$2"
+                            ",last_purse_merges_serial_id=$3"
+                            ",last_account_merges_serial_id=$4"
+                            ",last_purse_deposits_serial_id=$5"
+                            " WHERE master_pub=$6"),
+    /* Used in #postgres_get_auditor_progress_purse() */
+    GNUNET_PQ_make_prepare ("auditor_progress_select_purse",
+                            "SELECT"
+                            " last_purse_request_serial_id"
+                            ",last_purse_decision_serial_id"
+                            ",last_purse_merges_serial_id"
+                            ",last_account_merges_serial_id"
+                            ",last_purse_deposits_serial_id"
+                            " FROM auditor_progress_purse"
+                            " WHERE master_pub=$1;"),
+    /* Used in #postgres_insert_auditor_progress_purse() */
+    GNUNET_PQ_make_prepare ("auditor_progress_insert_purse",
+                            "INSERT INTO auditor_progress_purse "
+                            "(master_pub"
+                            ",last_purse_request_serial_id"
+                            ",last_purse_decision_serial_id"
+                            ",last_purse_merges_serial_id"
+                            ",last_account_merges_serial_id"
+                            ",last_purse_deposits_serial_id"
+                            ") VALUES ($1,$2,$3,$4,$5,$6);"),
     /* Used in #postgres_update_auditor_progress_aggregation() */
     GNUNET_PQ_make_prepare ("auditor_progress_update_aggregation",
                             "UPDATE auditor_progress_aggregation SET "
@@ -308,7 +334,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id=$5"
                             ",last_recoup_refresh_serial_id=$6"
                             ",last_purse_deposits_serial_id=$7"
-                            ",last_purse_refunds_serial_id=$8"
+                            ",last_purse_decision_serial_id=$8"
                             " WHERE master_pub=$9"),
     /* Used in #postgres_get_auditor_progress_coin() */
     GNUNET_PQ_make_prepare ("auditor_progress_select_coin",
@@ -320,7 +346,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id"
                             ",last_recoup_refresh_serial_id"
                             ",last_purse_deposits_serial_id"
-                            ",last_purse_refunds_serial_id"
+                            ",last_purse_decision_serial_id"
                             " FROM auditor_progress_coin"
                             " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_auditor_progress() */
@@ -334,7 +360,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",last_recoup_serial_id"
                             ",last_recoup_refresh_serial_id"
                             ",last_purse_deposits_serial_id"
-                            ",last_purse_refunds_serial_id"
+                            ",last_purse_decision_serial_id"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
     /* Used in #postgres_insert_wire_auditor_account_progress() */
     GNUNET_PQ_make_prepare ("wire_auditor_account_progress_insert",
@@ -390,27 +416,57 @@ setup_connection (struct PostgresClosure *pg)
                             ",master_pub"
                             ",reserve_balance_val"
                             ",reserve_balance_frac"
+                            ",reserve_loss_val"
+                            ",reserve_loss_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
+                            ",close_fee_balance_val"
+                            ",close_fee_balance_frac"
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",open_fee_balance_val"
+                            ",open_fee_balance_frac"
+                            ",history_fee_balance_val"
+                            ",history_fee_balance_frac"
                             ",expiration_date"
                             ",origin_account"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8);"),
+                            ") VALUES "
+                            "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18);"),
     /* Used in #postgres_update_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_update",
                             "UPDATE auditor_reserves SET"
                             " reserve_balance_val=$1"
                             ",reserve_balance_frac=$2"
-                            ",withdraw_fee_balance_val=$3"
-                            ",withdraw_fee_balance_frac=$4"
-                            ",expiration_date=$5"
-                            " WHERE reserve_pub=$6 AND master_pub=$7;"),
+                            ",reserve_loss_val=$3"
+                            ",reserve_loss_frac=$4"
+                            ",withdraw_fee_balance_val=$5"
+                            ",withdraw_fee_balance_frac=$6"
+                            ",purse_fee_balance_val=$7"
+                            ",purse_fee_balance_frac=$8"
+                            ",open_fee_balance_val=$9"
+                            ",open_fee_balance_frac=$10"
+                            ",history_fee_balance_val=$11"
+                            ",history_fee_balance_frac=$12"
+                            ",expiration_date=$13"
+                            " WHERE reserve_pub=$14"
+                            " AND master_pub=$15;"),
     /* Used in #postgres_get_reserve_info() */
     GNUNET_PQ_make_prepare ("auditor_reserves_select",
                             "SELECT"
                             " reserve_balance_val"
                             ",reserve_balance_frac"
+                            ",reserve_loss_val"
+                            ",reserve_loss_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
+                            ",close_fee_balance_val"
+                            ",close_fee_balance_frac"
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",open_fee_balance_val"
+                            ",open_fee_balance_frac"
+                            ",history_fee_balance_val"
+                            ",history_fee_balance_frac"
                             ",expiration_date"
                             ",auditor_reserves_rowid"
                             ",origin_account"
@@ -427,34 +483,53 @@ setup_connection (struct PostgresClosure *pg)
                             "(master_pub"
                             ",reserve_balance_val"
                             ",reserve_balance_frac"
+                            ",reserve_loss_val"
+                            ",reserve_loss_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
+                            ",close_fee_balance_val"
+                            ",close_fee_balance_frac"
                             ",purse_fee_balance_val"
                             ",purse_fee_balance_frac"
+                            ",open_fee_balance_val"
+                            ",open_fee_balance_frac"
                             ",history_fee_balance_val"
                             ",history_fee_balance_frac"
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)"),
+                            ") VALUES "
+                            "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)"),
     /* Used in #postgres_update_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_update",
                             "UPDATE auditor_reserve_balance SET"
                             " reserve_balance_val=$1"
                             ",reserve_balance_frac=$2"
-                            ",withdraw_fee_balance_val=$3"
-                            ",withdraw_fee_balance_frac=$4"
-                            ",purse_fee_balance_val=$5"
-                            ",purse_fee_balance_frac=$6"
-                            ",history_fee_balance_val=$7"
-                            ",history_fee_balance_frac=$8"
-                            " WHERE master_pub=$9;"),
+                            ",reserve_loss_val=$3"
+                            ",reserve_loss_frac=$4"
+                            ",withdraw_fee_balance_val=$5"
+                            ",withdraw_fee_balance_frac=$6"
+                            ",close_fee_balance_val=$7"
+                            ",close_fee_balance_frac=$8"
+                            ",purse_fee_balance_val=$9"
+                            ",purse_fee_balance_frac=$10"
+                            ",open_fee_balance_val=$11"
+                            ",open_fee_balance_frac=$12"
+                            ",history_fee_balance_val=$13"
+                            ",history_fee_balance_frac=$14"
+                            " WHERE master_pub=$15;"),
     /* Used in #postgres_get_reserve_summary() */
     GNUNET_PQ_make_prepare ("auditor_reserve_balance_select",
                             "SELECT"
                             " reserve_balance_val"
                             ",reserve_balance_frac"
+                            ",reserve_loss_val"
+                            ",reserve_loss_frac"
                             ",withdraw_fee_balance_val"
                             ",withdraw_fee_balance_frac"
+                            ",close_fee_balance_val"
+                            ",close_fee_balance_frac"
                             ",purse_fee_balance_val"
                             ",purse_fee_balance_frac"
+                            ",open_fee_balance_val"
+                            ",open_fee_balance_frac"
                             ",history_fee_balance_val"
                             ",history_fee_balance_frac"
                             " FROM auditor_reserve_balance"
@@ -534,14 +609,18 @@ setup_connection (struct PostgresClosure *pg)
                             ",melt_fee_balance_frac"
                             ",refund_fee_balance_val"
                             ",refund_fee_balance_frac"
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",open_deposit_fee_balance_val"
+                            ",open_deposit_fee_balance_frac"
                             ",risk_val"
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
-                            ",irregular_recoup_val"
-                            ",irregular_recoup_frac"
+                            ",irregular_loss_val"
+                            ",irregular_loss_frac"
                             ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
-                            "          $11,$12,$13,$14,$15);"),
+                            "          $11,$12,$13,$14,$15,$16,$17,$18,$19);"),
     /* Used in #postgres_update_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_update",
                             "UPDATE auditor_balance_summary SET"
@@ -553,13 +632,17 @@ setup_connection (struct PostgresClosure *pg)
                             ",melt_fee_balance_frac=$6"
                             ",refund_fee_balance_val=$7"
                             ",refund_fee_balance_frac=$8"
-                            ",risk_val=$9"
-                            ",risk_frac=$10"
-                            ",loss_val=$11"
-                            ",loss_frac=$12"
-                            ",irregular_recoup_val=$13"
-                            ",irregular_recoup_frac=$14"
-                            " WHERE master_pub=$15;"),
+                            ",purse_fee_balance_val=$9"
+                            ",purse_fee_balance_frac=$10"
+                            ",open_deposit_fee_balance_val=$11"
+                            ",open_deposit_fee_balance_frac=$12"
+                            ",risk_val=$13"
+                            ",risk_frac=$14"
+                            ",loss_val=$15"
+                            ",loss_frac=$16"
+                            ",irregular_loss_val=$17"
+                            ",irregular_loss_frac=$18"
+                            " WHERE master_pub=$19;"),
     /* Used in #postgres_get_balance_summary() */
     GNUNET_PQ_make_prepare ("auditor_balance_summary_select",
                             "SELECT"
@@ -571,12 +654,16 @@ setup_connection (struct PostgresClosure *pg)
                             ",melt_fee_balance_frac"
                             ",refund_fee_balance_val"
                             ",refund_fee_balance_frac"
+                            ",purse_fee_balance_val"
+                            ",purse_fee_balance_frac"
+                            ",open_deposit_fee_balance_val"
+                            ",open_deposit_fee_balance_frac"
                             ",risk_val"
                             ",risk_frac"
                             ",loss_val"
                             ",loss_frac"
-                            ",irregular_recoup_val"
-                            ",irregular_recoup_frac"
+                            ",irregular_loss_val"
+                            ",irregular_loss_frac"
                             " FROM auditor_balance_summary"
                             " WHERE master_pub=$1;"),
     /* Used in #postgres_insert_historic_denom_revenue() */
@@ -1230,12 +1317,11 @@ postgres_insert_auditor_progress_reserve (
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_open_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_merges_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_decisions_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_account_merges_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_history_requests_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_close_requests_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -1265,12 +1351,11 @@ postgres_update_auditor_progress_reserve (
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_recoup_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_open_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_close_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_merges_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppr->last_purse_decisions_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_account_merges_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_history_requests_serial_id),
-    GNUNET_PQ_query_param_uint64 (&ppr->last_close_requests_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -1307,23 +1392,125 @@ postgres_get_auditor_progress_reserve (
                                   &ppr->last_reserve_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_recoup_serial_id",
                                   &ppr->last_reserve_recoup_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_reserve_open_serial_id",
+                                  &ppr->last_reserve_open_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_close_serial_id",
                                   &ppr->last_reserve_close_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_purse_merges_serial_id",
-                                  &ppr->last_purse_merges_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_purse_deposits_serial_id",
-                                  &ppr->last_purse_deposits_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_decision_serial_id",
+                                  &ppr->last_purse_decisions_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_account_merges_serial_id",
                                   &ppr->last_account_merges_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_history_requests_serial_id",
                                   &ppr->last_history_requests_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_close_requests_serial_id",
-                                  &ppr->last_close_requests_serial_id),
     GNUNET_PQ_result_spec_end
   };
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_reserve",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Insert information about the auditor's progress with an exchange's
+ * data.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub master key of the exchange
+ * @param ppp where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor_progress_purse (
+  void *cls,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_AUDITORDB_ProgressPointPurse *ppp)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_request_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_decision_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_merge_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_account_merge_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "auditor_progress_insert_purse",
+                                             params);
+}
+
+
+/**
+ * Update information about the progress of the auditor.  There
+ * must be an existing record for the exchange.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub master key of the exchange
+ * @param ppp where is the auditor in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_auditor_progress_purse (
+  void *cls,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_AUDITORDB_ProgressPointPurse *ppp)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_request_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_decision_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_merge_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_account_merge_serial_id),
+    GNUNET_PQ_query_param_uint64 (&ppp->last_purse_deposits_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "auditor_progress_update_purse",
+                                             params);
+}
+
+
+/**
+ * Get information about the progress of the auditor.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub master key of the exchange
+ * @param[out] ppp set to where the auditor is in processing
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_auditor_progress_purse (
+  void *cls,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct TALER_AUDITORDB_ProgressPointPurse *ppp)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("last_purse_request_serial_id",
+                                  &ppp->last_purse_request_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_decision_serial_id",
+                                  &ppp->last_purse_decision_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_merges_serial_id",
+                                  &ppp->last_purse_merge_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_account_merges_serial_id",
+                                  &ppp->last_account_merge_serial_id),
+    GNUNET_PQ_result_spec_uint64 ("last_purse_deposits_serial_id",
+                                  &ppp->last_purse_deposits_serial_id),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "auditor_progress_select_purse",
                                                    params,
                                                    rs);
 }
@@ -1609,7 +1796,7 @@ postgres_get_auditor_progress_coin (
                                   &ppc->last_recoup_refresh_serial_id),
     GNUNET_PQ_result_spec_uint64 ("last_purse_deposits_serial_id",
                                   &ppc->last_purse_deposits_serial_id),
-    GNUNET_PQ_result_spec_uint64 ("last_purse_refunds_serial_id",
+    GNUNET_PQ_result_spec_uint64 ("last_purse_decision_serial_id",
                                   &ppc->last_purse_refunds_serial_id),
     GNUNET_PQ_result_spec_end
   };
@@ -1629,8 +1816,7 @@ postgres_get_auditor_progress_coin (
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param pp how far are we in the auditor's tables
- * @param in_wire_off how far are we in the incoming wire transfers
- * @param out_wire_off how far are we in the outgoing wire transfers
+ * @param bapp progress in wire transaction histories
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -1639,8 +1825,7 @@ postgres_insert_wire_auditor_account_progress (
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-  uint64_t in_wire_off,
-  uint64_t out_wire_off)
+  const struct TALER_AUDITORDB_BankAccountProgressPoint *bapp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -1648,8 +1833,8 @@ postgres_insert_wire_auditor_account_progress (
     GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&in_wire_off),
-    GNUNET_PQ_query_param_uint64 (&out_wire_off),
+    GNUNET_PQ_query_param_uint64 (&bapp->in_wire_off),
+    GNUNET_PQ_query_param_uint64 (&bapp->out_wire_off),
     GNUNET_PQ_query_param_end
   };
 
@@ -1667,8 +1852,7 @@ postgres_insert_wire_auditor_account_progress (
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param pp where is the auditor in processing
- * @param in_wire_off how far are we in the incoming wire transaction history
- * @param out_wire_off how far are we in the outgoing wire transaction history
+ * @param bapp progress in wire transaction histories
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -1677,15 +1861,14 @@ postgres_update_wire_auditor_account_progress (
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-  uint64_t in_wire_off,
-  uint64_t out_wire_off)
+  const struct TALER_AUDITORDB_BankAccountProgressPoint *bapp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
-    GNUNET_PQ_query_param_uint64 (&in_wire_off),
-    GNUNET_PQ_query_param_uint64 (&out_wire_off),
+    GNUNET_PQ_query_param_uint64 (&bapp->in_wire_off),
+    GNUNET_PQ_query_param_uint64 (&bapp->out_wire_off),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
     GNUNET_PQ_query_param_end
@@ -1704,8 +1887,7 @@ postgres_update_wire_auditor_account_progress (
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param[out] pp where is the auditor in processing
- * @param[out] in_wire_off how far are we in the incoming wire transaction history
- * @param[out] out_wire_off how far are we in the outgoing wire transaction history
+ * @param[out] bapp how far are we in the wire transaction histories
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -1714,8 +1896,7 @@ postgres_get_wire_auditor_account_progress (
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
-  uint64_t *in_wire_off,
-  uint64_t *out_wire_off)
+  struct TALER_AUDITORDB_BankAccountProgressPoint *bapp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -1729,9 +1910,9 @@ postgres_get_wire_auditor_account_progress (
     GNUNET_PQ_result_spec_uint64 ("last_wire_wire_out_serial_id",
                                   &pp->last_wire_out_serial_id),
     GNUNET_PQ_result_spec_uint64 ("wire_in_off",
-                                  in_wire_off),
+                                  &bapp->in_wire_off),
     GNUNET_PQ_result_spec_uint64 ("wire_out_off",
-                                  out_wire_off),
+                                  &bapp->out_wire_off),
     GNUNET_PQ_result_spec_end
   };
 
@@ -1842,35 +2023,36 @@ postgres_get_wire_auditor_progress (
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
- * @param withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
- * @param expiration_date expiration date of the reserve
+ * @param rfb amounts for the reserve
  * @param origin_account where did the money in the reserve originally come from
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_reserve_info (void *cls,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              const struct TALER_Amount *reserve_balance,
-                              const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Timestamp expiration_date,
-                              const char *origin_account)
+postgres_insert_reserve_info (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
+  struct GNUNET_TIME_Timestamp expiration_date,
+  const char *origin_account)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (reserve_balance),
-    TALER_PQ_query_param_amount (withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_loss),
+    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->close_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
-    GNUNET_PQ_query_param_string (origin_account),
+    NULL == origin_account
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (origin_account),
     GNUNET_PQ_query_param_end
   };
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (reserve_balance,
-                                            withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_insert",
@@ -1885,33 +2067,31 @@ postgres_insert_reserve_info (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
- * @param reserve_balance amount stored in the reserve
- * @param withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
+ * @param rfb amounts for the reserve
  * @param expiration_date expiration date of the reserve
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_update_reserve_info (void *cls,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              const struct TALER_Amount *reserve_balance,
-                              const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Timestamp expiration_date)
+postgres_update_reserve_info (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
+  struct GNUNET_TIME_Timestamp expiration_date)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (reserve_balance),
-    TALER_PQ_query_param_amount (withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_loss),
+    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
     GNUNET_PQ_query_param_timestamp (&expiration_date),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (reserve_balance,
-                                            withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_update",
@@ -1952,9 +2132,7 @@ postgres_del_reserve_info (void *cls,
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @param[out] rowid which row did we get the information from
- * @param[out] reserve_balance amount stored in the reserve
- * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
+ * @param[out] rfb where to store the reserve balance summary
  * @param[out] expiration_date expiration date of the reserve
  * @param[out] sender_account from where did the money in the reserve originally come from
  * @return transaction status code
@@ -1964,8 +2142,7 @@ postgres_get_reserve_info (void *cls,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_MasterPublicKeyP *master_pub,
                            uint64_t *rowid,
-                           struct TALER_Amount *reserve_balance,
-                           struct TALER_Amount *withdraw_fee_balance,
+                           struct TALER_AUDITORDB_ReserveFeeBalance *rfb,
                            struct GNUNET_TIME_Timestamp *expiration_date,
                            char **sender_account)
 {
@@ -1976,14 +2153,32 @@ postgres_get_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
-    GNUNET_PQ_result_spec_timestamp ("expiration_date", expiration_date),
-    GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
-    GNUNET_PQ_result_spec_string ("origin_account", sender_account),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",
+                                 &rfb->reserve_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_loss",
+                                 &rfb->reserve_loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance",
+                                 &rfb->withdraw_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("close_fee_balance",
+                                 &rfb->close_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance",
+                                 &rfb->purse_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("open_fee_balance",
+                                 &rfb->open_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee_balance",
+                                 &rfb->history_fee_balance),
+    GNUNET_PQ_result_spec_timestamp ("expiration_date",
+                                     expiration_date),
+    GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid",
+                                  rowid),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("origin_account",
+                                    sender_account),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
 
+  *sender_account = NULL;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_reserves_select",
                                                    params,
@@ -1997,34 +2192,31 @@ postgres_get_reserve_info (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master public key of the exchange
- * @param reserve_balance amount stored in the reserve
- * @param withdraw_fee_balance amount the exchange gained in withdraw fees
- * @param purse_fee_balance amount the exchange gained in purse fees
- * @param history_fee_balance amount the exchange gained in history fees
+ * @param rfb balances to be stored for the reserve
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *reserve_balance,
-  const struct TALER_Amount *withdraw_fee_balance,
-  const struct TALER_Amount *purse_fee_balance,
-  const struct TALER_Amount *history_fee_balance)
+  const struct TALER_AUDITORDB_ReserveFeeBalance *rfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (reserve_balance),
-    TALER_PQ_query_param_amount (withdraw_fee_balance),
-    TALER_PQ_query_param_amount (purse_fee_balance),
-    TALER_PQ_query_param_amount (history_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_loss),
+    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->close_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
     GNUNET_PQ_query_param_end
   };
 
   GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (reserve_balance,
-                                            withdraw_fee_balance));
+                 TALER_amount_cmp_currency (&rfb->reserve_balance,
+                                            &rfb->withdraw_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserve_balance_insert",
@@ -2038,28 +2230,24 @@ postgres_insert_reserve_summary (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master public key of the exchange
- * @param reserve_balance amount stored in the reserve
- * @param withdraw_fee_balance amount the exchange gained in withdraw fees
- *                             due to withdrawals from this reserve
- * @param purse_fee_balance amount the exchange gained in purse fees
- * @param history_fee_balance amount the exchange gained in history fees
+ * @param rfb balances to be stored for the reserve
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_reserve_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *reserve_balance,
-  const struct TALER_Amount *withdraw_fee_balance,
-  const struct TALER_Amount *purse_fee_balance,
-  const struct TALER_Amount *history_fee_balance)
+  const struct TALER_AUDITORDB_ReserveFeeBalance *rfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (reserve_balance),
-    TALER_PQ_query_param_amount (withdraw_fee_balance),
-    TALER_PQ_query_param_amount (purse_fee_balance),
-    TALER_PQ_query_param_amount (history_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_balance),
+    TALER_PQ_query_param_amount (&rfb->reserve_loss),
+    TALER_PQ_query_param_amount (&rfb->withdraw_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->close_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->open_fee_balance),
+    TALER_PQ_query_param_amount (&rfb->history_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2075,19 +2263,13 @@ postgres_update_reserve_summary (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master public key of the exchange
- * @param[out] reserve_balance amount stored in reserves
- * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
- * @param[out] purse_fee_balance amount the exchange gained in purse fees
- * @param[out] history_fee_balance amount the exchange gained in history fees
+ * @param[out] rfb balances are returned here
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_summary (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
-                              struct TALER_Amount *reserve_balance,
-                              struct TALER_Amount *withdraw_fee_balance,
-                              struct TALER_Amount *purse_fee_balance,
-                              struct TALER_Amount *history_fee_balance)
+                              struct TALER_AUDITORDB_ReserveFeeBalance *rfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2095,10 +2277,20 @@ postgres_get_reserve_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance", purse_fee_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee_balance", history_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance",
+                                 &rfb->reserve_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_loss",
+                                 &rfb->reserve_loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance",
+                                 &rfb->withdraw_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("close_fee_balance",
+                                 &rfb->close_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance",
+                                 &rfb->purse_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("open_fee_balance",
+                                 &rfb->open_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee_balance",
+                                 &rfb->history_fee_balance),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2202,31 +2394,23 @@ postgres_get_wire_fee_summary (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param denom_pub_hash hash of the denomination public key
- * @param denom_balance value of coins outstanding with this denomination key
- * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
- * @param denom_risk value of coins issued with this denomination key
- * @param recoup_loss losses from recoup (if this denomination was revoked)
- * @param num_issued how many coins of this denomination did the exchange blind-sign
+ * @param dcd circulation data to store
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_balance (
   void *cls,
   const struct TALER_DenominationHashP *denom_pub_hash,
-  const struct TALER_Amount *denom_balance,
-  const struct TALER_Amount *denom_loss,
-  const struct TALER_Amount *denom_risk,
-  const struct TALER_Amount *recoup_loss,
-  uint64_t num_issued)
+  const struct TALER_AUDITORDB_DenominationCirculationData *dcd)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
-    TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (denom_loss),
-    GNUNET_PQ_query_param_uint64 (&num_issued),
-    TALER_PQ_query_param_amount (denom_risk),
-    TALER_PQ_query_param_amount (recoup_loss),
+    TALER_PQ_query_param_amount (&dcd->denom_balance),
+    TALER_PQ_query_param_amount (&dcd->denom_loss),
+    GNUNET_PQ_query_param_uint64 (&dcd->num_issued),
+    TALER_PQ_query_param_amount (&dcd->denom_risk),
+    TALER_PQ_query_param_amount (&dcd->recoup_loss),
     GNUNET_PQ_query_param_end
   };
 
@@ -2242,30 +2426,22 @@ postgres_insert_denomination_balance (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param denom_pub_hash hash of the denomination public key
- * @param denom_balance value of coins outstanding with this denomination key
- * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
-* @param denom_risk value of coins issued with this denomination key
- * @param recoup_loss losses from recoup (if this denomination was revoked)
- * @param num_issued how many coins of this denomination did the exchange blind-sign
+ * @param dcd circulation data to store
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_denomination_balance (
   void *cls,
   const struct TALER_DenominationHashP *denom_pub_hash,
-  const struct TALER_Amount *denom_balance,
-  const struct TALER_Amount *denom_loss,
-  const struct TALER_Amount *denom_risk,
-  const struct TALER_Amount *recoup_loss,
-  uint64_t num_issued)
+  const struct TALER_AUDITORDB_DenominationCirculationData *dcd)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (denom_loss),
-    GNUNET_PQ_query_param_uint64 (&num_issued),
-    TALER_PQ_query_param_amount (denom_risk),
-    TALER_PQ_query_param_amount (recoup_loss),
+    TALER_PQ_query_param_amount (&dcd->denom_balance),
+    TALER_PQ_query_param_amount (&dcd->denom_loss),
+    GNUNET_PQ_query_param_uint64 (&dcd->num_issued),
+    TALER_PQ_query_param_amount (&dcd->denom_risk),
+    TALER_PQ_query_param_amount (&dcd->recoup_loss),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
   };
@@ -2281,22 +2457,14 @@ postgres_update_denomination_balance (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param denom_pub_hash hash of the denomination public key
- * @param[out] denom_balance value of coins outstanding with this denomination key
- * @param[out] denom_risk value of coins issued with this denomination key
- * @param[out] denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
- * @param[out] recoup_loss losses from recoup (if this denomination was revoked)
- * @param[out] num_issued how many coins of this denomination did the exchange blind-sign
+ * @param[out] dcd circulation data to initialize
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_balance (
   void *cls,
   const struct TALER_DenominationHashP *denom_pub_hash,
-  struct TALER_Amount *denom_balance,
-  struct TALER_Amount *denom_loss,
-  struct TALER_Amount *denom_risk,
-  struct TALER_Amount *recoup_loss,
-  uint64_t *num_issued)
+  struct TALER_AUDITORDB_DenominationCirculationData *dcd)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2304,11 +2472,16 @@ postgres_get_denomination_balance (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss", denom_loss),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk", denom_risk),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss", recoup_loss),
-    GNUNET_PQ_result_spec_uint64 ("num_issued", num_issued),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance",
+                                 &dcd->denom_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_loss",
+                                 &dcd->denom_loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_risk",
+                                 &dcd->denom_risk),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("recoup_loss",
+                                 &dcd->recoup_loss),
+    GNUNET_PQ_result_spec_uint64 ("num_issued",
+                                  &dcd->num_issued),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2325,50 +2498,29 @@ postgres_get_denomination_balance (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
- * @param denom_balance value of coins outstanding with this denomination key
- * @param deposit_fee_balance total deposit fees collected for this DK
- * @param melt_fee_balance total melt fees collected for this DK
- * @param refund_fee_balance total refund fees collected for this DK
- * @param risk maximum risk exposure of the exchange
- * @param loss materialized @a risk from recoup
- * @param irregular_recoup recoups on non-revoked coins
+ * @param dfb denomination balance data to store
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_balance_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *denom_balance,
-  const struct TALER_Amount *deposit_fee_balance,
-  const struct TALER_Amount *melt_fee_balance,
-  const struct TALER_Amount *refund_fee_balance,
-  const struct TALER_Amount *risk,
-  const struct TALER_Amount *loss,
-  const struct TALER_Amount *irregular_recoup)
+  const struct TALER_AUDITORDB_GlobalCoinBalance *dfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (deposit_fee_balance),
-    TALER_PQ_query_param_amount (melt_fee_balance),
-    TALER_PQ_query_param_amount (refund_fee_balance),
-    TALER_PQ_query_param_amount (risk),
-    TALER_PQ_query_param_amount (loss),
-    TALER_PQ_query_param_amount (irregular_recoup),
+    TALER_PQ_query_param_amount (&dfb->total_escrowed),
+    TALER_PQ_query_param_amount (&dfb->deposit_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->melt_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->refund_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->open_deposit_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->risk),
+    TALER_PQ_query_param_amount (&dfb->loss),
+    TALER_PQ_query_param_amount (&dfb->irregular_loss),
     GNUNET_PQ_query_param_end
   };
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            deposit_fee_balance));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            melt_fee_balance));
-
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (denom_balance,
-                                            refund_fee_balance));
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_balance_summary_insert",
@@ -2382,36 +2534,26 @@ postgres_insert_balance_summary (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
- * @param denom_balance value of coins outstanding with this denomination key
- * @param deposit_fee_balance total deposit fees collected for this DK
- * @param melt_fee_balance total melt fees collected for this DK
- * @param refund_fee_balance total refund fees collected for this DK
- * @param risk maximum risk exposure of the exchange
- * @param loss materialized @a risk from recoup
- * @param irregular_recoup recoups made on non-revoked coins
+ * @param dfb denomination balance data to store
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_balance_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_Amount *denom_balance,
-  const struct TALER_Amount *deposit_fee_balance,
-  const struct TALER_Amount *melt_fee_balance,
-  const struct TALER_Amount *refund_fee_balance,
-  const struct TALER_Amount *risk,
-  const struct TALER_Amount *loss,
-  const struct TALER_Amount *irregular_recoup)
+  const struct TALER_AUDITORDB_GlobalCoinBalance *dfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_amount (denom_balance),
-    TALER_PQ_query_param_amount (deposit_fee_balance),
-    TALER_PQ_query_param_amount (melt_fee_balance),
-    TALER_PQ_query_param_amount (refund_fee_balance),
-    TALER_PQ_query_param_amount (risk),
-    TALER_PQ_query_param_amount (loss),
-    TALER_PQ_query_param_amount (irregular_recoup),
+    TALER_PQ_query_param_amount (&dfb->total_escrowed),
+    TALER_PQ_query_param_amount (&dfb->deposit_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->melt_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->refund_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->purse_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->open_deposit_fee_balance),
+    TALER_PQ_query_param_amount (&dfb->risk),
+    TALER_PQ_query_param_amount (&dfb->loss),
+    TALER_PQ_query_param_amount (&dfb->irregular_loss),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
@@ -2427,25 +2569,14 @@ postgres_update_balance_summary (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param master_pub master key of the exchange
- * @param[out] denom_balance value of coins outstanding with this denomination key
- * @param[out] deposit_fee_balance total deposit fees collected for this DK
- * @param[out] melt_fee_balance total melt fees collected for this DK
- * @param[out] refund_fee_balance total refund fees collected for this DK
- * @param[out] risk maximum risk exposure of the exchange
- * @param[out] loss losses from recoup (on revoked denominations)
- * @param[out] irregular_recoup recoups on NOT revoked denominations
+ * @param[out] dfb where to return the denomination balances
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_get_balance_summary (void *cls,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              struct TALER_Amount *denom_balance,
-                              struct TALER_Amount *deposit_fee_balance,
-                              struct TALER_Amount *melt_fee_balance,
-                              struct TALER_Amount *refund_fee_balance,
-                              struct TALER_Amount *risk,
-                              struct TALER_Amount *loss,
-                              struct TALER_Amount *irregular_recoup)
+postgres_get_balance_summary (
+  void *cls,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct TALER_AUDITORDB_GlobalCoinBalance *dfb)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2453,13 +2584,24 @@ postgres_get_balance_summary (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance", denom_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee_balance", deposit_fee_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("melt_fee_balance", melt_fee_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("refund_fee_balance", refund_fee_balance),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("risk", risk),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("loss", loss),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("irregular_recoup", irregular_recoup),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("denom_balance",
+                                 &dfb->total_escrowed),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee_balance",
+                                 &dfb->deposit_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("melt_fee_balance",
+                                 &dfb->melt_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("refund_fee_balance",
+                                 &dfb->refund_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee_balance",
+                                 &dfb->purse_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("open_deposit_fee_balance",
+                                 &dfb->open_deposit_fee_balance),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("risk",
+                                 &dfb->risk),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("loss",
+                                 &dfb->loss),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("irregular_loss",
+                                 &dfb->irregular_loss),
     GNUNET_PQ_result_spec_end
   };
 
@@ -2920,33 +3062,45 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->insert_deposit_confirmation = &postgres_insert_deposit_confirmation;
   plugin->get_deposit_confirmations = &postgres_get_deposit_confirmations;
 
-  plugin->get_auditor_progress_reserve = &postgres_get_auditor_progress_reserve;
-  plugin->update_auditor_progress_reserve =
-    &postgres_update_auditor_progress_reserve;
-  plugin->insert_auditor_progress_reserve =
-    &postgres_insert_auditor_progress_reserve;
-  plugin->get_auditor_progress_aggregation =
-    &postgres_get_auditor_progress_aggregation;
-  plugin->update_auditor_progress_aggregation =
-    &postgres_update_auditor_progress_aggregation;
-  plugin->insert_auditor_progress_aggregation =
-    &postgres_insert_auditor_progress_aggregation;
-  plugin->get_auditor_progress_deposit_confirmation =
-    &postgres_get_auditor_progress_deposit_confirmation;
-  plugin->update_auditor_progress_deposit_confirmation =
-    &postgres_update_auditor_progress_deposit_confirmation;
-  plugin->insert_auditor_progress_deposit_confirmation =
-    &postgres_insert_auditor_progress_deposit_confirmation;
+  plugin->get_auditor_progress_reserve
+    = &postgres_get_auditor_progress_reserve;
+  plugin->update_auditor_progress_reserve
+    = &postgres_update_auditor_progress_reserve;
+  plugin->insert_auditor_progress_reserve
+    = &postgres_insert_auditor_progress_reserve;
+
+  plugin->get_auditor_progress_purse
+    = &postgres_get_auditor_progress_purse;
+  plugin->update_auditor_progress_purse
+    = &postgres_update_auditor_progress_purse;
+  plugin->insert_auditor_progress_purse
+    = &postgres_insert_auditor_progress_purse;
+
+  plugin->get_auditor_progress_aggregation
+    = &postgres_get_auditor_progress_aggregation;
+  plugin->update_auditor_progress_aggregation
+    = &postgres_update_auditor_progress_aggregation;
+  plugin->insert_auditor_progress_aggregation
+    = &postgres_insert_auditor_progress_aggregation;
+
+  plugin->get_auditor_progress_deposit_confirmation
+    = &postgres_get_auditor_progress_deposit_confirmation;
+  plugin->update_auditor_progress_deposit_confirmation
+    = &postgres_update_auditor_progress_deposit_confirmation;
+  plugin->insert_auditor_progress_deposit_confirmation
+    = &postgres_insert_auditor_progress_deposit_confirmation;
+
   plugin->get_auditor_progress_coin = &postgres_get_auditor_progress_coin;
   plugin->update_auditor_progress_coin = &postgres_update_auditor_progress_coin;
   plugin->insert_auditor_progress_coin = &postgres_insert_auditor_progress_coin;
 
-  plugin->get_wire_auditor_account_progress =
-    &postgres_get_wire_auditor_account_progress;
-  plugin->update_wire_auditor_account_progress =
-    &postgres_update_wire_auditor_account_progress;
-  plugin->insert_wire_auditor_account_progress =
-    &postgres_insert_wire_auditor_account_progress;
+  plugin->get_wire_auditor_account_progress
+    = &postgres_get_wire_auditor_account_progress;
+  plugin->update_wire_auditor_account_progress
+    = &postgres_update_wire_auditor_account_progress;
+  plugin->insert_wire_auditor_account_progress
+    = &postgres_insert_wire_auditor_account_progress;
+
   plugin->get_wire_auditor_progress = &postgres_get_wire_auditor_progress;
   plugin->update_wire_auditor_progress = &postgres_update_wire_auditor_progress;
   plugin->insert_wire_auditor_progress = &postgres_insert_wire_auditor_progress;
@@ -2972,15 +3126,15 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->update_balance_summary = &postgres_update_balance_summary;
   plugin->insert_balance_summary = &postgres_insert_balance_summary;
 
-  plugin->select_historic_denom_revenue =
-    &postgres_select_historic_denom_revenue;
-  plugin->insert_historic_denom_revenue =
-    &postgres_insert_historic_denom_revenue;
+  plugin->select_historic_denom_revenue
+    = &postgres_select_historic_denom_revenue;
+  plugin->insert_historic_denom_revenue
+    = &postgres_insert_historic_denom_revenue;
 
-  plugin->select_historic_reserve_revenue =
-    &postgres_select_historic_reserve_revenue;
-  plugin->insert_historic_reserve_revenue =
-    &postgres_insert_historic_reserve_revenue;
+  plugin->select_historic_reserve_revenue
+    = &postgres_select_historic_reserve_revenue;
+  plugin->insert_historic_reserve_revenue
+    = &postgres_insert_historic_reserve_revenue;
 
   plugin->get_predicted_balance = &postgres_get_predicted_balance;
   plugin->update_predicted_result = &postgres_update_predicted_result;

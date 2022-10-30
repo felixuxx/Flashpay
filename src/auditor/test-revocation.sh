@@ -337,7 +337,7 @@ function test_0() {
     then
         exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
     fi
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:0"
     then
         exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
@@ -561,7 +561,7 @@ function test_4() {
     echo -n "Testing inconsistency detection... "
     # Coin spent exceeded coin's value
     jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad recoup not detected"
-    AMOUNT=`jq -r .total_bad_sig_losses < test-audit-coins.json`
+    AMOUNT=`jq -r .irregular_loss < test-audit-coins.json`
     if test $AMOUNT == "TESTKUDOS:0"
     then
         exit_fail "Total bad sig losses are wrong"

@@ -169,6 +169,7 @@ add_coin_purse_deposit (void *cls,
     chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_PurseDepositListEntry);
     {
+      bool not_finished;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                      &deposit->amount),
@@ -186,8 +187,10 @@ add_coin_purse_deposit (void *cls,
                                               &deposit->coin_sig),
         GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
                                               &deposit->h_age_commitment),
-        GNUNET_PQ_result_spec_bool ("refunded",
-                                    &deposit->refunded),
+        GNUNET_PQ_result_spec_allow_null (
+          GNUNET_PQ_result_spec_bool ("refunded",
+                                      &deposit->refunded),
+          &not_finished),
         GNUNET_PQ_result_spec_end
       };
 
@@ -201,6 +204,8 @@ add_coin_purse_deposit (void *cls,
         chc->failed = true;
         return;
       }
+      if (not_finished)
+        deposit->refunded = false;
       deposit->no_age_commitment = GNUNET_is_zero (&deposit->h_age_commitment);
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
@@ -352,9 +357,9 @@ add_coin_refund (void *cls,
  * @param num_results the number of results in @a result
  */
 static void
-add_coin_purse_refund (void *cls,
-                       PGresult *result,
-                       unsigned int num_results)
+add_coin_purse_decision (void *cls,
+                         PGresult *result,
+                         unsigned int num_results)
 {
   struct CoinHistoryContext *chc = cls;
   struct PostgresClosure *pg = chc->pg;
@@ -374,7 +379,7 @@ add_coin_purse_refund (void *cls,
                                      &prefund->refund_amount),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
                                      &prefund->refund_fee),
-        GNUNET_PQ_result_spec_uint64 ("purse_refunds_serial_id",
+        GNUNET_PQ_result_spec_uint64 ("purse_decision_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
       };
@@ -687,8 +692,8 @@ TEH_PG_get_coin_transactions (
     { "get_purse_deposit_by_coin_pub",
       &add_coin_purse_deposit },
     /** #TALER_EXCHANGEDB_TT_PURSE_REFUND */
-    { "get_purse_refund_by_coin_pub",
-      &add_coin_purse_refund },
+    { "get_purse_decision_by_coin_pub",
+      &add_coin_purse_decision },
     /** #TALER_EXCHANGEDB_TT_REFUND */
     { "get_refunds_by_coin",
       &add_coin_refund },
@@ -775,11 +780,13 @@ TEH_PG_get_coin_transactions (
            ",kc.age_commitment_hash"
            ",pd.coin_sig"
            ",pd.purse_deposit_serial_id"
-           ",pr.refunded"
+           ",pdes.refunded"
            " FROM purse_deposits pd"
            " LEFT JOIN partners"
            "   USING (partner_serial_id)"
            " JOIN purse_requests pr"
+           "   USING (purse_pub)"
+           " LEFT JOIN purse_decision pdes"
            "   USING (purse_pub)"
            " JOIN known_coins kc"
            "   ON (pd.coin_pub = kc.coin_pub)"
@@ -809,22 +816,23 @@ TEH_PG_get_coin_transactions (
            "   USING (denominations_serial)"
            " WHERE ref.coin_pub=$1;");
   PREPARE (pg,
-           "get_purse_refund_by_coin_pub",
+           "get_purse_decision_by_coin_pub",
            "SELECT"
-           " pr.purse_pub"
+           " pdes.purse_pub"
            ",pd.amount_with_fee_val"
            ",pd.amount_with_fee_frac"
            ",denom.fee_refund_val "
            ",denom.fee_refund_frac "
-           ",pr.purse_refunds_serial_id"
+           ",pdes.purse_decision_serial_id"
            " FROM purse_deposits pd"
-           " JOIN purse_refunds pr"
+           " JOIN purse_decision pdes"
            "   USING (purse_pub)"
            " JOIN known_coins kc"
            "   ON (pd.coin_pub = kc.coin_pub)"
            " JOIN denominations denom"
            "   USING (denominations_serial)"
-           " WHERE pd.coin_pub=$1;");
+           " WHERE pd.coin_pub=$1"
+           "   AND pdes.refunded;");
   PREPARE (pg,
            "recoup_by_old_coin",
            "SELECT"

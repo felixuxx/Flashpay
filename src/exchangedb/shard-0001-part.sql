@@ -101,8 +101,8 @@ BEGIN
   PERFORM create_table_purse_requests(shard_suffix);
   PERFORM add_constraints_to_purse_requests_partition(shard_suffix);
 
-  PERFORM create_table_purse_refunds(shard_suffix);
-  PERFORM add_constraints_to_purse_refunds_partition(shard_suffix);
+  PERFORM create_table_purse_decision(shard_suffix);
+  PERFORM add_constraints_to_purse_decision_partition(shard_suffix);
 
   PERFORM create_table_purse_merges(shard_suffix);
   PERFORM add_constraints_to_purse_merges_partition(shard_suffix);

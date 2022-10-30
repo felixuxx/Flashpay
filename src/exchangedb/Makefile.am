@@ -79,7 +79,9 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_iterate_reserve_close_info.c pg_iterate_reserve_close_info.h \
   pg_lookup_records_by_table.c pg_lookup_records_by_table.h \
   pg_lookup_serial_by_table.c pg_lookup_serial_by_table.h \
-  pg_select_reserve_close_info.c pg_select_reserve_close_info.h
+  pg_select_reserve_close_info.c pg_select_reserve_close_info.h \
+  pg_select_reserve_closed_above_serial_id.c pg_select_reserve_closed_above_serial_id.h \
+  pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \

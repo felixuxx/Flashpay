@@ -1336,19 +1336,23 @@ irbt_cb_table_purse_requests (struct PostgresClosure *pg,
 
 
 /**
- * Function called with purse_refunds records to insert into table.
+ * Function called with purse_decision records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_purse_refunds (struct PostgresClosure *pg,
-                             const struct TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_purse_decision (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.purse_refunds.purse_pub),
+      &td->details.purse_decision.purse_pub),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.purse_decision.action_timestamp),
+    GNUNET_PQ_query_param_bool (
+      &td->details.purse_decision.refunded),
     GNUNET_PQ_query_param_end
   };
 
@@ -1357,10 +1361,12 @@ irbt_cb_table_purse_refunds (struct PostgresClosure *pg,
            "INSERT INTO purse_refunds"
            "(purse_refunds_serial_id"
            ",purse_pub"
+           ",action_timestamp"
+           ",refunded"
            ") VALUES "
-           "($1, $2);");
+           "($1, $2, $3, $4);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_purse_refunds",
+                                             "insert_into_table_purse_decision",
                                              params);
 }
 
@@ -1910,8 +1916,8 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
     rh = &irbt_cb_table_purse_requests;
     break;
-  case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
-    rh = &irbt_cb_table_purse_refunds;
+  case TALER_EXCHANGEDB_RT_PURSE_DECISION:
+    rh = &irbt_cb_table_purse_decision;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_MERGES:
     rh = &irbt_cb_table_purse_merges;

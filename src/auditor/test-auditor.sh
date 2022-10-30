@@ -388,7 +388,7 @@ function test_0() {
     then
         exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
     fi
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:0"
     then
         exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
@@ -613,7 +613,7 @@ function test_3() {
         exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
     fi
 
-    WIRED=`jq -r .total_loss_balance_insufficient < test-audit-reserves.json`
+    WIRED=`jq -r .total_irregular_loss < test-audit-reserves.json`
     if test $WIRED != "TESTKUDOS:0"
     then
         exit_fail "Wrong total loss from insufficient balance, got $WIRED"
@@ -690,7 +690,7 @@ function test_4() {
         exit_fail "Wrong operation, got $OP"
     fi
 
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:3"
     then
         exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -734,7 +734,7 @@ function test_5() {
         exit_fail "Wrong operation, got $OP"
     fi
 
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:3"
     then
         exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -776,7 +776,7 @@ function test_6() {
         exit_fail "Wrong operation, got $OP"
     fi
 
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS == "TESTKUDOS:0"
     then
         exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -1093,7 +1093,7 @@ function test_13() {
     fi
 
     LOSS=`jq -er .bad_sig_losses[0].loss < test-audit-coins.json`
-    TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit-coins.json`
+    TOTAL_LOSS=`jq -er .irregular_loss < test-audit-coins.json`
     if test x$LOSS != x$TOTAL_LOSS
     then
         exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
@@ -1644,7 +1644,7 @@ function test_26() {
         exit_fail "Wrong operation, got $OP"
     fi
 
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:3"
     then
         exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -1805,7 +1805,7 @@ function test_31() {
 
     run_audit aggregator
     echo -n "Testing inconsistency detection... "
-    AMOUNT=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    AMOUNT=`jq -r .irregular_loss < test-audit-coins.json`
     if test "x$AMOUNT" == "xTESTKUDOS:0"
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1892,7 +1892,7 @@ function test_33() {
     then
         exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
     fi
-    LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    LOSS=`jq -r .irregular_loss < test-audit-coins.json`
     if test $LOSS != "TESTKUDOS:0"
     then
         exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"

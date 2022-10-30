@@ -77,6 +77,7 @@ reserve_cb (void *cls,
     char *account_details;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_Amount remaining_balance;
+    uint64_t close_request_row;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_timestamp ("expiration_date",
                                        &exp_date),
@@ -86,6 +87,8 @@ reserve_cb (void *cls,
                                             &reserve_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("close",
                                    &remaining_balance),
+      GNUNET_PQ_result_spec_uint64 ("close_request_serial_id",
+                                    &close_request_row),
       GNUNET_PQ_result_spec_end
     };
 
@@ -102,7 +105,8 @@ reserve_cb (void *cls,
                     &reserve_pub,
                     &remaining_balance,
                     account_details,
-                    exp_date);
+                    exp_date,
+                    close_request_row);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
@@ -136,6 +140,7 @@ TEH_PG_get_unfinished_close_requests (
            " WHERE done=FALSE"
            " RETURNING"
            "    reserve_pub"
+           "   ,close_request_serial_id"
            "   ,close_timestamp AS expiration_date"
            "   ,close_val"
            "   ,close_frac"

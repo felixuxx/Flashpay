@@ -140,9 +140,9 @@ In that time, the wire auditor processed the following table ranges:
 \end{center}
 
 The total credits to the exchange processed in
-this audit run was {\bf {{ wire.total_wire_in }}.
+this audit run was {\bf {{ wire.total_wire_in }}}.
 The total debits initiated by the exchange processed in
-this audit run was {\bf {{ wire.total_wire_out }}.
+this audit run was {\bf {{ wire.total_wire_out }}}.
 
 \section{Operations}
 
@@ -169,9 +169,8 @@ Loss (actualized risk from recoups) is
 {\bf {{ coins.total_recoup_loss }}}.
 
 \noindent
-Recoups of non-revoked coins are at
-{\bf {{ coins.total_irregular_recoups }}} (coins)
-plus {\bf {{ reserves.total_irregular_recoups }}} (reserves).
+Losses from irregular reserve operations are at
+{\bf {{ reserves.total_irregular_loss }}} (reserves).
 
 \section{Income}
 
@@ -613,7 +612,7 @@ compromise resulting in proportional financial losses to the exchange.
 \endfoot
   \hline
   {\bf Total loss} &
-  {{ reserves.total_loss_balance_insufficient }} \\
+  {{ reserves.total_irregular_loss }} \\
   \caption{Reserves with withdrawals higher than reserve funding.}
   \label{table:reserve:balance_insufficient}
 \endlastfoot
@@ -782,7 +781,7 @@ invalid and the amount involved should be considered lost.
 \endfoot
   \hline
   \multicolumn{2}{l}{ {\bf Total losses} } &
-  {\bf {{ coins.total_bad_sig_loss}} } \\
+  {\bf {{ coins.irregular_loss}} } \\
   \caption{Losses from operations performed on coins without proper signatures.}
   \label{table:bad_signature_losses}
 \endlastfoot

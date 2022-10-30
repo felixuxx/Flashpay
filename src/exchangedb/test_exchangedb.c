@@ -1809,7 +1809,8 @@ run (void *cls)
                                          sndr,
                                          &wire_out_wtid,
                                          &amount_with_fee,
-                                         &fee_closing));
+                                         &fee_closing,
+                                         0));
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub2,
                          0,
@@ -1823,7 +1824,8 @@ run (void *cls)
                                          sndr,
                                          &wire_out_wtid,
                                          &value,
-                                         &fee_closing));
+                                         &fee_closing,
+                                         0));
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          0,

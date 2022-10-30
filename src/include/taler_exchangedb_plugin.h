@@ -222,7 +222,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_EXTENSIONS,
   TALER_EXCHANGEDB_RT_EXTENSION_DETAILS,
   TALER_EXCHANGEDB_RT_PURSE_REQUESTS,
-  TALER_EXCHANGEDB_RT_PURSE_REFUNDS,
+  TALER_EXCHANGEDB_RT_PURSE_DECISION,
   TALER_EXCHANGEDB_RT_PURSE_MERGES,
   TALER_EXCHANGEDB_RT_PURSE_DEPOSITS,
   TALER_EXCHANGEDB_RT_ACCOUNT_MERGES,
@@ -536,7 +536,9 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_PurseContractPublicKeyP purse_pub;
-    } purse_refunds;
+      struct GNUNET_TIME_Timestamp action_timestamp;
+      bool refunded;
+    } purse_decision;
 
     struct
     {
@@ -2348,19 +2350,23 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
- * Function called with details about purse refunds that have been made, with
- * the goal of auditing the purse refund's execution.
+ * Function called with details about purse decisions that have been made, with
+ * the goal of auditing the purse's execution.
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
- * @param purse_pub public key of the refunded purse
+ * @param purse_pub public key of the purse
+ * @param reserve_pub public key of the target reserve, NULL if not known
+ * @param purse_value what is the (target) value of the purse
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef enum GNUNET_GenericReturnValue
-(*TALER_EXCHANGEDB_PurseRefundCallback)(
+(*TALER_EXCHANGEDB_PurseDecisionCallback)(
   void *cls,
   uint64_t rowid,
-  const struct TALER_PurseContractPublicKeyP *purse_pub);
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *purse_value);
 
 
 /**
@@ -2850,6 +2856,33 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
+ * Function called about reserve opening operations.
+ *
+ * @param cls closure
+ * @param rowid row identifier used to uniquely identify the reserve closing operation
+ * @param reserve_payment how much to pay from the
+ *        reserve's own balance for opening the reserve
+ * @param request_timestamp when was the request created
+ * @param reserve_expiration desired expiration time for the reserve
+ * @param purse_limit minimum number of purses the client
+ *       wants to have concurrently open for this reserve
+ * @param reserve_pub public key of the reserve
+ * @param reserve_sig signature affirming the operation
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_ReserveOpenCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_Amount *reserve_payment,
+  struct GNUNET_TIME_Timestamp request_timestamp,
+  struct GNUNET_TIME_Timestamp reserve_expiration,
+  uint32_t purse_limit,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
  * Function called about reserve closing operations
  * the aggregator triggered.
  *
@@ -2861,6 +2894,8 @@ typedef enum GNUNET_GenericReturnValue
  * @param reserve_pub public key of the reserve
  * @param receiver_account where did we send the funds, in payto://-format
  * @param wtid identifier used for the wire transfer
+ * @param close_request_row row with the responsible close
+ *            request, 0 if regular expiration triggered close
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 typedef enum GNUNET_GenericReturnValue
@@ -2872,7 +2907,8 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_Amount *closing_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *receiver_account,
-  const struct TALER_WireTransferIdentifierRawP *wtid);
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  uint64_t close_request_row);
 
 
 /**
@@ -2895,6 +2931,8 @@ typedef void
  * @param left amount left in the reserve
  * @param account_details information about the reserve's bank account, in payto://-format
  * @param expiration_date when did the reserve expire
+ * @param close_request_row row that caused the reserve
+ *        to be closed, 0 if it expired without request
  * @return #GNUNET_OK on success,
  *         #GNUNET_NO to retry
  *         #GNUNET_SYSERR on hard failures (exit)
@@ -2905,7 +2943,8 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *left,
   const char *account_details,
-  struct GNUNET_TIME_Timestamp expiration_date);
+  struct GNUNET_TIME_Timestamp expiration_date,
+  uint64_t close_request_row);
 
 
 /**
@@ -4362,6 +4401,33 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Select information about reserve close requests.
+   *
+   * @param cls closure
+   * @param reserve_pub which reserve is this about?
+   * @param rowid row ID of the close request
+   * @param[out] reserve_sig reserve signature affirming
+   * @param[out] request_timestamp when was the request made
+   * @param[out] close_balance reserve balance at close time
+   * @param[out] close_fee closing fee to be charged
+   * @param[out] payto_uri set to URL of account that
+   *             should receive the money;
+   *             could be set to NULL for origin
+   * @return transaction status code, 0 if reserve unknown
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_reserve_close_request_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    uint64_t rowid,
+    struct TALER_ReserveSignatureP *reserve_sig,
+    struct GNUNET_TIME_Timestamp *request_timestamp,
+    struct TALER_Amount *close_balance,
+    struct TALER_Amount *close_fee,
+    char **payto_uri);
+
+
+  /**
    * Select information needed for KYC checks on reserve close: historic
    * reserve closures going to the same account.
    *
@@ -4392,6 +4458,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param wtid identifier for the wire transfer
    * @param amount_with_fee amount we charged to the reserve
    * @param closing_fee how high is the closing fee
+   * @param close_request_row identifies explicit close request, 0 for none
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -4401,7 +4468,8 @@ struct TALER_EXCHANGEDB_Plugin
                            const char *receiver_account,
                            const struct TALER_WireTransferIdentifierRawP *wtid,
                            const struct TALER_Amount *amount_with_fee,
-                           const struct TALER_Amount *closing_fee);
+                           const struct TALER_Amount *closing_fee,
+                           uint64_t close_request_row);
 
 
   /**
@@ -4604,15 +4672,17 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param refunded which refund status to select for
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_purse_refunds_above_serial_id)(
+  (*select_purse_decisions_above_serial_id)(
     void *cls,
     uint64_t serial_id,
-    TALER_EXCHANGEDB_PurseRefundCallback cb,
+    bool refunded,
+    TALER_EXCHANGEDB_PurseDecisionCallback cb,
     void *cb_cls);
 
 
@@ -4795,8 +4865,8 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to select reserve close operations the aggregator
-   * triggered, ordered by serial ID (monotonically increasing).
+   * Function called to select reserve open operations, ordered by serial ID
+   * (monotonically increasing).
    *
    * @param cls closure
    * @param serial_id lowest serial ID to include (select larger or equal)
@@ -4804,6 +4874,24 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
+  enum GNUNET_DB_QueryStatus
+  (*select_reserve_open_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_ReserveOpenCallback cb,
+    void *cb_cls);
+
+
+  /**
+ * Function called to select reserve close operations the aggregator
+ * triggered, ordered by serial ID (monotonically increasing).
+ *
+ * @param cls closure
+ * @param serial_id lowest serial ID to include (select larger or equal)
+ * @param cb function to call
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
   enum GNUNET_DB_QueryStatus
   (*select_reserve_closed_above_serial_id)(
     void *cls,

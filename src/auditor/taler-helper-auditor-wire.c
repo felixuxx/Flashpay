@@ -93,14 +93,9 @@ struct WireAccount
   struct TALER_AUDITORDB_WireAccountProgressPoint start_pp;
 
   /**
-   * Where we are in the inbound (CREDIT) transaction history.
+   * Where we are in the transaction history.
    */
-  uint64_t in_wire_off;
-
-  /**
-   * Where we are in the inbound (DEBIT) transaction history.
-   */
-  uint64_t out_wire_off;
+  struct TALER_AUDITORDB_BankAccountProgressPoint wire_off;
 
   /**
    * Return value when we got this account's progress point.
@@ -772,16 +767,14 @@ commit (enum GNUNET_DB_QueryStatus qs)
         &TALER_ARL_master_pub,
         wa->ai->section_name,
         &wa->pp,
-        wa->in_wire_off,
-        wa->out_wire_off);
+        &wa->wire_off);
     else
       qs = TALER_ARL_adb->insert_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
         &TALER_ARL_master_pub,
         wa->ai->section_name,
         &wa->pp,
-        wa->in_wire_off,
-        wa->out_wire_off);
+        &wa->wire_off);
     if (0 >= qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1520,7 +1513,7 @@ history_debit_cb (void *cls,
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->wtid));
   /* Update offset */
-  wa->out_wire_off = row_off;
+  wa->wire_off.out_wire_off = row_off;
   slen = strlen (details->credit_account_uri) + 1;
   roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
                        + slen);
@@ -1594,7 +1587,7 @@ process_debits (void *cls)
   // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
   wa->dhh = TALER_BANK_debit_history (ctx,
                                       wa->ai->auth,
-                                      wa->out_wire_off,
+                                      wa->wire_off.out_wire_off,
                                       INT32_MAX,
                                       GNUNET_TIME_UNIT_ZERO,
                                       &history_debit_cb,
@@ -1846,7 +1839,7 @@ history_credit_cb (void *cls,
   }
 
   /* Update offset */
-  wa->in_wire_off = row_off;
+  wa->wire_off.in_wire_off = row_off;
   /* compare records with expected data */
   if (0 != GNUNET_memcmp (&details->reserve_pub,
                           &rii->details.reserve_pub))
@@ -2032,7 +2025,7 @@ process_credits (void *cls)
   // (CG: used to be INT64_MAX, changed by MS to INT32_MAX, why? To be discussed with him!)
   wa->chh = TALER_BANK_credit_history (ctx,
                                        wa->ai->auth,
-                                       wa->in_wire_off,
+                                       wa->wire_off.in_wire_off,
                                        INT32_MAX,
                                        GNUNET_TIME_UNIT_ZERO,
                                        &history_credit_cb,
@@ -2084,12 +2077,14 @@ reserve_closed_cb (void *cls,
                    const struct TALER_Amount *closing_fee,
                    const struct TALER_ReservePublicKeyP *reserve_pub,
                    const char *receiver_account,
-                   const struct TALER_WireTransferIdentifierRawP *wtid)
+                   const struct TALER_WireTransferIdentifierRawP *wtid,
+                   uint64_t close_request_row)
 {
   struct ReserveClosure *rc;
   struct GNUNET_HashCode key;
 
   (void) cls;
+  (void) close_request_row;
   rc = GNUNET_new (struct ReserveClosure);
   if (TALER_ARL_SR_INVALID_NEGATIVE ==
       TALER_ARL_amount_subtract_neg (&rc->amount,
@@ -2210,8 +2205,7 @@ begin_transaction (void)
       &TALER_ARL_master_pub,
       wa->ai->section_name,
       &wa->pp,
-      &wa->in_wire_off,
-      &wa->out_wire_off);
+      &wa->wire_off);
     if (0 > wa->qsx)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);

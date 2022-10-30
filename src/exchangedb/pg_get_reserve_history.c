@@ -797,13 +797,14 @@ TEH_PG_get_reserve_history (void *cls,
            " FROM purse_merges pm"
            "   JOIN purse_requests pr"
            "     USING (purse_pub)"
+           "   JOIN purse_decision pdes"
+           "     USING (purse_pub)"
            "   JOIN account_merges am"
            "     ON (am.purse_pub = pm.purse_pub AND"
            "         am.reserve_pub = pm.reserve_pub)"
            " WHERE pm.reserve_pub=$1"
            "  AND pm.partner_serial_id=0" /* must be local! */
-           "  AND pr.finished"
-           "  AND NOT pr.refunded;");
+           "  AND NOT pdes.refunded;");
   PREPARE (pg,
            "history_by_reserve",
            "SELECT"
@@ -1089,14 +1090,15 @@ TEH_PG_get_reserve_status (void *cls,
            " FROM purse_merges pm"
            "   JOIN purse_requests pr"
            "     USING (purse_pub)"
+           "   JOIN purse_decision pdes"
+           "     USING (purse_pub)"
            "   JOIN account_merges am"
            "     ON (am.purse_pub = pm.purse_pub AND"
            "         am.reserve_pub = pm.reserve_pub)"
            " WHERE pm.reserve_pub=$1"
            "  AND pm.merge_timestamp >= $2"
            "  AND pm.partner_serial_id=0" /* must be local! */
-           "  AND pr.finished"
-           "  AND NOT pr.refunded;");
+           "  AND NOT pdes.refunded;");
   PREPARE (pg,
            "history_by_reserve_truncated",
            "SELECT"

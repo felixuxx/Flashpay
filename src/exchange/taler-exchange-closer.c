@@ -204,6 +204,8 @@ commit_or_warn (void)
  * @param account_payto_uri information about the bank account that initially
  *        caused the reserve to be created
  * @param expiration_date when did the reserve expire
+ * @param close_request_row row of request asking for
+ *         closure, 0 for expired reserves
  * @return #GNUNET_OK on success (continue)
  *         #GNUNET_NO on non-fatal errors (try again)
  *         #GNUNET_SYSERR on fatal errors (abort)
@@ -213,7 +215,8 @@ expired_reserve_cb (void *cls,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_Amount *left,
                     const char *account_payto_uri,
-                    struct GNUNET_TIME_Timestamp expiration_date)
+                    struct GNUNET_TIME_Timestamp expiration_date,
+                    uint64_t close_request_row)
 {
   struct GNUNET_TIME_Timestamp now;
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -319,7 +322,8 @@ expired_reserve_cb (void *cls,
                                          account_payto_uri,
                                          &wtid,
                                          left,
-                                         &closing_fee);
+                                         &closing_fee,
+                                         close_request_row);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Closing reserve %s over %s (%d, %d)\n",
               TALER_B2S (reserve_pub),

@@ -1135,10 +1135,6 @@ COMMENT ON COLUMN purse_requests.h_contract_terms
   IS 'Hash of the contract the parties are to agree to';
 COMMENT ON COLUMN purse_requests.flags
   IS 'see the enum TALER_WalletAccountMergeFlags';
-COMMENT ON COLUMN purse_requests.finished
-  IS 'set to TRUE once the purse has been merged (into reserve or wad) or the coins were refunded (transfer aborted)';
-COMMENT ON COLUMN purse_requests.refunded
-  IS 'set to TRUE if the purse could not be merged and thus all deposited coins were refunded';
 COMMENT ON COLUMN purse_requests.in_reserve_quota
   IS 'set to TRUE if this purse currently counts against the number of free purses in the respective reserve';
 COMMENT ON COLUMN purse_requests.amount_with_fee_val
@@ -1157,20 +1153,20 @@ CREATE TABLE IF NOT EXISTS purse_requests_default
 SELECT add_constraints_to_purse_requests_partition('default');
 
 
--- ------------------------------ purse_refunds ----------------------------------------
+-- ------------------------------ purse_decisions ----------------------------------------
 
-SELECT create_table_purse_refunds();
+SELECT create_table_purse_decision();
 
-COMMENT ON TABLE purse_refunds
-  IS 'Purses that were refunded due to expiration';
-COMMENT ON COLUMN purse_refunds.purse_pub
+COMMENT ON TABLE purse_decision
+  IS 'Purses that were decided upon (refund or merge)';
+COMMENT ON COLUMN purse_decision.purse_pub
   IS 'Public key of the purse';
 
-CREATE TABLE IF NOT EXISTS purse_refunds_default
-  PARTITION OF purse_refunds
+CREATE TABLE IF NOT EXISTS purse_decision_default
+  PARTITION OF purse_decision
   FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-SELECT add_constraints_to_purse_refunds_partition('default');
+SELECT add_constraints_to_purse_decision_partition('default');
 
 
 -- ------------------------------ purse_merges ----------------------------------------
@@ -1462,7 +1458,6 @@ CREATE OR REPLACE FUNCTION purse_requests_insert_trigger()
   LANGUAGE plpgsql
   AS $$
 BEGIN
-  ASSERT NOT NEW.finished,'Internal invariant violated';
   INSERT INTO
     purse_actions
     (purse_pub
@@ -1482,45 +1477,3 @@ CREATE TRIGGER purse_requests_on_insert
 COMMENT ON TRIGGER purse_requests_on_insert
         ON purse_requests
   IS 'Here we install an entry for the purse expiration.';
-
-
-CREATE OR REPLACE FUNCTION purse_requests_on_update_trigger()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  AS $$
-BEGIN
-  IF (NEW.finished AND NOT OLD.finished)
-  THEN
-    -- If this purse counted against the reserve's
-    -- quota of purses, decrement the reserve accounting.
-    IF (NEW.in_reserve_quota)
-    THEN
-      UPDATE reserves
-         SET purses_active=purses_active-1
-       WHERE reserve_pub IN
-         (SELECT reserve_pub
-            FROM exchange.purse_merges
-           WHERE purse_pub=NEW.purse_pub
-           LIMIT 1);
-      NEW.in_reserve_quota=FALSE;
-    END IF;
-    -- Delete from the purse_actions table, we are done
-    -- with this purse for good.
-    DELETE FROM exchange.purse_actions
-          WHERE purse_pub=NEW.purse_pub;
-    RETURN NEW;
-  END IF;
-
-  RETURN NEW;
-END $$;
-
-COMMENT ON FUNCTION purse_requests_on_update_trigger()
-  IS 'Trigger the router if the purse is ready. Also removes the entry from the router watchlist once the purse is finished.';
-
-CREATE TRIGGER purse_requests_on_update
-  BEFORE UPDATE
-   ON purse_requests
-   FOR EACH ROW EXECUTE FUNCTION purse_requests_on_update_trigger();
-COMMENT ON TRIGGER purse_requests_on_update
-  ON purse_requests
-  IS 'This covers the case where a deposit is made into a purse, which inherently then changes the purse balance via an UPDATE. If the merge is already present and the balance matches the total, we trigger the router. Once the router sets the purse to finished, the trigger will remove the purse from the watchlist of the router.';

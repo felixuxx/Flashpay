@@ -1428,6 +1428,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_amount_without_fee_val INT8,
   IN in_amount_without_fee_frac INT4,
   IN in_reserve_expiration INT8,
+  IN in_now INT8,
   OUT out_balance_ok BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
@@ -1442,6 +1443,8 @@ DECLARE
   my_amount_frac INT4; -- total in purse
 DECLARE
   was_paid BOOLEAN;
+DECLARE
+  my_in_reserve_quota BOOLEAN;
 DECLARE
   my_reserve_pub BYTEA;
 BEGIN
@@ -1548,9 +1551,11 @@ END IF;
 SELECT
     amount_with_fee_val
    ,amount_with_fee_frac
+   ,in_reserve_quota
   INTO
     my_amount_val
    ,my_amount_frac
+   ,my_in_reserve_quota
   FROM exchange.purse_requests
   WHERE (purse_pub=in_purse_pub)
     AND ( ( ( (amount_with_fee_val <= balance_val)
@@ -1560,6 +1565,28 @@ IF NOT FOUND
 THEN
   RETURN;
 END IF;
+
+-- Remember how this purse was finished.
+INSERT INTO purse_decision
+  (purse_pub
+  ,action_timestamp
+  ,refunded)
+VALUES
+  (in_purse_pub
+  ,in_now
+  ,FALSE);
+
+IF (my_in_reserve_quota)
+THEN
+  UPDATE reserves
+    SET purses_active=purses_active-1
+  WHERE reserve_pub IN
+    (SELECT reserve_pub
+       FROM exchange.purse_merges
+      WHERE purse_pub=my_purse_pub
+     LIMIT 1);
+END IF;
+
 
 IF (0 != psi)
 THEN
@@ -1606,11 +1633,6 @@ ELSE
       WHERE reserve_pub=my_reserve_pub;
   END IF;
 
-  -- ... and mark purse as finished.
-  -- FIXME: combine with UPDATE above?
-  UPDATE purse_requests
-     SET finished=true
-  WHERE purse_pub=in_purse_pub;
 END IF;
 
 
@@ -1644,7 +1666,7 @@ DECLARE
 DECLARE
   my_partner_serial_id INT8;
 DECLARE
-  my_finished BOOLEAN;
+  my_in_reserve_quota BOOLEAN;
 BEGIN
 
 IF in_partner_url IS NULL
@@ -1675,12 +1697,12 @@ SELECT amount_with_fee_val
       ,amount_with_fee_frac
       ,purse_fee_val
       ,purse_fee_frac
-      ,finished
+      ,in_reserve_quota
   INTO my_amount_val
       ,my_amount_frac
       ,my_purse_fee_val
       ,my_purse_fee_frac
-      ,my_finished
+      ,my_in_reserve_quota
   FROM exchange.purse_requests
   WHERE purse_pub=in_purse_pub
     AND balance_val >= amount_with_fee_val
@@ -1731,8 +1753,6 @@ THEN
 END IF;
 out_conflict=FALSE;
 
-ASSERT NOT my_finished, 'internal invariant failed';
-
 
 -- Initialize reserve, if not yet exists.
 INSERT INTO reserves
@@ -1745,8 +1765,26 @@ INSERT INTO reserves
   ,in_expiration_date)
   ON CONFLICT DO NOTHING;
 
+-- Remember how this purse was finished.
+INSERT INTO purse_decision
+  (purse_pub
+  ,action_timestamp
+  ,refunded)
+VALUES
+  (in_purse_pub
+  ,in_merge_timestamp
+  ,FALSE);
 
-
+IF (my_in_reserve_quota)
+THEN
+  UPDATE reserves
+    SET purses_active=purses_active-1
+  WHERE reserve_pub IN
+    (SELECT reserve_pub
+       FROM exchange.purse_merges
+      WHERE purse_pub=my_purse_pub
+     LIMIT 1);
+END IF;
 
 -- Store account merge signature.
 INSERT INTO exchange.account_merges
@@ -1794,10 +1832,6 @@ ELSE
          END
   WHERE reserve_pub=in_reserve_pub;
 
-  -- ... and mark purse as finished.
-  UPDATE exchange.purse_requests
-     SET finished=true
-  WHERE purse_pub=in_purse_pub;
 END IF;
 
 
@@ -1969,6 +2003,7 @@ END $$;
 CREATE OR REPLACE FUNCTION exchange_do_expire_purse(
   IN in_start_time INT8,
   IN in_end_time INT8,
+  IN in_now INT8,
   OUT out_found BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -1976,15 +2011,21 @@ DECLARE
   my_purse_pub BYTEA;
 DECLARE
   my_deposit record;
+DECLARE
+  my_in_reserve_quota BOOLEAN;
 BEGIN
 
+-- FIXME: we should probably do this in a loop
+-- and expire all at once, instead of one per query
 SELECT purse_pub
+      ,in_reserve_quota
   INTO my_purse_pub
+      ,my_in_reserve_quota
   FROM exchange.purse_requests
  WHERE (purse_expiration >= in_start_time) AND
        (purse_expiration < in_end_time) AND
-       (NOT finished) AND
-       (NOT refunded)
+   purse_pub NOT IN (SELECT purse_pub
+                       FROM purse_decision)
  ORDER BY purse_expiration ASC
  LIMIT 1;
 out_found = FOUND;
@@ -1993,15 +2034,25 @@ THEN
   RETURN;
 END IF;
 
-UPDATE exchange.purse_requests
- SET refunded=TRUE,
-     finished=TRUE
- WHERE purse_pub=my_purse_pub;
+INSERT INTO purse_decision
+  (purse_pub
+  ,action_timestamp
+  ,refunded)
+VALUES
+  (my_purse_pub
+  ,in_now
+  ,TRUE);
 
-INSERT INTO exchange.purse_refunds
- (purse_pub)
- VALUES
- (my_purse_pub);
+IF (my_in_reserve_quota)
+THEN
+  UPDATE reserves
+    SET purses_active=purses_active-1
+  WHERE reserve_pub IN
+    (SELECT reserve_pub
+       FROM exchange.purse_merges
+      WHERE purse_pub=my_purse_pub
+     LIMIT 1);
+END IF;
 
 -- restore balance to each coin deposited into the purse
 FOR my_deposit IN
@@ -2028,7 +2079,7 @@ LOOP
   END LOOP;
 END $$;
 
-COMMENT ON FUNCTION exchange_do_expire_purse(INT8,INT8)
+COMMENT ON FUNCTION exchange_do_expire_purse(INT8,INT8,INT8)
   IS 'Finds an expired purse in the given time range and refunds the coins (if any).';
 
 

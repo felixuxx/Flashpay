@@ -231,6 +231,10 @@ create_transaction (void *cls,
     }
     if (! balance_ok)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Coin %s has insufficient balance for purse deposit of amount %s\n",
+                  TALER_B2S (&coin->cpi.coin_pub),
+                  TALER_amount2s (&coin->amount));
       *mhd_ret
         = TEH_RESPONSE_reply_coin_insufficient_funds (
             connection,

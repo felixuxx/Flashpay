@@ -1575,20 +1575,20 @@ lrbt_cb_table_purse_requests (void *cls,
 
 
 /**
- * Function called with purse_refunds table entries.
+ * Function called with purse_decision table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_purse_refunds (void *cls,
-                             PGresult *result,
-                             unsigned int num_results)
+lrbt_cb_table_purse_decision (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
   struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_PURSE_REFUNDS
+    .table = TALER_EXCHANGEDB_RT_PURSE_DECISION
   };
 
   for (unsigned int i = 0; i<num_results; i++)
@@ -1599,7 +1599,13 @@ lrbt_cb_table_purse_refunds (void *cls,
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "purse_pub",
-        &td.details.purse_refunds.purse_pub),
+        &td.details.purse_decision.purse_pub),
+      GNUNET_PQ_result_spec_timestamp (
+        "action_timestamp",
+        &td.details.purse_decision.action_timestamp),
+      GNUNET_PQ_result_spec_bool (
+        "refunded",
+        &td.details.purse_decision.refunded),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2639,15 +2645,17 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY purse_requests_serial_id ASC;");
     rh = &lrbt_cb_table_purse_requests;
     break;
-  case TALER_EXCHANGEDB_RT_PURSE_REFUNDS:
-    XPREPARE ("select_above_serial_by_table_purse_refunds",
+  case TALER_EXCHANGEDB_RT_PURSE_DECISION:
+    XPREPARE ("select_above_serial_by_table_purse_decision",
               "SELECT"
-              " purse_refunds_serial_id"
+              " purse_decision_serial_id"
+              ",action_timestamp"
+              ",refunded"
               ",purse_pub"
-              " FROM purse_refunds"
-              " WHERE purse_refunds_serial_id > $1"
-              " ORDER BY purse_refunds_serial_id ASC;");
-    rh = &lrbt_cb_table_purse_refunds;
+              " FROM purse_decision"
+              " WHERE purse_decision_serial_id > $1"
+              " ORDER BY purse_decision_serial_id ASC;");
+    rh = &lrbt_cb_table_purse_decision;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_MERGES:
     XPREPARE ("select_above_serial_by_table_purse_merges",

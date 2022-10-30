@@ -303,7 +303,7 @@ handle_purse_create_deposit_finished (void *cls,
                 TALER_amount_cmp (&left,
                                   &deposit->contribution))
             {
-              /* Balance was sufficient after all; recoup MAY have still been possible */
+              /* Balance was sufficient after all; operation MAY have still been possible */
               GNUNET_break_op (0);
               continue;
             }

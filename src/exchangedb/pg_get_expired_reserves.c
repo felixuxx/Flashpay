@@ -102,7 +102,8 @@ reserve_expired_cb (void *cls,
                     &reserve_pub,
                     &remaining_balance,
                     account_details,
-                    exp_date);
+                    exp_date,
+                    0);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
