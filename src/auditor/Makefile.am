@@ -22,6 +22,7 @@ bin_PROGRAMS = \
   taler-helper-auditor-aggregation \
   taler-helper-auditor-coins \
   taler-helper-auditor-deposits \
+  taler-helper-auditor-purses \
   taler-helper-auditor-reserves \
   taler-helper-auditor-wire
 

@@ -234,6 +234,23 @@ struct TALER_AUDITORDB_ProgressPointPurse
 
 
 /**
+ * Global statistics about purses.
+ */
+struct TALER_AUDITORDB_PurseBalance
+{
+  /**
+   * Balance in all unmerged and unexpired purses.
+   */
+  struct TALER_Amount balance;
+
+  /**
+   * Total number of open purses.
+   */
+  uint64_t open_purses;
+};
+
+
+/**
  * Structure for remembering the auditor's progress over the various
  * tables and (auditor) transactions when analyzing reserves.
  */
@@ -1196,6 +1213,79 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
+   * Insert information about a purse.  There must not be an
+   * existing record for the purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse
+   * @param master_pub master public key of the exchange
+   * @param balance balance of the purse
+   * @param expiration_date expiration date of the reserve
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_info)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_Amount *balance,
+    struct GNUNET_TIME_Timestamp expiration_date);
+
+
+  /**
+   * Update information about a purse.  Destructively updates an
+   * existing record, which must already exist.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse
+   * @param master_pub master public key of the exchange
+   * @param balance new balance for the purse
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_purse_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_Amount *balance);
+
+
+  /**
+   * Get information about a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the reserve
+   * @param master_pub master public key of the exchange
+   * @param[out] rowid which row did we get the information from
+   * @param[out] balance set to balance of the purse
+   * @param[out] expiration_date expiration date of the purse
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_purse_info)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    uint64_t *rowid,
+    struct TALER_Amount *balance,
+    struct GNUNET_TIME_Timestamp *expiration_date);
+
+
+  /**
+   * Delete information about a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the purse
+   * @param master_pub master public key of the exchange
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*del_purse_info)(void *cls,
+                    const struct TALER_PurseContractPublicKeyP *purse_pub,
+                    const struct TALER_MasterPublicKeyP *master_pub);
+
+
+  /**
    * Insert information about all reserves.  There must not be an
    * existing record for the @a master_pub.
    *
@@ -1239,6 +1329,52 @@ struct TALER_AUDITORDB_Plugin
   (*get_reserve_summary)(void *cls,
                          const struct TALER_MasterPublicKeyP *master_pub,
                          struct TALER_AUDITORDB_ReserveFeeBalance *rfb);
+
+
+  /**
+ * Insert information about all purses.  There must not be an
+ * existing record for the @a master_pub.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param master_pub master public key of the exchange
+ * @param sum purse balance summary to store
+ * @return transaction status code
+ */
+  enum GNUNET_DB_QueryStatus
+  (*insert_purse_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_PurseBalance *sum);
+
+
+  /**
+   * Update information about all purses.  Destructively updates an
+   * existing record, which must already exist.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master public key of the exchange
+   * @param sum purse balances summary to store
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_purse_summary)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    const struct TALER_AUDITORDB_PurseBalance *sum);
+
+
+  /**
+   * Get summary information about all purses.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master public key of the exchange
+   * @param[out] sum purse balances summary to initialize
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_purse_summary)(void *cls,
+                       const struct TALER_MasterPublicKeyP *master_pub,
+                       struct TALER_AUDITORDB_PurseBalance *sum);
 
 
   /**
