@@ -2022,8 +2022,8 @@ postgres_get_wire_auditor_progress (
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
- * @param reserve_balance amount stored in the reserve
- * @param rfb amounts for the reserve
+ * @param rfb balance amounts for the reserve
+ * @param expiration_date when will the reserve expire
  * @param origin_account where did the money in the reserve originally come from
  * @return transaction status code
  */

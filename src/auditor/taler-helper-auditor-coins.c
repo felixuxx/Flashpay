@@ -1140,7 +1140,7 @@ check_known_coin (
 /**
  * Update the denom balance in @a dso reducing it by
  * @a amount_with_fee. If this is not possible, report
- * an emergency.  Also updates the #total_escrow_balance.
+ * an emergency.  Also updates the #balance.
  *
  * @param dso denomination summary to update
  * @param rowid responsible row (for logging)

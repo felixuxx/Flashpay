@@ -2056,8 +2056,7 @@ begin_credit_audit (void)
 
 
 /**
- * Function called about reserve closing operations
- * the aggregator triggered.
+ * Function called about reserve closing operations the aggregator triggered.
  *
  * @param cls closure
  * @param rowid row identifier used to uniquely identify the reserve closing operation
@@ -2067,6 +2066,8 @@ begin_credit_audit (void)
  * @param reserve_pub public key of the reserve
  * @param receiver_account where did we send the funds, in payto://-format
  * @param wtid identifier used for the wire transfer
+ * @param close_request_row which close request triggered the operation?
+ *         0 if it was a timeout (not used)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue

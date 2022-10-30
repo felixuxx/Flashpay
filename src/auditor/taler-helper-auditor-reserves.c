@@ -956,6 +956,8 @@ handle_reserve_open (
  * @param reserve_pub public key of the reserve
  * @param receiver_account where did we send the funds
  * @param transfer_details details about the wire transfer
+ * @param close_request_row which close request triggered the operation?
+ *         0 if it was a timeout
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
