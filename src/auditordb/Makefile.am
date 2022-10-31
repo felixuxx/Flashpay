@@ -33,7 +33,57 @@ plugin_LTLIBRARIES = \
 endif
 
 libtaler_plugin_auditordb_postgres_la_SOURCES = \
-  plugin_auditordb_postgres.c
+  plugin_auditordb_postgres.c pg_helper.h \
+  pg_insert_auditor_progress_reserve.h pg_insert_auditor_progress_reserve.c \
+  pg_update_auditor_progress_reserve.h pg_update_auditor_progress_reserve.c \
+  pg_get_auditor_progress_reserve.h pg_get_auditor_progress_reserve.c \
+  pg_insert_auditor_progress_purse.h pg_insert_auditor_progress_purse.c \
+  pg_update_auditor_progress_purse.h pg_update_auditor_progress_purse.c \
+  pg_get_auditor_progress_purse.h pg_get_auditor_progress_purse.c \
+  pg_insert_auditor_progress_aggregation.h pg_insert_auditor_progress_aggregation.c \
+  pg_update_auditor_progress_aggregation.h pg_update_auditor_progress_aggregation.c \
+  pg_get_auditor_progress_aggregation.h pg_get_auditor_progress_aggregation.c \
+  pg_insert_auditor_progress_deposit_confirmation.h pg_insert_auditor_progress_deposit_confirmation.c \
+  pg_update_auditor_progress_deposit_confirmation.h pg_update_auditor_progress_deposit_confirmation.c \
+  pg_get_auditor_progress_deposit_confirmation.h pg_get_auditor_progress_deposit_confirmation.c \
+  pg_insert_auditor_progress_coin.h pg_insert_auditor_progress_coin.c \
+  pg_update_auditor_progress_coin.h pg_update_auditor_progress_coin.c \
+  pg_get_auditor_progress_coin.h pg_get_auditor_progress_coin.c \
+  pg_insert_wire_auditor_account_progress.h pg_insert_wire_auditor_account_progress.c \
+  pg_update_wire_auditor_account_progress.h pg_update_wire_auditor_account_progress.c \
+  pg_get_wire_auditor_account_progress.h pg_get_wire_auditor_account_progress.c \
+  pg_insert_wire_auditor_progress.h pg_insert_wire_auditor_progress.c \
+  pg_update_wire_auditor_progress.h pg_update_wire_auditor_progress.c \
+  pg_get_wire_auditor_progress.h pg_get_wire_auditor_progress.c \
+  pg_insert_reserve_info.h pg_insert_reserve_info.c \
+  pg_update_reserve_info.h pg_update_reserve_info.c \
+  pg_del_reserve_info.h pg_del_reserve_info.c \
+  pg_get_reserve_info.h pg_get_reserve_info.c \
+  pg_insert_reserve_summary.h pg_insert_reserve_summary.c \
+  pg_update_reserve_summary.h pg_update_reserve_summary.c \
+  pg_get_reserve_summary.h pg_get_reserve_summary.c \
+  pg_insert_wire_fee_summary.h pg_insert_wire_fee_summary.c \
+  pg_update_wire_fee_summary.h pg_update_wire_fee_summary.c \
+  pg_get_wire_fee_summary.h pg_get_wire_fee_summary.c \
+  pg_insert_denomination_balance.h pg_insert_denomination_balance.c \
+  pg_update_denomination_balance.h pg_update_denomination_balance.c \
+  pg_get_denomination_balance.h pg_get_denomination_balance.c \
+  pg_insert_balance_summary.h pg_insert_balance_summary.c \
+  pg_update_balance_summary.h pg_update_balance_summary.c \
+  pg_get_balance_summary.h pg_get_balance_summary.c \
+  pg_insert_historic_denom_revenue.h pg_insert_historic_denom_revenue.c \
+  pg_select_historic_denom_revenue.h pg_select_historic_denom_revenue.c \
+  pg_insert_historic_reserve_revenue.h pg_insert_historic_reserve_revenue.c \
+  pg_select_historic_reserve_revenue.h pg_select_historic_reserve_revenue.c \
+  pg_insert_predicted_result.h pg_insert_predicted_result.c \
+  pg_update_predicted_result.h pg_update_predicted_result.c \
+  pg_get_predicted_balance.h pg_get_predicted_balance.c \
+  pg_insert_exchange.h pg_insert_exchange.c \
+  pg_list_exchanges.h pg_list_exchanges.c \
+  pg_delete_exchange.h pg_delete_exchange.c \
+  pg_insert_exchange_signkey.h pg_insert_exchange_signkey.c \
+  pg_insert_deposit_confirmation.h pg_insert_deposit_confirmation.c \
+  pg_get_deposit_confirmations.h pg_get_deposit_confirmations.c
 libtaler_plugin_auditordb_postgres_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
