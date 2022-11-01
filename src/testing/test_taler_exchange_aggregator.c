@@ -536,7 +536,7 @@ main (int argc,
                           testname);
 
   GNUNET_log_setup ("test_taler_exchange_aggregator",
-                    "DEBUG",
+                    "INFO",
                     NULL);
 
   /* these might get in the way */

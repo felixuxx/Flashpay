@@ -162,7 +162,7 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test_taler_exchange_wirewatch",
-                    "DEBUG",
+                    "INFO",
                     NULL);
 
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))

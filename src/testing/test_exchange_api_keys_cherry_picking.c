@@ -118,7 +118,7 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup (argv[0],
-                    "DEBUG",
+                    "INFO",
                     NULL);
   cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
   GNUNET_assert (NULL != cipher);

@@ -188,7 +188,7 @@ main (int argc,
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-bank-api",
-                    "DEBUG",
+                    "INFO",
                     NULL);
 
   with_fakebank = TALER_TESTING_has_in_name (argv[0],
