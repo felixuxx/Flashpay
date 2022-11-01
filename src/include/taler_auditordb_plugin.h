@@ -605,6 +605,23 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
+ * Function called on expired purses.
+ *
+ * @param cls closure
+ * @param purse_pub public key of the purse
+ * @param balance amount of money in the purse
+ * @param expiration_date when did the purse expire?
+ * @return #GNUNET_OK to continue to iterate
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_AUDITORDB_ExpiredPurseCallback)(
+  void *cls,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_Amount *balance,
+  struct GNUNET_TIME_Timestamp expiration_date);
+
+
+/**
  * @brief The plugin API, returned from the plugin's "init" function.
  * The argument given to "init" is simply a configuration handle.
  *
@@ -1220,7 +1237,7 @@ struct TALER_AUDITORDB_Plugin
    * @param purse_pub public key of the purse
    * @param master_pub master public key of the exchange
    * @param balance balance of the purse
-   * @param expiration_date expiration date of the reserve
+   * @param expiration_date expiration date of the purse
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -1245,7 +1262,7 @@ struct TALER_AUDITORDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*update_purse_info)(
     void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
     const struct TALER_MasterPublicKeyP *master_pub,
     const struct TALER_Amount *balance);
 
@@ -1254,7 +1271,7 @@ struct TALER_AUDITORDB_Plugin
    * Get information about a purse.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub public key of the reserve
+   * @param purse_pub public key of the purse
    * @param master_pub master public key of the exchange
    * @param[out] rowid which row did we get the information from
    * @param[out] balance set to balance of the purse
@@ -1269,6 +1286,38 @@ struct TALER_AUDITORDB_Plugin
     uint64_t *rowid,
     struct TALER_Amount *balance,
     struct GNUNET_TIME_Timestamp *expiration_date);
+
+
+  /**
+   * Delete information about a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub public key of the reserve
+   * @param master_pub master public key of the exchange
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_purse_info)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_MasterPublicKeyP *master_pub);
+
+
+  /**
+   * Get information about expired purses.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master public key of the exchange
+   * @param cb function to call on expired purses
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_expired)(
+    void *cls,
+    const struct TALER_MasterPublicKeyP *master_pub,
+    TALER_AUDITORDB_ExpiredPurseCallback cb,
+    void *cb_cls);
 
 
   /**

@@ -303,9 +303,11 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
 
   {
     enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_TIME_Timestamp create_timestamp;
 
     qs = TEH_plugin->select_purse (TEH_plugin->cls,
                                    &gc->purse_pub,
+                                   &create_timestamp,
                                    &gc->purse_expiration,
                                    &gc->amount,
                                    &gc->deposited,

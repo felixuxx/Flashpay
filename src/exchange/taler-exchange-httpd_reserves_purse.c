@@ -252,7 +252,7 @@ purse_transaction (void *cls,
       uint32_t min_age;
 
       TEH_plugin->rollback (TEH_plugin->cls);
-      qs = TEH_plugin->select_purse_request (
+      qs = TEH_plugin->get_purse_request (
         TEH_plugin->cls,
         &rpc->pd.purse_pub,
         &merge_pub,

@@ -156,15 +156,15 @@ create_transaction (void *cls,
     uint32_t min_age;
 
     TEH_plugin->rollback (TEH_plugin->cls);
-    qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
-                                           &pcc->pd.purse_pub,
-                                           &merge_pub,
-                                           &purse_expiration,
-                                           &h_contract_terms,
-                                           &min_age,
-                                           &target_amount,
-                                           &balance,
-                                           &purse_sig);
+    qs = TEH_plugin->get_purse_request (TEH_plugin->cls,
+                                        &pcc->pd.purse_pub,
+                                        &merge_pub,
+                                        &purse_expiration,
+                                        &h_contract_terms,
+                                        &min_age,
+                                        &target_amount,
+                                        &balance,
+                                        &purse_sig);
     if (qs < 0)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);

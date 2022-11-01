@@ -2771,7 +2771,7 @@ TALER_CRYPTO_helper_esign_disconnect (
 void
 TALER_wallet_purse_create_sign (
   struct GNUNET_TIME_Timestamp purse_expiration,
-  struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
   uint32_t min_age,
   const struct TALER_Amount *amount,
@@ -2794,7 +2794,7 @@ TALER_wallet_purse_create_sign (
 enum GNUNET_GenericReturnValue
 TALER_wallet_purse_create_verify (
   struct GNUNET_TIME_Timestamp purse_expiration,
-  struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_PurseMergePublicKeyP *merge_pub,
   uint32_t min_age,
   const struct TALER_Amount *amount,

@@ -426,15 +426,15 @@ TEH_handler_purses_merge (
   }
 
   /* Fetch purse details */
-  qs = TEH_plugin->select_purse_request (TEH_plugin->cls,
-                                         pcc.purse_pub,
-                                         &pcc.merge_pub,
-                                         &pcc.purse_expiration,
-                                         &pcc.h_contract_terms,
-                                         &pcc.min_age,
-                                         &pcc.target_amount,
-                                         &pcc.balance,
-                                         &purse_sig);
+  qs = TEH_plugin->get_purse_request (TEH_plugin->cls,
+                                      pcc.purse_pub,
+                                      &pcc.merge_pub,
+                                      &pcc.purse_expiration,
+                                      &pcc.h_contract_terms,
+                                      &pcc.min_age,
+                                      &pcc.target_amount,
+                                      &pcc.balance,
+                                      &purse_sig);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:

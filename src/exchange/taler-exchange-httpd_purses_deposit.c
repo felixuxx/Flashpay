@@ -359,11 +359,13 @@ TEH_handler_purses_deposit (
 
   {
     enum GNUNET_DB_QueryStatus qs;
+    struct GNUNET_TIME_Timestamp create_timestamp;
     struct GNUNET_TIME_Timestamp merge_timestamp;
 
     qs = TEH_plugin->select_purse (
       TEH_plugin->cls,
       pcc.purse_pub,
+      &create_timestamp,
       &pcc.purse_expiration,
       &pcc.amount,
       &pcc.deposit_total,

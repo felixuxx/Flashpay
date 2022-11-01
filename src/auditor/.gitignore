@@ -23,3 +23,4 @@ auditor-basedb.sqlite3
 taler-auditor-test.sqlite3
 libeufin-nexus.pid
 libeufin-sandbox.pid
+taler-helper-auditor-purses

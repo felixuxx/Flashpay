@@ -2356,7 +2356,7 @@ typedef enum GNUNET_GenericReturnValue
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param purse_pub public key of the purse
- * @param reserve_pub public key of the target reserve, NULL if not known
+ * @param reserve_pub public key of the target reserve, NULL if not known / refunded
  * @param purse_value what is the (target) value of the purse
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -2367,6 +2367,24 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_Amount *purse_value);
+
+
+/**
+ * Function called with details about purse decisions that have been made, with
+ * the goal of auditing the purse's execution.
+ *
+ * @param cls closure
+ * @param rowid unique serial ID for the deposit in our DB
+ * @param purse_pub public key of the purse
+ * @param refunded true if decision was to refund
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
+ */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_AllPurseDecisionCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  bool refunded);
 
 
 /**
@@ -2991,6 +3009,34 @@ typedef void
   const char *payto_uri,
   struct GNUNET_TIME_Timestamp deadline,
   bool done);
+
+
+/**
+ * Function called on purse requests.
+ *
+ * @param cls closure
+ * @param purse_pub public key of the purse
+ * @param merge_pub public key representing the merge capability
+ * @param purse_creation when was the purse created?
+ * @param purse_expiration when would an unmerged purse expire
+ * @param h_contract_terms contract associated with the purse
+ * @param age_limit the age limit for deposits into the purse
+ * @param target_amount amount to be put into the purse
+ * @param purse_sig signature of the purse over the initialization data
+ * @return #GNUNET_OK to continue to iterate
+   */
+typedef enum GNUNET_GenericReturnValue
+(*TALER_EXCHANGEDB_PurseRequestCallback)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseMergePublicKeyP *merge_pub,
+  struct GNUNET_TIME_Timestamp purse_creation,
+  struct GNUNET_TIME_Timestamp purse_expiration,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  uint32_t age_limit,
+  const struct TALER_Amount *target_amount,
+  const struct TALER_PurseContractSignatureP *purse_sig);
 
 
 /**
@@ -4594,6 +4640,25 @@ struct TALER_EXCHANGEDB_Plugin
                                      TALER_EXCHANGEDB_DepositCallback cb,
                                      void *cb_cls);
 
+
+  /**
+   * Function called to return meta data about a purses
+   * above a certain serial ID.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param serial_id number to select requests by
+   * @param cb function to call on each request
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_purse_requests_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_PurseRequestCallback cb,
+    void *cb_cls);
+
+
   /**
    * Select purse deposits above @a serial_id in monotonically increasing
    * order.
@@ -4683,6 +4748,24 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t serial_id,
     bool refunded,
     TALER_EXCHANGEDB_PurseDecisionCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Select all purse refunds above @a serial_id in monotonically increasing
+   * order.
+   *
+   * @param cls closure
+   * @param serial_id highest serial ID to exclude (select strictly larger)
+   * @param cb function to call on each result
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_all_purse_decisions_above_serial_id)(
+    void *cls,
+    uint64_t serial_id,
+    TALER_EXCHANGEDB_AllPurseDecisionCallback cb,
     void *cb_cls);
 
 
@@ -5647,6 +5730,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param purse_pub public key of the new purse
+   * @param[out] purse_creation set to time when the purse was created
    * @param[out] purse_expiration set to time when the purse will expire
    * @param[out] amount set to target amount (with fees) to be put into the purse
    * @param[out] deposited set to actual amount put into the purse so far
@@ -5658,6 +5742,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*select_purse)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
+    struct GNUNET_TIME_Timestamp *purse_creation,
     struct GNUNET_TIME_Timestamp *purse_expiration,
     struct TALER_Amount *amount,
     struct TALER_Amount *deposited,
@@ -5681,7 +5766,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*select_purse_request)(
+  (*get_purse_request)(
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
     struct TALER_PurseMergePublicKeyP *merge_pub,

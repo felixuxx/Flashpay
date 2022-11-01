@@ -2259,6 +2259,7 @@ prepare_statements (struct PostgresClosure *pg)
       "select_purse",
       "SELECT "
       " merge_pub"
+      ",purse_creation"
       ",purse_expiration"
       ",h_contract_terms"
       ",amount_with_fee_val"
@@ -2269,9 +2270,9 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM purse_requests"
       " LEFT JOIN purse_merges USING (purse_pub)"
       " WHERE purse_pub=$1;"),
-    /* Used in #postgres_select_purse_request */
+    /* Used in #postgres_get_purse_request */
     GNUNET_PQ_make_prepare (
-      "select_purse_request",
+      "get_purse_request",
       "SELECT "
       " merge_pub"
       ",purse_expiration"
@@ -8002,6 +8003,127 @@ postgres_select_purse_decisions_above_serial_id (
 
 
 /**
+ * Closure for #all_purse_decision_serial_helper_cb().
+ */
+struct AllPurseDecisionSerialContext
+{
+
+  /**
+   * Callback to call.
+   */
+  TALER_EXCHANGEDB_AllPurseDecisionCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Status code, set to #GNUNET_SYSERR on hard errors.
+   */
+  enum GNUNET_GenericReturnValue status;
+};
+
+
+/**
+ * Helper function to be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct PurseRefundSerialContext`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+all_purse_decision_serial_helper_cb (void *cls,
+                                     PGresult *result,
+                                     unsigned int num_results)
+{
+  struct AllPurseDecisionSerialContext *dsc = cls;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_PurseContractPublicKeyP purse_pub;
+    bool refunded;
+    uint64_t rowid;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
+                                            &purse_pub),
+      GNUNET_PQ_result_spec_bool ("refunded",
+                                  &refunded),
+      GNUNET_PQ_result_spec_uint64 ("purse_decision_serial_id",
+                                    &rowid),
+      GNUNET_PQ_result_spec_end
+    };
+    enum GNUNET_GenericReturnValue ret;
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      dsc->status = GNUNET_SYSERR;
+      return;
+    }
+    ret = dsc->cb (dsc->cb_cls,
+                   rowid,
+                   &purse_pub,
+                   refunded);
+    GNUNET_PQ_cleanup_result (rs);
+    if (GNUNET_OK != ret)
+      break;
+  }
+}
+
+
+/**
+ * Select purse decisions above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_all_purse_decisions_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_AllPurseDecisionCallback cb,
+  void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct AllPurseDecisionSerialContext dsc = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+                                             "audit_get_all_purse_decision_incr",
+                                             params,
+                                             &
+                                             all_purse_decision_serial_helper_cb,
+                                             &dsc);
+  if (GNUNET_OK != dsc.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Closure for #purse_refund_coin_helper_cb().
  */
 struct PurseRefundCoinContext
@@ -11355,7 +11477,7 @@ postgres_insert_contract (
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_select_purse_request (
+postgres_get_purse_request (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct TALER_PurseMergePublicKeyP *merge_pub,
@@ -11389,7 +11511,7 @@ postgres_select_purse_request (
     GNUNET_PQ_result_spec_end
   };
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_purse_request",
+                                                   "get_purse_request",
                                                    params,
                                                    rs);
 }
@@ -11464,15 +11586,15 @@ postgres_insert_purse_request (
     struct TALER_Amount balance;
     struct TALER_PurseContractSignatureP purse_sig2;
 
-    qs = postgres_select_purse_request (pg,
-                                        purse_pub,
-                                        &merge_pub2,
-                                        &purse_expiration2,
-                                        &h_contract_terms2,
-                                        &age_limit2,
-                                        &amount2,
-                                        &balance,
-                                        &purse_sig2);
+    qs = postgres_get_purse_request (pg,
+                                     purse_pub,
+                                     &merge_pub2,
+                                     &purse_expiration2,
+                                     &h_contract_terms2,
+                                     &age_limit2,
+                                     &amount2,
+                                     &balance,
+                                     &purse_sig2);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (0);
@@ -11542,6 +11664,7 @@ postgres_expire_purse (
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param purse_pub public key of the new purse
+ * @param[out] purse_creation set to time when the purse was created
  * @param[out] purse_expiration set to time when the purse will expire
  * @param[out] amount set to target amount (with fees) to be put into the purse
  * @param[out] deposited set to actual amount put into the purse so far
@@ -11553,6 +11676,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_select_purse (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct GNUNET_TIME_Timestamp *purse_creation,
   struct GNUNET_TIME_Timestamp *purse_expiration,
   struct TALER_Amount *amount,
   struct TALER_Amount *deposited,
@@ -11567,6 +11691,8 @@ postgres_select_purse (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_timestamp ("purse_expiration",
                                      purse_expiration),
+    GNUNET_PQ_result_spec_timestamp ("purse_creation",
+                                     purse_creation),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  amount),
     TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
@@ -13042,6 +13168,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_history_requests_above_serial_id;
   plugin->select_purse_decisions_above_serial_id
     = &postgres_select_purse_decisions_above_serial_id;
+  plugin->select_all_purse_decisions_above_serial_id
+    = &postgres_select_all_purse_decisions_above_serial_id;
   plugin->select_purse_deposits_by_purse
     = &postgres_select_purse_deposits_by_purse;
   plugin->select_refreshes_above_serial_id
@@ -13136,8 +13264,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_contract_by_purse;
   plugin->insert_purse_request
     = &postgres_insert_purse_request;
-  plugin->select_purse_request
-    = &postgres_select_purse_request;
+  plugin->get_purse_request
+    = &postgres_get_purse_request;
   plugin->expire_purse
     = &postgres_expire_purse;
   plugin->select_purse
