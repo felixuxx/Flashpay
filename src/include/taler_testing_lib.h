@@ -2324,7 +2324,6 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
  * @param wire_method wire method to set wire fees for
  * @param wire_fee the wire fee to affirm
  * @param closing_fee the closing fee to affirm
- * @param wad_fee wad fee to charge
  * @param expected_http_status expected HTTP status from exchange
  * @param bad_sig should we use a bogus signature?
  * @return the command
@@ -2334,7 +2333,6 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
                                 const char *wire_method,
                                 const char *wire_fee,
                                 const char *closing_fee,
-                                const char *wad_fee,
                                 unsigned int expected_http_status,
                                 bool bad_sig);
 
@@ -2408,15 +2406,13 @@ TALER_TESTING_cmd_exec_offline_sign_keys (const char *label,
  * @param config_filename configuration filename.
  * @param wire_fee the wire fee to affirm (for the current year)
  * @param closing_fee the closing fee to affirm (for the current year)
- * @param wad_fee the wad fee to affirm
  * @return the command
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
                                           const char *config_filename,
                                           const char *wire_fee,
-                                          const char *closing_fee,
-                                          const char *wad_fee);
+                                          const char *closing_fee);
 
 
 /**
@@ -2425,11 +2421,9 @@ TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
  * @param label command label.
  * @param config_filename configuration filename.
  * @param history_fee the history fee to charge (for the current year)
- * @param kyc_fee the KYC fee to charge (for the current year)
  * @param account_fee the account fee to charge (for the current year)
  * @param purse_fee the purse fee to charge (for the current year)
  * @param purse_timeout when do purses time out
- * @param kyc_timeout when does the KYC time out
  * @param history_expiration when does an account history expire
  * @param num_purses number of (free) active purses per account
  * @return the command
@@ -2439,11 +2433,9 @@ TALER_TESTING_cmd_exec_offline_sign_global_fees (
   const char *label,
   const char *config_filename,
   const char *history_fee,
-  const char *kyc_fee,
   const char *account_fee,
   const char *purse_fee,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   unsigned int num_purses);
 

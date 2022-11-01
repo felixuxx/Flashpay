@@ -792,12 +792,6 @@ struct TALER_WireFeeSetNBOP
    */
   struct TALER_AmountNBO closing;
 
-  /**
-   * The fee the exchange charges for cross-exchange
-   * P2P payments.
-   */
-  struct TALER_AmountNBO wad;
-
 };
 
 
@@ -809,28 +803,20 @@ struct TALER_GlobalFeeSetNBOP
 {
 
   /**
-   * The fee the exchange charges for returning the
-   * history of a reserve or account.
+   * The fee the exchange charges for returning the history of a reserve or
+   * account.
    */
   struct TALER_AmountNBO history;
 
   /**
-   * The fee the exchange charges for performing a
-   * KYC check on a reserve to turn it into an account
-   * that can be used for P2P payments.
-   */
-  struct TALER_AmountNBO kyc;
-
-  /**
-   * The fee the exchange charges for keeping
-   * an account or reserve open for a year.
+   * The fee the exchange charges for keeping an account or reserve open for a
+   * year.
    */
   struct TALER_AmountNBO account;
 
   /**
-   * The fee the exchange charges if a purse
-   * is abandoned and this was not covered by
-   * the account limit.
+   * The fee the exchange charges if a purse is abandoned and this was not
+   * covered by the account limit.
    */
   struct TALER_AmountNBO purse;
 };
@@ -874,15 +860,13 @@ struct TALER_DenomFeeSet
 
 
 /**
- * Set of the fees applying for a given
- * time-range and wire method.
+ * Set of the fees applying for a given time-range and wire method.
  */
 struct TALER_WireFeeSet
 {
 
   /**
-   * The fee the exchange charges for wiring funds
-   * to a merchant.
+   * The fee the exchange charges for wiring funds to a merchant.
    */
   struct TALER_Amount wire;
 
@@ -891,12 +875,6 @@ struct TALER_WireFeeSet
    * and wiring the funds back to the origin account.
    */
   struct TALER_Amount closing;
-
-  /**
-   * The fee the exchange charges for cross-exchange
-   * P2P payments.
-   */
-  struct TALER_Amount wad;
 
 };
 
@@ -913,13 +891,6 @@ struct TALER_GlobalFeeSet
    * history of a reserve or account.
    */
   struct TALER_Amount history;
-
-  /**
-   * The fee the exchange charges for performing a
-   * KYC check on a reserve to turn it into an account
-   * that can be used for P2P payments.
-   */
-  struct TALER_Amount kyc;
 
   /**
    * The fee the exchange charges for keeping
@@ -5052,7 +5023,6 @@ TALER_exchange_offline_wire_fee_verify (
  * @param end_time when do the fees start to apply
  * @param fees the global fees
  * @param purse_timeout how long do unmerged purses stay around
- * @param kyc_timeout how long do we keep funds in a reserve without KYC?
  * @param history_expiration how long do we keep the history of an account
  * @param purse_account_limit how many concurrent purses are free per account holder
  * @param master_priv private key to sign with
@@ -5064,7 +5034,6 @@ TALER_exchange_offline_global_fee_sign (
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   const struct TALER_MasterPrivateKeyP *master_priv,
@@ -5078,7 +5047,6 @@ TALER_exchange_offline_global_fee_sign (
  * @param end_time when do the fees start to apply
  * @param fees the global fees
  * @param purse_timeout how long do unmerged purses stay around
- * @param kyc_timeout how long do we keep funds in a reserve without KYC?
  * @param history_expiration how long do we keep the history of an account
  * @param purse_account_limit how many concurrent purses are free per account holder
  * @param master_pub public key to verify against
@@ -5091,7 +5059,6 @@ TALER_exchange_offline_global_fee_verify (
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   const struct TALER_MasterPublicKeyP *master_pub,

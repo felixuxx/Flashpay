@@ -2426,7 +2426,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
  * @param cls `struct TEH_KeyStateHandle *` we are building
  * @param fees the global fees we charge
  * @param purse_timeout when do purses time out
- * @param kyc_timeout when do reserves without KYC time out
  * @param history_expiration how long are account histories preserved
  * @param purse_account_limit how many purses are free per account
  * @param start_date from when are these fees valid (start date)
@@ -2439,7 +2438,6 @@ global_fee_info_cb (
   void *cls,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   struct GNUNET_TIME_Timestamp start_date,
@@ -2457,7 +2455,6 @@ global_fee_info_cb (
   gf->end_date = end_date;
   gf->fees = *fees;
   gf->purse_timeout = purse_timeout;
-  gf->kyc_timeout = kyc_timeout;
   gf->history_expiration = history_expiration;
   gf->purse_account_limit = purse_account_limit;
   gf->master_sig = *master_sig;
@@ -2476,8 +2473,6 @@ global_fee_info_cb (
         TALER_JSON_PACK_GLOBAL_FEES (fees),
         GNUNET_JSON_pack_time_rel ("history_expiration",
                                    history_expiration),
-        GNUNET_JSON_pack_time_rel ("account_kyc_timeout",
-                                   kyc_timeout),
         GNUNET_JSON_pack_time_rel ("purse_timeout",
                                    purse_timeout),
         GNUNET_JSON_pack_uint64 ("purse_account_limit",

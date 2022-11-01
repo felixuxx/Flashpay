@@ -168,15 +168,20 @@ reply_merge_success (struct MHD_Connection *connection,
   }
   else
   {
+#if WAD_NOT_IMPLEMENTED
+    /* FIXME: figure out partner, lookup wad fee by partner! */
     if (0 >
         TALER_amount_subtract (&merge_amount,
                                &pcc->target_amount,
-                               &pcc->wf->wad))
+                               &wad_fee))
     {
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_set_zero (TEH_currency,
                                             &merge_amount));
     }
+#else
+    merge_amount = pcc->target_amount;
+#endif
   }
   if (TALER_EC_NONE !=
       (ec = TALER_exchange_online_purse_merged_sign (

@@ -840,15 +840,6 @@ struct TALER_MasterGlobalFeePS
   struct GNUNET_TIME_RelativeNBO purse_timeout;
 
   /**
-   * How long does the exchange promise to keep funds
-   * an account for which the KYC has never happened
-   * after a purse was merged into an account? Basically,
-   * after this time funds in an account without KYC are
-   * forfeit.
-   */
-  struct GNUNET_TIME_RelativeNBO kyc_timeout;
-
-  /**
    * How long will the exchange preserve the account history?  After an
    * account was deleted/closed, the exchange will retain the account history
    * for legal reasons until this time.
@@ -878,7 +869,6 @@ TALER_exchange_offline_global_fee_sign (
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   const struct TALER_MasterPrivateKeyP *master_priv,
@@ -890,7 +880,6 @@ TALER_exchange_offline_global_fee_sign (
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
     .end_date = GNUNET_TIME_timestamp_hton (end_time),
     .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
-    .kyc_timeout = GNUNET_TIME_relative_hton (kyc_timeout),
     .history_expiration = GNUNET_TIME_relative_hton (history_expiration),
     .purse_account_limit = htonl (purse_account_limit)
   };
@@ -909,7 +898,6 @@ TALER_exchange_offline_global_fee_verify (
   struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -921,7 +909,6 @@ TALER_exchange_offline_global_fee_verify (
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
     .end_date = GNUNET_TIME_timestamp_hton (end_time),
     .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
-    .kyc_timeout = GNUNET_TIME_relative_hton (kyc_timeout),
     .history_expiration = GNUNET_TIME_relative_hton (history_expiration),
     .purse_account_limit = htonl (purse_account_limit)
   };

@@ -819,9 +819,6 @@ test_wire_fees (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":2.424242",
                                          &fees.closing));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_string_to_amount (CURRENCY ":3.424242",
-                                         &fees.wad));
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &master_sig,
                               sizeof (master_sig));

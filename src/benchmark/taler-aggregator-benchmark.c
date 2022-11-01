@@ -562,7 +562,6 @@ run (void *cls,
       ws = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y - 1));
       we = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y));
       make_amount (0, 5, &fees.wire);
-      make_amount (0, 5, &fees.wad);
       make_amount (0, 5, &fees.closing);
       memset (&master_sig,
               0,

@@ -369,8 +369,8 @@ taler-exchange-offline -c $CONF \
   download sign \
   enable-account `taler-config -c $CONF -s exchange-account-1 -o PAYTO_URI` \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
-  wire-fee now iban TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 \
-  global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1h 1year 5 \
+  wire-fee now iban TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1year 5 \
   upload &> ${MY_TMP_DIR}/taler-exchange-offline.log
 
 echo -n "."

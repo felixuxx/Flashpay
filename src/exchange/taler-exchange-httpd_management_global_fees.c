@@ -103,7 +103,6 @@ add_fee (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_GlobalFeeSet fees;
   struct GNUNET_TIME_Relative purse_timeout;
-  struct GNUNET_TIME_Relative kyc_timeout;
   struct GNUNET_TIME_Relative history_expiration;
   uint32_t purse_account_limit;
 
@@ -113,7 +112,6 @@ add_fee (void *cls,
     afc->end_time,
     &fees,
     &purse_timeout,
-    &kyc_timeout,
     &history_expiration,
     &purse_account_limit);
   if (qs < 0)
@@ -155,7 +153,6 @@ add_fee (void *cls,
     afc->end_time,
     &afc->fees,
     afc->purse_timeout,
-    afc->kyc_timeout,
     afc->history_expiration,
     afc->purse_account_limit,
     &afc->master_sig);
@@ -190,9 +187,6 @@ TEH_handler_management_post_global_fees (
     TALER_JSON_spec_amount ("history_fee",
                             TEH_currency,
                             &afc.fees.history),
-    TALER_JSON_spec_amount ("kyc_fee",
-                            TEH_currency,
-                            &afc.fees.kyc),
     TALER_JSON_spec_amount ("account_fee",
                             TEH_currency,
                             &afc.fees.account),
@@ -201,8 +195,6 @@ TEH_handler_management_post_global_fees (
                             &afc.fees.purse),
     GNUNET_JSON_spec_relative_time ("purse_timeout",
                                     &afc.purse_timeout),
-    GNUNET_JSON_spec_relative_time ("kyc_timeout",
-                                    &afc.kyc_timeout),
     GNUNET_JSON_spec_relative_time ("history_expiration",
                                     &afc.history_expiration),
     GNUNET_JSON_spec_uint32 ("purse_account_limit",
@@ -229,7 +221,6 @@ TEH_handler_management_post_global_fees (
         afc.end_time,
         &afc.fees,
         afc.purse_timeout,
-        afc.kyc_timeout,
         afc.history_expiration,
         afc.purse_account_limit,
         &TEH_master_public_key,

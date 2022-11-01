@@ -1598,8 +1598,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ",wad_fee_val"
-      ",wad_fee_frac"
       ",master_sig"
       " FROM wire_fee"
       " WHERE wire_method=$1"
@@ -1613,14 +1611,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_date"
       ",history_fee_val"
       ",history_fee_frac"
-      ",kyc_fee_val"
-      ",kyc_fee_frac"
       ",account_fee_val"
       ",account_fee_frac"
       ",purse_fee_val"
       ",purse_fee_frac"
       ",purse_timeout"
-      ",kyc_timeout"
       ",history_expiration"
       ",purse_account_limit"
       ",master_sig"
@@ -1635,14 +1630,11 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_date"
       ",history_fee_val"
       ",history_fee_frac"
-      ",kyc_fee_val"
-      ",kyc_fee_frac"
       ",account_fee_val"
       ",account_fee_frac"
       ",purse_fee_val"
       ",purse_fee_frac"
       ",purse_timeout"
-      ",kyc_timeout"
       ",history_expiration"
       ",purse_account_limit"
       ",master_sig"
@@ -1659,11 +1651,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ",wad_fee_val"
-      ",wad_fee_frac"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);"),
+      "($1, $2, $3, $4, $5, $6, $7, $8);"),
     /* Used in #postgres_insert_global_fee */
     GNUNET_PQ_make_prepare (
       "insert_global_fee",
@@ -1672,19 +1662,16 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_date"
       ",history_fee_val"
       ",history_fee_frac"
-      ",kyc_fee_val"
-      ",kyc_fee_frac"
       ",account_fee_val"
       ",account_fee_frac"
       ",purse_fee_val"
       ",purse_fee_frac"
       ",purse_timeout"
-      ",kyc_timeout"
       ",history_expiration"
       ",purse_account_limit"
       ",master_sig"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);"),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"),
     /* Used in #postgres_store_wire_transfer_out */
     GNUNET_PQ_make_prepare (
       "insert_wire_out",
@@ -1953,8 +1940,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ",wad_fee_val"
-      ",wad_fee_frac"
       ",start_date"
       ",end_date"
       ",master_sig"
@@ -2057,8 +2042,6 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_fee_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ",wad_fee_val"
-      ",wad_fee_frac"
       " FROM wire_fee"
       " WHERE wire_method=$1"
       " AND end_date > $2"
@@ -2069,14 +2052,11 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT"
       " history_fee_val"
       ",history_fee_frac"
-      ",kyc_fee_val"
-      ",kyc_fee_frac"
       ",account_fee_val"
       ",account_fee_frac"
       ",purse_fee_val"
       ",purse_fee_frac"
       ",purse_timeout"
-      ",kyc_timeout"
       ",history_expiration"
       ",purse_account_limit"
       " FROM global_fee"
@@ -6290,8 +6270,6 @@ postgres_get_wire_fee (void *cls,
                                      end_date),
     TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
                                  &fees->wire),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
-                                 &fees->wad),
     TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
                                  &fees->closing),
     GNUNET_PQ_result_spec_auto_from_type ("master_sig",
@@ -6315,7 +6293,6 @@ postgres_get_wire_fee (void *cls,
  * @param[out] end_date when does the fee end being valid
  * @param[out] fees how high are the wire fees
  * @param[out] purse_timeout set to how long we keep unmerged purses
- * @param[out] kyc_timeout set to how long we keep accounts without KYC
  * @param[out] history_expiration set to how long we keep account histories
  * @param[out] purse_account_limit set to the number of free purses per account
  * @param[out] master_sig signature over the above by the exchange master key
@@ -6328,7 +6305,6 @@ postgres_get_global_fee (void *cls,
                          struct GNUNET_TIME_Timestamp *end_date,
                          struct TALER_GlobalFeeSet *fees,
                          struct GNUNET_TIME_Relative *purse_timeout,
-                         struct GNUNET_TIME_Relative *kyc_timeout,
                          struct GNUNET_TIME_Relative *history_expiration,
                          uint32_t *purse_account_limit,
                          struct TALER_MasterSignatureP *master_sig)
@@ -6345,16 +6321,12 @@ postgres_get_global_fee (void *cls,
                                      end_date),
     TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
                                  &fees->history),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
-                                 &fees->kyc),
     TALER_PQ_RESULT_SPEC_AMOUNT ("account_fee",
                                  &fees->account),
     TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
                                  &fees->purse),
     GNUNET_PQ_result_spec_relative_time ("purse_timeout",
                                          purse_timeout),
-    GNUNET_PQ_result_spec_relative_time ("kyc_timeout",
-                                         kyc_timeout),
     GNUNET_PQ_result_spec_relative_time ("history_expiration",
                                          history_expiration),
     GNUNET_PQ_result_spec_uint32 ("purse_account_limit",
@@ -6418,7 +6390,6 @@ global_fees_cb (void *cls,
   {
     struct TALER_GlobalFeeSet fees;
     struct GNUNET_TIME_Relative purse_timeout;
-    struct GNUNET_TIME_Relative kyc_timeout;
     struct GNUNET_TIME_Relative history_expiration;
     uint32_t purse_account_limit;
     struct GNUNET_TIME_Timestamp start_date;
@@ -6431,16 +6402,12 @@ global_fees_cb (void *cls,
                                        &end_date),
       TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
                                    &fees.history),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
-                                   &fees.kyc),
       TALER_PQ_RESULT_SPEC_AMOUNT ("account_fee",
                                    &fees.account),
       TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
                                    &fees.purse),
       GNUNET_PQ_result_spec_relative_time ("purse_timeout",
                                            &purse_timeout),
-      GNUNET_PQ_result_spec_relative_time ("kyc_timeout",
-                                           &kyc_timeout),
       GNUNET_PQ_result_spec_relative_time ("history_expiration",
                                            &history_expiration),
       GNUNET_PQ_result_spec_uint32 ("purse_account_limit",
@@ -6461,7 +6428,6 @@ global_fees_cb (void *cls,
     gctx->cb (gctx->cb_cls,
               &fees,
               purse_timeout,
-              kyc_timeout,
               history_expiration,
               purse_account_limit,
               start_date,
@@ -6536,7 +6502,6 @@ postgres_insert_wire_fee (void *cls,
     GNUNET_PQ_query_param_timestamp (&end_date),
     TALER_PQ_query_param_amount (&fees->wire),
     TALER_PQ_query_param_amount (&fees->closing),
-    TALER_PQ_query_param_amount (&fees->wad),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
@@ -6598,7 +6563,6 @@ postgres_insert_wire_fee (void *cls,
  * @param end_date when does the fees end being valid
  * @param fees how high is are the global fees
  * @param purse_timeout when do purses time out
- * @param kyc_timeout when do reserves without KYC time out
  * @param history_expiration how long are account histories preserved
  * @param purse_account_limit how many purses are free per account
  * @param master_sig signature over the above by the exchange master key
@@ -6610,7 +6574,6 @@ postgres_insert_global_fee (void *cls,
                             struct GNUNET_TIME_Timestamp end_date,
                             const struct TALER_GlobalFeeSet *fees,
                             struct GNUNET_TIME_Relative purse_timeout,
-                            struct GNUNET_TIME_Relative kyc_timeout,
                             struct GNUNET_TIME_Relative history_expiration,
                             uint32_t purse_account_limit,
                             const struct TALER_MasterSignatureP *master_sig)
@@ -6620,11 +6583,9 @@ postgres_insert_global_fee (void *cls,
     GNUNET_PQ_query_param_timestamp (&start_date),
     GNUNET_PQ_query_param_timestamp (&end_date),
     TALER_PQ_query_param_amount (&fees->history),
-    TALER_PQ_query_param_amount (&fees->kyc),
     TALER_PQ_query_param_amount (&fees->account),
     TALER_PQ_query_param_amount (&fees->purse),
     GNUNET_PQ_query_param_relative_time (&purse_timeout),
-    GNUNET_PQ_query_param_relative_time (&kyc_timeout),
     GNUNET_PQ_query_param_relative_time (&history_expiration),
     GNUNET_PQ_query_param_uint32 (&purse_account_limit),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
@@ -6636,7 +6597,6 @@ postgres_insert_global_fee (void *cls,
   struct GNUNET_TIME_Timestamp ed;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Relative pt;
-  struct GNUNET_TIME_Relative kt;
   struct GNUNET_TIME_Relative he;
   uint32_t pal;
 
@@ -6646,7 +6606,6 @@ postgres_insert_global_fee (void *cls,
                                 &ed,
                                 &wx,
                                 &pt,
-                                &kt,
                                 &he,
                                 &pal,
                                 &sig);
@@ -6680,9 +6639,6 @@ postgres_insert_global_fee (void *cls,
     if ( (GNUNET_TIME_relative_cmp (purse_timeout,
                                     !=,
                                     pt)) ||
-         (GNUNET_TIME_relative_cmp (kyc_timeout,
-                                    !=,
-                                    kt)) ||
          (GNUNET_TIME_relative_cmp (history_expiration,
                                     !=,
                                     he)) )
@@ -10017,8 +9973,6 @@ get_wire_fees_cb (void *cls,
                                    &fees.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
                                    &fees.closing),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
-                                   &fees.wad),
       GNUNET_PQ_result_spec_timestamp ("start_date",
                                        &start_date),
       GNUNET_PQ_result_spec_timestamp ("end_date",
@@ -10419,8 +10373,6 @@ wire_fee_by_time_helper (void *cls,
                                    &fs.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
                                    &fs.closing),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
-                                   &fs.wad),
       GNUNET_PQ_result_spec_end
     };
 
@@ -10517,11 +10469,6 @@ struct GlobalFeeLookupContext
   struct GNUNET_TIME_Relative *purse_timeout;
 
   /**
-   * Set to timeout of accounts without kyc.
-   */
-  struct GNUNET_TIME_Relative *kyc_timeout;
-
-  /**
    * Set to history expiration for reserves.
    */
   struct GNUNET_TIME_Relative *history_expiration;
@@ -10558,22 +10505,17 @@ global_fee_by_time_helper (void *cls,
   {
     struct TALER_GlobalFeeSet fs;
     struct GNUNET_TIME_Relative purse_timeout;
-    struct GNUNET_TIME_Relative kyc_timeout;
     struct GNUNET_TIME_Relative history_expiration;
     uint32_t purse_account_limit;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
                                    &fs.history),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("kyc_fee",
-                                   &fs.kyc),
       TALER_PQ_RESULT_SPEC_AMOUNT ("account_fee",
                                    &fs.account),
       TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
                                    &fs.purse),
       GNUNET_PQ_result_spec_relative_time ("purse_timeout",
                                            &purse_timeout),
-      GNUNET_PQ_result_spec_relative_time ("kyc_timeout",
-                                           &kyc_timeout),
       GNUNET_PQ_result_spec_relative_time ("history_expiration",
                                            &history_expiration),
       GNUNET_PQ_result_spec_uint32 ("purse_account_limit",
@@ -10597,7 +10539,6 @@ global_fee_by_time_helper (void *cls,
     {
       *wlc->fees = fs;
       *wlc->purse_timeout = purse_timeout;
-      *wlc->kyc_timeout = kyc_timeout;
       *wlc->history_expiration = history_expiration;
       *wlc->purse_account_limit = purse_account_limit;
       continue;
@@ -10609,9 +10550,6 @@ global_fee_by_time_helper (void *cls,
          (GNUNET_TIME_relative_cmp (purse_timeout,
                                     !=,
                                     *wlc->purse_timeout)) ||
-         (GNUNET_TIME_relative_cmp (kyc_timeout,
-                                    !=,
-                                    *wlc->kyc_timeout)) ||
          (GNUNET_TIME_relative_cmp (history_expiration,
                                     !=,
                                     *wlc->history_expiration)) )
@@ -10636,7 +10574,6 @@ global_fee_by_time_helper (void *cls,
  *             different global fee exists within this time
  *             period, an 'invalid' amount is returned.
  * @param[out] purse_timeout set to when unmerged purses expire
- * @param[out] kyc_timeout set to when reserves without kyc expire
  * @param[out] history_expiration set to when we expire reserve histories
  * @param[out] purse_account_limit set to number of free purses
  * @return transaction status code
@@ -10648,7 +10585,6 @@ postgres_lookup_global_fee_by_time (
   struct GNUNET_TIME_Timestamp end_time,
   struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative *purse_timeout,
-  struct GNUNET_TIME_Relative *kyc_timeout,
   struct GNUNET_TIME_Relative *history_expiration,
   uint32_t *purse_account_limit)
 {
@@ -10661,7 +10597,6 @@ postgres_lookup_global_fee_by_time (
   struct GlobalFeeLookupContext wlc = {
     .fees = fees,
     .purse_timeout = purse_timeout,
-    .kyc_timeout = kyc_timeout,
     .history_expiration = history_expiration,
     .purse_account_limit = purse_account_limit,
     .pg = pg

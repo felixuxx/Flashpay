@@ -220,7 +220,6 @@ get_purse_fee (struct GNUNET_TIME_Timestamp atime,
   struct GNUNET_TIME_Timestamp end_date;
   struct TALER_GlobalFeeSet fees;
   struct GNUNET_TIME_Relative ptimeout;
-  struct GNUNET_TIME_Relative ktimeout;
   struct GNUNET_TIME_Relative hexp;
   uint32_t pacl;
 
@@ -231,7 +230,6 @@ get_purse_fee (struct GNUNET_TIME_Timestamp atime,
                                      &end_date,
                                      &fees,
                                      &ptimeout,
-                                     &ktimeout,
                                      &hexp,
                                      &pacl,
                                      &master_sig))

@@ -163,8 +163,6 @@ TALER_EXCHANGE_management_set_wire_fees (
                                 validity_end),
     TALER_JSON_pack_amount ("closing_fee",
                             &fees->closing),
-    TALER_JSON_pack_amount ("wad_fee",
-                            &fees->wad),
     TALER_JSON_pack_amount ("wire_fee",
                             &fees->wire));
   eh = TALER_EXCHANGE_curl_easy_get_ (swfh->url);

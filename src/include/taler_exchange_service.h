@@ -231,11 +231,6 @@ struct TALER_EXCHANGE_GlobalFee
   struct GNUNET_TIME_Relative purse_timeout;
 
   /**
-   * Accounts without KYC will be closed after this time.
-   */
-  struct GNUNET_TIME_Relative kyc_timeout;
-
-  /**
    * Account history is limited to this timeframe.
    */
   struct GNUNET_TIME_Relative history_expiration;
@@ -4530,7 +4525,6 @@ struct TALER_EXCHANGE_ManagementSetGlobalFeeHandle;
  * @param validity_end end date for the provided wire fees
  * @param fees the wire fees for this time period
  * @param purse_timeout when do purses time out
- * @param kyc_timeout when do reserves without KYC time out
  * @param history_expiration how long are account histories preserved
  * @param purse_account_limit how many purses are free per account
  * @param master_sig signature affirming the wire fees;
@@ -4547,7 +4541,6 @@ TALER_EXCHANGE_management_set_global_fees (
   struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_GlobalFeeSet *fees,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   uint32_t purse_account_limit,
   const struct TALER_MasterSignatureP *master_sig,

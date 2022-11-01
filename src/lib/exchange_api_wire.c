@@ -145,8 +145,6 @@ parse_fees (json_t *fees)
                                      &wa->master_sig),
         TALER_JSON_spec_amount_any ("wire_fee",
                                     &wa->fees.wire),
-        TALER_JSON_spec_amount_any ("wad_fee",
-                                    &wa->fees.wad),
         TALER_JSON_spec_amount_any ("closing_fee",
                                     &wa->fees.closing),
         GNUNET_JSON_spec_timestamp ("start_date",

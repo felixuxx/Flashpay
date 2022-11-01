@@ -366,7 +366,6 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
  * @param[out] gfs a `struct TALER_GlobalFeeSet` to initialize
  */
 #define TALER_JSON_SPEC_GLOBAL_FEES(currency,gfs) \
-  TALER_JSON_spec_amount ("kyc_fee", (currency), &(gfs)->kyc), \
   TALER_JSON_spec_amount ("history_fee", (currency), &(gfs)->history),   \
   TALER_JSON_spec_amount ("account_fee", (currency), &(gfs)->account),   \
   TALER_JSON_spec_amount ("purse_fee", (currency), &(gfs)->purse)
@@ -377,7 +376,6 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
  * @param gfs a `struct TALER_GlobalFeeSet` to pack
  */
 #define TALER_JSON_PACK_GLOBAL_FEES(gfs) \
-  TALER_JSON_pack_amount ("kyc_fee", &(gfs)->kyc),   \
   TALER_JSON_pack_amount ("history_fee", &(gfs)->history),     \
   TALER_JSON_pack_amount ("account_fee", &(gfs)->account),     \
   TALER_JSON_pack_amount ("purse_fee", &(gfs)->purse)

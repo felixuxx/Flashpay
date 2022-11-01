@@ -813,8 +813,6 @@ CREATE TABLE IF NOT EXISTS wire_fee
   ,wire_fee_frac INT4 NOT NULL
   ,closing_fee_val INT8 NOT NULL
   ,closing_fee_frac INT4 NOT NULL
-  ,wad_fee_val INT8 NOT NULL
-  ,wad_fee_frac INT4 NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,PRIMARY KEY (wire_method, start_date)
   );
@@ -836,14 +834,11 @@ CREATE TABLE IF NOT EXISTS global_fee
   ,end_date INT8 NOT NULL
   ,history_fee_val INT8 NOT NULL
   ,history_fee_frac INT4 NOT NULL
-  ,kyc_fee_val INT8 NOT NULL
-  ,kyc_fee_frac INT4 NOT NULL
   ,account_fee_val INT8 NOT NULL
   ,account_fee_frac INT4 NOT NULL
   ,purse_fee_val INT8 NOT NULL
   ,purse_fee_frac INT4 NOT NULL
   ,purse_timeout INT8 NOT NULL
-  ,kyc_timeout INT8 NOT NULL
   ,history_expiration INT8 NOT NULL
   ,purse_account_limit INT4 NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)

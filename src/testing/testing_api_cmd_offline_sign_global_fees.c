@@ -52,11 +52,6 @@ struct OfflineSignState
   const char *history_fee_s;
 
   /**
-   * The KYC fee to sign.
-   */
-  const char *kyc_fee_s;
-
-  /**
    * The account fee to sign.
    */
   const char *account_fee_s;
@@ -70,11 +65,6 @@ struct OfflineSignState
    * When MUST purses time out?
    */
   struct GNUNET_TIME_Relative purse_timeout;
-
-  /**
-   * How long does a user have to complete the KYC?
-   */
-  struct GNUNET_TIME_Relative kyc_timeout;
 
   /**
    * How long do we keep the history?
@@ -104,7 +94,6 @@ offlinesign_run (void *cls,
   char num_purses[12];
   char history_expiration[32];
   char purse_timeout[32];
-  char kyc_timeout[32];
 
   GNUNET_snprintf (num_purses,
                    sizeof (num_purses),
@@ -120,11 +109,6 @@ offlinesign_run (void *cls,
                    "%s",
                    GNUNET_TIME_relative2s (ks->purse_timeout,
                                            false));
-  GNUNET_snprintf (kyc_timeout,
-                   sizeof (kyc_timeout),
-                   "%s",
-                   GNUNET_TIME_relative2s (ks->kyc_timeout,
-                                           false));
   ks->offlinesign_proc
     = GNUNET_OS_start_process (
         GNUNET_OS_INHERIT_STD_ALL,
@@ -136,11 +120,9 @@ offlinesign_run (void *cls,
         "global-fee",
         "now",
         ks->history_fee_s,
-        ks->kyc_fee_s,
         ks->account_fee_s,
         ks->purse_fee_s,
         purse_timeout,
-        kyc_timeout,
         history_expiration,
         num_purses,
         "upload",
@@ -215,11 +197,9 @@ TALER_TESTING_cmd_exec_offline_sign_global_fees (
   const char *label,
   const char *config_filename,
   const char *history_fee,
-  const char *kyc_fee,
   const char *account_fee,
   const char *purse_fee,
   struct GNUNET_TIME_Relative purse_timeout,
-  struct GNUNET_TIME_Relative kyc_timeout,
   struct GNUNET_TIME_Relative history_expiration,
   unsigned int num_purses)
 {
@@ -228,11 +208,9 @@ TALER_TESTING_cmd_exec_offline_sign_global_fees (
   ks = GNUNET_new (struct OfflineSignState);
   ks->config_filename = config_filename;
   ks->history_fee_s = history_fee;
-  ks->kyc_fee_s = kyc_fee;
   ks->account_fee_s = account_fee;
   ks->purse_fee_s = purse_fee;
   ks->purse_timeout = purse_timeout;
-  ks->kyc_timeout = kyc_timeout;
   ks->history_expiration = history_expiration;
   ks->num_purses = num_purses;
   {

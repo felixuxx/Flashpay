@@ -82,8 +82,6 @@ TALER_global_fee_set_hton (struct TALER_GlobalFeeSetNBOP *nbo,
 {
   TALER_amount_hton (&nbo->history,
                      &fees->history);
-  TALER_amount_hton (&nbo->kyc,
-                     &fees->kyc);
   TALER_amount_hton (&nbo->account,
                      &fees->account);
   TALER_amount_hton (&nbo->purse,
@@ -97,8 +95,6 @@ TALER_global_fee_set_ntoh (struct TALER_GlobalFeeSet *fees,
 {
   TALER_amount_ntoh (&fees->history,
                      &nbo->history);
-  TALER_amount_ntoh (&fees->kyc,
-                     &nbo->kyc);
   TALER_amount_ntoh (&fees->account,
                      &nbo->account);
   TALER_amount_ntoh (&fees->purse,
@@ -114,8 +110,6 @@ TALER_wire_fee_set_hton (struct TALER_WireFeeSetNBOP *nbo,
                      &fees->wire);
   TALER_amount_hton (&nbo->closing,
                      &fees->closing);
-  TALER_amount_hton (&nbo->wad,
-                     &fees->wad);
 }
 
 
@@ -127,8 +121,6 @@ TALER_wire_fee_set_ntoh (struct TALER_WireFeeSet *fees,
                      &nbo->wire);
   TALER_amount_ntoh (&fees->closing,
                      &nbo->closing);
-  TALER_amount_ntoh (&fees->wad,
-                     &nbo->wad);
 }
 
 
@@ -140,10 +132,6 @@ TALER_global_fee_set_cmp (const struct TALER_GlobalFeeSet *f1,
 
   ret = TALER_amount_cmp (&f1->history,
                           &f2->history);
-  if (0 != ret)
-    return ret;
-  ret = TALER_amount_cmp (&f1->kyc,
-                          &f2->kyc);
   if (0 != ret)
     return ret;
   ret = TALER_amount_cmp (&f1->account,
@@ -170,10 +158,6 @@ TALER_wire_fee_set_cmp (const struct TALER_WireFeeSet *f1,
     return ret;
   ret = TALER_amount_cmp (&f1->closing,
                           &f2->closing);
-  if (0 != ret)
-    return ret;
-  ret = TALER_amount_cmp (&f1->wad,
-                          &f2->wad);
   if (0 != ret)
     return ret;
   return 0;

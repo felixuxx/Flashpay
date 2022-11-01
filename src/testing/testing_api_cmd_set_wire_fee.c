@@ -61,11 +61,6 @@ struct WireFeeState
   const char *closing_fee;
 
   /**
-   * Wad fee amount to use.
-   */
-  const char *wad_fee;
-
-  /**
    * Expected HTTP response code.
    */
   unsigned int expected_response_code;
@@ -141,9 +136,6 @@ wire_add_run (void *cls,
         TALER_string_to_amount (ds->closing_fee,
                                 &fees.closing)) ||
        (GNUNET_OK !=
-        TALER_string_to_amount (ds->wad_fee,
-                                &fees.wad)) ||
-       (GNUNET_OK !=
         TALER_string_to_amount (ds->wire_fee,
                                 &fees.wire)) )
   {
@@ -217,7 +209,6 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
                                 const char *wire_method,
                                 const char *wire_fee,
                                 const char *closing_fee,
-                                const char *wad_fee,
                                 unsigned int expected_http_status,
                                 bool bad_sig)
 {
@@ -229,7 +220,6 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
   ds->wire_method = wire_method;
   ds->wire_fee = wire_fee;
   ds->closing_fee = closing_fee;
-  ds->wad_fee = wad_fee;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

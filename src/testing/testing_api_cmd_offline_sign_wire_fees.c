@@ -52,11 +52,6 @@ struct OfflineSignState
   const char *wire_fee_s;
 
   /**
-   * The wad fee to sign.
-   */
-  const char *wad_fee_s;
-
-  /**
    * The closing fee to sign.
    */
   const char *closing_fee_s;
@@ -91,7 +86,6 @@ offlinesign_run (void *cls,
         "x-taler-bank",
         ks->wire_fee_s,
         ks->closing_fee_s,
-        ks->wad_fee_s,
         "upload",
         NULL);
   if (NULL == ks->offlinesign_proc)
@@ -163,15 +157,13 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
                                           const char *config_filename,
                                           const char *wire_fee,
-                                          const char *closing_fee,
-                                          const char *wad_fee)
+                                          const char *closing_fee)
 {
   struct OfflineSignState *ks;
 
   ks = GNUNET_new (struct OfflineSignState);
   ks->config_filename = config_filename;
   ks->wire_fee_s = wire_fee;
-  ks->wad_fee_s = wad_fee;
   ks->closing_fee_s = closing_fee;
   {
     struct TALER_TESTING_Command cmd = {

@@ -322,8 +322,6 @@ add_wire_fee (void *cls,
         GNUNET_JSON_PACK (
           TALER_JSON_pack_amount ("wire_fee",
                                   &fees->wire),
-          TALER_JSON_pack_amount ("wad_fee",
-                                  &fees->wad),
           TALER_JSON_pack_amount ("closing_fee",
                                   &fees->closing),
           GNUNET_JSON_pack_timestamp ("start_date",

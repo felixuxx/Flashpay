@@ -1639,9 +1639,6 @@ upload_wire_fee (const char *exchange_url,
     TALER_JSON_spec_amount ("wire_fee",
                             currency,
                             &fees.wire),
-    TALER_JSON_spec_amount ("wad_fee",
-                            currency,
-                            &fees.wad),
     TALER_JSON_spec_amount ("closing_fee",
                             currency,
                             &fees.closing),
@@ -1741,16 +1738,12 @@ upload_global_fee (const char *exchange_url,
   struct GNUNET_TIME_Timestamp start_time;
   struct GNUNET_TIME_Timestamp end_time;
   struct GNUNET_TIME_Relative purse_timeout;
-  struct GNUNET_TIME_Relative kyc_timeout;
   struct GNUNET_TIME_Relative history_expiration;
   uint32_t purse_account_limit;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("history_fee",
                             currency,
                             &fees.history),
-    TALER_JSON_spec_amount ("kyc_fee",
-                            currency,
-                            &fees.kyc),
     TALER_JSON_spec_amount ("account_fee",
                             currency,
                             &fees.account),
@@ -1759,8 +1752,6 @@ upload_global_fee (const char *exchange_url,
                             &fees.purse),
     GNUNET_JSON_spec_relative_time ("purse_timeout",
                                     &purse_timeout),
-    GNUNET_JSON_spec_relative_time ("kyc_timeout",
-                                    &kyc_timeout),
     GNUNET_JSON_spec_relative_time ("history_expiration",
                                     &history_expiration),
     GNUNET_JSON_spec_uint32 ("purse_account_limit",
@@ -1801,7 +1792,6 @@ upload_global_fee (const char *exchange_url,
                                                end_time,
                                                &fees,
                                                purse_timeout,
-                                               kyc_timeout,
                                                history_expiration,
                                                purse_account_limit,
                                                &master_sig,
@@ -2752,7 +2742,7 @@ do_del_wire (char *const *args)
  *
  * @param args the array of command-line arguments to process next;
  *        args[0] must be the year, args[1] the wire method, args[2] the wire fee and args[3]
- *        the closing fee and args[4] the wad fee.
+ *        the closing fee.
  */
 static void
 do_set_wire_fee (char *const *args)
@@ -2776,7 +2766,6 @@ do_set_wire_fee (char *const *args)
        (NULL == args[1]) ||
        (NULL == args[2]) ||
        (NULL == args[3]) ||
-       (NULL == args[4]) ||
        ( (1 != sscanf (args[0],
                        "%u%c",
                        &year,
@@ -2788,13 +2777,10 @@ do_set_wire_fee (char *const *args)
                                 &fees.wire)) ||
        (GNUNET_OK !=
         TALER_string_to_amount (args[3],
-                                &fees.closing)) ||
-       (GNUNET_OK !=
-        TALER_string_to_amount (args[4],
-                                &fees.wad)) )
+                                &fees.closing)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "You must use YEAR, METHOD, WIRE-FEE, CLOSING-FEE and WAD-FEE as arguments for this subcommand\n");
+                "You must use YEAR, METHOD, WIRE-FEE, and CLOSING-FEE as arguments for this subcommand\n");
     test_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
@@ -2826,13 +2812,11 @@ do_set_wire_fee (char *const *args)
                                                   end_time),
                       TALER_JSON_pack_amount ("wire_fee",
                                               &fees.wire),
-                      TALER_JSON_pack_amount ("wad_fee",
-                                              &fees.wad),
                       TALER_JSON_pack_amount ("closing_fee",
                                               &fees.closing),
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
-  next (args + 5);
+  next (args + 4);
 }
 
 
@@ -2840,9 +2824,9 @@ do_set_wire_fee (char *const *args)
  * Set global fees for the given year.
  *
  * @param args the array of command-line arguments to process next;
- *        args[0] must be the year, args[1] the history fee, args[2] the kyc fee, args[3]
- *        the account fee and args[4] the purse fee. These are followed by args[5] purse timeout,
- *        args[6] kyc timeout and args[7] history expiration. Last is args[8] the (free) purse account limit.
+ *        args[0] must be the year, args[1] the history fee, args[2]
+ *        the account fee and args[3] the purse fee. These are followed by args[4] purse timeout,
+ *        args[5] history expiration. Last is args[6] the (free) purse account limit.
  */
 static void
 do_set_global_fee (char *const *args)
@@ -2852,7 +2836,6 @@ do_set_global_fee (char *const *args)
   unsigned int year;
   struct TALER_GlobalFeeSet fees;
   struct GNUNET_TIME_Relative purse_timeout;
-  struct GNUNET_TIME_Relative kyc_timeout;
   struct GNUNET_TIME_Relative history_expiration;
   unsigned int purse_account_limit;
   struct GNUNET_TIME_Timestamp start_time;
@@ -2873,8 +2856,6 @@ do_set_global_fee (char *const *args)
        (NULL == args[4]) ||
        (NULL == args[5]) ||
        (NULL == args[6]) ||
-       (NULL == args[7]) ||
-       (NULL == args[8]) ||
        ( (1 != sscanf (args[0],
                        "%u%c",
                        &year,
@@ -2886,29 +2867,23 @@ do_set_global_fee (char *const *args)
                                 &fees.history)) ||
        (GNUNET_OK !=
         TALER_string_to_amount (args[2],
-                                &fees.kyc)) ||
-       (GNUNET_OK !=
-        TALER_string_to_amount (args[3],
                                 &fees.account)) ||
        (GNUNET_OK !=
-        TALER_string_to_amount (args[4],
+        TALER_string_to_amount (args[3],
                                 &fees.purse)) ||
        (GNUNET_OK !=
-        GNUNET_STRINGS_fancy_time_to_relative (args[5],
+        GNUNET_STRINGS_fancy_time_to_relative (args[4],
                                                &purse_timeout)) ||
        (GNUNET_OK !=
-        GNUNET_STRINGS_fancy_time_to_relative (args[6],
-                                               &kyc_timeout)) ||
-       (GNUNET_OK !=
-        GNUNET_STRINGS_fancy_time_to_relative (args[7],
+        GNUNET_STRINGS_fancy_time_to_relative (args[5],
                                                &history_expiration)) ||
-       (1 != sscanf (args[8],
+       (1 != sscanf (args[6],
                      "%u%c",
                      &purse_account_limit,
                      &dummy)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "You must use YEAR, HISTORY-FEE, KYC-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, KYC-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
+                "You must use YEAR, HISTORY-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
     test_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;
@@ -2928,7 +2903,6 @@ do_set_global_fee (char *const *args)
                                           end_time,
                                           &fees,
                                           purse_timeout,
-                                          kyc_timeout,
                                           history_expiration,
                                           (uint32_t) purse_account_limit,
                                           &master_priv,
@@ -2941,23 +2915,19 @@ do_set_global_fee (char *const *args)
                                                   end_time),
                       TALER_JSON_pack_amount ("history_fee",
                                               &fees.history),
-                      TALER_JSON_pack_amount ("kyc_fee",
-                                              &fees.kyc),
                       TALER_JSON_pack_amount ("account_fee",
                                               &fees.account),
                       TALER_JSON_pack_amount ("purse_fee",
                                               &fees.purse),
                       GNUNET_JSON_pack_time_rel ("purse_timeout",
                                                  purse_timeout),
-                      GNUNET_JSON_pack_time_rel ("kyc_timeout",
-                                                 kyc_timeout),
                       GNUNET_JSON_pack_time_rel ("history_expiration",
                                                  history_expiration),
                       GNUNET_JSON_pack_uint64 ("purse_account_limit",
                                                (uint32_t) purse_account_limit),
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
-  next (args + 9);
+  next (args + 7);
 }
 
 
@@ -4476,13 +4446,13 @@ work (void *cls)
     {
       .name = "wire-fee",
       .help =
-        "sign wire fees for the given year (year, wire method, wire fee, closing fee and wad fee must be given as arguments)",
+        "sign wire fees for the given year (year, wire method, wire fee, and closing fee must be given as arguments)",
       .cb = &do_set_wire_fee
     },
     {
       .name = "global-fee",
       .help =
-        "sign global fees for the given year (year, history fee, kyc fee, account fee, purse fee, purse timeout, kyc timeout, history expiration and the maximum number of free purses per account must be given as arguments)",
+        "sign global fees for the given year (year, history fee, account fee, purse fee, purse timeout, history expiration and the maximum number of free purses per account must be given as arguments)",
       .cb = &do_set_global_fee
     },
     {

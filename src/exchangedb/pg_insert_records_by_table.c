@@ -1037,7 +1037,6 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.end_date),
     TALER_PQ_query_param_amount (&td->details.wire_fee.fees.wire),
     TALER_PQ_query_param_amount (&td->details.wire_fee.fees.closing),
-    TALER_PQ_query_param_amount (&td->details.wire_fee.fees.wad),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
     GNUNET_PQ_query_param_end
   };
@@ -1084,15 +1083,11 @@ irbt_cb_table_global_fee (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (
       &td->details.global_fee.fees.history),
     TALER_PQ_query_param_amount (
-      &td->details.global_fee.fees.kyc),
-    TALER_PQ_query_param_amount (
       &td->details.global_fee.fees.account),
     TALER_PQ_query_param_amount (
       &td->details.global_fee.fees.purse),
     GNUNET_PQ_query_param_relative_time (
       &td->details.global_fee.purse_timeout),
-    GNUNET_PQ_query_param_relative_time (
-      &td->details.global_fee.kyc_timeout),
     GNUNET_PQ_query_param_relative_time (
       &td->details.global_fee.history_expiration),
     GNUNET_PQ_query_param_uint32 (
@@ -1110,19 +1105,16 @@ irbt_cb_table_global_fee (struct PostgresClosure *pg,
            ",end_date"
            ",history_fee_val"
            ",history_fee_frac"
-           ",kyc_fee_val"
-           ",kyc_fee_frac"
            ",account_fee_val"
            ",account_fee_frac"
            ",purse_fee_val"
            ",purse_fee_frac"
            ",purse_timeout"
-           ",kyc_timeout"
            ",history_expiration"
            ",purse_account_limit"
            ",master_sig"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_global_fee",
                                              params);

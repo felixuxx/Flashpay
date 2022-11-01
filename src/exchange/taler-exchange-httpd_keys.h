@@ -113,11 +113,6 @@ struct TEH_GlobalFee
   struct GNUNET_TIME_Relative purse_timeout;
 
   /**
-   * How long do we keep accounts without KYC?
-   */
-  struct GNUNET_TIME_Relative kyc_timeout;
-
-  /**
    * What is the longest history we return?
    */
   struct GNUNET_TIME_Relative history_expiration;

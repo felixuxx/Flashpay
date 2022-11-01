@@ -1194,8 +1194,6 @@ lrbt_cb_table_wire_fee (void *cls,
                                    &td.details.wire_fee.fees.wire),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
                                    &td.details.wire_fee.fees.closing),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("wad_fee",
-                                   &td.details.wire_fee.fees.wad),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &td.details.wire_fee.master_sig),
       GNUNET_PQ_result_spec_end
@@ -1251,9 +1249,6 @@ lrbt_cb_table_global_fee (void *cls,
         "history_fee",
         &td.details.global_fee.fees.history),
       TALER_PQ_RESULT_SPEC_AMOUNT (
-        "kyc_fee",
-        &td.details.global_fee.fees.kyc),
-      TALER_PQ_RESULT_SPEC_AMOUNT (
         "account_fee",
         &td.details.global_fee.fees.account),
       TALER_PQ_RESULT_SPEC_AMOUNT (
@@ -1262,9 +1257,6 @@ lrbt_cb_table_global_fee (void *cls,
       GNUNET_PQ_result_spec_relative_time (
         "purse_timeout",
         &td.details.global_fee.purse_timeout),
-      GNUNET_PQ_result_spec_relative_time (
-        "kyc_timeout",
-        &td.details.global_fee.kyc_timeout),
       GNUNET_PQ_result_spec_relative_time (
         "history_expiration",
         &td.details.global_fee.history_expiration),
@@ -2567,14 +2559,11 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",end_date"
               ",history_fee_val"
               ",history_fee_frac"
-              ",kyc_fee_val"
-              ",kyc_fee_frac"
               ",account_fee_val"
               ",account_fee_frac"
               ",purse_fee_val"
               ",purse_fee_frac"
               ",purse_timeout"
-              ",kyc_timeout"
               ",history_expiration"
               ",purse_account_limit"
               ",master_sig"

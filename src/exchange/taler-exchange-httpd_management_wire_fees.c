@@ -170,9 +170,6 @@ TEH_handler_management_post_wire_fees (
     TALER_JSON_spec_amount ("closing_fee",
                             TEH_currency,
                             &afc.fees.closing),
-    TALER_JSON_spec_amount ("wad_fee",
-                            TEH_currency,
-                            &afc.fees.wad),
     GNUNET_JSON_spec_end ()
   };
 
