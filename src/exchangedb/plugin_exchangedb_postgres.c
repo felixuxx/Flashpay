@@ -43,6 +43,12 @@
 #include "pg_iterate_reserve_close_info.h"
 #include "pg_lookup_records_by_table.h"
 #include "pg_lookup_serial_by_table.h"
+#include "pg_select_account_merges_above_serial_id.h"
+#include "pg_select_all_purse_decisions_above_serial_id.h"
+#include "pg_select_purse.h"
+#include "pg_select_purse_deposits_above_serial_id.h"
+#include "pg_select_purse_merges_above_serial_id.h"
+#include "pg_select_purse_requests_above_serial_id.h"
 #include "pg_select_reserve_close_info.h"
 #include "pg_select_reserve_closed_above_serial_id.h"
 #include "pg_select_reserve_open_above_serial_id.h"
@@ -1202,82 +1208,6 @@ prepare_statements (struct PostgresClosure *pg)
       "  (deposit_serial_id>=$1)"
       " )"
       " ORDER BY deposit_serial_id ASC;"),
-    /* Fetch purse deposits with rowid '\geq' the given parameter */
-    GNUNET_PQ_make_prepare (
-      "audit_get_purse_deposits_incr",
-      "SELECT"
-      " pd.amount_with_fee_val"
-      ",pd.amount_with_fee_frac"
-      ",pr.amount_with_fee_val AS total_val"
-      ",pr.amount_with_fee_frac AS total_frac"
-      ",pr.balance_val"
-      ",pr.balance_frac"
-      ",pr.flags"
-      ",pd.purse_pub"
-      ",pd.coin_sig"
-      ",partner_base_url"
-      ",denom.denom_pub"
-      ",pm.reserve_pub"
-      ",kc.coin_pub"
-      ",kc.age_commitment_hash"
-      ",pd.purse_deposit_serial_id"
-      " FROM purse_deposits pd"
-      " LEFT JOIN partners USING (partner_serial_id)"
-      " LEFT JOIN purse_merges pm USING (purse_pub)"
-      " JOIN purse_requests pr USING (purse_pub)"
-      " JOIN known_coins kc USING (coin_pub)"
-      " JOIN denominations denom USING (denominations_serial)"
-      " WHERE ("
-      "  (purse_deposit_serial_id>=$1)"
-      " )"
-      " ORDER BY purse_deposit_serial_id ASC;"),
-
-    GNUNET_PQ_make_prepare (
-      "audit_get_account_merge_incr",
-      "SELECT"
-      " am.account_merge_request_serial_id"
-      ",am.reserve_pub"
-      ",am.purse_pub"
-      ",pr.h_contract_terms"
-      ",pr.purse_expiration"
-      ",pr.amount_with_fee_val"
-      ",pr.amount_with_fee_frac"
-      ",pr.age_limit"
-      ",pr.flags"
-      ",pr.purse_fee_val"
-      ",pr.purse_fee_frac"
-      ",pm.merge_timestamp"
-      ",am.reserve_sig"
-      " FROM account_merges am"
-      " JOIN purse_requests pr USING (purse_pub)"
-      " JOIN purse_merges pm USING (purse_pub)"
-      " WHERE ("
-      "  (account_merge_request_serial_id>=$1)"
-      " )"
-      " ORDER BY account_merge_request_serial_id ASC;"),
-
-    GNUNET_PQ_make_prepare (
-      "audit_get_purse_merge_incr",
-      "SELECT"
-      " pm.purse_merge_request_serial_id"
-      ",partner_base_url"
-      ",pr.amount_with_fee_val"
-      ",pr.amount_with_fee_frac"
-      ",pr.balance_val"
-      ",pr.balance_frac"
-      ",pr.flags"
-      ",pr.merge_pub"
-      ",pm.reserve_pub"
-      ",pm.merge_sig"
-      ",pm.purse_pub"
-      ",pm.merge_timestamp"
-      " FROM purse_merges pm"
-      " JOIN purse_requests pr USING (purse_pub)"
-      " LEFT JOIN partners USING (partner_serial_id)"
-      " WHERE ("
-      "  (purse_merge_request_serial_id>=$1)"
-      " )"
-      " ORDER BY purse_merge_request_serial_id ASC;"),
 
     GNUNET_PQ_make_prepare (
       "audit_get_history_requests_incr",
@@ -2234,22 +2164,6 @@ prepare_statements (struct PostgresClosure *pg)
       "  ) VALUES "
       "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
       "  ON CONFLICT DO NOTHING;"),
-    /* Used in #postgres_select_purse */
-    GNUNET_PQ_make_prepare (
-      "select_purse",
-      "SELECT "
-      " merge_pub"
-      ",purse_creation"
-      ",purse_expiration"
-      ",h_contract_terms"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",balance_val"
-      ",balance_frac"
-      ",merge_timestamp"
-      " FROM purse_requests"
-      " LEFT JOIN purse_merges USING (purse_pub)"
-      " WHERE purse_pub=$1;"),
     /* Used in #postgres_get_purse_request */
     GNUNET_PQ_make_prepare (
       "get_purse_request",
@@ -7232,475 +7146,6 @@ postgres_select_deposits_above_serial_id (
 /**
  * Closure for #purse_deposit_serial_helper_cb().
  */
-struct PurseDepositSerialContext
-{
-
-  /**
-   * Callback to call.
-   */
-  TALER_EXCHANGEDB_PurseDepositCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Status code, set to #GNUNET_SYSERR on hard errors.
-   */
-  enum GNUNET_GenericReturnValue status;
-};
-
-
-/**
- * Helper function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct DepositSerialContext`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-purse_deposit_serial_helper_cb (void *cls,
-                                PGresult *result,
-                                unsigned int num_results)
-{
-  struct PurseDepositSerialContext *dsc = cls;
-  struct PostgresClosure *pg = dsc->pg;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_EXCHANGEDB_PurseDeposit deposit = {
-      .exchange_base_url = NULL
-    };
-    struct TALER_DenominationPublicKey denom_pub;
-    uint64_t rowid;
-    uint32_t flags32;
-    struct TALER_ReservePublicKeyP reserve_pub;
-    bool not_merged = false;
-    struct TALER_Amount purse_balance;
-    struct TALER_Amount purse_total;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &deposit.amount),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
-                                   &purse_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("total",
-                                   &purse_total),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("deposit_fee",
-                                   &deposit.deposit_fee),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("partner_base_url",
-                                      &deposit.exchange_base_url),
-        NULL),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                              &reserve_pub),
-        &not_merged),
-      TALER_PQ_result_spec_denom_pub ("denom_pub",
-                                      &denom_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
-                                            &deposit.purse_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                            &deposit.coin_sig),
-      GNUNET_PQ_result_spec_uint32 ("flags",
-                                    &flags32),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &deposit.coin_pub),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                              &deposit.h_age_commitment),
-        &deposit.no_age_commitment),
-      GNUNET_PQ_result_spec_uint64 ("purse_deposit_serial_id",
-                                    &rowid),
-      GNUNET_PQ_result_spec_end
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    memset (&deposit,
-            0,
-            sizeof (deposit));
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      dsc->status = GNUNET_SYSERR;
-      return;
-    }
-    ret = dsc->cb (dsc->cb_cls,
-                   rowid,
-                   &deposit,
-                   not_merged ? NULL : &reserve_pub,
-                   (enum TALER_WalletAccountMergeFlags) flags32,
-                   &purse_balance,
-                   &purse_total,
-                   &denom_pub);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_OK != ret)
-      break;
-  }
-}
-
-
-/**
- * Select deposits above @a serial_id in monotonically increasing
- * order.
- *
- * @param cls closure
- * @param serial_id highest serial ID to exclude (select strictly larger)
- * @param cb function to call on each result
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_purse_deposits_above_serial_id (
-  void *cls,
-  uint64_t serial_id,
-  TALER_EXCHANGEDB_PurseDepositCallback cb,
-  void *cb_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct PurseDepositSerialContext dsc = {
-    .cb = cb,
-    .cb_cls = cb_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_purse_deposits_incr",
-                                             params,
-                                             &purse_deposit_serial_helper_cb,
-                                             &dsc);
-  if (GNUNET_OK != dsc.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Closure for #account_merge_serial_helper_cb().
- */
-struct AccountMergeSerialContext
-{
-
-  /**
-   * Callback to call.
-   */
-  TALER_EXCHANGEDB_AccountMergeCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Status code, set to #GNUNET_SYSERR on hard errors.
-   */
-  enum GNUNET_GenericReturnValue status;
-};
-
-
-/**
- * Helper function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct AccountMergeSerialContext`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-account_merge_serial_helper_cb (void *cls,
-                                PGresult *result,
-                                unsigned int num_results)
-{
-  struct AccountMergeSerialContext *dsc = cls;
-  struct PostgresClosure *pg = dsc->pg;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_ReservePublicKeyP reserve_pub;
-    struct TALER_PurseContractPublicKeyP purse_pub;
-    struct TALER_PrivateContractHashP h_contract_terms;
-    struct GNUNET_TIME_Timestamp purse_expiration;
-    struct TALER_Amount amount;
-    uint32_t min_age;
-    uint32_t flags32;
-    enum TALER_WalletAccountMergeFlags flags;
-    struct TALER_Amount purse_fee;
-    struct GNUNET_TIME_Timestamp merge_timestamp;
-    struct TALER_ReserveSignatureP reserve_sig;
-    uint64_t rowid;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &amount),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
-                                   &purse_fee),
-      GNUNET_PQ_result_spec_uint32 ("flags",
-                                    &flags32),
-      GNUNET_PQ_result_spec_uint32 ("age_limit",
-                                    &min_age),
-      GNUNET_PQ_result_spec_timestamp ("purse_expiration",
-                                       &purse_expiration),
-      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
-                                       &merge_timestamp),
-      GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                            &h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
-                                            &purse_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
-                                            &reserve_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                            &reserve_pub),
-      GNUNET_PQ_result_spec_uint64 ("account_merge_request_serial_id",
-                                    &rowid),
-      GNUNET_PQ_result_spec_end
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      dsc->status = GNUNET_SYSERR;
-      return;
-    }
-    flags = (enum TALER_WalletAccountMergeFlags) flags32;
-    ret = dsc->cb (dsc->cb_cls,
-                   rowid,
-                   &reserve_pub,
-                   &purse_pub,
-                   &h_contract_terms,
-                   purse_expiration,
-                   &amount,
-                   min_age,
-                   flags,
-                   &purse_fee,
-                   merge_timestamp,
-                   &reserve_sig);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_OK != ret)
-      break;
-  }
-}
-
-
-/**
- * Select account merges above @a serial_id in monotonically increasing
- * order.
- *
- * @param cls closure
- * @param serial_id highest serial ID to exclude (select strictly larger)
- * @param cb function to call on each result
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_account_merges_above_serial_id (
-  void *cls,
-  uint64_t serial_id,
-  TALER_EXCHANGEDB_AccountMergeCallback cb,
-  void *cb_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct AccountMergeSerialContext dsc = {
-    .cb = cb,
-    .cb_cls = cb_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_account_merge_incr",
-                                             params,
-                                             &account_merge_serial_helper_cb,
-                                             &dsc);
-  if (GNUNET_OK != dsc.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Closure for #purse_deposit_serial_helper_cb().
- */
-struct PurseMergeSerialContext
-{
-
-  /**
-   * Callback to call.
-   */
-  TALER_EXCHANGEDB_PurseMergeCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Status code, set to #GNUNET_SYSERR on hard errors.
-   */
-  enum GNUNET_GenericReturnValue status;
-};
-
-
-/**
- * Helper function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct PurseMergeSerialContext`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-purse_merges_serial_helper_cb (void *cls,
-                               PGresult *result,
-                               unsigned int num_results)
-{
-  struct PurseMergeSerialContext *dsc = cls;
-  struct PostgresClosure *pg = dsc->pg;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    uint64_t rowid;
-    char *partner_base_url = NULL;
-    struct TALER_Amount amount;
-    struct TALER_Amount balance;
-    uint32_t flags32;
-    enum TALER_WalletAccountMergeFlags flags;
-    struct TALER_PurseMergePublicKeyP merge_pub;
-    struct TALER_ReservePublicKeyP reserve_pub;
-    struct TALER_PurseMergeSignatureP merge_sig;
-    struct TALER_PurseContractPublicKeyP purse_pub;
-    struct GNUNET_TIME_Timestamp merge_timestamp;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &amount),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
-                                   &balance),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("partner_base_url",
-                                      &partner_base_url),
-        NULL),
-      GNUNET_PQ_result_spec_uint32 ("flags",
-                                    &flags32),
-      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
-                                       &merge_timestamp),
-      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
-                                            &purse_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                            &reserve_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
-                                            &merge_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
-                                            &merge_pub),
-      GNUNET_PQ_result_spec_uint64 ("purse_merge_request_serial_id",
-                                    &rowid),
-      GNUNET_PQ_result_spec_end
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      dsc->status = GNUNET_SYSERR;
-      return;
-    }
-    flags = (enum TALER_WalletAccountMergeFlags) flags32;
-    ret = dsc->cb (dsc->cb_cls,
-                   rowid,
-                   partner_base_url,
-                   &amount,
-                   &balance,
-                   flags,
-                   &merge_pub,
-                   &reserve_pub,
-                   &merge_sig,
-                   &purse_pub,
-                   merge_timestamp);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_OK != ret)
-      break;
-  }
-}
-
-
-/**
- * Select purse merges deposits above @a serial_id in monotonically increasing
- * order.
- *
- * @param cls closure
- * @param serial_id highest serial ID to exclude (select strictly larger)
- * @param cb function to call on each result
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_purse_merges_above_serial_id (
-  void *cls,
-  uint64_t serial_id,
-  TALER_EXCHANGEDB_PurseMergeCallback cb,
-  void *cb_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct PurseMergeSerialContext dsc = {
-    .cb = cb,
-    .cb_cls = cb_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_purse_merge_incr",
-                                             params,
-                                             &purse_merges_serial_helper_cb,
-                                             &dsc);
-  if (GNUNET_OK != dsc.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Closure for #purse_deposit_serial_helper_cb().
- */
 struct HistoryRequestSerialContext
 {
 
@@ -7951,127 +7396,6 @@ postgres_select_purse_decisions_above_serial_id (
                                              "audit_get_purse_decisions_incr",
                                              params,
                                              &purse_decision_serial_helper_cb,
-                                             &dsc);
-  if (GNUNET_OK != dsc.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Closure for #all_purse_decision_serial_helper_cb().
- */
-struct AllPurseDecisionSerialContext
-{
-
-  /**
-   * Callback to call.
-   */
-  TALER_EXCHANGEDB_AllPurseDecisionCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Status code, set to #GNUNET_SYSERR on hard errors.
-   */
-  enum GNUNET_GenericReturnValue status;
-};
-
-
-/**
- * Helper function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct PurseRefundSerialContext`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-all_purse_decision_serial_helper_cb (void *cls,
-                                     PGresult *result,
-                                     unsigned int num_results)
-{
-  struct AllPurseDecisionSerialContext *dsc = cls;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_PurseContractPublicKeyP purse_pub;
-    bool refunded;
-    uint64_t rowid;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
-                                            &purse_pub),
-      GNUNET_PQ_result_spec_bool ("refunded",
-                                  &refunded),
-      GNUNET_PQ_result_spec_uint64 ("purse_decision_serial_id",
-                                    &rowid),
-      GNUNET_PQ_result_spec_end
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      dsc->status = GNUNET_SYSERR;
-      return;
-    }
-    ret = dsc->cb (dsc->cb_cls,
-                   rowid,
-                   &purse_pub,
-                   refunded);
-    GNUNET_PQ_cleanup_result (rs);
-    if (GNUNET_OK != ret)
-      break;
-  }
-}
-
-
-/**
- * Select purse decisions above @a serial_id in monotonically increasing
- * order.
- *
- * @param cls closure
- * @param serial_id highest serial ID to exclude (select strictly larger)
- * @param cb function to call on each result
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_all_purse_decisions_above_serial_id (
-  void *cls,
-  uint64_t serial_id,
-  TALER_EXCHANGEDB_AllPurseDecisionCallback cb,
-  void *cb_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct AllPurseDecisionSerialContext dsc = {
-    .cb = cb,
-    .cb_cls = cb_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_all_purse_decision_incr",
-                                             params,
-                                             &
-                                             all_purse_decision_serial_helper_cb,
                                              &dsc);
   if (GNUNET_OK != dsc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -11595,61 +10919,6 @@ postgres_expire_purse (
 
 
 /**
- * Function called to obtain information about a purse.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub public key of the new purse
- * @param[out] purse_creation set to time when the purse was created
- * @param[out] purse_expiration set to time when the purse will expire
- * @param[out] amount set to target amount (with fees) to be put into the purse
- * @param[out] deposited set to actual amount put into the purse so far
- * @param[out] h_contract_terms set to hash of the contract for the purse
- * @param[out] merge_timestamp set to time when the purse was merged, or NEVER if not
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_purse (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  struct GNUNET_TIME_Timestamp *purse_creation,
-  struct GNUNET_TIME_Timestamp *purse_expiration,
-  struct TALER_Amount *amount,
-  struct TALER_Amount *deposited,
-  struct TALER_PrivateContractHashP *h_contract_terms,
-  struct GNUNET_TIME_Timestamp *merge_timestamp)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_timestamp ("purse_expiration",
-                                     purse_expiration),
-    GNUNET_PQ_result_spec_timestamp ("purse_creation",
-                                     purse_creation),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 amount),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
-                                 deposited),
-    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                          h_contract_terms),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
-                                       merge_timestamp),
-      NULL),
-    GNUNET_PQ_result_spec_end
-  };
-
-  *merge_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_purse",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
  * Function called to return meta data about a purse by the
  * merge capability key.
  *
@@ -13093,18 +12362,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->gc = &postgres_gc;
   plugin->select_deposits_above_serial_id
     = &postgres_select_deposits_above_serial_id;
-  plugin->select_purse_deposits_above_serial_id
-    = &postgres_select_purse_deposits_above_serial_id;
-  plugin->select_account_merges_above_serial_id
-    = &postgres_select_account_merges_above_serial_id;
-  plugin->select_purse_merges_above_serial_id
-    = &postgres_select_purse_merges_above_serial_id;
   plugin->select_history_requests_above_serial_id
     = &postgres_select_history_requests_above_serial_id;
   plugin->select_purse_decisions_above_serial_id
     = &postgres_select_purse_decisions_above_serial_id;
-  plugin->select_all_purse_decisions_above_serial_id
-    = &postgres_select_all_purse_decisions_above_serial_id;
   plugin->select_purse_deposits_by_purse
     = &postgres_select_purse_deposits_by_purse;
   plugin->select_refreshes_above_serial_id
@@ -13203,8 +12464,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_get_purse_request;
   plugin->expire_purse
     = &postgres_expire_purse;
-  plugin->select_purse
-    = &postgres_select_purse;
   plugin->select_purse_by_merge_pub
     = &postgres_select_purse_by_merge_pub;
   plugin->do_purse_deposit
@@ -13280,6 +12539,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_lookup_records_by_table;
   plugin->lookup_serial_by_table
     = &TEH_PG_lookup_serial_by_table;
+  plugin->select_account_merges_above_serial_id
+    = &TEH_PG_select_account_merges_above_serial_id;
+  plugin->select_all_purse_decisions_above_serial_id
+    = &TEH_PG_select_all_purse_decisions_above_serial_id;
+  plugin->select_purse
+    = &TEH_PG_select_purse;
+  plugin->select_purse_deposits_above_serial_id
+    = &TEH_PG_select_purse_deposits_above_serial_id;
+  plugin->select_purse_merges_above_serial_id
+    = &TEH_PG_select_purse_merges_above_serial_id;
+  plugin->select_purse_requests_above_serial_id
+    = &TEH_PG_select_purse_requests_above_serial_id;
   plugin->select_reserve_close_info
     = &TEH_PG_select_reserve_close_info;
   plugin->select_reserve_closed_above_serial_id

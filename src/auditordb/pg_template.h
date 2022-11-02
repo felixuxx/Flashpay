@@ -14,13 +14,16 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_template.c
- * @brief Implementation of the template function for Postgres
+ * @file auditordb/pg_template.h
+ * @brief implementation of the template function for Postgres
  * @author Christian Grothoff
  */
-#include "platform.h"
-#include "taler_error_codes.h"
-#include "taler_dbevents.h"
-#include "taler_pq_lib.h"
-#include "pg_template.h"
-#include "pg_helper.h"
+#ifndef PG_TEMPLATE_H
+#define PG_TEMPLATE_H
+
+#include "taler_util.h"
+#include "taler_json_lib.h"
+#include "taler_auditordb_plugin.h"
+
+
+#endif

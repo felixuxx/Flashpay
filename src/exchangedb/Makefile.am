@@ -55,7 +55,9 @@ EXTRA_DIST = \
   bench-db-postgres.conf \
   test-exchange-db-postgres.conf \
   $(sqlinputs) \
-  $(sql_DATA)
+  $(sql_DATA) \
+  pg_template.h pg_template.c \
+  pg_template.sh
 
 plugindir = $(libdir)/taler
 
@@ -81,6 +83,12 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_lookup_serial_by_table.c pg_lookup_serial_by_table.h \
   pg_select_reserve_close_info.c pg_select_reserve_close_info.h \
   pg_select_reserve_closed_above_serial_id.c pg_select_reserve_closed_above_serial_id.h \
+  pg_select_purse.h pg_select_purse.c \
+  pg_select_purse_requests_above_serial_id.h pg_select_purse_requests_above_serial_id.c \
+  pg_select_purse_merges_above_serial_id.h pg_select_purse_merges_above_serial_id.c \
+  pg_select_purse_deposits_above_serial_id.h pg_select_purse_deposits_above_serial_id.c \
+  pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
+  pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
@@ -146,7 +154,3 @@ bench_db_postgres_LDADD = \
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la
-
-EXTRA_DIST = \
-  pg_template.h pg_template.c \
-  pg_template.sh

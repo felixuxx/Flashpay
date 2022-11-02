@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_template.c
+ * @file auditordb/pg_template.c
  * @brief Implementation of the template function for Postgres
  * @author Christian Grothoff
  */

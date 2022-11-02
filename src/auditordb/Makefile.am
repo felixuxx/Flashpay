@@ -23,7 +23,9 @@ EXTRA_DIST = \
   auditordb-postgres.conf \
   test-auditor-db-postgres.conf \
   $(sql_DATA) \
-  9999.sql
+  9999.sql \
+  pg_template.h pg_template.c \
+  pg_template.sh
 
 plugindir = $(libdir)/taler
 
@@ -83,6 +85,14 @@ libtaler_plugin_auditordb_postgres_la_SOURCES = \
   pg_delete_exchange.h pg_delete_exchange.c \
   pg_insert_exchange_signkey.h pg_insert_exchange_signkey.c \
   pg_insert_deposit_confirmation.h pg_insert_deposit_confirmation.c \
+  pg_get_purse_info.h pg_get_purse_info.c \
+  pg_delete_purse_info.h pg_delete_purse_info.c \
+  pg_update_purse_info.h pg_update_purse_info.c \
+  pg_insert_purse_info.h pg_insert_purse_info.c \
+  pg_get_purse_summary.h pg_get_purse_summary.c \
+  pg_select_purse_expired.h pg_select_purse_expired.c \
+  pg_insert_purse_summary.h pg_insert_purse_summary.c \
+  pg_update_purse_summary.h pg_update_purse_summary.c \
   pg_get_deposit_confirmations.h pg_get_deposit_confirmations.c
 libtaler_plugin_auditordb_postgres_la_LIBADD = \
   $(LTLIBINTL)

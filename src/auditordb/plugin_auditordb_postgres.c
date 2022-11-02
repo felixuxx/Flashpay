@@ -87,6 +87,14 @@
 #include "pg_get_wire_auditor_progress.h"
 #include "pg_insert_historic_reserve_revenue.h"
 #include "pg_helper.h"
+#include "pg_get_purse_info.h"
+#include "pg_delete_purse_info.h"
+#include "pg_update_purse_info.h"
+#include "pg_insert_purse_info.h"
+#include "pg_get_purse_summary.h"
+#include "pg_select_purse_expired.h"
+#include "pg_insert_purse_summary.h"
+#include "pg_update_purse_summary.h"
 
 #define LOG(kind,...) GNUNET_log_from (kind, "taler-auditordb-postgres", \
                                        __VA_ARGS__)
@@ -508,6 +516,24 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
     = &TAH_PG_update_predicted_result;
   plugin->insert_predicted_result
     = &TAH_PG_insert_predicted_result;
+  plugin->get_purse_info
+    = &TEH_PG_get_purse_info;
+
+  plugin->delete_purse_info
+    = &TEH_PG_delete_purse_info;
+  plugin->update_purse_info
+    = &TEH_PG_update_purse_info;
+  plugin->insert_purse_info
+    = &TEH_PG_insert_purse_info;
+  plugin->get_purse_summary
+    = &TEH_PG_get_purse_summary;
+
+  plugin->select_purse_expired
+    = &TEH_PG_select_purse_expired;
+  plugin->insert_purse_summary
+    = &TEH_PG_insert_purse_summary;
+  plugin->update_purse_summary
+    = &TEH_PG_update_purse_summary;
 
   return plugin;
 }

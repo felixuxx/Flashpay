@@ -14,16 +14,34 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_template.h
- * @brief implementation of the template function for Postgres
+ * @file pg_select_purse_deposits_above_serial_id.h
+ * @brief implementation of the select_purse_deposits_above_serial_id function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_TEMPLATE_H
-#define PG_TEMPLATE_H
+#ifndef PG_SELECT_PURSE_DEPOSITS_ABOVE_SERIAL_ID_H
+#define PG_SELECT_PURSE_DEPOSITS_ABOVE_SERIAL_ID_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
+/**
+ * Select deposits above @a serial_id in monotonically increasing
+ * order.
+ *
+ * @param cls closure
+ * @param serial_id highest serial ID to exclude (select strictly larger)
+ * @param cb function to call on each result
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_purse_deposits_above_serial_id (
+  void *cls,
+  uint64_t serial_id,
+  TALER_EXCHANGEDB_PurseDepositCallback cb,
+  void *cb_cls);
 
 
 #endif
