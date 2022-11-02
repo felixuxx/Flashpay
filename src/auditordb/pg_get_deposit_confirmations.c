@@ -60,7 +60,7 @@ struct DepositConfirmationContext
 
 
 /**
- * Helper function for #postgres_get_deposit_confirmations().
+ * Helper function for #TEH_PG_get_deposit_confirmations().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *

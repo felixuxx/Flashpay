@@ -433,8 +433,10 @@ setup_purse (struct PurseContext *pc,
  * Function called on purse requests.
  *
  * @param cls closure
+ * @param rowid which row in the database was the request stored in
  * @param purse_pub public key of the purse
  * @param merge_pub public key representing the merge capability
+ * @param purse_creation when was the purse created
  * @param purse_expiration when would an unmerged purse expire
  * @param h_contract_terms contract associated with the purse
  * @param age_limit the age limit for deposits into the purse

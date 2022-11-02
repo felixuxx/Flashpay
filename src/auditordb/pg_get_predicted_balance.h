@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file pg_get_predicted_.h
- * @brief implementation of the get_predicted_ function
+ * @file pg_get_predicted_balance.h
+ * @brief implementation of the get_predicted_balance function
  * @author Christian Grothoff
  */
-#ifndef PG_GET_PREDICTED__H
-#define PG_GET_PREDICTED__H
+#ifndef PG_GET_PREDICTED_BALANCE_H
+#define PG_GET_PREDICTED_BALANCE_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"

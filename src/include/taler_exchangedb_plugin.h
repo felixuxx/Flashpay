@@ -3012,6 +3012,7 @@ typedef void
  * Function called on purse requests.
  *
  * @param cls closure
+ * @param rowid purse request table row of the purse
  * @param purse_pub public key of the purse
  * @param merge_pub public key representing the merge capability
  * @param purse_creation when was the purse created?

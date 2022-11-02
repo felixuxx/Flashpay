@@ -54,7 +54,7 @@ struct HistoricDenomRevenueContext
 
 
 /**
- * Helper function for #postgres_select_historic_denom_revenue().
+ * Helper function for #TEH_PG_select_historic_denom_revenue().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *

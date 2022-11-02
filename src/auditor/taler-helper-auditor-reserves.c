@@ -1228,6 +1228,8 @@ handle_account_merged (
  * @param cls closure
  * @param rowid unique serial ID for the refund in our DB
  * @param purse_pub public key of the purse
+ * @param reserve_pub which reserve is the purse credited to
+ * @param purse_value what is the target value of the purse
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static enum GNUNET_GenericReturnValue
