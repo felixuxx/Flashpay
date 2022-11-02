@@ -84,7 +84,7 @@ ARGS=("$@")
 ARGS=(${ARGS[@]/$INF})
 
 DIR=`mktemp -d reportXXXXXX`
-for n in aggregation coins deposits reserves
+for n in aggregation coins deposits purses reserves
 do
   taler-helper-auditor-$n ${ARGS[*]} > ${DIR}/$n.json
 done
