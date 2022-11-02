@@ -2543,8 +2543,6 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",wire_fee_frac"
               ",closing_fee_val"
               ",closing_fee_frac"
-              ",wad_fee_val"
-              ",wad_fee_frac"
               ",master_sig"
               " FROM wire_fee"
               " WHERE wire_fee_serial > $1"

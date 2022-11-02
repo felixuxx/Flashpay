@@ -1052,11 +1052,9 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
            ",wire_fee_frac"
            ",closing_fee_val"
            ",closing_fee_frac"
-           ",wad_fee_val"
-           ",wad_fee_frac"
            ",master_sig"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_wire_fee",
                                              params);
