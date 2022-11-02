@@ -921,6 +921,7 @@ check_for_required_transfers (void)
                                                     &next_timestamp);
   if (0 > qs)
   {
+    GNUNET_break (0);
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
@@ -1285,6 +1286,7 @@ complain_out_not_found (void *cls,
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
       global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
