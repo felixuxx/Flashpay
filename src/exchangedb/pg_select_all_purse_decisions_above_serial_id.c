@@ -125,12 +125,20 @@ TEH_PG_select_all_purse_decisions_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "audit_get_all_purse_decision_incr",
-                                             params,
-                                             &
-                                             all_purse_decision_serial_helper_cb,
-                                             &dsc);
+  PREPARE (pg,
+           "audit_all_get_purse_decisions_incr",
+           "SELECT"
+           " purse_pub"
+           ",refunded"
+           ",purse_decision_serial_id"
+           " WHERE purse_decision_serial_id>=$1"
+           " ORDER BY purse_decision_serial_id ASC;");
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "audit_get_all_purse_decision_incr",
+    params,
+    &all_purse_decision_serial_helper_cb,
+    &dsc);
   if (GNUNET_OK != dsc.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
