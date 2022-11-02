@@ -146,3 +146,7 @@ bench_db_postgres_LDADD = \
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la
+
+EXTRA_DIST = \
+  pg_template.h pg_template.c \
+  pg_template.sh
