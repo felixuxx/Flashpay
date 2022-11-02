@@ -170,8 +170,8 @@ CREATE INDEX IF NOT EXISTS auditor_reserves_by_reserve_pub
 CREATE TABLE IF NOT EXISTS auditor_purses
   (purse_pub BYTEA NOT NULL CHECK(LENGTH(purse_pub)=32)
   ,master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
-  ,balance_val INT8 NOT NULL
-  ,balance_frac INT4 NOT NULL
+  ,balance_val INT8 NOT NULL DEFAULT(0)
+  ,balance_frac INT4 NOT NULL DEFAULT(0)
   ,target_val INT8 NOT NULL
   ,target_frac INT4 NOT NULL
   ,expiration_date INT8 NOT NULL
@@ -179,6 +179,20 @@ CREATE TABLE IF NOT EXISTS auditor_purses
   );
 COMMENT ON TABLE auditor_purses
   IS 'all of the purses and their respective balances that the auditor is aware of';
+
+CREATE INDEX IF NOT EXISTS auditor_purses_by_purse_pub
+  ON auditor_purses
+  (purse_pub);
+
+
+CREATE TABLE IF NOT EXISTS auditor_purse_summary
+  (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
+  ,balance_val INT8 NOT NULL
+  ,balance_frac INT4 NOT NULL
+  ,open_purses INT8 NOT NULL
+  );
+COMMENT ON TABLE auditor_purse_summary
+  IS 'sum of the balances in open purses';
 
 CREATE INDEX IF NOT EXISTS auditor_purses_by_purse_pub
   ON auditor_purses

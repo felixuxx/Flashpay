@@ -25,10 +25,30 @@
 #include "pg_insert_purse_summary.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TAH_PG_insert_purse_summary (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_PurseBalance *sum)
 {
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    TALER_PQ_query_param_amount (&sum->balance),
+    GNUNET_PQ_query_param_uint64 (&sum->open_purses),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "auditor_purse_summary_insert",
+           "INSERT INTO auditor_purse_summary "
+           "(master_pub"
+           ",balance_val"
+           ",balance_frac"
+           ",open_purses"
+           ") VALUES ($1,$2,$3,$4);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "auditor_purse_summary_insert",
+                                             params);
 }

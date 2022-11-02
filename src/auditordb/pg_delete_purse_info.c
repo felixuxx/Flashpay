@@ -25,10 +25,26 @@
 #include "pg_delete_purse_info.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TAH_PG_delete_purse_info (
   void *cls,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   const struct TALER_MasterPublicKeyP *master_pub)
 {
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "auditor_purses_delete",
+           "DELETE FROM auditor_purses "
+           " WHERE purse_pub=$1"
+           "   AND master_pub=$2;");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "auditor_purses_delete",
+                                             params);
 }
