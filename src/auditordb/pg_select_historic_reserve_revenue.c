@@ -54,7 +54,7 @@ struct HistoricReserveRevenueContext
 
 
 /**
- * Helper function for #postgres_select_historic_reserve_revenue().
+ * Helper function for #TAH_select_historic_reserve_revenue().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *

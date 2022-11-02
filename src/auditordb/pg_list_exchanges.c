@@ -50,7 +50,7 @@ struct ExchangeInfoContext
 
 
 /**
- * Helper function for #TEH_PG_list_exchanges().
+ * Helper function for #TAH_PG_list_exchanges().
  * To be called with the results of a SELECT statement
  * that has returned @a num_results results.
  *
