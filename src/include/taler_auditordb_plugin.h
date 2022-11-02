@@ -1381,14 +1381,14 @@ struct TALER_AUDITORDB_Plugin
 
 
   /**
- * Insert information about all purses.  There must not be an
- * existing record for the @a master_pub.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param master_pub master public key of the exchange
- * @param sum purse balance summary to store
- * @return transaction status code
- */
+   * Insert information about all purses.  There must not be an
+   * existing record for the @a master_pub.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param master_pub master public key of the exchange
+   * @param sum purse balance summary to store
+   * @return transaction status code
+   */
   enum GNUNET_DB_QueryStatus
   (*insert_purse_summary)(
     void *cls,

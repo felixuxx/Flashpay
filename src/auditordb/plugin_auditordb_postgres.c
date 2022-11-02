@@ -517,23 +517,23 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   plugin->insert_predicted_result
     = &TAH_PG_insert_predicted_result;
   plugin->get_purse_info
-    = &TEH_PG_get_purse_info;
+    = &TAH_PG_get_purse_info;
 
   plugin->delete_purse_info
-    = &TEH_PG_delete_purse_info;
+    = &TAH_PG_delete_purse_info;
   plugin->update_purse_info
-    = &TEH_PG_update_purse_info;
+    = &TAH_PG_update_purse_info;
   plugin->insert_purse_info
-    = &TEH_PG_insert_purse_info;
+    = &TAH_PG_insert_purse_info;
   plugin->get_purse_summary
-    = &TEH_PG_get_purse_summary;
+    = &TAH_PG_get_purse_summary;
 
   plugin->select_purse_expired
-    = &TEH_PG_select_purse_expired;
+    = &TAH_PG_select_purse_expired;
   plugin->insert_purse_summary
-    = &TEH_PG_insert_purse_summary;
+    = &TAH_PG_insert_purse_summary;
   plugin->update_purse_summary
-    = &TEH_PG_update_purse_summary;
+    = &TAH_PG_update_purse_summary;
 
   return plugin;
 }
