@@ -1138,6 +1138,9 @@ struct TALER_BlindedDenominationSignature
  *
  * A value of 0 means that the exchange does not support the extension for
  * age-restriction.
+ *
+ * For a non-0 age mask, the 0th bit always must be set, otherwise the age
+ * mask is considered invalid.
  */
 struct TALER_AgeMask
 {
