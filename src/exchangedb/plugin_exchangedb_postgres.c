@@ -11158,7 +11158,7 @@ postgres_do_purse_merge (
   struct PostgresClosure *pg = cls;
   struct TALER_PaytoHashP h_payto;
   struct GNUNET_TIME_Timestamp expiration
-    = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_YEARS); /* FIXME: make this configurable? */
+    = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
