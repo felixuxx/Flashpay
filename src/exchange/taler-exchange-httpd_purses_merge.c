@@ -169,7 +169,7 @@ reply_merge_success (struct MHD_Connection *connection,
   else
   {
 #if WAD_NOT_IMPLEMENTED
-    /* FIXME: figure out partner, lookup wad fee by partner! */
+    /* FIXME: figure out partner, lookup wad fee by partner! #7271 */
     if (0 >
         TALER_amount_subtract (&merge_amount,
                                &pcc->target_amount,

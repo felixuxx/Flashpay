@@ -282,7 +282,7 @@ handle_reserves_open_finished (void *cls,
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: not yet specified, but needed in
+    // FIXME: not yet specified (#7428), but needed in
     // case of double-spending or insufficient
     // reserve balance!
     rs.hr.ec = TALER_JSON_get_error_code (j);

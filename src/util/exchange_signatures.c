@@ -454,8 +454,7 @@ struct TALER_ExchangeAccountSetupSuccessPS
    */
   struct TALER_PaytoHashP h_payto;
 
-  // FIXME: include details on *which* KYC process
-  // was satisfied! #7427
+  /* FIXME: include details on *which* KYC process was satisfied! #7427 */
 
   /**
    * When was the signature made.

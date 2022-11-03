@@ -191,13 +191,10 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
                             template);
     if (NULL == tmpl)
     {
-      /* FIXME: should this not be an
-         internal failure? The language
-         mismatch is not critical here! */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to load template `%s'\n",
                   template);
-      *http_status = MHD_HTTP_NOT_ACCEPTABLE;
+      *http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
       *reply = TALER_MHD_make_error (TALER_EC_GENERIC_FAILED_TO_LOAD_TEMPLATE,
                                      template);
       return GNUNET_NO;
