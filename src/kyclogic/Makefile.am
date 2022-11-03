@@ -15,8 +15,7 @@ pkgcfg_DATA = \
   kyclogic-persona.conf
 
 EXTRA_DIST = \
-  kyclogic.conf \
-  kyclogic-oauth2.conf \
+  $(pkgcfg_DATA) \
   sample.conf
 
 lib_LTLIBRARIES = \
