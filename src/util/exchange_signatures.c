@@ -455,11 +455,11 @@ struct TALER_ExchangeAccountSetupSuccessPS
   struct TALER_PaytoHashP h_payto;
 
   // FIXME: include details on *which* KYC process
-  // was satisfied!
+  // was satisfied! #7427
 
   /**
    * When was the signature made.
-   * FIXME: replace by *expiration* time!
+   * FIXME: replace by *expiration* time! #7427
    */
   struct GNUNET_TIME_TimestampNBO timestamp;
 };

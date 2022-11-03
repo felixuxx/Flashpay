@@ -1119,7 +1119,6 @@ handle_reserve_closed (
     }
   }
 
-  // FIXME: support/check for reserve close requests here!
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional closing operation for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
@@ -1784,19 +1783,6 @@ analyze_reserves (void *cls)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-#if 0
-  /* FIXME #7269 (support for explicit reserve closure request) -- needed??? */
-  qs = TALER_ARL_edb->select_close_requests_above_serial_id (
-    TALER_ARL_edb->cls,
-    ppr.last_close_requests_serial_id,
-    &handle_close_request,
-    &rc);
-  if (qs < 0)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-#endif
   GNUNET_CONTAINER_multihashmap_iterate (rc.reserves,
                                          &verify_reserve_balance,
                                          &rc);
