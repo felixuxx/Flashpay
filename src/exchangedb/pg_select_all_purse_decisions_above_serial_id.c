@@ -131,6 +131,7 @@ TEH_PG_select_all_purse_decisions_above_serial_id (
            " purse_pub"
            ",refunded"
            ",purse_decision_serial_id"
+           " FROM purse_decision"
            " WHERE purse_decision_serial_id>=$1"
            " ORDER BY purse_decision_serial_id ASC;");
   qs = GNUNET_PQ_eval_prepared_multi_select (
