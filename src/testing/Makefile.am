@@ -541,6 +541,7 @@ EXTRA_DIST = \
   test_auditor_api_expire_reserve_now-rsa.conf \
   test_bank_api_fakebank.conf \
   test_bank_api_fakebank_twisted.conf \
+  test_bank_api_nexus.conf \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
