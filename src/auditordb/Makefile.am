@@ -23,7 +23,6 @@ EXTRA_DIST = \
   auditordb-postgres.conf \
   test-auditor-db-postgres.conf \
   $(sql_DATA) \
-  9999.sql \
   pg_template.h pg_template.c \
   pg_template.sh
 

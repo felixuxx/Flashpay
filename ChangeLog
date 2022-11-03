@@ -1,3 +1,9 @@
+Sat Nov  5 11:32:45 AM CET 2022
+    Added support for P2P payments.
+    Added support for explicit reserve lifetime control.
+    Added support for age restrictions.
+    Releasing GNU Taler Exchange 0.9.0. -CG
+
 Fri 03 Sep 2021 07:02:05 PM CEST
     Add experimental aggregator sharding logic. -CG
 
