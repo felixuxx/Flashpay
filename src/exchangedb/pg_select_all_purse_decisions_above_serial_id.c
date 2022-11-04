@@ -126,7 +126,7 @@ TEH_PG_select_all_purse_decisions_above_serial_id (
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-           "audit_get_all_purse_decisions_incr",
+           "audit_get_all_purse_decision_incr",
            "SELECT"
            " purse_pub"
            ",refunded"
