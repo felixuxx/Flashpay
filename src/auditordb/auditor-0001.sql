@@ -194,11 +194,6 @@ CREATE TABLE IF NOT EXISTS auditor_purse_summary
 COMMENT ON TABLE auditor_purse_summary
   IS 'sum of the balances in open purses';
 
-CREATE INDEX IF NOT EXISTS auditor_purses_by_purse_pub
-  ON auditor_purses
-  (purse_pub);
-
-
 CREATE TABLE IF NOT EXISTS auditor_reserve_balance
   (master_pub BYTEA NOT NULL CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,reserve_balance_val INT8 NOT NULL
