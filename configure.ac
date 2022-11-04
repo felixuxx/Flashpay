@@ -532,6 +532,7 @@ AC_CONFIG_FILES([Makefile
                  src/exchangedb/Makefile
                  src/exchange-tools/Makefile
                  src/extensions/Makefile
+                 src/extensions/age_restriction/Makefile
                  src/lib/Makefile
                  src/kyclogic/Makefile
                  src/testing/Makefile

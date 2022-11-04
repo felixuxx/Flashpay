@@ -492,5 +492,63 @@ char *strchrnul (const char *s, int c);
 
 #endif
 
+/**
+ * @brief Parses a string as a list of age groups.
+ *
+ * The string must consist of a colon-separated list of increasing integers
+ * between 0 and 31.  Each entry represents the beginning of a new age group.
+ * F.e. the string
+ *
+ *  "8:10:12:14:16:18:21"
+ *
+ * represents the following list of eight age groups:
+ *
+ * | Group |    Ages       |
+ * | -----:|:------------- |
+ * |    0  |  0, 1, ..., 7 |
+ * |    1  |  8, 9         |
+ * |    2  | 10, 11        |
+ * |    3  | 12, 13        |
+ * |    4  | 14, 15        |
+ * |    5  | 16, 17        |
+ * |    6  | 18, 19, 20    |
+ * |    7  | 21, ...       |
+ *
+ * which is then encoded as a bit mask with the corresponding bits set:
+ *
+ *  31     24        16        8         0
+ *  |      |         |         |         |
+ *  oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
+ *
+ * @param groups String representation of age groups
+ * @param[out] mask Mask representation for age restriction.
+ * @return Error, if age groups were invalid, OK otherwise.
+ */
+enum GNUNET_GenericReturnValue
+TALER_parse_age_group_string (
+  const char *groups,
+  struct TALER_AgeMask *mask);
+
+/**
+ * @brief Encodes the age mask into a string, like "8:10:12:14:16:18:21"
+ *
+ * @param mask Age mask
+ * @return String representation of the age mask, allocated by GNUNET_malloc.
+ *         Can be used as value in the TALER config.
+ */
+char *
+TALER_age_mask_to_string (
+  const struct TALER_AgeMask *mask);
+
+/**
+ * @brief Parses a JSON object { "age_groups": "a:b:...y:z" }.
+ *
+ * @param root is the json object
+ * @param[out] mask on success, will contain the age mask
+ * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
+ */
+enum GNUNET_GenericReturnValue
+TALER_JSON_parse_age_groups (const json_t *root,
+                             struct TALER_AgeMask *mask);
 
 #endif

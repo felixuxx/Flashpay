@@ -35,7 +35,7 @@ TAH_PG_insert_deposit_confirmation (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (&dc->h_extensions),
+    GNUNET_PQ_query_param_auto_from_type (&dc->h_policy),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_wire),
     GNUNET_PQ_query_param_timestamp (&dc->exchange_timestamp),
     GNUNET_PQ_query_param_timestamp (&dc->wire_deadline),
@@ -54,7 +54,7 @@ TAH_PG_insert_deposit_confirmation (
            "INSERT INTO deposit_confirmations "
            "(master_pub"
            ",h_contract_terms"
-           ",h_extensions"
+           ",h_policy"
            ",h_wire"
            ",exchange_timestamp"
            ",wire_deadline"

@@ -153,7 +153,7 @@ handle_deposit_confirmation_finished (void *cls,
  * Verify signature information about the deposit-confirmation.
  *
  * @param h_wire hash of merchant wire details
- * @param h_extensions hash over the extensions, if any
+ * @param h_policy hash over the policy extension, if any
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
  * @param exchange_timestamp timestamp when the deposit was received by the wallet
  * @param wire_deadline by what time must the amount be wired to the merchant
@@ -172,7 +172,7 @@ handle_deposit_confirmation_finished (void *cls,
  */
 static enum GNUNET_GenericReturnValue
 verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
-                   const struct TALER_ExtensionContractHashP *h_extensions,
+                   const struct TALER_ExtensionPolicyHashP *h_policy,
                    const struct TALER_PrivateContractHashP *h_contract_terms,
                    struct GNUNET_TIME_Timestamp exchange_timestamp,
                    struct GNUNET_TIME_Timestamp wire_deadline,
@@ -192,7 +192,7 @@ verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
       TALER_exchange_online_deposit_confirmation_verify (
         h_contract_terms,
         h_wire,
-        h_extensions,
+        h_policy,
         exchange_timestamp,
         wire_deadline,
         refund_deadline,
@@ -239,7 +239,7 @@ struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_Handle *auditor,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
@@ -266,7 +266,7 @@ TALER_AUDITOR_deposit_confirmation (
                  TALER_AUDITOR_handle_is_ready_ (auditor));
   if (GNUNET_OK !=
       verify_signatures (h_wire,
-                         h_extensions,
+                         h_policy,
                          h_contract_terms,
                          exchange_timestamp,
                          wire_deadline,
@@ -290,8 +290,8 @@ TALER_AUDITOR_deposit_confirmation (
     = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_wire",
                                     h_wire),
-        GNUNET_JSON_pack_data_auto ("h_extensions",
-                                    h_extensions),
+        GNUNET_JSON_pack_data_auto ("h_policy",
+                                    h_policy),
         GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                     h_contract_terms),
         GNUNET_JSON_pack_timestamp ("exchange_timestamp",

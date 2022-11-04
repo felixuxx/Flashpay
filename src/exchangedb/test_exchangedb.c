@@ -112,53 +112,53 @@ mark_prepare_cb (void *cls,
  * Simple check that config retrieval and setting for extensions work
  */
 static enum GNUNET_GenericReturnValue
-test_extension_config (void)
+test_extension_manifest (void)
 {
-  char *config;
+  char *manifest;
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->get_extension_config (plugin->cls,
-                                        "fnord",
-                                        &config));
+          plugin->get_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          &manifest));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->set_extension_config (plugin->cls,
-                                        "fnord",
-                                        "bar"));
+          plugin->set_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          "bar"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_extension_config (plugin->cls,
-                                        "fnord",
-                                        &config));
+          plugin->get_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          &manifest));
 
-  FAILIF (0 != strcmp ("bar", config));
-  GNUNET_free (config);
+  FAILIF (0 != strcmp ("bar", manifest));
+  GNUNET_free (manifest);
 
   /* let's do this again! */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->set_extension_config (plugin->cls,
-                                        "fnord",
-                                        "buzz"));
+          plugin->set_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          "buzz"));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_extension_config (plugin->cls,
-                                        "fnord",
-                                        &config));
+          plugin->get_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          &manifest));
 
-  FAILIF (0 != strcmp ("buzz", config));
-  GNUNET_free (config);
+  FAILIF (0 != strcmp ("buzz", manifest));
+  GNUNET_free (manifest);
 
   /* let's do this again, with NULL */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->set_extension_config (plugin->cls,
-                                        "fnord",
-                                        NULL));
+          plugin->set_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          NULL));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_extension_config (plugin->cls,
-                                        "fnord",
-                                        &config));
+          plugin->get_extension_manifest (plugin->cls,
+                                          "fnord",
+                                          &manifest));
 
-  FAILIF (NULL != config);
+  FAILIF (NULL != manifest);
 
   return GNUNET_OK;
 drop:
@@ -1269,7 +1269,7 @@ run (void *cls)
                                                  NULL));
   /* simple extension check */
   FAILIF (GNUNET_OK !=
-          test_extension_config ());
+          test_extension_manifest ());
 
   RND_BLK (&reserve_pub);
   GNUNET_assert (GNUNET_OK ==

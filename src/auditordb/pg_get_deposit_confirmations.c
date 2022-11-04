@@ -87,8 +87,8 @@ deposit_confirmation_cb (void *cls,
                                     &serial_id),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &dc.h_contract_terms),
-      GNUNET_PQ_result_spec_auto_from_type ("h_extensions",
-                                            &dc.h_extensions),
+      GNUNET_PQ_result_spec_auto_from_type ("h_policy",
+                                            &dc.h_policy),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
       GNUNET_PQ_result_spec_timestamp ("exchange_timestamp",
@@ -158,7 +158,7 @@ TAH_PG_get_deposit_confirmations (
            "SELECT"
            " serial_id"
            ",h_contract_terms"
-           ",h_extensions"
+           ",h_policy"
            ",h_wire"
            ",exchange_timestamp"
            ",wire_deadline"

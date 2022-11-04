@@ -40,4 +40,19 @@ TEH_extensions_init (void);
 void
 TEH_extensions_done (void);
 
+
+/**
+ * Handle POST "/extensions/..." requests.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_extensions_post_handler (
+  struct TEH_RequestContext *rc,
+  const json_t *root,
+  const char *const args[]);
+
 #endif

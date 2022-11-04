@@ -765,25 +765,25 @@ TALER_JSON_wire_to_payto (const json_t *wire_s);
 
 
 /**
- * Hash @a extensions in deposits.
+ * Hash @a policy extensions in deposits.
  *
- * @param extensions contract extensions to hash
- * @param[out] ech where to write the extension hash
+ * @param policy contract policy extension to hash
+ * @param[out] ech where to write the policy hash
  */
 void
-TALER_deposit_extension_hash (const json_t *extensions,
-                              struct TALER_ExtensionContractHashP *ech);
+TALER_deposit_policy_hash (const json_t *extensions,
+                           struct TALER_ExtensionPolicyHashP *ech);
 
 /**
- * Hash the @a config of an extension, given as JSON
+ * Hash the @a manifests of extensions, given as JSON
  *
- * @param config configuration of the extension
- * @param[out] eh where to write the extension hash
+ * @param manifests Manifests of the extensions
+ * @param[out] eh where to write the hash
  * @return GNUNET_OK on success, GNUNET_SYSERR on failure
  */
 enum GNUNET_GenericReturnValue
-TALER_JSON_extensions_config_hash (const json_t *config,
-                                   struct TALER_ExtensionConfigHashP *eh);
+TALER_JSON_extensions_manifests_hash (const json_t *manifests,
+                                      struct TALER_ExtensionManifestsHashP *eh);
 
 /**
  * Canonicalize a JSON input to a string according to RFC 8785.

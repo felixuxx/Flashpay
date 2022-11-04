@@ -522,9 +522,6 @@ main (int argc,
                     "INFO",
                     NULL);
 
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_extension_age_restriction_register ());
-
   cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
   GNUNET_assert (NULL != cipher);
   uses_cs = (0 == strcmp (cipher, "cs"));

@@ -24,51 +24,53 @@
 #include "taler_extensions.h"
 #include "stdint.h"
 
-
 /* head of the list of all registered extensions */
-static struct TALER_Extension *TE_extensions = NULL;
+static struct TALER_Extensions TE_extensions = {
+  .next = NULL,
+  .extension = NULL,
+};
 
-
-const struct TALER_Extension *
+const struct TALER_Extensions *
 TALER_extensions_get_head ()
 {
-  return TE_extensions;
+  return &TE_extensions;
 }
 
 
-enum GNUNET_GenericReturnValue
-TALER_extensions_add (
-  struct TALER_Extension *extension)
+static enum GNUNET_GenericReturnValue
+add_extension (
+  const struct TALER_Extension *extension)
 {
   /* Sanity checks */
   if ((NULL == extension) ||
       (NULL == extension->name) ||
       (NULL == extension->version) ||
       (NULL == extension->disable) ||
-      (NULL == extension->test_json_config) ||
-      (NULL == extension->load_json_config) ||
-      (NULL == extension->config_to_json) ||
-      (NULL == extension->load_taler_config))
+      (NULL == extension->load_config) ||
+      (NULL == extension->manifest))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "invalid extension\n");
     return GNUNET_SYSERR;
   }
 
-  if (NULL == TE_extensions) /* first extension ?*/
-    TE_extensions = (struct TALER_Extension *) extension;
+  if (NULL == TE_extensions.extension) /* first extension ?*/
+    TE_extensions.extension = extension;
   else
   {
-    struct TALER_Extension *iter;
-    struct TALER_Extension *last;
+    struct TALER_Extensions *iter;
+    struct TALER_Extensions *last;
 
     /* Check for collisions */
-    for (iter = TE_extensions; NULL != iter; iter = iter->next)
+    for (iter = &TE_extensions;
+         NULL != iter && NULL != iter->extension;
+         iter = iter->next)
     {
+      const struct TALER_Extension *ext = iter->extension;
       last = iter;
-      if (extension->type == iter->type ||
+      if (extension->type == ext->type ||
           0 == strcasecmp (extension->name,
-                           iter->name))
+                           ext->name))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "extension collision for `%s'\n",
@@ -78,7 +80,11 @@ TALER_extensions_add (
     }
 
     /* No collisions found, so add this extension to the list */
-    last->next = extension;
+    {
+      struct TALER_Extensions *extn = GNUNET_new (struct TALER_Extensions);
+      extn->extension = extension;
+      last->next = extn;
+    }
   }
 
   return GNUNET_OK;
@@ -89,12 +95,12 @@ const struct TALER_Extension *
 TALER_extensions_get_by_type (
   enum TALER_Extension_Type type)
 {
-  for (const struct TALER_Extension *it = TE_extensions;
-       NULL != it;
+  for (const struct TALER_Extensions *it = &TE_extensions;
+       NULL != it && NULL != it->extension;
        it = it->next)
   {
-    if (it->type == type)
-      return it;
+    if (it->extension->type == type)
+      return it->extension;
   }
 
   /* No extension found. */
@@ -109,8 +115,7 @@ TALER_extensions_is_enabled_type (
   const struct TALER_Extension *ext =
     TALER_extensions_get_by_type (type);
 
-  return (NULL != ext &&
-          TALER_extensions_is_enabled (ext));
+  return (NULL != ext && ext->enabled);
 }
 
 
@@ -118,33 +123,34 @@ const struct TALER_Extension *
 TALER_extensions_get_by_name (
   const char *name)
 {
-  for (const struct TALER_Extension *it = TE_extensions;
+  for (const struct TALER_Extensions *it = &TE_extensions;
        NULL != it;
        it = it->next)
   {
-    if (0 == strcasecmp (name, it->name))
-      return it;
+    if (0 == strcasecmp (name, it->extension->name))
+      return it->extension;
   }
-  /* No extension found. */
+  /* No extension found, try to load it. */
+
   return NULL;
 }
 
 
 enum GNUNET_GenericReturnValue
-TALER_extensions_verify_json_config_signature (
-  json_t *extensions,
+TALER_extensions_verify_manifests_signature (
+  json_t *manifests,
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub)
 {
-  struct TALER_ExtensionConfigHashP h_config;
+  struct TALER_ExtensionManifestsHashP h_manifests;
 
   if (GNUNET_OK !=
-      TALER_JSON_extensions_config_hash (extensions,
-                                         &h_config))
+      TALER_JSON_extensions_manifests_hash (manifests,
+                                            &h_manifests))
     return GNUNET_SYSERR;
   if (GNUNET_OK !=
-      TALER_exchange_offline_extension_config_hash_verify (
-        &h_config,
+      TALER_exchange_offline_extension_manifests_hash_verify (
+        &h_manifests,
         master_pub,
         extensions_sig))
     return GNUNET_NO;
@@ -178,7 +184,8 @@ configure_extension (
 {
   struct LoadConfClosure *col = cls;
   const char *name;
-  const struct TALER_Extension *extension;
+  char *lib_name;
+  struct TALER_Extension *extension;
 
   if (GNUNET_OK != col->error)
     return;
@@ -190,33 +197,49 @@ configure_extension (
 
   name = section + sizeof(TALER_EXTENSION_SECTION_PREFIX) - 1;
 
-  if (NULL ==
-      (extension = TALER_extensions_get_by_name (name)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unsupported extension `%s` (section [%s]).\n", name,
-                section);
-    col->error = GNUNET_SYSERR;
-    return;
-  }
 
-  if (GNUNET_OK !=
-      extension->load_taler_config (
-        (struct TALER_Extension *) extension,
-        col->cfg))
+  /* Load the extension library */
+  GNUNET_asprintf (&lib_name,
+                   "libtaler_extension_%s",
+                   name);
+  extension = GNUNET_PLUGIN_load (
+    lib_name,
+    (void *) col->cfg);
+  if (NULL == extension)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Couldn't parse configuration for extension `%s` (section [%s]).\n",
+                "Couldn't load extension library to `%s` (section [%s]).\n",
                 name,
                 section);
     col->error = GNUNET_SYSERR;
     return;
   }
+
+
+  if (GNUNET_OK != add_extension (extension))
+  {
+    /* TODO: Ignoring return values here */
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Couldn't add extension `%s` (section [%s]).\n",
+                name,
+                section);
+    col->error = GNUNET_SYSERR;
+    GNUNET_PLUGIN_unload (
+      lib_name,
+      (void *) col->cfg);
+    return;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "extension library '%s' loaded\n",
+              lib_name);
 }
 
 
+static bool extensions_loaded = false;
+
 enum GNUNET_GenericReturnValue
-TALER_extensions_load_taler_config (
+TALER_extensions_init (
   const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   struct LoadConfClosure col = {
@@ -224,15 +247,22 @@ TALER_extensions_load_taler_config (
     .error = GNUNET_OK,
   };
 
+  if (extensions_loaded)
+    return GNUNET_OK;
+
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &configure_extension,
                                          &col);
+
+  if (GNUNET_OK == col.error)
+    extensions_loaded = true;
+
   return col.error;
 }
 
 
 enum GNUNET_GenericReturnValue
-TALER_extensions_is_json_config (
+TALER_extensions_parse_manifest (
   json_t *obj,
   int *critical,
   const char **version,
@@ -265,22 +295,23 @@ TALER_extensions_is_json_config (
 
 
 enum GNUNET_GenericReturnValue
-TALER_extensions_load_json_config (
+TALER_extensions_load_manifests (
   json_t *extensions)
 {
   const char*name;
-  json_t *blob;
+  json_t *manifest;
 
   GNUNET_assert (NULL != extensions);
   GNUNET_assert (json_is_object (extensions));
 
-  json_object_foreach (extensions, name, blob)
+  json_object_foreach (extensions, name, manifest)
   {
     int critical;
     const char *version;
     json_t *config;
-    const struct TALER_Extension *extension =
-      TALER_extensions_get_by_name (name);
+    struct TALER_Extension *extension =  (struct
+                                          TALER_Extension *)
+                                        TALER_extensions_get_by_name (name);
 
     if (NULL == extension)
     {
@@ -291,45 +322,109 @@ TALER_extensions_load_json_config (
 
     /* load and verify criticality, version, etc. */
     if (GNUNET_OK !=
-        TALER_extensions_is_json_config (
-          blob, &critical, &version, &config))
+        TALER_extensions_parse_manifest (
+          manifest, &critical, &version, &config))
       return GNUNET_SYSERR;
 
     if (critical != extension->critical
         || 0 != strcmp (version, extension->version) // TODO: libtool compare?
         || NULL == config
-        || GNUNET_OK != extension->test_json_config (config))
+        || GNUNET_OK != extension->load_config (NULL, config))
       return GNUNET_SYSERR;
 
     /* This _should_ work now */
     if (GNUNET_OK !=
-        extension->load_json_config ((struct TALER_Extension *) extension,
-                                     config))
+        extension->load_config (extension, config))
       return GNUNET_SYSERR;
+
+    extension->enabled = true;
   }
 
   /* make sure to disable all extensions that weren't mentioned in the json */
-  for (const struct TALER_Extension *it = TALER_extensions_get_head ();
+  for (const struct TALER_Extensions *it = TALER_extensions_get_head ();
        NULL != it;
        it = it->next)
   {
-    if (NULL == json_object_get (extensions, it->name))
-      it->disable ((struct TALER_Extension *) it);
+    if (NULL == json_object_get (extensions, it->extension->name))
+      it->extension->disable ((struct TALER_Extension *) it);
   }
 
   return GNUNET_OK;
 }
 
 
-bool
-TALER_extensions_age_restriction_is_enabled ()
-{
-  const struct TALER_Extension *age =
-    TALER_extensions_get_by_type (TALER_Extension_AgeRestriction);
+/*
+ * Policy related
+ */
 
-  return (NULL != age &&
-          NULL != age->config_json &&
-          TALER_extensions_age_restriction_is_configured ());
+static char *fulfillment2str[] =  {
+  [TALER_PolicyFulfillmentReady]        = "Ready",
+  [TALER_PolicyFulfillmentSuccess]      = "Success",
+  [TALER_PolicyFulfillmentFailure]      = "Failure",
+  [TALER_PolicyFulfillmentTimeout]      = "Timeout",
+  [TALER_PolicyFulfillmentInsufficient] = "Insufficient",
+};
+
+const char *
+TALER_policy_fulfillment_state_str (
+  enum TALER_PolicyFulfillmentState state)
+{
+  GNUNET_assert (TALER_PolicyFulfillmentStateCount > state);
+  return fulfillment2str[state];
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_extensions_create_policy_details (
+  const json_t *policy_options,
+  struct TALER_PolicyDetails *details,
+  const char **error_hint)
+{
+  enum GNUNET_GenericReturnValue ret;
+  const struct TALER_Extension *extension;
+  const json_t *jtype;
+  const char *type;
+
+  *error_hint = NULL;
+
+  if ((NULL == policy_options) ||
+      (! json_is_object (policy_options)))
+  {
+    *error_hint = "invalid policy object";
+    return GNUNET_SYSERR;
+  }
+
+  jtype = json_object_get (policy_options, "type");
+  if (NULL == jtype)
+  {
+    *error_hint = "no type in policy object";
+    return GNUNET_SYSERR;
+  }
+
+  type = json_string_value (jtype);
+  if (NULL == type)
+  {
+    *error_hint = "invalid type in policy object";
+    return GNUNET_SYSERR;
+  }
+
+  extension = TALER_extensions_get_by_name (type);
+  if ((NULL == extension) ||
+      (NULL == extension->create_policy_details))
+  {
+    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Unsupported extension policy '%s' requested\n",
+                type);
+    return GNUNET_NO;
+  }
+
+  details->deadline = GNUNET_TIME_UNIT_FOREVER_TS;
+  ret = extension->create_policy_details (policy_options,
+                                          details,
+                                          error_hint);
+  return ret;
+
 }
 
 

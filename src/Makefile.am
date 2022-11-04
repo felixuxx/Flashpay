@@ -32,5 +32,6 @@ SUBDIRS = \
   auditor \
   lib \
   exchange-tools \
+  extensions/age_restriction \
   testing \
   benchmark

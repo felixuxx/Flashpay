@@ -872,11 +872,11 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.wire_target_h_payto),
-    GNUNET_PQ_query_param_bool (td->details.deposits.extension_blocked),
-    0 == td->details.deposits.extension_details_serial_id
+    GNUNET_PQ_query_param_bool (td->details.deposits.policy_blocked),
+    0 == td->details.deposits.policy_details_serial_id
     ? GNUNET_PQ_query_param_null ()
     : GNUNET_PQ_query_param_uint64 (
-      &td->details.deposits.extension_details_serial_id),
+      &td->details.deposits.policy_details_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -898,8 +898,8 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
            ",coin_sig"
            ",wire_salt"
            ",wire_target_h_payto"
-           ",extension_blocked"
-           ",extension_details_serial_id"
+           ",policy_blocked"
+           ",policy_details_serial_id"
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
            " $11, $12, $13, $14, $15, $16, $17);");
@@ -1217,9 +1217,9 @@ irbt_cb_table_extensions (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_string (td->details.extensions.name),
-    NULL == td->details.extensions.config ?
+    NULL == td->details.extensions.manifest ?
     GNUNET_PQ_query_param_null () :
-    GNUNET_PQ_query_param_string (td->details.extensions.config),
+    GNUNET_PQ_query_param_string (td->details.extensions.manifest),
     GNUNET_PQ_query_param_end
   };
 
@@ -1228,7 +1228,7 @@ irbt_cb_table_extensions (struct PostgresClosure *pg,
            "INSERT INTO extensions"
            "(extension_id"
            ",name"
-           ",config"
+           ",manifest"
            ") VALUES "
            "($1, $2, $3);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
@@ -1238,34 +1238,99 @@ irbt_cb_table_extensions (struct PostgresClosure *pg,
 
 
 /**
- * Function called with extension_details records to insert into table.
+ * Function called with policy_details records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_extension_details (struct PostgresClosure *pg,
-                                 const struct TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_policy_details (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    NULL ==
-    td->details.extension_details.extension_options ?
-    GNUNET_PQ_query_param_null () :
-    GNUNET_PQ_query_param_string (
-      td->details.extension_details.extension_options),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.policy_details.hash_code),
+    (td->details.policy_details.no_policy_json)
+      ? GNUNET_PQ_query_param_null ()
+      : TALER_PQ_query_param_json (td->details.policy_details.policy_json),
+    TALER_PQ_query_param_amount (&td->details.policy_details.commitment),
+    TALER_PQ_query_param_amount (&td->details.policy_details.accumulated_total),
+    TALER_PQ_query_param_amount (&td->details.policy_details.fee),
+    TALER_PQ_query_param_amount (&td->details.policy_details.transferable),
+    GNUNET_PQ_query_param_timestamp (&td->details.policy_details.deadline),
+    GNUNET_PQ_query_param_uint16 (
+      &td->details.policy_details.fulfillment_state),
+    (td->details.policy_details.no_fulfillment_id)
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_uint64 (
+      &td->details.policy_details.fulfillment_id),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_extension_details",
-           "INSERT INTO extension_details"
-           "(extension_details_serial_id"
-           ",extension_options"
+           "insert_into_table_policy_details",
+           "INSERT INTO policy_details"
+           "(policy_details_serial_id"
+           ",policy_hash_code"
+           ",policy_json"
+           ",deadline"
+           ",commitment_val"
+           ",commitment_frac"
+           ",accumulated_total_val"
+           ",accumulated_total_frac"
+           ",fee_val"
+           ",fee_frac"
+           ",transferable_val"
+           ",transferable_frac"
+           ",fulfillment_state"
+           ",fulfillment_id"
            ") VALUES "
            "($1, $2);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_extension_details",
+                                             "insert_into_table_policy_details",
+                                             params);
+}
+
+
+/**
+ * Function called with policy_fulfillment records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_policy_fulfillments (struct PostgresClosure *pg,
+                                   const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.policy_fulfillments.fulfillment_timestamp),
+    (NULL == td->details.policy_fulfillments.fulfillment_proof)
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_string (
+      td->details.policy_fulfillments.fulfillment_proof),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.policy_fulfillments.h_fulfillment_proof),
+    GNUNET_PQ_query_param_fixed_size (
+      td->details.policy_fulfillments.policy_hash_codes,
+      td->details.policy_fulfillments.policy_hash_codes_count),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_policy_fulfillments",
+           "INSERT INTO policy_fulfillments "
+           "(fulfillment_id"
+           ",fulfillment_timestamp"
+           ",fulfillment_proof"
+           ",h_fulfillment_proof"
+           ",policy_hash_codes"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_policy_fulfillments",
                                              params);
 }
 
@@ -1900,8 +1965,11 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_EXTENSIONS:
     rh = &irbt_cb_table_extensions;
     break;
-  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
-    rh = &irbt_cb_table_extension_details;
+  case TALER_EXCHANGEDB_RT_POLICY_DETAILS:
+    rh = &irbt_cb_table_policy_details;
+    break;
+  case TALER_EXCHANGEDB_RT_POLICY_FULFILLMENTS:
+    rh = &irbt_cb_table_policy_fulfillments;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
     rh = &irbt_cb_table_purse_requests;

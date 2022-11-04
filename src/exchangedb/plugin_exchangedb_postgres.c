@@ -2099,17 +2099,17 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE job_name=$1"
       "   AND start_row=$2"
       "   AND end_row=$3"),
-    /* Used in #postgres_set_extension_config */
+    /* Used in #postgres_set_extension_manifest */
     GNUNET_PQ_make_prepare (
-      "set_extension_config",
-      "INSERT INTO extensions (name, config) VALUES ($1, $2) "
+      "set_extension_manifest",
+      "INSERT INTO extensions (name, manifest) VALUES ($1, $2) "
       "ON CONFLICT (name) "
-      "DO UPDATE SET config=$2"),
-    /* Used in #postgres_get_extension_config */
+      "DO UPDATE SET manifest=$2"),
+    /* Used in #postgres_get_extension_manifest */
     GNUNET_PQ_make_prepare (
-      "get_extension_config",
+      "get_extension_manifest",
       "SELECT "
-      " config "
+      " manifest "
       "FROM extensions"
       "   WHERE name=$1;"),
     /* Used in #postgres_insert_contract() */
@@ -4083,7 +4083,7 @@ compute_shard (const struct TALER_MerchantPublicKeyP *merchant_pub)
  * @param deposit deposit operation details
  * @param known_coin_id row of the coin in the known_coins table
  * @param h_payto hash of the merchant's bank account details
- * @param extension_blocked true if an extension is blocking the wire transfer
+ * @param _blocked true if an extension is blocking the wire transfer
  * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] in_conflict set to true if the deposit conflicted
@@ -4095,7 +4095,7 @@ postgres_do_deposit (
   const struct TALER_EXCHANGEDB_Deposit *deposit,
   uint64_t known_coin_id,
   const struct TALER_PaytoHashP *h_payto,
-  bool extension_blocked,
+  uint64_t *policy_details_serial_id,
   struct GNUNET_TIME_Timestamp *exchange_timestamp,
   bool *balance_ok,
   bool *in_conflict)
@@ -4117,10 +4117,10 @@ postgres_do_deposit (
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
     GNUNET_PQ_query_param_uint64 (&deposit_shard),
-    GNUNET_PQ_query_param_bool (extension_blocked),
-    (NULL == deposit->extension_details)
+    GNUNET_PQ_query_param_bool (deposit->has_policy),
+    (NULL == policy_details_serial_id)
     ? GNUNET_PQ_query_param_null ()
-    : TALER_PQ_query_param_json (deposit->extension_details),
+    : GNUNET_PQ_query_param_uint64 (policy_details_serial_id),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4135,6 +4135,101 @@ postgres_do_deposit (
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_deposit",
+                                                   params,
+                                                   rs);
+}
+
+
+/* Get the details of a policy, referenced by its hash code
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param hc The hash code under which the details to a particular policy should be found
+ * @param[out] details The found details
+ * @return query execution status
+ * */
+static enum GNUNET_DB_QueryStatus
+postgres_get_policy_details (
+  void *cls,
+  const struct GNUNET_HashCode *hc,
+  struct TALER_PolicyDetails *details)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (hc),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_timestamp ("deadline",
+                                     &details->deadline),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("commitment",
+                                 &details->commitment),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("accumulated_total",
+                                 &details->accumulated_total),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("policy_fee",
+                                 &details->policy_fee),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("transferable_amount",
+                                 &details->transferable_amount),
+    GNUNET_PQ_result_spec_auto_from_type ("state",
+                                          &details->fulfillment_state),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_uint64 ("policy_fulfillment_id",
+                                    &details->policy_fulfillment_id),
+      &details->no_policy_fulfillment_id),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_policy_details",
+                                                   params,
+                                                   rs);
+}
+
+
+/* Persist the details to a policy in the policy_details table.  If there
+ * already exists a policy, update the fields accordingly.
+ *
+ * @param details The policy details that should be persisted.  If an entry for
+ *        the given details->hash_code exists, the values will be updated.
+ * @param[out] policy_details_serial_id The row ID of the policy details
+ * @param[out] accumulated_total The total amount accumulated in that policy
+ * @param[out] fulfillment_state The state of policy.  If the state was Insufficient prior to the call and the provided deposit raises the accumulated_total above the commitment, it will be set to Ready.
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_persist_policy_details (
+  void *cls,
+  const struct TALER_PolicyDetails *details,
+  uint64_t *policy_details_serial_id,
+  struct TALER_Amount *accumulated_total,
+  enum TALER_PolicyFulfillmentState *fulfillment_state)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&details->hash_code),
+    TALER_PQ_query_param_json (details->policy_json),
+    GNUNET_PQ_query_param_timestamp (&details->deadline),
+    TALER_PQ_query_param_amount (&details->commitment),
+    TALER_PQ_query_param_amount (&details->accumulated_total),
+    TALER_PQ_query_param_amount (&details->policy_fee),
+    TALER_PQ_query_param_amount (&details->transferable_amount),
+    GNUNET_PQ_query_param_auto_from_type (&details->fulfillment_state),
+    (details->no_policy_fulfillment_id)
+     ?  GNUNET_PQ_query_param_null ()
+     : GNUNET_PQ_query_param_uint64 (&details->policy_fulfillment_id),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("policy_details_serial_id",
+                                  policy_details_serial_id),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("accumulated_total",
+                                 accumulated_total),
+    GNUNET_PQ_result_spec_uint32 ("fulfillment_state",
+                                  fulfillment_state),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_insert_or_update_policy_details",
                                                    params,
                                                    rs);
 }
@@ -4391,6 +4486,118 @@ postgres_do_recoup_refresh (
                                                    "call_recoup_refresh",
                                                    params,
                                                    rs);
+}
+
+
+/*
+ * Compares two indices into an array of hash codes according to
+ * GNUNET_CRYPTO_hash_cmp of the content at those index positions.
+ *
+ * Used in a call qsort_t in order to generate sorted policy_hash_codes.
+ */
+static int
+hash_code_cmp (
+  const void *hc1,
+  const void *hc2,
+  void *arg)
+{
+  size_t i1 = *(size_t *) hc1;
+  size_t i2 = *(size_t *) hc2;
+  const struct TALER_PolicyDetails *d = arg;
+
+  return GNUNET_CRYPTO_hash_cmp (&d[i1].hash_code,
+                                 &d[i2].hash_code);
+}
+
+
+/**
+ * Add a proof of fulfillment into the policy_fulfillments table
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param[out] proof_id set record id for the proof
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_add_policy_fulfillment_proof (
+  void *cls,
+  struct TALER_PolicyFulfillmentTransactionData *fulfillment)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  struct PostgresClosure *pg = cls;
+  size_t count = fulfillment->details_count;
+  struct GNUNET_HashCode hcs[count];
+
+  /* Create the sorted policy_hash_codes */
+  {
+    size_t idx[count];
+    for (size_t i = 0; i < count; i++)
+      idx[i] = i;
+
+    /* Sort the indices according to the hash codes of the corresponding
+     * details. */
+    qsort_r (idx,
+             count,
+             sizeof(size_t),
+             hash_code_cmp,
+             fulfillment->details);
+
+    /* Finally, concatenate all hash_codes in sorted order */
+    for (size_t i = 0; i < count; i++)
+      hcs[i] = fulfillment->details[idx[i]].hash_code;
+  }
+
+
+  /* Now, add the proof to the policy_fulfillments table, retrieve the
+   * record_id */
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_timestamp (&fulfillment->timestamp),
+      TALER_PQ_query_param_json (fulfillment->proof),
+      GNUNET_PQ_query_param_auto_from_type (&fulfillment->h_proof),
+      GNUNET_PQ_query_param_fixed_size (hcs,
+                                        count * sizeof(struct GNUNET_HashCode)),
+      GNUNET_PQ_query_param_end
+    };
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("fulfillment_id",
+                                    &fulfillment->fulfillment_id),
+      GNUNET_PQ_result_spec_end
+    };
+
+    qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "insert_proof_into_policy_fulfillments",
+                                                   params,
+                                                   rs);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+      return qs;
+  }
+
+  /* Now, set the states of each entry corresponding to the hash_codes in
+   * policy_details accordingly */
+  for (size_t i = 0; i < count; i++)
+  {
+    struct TALER_PolicyDetails *pos = &fulfillment->details[i];
+    {
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_auto_from_type (&pos->hash_code),
+        GNUNET_PQ_query_param_timestamp (&pos->deadline),
+        TALER_PQ_query_param_amount (&pos->commitment),
+        TALER_PQ_query_param_amount (&pos->accumulated_total),
+        TALER_PQ_query_param_amount (&pos->policy_fee),
+        TALER_PQ_query_param_amount (&pos->transferable_amount),
+        GNUNET_PQ_query_param_auto_from_type (&pos->fulfillment_state),
+        GNUNET_PQ_query_param_end
+      };
+
+      qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                               "update_policy_details",
+                                               params);
+      if (qs < 0)
+        return qs;
+    }
+  }
+
+  return qs;
 }
 
 
@@ -10465,8 +10672,8 @@ postgres_delete_shard_locks (void *cls)
 
 
 /**
- * Function called to save the configuration of an extension
- * (age-restriction, peer2peer, ...).  After successful storage of the
+ * Function called to save the manifest of an extension
+ * (age-restriction, policy_extension_...) After successful storage of the
  * configuration it triggers the corresponding event.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -10475,15 +10682,15 @@ postgres_delete_shard_locks (void *cls)
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-postgres_set_extension_config (void *cls,
-                               const char *extension_name,
-                               const char *config)
+postgres_set_extension_manifest (void *cls,
+                                 const char *extension_name,
+                                 const char *manifest)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam pcfg =
-    (NULL == config || 0 == *config)
+    (NULL == manifest || 0 == *manifest)
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (config);
+    : GNUNET_PQ_query_param_string (manifest);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (extension_name),
     pcfg,
@@ -10491,24 +10698,24 @@ postgres_set_extension_config (void *cls,
   };
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "set_extension_config",
+                                             "set_extension_manifest",
                                              params);
 }
 
 
 /**
- * Function called to get the configuration of an extension
- * (age-restriction, peer2peer, ...)
+ * Function called to get the manifest of an extension
+ * (age-restriction, policy_extension_...)
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param extension_name the name of the extension
- * @param[out] config JSON object of the configuration as string
+ * @param[out] manifest JSON object of the manifest as string
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-postgres_get_extension_config (void *cls,
-                               const char *extension_name,
-                               char **config)
+postgres_get_extension_manifest (void *cls,
+                                 const char *extension_name,
+                                 char **manifest)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -10518,15 +10725,15 @@ postgres_get_extension_config (void *cls,
   bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("config",
-                                    config),
+      GNUNET_PQ_result_spec_string ("manifest",
+                                    manifest),
       &is_null),
     GNUNET_PQ_result_spec_end
   };
 
-  *config = NULL;
+  *manifest = NULL;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_extension_config",
+                                                   "get_extension_manifest",
                                                    params,
                                                    rs);
 }
@@ -12311,8 +12518,11 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
   plugin->do_withdraw = &postgres_do_withdraw;
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
+  plugin->get_policy_details = &postgres_get_policy_details;
+  plugin->persist_policy_details = &postgres_persist_policy_details;
   plugin->do_batch_withdraw_insert = &postgres_do_batch_withdraw_insert;
   plugin->do_deposit = &postgres_do_deposit;
+  plugin->add_policy_fulfillment_proof = &postgres_add_policy_fulfillment_proof;
   plugin->do_melt = &postgres_do_melt;
   plugin->do_refund = &postgres_do_refund;
   plugin->do_recoup = &postgres_do_recoup;
@@ -12446,10 +12656,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_release_revolving_shard;
   plugin->delete_shard_locks
     = &postgres_delete_shard_locks;
-  plugin->set_extension_config
-    = &postgres_set_extension_config;
-  plugin->get_extension_config
-    = &postgres_get_extension_config;
+  plugin->set_extension_manifest
+    = &postgres_set_extension_manifest;
+  plugin->get_extension_manifest
+    = &postgres_get_extension_manifest;
   plugin->insert_partner
     = &postgres_insert_partner;
   plugin->insert_contract

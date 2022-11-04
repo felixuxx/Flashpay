@@ -138,6 +138,12 @@ static struct GNUNET_CURL_RescheduleContext *rc;
 static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 
 /**
+ * Age restriction configuration
+ */
+static bool ar_enabled = false;
+static struct TALER_AgeRestrictionConfig ar_config = {0};
+
+/**
  * Return value from main().
  */
 static int global_ret;
@@ -162,11 +168,6 @@ static char *currency;
  * as per our configuration.
  */
 static char *CFG_exchange_url;
-
-/**
- * If age restriction is enabled, the age mask to be used
- */
-static struct TALER_AgeMask age_mask = {0};
 
 /**
  * A subcommand supported by this program.
@@ -2159,14 +2160,14 @@ upload_extensions (const char *exchange_url,
 
   /* 2. Verify the signature */
   {
-    struct TALER_ExtensionConfigHashP h_config;
+    struct TALER_ExtensionManifestsHashP h_manifests;
 
     if (GNUNET_OK !=
-        TALER_JSON_extensions_config_hash (extensions, &h_config))
+        TALER_JSON_extensions_manifests_hash (extensions, &h_manifests))
     {
       GNUNET_JSON_parse_free (spec);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "couldn't hash extensions\n");
+                  "couldn't hash extensions' manifests\n");
       global_ret = EXIT_FAILURE;
       test_shutdown ();
       return;
@@ -2176,8 +2177,8 @@ upload_extensions (const char *exchange_url,
         load_offline_key (GNUNET_NO))
       return;
 
-    if (GNUNET_OK != TALER_exchange_offline_extension_config_hash_verify (
-          &h_config,
+    if (GNUNET_OK != TALER_exchange_offline_extension_manifests_hash_verify (
+          &h_manifests,
           &master_pub,
           &sig))
     {
@@ -3858,7 +3859,7 @@ load_age_mask (const char*section_name)
   static const struct TALER_AgeMask null_mask = {0};
   enum GNUNET_GenericReturnValue ret;
 
-  if (age_mask.bits == 0)
+  if (! ar_enabled)
     return null_mask;
 
   if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (
@@ -3870,14 +3871,14 @@ load_age_mask (const char*section_name)
   ret = GNUNET_CONFIGURATION_get_value_yesno (kcfg,
                                               section_name,
                                               "AGE_RESTRICTED");
-  if (GNUNET_YES == ret)
-    return age_mask;
-
   if (GNUNET_SYSERR == ret)
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section_name,
                                "AGE_RESTRICTED",
                                "Value must be YES or NO\n");
+  if (GNUNET_YES == ret)
+    return ar_config.mask;
+
   return null_mask;
 }
 
@@ -4218,18 +4219,24 @@ do_setup (char *const *args)
 static void
 do_extensions_show (char *const *args)
 {
-  const struct TALER_Extension *it;
+  const struct TALER_Extensions *it;
   json_t *exts = json_object ();
   json_t *obj;
 
   GNUNET_assert (NULL != exts);
   for (it = TALER_extensions_get_head ();
-       NULL != it;
+       NULL != it && NULL != it->extension;
        it = it->next)
-    GNUNET_assert (0 ==
-                   json_object_set_new (exts,
-                                        it->name,
-                                        it->config_to_json (it)));
+  {
+    const struct TALER_Extension *extension = it->extension;
+    int ret;
+
+    ret = json_object_set_new (exts,
+                               extension->name,
+                               extension->manifest (extension));
+    GNUNET_assert (-1 != ret);
+  }
+
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_object_steal ("extensions",
                                    exts));
@@ -4238,7 +4245,7 @@ do_extensions_show (char *const *args)
               json_dumps (obj,
                           JSON_INDENT (2)));
   json_decref (obj);
-  next (args + 1);
+  next (args);
 }
 
 
@@ -4249,35 +4256,38 @@ static void
 do_extensions_sign (char *const *args)
 {
   json_t *extensions = json_object ();
-  struct TALER_ExtensionConfigHashP h_config;
+  struct TALER_ExtensionManifestsHashP h_manifests;
   struct TALER_MasterSignatureP sig;
-  const struct TALER_Extension *it;
+  const struct TALER_Extensions *it;
+  bool found = false;
   json_t *obj;
 
   GNUNET_assert (NULL != extensions);
-  if (GNUNET_OK !=
-      TALER_extensions_load_taler_config (kcfg))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "error while loading taler config for extensions\n");
-    json_decref (extensions);
-    return;
-  }
   for (it = TALER_extensions_get_head ();
-       NULL != it;
+       NULL != it && NULL != it->extension;
        it = it->next)
+  {
+    const struct TALER_Extension *ext = it->extension;
+    GNUNET_assert (ext);
+
+    found = true;
+
     GNUNET_assert (0 ==
                    json_object_set_new (extensions,
-                                        it->name,
-                                        it->config_to_json (it)));
+                                        ext->name,
+                                        ext->manifest (ext)));
+  }
+
+  if (! found)
+    return;
 
   if (GNUNET_OK !=
-      TALER_JSON_extensions_config_hash (extensions,
-                                         &h_config))
+      TALER_JSON_extensions_manifests_hash (extensions,
+                                            &h_manifests))
   {
     json_decref (extensions);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "error while hashing config for extensions\n");
+                "error while hashing manifest for extensions\n");
     return;
   }
 
@@ -4288,18 +4298,19 @@ do_extensions_sign (char *const *args)
     return;
   }
 
-  TALER_exchange_offline_extension_config_hash_sign (&h_config,
-                                                     &master_priv,
-                                                     &sig);
+  TALER_exchange_offline_extension_manifests_hash_sign (&h_manifests,
+                                                        &master_priv,
+                                                        &sig);
   obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_object_steal ("extensions",
                                    extensions),
     GNUNET_JSON_pack_data_auto (
       "extensions_sig",
       &sig));
+
   output_operation (OP_EXTENSIONS,
                     obj);
-  next (args + 1);
+  next (args);
 }
 
 
@@ -4500,6 +4511,24 @@ run (void *cls,
   (void) cls;
   (void) cfgfile;
   kcfg = cfg;
+
+  /* load extensions */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_extensions_init (kcfg));
+
+  /* setup age restriction, if applicable */
+  {
+    const struct TALER_AgeRestrictionConfig *arc;
+
+    if (NULL !=
+        (arc = TALER_extensions_get_age_restriction_config ()))
+    {
+      ar_config  = *arc;
+      ar_enabled = true;
+    }
+  }
+
+
   if (GNUNET_OK !=
       TALER_config_get_currency (kcfg,
                                  &currency))
@@ -4507,18 +4536,6 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-
-  /* load age mask, if age restriction is enabled */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_extension_age_restriction_register ());
-
-  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "error while loading taler config for extensions\n");
-    return;
-  }
-  age_mask = TALER_extensions_age_restriction_ageMask ();
 
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);

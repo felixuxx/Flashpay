@@ -26,6 +26,7 @@
 #include <gnunet/gnunet_db_lib.h>
 #include "taler_json_lib.h"
 #include "taler_signatures.h"
+#include "taler_extensions_policy.h"
 
 
 /**
@@ -220,7 +221,8 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_RECOUP,
   TALER_EXCHANGEDB_RT_RECOUP_REFRESH,
   TALER_EXCHANGEDB_RT_EXTENSIONS,
-  TALER_EXCHANGEDB_RT_EXTENSION_DETAILS,
+  TALER_EXCHANGEDB_RT_POLICY_DETAILS,
+  TALER_EXCHANGEDB_RT_POLICY_FULFILLMENTS,
   TALER_EXCHANGEDB_RT_PURSE_REQUESTS,
   TALER_EXCHANGEDB_RT_PURSE_DECISION,
   TALER_EXCHANGEDB_RT_PURSE_MERGES,
@@ -438,8 +440,8 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_WireSaltP wire_salt;
       struct TALER_PaytoHashP wire_target_h_payto;
-      bool extension_blocked;
-      uint64_t extension_details_serial_id;
+      bool policy_blocked;
+      uint64_t policy_details_serial_id;
     } deposits;
 
     struct
@@ -510,13 +512,32 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       char *name;
-      char *config;
+      char *manifest;
     } extensions;
 
     struct
     {
-      char *extension_options;
-    } extension_details;
+      struct GNUNET_HashCode hash_code;
+      json_t *policy_json;
+      bool no_policy_json;
+      struct GNUNET_TIME_Timestamp deadline;
+      struct TALER_Amount commitment;
+      struct TALER_Amount accumulated_total;
+      struct TALER_Amount fee;
+      struct TALER_Amount transferable;
+      uint16_t fulfillment_state; /* will also be recomputed */
+      uint64_t fulfillment_id;
+      bool no_fulfillment_id;
+    } policy_details;
+
+    struct
+    {
+      struct GNUNET_TIME_Timestamp fulfillment_timestamp;
+      char *fulfillment_proof;
+      struct GNUNET_HashCode h_fulfillment_proof;
+      struct GNUNET_HashCode *policy_hash_codes;
+      size_t policy_hash_codes_count;
+    } policy_fulfillments;
 
     struct
     {
@@ -1512,12 +1533,6 @@ struct TALER_EXCHANGEDB_Deposit
   char *receiver_wire_account;
 
   /**
-   * Additional details for extensions relevant for this
-   * deposit operation, possibly NULL!
-   */
-  json_t *extension_details;
-
-  /**
    * Time when this request was generated.  Used, for example, to
    * assess when (roughly) the income was achieved for tax purposes.
    * Note that the Exchange will only check that the timestamp is not "too
@@ -1558,6 +1573,16 @@ struct TALER_EXCHANGEDB_Deposit
    */
   struct TALER_Amount deposit_fee;
 
+  /*
+   * True if @e policy_json was provided
+   */
+  bool has_policy;
+
+  /**
+   * Hash over the policy data for this deposit (remains unknown to the
+   * Exchange).  Needed for the verification of the deposit's signature
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
 };
 
 
@@ -1655,6 +1680,17 @@ struct TALER_EXCHANGEDB_DepositListEntry
    * Depositing fee.
    */
   struct TALER_Amount deposit_fee;
+
+  /*
+   * True if a policy was provided with the deposit request
+   */
+  bool has_policy;
+
+  /**
+   * Hash over the policy data for this deposit (remains unknown to the
+   * Exchange).  Needed for the verification of the deposit's signature
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Has the deposit been wired?
@@ -3530,6 +3566,40 @@ struct TALER_EXCHANGEDB_Plugin
     bool *conflict,
     bool *nonce_reuse);
 
+  /**
+   * Retrieve the details to a policy given by its hash_code
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param hc Hash code that identifies the policy
+   * @param[out] detail retrieved policy details
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_policy_details)(
+    void *cls,
+    const struct GNUNET_HashCode *hc,
+    struct TALER_PolicyDetails *detail);
+
+  /**
+   * Persist the policy details that extends a deposit.  The particular policy
+   * - referenced by details->hash_code - might already exist in the table, in
+   * which case the call will update the contents of the record with @e details
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param details The parsed `struct TALER_PolicyDetails` according to the responsible policy extension.
+   * @param[out] policy_details_serial_id The ID of the entry in the policy_details table
+   * @param[out] accumulated_total The total amount accumulated in that policy
+   * @param[out] fulfillment_state The state of policy.  If the state was Insufficient prior to the call and the provided deposit raises the accumulated_total above the commitment, it will be set to Ready.
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*persist_policy_details)(
+    void *cls,
+    const struct TALER_PolicyDetails *details,
+    uint64_t *policy_details_serial_id,
+    struct TALER_Amount *accumulated_total,
+    enum TALER_PolicyFulfillmentState *fulfillment_state);
+
 
   /**
    * Perform deposit operation, checking for sufficient balance
@@ -3539,7 +3609,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param deposit deposit operation details
    * @param known_coin_id row of the coin in the known_coins table
    * @param h_payto hash of the merchant's payto URI
-   * @param extension_blocked true if an extension is blocking the wire transfer
+   * @param policy_details_serial_id (pointer to) the row ID of the policy details, maybe NULL
    * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] in_conflict set to true if the deposit conflicted
@@ -3551,7 +3621,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_EXCHANGEDB_Deposit *deposit,
     uint64_t known_coin_id,
     const struct TALER_PaytoHashP *h_payto,
-    bool extension_blocked,
+    uint64_t *policy_details_serial_id,
     struct GNUNET_TIME_Timestamp *exchange_timestamp,
     bool *balance_ok,
     bool *in_conflict);
@@ -3578,6 +3648,19 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t known_coin_id,
     bool *zombie_required,
     bool *balance_ok);
+
+
+  /**
+   * Add a proof of fulfillment of an policy
+   *
+   * @param cls the plugin-specific state
+   * @param[in,out] fulfillment The proof of fulfillment and serial_ids of the policy_details along with their new state and potential new amounts.
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*add_policy_fulfillment_proof)(
+    void *cls,
+    struct TALER_PolicyFulfillmentTransactionData *fulfillment);
 
 
   /**
@@ -5559,33 +5642,33 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to save the configuration of an extension
-   * (age-restriction, peer2peer, ...)
+   * Function called to save the manifest of an extension
+   * (age-restriction, policy-extension, ...)
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param extension_name the name of the extension
-   * @param config JSON object of the configuration as string, maybe NULL (== disabled extension)
+   * @param manifest JSON object of the Manifest as string, maybe NULL (== disabled extension)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*set_extension_config)(void *cls,
-                          const char *extension_name,
-                          const char *config);
+  (*set_extension_manifest)(void *cls,
+                            const char *extension_name,
+                            const char *manifest);
 
 
   /**
-   * Function called to retrieve the configuration of an extension
-   * (age-restriction, peer2peer, ...)
+   * Function called to retrieve the manifest of an extension
+   * (age-restriction, policy-extension, ...)
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param extension_name the name of the extension
-   * @param[out] config JSON object of the configuration as string, maybe NULL (== disabled extension)
+   * @param[out] manifest Manifest of the extension in JSON encoding, maybe NULL (== disabled extension)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*get_extension_config)(void *cls,
-                          const char *extension_name,
-                          char **config);
+  (*get_extension_manifest)(void *cls,
+                            const char *extension_name,
+                            char **manifest);
 
 
   /**

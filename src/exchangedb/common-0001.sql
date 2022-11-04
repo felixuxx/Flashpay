@@ -907,8 +907,8 @@ BEGIN
       ',wire_salt BYTEA NOT NULL CHECK (LENGTH(wire_salt)=16)'
       ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
       ',done BOOLEAN NOT NULL DEFAULT FALSE'
-      ',extension_blocked BOOLEAN NOT NULL DEFAULT FALSE'
-      ',extension_details_serial_id INT8' -- REFERENCES extension_details (extension_details_serial_id) ON DELETE CASCADE'
+      ',policy_blocked BOOLEAN NOT NULL DEFAULT FALSE'
+      ',policy_details_serial_id INT8' -- REFERENCES policy_details (policy_details_serial_id) ON DELETE CASCADE'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'
@@ -2619,7 +2619,7 @@ BEGIN
 
   ALTER TABLE IF EXISTS deposits
     DROP CONSTRAINT IF EXISTS deposits_pkey CASCADE
-    ,DROP CONSTRAINT IF EXISTS deposits_extension_details_serial_id_fkey
+    ,DROP CONSTRAINT IF EXISTS deposits_policy_details_serial_id_fkey
     ,DROP CONSTRAINT IF EXISTS deposits_coin_pub_merchant_pub_h_contract_terms_key CASCADE
   ;
 

@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include <gnunet/gnunet_json_lib.h>
 #include <gcrypt.h>
 
 void
@@ -436,3 +437,113 @@ TALER_age_commitment_proof_free (
     cp->commitment.keys = NULL;
   }
 }
+
+
+enum GNUNET_GenericReturnValue
+TALER_JSON_parse_age_groups (const json_t *root,
+                             struct TALER_AgeMask *mask)
+{
+  enum GNUNET_GenericReturnValue ret;
+  const char *str;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("age_groups",
+                             &str),
+    GNUNET_JSON_spec_end ()
+  };
+
+  ret = GNUNET_JSON_parse (root,
+                           spec,
+                           NULL,
+                           NULL);
+  if (GNUNET_OK == ret)
+    TALER_parse_age_group_string (str, mask);
+
+  GNUNET_JSON_parse_free (spec);
+
+  return ret;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_parse_age_group_string (
+  const char *groups,
+  struct TALER_AgeMask *mask)
+{
+
+  const char *pos = groups;
+  unsigned int prev = 0;
+  unsigned int val = 0;
+  char c;
+
+  while (*pos)
+  {
+    c = *pos++;
+    if (':' == c)
+    {
+      if (prev >= val)
+        return GNUNET_SYSERR;
+
+      mask->bits |= 1 << val;
+      prev = val;
+      val = 0;
+      continue;
+    }
+
+    if ('0'>c || '9'<c)
+      return GNUNET_SYSERR;
+
+    val = 10 * val + c - '0';
+
+    if (0>=val || 32<=val)
+      return GNUNET_SYSERR;
+  }
+
+  if (32<=val || prev>=val)
+    return GNUNET_SYSERR;
+
+  mask->bits |= (1 << val);
+  mask->bits |= 1; // mark zeroth group, too
+
+  return GNUNET_OK;
+}
+
+
+char *
+TALER_age_mask_to_string (
+  const struct TALER_AgeMask *mask)
+{
+  uint32_t bits = mask->bits;
+  unsigned int n = 0;
+  char *buf = GNUNET_malloc (32 * 3); // max characters possible
+  char *pos = buf;
+
+  if (NULL == buf)
+  {
+    return buf;
+  }
+
+  while (bits != 0)
+  {
+    bits >>= 1;
+    n++;
+    if (0 == (bits & 1))
+    {
+      continue;
+    }
+
+    if (n > 9)
+    {
+      *(pos++) = '0' + n / 10;
+    }
+    *(pos++) = '0' + n % 10;
+
+    if (0 != (bits >> 1))
+    {
+      *(pos++) = ':';
+    }
+  }
+  return buf;
+}
+
+
+/* end util/age_restriction.c */

@@ -927,7 +927,7 @@ lrbt_cb_table_deposits (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    bool no_extension;
+    bool no_policy;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
         "serial",
@@ -972,13 +972,13 @@ lrbt_cb_table_deposits (void *cls,
         "wire_target_h_payto",
         &td.details.deposits.wire_target_h_payto),
       GNUNET_PQ_result_spec_auto_from_type (
-        "extension_blocked",
-        &td.details.deposits.extension_blocked),
+        "policy_blocked",
+        &td.details.deposits.policy_blocked),
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 (
-          "extension_details_serial_id",
-          &td.details.deposits.extension_details_serial_id),
-        &no_extension),
+          "policy_details_serial_id",
+          &td.details.deposits.policy_details_serial_id),
+        &no_policy),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1414,7 +1414,7 @@ lrbt_cb_table_extensions (void *cls,
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_EXTENSIONS
   };
-  bool no_config = false;
+  bool no_manifest = false;
 
   for (unsigned int i = 0; i<num_results; i++)
   {
@@ -1424,9 +1424,9 @@ lrbt_cb_table_extensions (void *cls,
       GNUNET_PQ_result_spec_string ("name",
                                     &td.details.extensions.name),
       GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("config",
-                                      &td.details.extensions.config),
-        &no_config),
+        GNUNET_PQ_result_spec_string ("manifest",
+                                      &td.details.extensions.manifest),
+        &no_manifest),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1447,33 +1447,112 @@ lrbt_cb_table_extensions (void *cls,
 
 
 /**
- * Function called with extension_details table entries.
+ * Function called with policy_details table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_extension_details (void *cls,
-                                 PGresult *result,
-                                 unsigned int num_results)
+lrbt_cb_table_policy_details (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_EXTENSION_DETAILS
+    .table = TALER_EXCHANGEDB_RT_POLICY_DETAILS
   };
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    bool no_config = false;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("extension_details_serial_id",
+      GNUNET_PQ_result_spec_uint64 ("policy_details_serial_id",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("hash_code",
+                                            &td.details.policy_details.
+                                            hash_code),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json ("policy_json",
+                                   &td.details.policy_details.
+                                   policy_json),
+        &td.details.policy_details.no_policy_json),
+      GNUNET_PQ_result_spec_timestamp ("deadline",
+                                       &td.details.policy_details.
+                                       deadline),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("commitment",
+                                   &td.details.policy_details.
+                                   commitment),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("accumulated_total",
+                                   &td.details.policy_details.
+                                   accumulated_total),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee",
+                                   &td.details.policy_details.
+                                   fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("transferable",
+                                   &td.details.policy_details.
+                                   transferable),
+      GNUNET_PQ_result_spec_uint16 ("fulfillment_state",
+                                    &td.details.policy_details.
+                                    fulfillment_state),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint64 ("fulfillment_id",
+                                      &td.details.policy_details.
+                                      fulfillment_id),
+        &td.details.policy_details.no_fulfillment_id),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with policy_fulfillments table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_policy_fulfillments (void *cls,
+                                   PGresult *result,
+                                   unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_POLICY_FULFILLMENTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    bool no_proof = false;
+    bool no_timestamp = false;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("fulfillment_id",
                                     &td.serial),
       GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("extension_options",
-                                      &td.details.extension_details.
-                                      extension_options),
-        &no_config),
+        GNUNET_PQ_result_spec_timestamp ("fulfillment_timestamp",
+                                         &td.details.policy_fulfillments.
+                                         fulfillment_timestamp),
+        &no_timestamp),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("fulfillment_proof",
+                                      &td.details.policy_fulfillments.
+                                      fulfillment_proof),
+        &no_proof),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2607,9 +2686,13 @@ TEH_PG_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_extensions";
     rh = &lrbt_cb_table_extensions;
     break;
-  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
-    statement = "select_above_serial_by_table_extension_details";
-    rh = &lrbt_cb_table_extension_details;
+  case TALER_EXCHANGEDB_RT_POLICY_DETAILS:
+    statement = "select_above_serial_by_table_policy_details";
+    rh = &lrbt_cb_table_policy_details;
+    break;
+  case TALER_EXCHANGEDB_RT_POLICY_FULFILLMENTS:
+    statement = "select_above_serial_by_table_policy_fulfillments";
+    rh = &lrbt_cb_table_policy_fulfillments;
     break;
   case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:
     XPREPARE ("select_above_serial_by_table_purse_requests",

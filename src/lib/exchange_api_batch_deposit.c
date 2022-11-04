@@ -99,7 +99,7 @@ struct TALER_EXCHANGE_BatchDepositHandle
   /**
    * Hash over the extensions, or all zero.
    */
-  struct TALER_ExtensionContractHashP h_extensions;
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Time when this confirmation was generated / when the exchange received
@@ -185,7 +185,7 @@ auditor_cb (void *cls,
   aie->dch = TALER_AUDITOR_deposit_confirmation (
     ah,
     &dh->h_wire,
-    &dh->h_extensions,
+    &dh->h_policy,
     &dh->dcd.h_contract_terms,
     dh->exchange_timestamp,
     dh->dcd.wire_deadline,
@@ -317,7 +317,7 @@ handle_deposit_finished (void *cls,
             TALER_exchange_online_deposit_confirmation_verify (
               &dh->dcd.h_contract_terms,
               &dh->h_wire,
-              &dh->h_extensions,
+              &dh->h_policy,
               dh->exchange_timestamp,
               dh->dcd.wire_deadline,
               dh->dcd.refund_deadline,
@@ -492,9 +492,9 @@ TALER_EXCHANGE_batch_deposit (
                             * sizeof (*cdds));
   dh->num_cdds = num_cdds;
   dh->dcd = *dcd;
-  if (NULL != dcd->extension_details)
-    TALER_deposit_extension_hash (dcd->extension_details,
-                                  &dh->h_extensions);
+  if (NULL != dcd->policy_details)
+    TALER_deposit_policy_hash (dcd->policy_details,
+                               &dh->h_policy);
   TALER_merchant_wire_signature_hash (dcd->merchant_payto_uri,
                                       &dcd->wire_salt,
                                       &dh->h_wire);
@@ -533,7 +533,7 @@ TALER_EXCHANGE_batch_deposit (
 
     if (GNUNET_OK !=
         TALER_EXCHANGE_verify_deposit_signature_ (dcd,
-                                                  &dh->h_extensions,
+                                                  &dh->h_policy,
                                                   &dh->h_wire,
                                                   cdd,
                                                   dki))
@@ -586,8 +586,8 @@ TALER_EXCHANGE_batch_deposit (
     GNUNET_JSON_pack_array_steal ("coins",
                                   deposits),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_object_steal ("extension_details",
-                                     NULL)), /* FIXME #7270-Oec */
+      GNUNET_JSON_pack_object_steal ("policy_details",
+                                     dcd->policy_details)),
     GNUNET_JSON_pack_timestamp ("timestamp",
                                 dcd->timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",

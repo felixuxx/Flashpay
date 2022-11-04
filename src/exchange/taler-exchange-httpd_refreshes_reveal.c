@@ -623,8 +623,7 @@ resolve_refreshes_reveal_denominations (
     bool failed = true;
 
     /* Has been checked in handle_refreshes_reveal_json() */
-    GNUNET_assert (ng ==
-                   TALER_extensions_age_restriction_num_groups ());
+    GNUNET_assert (ng == TEH_age_restriction_config.num_groups);
 
     rctx->old_age_commitment = GNUNET_new (struct TALER_AgeCommitment);
     oac = rctx->old_age_commitment;
@@ -931,7 +930,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
   /* Sanity check of age commitment: If it was provided, it _must_ be an array
    * of the size the # of age groups */
   if (NULL != old_age_commitment_json
-      && TALER_extensions_age_restriction_num_groups () !=
+      && TEH_age_restriction_config.num_groups !=
       json_array_size (old_age_commitment_json))
   {
     GNUNET_break_op (0);

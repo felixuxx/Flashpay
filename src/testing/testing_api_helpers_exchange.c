@@ -314,8 +314,13 @@ sign_keys_for_exchange (void *cls,
   char *exchange_master_pub;
   int ret;
 
-  /* Load the age restriction mask from the configuration */
-  TALER_extensions_load_taler_config (cfg);
+  /* Load the extensions */
+  if (GNUNET_OK != TALER_extensions_init (cfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "couldn't load extensions");
+    return GNUNET_SYSERR;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,

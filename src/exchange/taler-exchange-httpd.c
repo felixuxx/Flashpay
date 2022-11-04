@@ -102,6 +102,14 @@ static int allow_address_reuse;
 const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
+ * Configuration of age restriction
+ *
+ * Set after loading the library, enabled in database event handler.
+ */
+bool TEH_age_restriction_enabled = false;
+struct TALER_AgeRestrictionConfig TEH_age_restriction_config = {0};
+
+/**
  * Handle to the HTTP server.
  */
 static struct MHD_Daemon *mhd;
@@ -143,11 +151,6 @@ char *TEH_currency;
 char *TEH_base_url;
 
 /**
- * Age restriction flags and mask
- */
-bool TEH_age_restriction_enabled = true;
-
-/**
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
@@ -174,6 +177,7 @@ bool TEH_suicide;
  * TALER_SIGNATURE_MASTER_EXTENSION.
  */
 struct TALER_MasterSignatureP TEH_extensions_sig;
+bool TEH_extensions_signed = false;
 
 /**
  * Value to return from main()

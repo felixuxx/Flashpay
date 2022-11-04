@@ -49,9 +49,9 @@ struct TALER_DepositRequestPS
   struct TALER_AgeCommitmentHash h_age_commitment GNUNET_PACKED;
 
   /**
-   * Hash over extension attributes shared with the exchange.
+   * Hash over optional policy extension attributes shared with the exchange.
    */
-  struct TALER_ExtensionContractHashP h_extensions GNUNET_PACKED;
+  struct TALER_ExtensionPolicyHashP h_policy GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
@@ -120,7 +120,7 @@ TALER_wallet_deposit_sign (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,
   const struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -141,8 +141,8 @@ TALER_wallet_deposit_sign (
 
   if (NULL != h_age_commitment)
     dr.h_age_commitment = *h_age_commitment;
-  if (NULL != h_extensions)
-    dr.h_extensions = *h_extensions;
+  if (NULL != h_policy)
+    dr.h_policy = *h_policy;
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -160,7 +160,7 @@ TALER_wallet_deposit_verify (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -178,13 +178,13 @@ TALER_wallet_deposit_verify (
     .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
     .merchant = *merchant_pub,
     .h_age_commitment = {{{0}}},
-    .h_extensions = {{{0}}}
+    .h_policy = {{{0}}}
   };
 
   if (NULL != h_age_commitment)
     dr.h_age_commitment = *h_age_commitment;
-  if (NULL != h_extensions)
-    dr.h_extensions = *h_extensions;
+  if (NULL != h_policy)
+    dr.h_policy = *h_policy;
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,

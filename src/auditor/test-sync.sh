@@ -32,7 +32,7 @@ function exit_fail() {
 
 # Cleanup to run whenever we exit
 function cleanup() {
-    if test ! -z ${POSTGRES_PATH:-}
+    if test ! -z "${POSTGRES_PATH:-}"
     then
         ${POSTGRES_PATH}/pg_ctl -D $TMPDIR stop &> /dev/null || true
     fi
@@ -111,10 +111,10 @@ taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet
 echo -n "Testing for Postgres"
 # Available directly in path?
 INITDB_BIN=$(command -v initdb) || true
-if [[ ! -z $INITDB_BIN ]]; then
+if [[ ! -z "$INITDB_BIN" ]]; then
   echo " FOUND (in path) at" $INITDB_BIN
 else
-  HAVE_INITDB=`find /usr -name "initdb" 2> /dev/null | grep postgres` || exit_skip " MISSING"
+  HAVE_INITDB=`find /usr -name "initdb" | head -1 2> /dev/null | grep postgres` || exit_skip " MISSING"
   echo " FOUND at" `dirname $HAVE_INITDB`
   INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
 fi

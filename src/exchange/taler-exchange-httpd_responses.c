@@ -76,7 +76,7 @@ TEH_RESPONSE_compile_transaction_history (
               &h_wire,
               &deposit->h_contract_terms,
               &deposit->h_age_commitment,
-              NULL /* h_extensions! */,
+              &deposit->h_policy,
               &deposit->h_denom_pub,
               deposit->timestamp,
               &deposit->merchant_pub,

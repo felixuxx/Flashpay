@@ -105,6 +105,7 @@ libtalerutil_la_SOURCES = \
 
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
+  -lgnunetjson \
   -lsodium \
   -ljansson \
   $(LIBGCRYPT_LIBS) \

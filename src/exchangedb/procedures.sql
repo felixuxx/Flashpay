@@ -510,8 +510,8 @@ CREATE OR REPLACE FUNCTION exchange_do_deposit(
   IN in_coin_pub BYTEA,
   IN in_coin_sig BYTEA,
   IN in_shard INT8,
-  IN in_extension_blocked BOOLEAN,
-  IN in_extension_details VARCHAR,
+  IN in_policy_blocked BOOLEAN,
+  IN in_policy_details_serial_id INT8,
   OUT out_exchange_timestamp INT8,
   OUT out_balance_ok BOOLEAN,
   OUT out_conflict BOOLEAN)
@@ -519,25 +519,11 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   wtsi INT8; -- wire target serial id
-DECLARE
-  xdi INT8; -- eXstension details serial id
 BEGIN
 -- Shards: INSERT extension_details (by extension_details_serial_id)
 --         INSERT wire_targets (by h_payto), on CONFLICT DO NOTHING;
 --         INSERT deposits (by coin_pub, shard), ON CONFLICT DO NOTHING;
 --         UPDATE known_coins (by coin_pub)
-
-IF NOT NULL in_extension_details
-THEN
-  INSERT INTO exchange.extension_details
-  (extension_options)
-  VALUES
-    (in_extension_details)
-  RETURNING extension_details_serial_id INTO xdi;
-ELSE
-  xdi=NULL;
-END IF;
-
 
 INSERT INTO exchange.wire_targets
   (wire_target_h_payto
@@ -572,8 +558,8 @@ INSERT INTO exchange.deposits
   ,coin_sig
   ,wire_salt
   ,wire_target_h_payto
-  ,extension_blocked
-  ,extension_details_serial_id
+  ,policy_blocked
+  ,policy_details_serial_id
   )
   VALUES
   (in_shard
@@ -590,8 +576,8 @@ INSERT INTO exchange.deposits
   ,in_coin_sig
   ,in_wire_salt
   ,in_h_payto
-  ,in_extension_blocked
-  ,xdi)
+  ,in_policy_blocked
+  ,in_policy_details_serial_id)
   ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
@@ -611,6 +597,7 @@ THEN
      AND wire_target_h_payto=in_h_payto
      AND coin_pub=in_coin_pub
      AND coin_sig=in_coin_sig;
+     -- AND policy_details_serial_id=in_policy_details_serial_id; -- FIXME: is this required for idempotency?
 
   IF NOT FOUND
   THEN
@@ -2420,5 +2407,117 @@ RETURN;
 
 END $$;
 
+CREATE OR REPLACE FUNCTION insert_or_update_policy_details(
+  IN in_policy_hash_code BYTEA,
+  IN in_policy_json VARCHAR,
+  IN in_deadline INT8,
+  IN in_commitment_val INT8,
+  IN in_commitment_frac INT4,
+  IN in_accumulated_total_val INT8,
+  IN in_accumulated_total_frac INT4,
+  IN in_fee_val INT8,
+  IN in_fee_frac INT4,
+  IN in_transferable_val INT8,
+  IN in_transferable_frac INT4,
+  IN in_fulfillment_state SMALLINT,
+  OUT out_policy_details_serial_id INT8,
+  OUT out_accumulated_total_val INT8,
+  OUT out_accumulated_total_frac INT4,
+  OUT out_fulfillment_state SMALLINT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+       cur_commitment_val INT8;
+       cur_commitment_frac INT4;
+       cur_accumulated_total_val INT8;
+       cur_accumulated_total_frac INT4;
+BEGIN
+       -- First, try to create a new entry.
+       INSERT INTO policy_details
+               (policy_hash_code,
+                policy_json,
+                deadline,
+                commitment_val,
+                commitment_frac,
+                accumulated_total_val,
+                accumulated_total_frac,
+                fee_val,
+                fee_frac,
+                transferable_val,
+                transferable_frac,
+                fulfillment_state)
+       VALUES (in_policy_hash_code,
+                in_policy_json,
+                in_deadline,
+                in_commitment_val,
+                in_commitment_frac,
+                in_accumulated_total_val,
+                in_accumulated_total_frac,
+                in_fee_val,
+                in_fee_frac,
+                in_transferable_val,
+                in_transferable_frac,
+                in_fulfillment_state)
+       ON CONFLICT (policy_hash_code) DO NOTHING
+       RETURNING policy_details_serial_id INTO out_policy_details_serial_id;
+
+       -- If the insert was successful, return
+       -- We assume that the fullfilment_state was correct in first place.
+       IF FOUND THEN
+               out_accumulated_total_val  = in_accumulated_total_val;
+               out_accumulated_total_frac = in_accumulated_total_frac;
+               out_fulfillment_state      = in_fulfillment_state;
+               RETURN;
+       END IF;
+
+       -- We had a conflict, grab the parts we need to update.
+       SELECT policy_details_serial_id,
+               commitment_val,
+               commitment_frac,
+               accumulated_total_val,
+               accumulated_total_frac
+       INTO out_policy_details_serial_id,
+               cur_commitment_val,
+               cur_commitment_frac,
+               cur_accumulated_total_val,
+               cur_accumulated_total_frac
+       FROM policy_details
+       WHERE policy_hash_code = in_policy_hash_code;
+
+       -- calculate the new values (overflows throws exception)
+       out_accumulated_total_val  = cur_accumulated_total_val  + in_accumulated_total_val;
+       out_accumulated_total_frac = cur_accumulated_total_frac + in_accumulated_total_frac;
+       -- normalize
+       out_accumulated_total_val = out_accumulated_total_val + out_accumulated_total_frac / 100000000;
+       out_accumulated_total_frac = out_accumulated_total_frac % 100000000;
+
+       IF (out_accumulated_total_val > (1 << 52))
+       THEN
+               RAISE EXCEPTION 'accumulation overflow';
+       END IF;
+
+
+       -- Set the fulfillment_state according to the values.
+       -- For now, we only update the state when it was INSUFFICIENT.
+       -- FIXME: What to do in case of Failure or other state?
+       IF (out_fullfillment_state = 1) -- INSUFFICIENT
+       THEN
+               IF (out_accumulated_total_val >= cur_commitment_val OR
+                       (out_accumulated_total_val = cur_commitment_val AND
+                               out_accumulated_total_frac >= cur_commitment_frac))
+               THEN
+                       out_fulfillment_state = 2; -- READY
+               END IF;
+       END IF;
+
+       -- Now, update the record
+       UPDATE exchange.policy_details
+       SET
+               accumulated_val  = out_accumulated_total_val,
+               accumulated_frac = out_accumulated_total_frac,
+               fulfillment_state = out_fulfillment_state
+       WHERE
+               policy_details_serial_id = out_policy_details_serial_id;
+END $$;
 
 COMMIT;

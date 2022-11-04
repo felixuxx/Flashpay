@@ -844,7 +844,8 @@ help_deposit (struct CoinHistoryParseContext *pc,
 {
   struct TALER_MerchantWireHashP h_wire;
   struct TALER_PrivateContractHashP h_contract_terms;
-  // struct TALER_ExtensionContractHashP h_extensions; // FIXME #7270!
+  struct TALER_ExtensionPolicyHashP h_policy;
+  bool no_h_policy;
   struct GNUNET_TIME_Timestamp wallet_timestamp;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_TIME_Timestamp refund_deadline = {0};
@@ -863,6 +864,10 @@ help_deposit (struct CoinHistoryParseContext *pc,
       GNUNET_JSON_spec_fixed_auto ("h_age_commitment",
                                    &hac),
       &no_hac),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_fixed_auto ("h_policy",
+                                   &h_policy),
+      &no_h_policy),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &wallet_timestamp),
     GNUNET_JSON_spec_mark_optional (
@@ -891,7 +896,7 @@ help_deposit (struct CoinHistoryParseContext *pc,
         &h_wire,
         &h_contract_terms,
         no_hac ? NULL : &hac,
-        NULL /* h_extensions! */,
+        no_h_policy ? NULL : &h_policy,
         &pc->dk->h_key,
         wallet_timestamp,
         &merchant_pub,
@@ -2143,7 +2148,7 @@ TALER_EXCHANGE_get_min_denomination_ (
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_deposit_signature_ (
   const struct TALER_EXCHANGE_DepositContractDetail *dcd,
-  const struct TALER_ExtensionContractHashP *ech,
+  const struct TALER_ExtensionPolicyHashP *ech,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_EXCHANGE_CoinDepositDetail *cdd,
   const struct TALER_EXCHANGE_DenomPublicKey *dki)

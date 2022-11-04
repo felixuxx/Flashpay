@@ -926,10 +926,10 @@ TALER_exchange_offline_global_fee_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * @brief Signature made by the exchange offline key over the
- * configuration of an extension.
+ * @brief Signature made by the exchange offline key over the manifest of
+ * an extension.
  */
-struct TALER_MasterExtensionConfigurationPS
+struct TALER_MasterExtensionManifestPS
 {
   /**
    * Purpose is #TALER_SIGNATURE_MASTER_EXTENSION.   Signed
@@ -938,24 +938,24 @@ struct TALER_MasterExtensionConfigurationPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash of the JSON object that represents the configuration of an extension.
+   * Hash of the JSON object that represents the manifests of extensions.
    */
-  struct TALER_ExtensionConfigHashP h_config GNUNET_PACKED;
+  struct TALER_ExtensionManifestsHashP h_manifest GNUNET_PACKED;
 };
 
 GNUNET_NETWORK_STRUCT_END
 
 
 void
-TALER_exchange_offline_extension_config_hash_sign (
-  const struct TALER_ExtensionConfigHashP *h_config,
+TALER_exchange_offline_extension_manifests_hash_sign (
+  const struct TALER_ExtensionManifestsHashP *h_manifest,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_MasterExtensionConfigurationPS ec = {
+  struct TALER_MasterExtensionManifestPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
     .purpose.size = htonl (sizeof(ec)),
-    .h_config = *h_config
+    .h_manifest = *h_manifest
   };
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &ec,
@@ -964,16 +964,16 @@ TALER_exchange_offline_extension_config_hash_sign (
 
 
 enum GNUNET_GenericReturnValue
-TALER_exchange_offline_extension_config_hash_verify (
-  const struct TALER_ExtensionConfigHashP *h_config,
+TALER_exchange_offline_extension_manifests_hash_verify (
+  const struct TALER_ExtensionManifestsHashP *h_manifest,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   )
 {
-  struct TALER_MasterExtensionConfigurationPS ec = {
+  struct TALER_MasterExtensionManifestPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
     .purpose.size = htonl (sizeof(ec)),
-    .h_config = *h_config
+    .h_manifest = *h_manifest
   };
 
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_EXTENSION,

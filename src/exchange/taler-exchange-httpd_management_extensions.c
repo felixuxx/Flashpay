@@ -38,7 +38,7 @@
 struct Extension
 {
   enum TALER_Extension_Type type;
-  json_t *config;
+  json_t *manifest;
 };
 
 /**
@@ -52,7 +52,7 @@ struct SetExtensionsContext
 };
 
 /**
- * Function implementing database transaction to set the configuration of
+ * Function implementing database transaction to set the manifests of
  * extensions.  It runs the transaction logic.
  *  - IF it returns a non-error code, the transaction logic MUST NOT queue a
  *    MHD response.
@@ -74,13 +74,13 @@ set_extensions (void *cls,
 {
   struct SetExtensionsContext *sec = cls;
 
-  /* save the configurations of all extensions */
+  /* save the manifests of all extensions */
   for (uint32_t i = 0; i<sec->num_extensions; i++)
   {
     struct Extension *ext = &sec->extensions[i];
     const struct TALER_Extension *taler_ext;
     enum GNUNET_DB_QueryStatus qs;
-    char *config;
+    char *manifest;
 
     taler_ext = TALER_extensions_get_by_type (ext->type);
     if (NULL == taler_ext)
@@ -90,10 +90,8 @@ set_extensions (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
 
-    GNUNET_assert (NULL != ext->config);
-
-    config = json_dumps (ext->config, JSON_COMPACT | JSON_SORT_KEYS);
-    if (NULL == config)
+    manifest = json_dumps (ext->manifest, JSON_COMPACT | JSON_SORT_KEYS);
+    if (NULL == manifest)
     {
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -103,10 +101,12 @@ set_extensions (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
 
-    qs = TEH_plugin->set_extension_config (
+    qs = TEH_plugin->set_extension_manifest (
       TEH_plugin->cls,
       taler_ext->name,
-      config);
+      manifest);
+
+    free (manifest);
 
     if (qs < 0)
     {
@@ -137,6 +137,7 @@ set_extensions (void *cls,
 
   /* All extensions configured, update the signature */
   TEH_extensions_sig = sec->extensions_sig;
+  TEH_extensions_signed = true;
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */
 }
@@ -150,7 +151,7 @@ verify_extensions_from_json (
   const char*name;
   const struct TALER_Extension *extension;
   size_t i = 0;
-  json_t *blob;
+  json_t *manifest;
 
   GNUNET_assert (NULL != extensions);
   GNUNET_assert (json_is_object (extensions));
@@ -159,7 +160,7 @@ verify_extensions_from_json (
   sec->extensions = GNUNET_new_array (sec->num_extensions,
                                       struct Extension);
 
-  json_object_foreach (extensions, name, blob)
+  json_object_foreach (extensions, name, manifest)
   {
     int critical = 0;
     json_t *config;
@@ -175,18 +176,18 @@ verify_extensions_from_json (
     }
 
     if (GNUNET_OK !=
-        TALER_extensions_is_json_config (
-          blob, &critical, &version, &config))
+        TALER_extensions_parse_manifest (
+          manifest, &critical, &version, &config))
       return GNUNET_SYSERR;
 
     if (critical != extension->critical
         || 0 != strcmp (version, extension->version) // FIXME-oec: libtool compare
         || NULL == config
-        || GNUNET_OK != extension->test_json_config (config))
+        || GNUNET_OK != extension->load_config (NULL, config))
       return GNUNET_SYSERR;
 
     sec->extensions[i].type = extension->type;
-    sec->extensions[i].config = config;
+    sec->extensions[i].manifest = json_copy (manifest);
   }
 
   return GNUNET_OK;
@@ -223,7 +224,8 @@ TEH_handler_management_post_extensions (
   }
 
   /* Ensure we have an object */
-  if (! json_is_object (extensions))
+  if ((! json_is_object (extensions)) &&
+      (! json_is_null (extensions)))
   {
     GNUNET_JSON_parse_free (top_spec);
     return TALER_MHD_reply_with_error (
@@ -235,13 +237,13 @@ TEH_handler_management_post_extensions (
 
   /* Verify the signature */
   {
-    struct TALER_ExtensionConfigHashP h_config;
+    struct TALER_ExtensionManifestsHashP h_manifests;
 
     if (GNUNET_OK !=
-        TALER_JSON_extensions_config_hash (extensions, &h_config) ||
+        TALER_JSON_extensions_manifests_hash (extensions, &h_manifests) ||
         GNUNET_OK !=
-        TALER_exchange_offline_extension_config_hash_verify (
-          &h_config,
+        TALER_exchange_offline_extension_manifests_hash_verify (
+          &h_manifests,
           &TEH_master_public_key,
           &sec.extensions_sig))
     {
@@ -298,9 +300,9 @@ TEH_handler_management_post_extensions (
 CLEANUP:
   for (unsigned int i = 0; i < sec.num_extensions; i++)
   {
-    if (NULL != sec.extensions[i].config)
+    if (NULL != sec.extensions[i].manifest)
     {
-      json_decref (sec.extensions[i].config);
+      json_decref (sec.extensions[i].manifest);
     }
   }
   GNUNET_free (sec.extensions);

@@ -233,7 +233,7 @@ typedef void
  *
  * @param auditor the auditor handle; the auditor must be ready to operate
  * @param h_wire hash of merchant wire details
- * @param h_extensions hash over the extensions, if any
+ * @param h_policy hash over the policy, if any
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param wire_deadline date until which the exchange should wire the funds
@@ -257,7 +257,7 @@ struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_Handle *auditor,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,

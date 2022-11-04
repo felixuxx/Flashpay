@@ -97,9 +97,9 @@ struct TALER_EXCHANGE_DepositHandle
   struct TALER_MerchantWireHashP h_wire;
 
   /**
-   * Hash over the extensions, or all zero.
+   * Hash over the policy extension, or all zero.
    */
-  struct TALER_ExtensionContractHashP h_extensions;
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Time when this confirmation was generated / when the exchange received
@@ -177,7 +177,7 @@ auditor_cb (void *cls,
   aie->dch = TALER_AUDITOR_deposit_confirmation (
     ah,
     &dh->h_wire,
-    &dh->h_extensions,
+    &dh->h_policy,
     &dh->dcd.h_contract_terms,
     dh->exchange_timestamp,
     dh->dcd.wire_deadline,
@@ -277,7 +277,7 @@ handle_deposit_finished (void *cls,
           TALER_exchange_online_deposit_confirmation_verify (
             &dh->dcd.h_contract_terms,
             &dh->h_wire,
-            &dh->h_extensions,
+            &dh->h_policy,
             dh->exchange_timestamp,
             dh->dcd.wire_deadline,
             dh->dcd.refund_deadline,
@@ -446,15 +446,15 @@ TALER_EXCHANGE_deposit (
   dh->cb_cls = cb_cls;
   dh->cdd = *cdd;
   dh->dcd = *dcd;
-  if (NULL != dcd->extension_details)
-    TALER_deposit_extension_hash (dcd->extension_details,
-                                  &dh->h_extensions);
+  if (NULL != dcd->policy_details)
+    TALER_deposit_policy_hash (dcd->policy_details,
+                               &dh->h_policy);
   TALER_merchant_wire_signature_hash (dcd->merchant_payto_uri,
                                       &dcd->wire_salt,
                                       &dh->h_wire);
   if (GNUNET_OK !=
       TALER_EXCHANGE_verify_deposit_signature_ (dcd,
-                                                &dh->h_extensions,
+                                                &dh->h_policy,
                                                 &dh->h_wire,
                                                 cdd,
                                                 dki))

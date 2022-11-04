@@ -277,12 +277,20 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " ORDER BY extension_id DESC"
               " LIMIT 1;");
     break;
-  case TALER_EXCHANGEDB_RT_EXTENSION_DETAILS:
-    XPREPARE ("select_serial_by_table_extension_details",
+  case TALER_EXCHANGEDB_RT_POLICY_DETAILS:
+    XPREPARE ("select_serial_by_table_policy_details",
               "SELECT"
-              " extension_details_serial_id AS serial"
-              " FROM extension_details"
-              " ORDER BY extension_details_serial_id DESC"
+              " policy_details_serial_id AS serial"
+              " FROM policy_details"
+              " ORDER BY policy_details_serial_id DESC"
+              " LIMIT 1;");
+    break;
+  case TALER_EXCHANGEDB_RT_POLICY_FULFILLMENTS:
+    XPREPARE ("select_serial_by_table_policy_fulfillments",
+              "SELECT"
+              " fulfillment_id AS serial"
+              " FROM policy_fulfillments"
+              " ORDER BY fulfillment_id DESC"
               " LIMIT 1;");
     break;
   case TALER_EXCHANGEDB_RT_PURSE_REQUESTS:

@@ -898,17 +898,20 @@ decode_keys_json (const json_t *resp_obj,
   /* TODO: maybe lift all this into a FP in TALER_Extension ? */
   {
     struct TALER_MasterSignatureP extensions_sig = {0};
-    json_t *extensions = NULL;
+    json_t *manifests = NULL;
+    bool no_extensions = false;
+    bool no_signature = false;
+
     struct GNUNET_JSON_Specification ext_spec[] = {
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_json ("extensions",
-                               &extensions),
-        NULL),
+                               &manifests),
+        &no_extensions),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_fixed_auto (
           "extensions_sig",
           &extensions_sig),
-        NULL),
+        &no_signature),
       GNUNET_JSON_spec_end ()
     };
 
@@ -918,22 +921,27 @@ decode_keys_json (const json_t *resp_obj,
                                ext_spec,
                                NULL, NULL));
 
-    if (NULL != extensions)
+
+    if (! no_extensions && no_signature)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "found extensions without signature\n");
+
+    if (! no_extensions && ! no_signature)
     {
       /* 2. We have an extensions object. Verify its signature. */
       EXITIF (GNUNET_OK !=
-              TALER_extensions_verify_json_config_signature (
-                extensions,
+              TALER_extensions_verify_manifests_signature (
+                manifests,
                 &extensions_sig,
                 &key_data->master_pub));
 
       /* 3. Parse and set the the configuration of the extensions accordingly */
       EXITIF (GNUNET_OK !=
-              TALER_extensions_load_json_config (extensions));
+              TALER_extensions_load_manifests (manifests));
     }
 
     /* 4. assuming we might have now a new value for age_mask, set it in key_data */
-    key_data->age_mask = TALER_extensions_age_restriction_ageMask ();
+    key_data->age_mask = TALER_extensions_get_age_restriction_mask ();
   }
 
   /**

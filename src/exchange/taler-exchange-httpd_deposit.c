@@ -21,6 +21,7 @@
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -47,7 +48,7 @@
  * @param connection connection to the client
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
- * @param h_extensions hash of applicable extensions
+ * @param h_policy hash of applicable policy extension
  * @param h_contract_terms hash of contract details
  * @param exchange_timestamp exchange's timestamp
  * @param refund_deadline until when this deposit be refunded
@@ -61,7 +62,7 @@ reply_deposit_success (
   struct MHD_Connection *connection,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -78,7 +79,7 @@ reply_deposit_success (
          &TEH_keys_exchange_sign_,
          h_contract_terms,
          h_wire,
-         h_extensions,
+         h_policy,
          exchange_timestamp,
          wire_deadline,
          refund_deadline,
@@ -131,6 +132,29 @@ struct DepositContext
    */
   uint64_t known_coin_id;
 
+  /*
+   * True if @e policy_json was provided
+   */
+  bool has_policy;
+
+  /**
+   * If @e has_policy is true, the corresponding policy extension calculates
+   * these details.  These will be persisted in the policy_details table.
+   */
+  struct TALER_PolicyDetails policy_details;
+
+  /**
+   * Hash over the policy data for this deposit (remains unknown to the
+   * Exchange).  Needed for the verification of the deposit's signature
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
+
+  /**
+   * When has_policy is true, and deposit->policy_details are
+   * persisted, this contains the id of the record in the policy_details table.
+   */
+  uint64_t policy_details_serial_id;
+
 };
 
 
@@ -163,14 +187,35 @@ deposit_transaction (void *cls,
                             mhd_ret);
   if (qs < 0)
     return qs;
-  qs = TEH_plugin->do_deposit (TEH_plugin->cls,
-                               dc->deposit,
-                               dc->known_coin_id,
-                               &dc->h_payto,
-                               false, /* FIXME-OEC: extension blocked #7270 */
-                               &dc->exchange_timestamp,
-                               &balance_ok,
-                               &in_conflict);
+
+
+  /* If the deposit has a policy associated to it, persist it.  This will
+   * insert or update the record. */
+  if (dc->has_policy)
+  {
+    qs = TEH_plugin->persist_policy_details (
+      TEH_plugin->cls,
+      &dc->policy_details,
+      &dc->policy_details_serial_id,
+      &dc->policy_details.accumulated_total,
+      &dc->policy_details.fulfillment_state);
+
+    if (qs < 0)
+      return qs;
+  }
+
+
+  qs = TEH_plugin->do_deposit (
+    TEH_plugin->cls,
+    dc->deposit,
+    dc->known_coin_id,
+    &dc->h_payto,
+    (dc->has_policy)
+             ? &dc->policy_details_serial_id
+             : NULL,
+    &dc->exchange_timestamp,
+    &balance_ok,
+    &in_conflict);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -216,6 +261,8 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   struct DepositContext dc;
   struct TALER_EXCHANGEDB_Deposit deposit;
   const char *payto_uri;
+  struct TALER_ExtensionPolicyHashP *ph_policy = NULL;
+  bool no_policy_json;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("merchant_payto_uri",
                              &payto_uri),
@@ -240,12 +287,18 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.csig),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &deposit.timestamp),
+    /* TODO: refund_deadline and merchant_pub will move into the
+     * extension policy_merchant_refunds */
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_timestamp ("refund_deadline",
                                   &deposit.refund_deadline),
       NULL),
     GNUNET_JSON_spec_timestamp ("wire_transfer_deadline",
                                 &deposit.wire_deadline),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_json ("policy",
+                             &dc.policy_details.policy_json),
+      &no_policy_json),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_MerchantWireHashP h_wire;
@@ -271,6 +324,9 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return MHD_YES; /* failure */
     }
   }
+
+  dc.has_policy = ! no_policy_json;
+
   /* validate merchant's wire details (as far as we can) */
   {
     char *emsg;
@@ -419,6 +475,26 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        NULL);
   }
 
+  /* Check policy input and create policy details */
+  if (dc.has_policy)
+  {
+    const char *error_hint = NULL;
+
+    if (GNUNET_OK !=
+        TALER_extensions_create_policy_details (
+          dc.policy_details.policy_json,
+          &dc.policy_details,
+          &error_hint))
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_DEPOSITS_POLICY_NOT_ACCEPTED,
+                                         error_hint);
+
+    TALER_deposit_policy_hash (dc.policy_details.policy_json,
+                               &dc.h_policy);
+    ph_policy = &dc.h_policy;
+  }
+
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_wallet_deposit_verify (&deposit.amount_with_fee,
@@ -426,7 +502,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                    &h_wire,
                                    &deposit.h_contract_terms,
                                    &deposit.coin.h_age_commitment,
-                                   NULL /* FIXME: h_extensions! */,
+                                   ph_policy,
                                    &deposit.coin.denom_pub_hash,
                                    deposit.timestamp,
                                    &deposit.merchant_pub,
@@ -481,7 +557,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     res = reply_deposit_success (connection,
                                  &deposit.coin.coin_pub,
                                  &h_wire,
-                                 NULL /* FIXME: h_extensions! */,
+                                 ph_policy,
                                  &deposit.h_contract_terms,
                                  dc.exchange_timestamp,
                                  deposit.refund_deadline,

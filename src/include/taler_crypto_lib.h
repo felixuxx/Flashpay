@@ -638,10 +638,9 @@ struct TALER_PrivateContractHashP
 
 
 /**
- * Hash used to represent the "public" extensions to
- * a contract that is shared with the exchange.
+ * Hash used to represent the policy extension to a deposit
  */
-struct TALER_ExtensionContractHashP
+struct TALER_ExtensionPolicyHashP
 {
   /**
    * Actual hash value.
@@ -727,10 +726,10 @@ struct TALER_PickupIdentifierP
 
 
 /**
- * @brief Salted hash over the JSON object representing the configuration of an
- * extension.
+ * @brief Salted hash over the JSON object representing the manifests of
+ * extensions.
  */
-struct TALER_ExtensionConfigHashP
+struct TALER_ExtensionManifestsHashP
 {
   /**
    * Actual hash value.
@@ -3213,7 +3212,7 @@ TALER_wallet_reserve_attest_request_verify (
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param h_age_commitment hash over the age commitment, if applicable to the denomination (maybe NULL)
- * @param h_extensions hash over the extensions
+ * @param h_policy hash over the policy extension
  * @param h_denom_pub hash of the coin denomination's public key
  * @param coin_priv coin’s private key
  * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
@@ -3228,7 +3227,7 @@ TALER_wallet_deposit_sign (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -3245,7 +3244,7 @@ TALER_wallet_deposit_sign (
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param h_age_commitment hash over the age commitment (maybe all zeroes, if not applicable to the denomination)
- * @param h_extensions hash over the extensions
+ * @param h_policy hash over the policy extension
  * @param h_denom_pub hash of the coin denomination's public key
  * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
@@ -3261,7 +3260,7 @@ TALER_wallet_deposit_verify (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_AgeCommitmentHash *h_age_commitment,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_DenominationHashP *h_denom_pub,
   struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -3666,7 +3665,7 @@ typedef enum TALER_ErrorCode
  * @param scb function to call to create the signature
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param h_wire hash of the merchant’s account details
- * @param h_extensions hash over the extensions, can be NULL
+ * @param h_policy hash over the policy extension, can be NULL
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
  * @param wire_deadline date until which the exchange should wire the funds
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
@@ -3682,7 +3681,7 @@ TALER_exchange_online_deposit_confirmation_sign (
   TALER_ExchangeSignCallback scb,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -3698,7 +3697,7 @@ TALER_exchange_online_deposit_confirmation_sign (
  *
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param h_wire hash of the merchant’s account details
- * @param h_extensions hash over the extensions, can be NULL
+ * @param h_policy hash over the policy extension, can be NULL
  * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
  * @param wire_deadline date until which the exchange should wire the funds
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
@@ -3713,7 +3712,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_online_deposit_confirmation_verify (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -5257,31 +5256,31 @@ TALER_merchant_contract_sign (
 /* **************** /management/extensions offline signing **************** */
 
 /**
- * Create a signature for the hash of the configuration of an extension
+ * Create a signature for the hash of the manifests of extensions
  *
- * @param h_config hash of the JSON object representing the configuration
+ * @param h_manifests hash of the JSON object representing the manifests
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
 void
-TALER_exchange_offline_extension_config_hash_sign (
-  const struct TALER_ExtensionConfigHashP *h_config,
+TALER_exchange_offline_extension_manifests_hash_sign (
+  const struct TALER_ExtensionManifestsHashP *h_manifests,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
 
 /**
  * Verify the signature in @a master_sig of the given hash, taken over the JSON
- * blob representing the configuration of an extension
+ * blob representing the manifests of extensions
  *
- * @param h_config hash of the JSON blob of a configuration of an extension
+ * @param h_manifest hash of the JSON blob of manifests of extensions
  * @param master_pub master public key of the exchange
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_exchange_offline_extension_config_hash_verify (
-  const struct TALER_ExtensionConfigHashP *h_config,
+TALER_exchange_offline_extension_manifests_hash_verify (
+  const struct TALER_ExtensionManifestsHashP *h_manifest,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   );

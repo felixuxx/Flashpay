@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2021 Taler Systems SA
+   Copyright (C) 2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -24,48 +24,195 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_crypto_lib.h"
 #include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
+#include "taler_extensions_policy.h"
 
 
 #define TALER_EXTENSION_SECTION_PREFIX "exchange-extension-"
 
 enum TALER_Extension_Type
 {
-  TALER_Extension_AgeRestriction = 0,
-  TALER_Extension_MaxPredefined = 1 // Must be last of the predefined
+  TALER_Extension_PolicyNull                 = 0,
+
+  TALER_Extension_AgeRestriction             = 1,
+  TALER_Extension_PolicyMerchantRefund       = 2,
+  TALER_Extension_PolicyBrandtVickeryAuction = 3,
+  TALER_Extension_PolicyEscrowedPayment      = 4,
+
+  TALER_Extension_MaxPredefined              = 5 // Must be last of the predefined
 };
+
+
+/* Forward declarations */
+enum TALER_PolicyFulfillmentState;
+struct TALER_PolicyFulfillmentOutcome;
 
 /*
  * @brief Represents the implementation of an extension.
  *
- * TODO: add documentation
+ * An "Extension" is an optional feature for the Exchange.
+ * There are only two types of extensions:
+ *
+ * a) Age restriction:  This is a special feature that directly interacts with
+ * denominations and coins, but is not define policies during deposits, see b).
+ * The implementation of this extension doesn't have to implement any of the
+ * http- or depost-handlers in the struct.
+ *
+ * b) Policies for deposits:  These are extensions that define policies (such
+ * as refund, escrow or auctions) for deposit requests.  These extensions have
+ * to implement at least the deposit- and post-http-handler in the struct to be
+ * functional.
+ *
+ * In addition to the handlers defined in this struct, an extension must also
+ * be a plugin in the GNUNET_Plugin sense.  That is, it must implement the
+ * functions
+ *    1: (void *ext)libtaler_extension_<name>_init(void *cfg)
+ * and
+ *    2: (void *)libtaler_extension_<name>_done(void *)
+ *
+ * In 1:, the input will be the GNUNET_CONFIGURATION_Handle to the TALER
+ * configuration and the output must be the struct TALER_Extension * on
+ * success, NULL otherwise.
+ *
+ * In 2:, no arguments are passed and NULL is expected to be returned.
  */
 struct TALER_Extension
 {
-  /* simple linked list */
-  struct TALER_Extension *next;
-
+  /**
+   * Type of the extension.  Only one extension of a type can be loaded
+   * at any time.
+   */
   enum TALER_Extension_Type type;
-  char *name;
-  bool critical;
-  char *version;
-  void *config;
-  json_t *config_json;
 
+  /**
+   * The name of the extension, must be unique among all loaded extensions.  It
+   * is used in URLs for /extension/$NAME as well.
+   */
+  char *name;
+
+  /**
+   * Criticality of the extension.  It has the same semantics as "critical" has
+   * for extensions in X.509:
+   * - if "true", the client must "understand" the extension before proceeding,
+   * - if "false", clients can safely skip extensions they do not understand.
+   * (see https://datatracker.ietf.org/doc/html/rfc5280#section-4.2)
+   */
+  bool critical;
+
+  /**
+   * Version of the extension must be provided in Taler's protocol verison ranges notation, see
+   * https://docs.taler.net/core/api-common.html#protocol-version-ranges
+   */
+  char *version;
+
+  /**
+   * If the extension is marked as enabled, it will be listed in the
+   * "extensions" field in the "/keys" response.
+   */
+  bool enabled;
+
+  /**
+   * Opaque (public) configuration object, set by the extension.
+   */
+  void *config;
+
+
+  /**
+   * @brief Handler to to disable the extension.
+   *
+   * @param ext The current extension object
+   */
   void (*disable)(struct TALER_Extension *ext);
 
-  enum GNUNET_GenericReturnValue (*test_json_config)(
-    const json_t *config);
-
-  enum GNUNET_GenericReturnValue (*load_json_config)(
+  /**
+   * @brief Handler to read an extension-specific configuration in JSON
+   * encoding and enable the extension.  Must be implemented by the extension.
+   *
+   * @param ext The extension object. If NULL, the configuration will only be checked.
+   * @param config A JSON blob
+   * @return GNUNET_OK if the json was a valid configuration for the extension.
+   */
+  enum GNUNET_GenericReturnValue (*load_config)(
     struct TALER_Extension *ext,
     json_t *config);
 
-  json_t *(*config_to_json)(
+  /**
+   * @brief Handler to return the manifest of the extension in JSON encoding.
+   *
+   * See
+   * https://docs.taler.net/design-documents/006-extensions.html#tsref-type-Extension
+   * for the definition.
+   *
+   * @param ext The extension object
+   * @return The JSON encoding of the extension, if enabled, NULL otherwise.
+   */
+  json_t *(*manifest)(
     const struct TALER_Extension *ext);
 
-  enum GNUNET_GenericReturnValue (*load_taler_config)(
-    struct TALER_Extension *ext,
-    const struct GNUNET_CONFIGURATION_Handle *cfg);
+  /* =========================
+   *  Policy related handlers
+   * =========================
+   */
+
+  /**
+   * @brief Handler to check an incoming policy and create a
+   * TALER_PolicyDetails. Can be NULL;
+   *
+   * When a deposit request refers to this extension in its policy
+   * (see https://docs.taler.net/core/api-exchange.html#deposit), this handler
+   * will be called before the deposit transaction.
+   *
+   * @param[in]  policy_json Details about the policy, provided by the client
+   *             during a deposit request.
+   * @param[out] details On success, will contain the details to the policy,
+   *             evaluated by the corresponding policy handler.
+   * @param[out] error_hint On error, will contain a hint
+   * @return     GNUNET_OK if the data was accepted by the extension.
+   */
+  enum GNUNET_GenericReturnValue (*create_policy_details)(
+    const json_t *policy_json,
+    struct TALER_PolicyDetails *details,
+    const char **error_hint);
+
+  /**
+   * @brief Handler for POST-requests to the /extensions/$name endpoint. Can be NULL.
+   *
+   * @param[in] root The JSON body from the request
+   * @param[in] args Additional query parameters of the request.
+   * @param[in,out] details List of policy details related to the incoming fulfillment proof
+   * @param[in] details_len Size of the list @e details
+   * @param[out] output JSON output to return to the client
+   * @return GNUNET_OK on success.
+   */
+  enum GNUNET_GenericReturnValue (*policy_post_handler)(
+    const json_t *root,
+    const char *const args[],
+    struct TALER_PolicyDetails *details,
+    size_t details_len,
+    json_t **output);
+
+  /**
+   * @brief Handler for GET-requests to the /extensions/$name endpoint.  Can be NULL.
+   *
+   * @param connection The current connection
+   * @param root The JSON body from the request
+   * @param args Additional query parameters of the request.
+   * @return MDH result
+   */
+  MHD_RESULT (*policy_get_handler)(
+    struct MHD_Connection *connection,
+    const char *const args[]);
+};
+
+
+/*
+ * @brief simply linked list of extensions
+ */
+
+struct TALER_Extensions
+{
+  struct TALER_Extensions *next;
+  const struct TALER_Extension *extension;
 };
 
 /**
@@ -73,70 +220,57 @@ struct TALER_Extension
  */
 
 /*
- * @brief Sets the configuration of the extensions from the given TALER
- * configuration.
+ * @brief Loads the extensions as shared libraries, as specified in the given
+ * TALER configuration.
  *
  * @param cfg Handle to the TALER configuration
  * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
  *         or any particular configuration couldn't be parsed.
  */
 enum GNUNET_GenericReturnValue
-TALER_extensions_load_taler_config (
+TALER_extensions_init (
   const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 /*
- * @brief Checks the given obj to be a valid extension object and fill the
- * fields accordingly.
+ * @brief Parses a given JSON object as an extension manifest.
  *
- * @param[in] obj Object to verify is a valid extension
+ * @param[in] obj JSON object to parse as an extension manifest
  * @param{out] critical will be set to 1 if the extension is critical according to obj
  * @param[out] version will be set to the version of the extension according to obj
  * @param[out] config will be set to the configuration of the extension according to obj
  * @return OK on success, Error otherwise
  */
 enum GNUNET_GenericReturnValue
-TALER_extensions_is_json_config (
+TALER_extensions_parse_manifest (
   json_t *obj,
   int *critical,
   const char **version,
   json_t **config);
 
 /*
- * @brief Sets the configuration of the extensions from a given JSON object.
+ * @brief Loads extensions according to the manifests.
  *
- * The JSON object must be of type ExchangeKeysResponse as described in
- * https://docs.taler.net/design-documents/006-extensions.html#exchange
+ * The JSON object must be of type ExtensionsManifestsResponse as described
+ * in https://docs.taler.net/design-documents/006-extensions.html#exchange
  *
- * @param cfg JSON object containing the configuration for all extensions
+ * @param cfg JSON object containing the manifests for all extensions
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if unknown extensions were
  *  found or any particular configuration couldn't be parsed.
  */
 enum GNUNET_GenericReturnValue
-TALER_extensions_load_json_config (
-  json_t *cfg);
+TALER_extensions_load_manifests (
+  json_t *manifests);
 
 /*
  * @brief Returns the head of the linked list of extensions.
  */
-const struct TALER_Extension *
+const struct TALER_Extensions *
 TALER_extensions_get_head ();
-
-/*
- * @brief Adds an extension to the linked list of extensions.
- *
- * @param new_extension the new extension to be added
- * @return GNUNET_OK on success, GNUNET_SYSERR if the extension is invalid
- * (missing fields), GNUNET_NO if there is already an extension with that name
- * or type.
- */
-enum GNUNET_GenericReturnValue
-TALER_extensions_add (
-  struct TALER_Extension *new_extension);
 
 /**
  * @brief Finds and returns a supported extension by a given type.
  *
- * @param type type of the extension to lookup
+ * @param type of the extension to lookup
  * @return extension found, or NULL (should not happen!)
  */
 const struct TALER_Extension *
@@ -154,8 +288,6 @@ const struct TALER_Extension *
 TALER_extensions_get_by_name (
   const char *name);
 
-#define TALER_extensions_is_enabled(ext) (NULL != (ext)->config)
-
 /**
  * @brief Check if a given type of an extension is enabled
  *
@@ -166,12 +298,21 @@ bool
 TALER_extensions_is_enabled_type (
   enum TALER_Extension_Type type);
 
+/**
+ * @brief Check if an extension is enabled
+ *
+ * @param extension The extension handler.
+ * @return true enabled, false if not enabled, will assert if type is not found.
+ */
+bool
+TALER_extensions_is_enabled (
+  const struct TALER_Extension *extension);
 
 /*
  * Verify the signature of a given JSON object for extensions with the master
  * key of the exchange.
  *
- * The JSON object must be of type ExchangeKeysResponse as described in
+ * The JSON object must be of type ExtensionsManifestsResponse as described in
  * https://docs.taler.net/design-documents/006-extensions.html#exchange
  *
  * @param extensions JSON object with the extension configuration
@@ -181,14 +322,19 @@ TALER_extensions_is_enabled_type (
  * and GNUNET_NO if the signature couldn't be verified.
  */
 enum GNUNET_GenericReturnValue
-TALER_extensions_verify_json_config_signature (
-  json_t *extensions,
+TALER_extensions_verify_manifests_signature (
+  json_t *manifests,
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub);
 
 
 /*
  * TALER Age Restriction Extension
+ *
+ * This extension is special insofar as it directly interacts with coins and
+ * denominations.
+ *
+ * At the same time, it doesn't implement and http- or deposit-handlers.
  */
 
 #define TALER_EXTENSION_SECTION_AGE_RESTRICTION (TALER_EXTENSION_SECTION_PREFIX  \
@@ -204,102 +350,39 @@ TALER_extensions_verify_json_config_signature (
                                                           | 1 << 21)
 #define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
 
-/**
- * @brief Registers the extension for age restriction to the list extensions
- */
-enum GNUNET_GenericReturnValue
-TALER_extension_age_restriction_register ();
-
-/**
- * @brief Parses a string as a list of age groups.
- *
- * The string must consist of a colon-separated list of increasing integers
- * between 0 and 31.  Each entry represents the beginning of a new age group.
- * F.e. the string
- *
- *  "8:10:12:14:16:18:21"
- *
- * represents the following list of eight age groups:
- *
- * | Group |    Ages       |
- * | -----:|:------------- |
- * |    0  |  0, 1, ..., 7 |
- * |    1  |  8, 9         |
- * |    2  | 10, 11        |
- * |    3  | 12, 13        |
- * |    4  | 14, 15        |
- * |    5  | 16, 17        |
- * |    6  | 18, 19, 20    |
- * |    7  | 21, ...       |
- *
- * which is then encoded as a bit mask with the corresponding bits set:
- *
- *  31     24        16        8         0
- *  |      |         |         |         |
- *  oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
- *
- * @param groups String representation of age groups
- * @param[out] mask Mask representation for age restriction.
- * @return Error, if age groups were invalid, OK otherwise.
- */
-enum GNUNET_GenericReturnValue
-TALER_parse_age_group_string (
-  const char *groups,
-  struct TALER_AgeMask *mask);
-
-/**
- * @brief Encodes the age mask into a string, like "8:10:12:14:16:18:21"
- *
- * @param mask Age mask
- * @return String representation of the age mask, allocated by GNUNET_malloc.
- *         Can be used as value in the TALER config.
- */
-char *
-TALER_age_mask_to_string (
-  const struct TALER_AgeMask *mask);
-
-/**
- * @brief Returns true when age restriction is configured and enabled.
- */
-bool
-TALER_extensions_age_restriction_is_enabled ();
-
-/**
- * @brief Returns true when age restriction is configured (might not be
- * _enabled_, though).
- */
-bool
-TALER_extensions_age_restriction_is_configured ();
-
-/**
- * @brief Returns the currently set age mask.  Note that even if age
- * restriction is not enabled, the age mask might be have a non-zero value.
- */
-struct TALER_AgeMask
-TALER_extensions_age_restriction_ageMask ();
-
-
-/**
- * @brief Returns the amount of age groups defined.  0 means no age restriction
- * enabled.
- */
-size_t
-TALER_extensions_age_restriction_num_groups ();
-
-/**
- * @brief Parses a JSON object { "age_groups": "a:b:...y:z" }.
- *
- * @param root is the json object
- * @param[out] mask on success, will contain the age mask
- * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
- */
-enum GNUNET_GenericReturnValue
-TALER_JSON_parse_age_groups (const json_t *root,
-                             struct TALER_AgeMask *mask);
-
 
 /*
- * TODO: Add Peer2Peer Extension
+ * @brief Configuration for Age Restriction
  */
+struct TALER_AgeRestrictionConfig
+{
+  struct TALER_AgeMask mask;
+  uint8_t num_groups;
+};
+
+
+/**
+ * @brief Retrieve the age restriction configuration
+ *
+ * @return age restriction configuration if present, otherwise NULL.
+ */
+const struct TALER_AgeRestrictionConfig *
+TALER_extensions_get_age_restriction_config ();
+
+/**
+ * @brief Check if age restriction is enabled
+ *
+ * @return true, if age restriction is loaded, configured and enabled; otherwise false.
+ */
+bool
+TALER_extensions_is_age_restriction_enabled ();
+
+/**
+ * @brief Return the age mask for age restriction
+ *
+ * @return configured age mask, if age restriction is loaded, configured and enabled; otherwise zero mask.
+ */
+struct TALER_AgeMask
+TALER_extensions_get_age_restriction_mask ();
 
 #endif

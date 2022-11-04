@@ -17,6 +17,7 @@
  * @file taler-exchange-httpd_keys.c
  * @brief management of our various keys
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_json_lib.h"
@@ -815,10 +816,7 @@ static struct TALER_AgeMask
 load_age_mask (const char*section_name)
 {
   static const struct TALER_AgeMask null_mask = {0};
-  struct TALER_AgeMask age_mask = TALER_extensions_age_restriction_ageMask ();
-
-  if (age_mask.bits == 0)
-    return null_mask;
+  enum GNUNET_GenericReturnValue ret;
 
   if (GNUNET_OK != (GNUNET_CONFIGURATION_have_value (
                       TEH_cfg,
@@ -826,22 +824,29 @@ load_age_mask (const char*section_name)
                       "AGE_RESTRICTED")))
     return null_mask;
 
+  if (GNUNET_SYSERR ==
+      (ret = GNUNET_CONFIGURATION_get_value_yesno (TEH_cfg,
+                                                   section_name,
+                                                   "AGE_RESTRICTED")))
   {
-    enum GNUNET_GenericReturnValue ret;
-
-    if (GNUNET_SYSERR ==
-        (ret = GNUNET_CONFIGURATION_get_value_yesno (TEH_cfg,
-                                                     section_name,
-                                                     "AGE_RESTRICTED")))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 section_name,
-                                 "AGE_RESTRICTED",
-                                 "Value must be YES or NO\n");
-      return null_mask;
-    }
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section_name,
+                               "AGE_RESTRICTED",
+                               "Value must be YES or NO\n");
+    return null_mask;
   }
-  return age_mask;
+
+  if (GNUNET_OK == ret)
+  {
+    if (! TEH_age_restriction_enabled)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "age restriction set in section %s, yet, age restriction is not enabled\n",
+                  section_name);
+    return TEH_age_restriction_config.mask;
+  }
+
+
+  return null_mask;
 }
 
 
@@ -1898,41 +1903,29 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     bool has_extensions = false;
 
     /* Fill in the configurations of the enabled extensions */
-    for (const struct TALER_Extension *extension = TALER_extensions_get_head ();
-         NULL != extension;
-         extension = extension->next)
+    for (const struct TALER_Extensions *iter = TALER_extensions_get_head ();
+         NULL != iter && NULL != iter->extension;
+         iter = iter->next)
     {
-      json_t *ext;
-      json_t *config_json;
+      const struct TALER_Extension *extension = iter->extension;
+      json_t *manifest;
       int r;
 
-      /* skip if not configured == disabled */
-      if (NULL == extension->config ||
-          NULL == extension->config_json)
+      /* skip if not enabled */
+      if (! extension->enabled)
         continue;
 
       /* flag our findings so far */
       has_extensions = true;
 
-      GNUNET_assert (NULL != extension->config_json);
 
-      config_json = json_copy (extension->config_json);
-      GNUNET_assert (NULL != config_json);
-
-      ext = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_bool ("critical",
-                               extension->critical),
-        GNUNET_JSON_pack_string ("version",
-                                 extension->version),
-        GNUNET_JSON_pack_object_steal ("config",
-                                       config_json)
-        );
-      GNUNET_assert (NULL != ext);
+      manifest = extension->manifest (extension);
+      GNUNET_assert (manifest);
 
       r = json_object_set_new (
         extensions,
         extension->name,
-        ext);
+        manifest);
       GNUNET_assert (0 == r);
     }
 
@@ -1948,12 +1941,16 @@ create_krd (struct TEH_KeyStateHandle *ksh,
         extensions);
       GNUNET_assert (0 == r);
 
-      sig = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_data_auto ("extensions_sig",
-                                    &TEH_extensions_sig));
+      /* Add the signature of the extensions, if it is not zero */
+      if (TEH_extensions_signed)
+      {
+        sig = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_data_auto ("extensions_sig",
+                                      &TEH_extensions_sig));
 
-      r = json_object_update (keys, sig);
-      GNUNET_assert (0 == r);
+        r = json_object_update (keys, sig);
+        GNUNET_assert (0 == r);
+      }
     }
     else
     {

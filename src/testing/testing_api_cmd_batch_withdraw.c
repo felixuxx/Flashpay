@@ -490,7 +490,7 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
 
       acp = GNUNET_new (struct TALER_AgeCommitmentProof);
       hac = GNUNET_new (struct TALER_AgeCommitmentHash);
-      mask = TALER_extensions_age_restriction_ageMask ();
+      mask = TALER_extensions_get_age_restriction_mask ();
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   &seed,
                                   sizeof(seed));

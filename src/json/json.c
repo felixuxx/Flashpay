@@ -1008,12 +1008,12 @@ TALER_JSON_get_error_code2 (const void *data,
 
 
 void
-TALER_deposit_extension_hash (const json_t *extensions,
-                              struct TALER_ExtensionContractHashP *ech)
+TALER_deposit_policy_hash (const json_t *policy,
+                           struct TALER_ExtensionPolicyHashP *ech)
 {
   GNUNET_assert (GNUNET_OK ==
-                 dump_and_hash (extensions,
-                                "taler-contract-extensions",
+                 dump_and_hash (policy,
+                                "taler-extensions-policy",
                                 &ech->hash));
 }
 
@@ -1037,11 +1037,11 @@ TALER_JSON_canonicalize (const json_t *input)
 
 
 enum GNUNET_GenericReturnValue
-TALER_JSON_extensions_config_hash (const json_t *config,
-                                   struct TALER_ExtensionConfigHashP *ech)
+TALER_JSON_extensions_manifests_hash (const json_t *manifests,
+                                      struct TALER_ExtensionManifestsHashP *ech)
 {
-  return dump_and_hash (config,
-                        "taler-extension-configuration",
+  return dump_and_hash (manifests,
+                        "taler-extensions-manifests",
                         &ech->hash);
 }
 

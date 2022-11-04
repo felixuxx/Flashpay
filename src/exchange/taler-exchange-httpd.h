@@ -197,11 +197,6 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
  */
 extern char *TEH_currency;
 
-/*
- * Age restriction extension state
- */
-extern bool TEH_age_restriction_enabled;
-
 /**
  * Our (externally visible) base URL.
  */
@@ -221,6 +216,7 @@ extern struct GNUNET_CURL_Context *TEH_curl_ctx;
  * Signature of the offline master key of all enabled extensions' configuration
  */
 extern struct TALER_MasterSignatureP TEH_extensions_sig;
+extern bool TEH_extensions_signed;
 
 /**
  * @brief Struct describing an URL and the handler for it.
@@ -365,5 +361,9 @@ struct TEH_RequestHandler
   unsigned int response_code;
 };
 
+
+/* Age restriction configuration */
+extern bool TEH_age_restriction_enabled;
+extern struct TALER_AgeRestrictionConfig TEH_age_restriction_config;
 
 #endif

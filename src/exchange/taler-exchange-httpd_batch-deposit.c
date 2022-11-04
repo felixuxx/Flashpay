@@ -87,15 +87,27 @@ struct BatchDepositContext
   const char *payto_uri;
 
   /**
-   * Additional details for extensions relevant for this
+   * Additional details for policy extension relevant for this
    * deposit operation, possibly NULL!
    */
-  json_t *extension_details;
+  json_t *policy_json;
 
   /**
-   * Hash over @e extension_details.
+   * Will be true if policy_json were provided
    */
-  struct TALER_ExtensionContractHashP h_extensions;
+  bool has_policy;
+
+  /**
+   * If @e policy_json was present, the corresponding policy extension
+   * calculates these details.  These will be persisted in the policy_details
+   * table.
+   */
+  struct TALER_PolicyDetails policy_details;
+
+  /**
+   * Hash over @e policy_details.
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -173,7 +185,7 @@ again:
            &TEH_keys_exchange_sign_,
            &bdc->h_contract_terms,
            &bdc->h_wire,
-           &bdc->h_extensions,
+           bdc->has_policy ? &bdc->h_policy: NULL,
            bdc->exchange_timestamp,
            bdc->wire_deadline,
            bdc->refund_deadline,
@@ -242,7 +254,7 @@ batch_deposit_transaction (void *cls,
                            MHD_RESULT *mhd_ret)
 {
   struct BatchDepositContext *dc = cls;
-  enum GNUNET_DB_QueryStatus qs;
+  enum GNUNET_DB_QueryStatus qs = GNUNET_SYSERR;
   bool balance_ok;
   bool in_conflict;
 
@@ -469,18 +481,19 @@ parse_coin (struct MHD_Connection *connection,
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_wallet_deposit_verify (&deposit->amount_with_fee,
-                                   &deposit->deposit_fee,
-                                   &dc->h_wire,
-                                   &dc->h_contract_terms,
-                                   &deposit->coin.h_age_commitment,
-                                   &dc->h_extensions,
-                                   &deposit->coin.denom_pub_hash,
-                                   dc->timestamp,
-                                   &dc->merchant_pub,
-                                   dc->refund_deadline,
-                                   &deposit->coin.coin_pub,
-                                   &deposit->csig))
+      TALER_wallet_deposit_verify (
+        &deposit->amount_with_fee,
+        &deposit->deposit_fee,
+        &dc->h_wire,
+        &dc->h_contract_terms,
+        &deposit->coin.h_age_commitment,
+        dc->has_policy ? &dc->h_policy : NULL,
+        &deposit->coin.denom_pub_hash,
+        dc->timestamp,
+        &dc->merchant_pub,
+        dc->refund_deadline,
+        &deposit->coin.coin_pub,
+        &deposit->csig))
   {
     TALER_LOG_WARNING ("Invalid signature on /batch-deposit request\n");
     GNUNET_JSON_parse_free (spec);
@@ -496,11 +509,6 @@ parse_coin (struct MHD_Connection *connection,
   deposit->h_contract_terms = dc->h_contract_terms;
   deposit->wire_salt = dc->wire_salt;
   deposit->receiver_wire_account = (char *) dc->payto_uri;
-  /* FIXME-OEC: #7270 should NOT insert the extension details N times,
-     but rather insert them ONCE and then per-coin only use
-     the resulting extension UUID/serial; so the data structure
-     here should be changed once we look at extensions in earnest.  */
-  deposit->extension_details = dc->extension_details;
   deposit->timestamp = dc->timestamp;
   deposit->refund_deadline = dc->refund_deadline;
   deposit->wire_deadline = dc->wire_deadline;
@@ -517,7 +525,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   struct BatchDepositContext dc;
   json_t *coins;
   bool no_refund_deadline = true;
-  bool no_extensions = true;
+  bool no_policy_json = true;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("merchant_payto_uri",
                              &dc.payto_uri),
@@ -530,9 +538,9 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
     GNUNET_JSON_spec_json ("coins",
                            &coins),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_json ("extension_details",
-                             &dc.extension_details),
-      &no_extensions),
+      GNUNET_JSON_spec_json ("policy",
+                             &dc.policy_json),
+      &no_policy_json),
     GNUNET_JSON_spec_timestamp ("timestamp",
                                 &dc.timestamp),
     GNUNET_JSON_spec_mark_optional (
@@ -562,6 +570,8 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
     GNUNET_break_op (0);
     return MHD_YES;   /* failure */
   }
+
+  dc.has_policy = ! no_policy_json;
 
   /* validate merchant's wire details (as far as we can) */
   {
@@ -607,11 +617,26 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
   TALER_merchant_wire_signature_hash (dc.payto_uri,
                                       &dc.wire_salt,
                                       &dc.h_wire);
-  /* FIXME-OEC: #7270 hash actual extension JSON object here */
-  // if (! no_extensions)
-  memset (&dc.h_extensions,
-          0,
-          sizeof (dc.h_extensions));
+
+  /* handle policy, if present */
+  if (dc.has_policy)
+  {
+    const char *error_hint = NULL;
+
+    if (GNUNET_OK !=
+        TALER_extensions_create_policy_details (
+          dc.policy_json,
+          &dc.policy_details,
+          &error_hint))
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_DEPOSITS_POLICY_NOT_ACCEPTED,
+                                         error_hint);
+
+    TALER_deposit_policy_hash (dc.policy_json,
+                               &dc.h_policy);
+  }
+
   dc.num_coins = json_array_size (coins);
   if (0 == dc.num_coins)
   {
@@ -635,12 +660,32 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                                   struct TALER_EXCHANGEDB_Deposit);
   for (unsigned int i = 0; i<dc.num_coins; i++)
   {
-    if (GNUNET_OK !=
-        (res = parse_coin (connection,
-                           json_array_get (coins,
-                                           i),
-                           &dc,
-                           &dc.deposits[i])))
+    do {
+      res = parse_coin (connection,
+                        json_array_get (coins, i),
+                        &dc,
+                        &dc.deposits[i]);
+      if (GNUNET_OK != res)
+        break;
+
+      /* If applicable, accumulate all contributions into the policy_details */
+      if (dc.has_policy)
+      {
+        /* FIXME: how do deposit-fee and policy-fee interact? */
+        struct TALER_Amount amount_without_fee;
+
+        res = TALER_amount_subtract (&amount_without_fee,
+                                     &dc.deposits[i].amount_with_fee,
+                                     &dc.deposits[i].deposit_fee
+                                     );
+        res = TALER_amount_add (
+          &dc.policy_details.accumulated_total,
+          &dc.policy_details.accumulated_total,
+          &amount_without_fee);
+      }
+    } while(0);
+
+    if (GNUNET_OK != res)
     {
       for (unsigned int j = 0; j<i; j++)
         TALER_denom_sig_free (&dc.deposits[j].coin.denom_sig);

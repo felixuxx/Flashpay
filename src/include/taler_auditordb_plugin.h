@@ -382,9 +382,9 @@ struct TALER_AUDITORDB_DepositConfirmation
   struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
-   * Hash over the extensions for the deposit.
+   * Hash over the policy extension for the deposit.
    */
-  struct TALER_ExtensionContractHashP h_extensions;
+  struct TALER_ExtensionPolicyHashP h_policy;
 
   /**
    * Hash over the wiring information of the merchant.

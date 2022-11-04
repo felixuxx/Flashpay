@@ -48,10 +48,10 @@ struct TALER_DepositConfirmationPS
   struct TALER_MerchantWireHashP h_wire GNUNET_PACKED;
 
   /**
-   * Hash over the extension options of the deposit, 0 if there
-   * were not extension options.
+   * Hash over the optional policy extension of the deposit, 0 if there
+   * was no policy.
    */
-  struct TALER_ExtensionContractHashP h_extensions GNUNET_PACKED;
+  struct TALER_ExtensionPolicyHashP h_policy GNUNET_PACKED;
 
   /**
    * Time when this confirmation was generated / when the exchange received
@@ -101,7 +101,7 @@ TALER_exchange_online_deposit_confirmation_sign (
   TALER_ExchangeSignCallback scb,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -123,8 +123,8 @@ TALER_exchange_online_deposit_confirmation_sign (
     .merchant_pub = *merchant_pub
   };
 
-  if (NULL != h_extensions)
-    dcs.h_extensions = *h_extensions;
+  if (NULL != h_policy)
+    dcs.h_policy = *h_policy;
   TALER_amount_hton (&dcs.amount_without_fee,
                      amount_without_fee);
   return scb (&dcs.purpose,
@@ -137,7 +137,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_online_deposit_confirmation_verify (
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_MerchantWireHashP *h_wire,
-  const struct TALER_ExtensionContractHashP *h_extensions,
+  const struct TALER_ExtensionPolicyHashP *h_policy,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
@@ -159,8 +159,8 @@ TALER_exchange_online_deposit_confirmation_verify (
     .merchant_pub = *merchant_pub
   };
 
-  if (NULL != h_extensions)
-    dcs.h_extensions = *h_extensions;
+  if (NULL != h_policy)
+    dcs.h_policy = *h_policy;
   TALER_amount_hton (&dcs.amount_without_fee,
                      amount_without_fee);
   if (GNUNET_OK !=

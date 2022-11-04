@@ -10,25 +10,24 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+# Age restriction as extension library
 
-# Basic extension handling library
+plugindir = $(libdir)/taler
 
-lib_LTLIBRARIES = \
-  libtalerextensions.la
+plugin_LTLIBRARIES = \
+  libtaler_extension_age_restriction.la
 
-libtalerextensions_la_LDFLAGS = \
+libtaler_extension_age_restriction_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 
-libtalerextensions_la_SOURCES = \
-  extensions.c \
-  age_restriction_helper.c
+libtaler_extension_age_restriction_la_SOURCES = \
+  age_restriction.c
 
-libtalerextensions_la_LIBADD = \
+libtaler_extension_age_restriction_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   $(XLIB)
-

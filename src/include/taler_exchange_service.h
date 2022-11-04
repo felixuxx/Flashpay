@@ -894,9 +894,9 @@ struct TALER_EXCHANGE_DepositContractDetail
   struct TALER_PrivateContractHashP h_contract_terms;
 
   /**
-   * Extension-specific details about the deposit relevant to the exchange.
+   * Policy extension specific details about the deposit relevant to the exchange.
    */
-  const json_t *extension_details;
+  json_t *policy_details;
 
   /**
    * Timestamp when the contract was finalized, must match approximately the
