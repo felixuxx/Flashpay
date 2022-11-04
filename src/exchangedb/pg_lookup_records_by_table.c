@@ -2563,8 +2563,8 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",wire_salt"
               ",wire_target_h_payto"
               ",done"
-              ",extension_blocked"
-              ",extension_details_serial_id"
+              ",policy_blocked"
+              ",policy_details_serial_id"
               " FROM deposits"
               " WHERE deposit_serial_id > $1"
               " ORDER BY deposit_serial_id ASC;");
