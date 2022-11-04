@@ -145,14 +145,14 @@ echo "Launching services"
 export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
 # Create the default demobank.
 cd $MY_TMP_DIR
-libeufin-sandbox config --currency "TESTKUDOS" default
 export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
+libeufin-sandbox config --currency "TESTKUDOS" default
 libeufin-sandbox serve --port "1${BANK_PORT}" \
   > ${MY_TMP_DIR}/libeufin-sandbox-stdout.log \
   2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
 echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
 cd $ORIGIN
-export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/"
+export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
 set +e
 echo -n "Waiting for Sandbox..."
 OK=0
@@ -160,9 +160,10 @@ for n in `seq 1 50`; do
   echo -n "."
   sleep 1
   if wget --timeout=1 \
+    --user admin --password secret \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
-    ${LIBEUFIN_SANDBOX_URL}demobanks;
+    ${LIBEUFIN_SANDBOX_URL};
   then
     OK=1
     break
