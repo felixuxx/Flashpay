@@ -4083,7 +4083,7 @@ compute_shard (const struct TALER_MerchantPublicKeyP *merchant_pub)
  * @param deposit deposit operation details
  * @param known_coin_id row of the coin in the known_coins table
  * @param h_payto hash of the merchant's bank account details
- * @param _blocked true if an extension is blocking the wire transfer
+ * @param policy_details_serial_id pointer to the ID of the entry in policy_details, maybe NULL
  * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] in_conflict set to true if the deposit conflicted
@@ -4514,7 +4514,7 @@ hash_code_cmp (
  * Add a proof of fulfillment into the policy_fulfillments table
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param[out] proof_id set record id for the proof
+ * @param fulfillment fullfilment transaction data to be added
  * @return query execution status
  */
 static enum GNUNET_DB_QueryStatus
@@ -10678,7 +10678,7 @@ postgres_delete_shard_locks (void *cls)
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param extension_name the name of the extension
- * @param config JSON object of the configuration as string
+ * @param manifest JSON object of the configuration as string
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus

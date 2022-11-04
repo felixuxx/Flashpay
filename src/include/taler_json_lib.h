@@ -771,7 +771,7 @@ TALER_JSON_wire_to_payto (const json_t *wire_s);
  * @param[out] ech where to write the policy hash
  */
 void
-TALER_deposit_policy_hash (const json_t *extensions,
+TALER_deposit_policy_hash (const json_t *policy,
                            struct TALER_ExtensionPolicyHashP *ech);
 
 /**

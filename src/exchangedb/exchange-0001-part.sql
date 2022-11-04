@@ -573,7 +573,7 @@ COMMENT ON COLUMN policy_details.accumulated_total_val
 COMMENT ON COLUMN policy_details.fee_val
   IS 'The fee for this policy, due when the policy is fulfilled or timed out';
 COMMENT ON COLUMN policy_details.transferable_val
-  IS 'The amount that on fulfilment or timeout will be transfered to the payto-URI''s of the corresponding deposit''s.  The policy fees must have been already deducted from it.  Invariant: fee+transferable <= accumulated_total.  The remaining amount (accumulated_total - fee - transferable) can be refreshed by the owner of the coins when the state is Timeout or Success.';
+  IS 'The amount that on fulfillment or timeout will be transferred to the payto-URI''s of the corresponding deposit''s.  The policy fees must have been already deducted from it.  Invariant: fee+transferable <= accumulated_total.  The remaining amount (accumulated_total - fee - transferable) can be refreshed by the owner of the coins when the state is Timeout or Success.';
 COMMENT ON COLUMN policy_details.fulfillment_state
   IS 'State of the fulfillment:
        - 0 (Failure)

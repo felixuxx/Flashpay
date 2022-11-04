@@ -89,7 +89,7 @@ struct TALER_PolicyDetails
    * the state changes to Timeout or Success. */
   struct TALER_Amount policy_fee;
 
-  /* The amount that will be transfered to the payto-URIs from the
+  /* The amount that will be transferred to the payto-URIs from the
    * corresponding deposits when the fulfillment state changes to Timeout
    * or Success.  Note that a fulfillment handler can alter this upon
    * arrival of a proof of fulfillment. The remaining amount

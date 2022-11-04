@@ -100,7 +100,7 @@ struct TALER_Extension
   bool critical;
 
   /**
-   * Version of the extension must be provided in Taler's protocol verison ranges notation, see
+   * Version of the extension must be provided in Taler's protocol version ranges notation, see
    * https://docs.taler.net/core/api-common.html#protocol-version-ranges
    */
   char *version;
