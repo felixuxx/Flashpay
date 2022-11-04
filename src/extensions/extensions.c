@@ -202,6 +202,11 @@ configure_extension (
   GNUNET_asprintf (&lib_name,
                    "libtaler_extension_%s",
                    name);
+  /* Lower-case extension name, config is case-insensitive */
+  for (unsigned int i = 0; i < strlen (lib_name); i++)
+  {
+    lib_name[i] = tolower (lib_name[i]);
+  }
   extension = GNUNET_PLUGIN_load (
     lib_name,
     (void *) col->cfg);
