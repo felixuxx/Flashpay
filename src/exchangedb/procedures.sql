@@ -520,7 +520,7 @@ AS $$
 DECLARE
   wtsi INT8; -- wire target serial id
 BEGIN
--- Shards: INSERT extension_details (by extension_details_serial_id)
+-- Shards: INSERT policy_details (by policy_details_serial_id)
 --         INSERT wire_targets (by h_payto), on CONFLICT DO NOTHING;
 --         INSERT deposits (by coin_pub, shard), ON CONFLICT DO NOTHING;
 --         UPDATE known_coins (by coin_pub)
