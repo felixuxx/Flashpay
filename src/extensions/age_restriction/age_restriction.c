@@ -241,7 +241,7 @@ libtaler_extension_age_restriction_init (void *arg)
 /**
  * @brief implements the done() function for GNUNET_PLUGIN_load
  *
- * @param arg unsued
+ * @param arg unused
  * @return pointer to TALER_Extension on success or NULL otherwise.
  */
 void *
