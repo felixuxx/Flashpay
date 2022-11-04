@@ -160,7 +160,7 @@ for n in `seq 1 50`; do
   echo -n "."
   sleep 1
   if wget --timeout=1 \
-    --user admin --password secret \
+    --user admin --password secret --auth-no-challenge \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
     ${LIBEUFIN_SANDBOX_URL};

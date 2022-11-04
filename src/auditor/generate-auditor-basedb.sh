@@ -154,11 +154,17 @@ echo $LIBEUFIN_SANDBOX_URL
 set +e
 echo -n "Waiting for Sandbox..."
 OK=0
-for n in `seq 1 50`; do
+for n in `seq 1 100`; do
   echo -n "."
   sleep 1
-  if wget --timeout=1 \
+  echo wget --timeout=1 \
     --user admin --password secret \
+    --tries=3 --waitretry=0 \
+    -o /dev/null -O /dev/null \
+    ${LIBEUFIN_SANDBOX_URL};
+
+  if wget --timeout=1 \
+    --user admin --password secret --auth-no-challenge \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
     ${LIBEUFIN_SANDBOX_URL};
