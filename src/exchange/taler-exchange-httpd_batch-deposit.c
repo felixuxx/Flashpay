@@ -98,6 +98,11 @@ struct BatchDepositContext
   bool has_policy;
 
   /**
+   * Hash over @e policy_details, might be all zero
+   */
+  struct TALER_ExtensionPolicyHashP h_policy;
+
+  /**
    * If @e policy_json was present, the corresponding policy extension
    * calculates these details.  These will be persisted in the policy_details
    * table.
@@ -105,9 +110,10 @@ struct BatchDepositContext
   struct TALER_PolicyDetails policy_details;
 
   /**
-   * Hash over @e policy_details.
+   * When @e policy_details are persisted, this contains the id of the record
+   * in the policy_details table.
    */
-  struct TALER_ExtensionPolicyHashP h_policy;
+  uint64_t policy_details_serial_id;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -258,6 +264,21 @@ batch_deposit_transaction (void *cls,
   bool balance_ok;
   bool in_conflict;
 
+  /* If the deposit has a policy associated to it, persist it.  This will
+   * insert or update the record. */
+  if (dc->has_policy)
+  {
+    qs = TEH_plugin->persist_policy_details (TEH_plugin->cls,
+                                             &dc->policy_details,
+                                             &dc->policy_details_serial_id,
+                                             &dc->policy_details.
+                                             accumulated_total,
+                                             &dc->policy_details.
+                                             fulfillment_state);
+    if (qs < 0)
+      return qs;
+  }
+
   for (unsigned int i = 0; i<dc->num_coins; i++)
   {
     const struct TALER_EXCHANGEDB_Deposit *deposit = &dc->deposits[i];
@@ -269,14 +290,18 @@ batch_deposit_transaction (void *cls,
                               mhd_ret);
     if (qs < 0)
       return qs;
-    qs = TEH_plugin->do_deposit (TEH_plugin->cls,
-                                 deposit,
-                                 known_coin_id,
-                                 &dc->h_payto,
-                                 false, /* FIXME-OEC: #7270 extension blocked */
-                                 &dc->exchange_timestamp,
-                                 &balance_ok,
-                                 &in_conflict);
+
+    qs = TEH_plugin->do_deposit (
+      TEH_plugin->cls,
+      deposit,
+      known_coin_id,
+      &dc->h_payto,
+      (dc->has_policy)
+         ?  &dc->policy_details_serial_id
+         : NULL,
+      &dc->exchange_timestamp,
+      &balance_ok,
+      &in_conflict);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
