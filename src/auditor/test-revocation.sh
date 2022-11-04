@@ -152,8 +152,7 @@ function launch_libeufin () {
                    > ${MYDIR}/libeufin-nexus-stdout.log &
     echo $! > ${MYDIR}/libeufin-nexus.pid
     export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${DB}-sandbox.sqlite3"
-    export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
-    libeufin-sandbox serve --port 18082 \
+    libeufin-sandbox serve --no-auth --port 18082 \
                      > ${MYDIR}/libeufin-sandbox-stdout.log \
                      2> ${MYDIR}/libeufin-sandbox-stderr.log &
     echo $! > ${MYDIR}/libeufin-sandbox.pid

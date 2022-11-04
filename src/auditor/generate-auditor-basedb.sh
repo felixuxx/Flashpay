@@ -16,24 +16,6 @@
 set -eu
 #set -x
 
-function get_iban() {
-    export LIBEUFIN_SANDBOX_USERNAME=$1
-    export LIBEUFIN_SANDBOX_PASSWORD=$2
-    export LIBEUFIN_SANDBOX_URL=$BANK_URL
-    cd $MY_TMP_DIR
-    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.iban'
-    cd $ORIGIN
-}
-
-function get_payto_uri() {
-    export LIBEUFIN_SANDBOX_USERNAME=$1
-    export LIBEUFIN_SANDBOX_PASSWORD=$2
-    export LIBEUFIN_SANDBOX_URL=$BANK_URL
-    cd $MY_TMP_DIR
-    libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
-    cd $ORIGIN
-}
-
 # Cleanup to run whenever we exit
 function exit_cleanup()
 {
@@ -161,13 +143,12 @@ export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
 # Create the default demobank.
 cd $MY_TMP_DIR
 libeufin-sandbox config --currency "TESTKUDOS" default
-export LIBEUFIN_SANDBOX_ADMIN_PASSWORD=secret
-libeufin-sandbox serve --port "1${BANK_PORT}" \
+libeufin-sandbox serve --no-auth --port "1${BANK_PORT}" \
   > ${MY_TMP_DIR}/libeufin-sandbox-stdout.log \
   2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
 echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
 cd $ORIGIN
-export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/"
 set +e
 echo -n "Waiting for Sandbox..."
 OK=0
@@ -177,7 +158,7 @@ for n in `seq 1 50`; do
   if wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
-    $LIBEUFIN_SANDBOX_URL;
+    ${LIBEUFIN_SANDBOX_URL}demobanks;
   then
     OK=1
     break

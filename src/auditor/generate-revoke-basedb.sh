@@ -152,7 +152,7 @@ libeufin-sandbox serve --port "1${BANK_PORT}" \
   2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
 echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
 cd $ORIGIN
-export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/"
 set +e
 echo -n "Waiting for Sandbox..."
 OK=0
@@ -162,7 +162,7 @@ for n in `seq 1 50`; do
   if wget --timeout=1 \
     --tries=3 --waitretry=0 \
     -o /dev/null -O /dev/null \
-    $LIBEUFIN_SANDBOX_URL;
+    ${LIBEUFIN_SANDBOX_URL}demobanks;
   then
     OK=1
     break
