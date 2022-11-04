@@ -526,7 +526,7 @@ parse_coin (struct MHD_Connection *connection,
             TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_FORBIDDEN,
                                         TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
-                                        NULL))
+                                        TALER_B2S (&deposit->coin.coin_pub)))
       ? GNUNET_NO
       : GNUNET_SYSERR;
   }

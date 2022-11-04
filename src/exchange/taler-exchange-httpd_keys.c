@@ -1852,6 +1852,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   keys = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("version",
                              EXCHANGE_PROTOCOL_VERSION),
+    GNUNET_JSON_pack_string ("base_url",
+                             TEH_base_url),
     GNUNET_JSON_pack_string ("currency",
                              TEH_currency),
     GNUNET_JSON_pack_data_auto ("master_public_key",
