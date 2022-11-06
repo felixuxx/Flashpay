@@ -232,8 +232,8 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
  *
  * @param requirements space-spearated list of requirements
  * @param h_payto hash over the account
- * @param[out] kyc_expire if satisfied, set to when the KYC
- *             check data expires
+ * @param[out] kyc_details if satisfied, set to what kind of
+ *             KYC information was collected
  * @param ki iterator over satisfied providers
  * @param ki_cls closure for @a ki
  * @return true if the KYC check was satisfied
