@@ -96,6 +96,7 @@ handle_kyc_check_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
+      json_t *kyc_details;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &ks.details.success.exchange_sig),
@@ -103,6 +104,8 @@ handle_kyc_check_finished (void *cls,
                                      &ks.details.success.exchange_pub),
         GNUNET_JSON_spec_timestamp ("now",
                                     &ks.details.success.timestamp),
+        GNUNET_JSON_spec_json ("kyc_details",
+                               &kyc_details),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -117,6 +120,7 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
+      ks.details.success.kyc_details = kyc_details;
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
@@ -132,6 +136,7 @@ handle_kyc_check_finished (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_online_account_setup_success_verify (
             &kch->h_payto,
+            ks.details.success.kyc_details,
             ks.details.success.timestamp,
             &ks.details.success.exchange_pub,
             &ks.details.success.exchange_sig))

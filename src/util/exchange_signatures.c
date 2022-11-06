@@ -449,18 +449,20 @@ struct TALER_ExchangeAccountSetupSuccessPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the payto for which the signature was
-   * made.
+   * Hash over the payto for which the signature was made.
    */
   struct TALER_PaytoHashP h_payto;
 
-  /* FIXME: include details on *which* KYC process was satisfied! #7427 */
+  /**
+   * Hash over details on *which* KYC obligations were discharged!
+   */
+  struct GNUNET_HashCode h_kyc;
 
   /**
    * When was the signature made.
-   * FIXME: replace by *expiration* time! #7427
    */
   struct GNUNET_TIME_TimestampNBO timestamp;
+
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -470,6 +472,7 @@ enum TALER_ErrorCode
 TALER_exchange_online_account_setup_success_sign (
   TALER_ExchangeSignCallback scb,
   const struct TALER_PaytoHashP *h_payto,
+  const json_t *kyc,
   struct GNUNET_TIME_Timestamp timestamp,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig)
@@ -479,10 +482,11 @@ TALER_exchange_online_account_setup_success_sign (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
     .h_payto = *h_payto,
-    .timestamp = GNUNET_TIME_timestamp_hton (
-      timestamp)
+    .timestamp = GNUNET_TIME_timestamp_hton (timestamp)
   };
 
+  TALER_json_hash (kyc,
+                   &kyc_purpose.h_kyc);
   return scb (&kyc_purpose.purpose,
               pub,
               sig);
@@ -492,6 +496,7 @@ TALER_exchange_online_account_setup_success_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_online_account_setup_success_verify (
   const struct TALER_PaytoHashP *h_payto,
+  const json_t *kyc,
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig)
@@ -501,10 +506,11 @@ TALER_exchange_online_account_setup_success_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
     .h_payto = *h_payto,
-    .timestamp = GNUNET_TIME_timestamp_hton (
-      timestamp)
+    .timestamp = GNUNET_TIME_timestamp_hton (timestamp)
   };
 
+  TALER_json_hash (kyc,
+                   &kyc_purpose.h_kyc);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS,
                                 &kyc_purpose,

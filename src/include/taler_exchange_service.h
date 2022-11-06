@@ -3455,6 +3455,11 @@ struct TALER_EXCHANGE_KycStatus
     {
 
       /**
+       * Details about which KYC check(s) were passed.
+       */
+      const json_t *kyc_details;
+
+      /**
        * Time of the affirmation.
        */
       struct GNUNET_TIME_Timestamp timestamp;

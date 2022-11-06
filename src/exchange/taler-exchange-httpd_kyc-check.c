@@ -93,6 +93,11 @@ struct KycPoller
   struct GNUNET_TIME_Absolute timeout;
 
   /**
+   * If the KYC complete, what kind of data was collected?
+   */
+  json_t *kyc_details;
+
+  /**
    * Set to starting URL of KYC process if KYC is required.
    */
   char *kyc_url;
@@ -195,6 +200,7 @@ kyp_cleanup (struct TEH_RequestContext *rc)
     kyp->ih_logic->initiate_cancel (kyp->ih);
     kyp->ih = NULL;
   }
+  json_decref (kyp->kyc_details);
   GNUNET_free (kyp->kyc_url);
   GNUNET_free (kyp->hint);
   GNUNET_free (kyp);
@@ -327,9 +333,16 @@ kyc_check (void *cls,
   if (TALER_KYCLOGIC_check_satisfied (
         requirements,
         &h_payto,
+        &kyp->kyc_details,
         TEH_plugin->select_satisfied_kyc_processes,
         TEH_plugin->cls))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC requirements `%s' already satisfied\n",
+                requirements);
+    GNUNET_free (requirements);
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
 
   kyp->kyc_required = true;
   ret = TALER_KYCLOGIC_requirements_to_logic (requirements,
@@ -610,6 +623,7 @@ TEH_handler_kyc_check (
         (ec = TALER_exchange_online_account_setup_success_sign (
            &TEH_keys_exchange_sign_,
            &kyp->h_payto,
+           kyp->kyc_details,
            now,
            &pub,
            &sig)))
@@ -625,6 +639,8 @@ TEH_handler_kyc_check (
                                   &sig),
       GNUNET_JSON_pack_data_auto ("exchange_pub",
                                   &pub),
+      GNUNET_JSON_pack_object_incref ("kyc_details",
+                                      kyp->kyc_details),
       GNUNET_JSON_pack_timestamp ("now",
                                   now));
   }

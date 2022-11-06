@@ -306,9 +306,8 @@ load_logic (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
- * Add check type to global array of checks.
- * First checks if the type already exists, otherwise
- * adds a new one.
+ * Add check type to global array of checks.  First checks if the type already
+ * exists, otherwise adds a new one.
  *
  * @param check name of the check
  * @return pointer into the global list
@@ -934,6 +933,10 @@ struct RemoveContext
    */
   unsigned int *needed_cnt;
 
+  /**
+   * Object with information about collected KYC data.
+   */
+  json_t *kyc_details;
 };
 
 
@@ -967,6 +970,14 @@ remove_satisfied (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Provider satisfies check `%s'\n",
                   kc->name);
+      if (NULL != rc->kyc_details)
+      {
+        GNUNET_assert (0 ==
+                       json_object_set_new (
+                         rc->kyc_details,
+                         kc->name,
+                         json_object ()));
+      }
       for (unsigned int k = 0; k<*rc->needed_cnt; k++)
         if (kc == rc->needed[k])
         {
@@ -1136,6 +1147,7 @@ TALER_KYCLOGIC_kyc_get_details (
 bool
 TALER_KYCLOGIC_check_satisfied (const char *requirements,
                                 const struct TALER_PaytoHashP *h_payto,
+                                json_t **kyc_details,
                                 TALER_KYCLOGIC_KycSatisfiedIterator ki,
                                 void *ki_cls)
 {
@@ -1157,9 +1169,12 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
   {
     struct RemoveContext rc = {
       .needed = needed,
-      .needed_cnt = &needed_cnt
+      .needed_cnt = &needed_cnt,
     };
     enum GNUNET_DB_QueryStatus qs;
+
+    rc.kyc_details = json_object ();
+    GNUNET_assert (NULL != rc.kyc_details);
 
     /* Check what provider checks are already satisfied for h_payto (with
        database), remove those from the 'needed' array. */
@@ -1168,6 +1183,15 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
              &remove_satisfied,
              &rc);
     GNUNET_break (qs >= 0);  // FIXME: handle DB failure more nicely?
+    if (0 != needed_cnt)
+    {
+      json_decref (rc.kyc_details);
+      *kyc_details = NULL;
+    }
+    else
+    {
+      *kyc_details = rc.kyc_details;
+    }
   }
   return (0 == needed_cnt);
 }

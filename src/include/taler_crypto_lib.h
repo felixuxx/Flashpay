@@ -3891,10 +3891,12 @@ TALER_exchange_online_key_set_verify (
 
 
 /**
- * Create account setup success signature.
+ * Create account KYC setup success signature.
  *
  * @param scb function to call to create the signature
  * @param h_payto target of the KYC account
+ * @param kyc JSON data describing which KYC checks
+ *            were satisfied
  * @param timestamp time when the KYC was confirmed
  * @param[out] pub where to write the public key
  * @param[out] sig where to write the signature
@@ -3904,15 +3906,18 @@ enum TALER_ErrorCode
 TALER_exchange_online_account_setup_success_sign (
   TALER_ExchangeSignCallback scb,
   const struct TALER_PaytoHashP *h_payto,
+  const json_t *kyc,
   struct GNUNET_TIME_Timestamp timestamp,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);
 
 
 /**
- * Verify account setup success signature.
+ * Verify account KYC setup success signature.
  *
  * @param h_payto target of the KYC account
+ * @param kyc JSON data describing which KYC checks
+ *            were satisfied
  * @param timestamp time when the KYC was confirmed
  * @param pub where to write the public key
  * @param sig where to write the signature
@@ -3921,6 +3926,7 @@ TALER_exchange_online_account_setup_success_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_online_account_setup_success_verify (
   const struct TALER_PaytoHashP *h_payto,
+  const json_t *kyc,
   struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_ExchangePublicKeyP *pub,
   const struct TALER_ExchangeSignatureP *sig);
