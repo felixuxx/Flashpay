@@ -30,6 +30,8 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include "plugin_exchangedb_common.h"
+#include "pg_delete_aggregation_transient.h"
+#include "pg_get_link_data.h"
 #include "pg_helper.h"
 #include "pg_do_reserve_open.h"
 #include "pg_get_coin_transactions.h"
@@ -1429,33 +1431,6 @@ prepare_statements (struct PostgresClosure *pg)
       "    ,legitimization_requirement_serial_id=$5"
       " WHERE wire_target_h_payto=$3"
       "   AND wtid_raw=$4"),
-    /* Used in #postgres_delete_aggregation_transient() */
-    GNUNET_PQ_make_prepare (
-      "delete_aggregation_transient",
-      "DELETE FROM aggregation_transient"
-      " WHERE wire_target_h_payto=$1"
-      "   AND wtid_raw=$2"),
-
-    /* Used in #postgres_get_link_data(). */
-    GNUNET_PQ_make_prepare (
-      "get_link",
-      "SELECT "
-      " tp.transfer_pub"
-      ",denoms.denom_pub"
-      ",rrc.ev_sig"
-      ",rrc.ewv"
-      ",rrc.link_sig"
-      ",rrc.freshcoin_index"
-      ",rrc.coin_ev"
-      " FROM refresh_commitments"
-      "     JOIN refresh_revealed_coins rrc"
-      "       USING (melt_serial_id)"
-      "     JOIN refresh_transfer_keys tp"
-      "       USING (melt_serial_id)"
-      "     JOIN denominations denoms"
-      "       ON (rrc.denominations_serial = denoms.denominations_serial)"
-      " WHERE old_coin_pub=$1"
-      " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC"),
     /* Used in #postgres_lookup_wire_transfer */
     GNUNET_PQ_make_prepare (
       "lookup_transactions",
@@ -5058,34 +5033,6 @@ postgres_update_aggregation_transient (
 
 
 /**
- * Delete existing entry in the transient aggregation table.
- * @a h_payto is only needed for query performance.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto destination of the wire transfer
- * @param wtid the raw wire transfer identifier to update
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_delete_aggregation_transient (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  const struct TALER_WireTransferIdentifierRawP *wtid)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "delete_aggregation_transient",
-                                             params);
-}
-
-
-/**
  * Obtain information about deposits that are ready to be executed.  Such
  * deposits must not be marked as "done", the execution time must be
  * in the past, and the KYC status must be 'ok'.
@@ -5850,196 +5797,6 @@ cleanup:
     TALER_blinded_planchet_free (&rrc->blinded_planchet);
   }
   GNUNET_free (grctx.rrcs);
-  return qs;
-}
-
-
-/**
- * Closure for #add_ldl().
- */
-struct LinkDataContext
-{
-  /**
-   * Function to call on each result.
-   */
-  TALER_EXCHANGEDB_LinkCallback ldc;
-
-  /**
-   * Closure for @e ldc.
-   */
-  void *ldc_cls;
-
-  /**
-   * Last transfer public key for which we have information in @e last.
-   * Only valid if @e last is non-NULL.
-   */
-  struct TALER_TransferPublicKeyP transfer_pub;
-
-  /**
-   * Link data for @e transfer_pub
-   */
-  struct TALER_EXCHANGEDB_LinkList *last;
-
-  /**
-   * Status, set to #GNUNET_SYSERR on errors,
-   */
-  int status;
-};
-
-
-/**
- * Free memory of the link data list.
- *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
- * @param ldl link data list to release
- */
-static void
-free_link_data_list (void *cls,
-                     struct TALER_EXCHANGEDB_LinkList *ldl)
-{
-  struct TALER_EXCHANGEDB_LinkList *next;
-
-  (void) cls;
-  while (NULL != ldl)
-  {
-    next = ldl->next;
-    TALER_denom_pub_free (&ldl->denom_pub);
-    TALER_blinded_denom_sig_free (&ldl->ev_sig);
-    GNUNET_free (ldl);
-    ldl = next;
-  }
-}
-
-
-/**
- * Function to be called with the results of a SELECT statement
- * that has returned @a num_results results.
- *
- * @param cls closure of type `struct LinkDataContext *`
- * @param result the postgres result
- * @param num_results the number of results in @a result
- */
-static void
-add_ldl (void *cls,
-         PGresult *result,
-         unsigned int num_results)
-{
-  struct LinkDataContext *ldctx = cls;
-
-  for (int i = num_results - 1; i >= 0; i--)
-  {
-    struct TALER_EXCHANGEDB_LinkList *pos;
-    struct TALER_TransferPublicKeyP transfer_pub;
-
-    pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
-    {
-      struct TALER_BlindedPlanchet bp;
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-                                              &transfer_pub),
-        GNUNET_PQ_result_spec_auto_from_type ("link_sig",
-                                              &pos->orig_coin_link_sig),
-        TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
-                                                &pos->ev_sig),
-        GNUNET_PQ_result_spec_uint32 ("freshcoin_index",
-                                      &pos->coin_refresh_offset),
-        TALER_PQ_result_spec_exchange_withdraw_values ("ewv",
-                                                       &pos->alg_values),
-        TALER_PQ_result_spec_denom_pub ("denom_pub",
-                                        &pos->denom_pub),
-        TALER_PQ_result_spec_blinded_planchet ("coin_ev",
-                                               &bp),
-        GNUNET_PQ_result_spec_end
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_PQ_extract_result (result,
-                                    rs,
-                                    i))
-      {
-        GNUNET_break (0);
-        GNUNET_free (pos);
-        ldctx->status = GNUNET_SYSERR;
-        return;
-      }
-      if (TALER_DENOMINATION_CS == bp.cipher)
-      {
-        pos->nonce = bp.details.cs_blinded_planchet.nonce;
-        pos->have_nonce = true;
-      }
-      TALER_blinded_planchet_free (&bp);
-    }
-    if ( (NULL != ldctx->last) &&
-         (0 == GNUNET_memcmp (&transfer_pub,
-                              &ldctx->transfer_pub)) )
-    {
-      pos->next = ldctx->last;
-    }
-    else
-    {
-      if (NULL != ldctx->last)
-      {
-        ldctx->ldc (ldctx->ldc_cls,
-                    &ldctx->transfer_pub,
-                    ldctx->last);
-        free_link_data_list (cls,
-                             ldctx->last);
-      }
-      ldctx->transfer_pub = transfer_pub;
-    }
-    ldctx->last = pos;
-  }
-}
-
-
-/**
- * Obtain the link data of a coin, that is the encrypted link
- * information, the denomination keys and the signatures.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param coin_pub public key of the coin
- * @param ldc function to call for each session the coin was melted into
- * @param ldc_cls closure for @a tdc
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_get_link_data (void *cls,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        TALER_EXCHANGEDB_LinkCallback ldc,
-                        void *ldc_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
-  struct LinkDataContext ldctx;
-
-  ldctx.ldc = ldc;
-  ldctx.ldc_cls = ldc_cls;
-  ldctx.last = NULL;
-  ldctx.status = GNUNET_OK;
-  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "get_link",
-                                             params,
-                                             &add_ldl,
-                                             &ldctx);
-  if (NULL != ldctx.last)
-  {
-    if (GNUNET_OK == ldctx.status)
-    {
-      /* call callback one more time! */
-      ldc (ldc_cls,
-           &ldctx.transfer_pub,
-           ldctx.last);
-    }
-    free_link_data_list (cls,
-                         ldctx.last);
-    ldctx.last = NULL;
-  }
-  if (GNUNET_OK != ldctx.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
 }
 
@@ -12542,8 +12299,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_find_aggregation_transient;
   plugin->update_aggregation_transient
     = &postgres_update_aggregation_transient;
-  plugin->delete_aggregation_transient
-    = &postgres_delete_aggregation_transient;
   plugin->get_ready_deposit = &postgres_get_ready_deposit;
   plugin->insert_deposit = &postgres_insert_deposit;
   plugin->insert_refund = &postgres_insert_refund;
@@ -12551,7 +12306,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_melt = &postgres_get_melt;
   plugin->insert_refresh_reveal = &postgres_insert_refresh_reveal;
   plugin->get_refresh_reveal = &postgres_get_refresh_reveal;
-  plugin->get_link_data = &postgres_get_link_data;
   plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
   plugin->lookup_transfer_by_deposit = &postgres_lookup_transfer_by_deposit;
   plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
@@ -12741,6 +12495,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_reserve_open_deposit;
   plugin->insert_close_request
     = &TEH_PG_insert_close_request;
+  plugin->delete_aggregation_transient
+    = &TEH_PG_delete_aggregation_transient;
+  plugin->get_link_data
+    = &TEH_PG_get_link_data;
   plugin->iterate_reserve_close_info
     = &TEH_PG_iterate_reserve_close_info;
   plugin->iterate_kyc_reference
