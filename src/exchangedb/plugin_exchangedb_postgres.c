@@ -34,6 +34,7 @@
 #include "pg_get_link_data.h"
 #include "pg_helper.h"
 #include "pg_do_reserve_open.h"
+#include "pg_do_withdraw.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
 #include "pg_get_purse_request.h"
@@ -698,26 +699,6 @@ prepare_statements (struct PostgresClosure *pg)
       "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
       " ORDER BY reserve_in_serial_id;"),
-    /* Used in #postgres_get_reserve_history() to obtain inbound transactions
-       for a reserve */
-    /* Used in #postgres_get_reserve_status() to obtain inbound transactions
-       for a reserve */
-    /* Used in #postgres_do_withdraw() to store
-       the signature of a blinded coin with the blinded coin's
-       details before returning it during /reserve/withdraw. We store
-       the coin's denomination information (public key, signature)
-       and the blinded message as well as the reserve that the coin
-       is being withdrawn from and the signature of the message
-       authorizing the withdrawal. */
-    GNUNET_PQ_make_prepare (
-      "call_withdraw",
-      "SELECT "
-      " reserve_found"
-      ",balance_ok"
-      ",nonce_ok"
-      ",ruuid"
-      " FROM exchange_do_withdraw"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
     /* Used in #postgres_do_batch_withdraw() to
        update the reserve balance and check its status */
     GNUNET_PQ_make_prepare (
@@ -3833,69 +3814,6 @@ postgres_get_withdraw_info (
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_withdraw_info",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Perform withdraw operation, checking for sufficient balance
- * and possibly persisting the withdrawal details.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
- * @param[in,out] collectable corresponding collectable coin (blind signature) if a coin is found; possibly updated if a (different) signature exists already
- * @param now current time (rounded)
- * @param[out] found set to true if the reserve was found
- * @param[out] balance_ok set to true if the balance was sufficient
- * @param[out] nonce_ok set to false if the nonce was reused
- * @param[out] ruuid set to the reserve's UUID (reserves table row)
- * @return query execution status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_withdraw (
-  void *cls,
-  const struct TALER_CsNonce *nonce,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
-  struct GNUNET_TIME_Timestamp now,
-  bool *found,
-  bool *balance_ok,
-  bool *nonce_ok,
-  uint64_t *ruuid)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Timestamp gc;
-  struct GNUNET_PQ_QueryParam params[] = {
-    NULL == nonce
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
-    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
-    GNUNET_PQ_query_param_timestamp (&now),
-    GNUNET_PQ_query_param_timestamp (&gc),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("reserve_found",
-                                found),
-    GNUNET_PQ_result_spec_bool ("balance_ok",
-                                balance_ok),
-    GNUNET_PQ_result_spec_bool ("nonce_ok",
-                                nonce_ok),
-    GNUNET_PQ_result_spec_uint64 ("ruuid",
-                                  ruuid),
-    GNUNET_PQ_result_spec_end
-  };
-
-  gc = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_absolute_add (now.abs_time,
-                              pg->legal_reserve_expiration_time));
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_withdraw",
                                                    params,
                                                    rs);
 }
@@ -12109,7 +12027,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->drain_kyc_alert = &postgres_drain_kyc_alert;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
-  plugin->do_withdraw = &postgres_do_withdraw;
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
   plugin->get_policy_details = &postgres_get_policy_details;
   plugin->persist_policy_details = &postgres_persist_policy_details;
@@ -12307,6 +12224,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   /* NEW style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
+  plugin->do_withdraw
+    = &TEH_PG_do_withdraw;
   plugin->free_coin_transaction_list
     = &TEH_COMMON_free_coin_transaction_list;
   plugin->free_reserve_history

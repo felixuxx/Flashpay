@@ -70,6 +70,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
   plugin_exchangedb_postgres.c pg_helper.h \
   pg_do_reserve_open.c pg_do_reserve_open.h \
+  pg_do_withdraw.h pg_do_withdraw.c \
   pg_get_coin_transactions.c pg_get_coin_transactions.h \
   pg_get_expired_reserves.c pg_get_expired_reserves.h \
   pg_get_purse_request.c pg_get_purse_request.h \
