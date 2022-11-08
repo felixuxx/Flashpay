@@ -62,6 +62,9 @@
 
 /**WHAT I ADD**/
 #include "pg_insert_purse_request.h"
+#include "pg_iterate_active_signkeys.h"
+
+#include "pg_commit.h"
 
 
 /**
@@ -427,22 +430,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM denominations"
       " LEFT JOIN "
       "   denomination_revocations USING (denominations_serial);"),
-    /* Used in #postgres_iterate_active_signkeys() */
-    GNUNET_PQ_make_prepare (
-      "select_signkeys",
-      "SELECT"
-      " master_sig"
-      ",exchange_pub"
-      ",valid_from"
-      ",expire_sign"
-      ",expire_legal"
-      " FROM exchange_sign_keys esk"
-      " WHERE"
-      "   expire_sign > $1"
-      " AND NOT EXISTS "
-      "  (SELECT esk_serial "
-      "     FROM signkey_revocations skr"
-      "    WHERE esk.esk_serial = skr.esk_serial);"),
+    
     /* Used in #postgres_iterate_auditor_denominations() */
     GNUNET_PQ_make_prepare (
       "select_auditor_denoms",
@@ -1952,11 +1940,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM global_fee"
       " WHERE end_date > $1"
       "   AND start_date < $2;"),
-    /* used in #postgres_commit */
-    GNUNET_PQ_make_prepare (
-      "do_commit",
-      "COMMIT"),
-    /* Used in #postgres_begin_shard() */
+       /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_open_shard",
       "SELECT"
@@ -2591,31 +2575,6 @@ postgres_rollback (void *cls)
 }
 
 
-/**
- * Commit the current transaction of a database connection.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return final transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_commit (void *cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  GNUNET_break (NULL != pg->transaction_name);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Committing transaction `%s'\n",
-              pg->transaction_name);
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "do_commit",
-                                           params);
-  pg->transaction_name = NULL;
-  return qs;
-}
 
 
 /**
@@ -3068,109 +3027,6 @@ postgres_iterate_denominations (void *cls,
                                                "select_denominations",
                                                params,
                                                &dominations_cb_helper,
-                                               &dic);
-}
-
-
-/**
- * Closure for #signkeys_cb_helper()
- */
-struct SignkeysIteratorContext
-{
-  /**
-   * Function to call with the results.
-   */
-  TALER_EXCHANGEDB_ActiveSignkeysCallback cb;
-
-  /**
-   * Closure to pass to @e cb
-   */
-  void *cb_cls;
-
-};
-
-
-/**
- * Helper function for #postgres_iterate_active_signkeys().
- * Calls the callback with each signkey.
- *
- * @param cls a `struct SignkeysIteratorContext`
- * @param result db results
- * @param num_results number of results in @a result
- */
-static void
-signkeys_cb_helper (void *cls,
-                    PGresult *result,
-                    unsigned int num_results)
-{
-  struct SignkeysIteratorContext *dic = cls;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_EXCHANGEDB_SignkeyMetaData meta;
-    struct TALER_ExchangePublicKeyP exchange_pub;
-    struct TALER_MasterSignatureP master_sig;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                            &master_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("exchange_pub",
-                                            &exchange_pub),
-      GNUNET_PQ_result_spec_timestamp ("valid_from",
-                                       &meta.start),
-      GNUNET_PQ_result_spec_timestamp ("expire_sign",
-                                       &meta.expire_sign),
-      GNUNET_PQ_result_spec_timestamp ("expire_legal",
-                                       &meta.expire_legal),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      return;
-    }
-    dic->cb (dic->cb_cls,
-             &exchange_pub,
-             &meta,
-             &master_sig);
-  }
-}
-
-
-/**
- * Function called to invoke @a cb on every non-revoked exchange signing key
- * that has been signed by the master key.  Revoked and (for signing!)
- * expired keys are skipped. Runs in its own read-only transaction.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param cb function to call on each signing key
- * @param cb_cls closure for @a cb
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_iterate_active_signkeys (void *cls,
-                                  TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
-                                  void *cb_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now = {0};
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_end
-  };
-  struct SignkeysIteratorContext dic = {
-    .cb = cb,
-    .cb_cls = cb_cls,
-  };
-
-  now = GNUNET_TIME_absolute_get ();
-  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               "select_signkeys",
-                                               params,
-                                               &signkeys_cb_helper,
                                                &dic);
 }
 
@@ -3677,7 +3533,7 @@ postgres_reserves_in_insert (void *cls,
        (We are only run in a larger transaction for performance.) */
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = postgres_commit (pg);
+    cs = TEH_PG_commit(pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
@@ -3758,7 +3614,7 @@ postgres_reserves_in_insert (void *cls,
   {
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = postgres_commit (pg);
+    cs = TEH_PG_commit (pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
@@ -9986,7 +9842,7 @@ commit:
     {
       enum GNUNET_DB_QueryStatus qs;
 
-      qs = postgres_commit (pg);
+      qs = TEH_PG_commit (pg);
       switch (qs)
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
@@ -10256,7 +10112,7 @@ postgres_begin_revolving_shard (void *cls,
     {
       enum GNUNET_DB_QueryStatus qs;
 
-      qs = postgres_commit (pg);
+      qs = TEH_PG_commit (pg);
       switch (qs)
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
@@ -12008,7 +11864,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->start = &postgres_start;
   plugin->start_read_committed = &postgres_start_read_committed;
   plugin->start_read_only = &postgres_start_read_only;
-  plugin->commit = &postgres_commit;
+
   plugin->preflight = &postgres_preflight;
   plugin->rollback = &postgres_rollback;
   plugin->event_listen = &postgres_event_listen;
@@ -12018,7 +11874,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
   plugin->iterate_denominations = &postgres_iterate_denominations;
-  plugin->iterate_active_signkeys = &postgres_iterate_active_signkeys;
+ 
   plugin->iterate_active_auditors = &postgres_iterate_active_auditors;
   plugin->iterate_auditor_denominations =
     &postgres_iterate_auditor_denominations;
@@ -12280,7 +12136,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_reserve_open_above_serial_id;
   plugin->insert_purse_request
     = &TEH_PG_insert_purse_request;
- 
+  plugin->iterate_active_signkeys
+    = &TEH_PG_iterate_active_signkeys;
+  plugin->commit
+    = &TEH_PG_commit;
 
   return plugin;
 }
