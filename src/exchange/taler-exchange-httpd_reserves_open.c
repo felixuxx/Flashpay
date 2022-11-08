@@ -288,6 +288,7 @@ reserve_open_transaction (void *cls,
     *mhd_ret
       = TEH_RESPONSE_reply_reserve_insufficient_balance (
           connection,
+          TALER_EC_EXCHANGE_RESERVES_OPEN_INSUFFICIENT_FUNDS,
           &rsc->reserve_payment,
           rsc->reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;

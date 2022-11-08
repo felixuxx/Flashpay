@@ -1000,8 +1000,9 @@ TEH_RESPONSE_compile_reserve_history (
  * @return MHD result code
  */
 static MHD_RESULT
-reply_withdraw_insufficient_funds (
+reply_reserve_insufficient_funds (
   struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
   const struct TALER_Amount *ebalance,
   const struct TALER_Amount *withdraw_amount,
   const struct TALER_EXCHANGEDB_ReserveHistory *rh)
@@ -1012,12 +1013,12 @@ reply_withdraw_insufficient_funds (
   if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
+                                       TALER_EC_EXCHANGE_RESERVE_HISTORY_ERROR_INSUFFICIENT_FUNDS,
                                        NULL);
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
-    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
+    TALER_JSON_pack_ec (ec),
     TALER_JSON_pack_amount ("balance",
                             ebalance),
     TALER_JSON_pack_amount ("requested_amount",
@@ -1030,6 +1031,7 @@ reply_withdraw_insufficient_funds (
 MHD_RESULT
 TEH_RESPONSE_reply_reserve_insufficient_balance (
   struct MHD_Connection *connection,
+  enum TALER_ErrorCode ec,
   const struct TALER_Amount *balance_required,
   const struct TALER_ReservePublicKeyP *reserve_pub)
 {
@@ -1063,8 +1065,9 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
                                        "reserve history");
   }
-  mhd_ret = reply_withdraw_insufficient_funds (
+  mhd_ret = reply_reserve_insufficient_funds (
     connection,
+    ec,
     &balance,
     balance_required,
     rh);

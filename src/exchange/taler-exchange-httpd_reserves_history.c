@@ -159,7 +159,7 @@ reserve_history_transaction (void *cls,
     {
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_CONFLICT,
-                                         TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
+                                         TALER_EC_EXCHANGE_GET_RESERVE_HISTORY_ERROR_INSUFFICIENT_BALANCE,
                                          NULL);
     }
     if (idempotent)

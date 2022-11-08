@@ -217,6 +217,7 @@ withdraw_transaction (void *cls,
     TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
       connection,
+      TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
       &wc->collectable.amount_with_fee,
       &wc->collectable.reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
