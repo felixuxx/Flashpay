@@ -63,6 +63,28 @@ TEH_PG_insert_purse_request (
   };
 
   *in_conflict = false;
+
+
+  PREPARE ( pg,
+            "insert_purse_request",
+            "INSERT INTO purse_requests"
+            "  (purse_pub"
+            "  ,merge_pub"
+            "  ,purse_creation"
+            "  ,purse_expiration"
+            "  ,h_contract_terms"
+            "  ,age_limit"
+            "  ,flags"
+            "  ,in_reserve_quota"
+            "  ,amount_with_fee_val"
+            "  ,amount_with_fee_frac"
+            "  ,purse_fee_val"
+
+            "  ,purse_fee_frac"
+            "  ,purse_sig"
+            "  ) VALUES "
+            "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+            "  ON CONFLICT DO NOTHING;");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_purse_request",
                                            params);
@@ -105,5 +127,8 @@ TEH_PG_insert_purse_request (
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 }
+
+
+
 
 

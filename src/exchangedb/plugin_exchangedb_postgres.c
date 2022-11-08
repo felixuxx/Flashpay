@@ -63,10 +63,12 @@
 /**WHAT I ADD**/
 #include "pg_insert_purse_request.h"
 #include "pg_iterate_active_signkeys.h"
-
+#include "pg_prefligth.h"
 #include "pg_commit.h"
-
-
+#include "pg_create_shard_tables.h"
+#include "pg_insert_aggregation_tracking.h"
+#include "pg_drop_tables.h"
+#include "pg_setup_partitions.h"
 /**
  * Set to 1 to enable Postgres auto_explain module. This will
  * slow down things a _lot_, but also provide extensive logging
@@ -92,38 +94,6 @@
                 PQerrorMessage (conn));                                 \
 } while (0)
 
-
-/**
- * Drop all Taler tables.  This should only be used by testcases.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static enum GNUNET_GenericReturnValue
-postgres_drop_tables (void *cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret;
-
-  if (NULL != pg->conn)
-  {
-    GNUNET_PQ_disconnect (pg->conn);
-    pg->conn = NULL;
-    pg->init = false;
-  }
-  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                     "exchangedb-postgres",
-                                     NULL,
-                                     NULL,
-                                     NULL);
-  if (NULL == conn)
-    return GNUNET_SYSERR;
-  ret = GNUNET_PQ_exec_sql (conn,
-                            "drop");
-  GNUNET_PQ_disconnect (conn);
-  return ret;
-}
 
 
 /**
@@ -152,99 +122,6 @@ postgres_create_tables (void *cls)
   return ret;
 }
 
-
-/**
- * Create tables of a shard node with index idx
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param idx the shards index, will be appended as suffix to all tables
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static enum GNUNET_GenericReturnValue
-postgres_create_shard_tables (void *cls,
-                              uint32_t idx)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint32 (&idx),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare ("create_shard_tables",
-                            "SELECT"
-                            " setup_shard"
-                            " ($1);"),
-    GNUNET_PQ_PREPARED_STATEMENT_END
-  };
-
-  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                     "exchangedb-postgres",
-                                     "shard-",
-                                     es,
-                                     ps);
-  if (NULL == conn)
-    return GNUNET_SYSERR;
-  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-                                              "create_shard_tables",
-                                              params))
-    ret = GNUNET_SYSERR;
-  GNUNET_PQ_disconnect (conn);
-  return ret;
-}
-
-
-/**
- * Setup partitions of already existing tables
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param num the number of partitions to create for each partitioned table
- * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
- */
-static enum GNUNET_GenericReturnValue
-postgres_setup_partitions (void *cls,
-                           uint32_t num)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint32 (&num),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare ("setup_partitions",
-                            "SELECT"
-                            " create_partitions"
-                            " ($1);"),
-    GNUNET_PQ_PREPARED_STATEMENT_END
-  };
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
-                                     "exchangedb-postgres",
-                                     NULL,
-                                     es,
-                                     ps);
-  if (NULL == conn)
-    return GNUNET_SYSERR;
-  ret = GNUNET_OK;
-  if (0 > GNUNET_PQ_eval_prepared_non_select (conn,
-                                              "setup_partitions",
-                                              params))
-    ret = GNUNET_SYSERR;
-  GNUNET_PQ_disconnect (conn);
-  return ret;
-}
 
 
 /**
@@ -591,6 +468,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",master_sig"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7);"),
+       
     /* Used in #postgres_profit_drains_get_pending() */
     GNUNET_PQ_make_prepare (
       "get_ready_profit_drain",
@@ -1458,14 +1336,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2"),
-    /* Used in #postgres_insert_aggregation_tracking */
-    GNUNET_PQ_make_prepare (
-      "insert_aggregation_tracking",
-      "INSERT INTO aggregation_tracking "
-      "(deposit_serial_id"
-      ",wtid_raw"
-      ") VALUES "
-      "($1, $2);"),
+   
     /* Used in #postgres_get_wire_fee() */
     GNUNET_PQ_make_prepare (
       "get_wire_fee",
@@ -2088,26 +1959,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",contract_sig"
       " FROM contracts"
       "   WHERE purse_pub=$1;"),
-    /* Used in #postgres_insert_purse_request() */
-    GNUNET_PQ_make_prepare (
-      "insert_purse_request",
-      "INSERT INTO purse_requests"
-      "  (purse_pub"
-      "  ,merge_pub"
-      "  ,purse_creation"
-      "  ,purse_expiration"
-      "  ,h_contract_terms"
-      "  ,age_limit"
-      "  ,flags"
-      "  ,in_reserve_quota"
-      "  ,amount_with_fee_val"
-      "  ,amount_with_fee_frac"
-      "  ,purse_fee_val"
-      "  ,purse_fee_frac"
-      "  ,purse_sig"
-      "  ) VALUES "
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
-      "  ON CONFLICT DO NOTHING;"),
+   
     /* Used in #postgres_select_purse_by_merge_pub */
     GNUNET_PQ_make_prepare (
       "select_purse_by_merge_pub",
@@ -2384,52 +2236,6 @@ internal_setup (struct PostgresClosure *pg,
 }
 
 
-/**
- * Do a pre-flight check that we are not in an uncommitted transaction.
- * If we are, try to commit the previous transaction and output a warning.
- * Does not return anything, as we will continue regardless of the outcome.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return #GNUNET_OK if everything is fine
- *         #GNUNET_NO if a transaction was rolled back
- *         #GNUNET_SYSERR on hard errors
- */
-static enum GNUNET_GenericReturnValue
-postgres_preflight (void *cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("ROLLBACK"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  if (! pg->init)
-  {
-    if (GNUNET_OK !=
-        internal_setup (pg,
-                        false))
-      return GNUNET_SYSERR;
-  }
-  if (NULL == pg->transaction_name)
-    return GNUNET_OK; /* all good */
-  if (GNUNET_OK ==
-      GNUNET_PQ_exec_statements (pg->conn,
-                                 es))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check rolled back transaction `%s'!\n",
-                pg->transaction_name);
-  }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check failed to rollback transaction `%s'!\n",
-                pg->transaction_name);
-  }
-  pg->transaction_name = NULL;
-  return GNUNET_NO;
-}
-
 
 /**
  * Start a transaction.
@@ -2451,7 +2257,7 @@ postgres_start (void *cls,
 
   GNUNET_assert (NULL != name);
   if (GNUNET_SYSERR ==
-      postgres_preflight (pg))
+      TEH_PG_preflight (pg))
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting transaction `%s'\n",
@@ -2489,7 +2295,7 @@ postgres_start_read_committed (void *cls,
 
   GNUNET_assert (NULL != name);
   if (GNUNET_SYSERR ==
-      postgres_preflight (pg))
+      TEH_PG_preflight (pg))
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting READ COMMITTED transaction `%s`\n",
@@ -2528,7 +2334,7 @@ postgres_start_read_only (void *cls,
 
   GNUNET_assert (NULL != name);
   if (GNUNET_SYSERR ==
-      postgres_preflight (pg))
+      TEH_PG_preflight (pg))
     return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Starting READ ONLY transaction `%s`\n",
@@ -5849,33 +5655,6 @@ postgres_lookup_transfer_by_deposit (
 }
 
 
-/**
- * Function called to insert aggregation information into the DB.
- *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_aggregation_tracking (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id)
-{
-  struct PostgresClosure *pg = cls;
-  uint64_t rid = deposit_serial_id;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&rid),
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_aggregation_tracking",
-                                             params);
-}
-
 
 /**
  * Obtain wire fee from database.
@@ -6597,7 +6376,7 @@ postgres_start_deferred_wire_out (void *cls)
   };
 
   if (GNUNET_SYSERR ==
-      postgres_preflight (pg))
+      TEH_PG_preflight (pg))
     return GNUNET_SYSERR;
   if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (pg->conn,
@@ -11856,16 +11635,13 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
-  plugin->drop_tables = &postgres_drop_tables;
+ 
   plugin->create_tables = &postgres_create_tables;
-  plugin->create_shard_tables = &postgres_create_shard_tables;
-  plugin->setup_partitions = &postgres_setup_partitions;
+
   plugin->setup_foreign_servers = &postgres_setup_foreign_servers;
   plugin->start = &postgres_start;
   plugin->start_read_committed = &postgres_start_read_committed;
   plugin->start_read_only = &postgres_start_read_only;
-
-  plugin->preflight = &postgres_preflight;
   plugin->rollback = &postgres_rollback;
   plugin->event_listen = &postgres_event_listen;
   plugin->event_listen_cancel = &postgres_event_listen_cancel;
@@ -11917,7 +11693,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_refresh_reveal = &postgres_get_refresh_reveal;
   plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
   plugin->lookup_transfer_by_deposit = &postgres_lookup_transfer_by_deposit;
-  plugin->insert_aggregation_tracking = &postgres_insert_aggregation_tracking;
   plugin->insert_wire_fee = &postgres_insert_wire_fee;
   plugin->insert_global_fee = &postgres_insert_global_fee;
   plugin->get_wire_fee = &postgres_get_wire_fee;
@@ -12035,6 +11810,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_expire_purse;
   plugin->select_purse_by_merge_pub
     = &postgres_select_purse_by_merge_pub;
+  
   plugin->do_purse_deposit
     = &postgres_do_purse_deposit;
   plugin->set_purse_balance
@@ -12080,6 +11856,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   /* NEW style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
+  plugin->drop_tables
+    = &TEH_PG_drop_tables;
   plugin->do_withdraw
     = &TEH_PG_do_withdraw;
   plugin->free_coin_transaction_list
@@ -12140,6 +11918,14 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_iterate_active_signkeys;
   plugin->commit
     = &TEH_PG_commit;
+  plugin->preflight
+    = &TEH_PG_preflight;
+  plugin->create_shard_tables
+    = &TEH_PG_create_shard_tables;
+  plugin->insert_aggregation_tracking
+    = &TEH_PG_insert_aggregation_tracking;
+  plugin->setup_partitions
+    = &TEH_PG_setup_partitions;
 
   return plugin;
 }

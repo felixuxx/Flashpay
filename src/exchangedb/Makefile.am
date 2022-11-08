@@ -69,12 +69,17 @@ endif
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
   plugin_exchangedb_postgres.c pg_helper.h \
+  pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
   pg_do_reserve_open.c pg_do_reserve_open.h \
   pg_do_withdraw.h pg_do_withdraw.c \
+  pg_create_shard_tables.h pg_create_shard_tables.c \
+  pg_prefligth.h pg_prefligth.c \
   pg_iterate_active_signkeys.h pg_iterate_active_signkeys.c \
   pg_commit.h pg_commit.c \
   pg_get_coin_transactions.c pg_get_coin_transactions.h \
   pg_get_expired_reserves.c pg_get_expired_reserves.h \
+  pg_setup_partitions.h pg_setup_partitions.c \
+  pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
   pg_get_purse_request.c pg_get_purse_request.h \
   pg_get_reserve_history.c pg_get_reserve_history.h \
   pg_get_unfinished_close_requests.c pg_get_unfinished_close_requests.h \
