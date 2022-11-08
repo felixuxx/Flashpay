@@ -34,8 +34,10 @@
 #include "pg_get_link_data.h"
 #include "pg_helper.h"
 #include "pg_do_reserve_open.h"
+#include "pg_do_withdraw.h"
 #include "pg_get_coin_transactions.h"
 #include "pg_get_expired_reserves.h"
+#include "pg_get_purse_request.h"
 #include "pg_get_reserve_history.h"
 #include "pg_get_unfinished_close_requests.h"
 #include "pg_insert_close_request.h"
@@ -57,6 +59,9 @@
 #include <poll.h>
 #include <pthread.h>
 #include <libpq-fe.h>
+
+/**WHAT I ADD**/
+#include "pg_insert_purse_request.h"
 
 
 /**
@@ -694,26 +699,6 @@ prepare_statements (struct PostgresClosure *pg)
       "   ON (wire_source_h_payto = wire_target_h_payto)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
       " ORDER BY reserve_in_serial_id;"),
-    /* Used in #postgres_get_reserve_history() to obtain inbound transactions
-       for a reserve */
-    /* Used in #postgres_get_reserve_status() to obtain inbound transactions
-       for a reserve */
-    /* Used in #postgres_do_withdraw() to store
-       the signature of a blinded coin with the blinded coin's
-       details before returning it during /reserve/withdraw. We store
-       the coin's denomination information (public key, signature)
-       and the blinded message as well as the reserve that the coin
-       is being withdrawn from and the signature of the message
-       authorizing the withdrawal. */
-    GNUNET_PQ_make_prepare (
-      "call_withdraw",
-      "SELECT "
-      " reserve_found"
-      ",balance_ok"
-      ",nonce_ok"
-      ",ruuid"
-      " FROM exchange_do_withdraw"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
     /* Used in #postgres_do_batch_withdraw() to
        update the reserve balance and check its status */
     GNUNET_PQ_make_prepare (
@@ -2139,21 +2124,6 @@ prepare_statements (struct PostgresClosure *pg)
       "  ) VALUES "
       "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
       "  ON CONFLICT DO NOTHING;"),
-    /* Used in #postgres_get_purse_request */
-    GNUNET_PQ_make_prepare (
-      "get_purse_request",
-      "SELECT "
-      " merge_pub"
-      ",purse_expiration"
-      ",h_contract_terms"
-      ",age_limit"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",balance_val"
-      ",balance_frac"
-      ",purse_sig"
-      " FROM purse_requests"
-      " WHERE purse_pub=$1;"),
     /* Used in #postgres_select_purse_by_merge_pub */
     GNUNET_PQ_make_prepare (
       "select_purse_by_merge_pub",
@@ -3844,69 +3814,6 @@ postgres_get_withdraw_info (
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_withdraw_info",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Perform withdraw operation, checking for sufficient balance
- * and possibly persisting the withdrawal details.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
- * @param[in,out] collectable corresponding collectable coin (blind signature) if a coin is found; possibly updated if a (different) signature exists already
- * @param now current time (rounded)
- * @param[out] found set to true if the reserve was found
- * @param[out] balance_ok set to true if the balance was sufficient
- * @param[out] nonce_ok set to false if the nonce was reused
- * @param[out] ruuid set to the reserve's UUID (reserves table row)
- * @return query execution status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_withdraw (
-  void *cls,
-  const struct TALER_CsNonce *nonce,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
-  struct GNUNET_TIME_Timestamp now,
-  bool *found,
-  bool *balance_ok,
-  bool *nonce_ok,
-  uint64_t *ruuid)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Timestamp gc;
-  struct GNUNET_PQ_QueryParam params[] = {
-    NULL == nonce
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
-    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
-    GNUNET_PQ_query_param_timestamp (&now),
-    GNUNET_PQ_query_param_timestamp (&gc),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("reserve_found",
-                                found),
-    GNUNET_PQ_result_spec_bool ("balance_ok",
-                                balance_ok),
-    GNUNET_PQ_result_spec_bool ("nonce_ok",
-                                nonce_ok),
-    GNUNET_PQ_result_spec_uint64 ("ruuid",
-                                  ruuid),
-    GNUNET_PQ_result_spec_end
-  };
-
-  gc = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_absolute_add (now.abs_time,
-                              pg->legal_reserve_expiration_time));
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_withdraw",
                                                    params,
                                                    rs);
 }
@@ -10684,159 +10591,6 @@ postgres_insert_contract (
 }
 
 
-/**
- * Function called to return meta data about a purse by the
- * purse public key.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub public key of the purse
- * @param[out] merge_pub public key representing the merge capability
- * @param[out] purse_expiration when would an unmerged purse expire
- * @param[out] h_contract_terms contract associated with the purse
- * @param[out] age_limit the age limit for deposits into the purse
- * @param[out] target_amount amount to be put into the purse
- * @param[out] balance amount put so far into the purse
- * @param[out] purse_sig signature of the purse over the initialization data
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_get_purse_request (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  struct TALER_PurseMergePublicKeyP *merge_pub,
-  struct GNUNET_TIME_Timestamp *purse_expiration,
-  struct TALER_PrivateContractHashP *h_contract_terms,
-  uint32_t *age_limit,
-  struct TALER_Amount *target_amount,
-  struct TALER_Amount *balance,
-  struct TALER_PurseContractSignatureP *purse_sig)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("merge_pub",
-                                          merge_pub),
-    GNUNET_PQ_result_spec_timestamp ("purse_expiration",
-                                     purse_expiration),
-    GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
-                                          h_contract_terms),
-    GNUNET_PQ_result_spec_uint32 ("age_limit",
-                                  age_limit),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 target_amount),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("balance",
-                                 balance),
-    GNUNET_PQ_result_spec_auto_from_type ("purse_sig",
-                                          purse_sig),
-    GNUNET_PQ_result_spec_end
-  };
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_purse_request",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Function called to create a new purse with certain meta data.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub public key of the new purse
- * @param merge_pub public key providing the merge capability
- * @param purse_expiration time when the purse will expire
- * @param h_contract_terms hash of the contract for the purse
- * @param age_limit age limit to enforce for payments into the purse
- * @param flags flags for the operation
- * @param purse_fee fee we are allowed to charge to the reserve (depending on @a flags)
- * @param amount target amount (with fees) to be put into the purse
- * @param purse_sig signature with @a purse_pub's private key affirming the above
- * @param[out] in_conflict set to true if the meta data
- *             conflicts with an existing purse;
- *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_purse_request (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergePublicKeyP *merge_pub,
-  struct GNUNET_TIME_Timestamp purse_expiration,
-  const struct TALER_PrivateContractHashP *h_contract_terms,
-  uint32_t age_limit,
-  enum TALER_WalletAccountMergeFlags flags,
-  const struct TALER_Amount *purse_fee,
-  const struct TALER_Amount *amount,
-  const struct TALER_PurseContractSignatureP *purse_sig,
-  bool *in_conflict)
-{
-  struct PostgresClosure *pg = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Timestamp now = GNUNET_TIME_timestamp_get ();
-  uint32_t flags32 = (uint32_t) flags;
-  bool in_reserve_quota = (TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA
-                           == (flags & TALER_WAMF_MERGE_MODE_MASK));
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (merge_pub),
-    GNUNET_PQ_query_param_timestamp (&now),
-    GNUNET_PQ_query_param_timestamp (&purse_expiration),
-    GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-    GNUNET_PQ_query_param_uint32 (&age_limit),
-    GNUNET_PQ_query_param_uint32 (&flags32),
-    GNUNET_PQ_query_param_bool (in_reserve_quota),
-    TALER_PQ_query_param_amount (amount),
-    TALER_PQ_query_param_amount (purse_fee),
-    GNUNET_PQ_query_param_auto_from_type (purse_sig),
-    GNUNET_PQ_query_param_end
-  };
-
-  *in_conflict = false;
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "insert_purse_request",
-                                           params);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs)
-    return qs;
-  {
-    struct TALER_PurseMergePublicKeyP merge_pub2;
-    struct GNUNET_TIME_Timestamp purse_expiration2;
-    struct TALER_PrivateContractHashP h_contract_terms2;
-    uint32_t age_limit2;
-    struct TALER_Amount amount2;
-    struct TALER_Amount balance;
-    struct TALER_PurseContractSignatureP purse_sig2;
-
-    qs = postgres_get_purse_request (pg,
-                                     purse_pub,
-                                     &merge_pub2,
-                                     &purse_expiration2,
-                                     &h_contract_terms2,
-                                     &age_limit2,
-                                     &amount2,
-                                     &balance,
-                                     &purse_sig2);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-    {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if ( (age_limit2 == age_limit) &&
-         (0 == TALER_amount_cmp (amount,
-                                 &amount2)) &&
-         (0 == GNUNET_memcmp (&h_contract_terms2,
-                              h_contract_terms)) &&
-         (0 == GNUNET_memcmp (&merge_pub2,
-                              merge_pub)) )
-    {
-      return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    }
-    *in_conflict = true;
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  }
-}
 
 
 /**
@@ -12273,7 +12027,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->drain_kyc_alert = &postgres_drain_kyc_alert;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
-  plugin->do_withdraw = &postgres_do_withdraw;
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
   plugin->get_policy_details = &postgres_get_policy_details;
   plugin->persist_policy_details = &postgres_persist_policy_details;
@@ -12422,10 +12175,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_select_contract;
   plugin->select_contract_by_purse
     = &postgres_select_contract_by_purse;
-  plugin->insert_purse_request
-    = &postgres_insert_purse_request;
-  plugin->get_purse_request
-    = &postgres_get_purse_request;
   plugin->expire_purse
     = &postgres_expire_purse;
   plugin->select_purse_by_merge_pub
@@ -12475,6 +12224,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   /* NEW style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
+  plugin->do_withdraw
+    = &TEH_PG_do_withdraw;
   plugin->free_coin_transaction_list
     = &TEH_COMMON_free_coin_transaction_list;
   plugin->free_reserve_history
@@ -12483,6 +12234,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_coin_transactions;
   plugin->get_expired_reserves
     = &TEH_PG_get_expired_reserves;
+  plugin->get_purse_request
+    = &TEH_PG_get_purse_request;
   plugin->get_reserve_history
     = &TEH_PG_get_reserve_history;
   plugin->get_reserve_status
@@ -12525,6 +12278,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_reserve_closed_above_serial_id;
   plugin->select_reserve_open_above_serial_id
     = &TEH_PG_select_reserve_open_above_serial_id;
+  plugin->insert_purse_request
+    = &TEH_PG_insert_purse_request;
+ 
 
   return plugin;
 }
