@@ -129,12 +129,10 @@ TALER_EXCHANGE_check_coin_amount_conflict_ (
 
 
 /**
- * Verify that @a proof contains a coin history
- * that demonstrates that @a coin_pub was previously
- * used with a denomination key that is different
- * from @a ch_denom_pub.  Note that the coin history
- * MUST have been checked before using
- * #TALER_EXCHANGE_check_coin_amount_conflict_().
+ * Verify that @a proof contains a coin history that demonstrates that @a
+ * coin_pub was previously used with a denomination key that is different from
+ * @a ch_denom_pub.  Note that the coin history MUST have been checked before
+ * using #TALER_EXCHANGE_check_coin_amount_conflict_().
  *
  * @param proof a proof to check
  * @param ch_denom_pub hash of the conflicting denomination

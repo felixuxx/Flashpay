@@ -27,9 +27,37 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
+#include "exchange_api_common.h"
 #include "exchange_api_handle.h"
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
+
+
+/**
+ * Information we keep per coin to validate the reply.
+ */
+struct CoinData
+{
+  /**
+   * Public key of the coin.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * Signature by the coin.
+   */
+  struct TALER_CoinSpendSignatureP coin_sig;
+
+  /**
+   * The hash of the denomination's public key
+   */
+  struct TALER_DenominationHashP h_denom_pub;
+
+  /**
+   * How much did this coin contribute.
+   */
+  struct TALER_Amount contribution;
+};
 
 
 /**
@@ -68,6 +96,16 @@ struct TALER_EXCHANGE_ReservesOpenHandle
    * Closure for @a cb.
    */
   void *cb_cls;
+
+  /**
+   * Information we keep per coin to validate the reply.
+   */
+  struct CoinData *coins;
+
+  /**
+   * Length of the @e coins array.
+   */
+  unsigned int num_coins;
 
   /**
    * Public key of the reserve we are querying.
@@ -282,12 +320,74 @@ handle_reserves_open_finished (void *cls,
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    // FIXME: not yet specified (#7428), but needed in
-    // case of double-spending or insufficient
-    // reserve balance!
-    rs.hr.ec = TALER_JSON_get_error_code (j);
-    rs.hr.hint = TALER_JSON_get_error_hint (j);
-    break;
+    {
+      const struct TALER_EXCHANGE_Keys *keys;
+      const struct CoinData *cd = NULL;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      const struct TALER_EXCHANGE_DenomPublicKey *dk;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                     &coin_pub),
+        GNUNET_JSON_spec_end ()
+      };
+
+      keys = TALER_EXCHANGE_get_keys (roh->exchange);
+      GNUNET_assert (NULL != keys);
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        rs.hr.http_status = 0;
+        rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      for (unsigned int i = 0; i<roh->num_coins; i++)
+      {
+        const struct CoinData *cdi = &roh->coins[i];
+
+        if (0 == GNUNET_memcmp (&coin_pub,
+                                &cdi->coin_pub))
+        {
+          cd = cdi;
+          break;
+        }
+      }
+      if (NULL == cd)
+      {
+        GNUNET_break_op (0);
+        rs.hr.http_status = 0;
+        rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      dk = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
+                                                        &cd->h_denom_pub);
+      if (NULL == dk)
+      {
+        GNUNET_break_op (0);
+        rs.hr.http_status = 0;
+        rs.hr.ec = TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR;
+        break;
+      }
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_check_coin_conflict_ (keys,
+                                               j,
+                                               dk,
+                                               &coin_pub,
+                                               &cd->coin_sig,
+                                               &cd->contribution))
+      {
+        GNUNET_break_op (0);
+        rs.hr.http_status = 0;
+        rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      rs.hr.ec = TALER_JSON_get_error_code (j);
+      rs.hr.hint = TALER_JSON_get_error_hint (j);
+      break;
+    }
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     if (GNUNET_OK !=
         handle_reserves_open_kyc (roh,
@@ -402,18 +502,21 @@ TALER_EXCHANGE_reserves_open (
                                   min_purses,
                                   reserve_priv,
                                   &roh->reserve_sig);
+  roh->coins = GNUNET_new_array (coin_payments_length,
+                                 struct CoinData);
   cpa = json_array ();
   GNUNET_assert (NULL != cpa);
   for (unsigned int i = 0; i<coin_payments_length; i++)
   {
     const struct TALER_EXCHANGE_PurseDeposit *pd = &coin_payments[i];
-    struct TALER_CoinSpendSignatureP coin_sig;
-    struct TALER_CoinSpendPublicKeyP coin_pub;
     const struct TALER_AgeCommitmentProof *acp = pd->age_commitment_proof;
     struct TALER_AgeCommitmentHash ahac;
     struct TALER_AgeCommitmentHash *achp = NULL;
+    struct CoinData *cd = &roh->coins[i];
     json_t *cp;
 
+    cd->contribution = pd->amount;
+    cd->h_denom_pub = pd->h_denom_pub;
     if (NULL != acp)
     {
       TALER_age_commitment_hash (&acp->commitment,
@@ -423,9 +526,9 @@ TALER_EXCHANGE_reserves_open (
     TALER_wallet_reserve_open_deposit_sign (&pd->amount,
                                             &roh->reserve_sig,
                                             &pd->coin_priv,
-                                            &coin_sig);
+                                            &cd->coin_sig);
     GNUNET_CRYPTO_eddsa_key_get_public (&pd->coin_priv.eddsa_priv,
-                                        &coin_pub.eddsa_pub);
+                                        &cd->coin_pub.eddsa_pub);
 
     cp = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_allow_null (
@@ -438,9 +541,9 @@ TALER_EXCHANGE_reserves_open (
       TALER_JSON_pack_denom_sig ("ub_sig",
                                  &pd->denom_sig),
       GNUNET_JSON_pack_data_auto ("coin_pub",
-                                  &coin_pub),
+                                  &cd->coin_pub),
       GNUNET_JSON_pack_data_auto ("coin_sig",
-                                  &coin_sig));
+                                  &cd->coin_sig));
     GNUNET_assert (0 ==
                    json_array_append_new (cpa,
                                           cp));
@@ -468,6 +571,7 @@ TALER_EXCHANGE_reserves_open (
       GNUNET_break (0);
       curl_easy_cleanup (eh);
       json_decref (open_obj);
+      GNUNET_free (roh->coins);
       GNUNET_free (roh->url);
       GNUNET_free (roh);
       return NULL;
@@ -494,6 +598,7 @@ TALER_EXCHANGE_reserves_open_cancel (
     roh->job = NULL;
   }
   TALER_curl_easy_post_finished (&roh->post_ctx);
+  GNUNET_free (roh->coins);
   GNUNET_free (roh->url);
   GNUNET_free (roh);
 }
