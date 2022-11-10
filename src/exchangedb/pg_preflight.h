@@ -14,30 +14,30 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_prefligth.h
+ * @brief implementation of the prefligth function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_PREFLIGHT_H
+#define PG_PREFLIGHT_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
+
 /**
- * Function called to insert aggregation information into the DB.
+ * Do a pre-flight check that we are not in an uncommitted transaction.
+ * If we are, try to commit the previous transaction and output a warning.
+ * Does not return anything, as we will continue regardless of the outcome.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return transaction status code
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @return #GNUNET_OK if everything is fine
+ *         #GNUNET_NO if a transaction was rolled back
+ *         #GNUNET_SYSERR on hard errors
  */
-enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
 
+
+enum GNUNET_GenericReturnValue
+TEH_PG_preflight (void *cls);
 #endif
-

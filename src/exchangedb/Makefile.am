@@ -70,16 +70,50 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
   plugin_exchangedb_postgres.c pg_helper.h \
   pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
+  pg_select_aggregation_amounts_for_kyc_check.h pg_select_aggregation_amounts_for_kyc_check.c \
+  pg_lookup_wire_fee_by_time.h pg_lookup_wire_fee_by_time.c \
+  pg_select_satisfied_kyc_processes.h pg_select_satisfied_kyc_processes.c \
+  pg_kyc_provider_account_lookup.h pg_kyc_provider_account_lookup.c \
+  pg_lookup_kyc_requirement_by_row.h pg_lookup_kyc_requirement_by_row.c \
+  pg_insert_kyc_requirement_for_account.h pg_insert_kyc_requirement_for_account.c \
+  pg_lookup_kyc_process_by_account.h pg_lookup_kyc_process_by_account.c \
+  pg_update_kyc_process_by_row.h pg_update_kyc_process_by_row.c \
+  pg_insert_kyc_requirement_process.h pg_insert_kyc_requirement_process.c \
+  pg_select_withdraw_amounts_for_kyc_check.h pg_select_withdraw_amounts_for_kyc_check.c \
+  pg_select_merge_amounts_for_kyc_check.h pg_select_merge_amounts_for_kyc_check.c \
+  pg_profit_drains_set_finished.h pg_profit_drains_set_finished.c \
+  pg_profit_drains_get_pending.h pg_profit_drains_get_pending.c \
+  pg_get_drain_profit.h pg_get_drain_profit.c \
+  pg_get_purse_deposit.h pg_get_purse_deposit.c \
+  pg_insert_contract.h pg_insert_contract.c \
+  pg_select_contract.h pg_select_contract.c \
+  pg_select_purse_merge.h pg_select_purse_merge.c \
+  pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
+  pg_insert_drain_profit.h pg_insert_drain_profit.c \
+  pg_do_reserve_purse.h pg_do_reserve_purse.c \
+  pg_lookup_global_fee_by_time.h pg_lookup_global_fee_by_time.c \
+  pg_do_purse_deposit.h pg_do_purse_deposit.c \
+  pg_activate_signing_key.h pg_activate_signing_key.c \
+  pg_update_auditor.h pg_update_auditor.c \
+  pg_begin_revolving_shard.h pg_begin_revolving_shard.c \
+  pg_get_extension_manifest.h pg_get_extension_manifest.c \
+  pg_insert_history_request.h pg_insert_history_request.c \
+  pg_do_purse_merge.h pg_do_purse_merge.c \
+  pg_start_read_committed.h pg_start_read_committed.c \
+  pg_start_read_only.h pg_start_read_only.c \
+  pg_insert_denomination_info.h pg_insert_denomination_info.c \
+  pg_do_batch_withdraw_insert.h pg_do_batch_withdraw_insert.c \
   pg_do_reserve_open.c pg_do_reserve_open.h \
   pg_do_withdraw.h pg_do_withdraw.c \
   pg_create_shard_tables.h pg_create_shard_tables.c \
-  pg_prefligth.h pg_prefligth.c \
+  pg_preflight.h pg_preflight.c \
   pg_iterate_active_signkeys.h pg_iterate_active_signkeys.c \
   pg_commit.h pg_commit.c \
   pg_get_coin_transactions.c pg_get_coin_transactions.h \
   pg_get_expired_reserves.c pg_get_expired_reserves.h \
+  pg_start.h pg_start.c \
+  pg_rollback.h pg_rollback.c \
   pg_setup_partitions.h pg_setup_partitions.c \
-  pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
   pg_get_purse_request.c pg_get_purse_request.h \
   pg_get_reserve_history.c pg_get_reserve_history.h \
   pg_get_unfinished_close_requests.c pg_get_unfinished_close_requests.h \

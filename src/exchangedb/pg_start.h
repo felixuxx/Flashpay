@@ -14,30 +14,27 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_prefligth.h
- * @brief implementation of the prefligth function for Postgres
+ * @file exchangedb/pg_start.h
+ * @brief implementation of the start function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_PREFLIGTH_H
-#define PG_PREFLIGTH_H
+#ifndef PG_START_H
+#define PG_START_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
-
 /**
- * Do a pre-flight check that we are not in an uncommitted transaction.
- * If we are, try to commit the previous transaction and output a warning.
- * Does not return anything, as we will continue regardless of the outcome.
+ * Start a transaction.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return #GNUNET_OK if everything is fine
- *         #GNUNET_NO if a transaction was rolled back
- *         #GNUNET_SYSERR on hard errors
+ * @param name unique name identifying the transaction (for debugging)
+ *             must point to a constant
+ * @return #GNUNET_OK on success
  */
-
-
 enum GNUNET_GenericReturnValue
-TEH_PG_preflight (void *cls);
+TEH_PG_start (void *cls,
+              const char *name);
+
 #endif

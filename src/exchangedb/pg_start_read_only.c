@@ -14,51 +14,43 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_prefligth.c
- * @brief Implementation of the prefligth function for Postgres
+ * @file exchangedb/pg_start_read_only.c
+ * @brief Implementation of the start_read_only function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_prefligth.h"
+#include "pg_start_read_only.h"
 #include "pg_helper.h"
 
-
 enum GNUNET_GenericReturnValue
-TEH_PG_preflight (void *cls)
+TEH_PG_start_read_only (void *cls,
+                          const char *name)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("ROLLBACK"),
+    GNUNET_PQ_make_execute (
+      "START TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  if (! pg->init)
-  {
-    if (GNUNET_OK !=
-        
-        internal_setup (pg,
-                        false))
-      return GNUNET_SYSERR;
-  }
-  if (NULL == pg->transaction_name)
-    return GNUNET_OK; /* all good */
-  if (GNUNET_OK ==
+  GNUNET_assert (NULL != name);
+  if (GNUNET_SYSERR ==
+      TEH_PG_preflight (pg))
+    return GNUNET_SYSERR;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting READ ONLY transaction `%s`\n",
+              name);
+  if (GNUNET_OK !=
       GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check rolled back transaction `%s'!\n",
-                pg->transaction_name);
+    TALER_LOG_ERROR ("Failed to start transaction\n");
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
   }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check failed to rollback transaction `%s'!\n",
-                pg->transaction_name);
-  }
-  pg->transaction_name = NULL;
-  return GNUNET_NO;
+  pg->transaction_name = name;
+  return GNUNET_OK;
 }

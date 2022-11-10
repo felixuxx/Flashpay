@@ -63,12 +63,47 @@
 /**WHAT I ADD**/
 #include "pg_insert_purse_request.h"
 #include "pg_iterate_active_signkeys.h"
-#include "pg_prefligth.h"
+#include "pg_preflight.h"
 #include "pg_commit.h"
 #include "pg_create_shard_tables.h"
 #include "pg_insert_aggregation_tracking.h"
 #include "pg_drop_tables.h"
 #include "pg_setup_partitions.h"
+#include "pg_select_satisfied_kyc_processes.h"
+#include "pg_select_aggregation_amounts_for_kyc_check.h"
+#include "pg_kyc_provider_account_lookup.h"
+#include "pg_lookup_kyc_requirement_by_row.h"
+#include "pg_insert_kyc_requirement_for_account.h"
+#include "pg_lookup_kyc_process_by_account.h"
+#include "pg_update_kyc_process_by_row.h"
+#include "pg_insert_kyc_requirement_process.h"
+#include "pg_select_withdraw_amounts_for_kyc_check.h"
+#include "pg_select_merge_amounts_for_kyc_check.h"
+#include "pg_profit_drains_set_finished.h"
+#include "pg_profit_drains_get_pending.h"
+#include "pg_get_drain_profit.h"
+#include "pg_get_purse_deposit.h"
+#include "pg_insert_contract.h"
+#include "pg_select_contract.h"
+#include "pg_select_purse_merge.h"
+#include "pg_select_contract_by_purse.h"
+#include "pg_insert_drain_profit.h"
+#include "pg_do_reserve_purse.h"
+#include "pg_lookup_global_fee_by_time.h"
+#include "pg_do_purse_deposit.h"
+#include "pg_activate_signing_key.h"
+#include "pg_update_auditor.h"
+#include "pg_begin_revolving_shard.h"
+#include "pg_get_extension_manifest.h"
+#include "pg_insert_history_request.h"
+#include "pg_do_purse_merge.h"
+#include "pg_start_read_committed.h"
+#include "pg_start_read_only.h"
+#include "pg_insert_denomination_info.h"
+#include "pg_do_batch_withdraw_insert.h"
+#include "pg_lookup_wire_fee_by_time.h"
+#include "pg_start.h"
+#include "pg_rollback.h"
 /**
  * Set to 1 to enable Postgres auto_explain module. This will
  * slow down things a _lot_, but also provide extensive logging
@@ -456,54 +491,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",closing_fee_frac"
       ",close_request_row"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);"),
-    /* Used in #postgres_insert_drain_profit() */
-    GNUNET_PQ_make_prepare (
-      "drain_profit_insert",
-      "INSERT INTO profit_drains "
-      "(wtid"
-      ",account_section"
-      ",payto_uri"
-      ",trigger_date"
-      ",amount_val"
-      ",amount_frac"
-      ",master_sig"
-      ") VALUES ($1, $2, $3, $4, $5, $6, $7);"),
-       
-    /* Used in #postgres_profit_drains_get_pending() */
-    GNUNET_PQ_make_prepare (
-      "get_ready_profit_drain",
-      "SELECT"
-      " profit_drain_serial_id"
-      ",wtid"
-      ",account_section"
-      ",payto_uri"
-      ",trigger_date"
-      ",amount_val"
-      ",amount_frac"
-      ",master_sig"
-      " FROM profit_drains"
-      " WHERE NOT executed"
-      " ORDER BY trigger_date ASC;"),
-    /* Used in #postgres_profit_drains_get() */
-    GNUNET_PQ_make_prepare (
-      "get_profit_drain",
-      "SELECT"
-      " profit_drain_serial_id"
-      ",account_section"
-      ",payto_uri"
-      ",trigger_date"
-      ",amount_val"
-      ",amount_frac"
-      ",master_sig"
-      " FROM profit_drains"
-      " WHERE wtid=$1;"),
-    /* Used in #postgres_profit_drains_set_finished() */
-    GNUNET_PQ_make_prepare (
-      "drain_profit_set_finished",
-      "UPDATE profit_drains"
-      " SET"
-      " executed=TRUE"
-      " WHERE profit_drain_serial_id=$1;"),
+   
+   
+   
     /* Used in #postgres_reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
       "reserve_update",
@@ -575,17 +565,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",ruuid"
       " FROM exchange_do_batch_withdraw"
       " ($1,$2,$3,$4,$5);"),
-    /* Used in #postgres_do_batch_withdraw_insert() to store
-       the signature of a blinded coin with the blinded coin's
-       details. */
-    GNUNET_PQ_make_prepare (
-      "call_batch_withdraw_insert",
-      "SELECT "
-      " out_denom_unknown AS denom_unknown"
-      ",out_conflict AS conflict"
-      ",out_nonce_reuse AS nonce_reuse"
-      " FROM exchange_do_batch_withdraw_insert"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);"),
+   
     /* Used in #postgres_do_deposit() to execute a deposit,
        checking the coin's balance in the process as needed. */
     GNUNET_PQ_make_prepare (
@@ -596,14 +576,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_conflict AS conflicted"
       " FROM exchange_do_deposit"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);"),
-    /* used in postgres_do_purse_deposit() */
-    GNUNET_PQ_make_prepare (
-      "call_purse_deposit",
-      "SELECT "
-      " out_balance_ok AS balance_ok"
-      ",out_conflict AS conflict"
-      " FROM exchange_do_purse_deposit"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"),
+
     /* Used in #postgres_update_aggregation_transient() */
     GNUNET_PQ_make_prepare (
       "set_purse_balance",
@@ -1645,16 +1618,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",last_change"
       ") VALUES "
       "($1, $2, $3, true, $4);"),
-    /* used in #postgres_update_auditor() */
-    GNUNET_PQ_make_prepare (
-      "update_auditor",
-      "UPDATE auditors"
-      " SET"
-      "  auditor_url=$2"
-      " ,auditor_name=$3"
-      " ,is_active=$4"
-      " ,last_change=$5"
-      " WHERE auditor_pub=$1"),
+
     /* used in #postgres_insert_wire() */
     GNUNET_PQ_make_prepare (
       "insert_wire",
@@ -1713,17 +1677,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   (SELECT esk_serial"
       "      FROM exchange_sign_keys"
       "     WHERE exchange_pub=$1);"),
-    /* used in #postgres_insert_signkey() */
-    GNUNET_PQ_make_prepare (
-      "insert_signkey",
-      "INSERT INTO exchange_sign_keys "
-      "(exchange_pub"
-      ",valid_from"
-      ",expire_sign"
-      ",expire_legal"
-      ",master_sig"
-      ") VALUES "
-      "($1, $2, $3, $4, $5);"),
+
     /* used in #postgres_lookup_signing_key() */
     GNUNET_PQ_make_prepare (
       "lookup_signing_key",
@@ -1783,34 +1737,8 @@ prepare_statements (struct PostgresClosure *pg)
       "  (SELECT denominations_serial"
       "    FROM denominations"
       "    WHERE denom_pub_hash=$2);"),
-    /* used in #postgres_lookup_wire_fee_by_time() */
-    GNUNET_PQ_make_prepare (
-      "lookup_wire_fee_by_time",
-      "SELECT"
-      " wire_fee_val"
-      ",wire_fee_frac"
-      ",closing_fee_val"
-      ",closing_fee_frac"
-      " FROM wire_fee"
-      " WHERE wire_method=$1"
-      " AND end_date > $2"
-      " AND start_date < $3;"),
-    /* used in #postgres_lookup_wire_fee_by_time() */
-    GNUNET_PQ_make_prepare (
-      "lookup_global_fee_by_time",
-      "SELECT"
-      " history_fee_val"
-      ",history_fee_frac"
-      ",account_fee_val"
-      ",account_fee_frac"
-      ",purse_fee_val"
-      ",purse_fee_frac"
-      ",purse_timeout"
-      ",history_expiration"
-      ",purse_account_limit"
-      " FROM global_fee"
-      " WHERE end_date > $1"
-      "   AND start_date < $2;"),
+
+
        /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_open_shard",
@@ -1823,17 +1751,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND last_attempt<$2"
       " ORDER BY last_attempt ASC"
       " LIMIT 1;"),
-    /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare (
-      "get_open_revolving_shard",
-      "SELECT"
-      " start_row"
-      ",end_row"
-      " FROM revolving_work_shards"
-      " WHERE job_name=$1"
-      "   AND active=FALSE"
-      " ORDER BY last_attempt ASC"
-      " LIMIT 1;"),
+
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "reclaim_shard",
@@ -1842,15 +1760,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE job_name=$1"
       "   AND start_row=$3"
       "   AND end_row=$4"),
-    /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare (
-      "reclaim_revolving_shard",
-      "UPDATE revolving_work_shards"
-      " SET last_attempt=$2"
-      "    ,active=TRUE"
-      " WHERE job_name=$1"
-      "   AND start_row=$3"
-      "   AND end_row=$4"),
+
     /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_last_shard",
@@ -1860,15 +1770,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE job_name=$1"
       " ORDER BY end_row DESC"
       " LIMIT 1;"),
-    /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare (
-      "get_last_revolving_shard",
-      "SELECT"
-      " end_row"
-      " FROM revolving_work_shards"
-      " WHERE job_name=$1"
-      " ORDER BY end_row DESC"
-      " LIMIT 1;"),
+
     /* Used in #postgres_abort_shard() */
     GNUNET_PQ_make_prepare (
       "abort_shard",
@@ -1887,17 +1789,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",end_row"
       ") VALUES "
       "($1, $2, $3, $4);"),
-    /* Used in #postgres_claim_revolving_shard() */
-    GNUNET_PQ_make_prepare (
-      "create_revolving_shard",
-      "INSERT INTO revolving_work_shards"
-      "(job_name"
-      ",last_attempt"
-      ",start_row"
-      ",end_row"
-      ",active"
-      ") VALUES "
-      "($1, $2, $3, $4, TRUE);"),
+
     /* Used in #postgres_complete_shard() */
     GNUNET_PQ_make_prepare (
       "complete_shard",
@@ -1920,45 +1812,10 @@ prepare_statements (struct PostgresClosure *pg)
       "INSERT INTO extensions (name, manifest) VALUES ($1, $2) "
       "ON CONFLICT (name) "
       "DO UPDATE SET manifest=$2"),
-    /* Used in #postgres_get_extension_manifest */
-    GNUNET_PQ_make_prepare (
-      "get_extension_manifest",
-      "SELECT "
-      " manifest "
-      "FROM extensions"
-      "   WHERE name=$1;"),
-    /* Used in #postgres_insert_contract() */
-    GNUNET_PQ_make_prepare (
-      "insert_contract",
-      "INSERT INTO contracts"
-      "  (purse_pub"
-      "  ,pub_ckey"
-      "  ,e_contract"
-      "  ,contract_sig"
-      "  ,purse_expiration"
-      "  ) SELECT "
-      "  $1, $2, $3, $4, purse_expiration"
-      "  FROM purse_requests"
-      "  WHERE purse_pub=$1"
-      "  ON CONFLICT DO NOTHING;"),
-    /* Used in #postgres_select_contract */
-    GNUNET_PQ_make_prepare (
-      "select_contract",
-      "SELECT "
-      " purse_pub"
-      ",e_contract"
-      ",contract_sig"
-      " FROM contracts"
-      "   WHERE pub_ckey=$1;"),
-    /* Used in #postgres_select_contract_by_purse */
-    GNUNET_PQ_make_prepare (
-      "select_contract_by_purse",
-      "SELECT "
-      " pub_ckey"
-      ",e_contract"
-      ",contract_sig"
-      " FROM contracts"
-      "   WHERE purse_pub=$1;"),
+
+
+   
+   
    
     /* Used in #postgres_select_purse_by_merge_pub */
     GNUNET_PQ_make_prepare (
@@ -1975,92 +1832,17 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_sig"
       " FROM purse_requests"
       " WHERE merge_pub=$1;"),
-    /* Used in #postgres_get_purse_deposit */
-    GNUNET_PQ_make_prepare (
-      "select_purse_deposit_by_coin_pub",
-      "SELECT "
-      " coin_sig"
-      ",amount_with_fee_val"
-      ",amount_with_fee_frac"
-      ",denom_pub_hash"
-      ",age_commitment_hash"
-      ",partner_base_url"
-      " FROM purse_deposits"
-      " LEFT JOIN partners USING (partner_serial_id)"
-      " JOIN known_coins kc USING (coin_pub)"
-      " JOIN denominations USING (denominations_serial)"
-      " WHERE coin_pub=$2"
-      "   AND purse_pub=$1;"),
-    /* Used in #postgres_do_purse_merge() */
-    GNUNET_PQ_make_prepare (
-      "call_purse_merge",
-      "SELECT"
-      " out_no_partner AS no_partner"
-      ",out_no_balance AS no_balance"
-      ",out_conflict AS conflict"
-      " FROM exchange_do_purse_merge"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8);"),
-    /* Used in #postgres_do_reserve_purse() */
-    GNUNET_PQ_make_prepare (
-      "call_reserve_purse",
-      "SELECT"
-      " out_no_funds AS insufficient_funds"
-      ",out_no_reserve AS no_reserve"
-      ",out_conflict AS conflict"
-      " FROM exchange_do_reserve_purse"
-      "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);"),
-    /* Used in #postgres_select_purse_merge */
-    GNUNET_PQ_make_prepare (
-      "select_purse_merge",
-      "SELECT "
-      " reserve_pub"
-      ",merge_sig"
-      ",merge_timestamp"
-      ",partner_base_url"
-      " FROM purse_merges"
-      " LEFT JOIN partners USING (partner_serial_id)"
-      " WHERE purse_pub=$1;"),
+   
+     
     /* Used in #postgres_do_account_merge() */
     GNUNET_PQ_make_prepare (
       "call_account_merge",
       "SELECT 1"
       " FROM exchange_do_account_merge"
       "  ($1, $2, $3);"),
-    /* Used in #postgres_insert_history_request() */
-    GNUNET_PQ_make_prepare (
-      "call_history_request",
-      "SELECT"
-      "  out_balance_ok AS balance_ok"
-      " ,out_idempotent AS idempotent"
-      " FROM exchange_do_history_request"
-      "  ($1, $2, $3, $4, $5)"),
 
-    /* Used in #postgres_insert_kyc_requirement_for_account() */
-    GNUNET_PQ_make_prepare (
-      "insert_legitimization_requirement",
-      "INSERT INTO legitimization_requirements"
-      "  (h_payto"
-      "  ,required_checks"
-      "  ) VALUES "
-      "  ($1, $2)"
-      " ON CONFLICT (h_payto,required_checks) "
-      "   DO UPDATE SET h_payto=$1" /* syntax requirement: dummy op */
-      " RETURNING legitimization_requirement_serial_id"),
-    /* Used in #postgres_insert_kyc_requirement_process() */
-    GNUNET_PQ_make_prepare (
-      "insert_legitimization_process",
-      "INSERT INTO legitimization_processes"
-      "  (h_payto"
-      "  ,provider_section"
-      "  ,provider_user_id"
-      "  ,provider_legitimization_id"
-      "  ) VALUES "
-      "  ($1, $2, $3, $4)"
-      " ON CONFLICT (h_payto,provider_section) "
-      "   DO UPDATE SET"
-      "      provider_user_id=$3"
-      "     ,provider_legitimization_id=$4"
-      " RETURNING legitimization_process_serial_id"),
+
+   
     /* Used in #postgres_update_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "update_legitimization_process",
@@ -2072,94 +1854,12 @@ prepare_statements (struct PostgresClosure *pg)
       "      h_payto=$3"
       "  AND legitimization_process_serial_id=$1"
       "  AND provider_section=$2;"),
-    GNUNET_PQ_make_prepare (
-      "alert_kyc_status_change",
-      "INSERT INTO kyc_alerts"
-      " (h_payto"
-      " ,trigger_type)"
-      " VALUES"
-      " ($1,$2);"),
-    /* Used in #postgres_lookup_kyc_requirement_by_row() */
-    GNUNET_PQ_make_prepare (
-      "lookup_legitimization_requirement_by_row",
-      "SELECT "
-      " required_checks"
-      ",h_payto"
-      " FROM legitimization_requirements"
-      " WHERE legitimization_requirement_serial_id=$1;"),
-    /* Used in #postgres_lookup_kyc_process_by_account() */
-    GNUNET_PQ_make_prepare (
-      "lookup_process_by_account",
-      "SELECT "
-      " legitimization_process_serial_id"
-      ",expiration_time"
-      ",provider_user_id"
-      ",provider_legitimization_id"
-      " FROM legitimization_processes"
-      " WHERE h_payto=$1"
-      "   AND provider_section=$2;"),
-    /* Used in #postgres_kyc_provider_account_lookup() */
-    GNUNET_PQ_make_prepare (
-      "get_wire_target_by_legitimization_id",
-      "SELECT "
-      " h_payto"
-      ",legitimization_process_serial_id"
-      " FROM legitimization_processes"
-      " WHERE provider_legitimization_id=$1"
-      "   AND provider_section=$2;"),
-    /* Used in #postgres_select_satisfied_kyc_processes() */
-    GNUNET_PQ_make_prepare (
-      "get_satisfied_legitimizations",
-      "SELECT "
-      " provider_section"
-      " FROM legitimization_processes"
-      " WHERE h_payto=$1"
-      "   AND expiration_time>=$2;"),
+   
+     
+   
+   
+   
 
-    /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
-() */
-    GNUNET_PQ_make_prepare (
-      "select_kyc_relevant_withdraw_events",
-      "SELECT"
-      " ro.amount_with_fee_val AS amount_val"
-      ",ro.amount_with_fee_frac AS amount_frac"
-      ",ro.execution_date AS date"
-      " FROM reserves_out ro"
-      " JOIN reserves_out_by_reserve USING (h_blind_ev)"
-      " JOIN reserves res ON (ro.reserve_uuid = res.reserve_uuid)"
-      " JOIN reserves_in ri ON (res.reserve_pub = ri.reserve_pub)"
-      " WHERE wire_source_h_payto=$1"
-      "   AND ro.execution_date >= $2"
-      " ORDER BY ro.execution_date DESC"),
-    /* Used in #postgres_select_aggregation_amounts_for_kyc_check (
-() */
-    GNUNET_PQ_make_prepare (
-      "select_kyc_relevant_aggregation_events",
-      "SELECT"
-      " amount_val"
-      ",amount_frac"
-      ",execution_date AS date"
-      " FROM wire_out"
-      " WHERE wire_target_h_payto=$1"
-      "   AND execution_date >= $2"
-      " ORDER BY execution_date DESC"),
-
-    /* Used in #postgres_select_merge_amounts_for_kyc_check (
-() */
-    GNUNET_PQ_make_prepare (
-      "select_kyc_relevant_merge_events",
-      "SELECT"
-      " amount_with_fee_val AS amount_val"
-      ",amount_with_fee_frac AS amount_frac"
-      ",merge_timestamp AS date"
-      " FROM account_merges"
-      " JOIN purse_merges USING (purse_pub)"
-      " JOIN purse_requests USING (purse_pub)"
-      " JOIN purse_decision USING (purse_pub)"
-      " WHERE wallet_h_payto=$1"
-      "   AND merge_timestamp >= $2"
-      "   AND NOT refunded"
-      " ORDER BY merge_timestamp DESC"),
 
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -2237,151 +1937,6 @@ internal_setup (struct PostgresClosure *pg,
 
 
 
-/**
- * Start a transaction.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param name unique name identifying the transaction (for debugging)
- *             must point to a constant
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-postgres_start (void *cls,
-                const char *name)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL SERIALIZABLE"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  GNUNET_assert (NULL != name);
-  if (GNUNET_SYSERR ==
-      TEH_PG_preflight (pg))
-    return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting transaction `%s'\n",
-              name);
-  if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (pg->conn,
-                                 es))
-  {
-    TALER_LOG_ERROR ("Failed to start transaction\n");
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  pg->transaction_name = name;
-  return GNUNET_OK;
-}
-
-
-/**
- * Start a READ COMMITTED transaction.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param name unique name identifying the transaction (for debugging)
- *             must point to a constant
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-postgres_start_read_committed (void *cls,
-                               const char *name)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL READ COMMITTED"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  GNUNET_assert (NULL != name);
-  if (GNUNET_SYSERR ==
-      TEH_PG_preflight (pg))
-    return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting READ COMMITTED transaction `%s`\n",
-              name);
-  if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (pg->conn,
-                                 es))
-  {
-    TALER_LOG_ERROR ("Failed to start transaction\n");
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  pg->transaction_name = name;
-  return GNUNET_OK;
-}
-
-
-/**
- * Start a READ ONLY serializable transaction.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param name unique name identifying the transaction (for debugging)
- *             must point to a constant
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-postgres_start_read_only (void *cls,
-                          const char *name)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute (
-      "START TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  GNUNET_assert (NULL != name);
-  if (GNUNET_SYSERR ==
-      TEH_PG_preflight (pg))
-    return GNUNET_SYSERR;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Starting READ ONLY transaction `%s`\n",
-              name);
-  if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (pg->conn,
-                                 es))
-  {
-    TALER_LOG_ERROR ("Failed to start transaction\n");
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  pg->transaction_name = name;
-  return GNUNET_OK;
-}
-
-
-/**
- * Roll back the current transaction of a database connection.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- */
-static void
-postgres_rollback (void *cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("ROLLBACK"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  if (NULL == pg->transaction_name)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Skipping rollback, no transaction active\n");
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Rolling back transaction\n");
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_PQ_exec_statements (pg->conn,
-                                           es));
-  pg->transaction_name = NULL;
-}
-
-
-
 
 /**
  * Register callback to be invoked on events of type @a es.
@@ -2448,65 +2003,6 @@ postgres_event_notify (void *cls,
                           extra_size);
 }
 
-
-/**
- * Insert a denomination key's public information into the database for
- * reference by auditors and other consistency checks.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param denom_pub the public key used for signing coins of this denomination
- * @param issue issuing information with value, fees and other info about the coin
- * @return status of the query
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_denomination_info (
-  void *cls,
-  const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue)
-{
-  struct PostgresClosure *pg = cls;
-  struct TALER_DenominationHashP denom_hash;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&issue->denom_hash),
-    TALER_PQ_query_param_denom_pub (denom_pub),
-    GNUNET_PQ_query_param_auto_from_type (&issue->signature),
-    GNUNET_PQ_query_param_timestamp (&issue->start),
-    GNUNET_PQ_query_param_timestamp (&issue->expire_withdraw),
-    GNUNET_PQ_query_param_timestamp (&issue->expire_deposit),
-    GNUNET_PQ_query_param_timestamp (&issue->expire_legal),
-    TALER_PQ_query_param_amount (&issue->value),
-    TALER_PQ_query_param_amount (&issue->fees.withdraw),
-    TALER_PQ_query_param_amount (&issue->fees.deposit),
-    TALER_PQ_query_param_amount (&issue->fees.refresh),
-    TALER_PQ_query_param_amount (&issue->fees.refund),
-    GNUNET_PQ_query_param_uint32 (&denom_pub->age_mask.bits),
-    GNUNET_PQ_query_param_end
-  };
-
-  GNUNET_assert (denom_pub->age_mask.bits ==
-                 issue->age_mask.bits);
-  TALER_denom_pub_hash (denom_pub,
-                        &denom_hash);
-  GNUNET_assert (0 ==
-                 GNUNET_memcmp (&denom_hash,
-                                &issue->denom_hash));
-  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   issue->start.abs_time));
-  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   issue->expire_withdraw.abs_time));
-  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   issue->expire_deposit.abs_time));
-  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
-                   issue->expire_legal.abs_time));
-  /* check fees match denomination currency */
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_denom_fee_check_currency (
-                   issue->value.currency,
-                   &issue->fees));
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "denomination_insert",
-                                             params);
-}
 
 
 /**
@@ -3343,7 +2839,7 @@ postgres_reserves_in_insert (void *cls,
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-        postgres_start (pg,
+        TEH_PG_start (pg,
                         "reserve-update-serializable"))
     {
       GNUNET_break (0);
@@ -3424,8 +2920,7 @@ postgres_reserves_in_insert (void *cls,
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-        postgres_start_read_committed (pg,
-                                       "reserve-insert-continued"))
+       TEH_PG_start_read_committed (pg, "reserve-insert-continued"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -3534,60 +3029,6 @@ postgres_do_batch_withdraw (
 }
 
 
-/**
- * Perform insert as part of a batch withdraw operation, and persisting the
- * withdrawal details.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
- * @param collectable corresponding collectable coin (blind signature)
- * @param now current time (rounded)
- * @param ruuid reserve UUID
- * @param[out] denom_unknown set if the denomination is unknown in the DB
- * @param[out] conflict if the envelope was already in the DB
- * @param[out] nonce_reuse if @a nonce was non-NULL and reused
- * @return query execution status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_batch_withdraw_insert (
-  void *cls,
-  const struct TALER_CsNonce *nonce,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
-  struct GNUNET_TIME_Timestamp now,
-  uint64_t ruuid,
-  bool *denom_unknown,
-  bool *conflict,
-  bool *nonce_reuse)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    NULL == nonce
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_auto_from_type (nonce),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
-    GNUNET_PQ_query_param_uint64 (&ruuid),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
-    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
-    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
-    GNUNET_PQ_query_param_timestamp (&now),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("denom_unknown",
-                                denom_unknown),
-    GNUNET_PQ_result_spec_bool ("conflict",
-                                conflict),
-    GNUNET_PQ_result_spec_bool ("nonce_reuse",
-                                nonce_reuse),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_batch_withdraw_insert",
-                                                   params,
-                                                   rs);
-}
 
 
 /**
@@ -6385,7 +5826,7 @@ postgres_start_deferred_wire_out (void *cls)
     TALER_LOG_ERROR (
       "Failed to defer wire_out_ref constraint on transaction\n");
     GNUNET_break (0);
-    postgres_rollback (pg);
+    TEH_PG_rollback (pg);
     return GNUNET_SYSERR;
   }
   pg->transaction_name = "deferred wire out";
@@ -8519,40 +7960,6 @@ postgres_insert_auditor (void *cls,
 }
 
 
-/**
- * Update information about an auditor that will audit this exchange.
- *
- * @param cls closure
- * @param auditor_pub key of the auditor (primary key for the existing record)
- * @param auditor_url base URL of the auditor's REST service, to be updated
- * @param auditor_name name of the auditor (for humans)
- * @param change_date date when the auditor status was last changed
- *                      (only to be used for replay detection)
- * @param enabled true to enable, false to disable
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_update_auditor (void *cls,
-                         const struct TALER_AuditorPublicKeyP *auditor_pub,
-                         const char *auditor_url,
-                         const char *auditor_name,
-                         struct GNUNET_TIME_Timestamp change_date,
-                         bool enabled)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
-    GNUNET_PQ_query_param_string (auditor_url),
-    GNUNET_PQ_query_param_string (auditor_name),
-    GNUNET_PQ_query_param_bool (enabled),
-    GNUNET_PQ_query_param_timestamp (&change_date),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "update_auditor",
-                                             params);
-}
 
 
 /**
@@ -9027,36 +8434,6 @@ postgres_add_denomination_key (
 }
 
 
-/**
- * Add signing key.
- *
- * @param cls closure
- * @param exchange_pub the exchange online signing public key
- * @param meta meta data about @a exchange_pub
- * @param master_sig master signature to add
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_activate_signing_key (
-  void *cls,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
-  const struct TALER_MasterSignatureP *master_sig)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam iparams[] = {
-    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
-    GNUNET_PQ_query_param_timestamp (&meta->start),
-    GNUNET_PQ_query_param_timestamp (&meta->expire_sign),
-    GNUNET_PQ_query_param_timestamp (&meta->expire_legal),
-    GNUNET_PQ_query_param_auto_from_type (master_sig),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_signkey",
-                                             iparams);
-}
 
 
 /**
@@ -9160,284 +8537,6 @@ postgres_select_auditor_denom_sig (
 }
 
 
-/**
- * Closure for #wire_fee_by_time_helper()
- */
-struct WireFeeLookupContext
-{
-
-  /**
-   * Set to the wire fees. Set to invalid if fees conflict over
-   * the given time period.
-   */
-  struct TALER_WireFeeSet *fees;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-};
-
-
-/**
- * Helper function for #postgres_lookup_wire_fee_by_time().
- * Calls the callback with the wire fee structure.
- *
- * @param cls a `struct WireFeeLookupContext`
- * @param result db results
- * @param num_results number of results in @a result
- */
-static void
-wire_fee_by_time_helper (void *cls,
-                         PGresult *result,
-                         unsigned int num_results)
-{
-  struct WireFeeLookupContext *wlc = cls;
-  struct PostgresClosure *pg = wlc->pg;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_WireFeeSet fs;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
-                                   &fs.wire),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
-                                   &fs.closing),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      /* invalidate */
-      memset (wlc->fees,
-              0,
-              sizeof (struct TALER_WireFeeSet));
-      return;
-    }
-    if (0 == i)
-    {
-      *wlc->fees = fs;
-      continue;
-    }
-    if (0 !=
-        TALER_wire_fee_set_cmp (&fs,
-                                wlc->fees))
-    {
-      /* invalidate */
-      memset (wlc->fees,
-              0,
-              sizeof (struct TALER_WireFeeSet));
-      return;
-    }
-  }
-}
-
-
-/**
- * Lookup information about known wire fees.  Finds all applicable
- * fees in the given range. If they are identical, returns the
- * respective @a fees. If any of the fees
- * differ between @a start_time and @a end_time, the transaction
- * succeeds BUT returns an invalid amount for both fees.
- *
- * @param cls closure
- * @param wire_method the wire method to lookup fees for
- * @param start_time starting time of fee
- * @param end_time end time of fee
- * @param[out] fees wire fees for that time period; if
- *             different fees exists within this time
- *             period, an 'invalid' amount is returned.
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_lookup_wire_fee_by_time (
-  void *cls,
-  const char *wire_method,
-  struct GNUNET_TIME_Timestamp start_time,
-  struct GNUNET_TIME_Timestamp end_time,
-  struct TALER_WireFeeSet *fees)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (wire_method),
-    GNUNET_PQ_query_param_timestamp (&start_time),
-    GNUNET_PQ_query_param_timestamp (&end_time),
-    GNUNET_PQ_query_param_end
-  };
-  struct WireFeeLookupContext wlc = {
-    .fees = fees,
-    .pg = pg
-  };
-
-  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               "lookup_wire_fee_by_time",
-                                               params,
-                                               &wire_fee_by_time_helper,
-                                               &wlc);
-}
-
-
-/**
- * Closure for #global_fee_by_time_helper()
- */
-struct GlobalFeeLookupContext
-{
-
-  /**
-   * Set to the wire fees. Set to invalid if fees conflict over
-   * the given time period.
-   */
-  struct TALER_GlobalFeeSet *fees;
-
-  /**
-   * Set to timeout of unmerged purses
-   */
-  struct GNUNET_TIME_Relative *purse_timeout;
-
-  /**
-   * Set to history expiration for reserves.
-   */
-  struct GNUNET_TIME_Relative *history_expiration;
-
-  /**
-   * Set to number of free purses per account.
-   */
-  uint32_t *purse_account_limit;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-};
-
-
-/**
- * Helper function for #postgres_lookup_global_fee_by_time().
- * Calls the callback with each denomination key.
- *
- * @param cls a `struct GlobalFeeLookupContext`
- * @param result db results
- * @param num_results number of results in @a result
- */
-static void
-global_fee_by_time_helper (void *cls,
-                           PGresult *result,
-                           unsigned int num_results)
-{
-  struct GlobalFeeLookupContext *wlc = cls;
-  struct PostgresClosure *pg = wlc->pg;
-
-  for (unsigned int i = 0; i<num_results; i++)
-  {
-    struct TALER_GlobalFeeSet fs;
-    struct GNUNET_TIME_Relative purse_timeout;
-    struct GNUNET_TIME_Relative history_expiration;
-    uint32_t purse_account_limit;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("history_fee",
-                                   &fs.history),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("account_fee",
-                                   &fs.account),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("purse_fee",
-                                   &fs.purse),
-      GNUNET_PQ_result_spec_relative_time ("purse_timeout",
-                                           &purse_timeout),
-      GNUNET_PQ_result_spec_relative_time ("history_expiration",
-                                           &history_expiration),
-      GNUNET_PQ_result_spec_uint32 ("purse_account_limit",
-                                    &purse_account_limit),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      /* invalidate */
-      memset (wlc->fees,
-              0,
-              sizeof (struct TALER_GlobalFeeSet));
-      return;
-    }
-    if (0 == i)
-    {
-      *wlc->fees = fs;
-      *wlc->purse_timeout = purse_timeout;
-      *wlc->history_expiration = history_expiration;
-      *wlc->purse_account_limit = purse_account_limit;
-      continue;
-    }
-    if ( (0 !=
-          TALER_global_fee_set_cmp (&fs,
-                                    wlc->fees)) ||
-         (purse_account_limit != *wlc->purse_account_limit) ||
-         (GNUNET_TIME_relative_cmp (purse_timeout,
-                                    !=,
-                                    *wlc->purse_timeout)) ||
-         (GNUNET_TIME_relative_cmp (history_expiration,
-                                    !=,
-                                    *wlc->history_expiration)) )
-    {
-      /* invalidate */
-      memset (wlc->fees,
-              0,
-              sizeof (struct TALER_GlobalFeeSet));
-      return;
-    }
-  }
-}
-
-
-/**
- * Lookup information about known global fees.
- *
- * @param cls closure
- * @param start_time starting time of fee
- * @param end_time end time of fee
- * @param[out] fees set to wire fees for that time period; if
- *             different global fee exists within this time
- *             period, an 'invalid' amount is returned.
- * @param[out] purse_timeout set to when unmerged purses expire
- * @param[out] history_expiration set to when we expire reserve histories
- * @param[out] purse_account_limit set to number of free purses
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_lookup_global_fee_by_time (
-  void *cls,
-  struct GNUNET_TIME_Timestamp start_time,
-  struct GNUNET_TIME_Timestamp end_time,
-  struct TALER_GlobalFeeSet *fees,
-  struct GNUNET_TIME_Relative *purse_timeout,
-  struct GNUNET_TIME_Relative *history_expiration,
-  uint32_t *purse_account_limit)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_timestamp (&start_time),
-    GNUNET_PQ_query_param_timestamp (&end_time),
-    GNUNET_PQ_query_param_end
-  };
-  struct GlobalFeeLookupContext wlc = {
-    .fees = fees,
-    .purse_timeout = purse_timeout,
-    .history_expiration = history_expiration,
-    .purse_account_limit = purse_account_limit,
-    .pg = pg
-  };
-
-  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                               "lookup_global_fee_by_time",
-                                               params,
-                                               &global_fee_by_time_helper,
-                                               &wlc);
-}
 
 
 /**
@@ -9465,7 +8564,7 @@ postgres_begin_shard (void *cls,
   for (unsigned int retries = 0; retries<10; retries++)
   {
     if (GNUNET_OK !=
-        postgres_start (pg,
+        TEH_PG_start (pg,
                         "begin_shard"))
     {
       GNUNET_break (0);
@@ -9497,10 +8596,10 @@ postgres_begin_shard (void *cls,
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         {
@@ -9522,16 +8621,16 @@ postgres_begin_shard (void *cls,
           {
           case GNUNET_DB_STATUS_HARD_ERROR:
             GNUNET_break (0);
-            postgres_rollback (pg);
+            TEH_PG_rollback (pg);
             return qs;
           case GNUNET_DB_STATUS_SOFT_ERROR:
-            postgres_rollback (pg);
+            TEH_PG_rollback (pg);
             continue;
           case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
             goto commit;
           case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
             GNUNET_break (0); /* logic error, should be impossible */
-            postgres_rollback (pg);
+            TEH_PG_rollback (pg);
             return GNUNET_DB_STATUS_HARD_ERROR;
           }
         }
@@ -9562,10 +8661,10 @@ postgres_begin_shard (void *cls,
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         break;
@@ -9600,10 +8699,10 @@ postgres_begin_shard (void *cls,
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         /* continued below */
@@ -9611,7 +8710,7 @@ postgres_begin_shard (void *cls,
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
         /* someone else got this shard already,
            try again */
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         continue;
       }
     } /* claim_next_shard */
@@ -9626,10 +8725,10 @@ commit:
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
+        TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -9703,212 +8802,6 @@ postgres_complete_shard (void *cls,
                                              params);
 }
 
-
-/**
- * Function called to grab a revolving work shard on an operation @a op. Runs
- * in its own transaction. Returns the oldest inactive shard.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param job_name name of the operation to grab a revolving shard for
- * @param shard_size desired shard size
- * @param shard_limit exclusive end of the shard range
- * @param[out] start_row inclusive start row of the shard (returned)
- * @param[out] end_row inclusive end row of the shard (returned)
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_begin_revolving_shard (void *cls,
-                                const char *job_name,
-                                uint32_t shard_size,
-                                uint32_t shard_limit,
-                                uint32_t *start_row,
-                                uint32_t *end_row)
-{
-  struct PostgresClosure *pg = cls;
-
-  GNUNET_assert (shard_limit <= 1U + (uint32_t) INT_MAX);
-  GNUNET_assert (shard_limit > 0);
-  GNUNET_assert (shard_size > 0);
-  for (unsigned int retries = 0; retries<3; retries++)
-  {
-    if (GNUNET_OK !=
-        postgres_start (pg,
-                        "begin_revolving_shard"))
-    {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-
-    /* First, find last 'end_row' */
-    {
-      enum GNUNET_DB_QueryStatus qs;
-      uint32_t last_end;
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_string (job_name),
-        GNUNET_PQ_query_param_end
-      };
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_uint32 ("end_row",
-                                      &last_end),
-        GNUNET_PQ_result_spec_end
-      };
-
-      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                     "get_last_revolving_shard",
-                                                     params,
-                                                     rs);
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_HARD_ERROR:
-        GNUNET_break (0);
-        postgres_rollback (pg);
-        return qs;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
-        continue;
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        *start_row = 1U + last_end;
-        break;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        *start_row = 0; /* base-case: no shards yet */
-        break; /* continued below */
-      }
-    } /* get_last_shard */
-
-    if (*start_row < shard_limit)
-    {
-      /* Claim fresh shard */
-      enum GNUNET_DB_QueryStatus qs;
-      struct GNUNET_TIME_Absolute now;
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_string (job_name),
-        GNUNET_PQ_query_param_absolute_time (&now),
-        GNUNET_PQ_query_param_uint32 (start_row),
-        GNUNET_PQ_query_param_uint32 (end_row),
-        GNUNET_PQ_query_param_end
-      };
-
-      *end_row = GNUNET_MIN (shard_limit,
-                             *start_row + shard_size - 1);
-      now = GNUNET_TIME_absolute_get ();
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Trying to claim shard %llu-%llu\n",
-                  (unsigned long long) *start_row,
-                  (unsigned long long) *end_row);
-      qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                               "create_revolving_shard",
-                                               params);
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_HARD_ERROR:
-        GNUNET_break (0);
-        postgres_rollback (pg);
-        return qs;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
-        continue;
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        /* continued below (with commit) */
-        break;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        /* someone else got this shard already,
-           try again */
-        postgres_rollback (pg);
-        continue;
-      }
-    } /* end create fresh reovlving shard */
-    else
-    {
-      /* claim oldest existing shard */
-      enum GNUNET_DB_QueryStatus qs;
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_string (job_name),
-        GNUNET_PQ_query_param_end
-      };
-      struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_uint32 ("start_row",
-                                      start_row),
-        GNUNET_PQ_result_spec_uint32 ("end_row",
-                                      end_row),
-        GNUNET_PQ_result_spec_end
-      };
-
-      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                     "get_open_revolving_shard",
-                                                     params,
-                                                     rs);
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_HARD_ERROR:
-        GNUNET_break (0);
-        postgres_rollback (pg);
-        return qs;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
-        continue;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        /* no open shards available */
-        postgres_rollback (pg);
-        return qs;
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        {
-          enum GNUNET_DB_QueryStatus qs;
-          struct GNUNET_TIME_Timestamp now;
-          struct GNUNET_PQ_QueryParam params[] = {
-            GNUNET_PQ_query_param_string (job_name),
-            GNUNET_PQ_query_param_timestamp (&now),
-            GNUNET_PQ_query_param_uint32 (start_row),
-            GNUNET_PQ_query_param_uint32 (end_row),
-            GNUNET_PQ_query_param_end
-          };
-
-          now = GNUNET_TIME_timestamp_get ();
-          qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                   "reclaim_revolving_shard",
-                                                   params);
-          switch (qs)
-          {
-          case GNUNET_DB_STATUS_HARD_ERROR:
-            GNUNET_break (0);
-            postgres_rollback (pg);
-            return qs;
-          case GNUNET_DB_STATUS_SOFT_ERROR:
-            postgres_rollback (pg);
-            continue;
-          case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-            break; /* continue with commit */
-          case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-            GNUNET_break (0); /* logic error, should be impossible */
-            postgres_rollback (pg);
-            return GNUNET_DB_STATUS_HARD_ERROR;
-          }
-        }
-        break; /* continue with commit */
-      }
-    } /* end claim oldest existing shard */
-
-    /* commit */
-    {
-      enum GNUNET_DB_QueryStatus qs;
-
-      qs = TEH_PG_commit (pg);
-      switch (qs)
-      {
-      case GNUNET_DB_STATUS_HARD_ERROR:
-        GNUNET_break (0);
-        postgres_rollback (pg);
-        return qs;
-      case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (pg);
-        continue;
-      case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-      }
-    }
-  } /* retry 'for' loop */
-  return GNUNET_DB_STATUS_SOFT_ERROR;
-}
 
 
 /**
@@ -10002,40 +8895,6 @@ postgres_set_extension_manifest (void *cls,
 }
 
 
-/**
- * Function called to get the manifest of an extension
- * (age-restriction, policy_extension_...)
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param extension_name the name of the extension
- * @param[out] manifest JSON object of the manifest as string
- * @return transaction status code
- */
-enum GNUNET_DB_QueryStatus
-postgres_get_extension_manifest (void *cls,
-                                 const char *extension_name,
-                                 char **manifest)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (extension_name),
-    GNUNET_PQ_query_param_end
-  };
-  bool is_null;
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("manifest",
-                                    manifest),
-      &is_null),
-    GNUNET_PQ_result_spec_end
-  };
-
-  *manifest = NULL;
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_extension_manifest",
-                                                   params,
-                                                   rs);
-}
 
 
 /**
@@ -10080,150 +8939,9 @@ postgres_insert_partner (void *cls,
 }
 
 
-/**
- * Function called to retrieve an encrypted contract.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub key to lookup the contract by
- * @param[out] pub_ckey set to the ephemeral DH used to encrypt the contract
- * @param[out] econtract_sig set to the signature over the encrypted contract
- * @param[out] econtract_size set to the number of bytes in @a econtract
- * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_contract (void *cls,
-                          const struct TALER_ContractDiffiePublicP *pub_ckey,
-                          struct TALER_PurseContractPublicKeyP *purse_pub,
-                          struct TALER_PurseContractSignatureP *econtract_sig,
-                          size_t *econtract_size,
-                          void **econtract)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (pub_ckey),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("purse_pub",
-                                          purse_pub),
-    GNUNET_PQ_result_spec_auto_from_type ("contract_sig",
-                                          econtract_sig),
-    GNUNET_PQ_result_spec_variable_size ("e_contract",
-                                         econtract,
-                                         econtract_size),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_contract",
-                                                   params,
-                                                   rs);
-
-}
 
 
-/**
- * Function called to retrieve an encrypted contract.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub key to lookup the contract by
- * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_contract_by_purse (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  struct TALER_EncryptedContract *econtract)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("pub_ckey",
-                                          &econtract->contract_pub),
-    GNUNET_PQ_result_spec_auto_from_type ("contract_sig",
-                                          &econtract->econtract_sig),
-    GNUNET_PQ_result_spec_variable_size ("e_contract",
-                                         &econtract->econtract,
-                                         &econtract->econtract_size),
-    GNUNET_PQ_result_spec_end
-  };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_contract_by_purse",
-                                                   params,
-                                                   rs);
-
-}
-
-
-/**
- * Function called to persist an encrypted contract associated with a reserve.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub the purse the contract is associated with (must exist)
- * @param econtract the encrypted contract
- * @param[out] in_conflict set to true if @a econtract
- *             conflicts with an existing contract;
- *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_contract (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_EncryptedContract *econtract,
-  bool *in_conflict)
-{
-  struct PostgresClosure *pg = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (&econtract->contract_pub),
-    GNUNET_PQ_query_param_fixed_size (econtract->econtract,
-                                      econtract->econtract_size),
-    GNUNET_PQ_query_param_auto_from_type (&econtract->econtract_sig),
-    GNUNET_PQ_query_param_end
-  };
-
-  *in_conflict = false;
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "insert_contract",
-                                           params);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs)
-    return qs;
-  {
-    struct TALER_EncryptedContract econtract2;
-
-    qs = postgres_select_contract_by_purse (pg,
-                                            purse_pub,
-                                            &econtract2);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-    {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if ( (0 == GNUNET_memcmp (&econtract->contract_pub,
-                              &econtract2.contract_pub)) &&
-         (econtract2.econtract_size ==
-          econtract->econtract_size) &&
-         (0 == memcmp (econtract2.econtract,
-                       econtract->econtract,
-                       econtract->econtract_size)) )
-    {
-      GNUNET_free (econtract2.econtract);
-      return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    }
-    GNUNET_free (econtract2.econtract);
-    *in_conflict = true;
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  }
-}
 
 
 
@@ -10327,71 +9045,6 @@ postgres_select_purse_by_merge_pub (
 }
 
 
-/**
- * Function called to execute a transaction crediting
- * a purse with @a amount from @a coin_pub. Reduces the
- * value of @a coin_pub and increase the balance of
- * the @a purse_pub purse. If the balance reaches the
- * target amount and the purse has been merged, triggers
- * the updates of the reserve/account balance.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub purse to credit
- * @param coin_pub coin to deposit (debit)
- * @param amount fraction of the coin's value to deposit
- * @param coin_sig signature affirming the operation
- * @param amount_minus_fee amount to add to the purse
- * @param[out] balance_ok set to false if the coin's
- *        remaining balance is below @a amount;
- *             in this case, the return value will be
- *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
- * @param[out] conflict set to true if the deposit failed due to a conflict (coin already spent,
- *             or deposited into this purse with a different amount)
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_purse_deposit (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *amount,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_Amount *amount_minus_fee,
-  bool *balance_ok,
-  bool *conflict)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Timestamp now = GNUNET_TIME_timestamp_get ();
-  struct GNUNET_TIME_Timestamp reserve_expiration;
-  uint64_t partner_id = 0; /* FIXME #7271: WAD support... */
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&partner_id),
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    TALER_PQ_query_param_amount (amount),
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_auto_from_type (coin_sig),
-    TALER_PQ_query_param_amount (amount_minus_fee),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
-    GNUNET_PQ_query_param_timestamp (&now),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("balance_ok",
-                                balance_ok),
-    GNUNET_PQ_result_spec_bool ("conflict",
-                                conflict),
-    GNUNET_PQ_result_spec_end
-  };
-
-  reserve_expiration
-    = GNUNET_TIME_absolute_to_timestamp (
-        GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                                  pg->legal_reserve_expiration_time));
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_purse_deposit",
-                                                   params,
-                                                   rs);
-}
 
 
 /**
@@ -10423,1106 +9076,20 @@ postgres_set_purse_balance (
 }
 
 
-/**
- * Function called to obtain a coin deposit data from
- * depositing the coin into a purse.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub purse to credit
- * @param coin_pub coin to deposit (debit)
- * @param[out] amount set fraction of the coin's value that was deposited (with fee)
- * @param[out] h_denom_pub set to hash of denomination of the coin
- * @param[out] phac set to hash of age restriction on the coin
- * @param[out] coin_sig set to signature affirming the operation
- * @param[out] partner_url set to the URL of the partner exchange, or NULL for ourselves, must be freed by caller
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_get_purse_deposit (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  struct TALER_Amount *amount,
-  struct TALER_DenominationHashP *h_denom_pub,
-  struct TALER_AgeCommitmentHash *phac,
-  struct TALER_CoinSpendSignatureP *coin_sig,
-  char **partner_url)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_end
-  };
-  bool is_null;
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                          h_denom_pub),
-    GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                          phac),
-    GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
-                                          coin_sig),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 amount),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("partner_base_url",
-                                    partner_url),
-      &is_null),
-    GNUNET_PQ_result_spec_end
-  };
 
-  *partner_url = NULL;
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_purse_deposit_by_coin_pub",
-                                                   params,
-                                                   rs);
-}
 
 
-/**
- * Function called to approve merging a purse into a
- * reserve by the respective purse merge key.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub purse to merge
- * @param merge_sig signature affirming the merge
- * @param merge_timestamp time of the merge
- * @param reserve_sig signature of the reserve affirming the merge
- * @param partner_url URL of the partner exchange, can be NULL if the reserves lives with us
- * @param reserve_pub public key of the reserve to credit
- * @param[out] no_partner set to true if @a partner_url is unknown
- * @param[out] no_balance set to true if the @a purse_pub is not paid up yet
- * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
-  * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_purse_merge (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergeSignatureP *merge_sig,
-  const struct GNUNET_TIME_Timestamp merge_timestamp,
-  const struct TALER_ReserveSignatureP *reserve_sig,
-  const char *partner_url,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  bool *no_partner,
-  bool *no_balance,
-  bool *in_conflict)
-{
-  struct PostgresClosure *pg = cls;
-  struct TALER_PaytoHashP h_payto;
-  struct GNUNET_TIME_Timestamp expiration
-    = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (merge_sig),
-    GNUNET_PQ_query_param_timestamp (&merge_timestamp),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    (NULL == partner_url)
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (partner_url),
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
-    GNUNET_PQ_query_param_timestamp (&expiration),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("no_partner",
-                                no_partner),
-    GNUNET_PQ_result_spec_bool ("no_balance",
-                                no_balance),
-    GNUNET_PQ_result_spec_bool ("conflict",
-                                in_conflict),
-    GNUNET_PQ_result_spec_end
-  };
 
-  {
-    char *payto_uri;
 
-    payto_uri = TALER_reserve_make_payto (pg->exchange_url,
-                                          reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &h_payto);
-    GNUNET_free (payto_uri);
-  }
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_purse_merge",
-                                                   params,
-                                                   rs);
-}
 
 
-/**
- * Function called insert request to merge a purse into a reserve by the
- * respective purse merge key. The purse must not have been merged into a
- * different reserve.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub purse to merge
- * @param merge_sig signature affirming the merge
- * @param merge_timestamp time of the merge
- * @param reserve_sig signature of the reserve affirming the merge
- * @param purse_fee amount to charge the reserve for the purse creation, NULL to use the quota
- * @param reserve_pub public key of the reserve to credit
- * @param[out] in_conflict set to true if @a purse_pub was merged into a different reserve already
- * @param[out] no_reserve set to true if @a reserve_pub is not a known reserve
- * @param[out] insufficient_funds set to true if @a reserve_pub has insufficient capacity to create another purse
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_do_reserve_purse (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  const struct TALER_PurseMergeSignatureP *merge_sig,
-  const struct GNUNET_TIME_Timestamp merge_timestamp,
-  const struct TALER_ReserveSignatureP *reserve_sig,
-  const struct TALER_Amount *purse_fee,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  bool *in_conflict,
-  bool *no_reserve,
-  bool *insufficient_funds)
-{
-  struct PostgresClosure *pg = cls;
-  struct TALER_Amount zero_fee;
-  struct TALER_PaytoHashP h_payto;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_auto_from_type (merge_sig),
-    GNUNET_PQ_query_param_timestamp (&merge_timestamp),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    GNUNET_PQ_query_param_bool (NULL == purse_fee),
-    TALER_PQ_query_param_amount (NULL == purse_fee
-                                 ? &zero_fee
-                                 : purse_fee),
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("insufficient_funds",
-                                insufficient_funds),
-    GNUNET_PQ_result_spec_bool ("conflict",
-                                in_conflict),
-    GNUNET_PQ_result_spec_bool ("no_reserve",
-                                no_reserve),
-    GNUNET_PQ_result_spec_end
-  };
 
-  {
-    char *payto_uri;
 
-    payto_uri = TALER_reserve_make_payto (pg->exchange_url,
-                                          reserve_pub);
-    TALER_payto_hash (payto_uri,
-                      &h_payto);
-    GNUNET_free (payto_uri);
-  }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (pg->currency,
-                                        &zero_fee));
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_reserve_purse",
-                                                   params,
-                                                   rs);
-}
 
 
-/**
- * Function called to approve merging of a purse with
- * an account, made by the receiving account.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param purse_pub public key of the purse
- * @param[out] merge_sig set to the signature confirming the merge
- * @param[out] merge_timestamp set to the time of the merge
- * @param[out] partner_url set to the URL of the target exchange, or NULL if the target exchange is us. To be freed by the caller.
- * @param[out] reserve_pub set to the public key of the reserve/account being credited
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_purse_merge (
-  void *cls,
-  const struct TALER_PurseContractPublicKeyP *purse_pub,
-  struct TALER_PurseMergeSignatureP *merge_sig,
-  struct GNUNET_TIME_Timestamp *merge_timestamp,
-  char **partner_url,
-  struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (purse_pub),
-    GNUNET_PQ_query_param_end
-  };
-  bool is_null;
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("merge_sig",
-                                          merge_sig),
-    GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                          reserve_pub),
-    GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
-                                     merge_timestamp),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("partner_base_url",
-                                    partner_url),
-      &is_null),
-    GNUNET_PQ_result_spec_end
-  };
 
-  *partner_url = NULL;
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "select_purse_merge",
-                                                   params,
-                                                   rs);
-}
 
 
-/**
- * Function called to persist a signature that
- * prove that the client requested an
- * account history.  Debits the @a history_fee from
- * the reserve (if possible).
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param reserve_pub account that the history was requested for
- * @param reserve_sig signature affirming the request
- * @param request_timestamp when was the request made
- * @param history_fee how much should the @a reserve_pub be charged for the request
- * @param[out] balance_ok set to TRUE if the reserve balance
- *         was sufficient
- * @param[out] idempotent set to TRUE if the request is already in the DB
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_history_request (
-  void *cls,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_ReserveSignatureP *reserve_sig,
-  struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_Amount *history_fee,
-  bool *balance_ok,
-  bool *idempotent)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_auto_from_type (reserve_sig),
-    GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount (history_fee),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_bool ("balance_ok",
-                                balance_ok),
-    GNUNET_PQ_result_spec_bool ("idempotent",
-                                idempotent),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_history_request",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Function called to persist a request to drain profits.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param wtid wire transfer ID to use
- * @param account_section account to drain
- * @param payto_uri account to wire funds to
- * @param request_timestamp when was the request made
- * @param amount amount to wire
- * @param master_sig signature affirming the operation
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_drain_profit (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  const char *account_section,
-  const char *payto_uri,
-  struct GNUNET_TIME_Timestamp request_timestamp,
-  const struct TALER_Amount *amount,
-  const struct TALER_MasterSignatureP *master_sig)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_string (account_section),
-    GNUNET_PQ_query_param_string (payto_uri),
-    GNUNET_PQ_query_param_timestamp (&request_timestamp),
-    TALER_PQ_query_param_amount (amount),
-    GNUNET_PQ_query_param_auto_from_type (master_sig),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "drain_profit_insert",
-                                             params);
-}
-
-
-/**
- * Get profit drain operation ready to execute.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param[out] serial set to serial ID of the entry
- * @param[out] wtid set set to wire transfer ID to use
- * @param[out] account_section set to  account to drain
- * @param[out] payto_uri set to account to wire funds to
- * @param[out] request_timestamp set to time of the signature
- * @param[out] amount set to amount to wire
- * @param[out] master_sig set to signature affirming the operation
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_profit_drains_get_pending (
-  void *cls,
-  uint64_t *serial,
-  struct TALER_WireTransferIdentifierRawP *wtid,
-  char **account_section,
-  char **payto_uri,
-  struct GNUNET_TIME_Timestamp *request_timestamp,
-  struct TALER_Amount *amount,
-  struct TALER_MasterSignatureP *master_sig)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("profit_drain_serial_id",
-                                  serial),
-    GNUNET_PQ_result_spec_auto_from_type ("wtid",
-                                          wtid),
-    GNUNET_PQ_result_spec_string ("account_section",
-                                  account_section),
-    GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
-    GNUNET_PQ_result_spec_timestamp ("trigger_date",
-                                     request_timestamp),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                 amount),
-    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                          master_sig),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_ready_profit_drain",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Function called to get information about a profit drain event.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param wtid wire transfer ID to look up drain event for
- * @param[out] serial set to serial ID of the entry
- * @param[out] account_section set to account to drain
- * @param[out] payto_uri set to account to wire funds to
- * @param[out] request_timestamp set to time of the signature
- * @param[out] amount set to amount to wire
- * @param[out] master_sig set to signature affirming the operation
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_get_drain_profit (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  uint64_t *serial,
-  char **account_section,
-  char **payto_uri,
-  struct GNUNET_TIME_Timestamp *request_timestamp,
-  struct TALER_Amount *amount,
-  struct TALER_MasterSignatureP *master_sig)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("profit_drain_serial_id",
-                                  serial),
-    GNUNET_PQ_result_spec_string ("account_section",
-                                  account_section),
-    GNUNET_PQ_result_spec_string ("payto_uri",
-                                  payto_uri),
-    GNUNET_PQ_result_spec_timestamp ("trigger_date",
-                                     request_timestamp),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                 amount),
-    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                          master_sig),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_profit_drain",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
- * Set profit drain operation to finished.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param serial serial ID of the entry to mark finished
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_profit_drains_set_finished (
-  void *cls,
-  uint64_t serial)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&serial),
-    GNUNET_PQ_query_param_end
-  };
-
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "drain_profit_set_finished",
-                                             params);
-}
-
-
-/**
- * Insert KYC requirement for @a h_payto account into table.
- *
- * @param cls closure
- * @param provider_section provider that must be checked
- * @param h_payto account that must be KYC'ed
- * @param[out] requirement_row set to legitimization requirement row for this check
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_kyc_requirement_for_account (
-  void *cls,
-  const char *provider_section,
-  const struct TALER_PaytoHashP *h_payto,
-  uint64_t *requirement_row)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_section),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
-                                  requirement_row),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (
-    pg->conn,
-    "insert_legitimization_requirement",
-    params,
-    rs);
-}
-
-
-/**
- * Begin KYC requirement process.
- *
- * @param cls closure
- * @param h_payto account that must be KYC'ed
- * @param provider_section provider that must be checked
- * @param provider_account_id provider account ID
- * @param provider_legitimization_id provider legitimization ID
- * @param[out] process_row row the process is stored under
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_insert_kyc_requirement_process (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  const char *provider_section,
-  const char *provider_account_id,
-  const char *provider_legitimization_id,
-  uint64_t *process_row)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_section),
-    (NULL != provider_account_id)
-    ? GNUNET_PQ_query_param_string (provider_account_id)
-    : GNUNET_PQ_query_param_null (),
-    (NULL != provider_legitimization_id)
-    ? GNUNET_PQ_query_param_string (provider_legitimization_id)
-    : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("legitimization_process_serial_id",
-                                  process_row),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (
-    pg->conn,
-    "insert_legitimization_process",
-    params,
-    rs);
-}
-
-
-/**
- * Update KYC requirement check with provider-linkage and/or
- * expiration data.
- *
- * @param cls closure
- * @param process_row row to select by
- * @param provider_section provider that must be checked (technically redundant)
- * @param h_payto account that must be KYC'ed (helps access by shard, otherwise also redundant)
- * @param provider_account_id provider account ID
- * @param provider_legitimization_id provider legitimization ID
- * @param expiration how long is this KYC check set to be valid (in the past if invalid)
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_update_kyc_process_by_row (
-  void *cls,
-  uint64_t process_row,
-  const char *provider_section,
-  const struct TALER_PaytoHashP *h_payto,
-  const char *provider_account_id,
-  const char *provider_legitimization_id,
-  struct GNUNET_TIME_Absolute expiration)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&process_row),
-    GNUNET_PQ_query_param_string (provider_section),
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    (NULL != provider_account_id)
-    ? GNUNET_PQ_query_param_string (provider_account_id)
-    : GNUNET_PQ_query_param_null (),
-    (NULL != provider_legitimization_id)
-    ? GNUNET_PQ_query_param_string (provider_legitimization_id)
-    : GNUNET_PQ_query_param_null (),
-    GNUNET_PQ_query_param_absolute_time (&expiration),
-    GNUNET_PQ_query_param_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_non_select (
-    pg->conn,
-    "update_legitimization_process",
-    params);
-  if (qs <= 0)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to update legitimization process: %d\n",
-                qs);
-    return qs;
-  }
-  if (GNUNET_TIME_absolute_is_future (expiration))
-  {
-    enum GNUNET_DB_QueryStatus qs2;
-    struct TALER_KycCompletedEventP rep = {
-      .header.size = htons (sizeof (rep)),
-      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
-      .h_payto = *h_payto
-    };
-    uint32_t trigger_type = 1;
-    struct GNUNET_PQ_QueryParam params2[] = {
-      GNUNET_PQ_query_param_auto_from_type (h_payto),
-      GNUNET_PQ_query_param_uint32 (&trigger_type),
-      GNUNET_PQ_query_param_end
-    };
-
-    postgres_event_notify (pg,
-                           &rep.header,
-                           NULL,
-                           0);
-    qs2 = GNUNET_PQ_eval_prepared_non_select (
-      pg->conn,
-      "alert_kyc_status_change",
-      params2);
-    if (qs2 < 0)
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to store KYC alert: %d\n",
-                  qs2);
-  }
-  return qs;
-}
-
-
-/**
- * Lookup KYC requirement.
- *
- * @param cls closure
- * @param requirement_row identifies requirement to look up
- * @param[out] requirements provider that must be checked
- * @param[out] h_payto account that must be KYC'ed
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_lookup_kyc_requirement_by_row (
-  void *cls,
-  uint64_t requirement_row,
-  char **requirements,
-  struct TALER_PaytoHashP *h_payto)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&requirement_row),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_string ("required_checks",
-                                  requirements),
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                          h_payto),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (
-    pg->conn,
-    "lookup_legitimization_requirement_by_row",
-    params,
-    rs);
-}
-
-
-/**
- * Lookup KYC provider meta data.
- *
- * @param cls closure
- * @param provider_section provider that must be checked
- * @param h_payto account that must be KYC'ed
- * @param[out] process_row row with the legitimization data
- * @param[out] expiration how long is this KYC check set to be valid (in the past if invalid)
- * @param[out] provider_account_id provider account ID
- * @param[out] provider_legitimization_id provider legitimization ID
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_lookup_kyc_process_by_account (
-  void *cls,
-  const char *provider_section,
-  const struct TALER_PaytoHashP *h_payto,
-  uint64_t *process_row,
-  struct GNUNET_TIME_Absolute *expiration,
-  char **provider_account_id,
-  char **provider_legitimization_id)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_string (provider_section),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("legitimization_process_serial_id",
-                                  process_row),
-    GNUNET_PQ_result_spec_absolute_time ("expiration_time",
-                                         expiration),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("provider_user_id",
-                                    provider_account_id),
-      NULL),
-    GNUNET_PQ_result_spec_allow_null (
-      GNUNET_PQ_result_spec_string ("provider_legitimization_id",
-                                    provider_legitimization_id),
-      NULL),
-    GNUNET_PQ_result_spec_end
-  };
-
-  *provider_account_id = NULL;
-  *provider_legitimization_id = NULL;
-  return GNUNET_PQ_eval_prepared_singleton_select (
-    pg->conn,
-    "lookup_process_by_account",
-    params,
-    rs);
-}
-
-
-/**
- * Lookup an
- * @a h_payto by @a provider_legitimization_id.
- *
- * @param cls closure
- * @param provider_section
- * @param provider_legitimization_id legi to look up
- * @param[out] h_payto where to write the result
- * @param[out] process_row where to write the row of the entry
- * @return database transaction status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_kyc_provider_account_lookup (
-  void *cls,
-  const char *provider_section,
-  const char *provider_legitimization_id,
-  struct TALER_PaytoHashP *h_payto,
-  uint64_t *process_row)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_string (provider_section),
-    GNUNET_PQ_query_param_string (provider_legitimization_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                          h_payto),
-    GNUNET_PQ_result_spec_uint64 ("legitimization_process_serial_id",
-                                  process_row),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (
-    pg->conn,
-    "get_wire_target_by_legitimization_id",
-    params,
-    rs);
-}
-
-
-/**
- * Closure for #get_wire_fees_cb().
- */
-struct GetLegitimizationsContext
-{
-  /**
-   * Function to call per result.
-   */
-  TALER_EXCHANGEDB_SatisfiedProviderCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Flag set to #GNUNET_OK as long as everything is fine.
-   */
-  enum GNUNET_GenericReturnValue status;
-
-};
-
-
-/**
- * Invoke the callback for each result.
- *
- * @param cls a `struct GetLegitimizationsContext *`
- * @param result SQL result
- * @param num_results number of rows in @a result
- */
-static void
-get_legitimizations_cb (void *cls,
-                        PGresult *result,
-                        unsigned int num_results)
-{
-  struct GetLegitimizationsContext *ctx = cls;
-
-  for (unsigned int i = 0; i < num_results; i++)
-  {
-    char *provider_section;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_string ("provider_section",
-                                    &provider_section),
-      GNUNET_PQ_result_spec_end
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->status = GNUNET_SYSERR;
-      return;
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Found satisfied LEGI: %s\n",
-                provider_section);
-    ctx->cb (ctx->cb_cls,
-             provider_section);
-    GNUNET_PQ_cleanup_result (rs);
-  }
-}
-
-
-/**
- * Call us on KYC processes satisfied for the given
- * account.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto account identifier
- * @param spc function to call for each satisfied KYC process
- * @param spc_cls closure for @a spc
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_satisfied_kyc_processes (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
-  void *spc_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now
-    = GNUNET_TIME_absolute_get ();
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_end
-  };
-  struct GetLegitimizationsContext ctx = {
-    .cb = spc,
-    .cb_cls = spc_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (
-    pg->conn,
-    "get_satisfied_legitimizations",
-    params,
-    &get_legitimizations_cb,
-    &ctx);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Satisfied LEGI check returned %d\n",
-              qs);
-  if (GNUNET_OK != ctx.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Closure for #get_kyc_amounts_cb().
- */
-struct KycAmountCheckContext
-{
-  /**
-   * Function to call per result.
-   */
-  TALER_EXCHANGEDB_KycAmountCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-  /**
-   * Plugin context.
-   */
-  struct PostgresClosure *pg;
-
-  /**
-   * Flag set to #GNUNET_OK as long as everything is fine.
-   */
-  enum GNUNET_GenericReturnValue status;
-
-};
-
-
-/**
- * Invoke the callback for each result.
- *
- * @param cls a `struct KycAmountCheckContext *`
- * @param result SQL result
- * @param num_results number of rows in @a result
- */
-static void
-get_kyc_amounts_cb (void *cls,
-                    PGresult *result,
-                    unsigned int num_results)
-{
-  struct KycAmountCheckContext *ctx = cls;
-  struct PostgresClosure *pg = ctx->pg;
-
-  for (unsigned int i = 0; i < num_results; i++)
-  {
-    struct GNUNET_TIME_Absolute date;
-    struct TALER_Amount amount;
-    struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                   &amount),
-      GNUNET_PQ_result_spec_absolute_time ("date",
-                                           &date),
-      GNUNET_PQ_result_spec_end
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    if (GNUNET_OK !=
-        GNUNET_PQ_extract_result (result,
-                                  rs,
-                                  i))
-    {
-      GNUNET_break (0);
-      ctx->status = GNUNET_SYSERR;
-      return;
-    }
-    ret = ctx->cb (ctx->cb_cls,
-                   &amount,
-                   date);
-    GNUNET_PQ_cleanup_result (rs);
-    switch (ret)
-    {
-    case GNUNET_OK:
-      continue;
-    case GNUNET_NO:
-      break;
-    case GNUNET_SYSERR:
-      ctx->status = GNUNET_SYSERR;
-      break;
-    }
-    break;
-  }
-}
-
-
-/**
- * Call @a kac on withdrawn amounts after @a time_limit which are relevant
- * for a KYC trigger for a the (debited) account identified by @a h_payto.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto account identifier
- * @param time_limit oldest transaction that could be relevant
- * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
- * @param kac_cls closure for @a kac
- * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_withdraw_amounts_for_kyc_check (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Absolute time_limit,
-  TALER_EXCHANGEDB_KycAmountCallback kac,
-  void *kac_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&time_limit),
-    GNUNET_PQ_query_param_end
-  };
-  struct KycAmountCheckContext ctx = {
-    .cb = kac,
-    .cb_cls = kac_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (
-    pg->conn,
-    "select_kyc_relevant_withdraw_events",
-    params,
-    &get_kyc_amounts_cb,
-    &ctx);
-  if (GNUNET_OK != ctx.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Call @a kac on deposited amounts after @a time_limit which are relevant for a
- * KYC trigger for a the (credited) account identified by @a h_payto.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto account identifier
- * @param time_limit oldest transaction that could be relevant
- * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
- * @param kac_cls closure for @a kac
- * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_aggregation_amounts_for_kyc_check (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Absolute time_limit,
-  TALER_EXCHANGEDB_KycAmountCallback kac,
-  void *kac_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&time_limit),
-    GNUNET_PQ_query_param_end
-  };
-  struct KycAmountCheckContext ctx = {
-    .cb = kac,
-    .cb_cls = kac_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (
-    pg->conn,
-    "select_kyc_relevant_aggregation_events",
-    params,
-    &get_kyc_amounts_cb,
-    &ctx);
-  if (GNUNET_OK != ctx.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
-
-
-/**
- * Call @a kac on merged reserve amounts after @a time_limit which are relevant for a
- * KYC trigger for a the wallet identified by @a h_payto.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_payto account identifier
- * @param time_limit oldest transaction that could be relevant
- * @param kac function to call for each applicable amount, in reverse chronological order (or until @a kac aborts by returning anything except #GNUNET_OK).
- * @param kac_cls closure for @a kac
- * @return transaction status code, @a kac aborting with #GNUNET_NO is not an error
- */
-static enum GNUNET_DB_QueryStatus
-postgres_select_merge_amounts_for_kyc_check (
-  void *cls,
-  const struct TALER_PaytoHashP *h_payto,
-  struct GNUNET_TIME_Absolute time_limit,
-  TALER_EXCHANGEDB_KycAmountCallback kac,
-  void *kac_cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_absolute_time (&time_limit),
-    GNUNET_PQ_query_param_end
-  };
-  struct KycAmountCheckContext ctx = {
-    .cb = kac,
-    .cb_cls = kac_cls,
-    .pg = pg,
-    .status = GNUNET_OK
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_multi_select (
-    pg->conn,
-    "select_kyc_relevant_merge_events",
-    params,
-    &get_kyc_amounts_cb,
-    &ctx);
-  if (GNUNET_OK != ctx.status)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return qs;
-}
 
 
 /**
@@ -11639,14 +9206,14 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->create_tables = &postgres_create_tables;
 
   plugin->setup_foreign_servers = &postgres_setup_foreign_servers;
-  plugin->start = &postgres_start;
-  plugin->start_read_committed = &postgres_start_read_committed;
-  plugin->start_read_only = &postgres_start_read_only;
-  plugin->rollback = &postgres_rollback;
+ 
+ 
+
+ 
   plugin->event_listen = &postgres_event_listen;
   plugin->event_listen_cancel = &postgres_event_listen_cancel;
   plugin->event_notify = &postgres_event_notify;
-  plugin->insert_denomination_info = &postgres_insert_denomination_info;
+
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
   plugin->iterate_denominations = &postgres_iterate_denominations;
@@ -11662,7 +9229,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
   plugin->get_policy_details = &postgres_get_policy_details;
   plugin->persist_policy_details = &postgres_persist_policy_details;
-  plugin->do_batch_withdraw_insert = &postgres_do_batch_withdraw_insert;
+
   plugin->do_deposit = &postgres_do_deposit;
   plugin->add_policy_fulfillment_proof = &postgres_add_policy_fulfillment_proof;
   plugin->do_melt = &postgres_do_melt;
@@ -11750,8 +9317,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_lookup_auditor_status;
   plugin->insert_auditor
     = &postgres_insert_auditor;
-  plugin->update_auditor
-    = &postgres_update_auditor;
+
   plugin->lookup_wire_timestamp
     = &postgres_lookup_wire_timestamp;
   plugin->insert_wire
@@ -11772,14 +9338,11 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_auditor_denom_sig;
   plugin->select_auditor_denom_sig
     = &postgres_select_auditor_denom_sig;
-  plugin->lookup_wire_fee_by_time
-    = &postgres_lookup_wire_fee_by_time;
-  plugin->lookup_global_fee_by_time
-    = &postgres_lookup_global_fee_by_time;
+
+
   plugin->add_denomination_key
     = &postgres_add_denomination_key;
-  plugin->activate_signing_key
-    = &postgres_activate_signing_key;
+
   plugin->lookup_signing_key
     = &postgres_lookup_signing_key;
   plugin->begin_shard
@@ -11788,71 +9351,35 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_abort_shard;
   plugin->complete_shard
     = &postgres_complete_shard;
-  plugin->begin_revolving_shard
-    = &postgres_begin_revolving_shard;
+
   plugin->release_revolving_shard
     = &postgres_release_revolving_shard;
   plugin->delete_shard_locks
     = &postgres_delete_shard_locks;
   plugin->set_extension_manifest
     = &postgres_set_extension_manifest;
-  plugin->get_extension_manifest
-    = &postgres_get_extension_manifest;
+
   plugin->insert_partner
     = &postgres_insert_partner;
-  plugin->insert_contract
-    = &postgres_insert_contract;
-  plugin->select_contract
-    = &postgres_select_contract;
-  plugin->select_contract_by_purse
-    = &postgres_select_contract_by_purse;
+
+
+
   plugin->expire_purse
     = &postgres_expire_purse;
   plugin->select_purse_by_merge_pub
     = &postgres_select_purse_by_merge_pub;
   
-  plugin->do_purse_deposit
-    = &postgres_do_purse_deposit;
+
   plugin->set_purse_balance
     = &postgres_set_purse_balance;
-  plugin->get_purse_deposit
-    = &postgres_get_purse_deposit;
-  plugin->do_purse_merge
-    = &postgres_do_purse_merge;
-  plugin->do_reserve_purse
-    = &postgres_do_reserve_purse;
-  plugin->select_purse_merge
-    = &postgres_select_purse_merge;
-  plugin->insert_history_request
-    = &postgres_insert_history_request;
-  plugin->insert_drain_profit
-    = &postgres_insert_drain_profit;
-  plugin->profit_drains_get_pending
-    = &postgres_profit_drains_get_pending;
-  plugin->get_drain_profit
-    = &postgres_get_drain_profit;
-  plugin->profit_drains_set_finished
-    = &postgres_profit_drains_set_finished;
-  plugin->insert_kyc_requirement_for_account
-    = &postgres_insert_kyc_requirement_for_account;
-  plugin->insert_kyc_requirement_process
-    = &postgres_insert_kyc_requirement_process;
-  plugin->update_kyc_process_by_row
-    = &postgres_update_kyc_process_by_row;
-  plugin->lookup_kyc_requirement_by_row
-    = &postgres_lookup_kyc_requirement_by_row;
-  plugin->lookup_kyc_process_by_account
-    = &postgres_lookup_kyc_process_by_account;
-  plugin->kyc_provider_account_lookup
-    = &postgres_kyc_provider_account_lookup;
-  plugin->select_satisfied_kyc_processes
-    = &postgres_select_satisfied_kyc_processes;
-  plugin->select_withdraw_amounts_for_kyc_check
-    = &postgres_select_withdraw_amounts_for_kyc_check;
-  plugin->select_aggregation_amounts_for_kyc_check
-    = &postgres_select_aggregation_amounts_for_kyc_check;
-  plugin->select_merge_amounts_for_kyc_check
-    = &postgres_select_merge_amounts_for_kyc_check;
+
+
+
+
+
+
+
+
   /* NEW style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
@@ -11912,6 +9439,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_reserve_closed_above_serial_id;
   plugin->select_reserve_open_above_serial_id
     = &TEH_PG_select_reserve_open_above_serial_id;
+  /*need to sort*/
   plugin->insert_purse_request
     = &TEH_PG_insert_purse_request;
   plugin->iterate_active_signkeys
@@ -11926,7 +9454,82 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_aggregation_tracking;
   plugin->setup_partitions
     = &TEH_PG_setup_partitions;
+  plugin->select_aggregation_amounts_for_kyc_check
+    = &TEH_PG_select_aggregation_amounts_for_kyc_check;
 
+  plugin->select_satisfied_kyc_processes
+    = &TEH_PG_select_satisfied_kyc_processes;
+  plugin->kyc_provider_account_lookup
+    = &TEH_PG_kyc_provider_account_lookup;
+  plugin->lookup_kyc_requirement_by_row
+    = &TEH_PG_lookup_kyc_requirement_by_row;
+  plugin->insert_kyc_requirement_for_account
+    = &TEH_PG_insert_kyc_requirement_for_account;  
+
+  
+  plugin->lookup_kyc_process_by_account
+    = &TEH_PG_lookup_kyc_process_by_account;
+  plugin->update_kyc_process_by_row
+    = &TEH_PG_update_kyc_process_by_row;
+  plugin->insert_kyc_requirement_process
+    = &TEH_PG_insert_kyc_requirement_process;
+  plugin->select_withdraw_amounts_for_kyc_check
+    = &TEH_PG_select_withdraw_amounts_for_kyc_check;
+  plugin->select_merge_amounts_for_kyc_check
+    = &TEH_PG_select_merge_amounts_for_kyc_check;
+  plugin->profit_drains_set_finished
+    = &TEH_PG_profit_drains_set_finished;
+  plugin->profit_drains_get_pending
+    = &TEH_PG_profit_drains_get_pending;
+  plugin->get_drain_profit
+    = &TEH_PG_get_drain_profit;
+  plugin->get_purse_deposit
+    = &TEH_PG_get_purse_deposit;
+  plugin->insert_contract
+    = &TEH_PG_insert_contract;
+  plugin->select_contract
+    = &TEH_PG_select_contract;
+  plugin->select_purse_merge
+    = &TEH_PG_select_purse_merge;
+  plugin->select_contract_by_purse
+    = &TEH_PG_select_contract_by_purse;
+  plugin->insert_drain_profit
+    = &TEH_PG_insert_drain_profit;
+  plugin->do_reserve_purse
+    = &TEH_PG_do_reserve_purse;
+  plugin->lookup_global_fee_by_time
+    = &TEH_PG_lookup_global_fee_by_time;
+  plugin->do_purse_deposit
+    = &TEH_PG_do_purse_deposit;
+  plugin->activate_signing_key
+    = &TEH_PG_activate_signing_key;
+  plugin->update_auditor
+    = &TEH_PG_update_auditor;
+  plugin->begin_revolving_shard
+    = &TEH_PG_begin_revolving_shard;
+  plugin->get_extension_manifest
+    = &TEH_PG_get_extension_manifest;
+  plugin->insert_history_request
+    = &TEH_PG_insert_history_request;
+  plugin->do_purse_merge
+    = &TEH_PG_do_purse_merge;
+  plugin->start_read_committed
+    = &TEH_PG_start_read_committed;
+  plugin->start_read_only
+    = &TEH_PG_start_read_only;
+  plugin->insert_denomination_info
+    = &TEH_PG_insert_denomination_info;
+  plugin->do_batch_withdraw_insert
+    = &TEH_PG_do_batch_withdraw_insert;
+  plugin->lookup_wire_fee_by_time
+    = &TEH_PG_lookup_wire_fee_by_time;
+  plugin->start
+    = &TEH_PG_start;
+  plugin->rollback
+    = &TEH_PG_rollback;
+
+
+  
   return plugin;
 }
 

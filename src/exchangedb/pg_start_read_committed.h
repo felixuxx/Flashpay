@@ -14,30 +14,26 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_start_read_commited.h
+ * @brief implementation of the start_read_commited function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_START_READ_COMMITTED_H
+#define PG_START_READ_COMMITTED_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
-
 /**
- * Function called to insert aggregation information into the DB.
+ * Start a READ COMMITTED transaction.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return transaction status code
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param name unique name identifying the transaction (for debugging)
+ *             must point to a constant
+ * @return #GNUNET_OK on success
  */
-enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
+enum GNUNET_GenericReturnValue
+TEH_PG_start_read_committed (void *cls,
+                             const char *name);
 
 #endif
-

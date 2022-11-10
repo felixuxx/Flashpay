@@ -14,30 +14,29 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_select_contract_by_purse.h
+ * @brief implementation of the select_contract_by_purse function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_SELECT_CONTRACT_BY_PURSE_H
+#define PG_SELECT_CONTRACT_BY_PURSE_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
+
 /**
- * Function called to insert aggregation information into the DB.
+ * Function called to retrieve an encrypted contract.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param purse_pub key to lookup the contract by
+ * @param[out] econtract set to the encrypted contract on success, to be freed by the caller
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_select_contract_by_purse (
   void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
-
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  struct TALER_EncryptedContract *econtract);
 #endif
-

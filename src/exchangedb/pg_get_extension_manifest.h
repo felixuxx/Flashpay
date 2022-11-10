@@ -14,30 +14,28 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_get_extension_manifest.h
+ * @brief implementation of the get_extension_manifest function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_GET_EXTENSION_MANIFEST_H
+#define PG_GET_EXTENSION_MANIFEST_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
 /**
- * Function called to insert aggregation information into the DB.
+ * Function called to get the manifest of an extension
+ * (age-restriction, policy_extension_...)
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param extension_name the name of the extension
+ * @param[out] manifest JSON object of the manifest as string
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
-
+TEH_PG_get_extension_manifest (void *cls,
+                                 const char *extension_name,
+                               char **manifest);
 #endif
-

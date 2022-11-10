@@ -14,30 +14,35 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_insert_kyc_requirement_process.h
+ * @brief implementation of the insert_kyc_requirement_process function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_INSERT_KYC_REQUIREMENT_PROCESS_H
+#define PG_INSERT_KYC_REQUIREMENT_PROCESS_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
+
 /**
- * Function called to insert aggregation information into the DB.
+ * Begin KYC requirement process.
  *
  * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return transaction status code
+ * @param h_payto account that must be KYC'ed
+ * @param provider_section provider that must be checked
+ * @param provider_account_id provider account ID
+ * @param provider_legitimization_id provider legitimization ID
+ * @param[out] process_row row the process is stored under
+ * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_insert_kyc_requirement_process (
   void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
-
+  const struct TALER_PaytoHashP *h_payto,
+  const char *provider_section,
+  const char *provider_account_id,
+  const char *provider_legitimization_id,
+  uint64_t *process_row);
 #endif
-

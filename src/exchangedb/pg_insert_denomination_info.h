@@ -14,30 +14,29 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_insert_denomination_info.h
+ * @brief implementation of the insert_denomination_info function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_INSERT_DENOMINATION_INFO_H
+#define PG_INSERT_DENOMINATION_INFO_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
-
 /**
- * Function called to insert aggregation information into the DB.
+ * Insert a denomination key's public information into the database for
+ * reference by auditors and other consistency checks.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
- * @return transaction status code
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param denom_pub the public key used for signing coins of this denomination
+ * @param issue issuing information with value, fees and other info about the coin
+ * @return status of the query
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_insert_denomination_info (
   void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue);
 
 #endif
-

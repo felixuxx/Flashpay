@@ -14,30 +14,39 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_get_drain_profit.h
+ * @brief implementation of the get_drain_profit function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_GET_DRAIN_PROFIT_H
+#define PG_GET_DRAIN_PROFIT_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
 /**
- * Function called to insert aggregation information into the DB.
+ * Function called to get information about a profit drain event.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param wtid wire transfer ID to look up drain event for
+ * @param[out] serial set to serial ID of the entry
+ * @param[out] account_section set to account to drain
+ * @param[out] payto_uri set to account to wire funds to
+ * @param[out] request_timestamp set to time of the signature
+ * @param[out] amount set to amount to wire
+ * @param[out] master_sig set to signature affirming the operation
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_get_drain_profit (
   void *cls,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
+  uint64_t *serial,
+  char **account_section,
+  char **payto_uri,
+  struct GNUNET_TIME_Timestamp *request_timestamp,
+  struct TALER_Amount *amount,
+  struct TALER_MasterSignatureP *master_sig);
 
 #endif
-

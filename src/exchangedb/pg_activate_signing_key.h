@@ -14,30 +14,31 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_activate_signing_key.h
+ * @brief implementation of the activate_signing_key function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_ACTIVATE_SIGNING_KEY_H
+#define PG_ACTIVATE_SIGNING_KEY_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
 /**
- * Function called to insert aggregation information into the DB.
+ * Add signing key.
  *
  * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param exchange_pub the exchange online signing public key
+ * @param meta meta data about @a exchange_pub
+ * @param master_sig master signature to add
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_activate_signing_key (
   void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig);
 
 #endif
-

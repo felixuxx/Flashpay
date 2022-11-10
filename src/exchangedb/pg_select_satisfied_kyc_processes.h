@@ -14,30 +14,34 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_insert_aggregation_tracking.h
- * @brief implementation of the insert_aggregation_tracking function for Postgres
+ * @file exchangedb/pg_select_satisfied_kyc_processes.h
+ * @brief implementation of the select_satisfied_kyc_processes function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_INSERT_AGGREGATION_TRACKING_H
-#define PG_INSERT_AGGREGATION_TRACKING_H
+#ifndef PG_SELECT_SATISFIED_KYC_PROCESSES_H
+#define PG_SELECT_SATISFIED_KYC_PROCESSES_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
 /**
- * Function called to insert aggregation information into the DB.
+ * Call us on KYC processes satisfied for the given
+ * account.
  *
- * @param cls closure
- * @param wtid the raw wire transfer identifier we used
- * @param deposit_serial_id row in the deposits table for which this is aggregation data
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param h_payto account identifier
+ * @param spc function to call for each satisfied KYC process
+ * @param spc_cls closure for @a spc
  * @return transaction status code
  */
+
+
 enum GNUNET_DB_QueryStatus
-TEH_PG_insert_aggregation_tracking (
+TEH_PG_select_satisfied_kyc_processes (
   void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  unsigned long long deposit_serial_id);
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_SatisfiedProviderCallback spc,
+  void *spc_cls);
 
 #endif
-
