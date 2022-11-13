@@ -787,7 +787,8 @@ more:
 
             ec = (enum TALER_ErrorCode) ntohl (sf->ec);
             GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                        "Signing failed with status %d!\n",
+                        "Signing %u failed with status %d!\n",
+                        wpos,
                         ec);
             wpos++;
             if (wpos == rend)

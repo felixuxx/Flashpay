@@ -2634,6 +2634,30 @@ TALER_CRYPTO_helper_cs_r_derive_withdraw (
 
 /**
  * Ask the helper to derive R using the information
+ * from @a cdrs.
+ *
+ * This operation will block until the R has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper to process connection
+ * @param cdrs array with derivation input data
+ * @param cdrs_length length of the @a cdrs array
+ * @param[out] crp array set to the pair of R values, must be of length @a cdrs_length
+ * @return set to the error code (or #TALER_EC_NONE on success)
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_batch_derive_withdraw (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
+  unsigned int cdrs_length,
+  struct TALER_DenominationCSPublicRPairP *crps);
+
+
+/**
+ * Ask the helper to derive R using the information
  * from @a cdr.
  *
  * This operation will block until the R has been obtained.  Should
@@ -2652,6 +2676,30 @@ TALER_CRYPTO_helper_cs_r_derive_melt (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   struct TALER_DenominationCSPublicRPairP *crp);
+
+
+/**
+ * Ask the helper to derive R using the information
+ * from @a cdrs.
+ *
+ * This operation will block until the R has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper to process connection
+ * @param cdrs array with derivation input data
+ * @param cdrs_length length of the @a cdrs array
+ * @param[out] crps array set to the pair of R values, must be of length @a cdrs_length
+ * @return set to the error code (or #TALER_EC_NONE on success)
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_batch_derive_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
+  unsigned int cdrs_length,
+  struct TALER_DenominationCSPublicRPairP *crps);
 
 
 /**
