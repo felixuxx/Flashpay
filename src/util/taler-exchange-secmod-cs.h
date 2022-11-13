@@ -35,10 +35,12 @@
 
 #define TALER_HELPER_CS_MT_RES_SIGNATURE 9
 #define TALER_HELPER_CS_MT_RES_SIGN_FAILURE 10
-#define TALER_HELPER_CS_MT_RES_RDERIVE 11
-#define TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE 12
+#define TALER_HELPER_CS_MT_RES_BATCH_SIGN_FAILURE 11
+#define TALER_HELPER_CS_MT_RES_RDERIVE 12
+#define TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE 13
+#define TALER_HELPER_CS_MT_RES_BATCH_RDERIVE_FAILURE 14
 
-#define TALER_HELPER_CS_SYNCED 13
+#define TALER_HELPER_CS_SYNCED 15
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -134,8 +136,7 @@ struct TALER_CRYPTO_CsSignRequestMessage
   struct TALER_CsPubHashP h_cs;
 
   /**
-   * Planchet containing message to sign
-   * and nonce to derive R from
+   * Planchet containing message to sign and nonce to derive R from
    */
   struct TALER_BlindedCsPlanchet planchet;
 

@@ -493,7 +493,7 @@ more:
       switch (ntohs (hdr->type))
       {
       case TALER_HELPER_CS_MT_RES_SIGNATURE:
-        if (msize < sizeof (struct TALER_CRYPTO_SignResponse))
+        if (msize != sizeof (struct TALER_CRYPTO_SignResponse))
         {
           GNUNET_break_op (0);
           do_disconnect (dh);

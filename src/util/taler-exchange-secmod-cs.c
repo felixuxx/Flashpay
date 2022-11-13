@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -161,6 +161,164 @@ struct Denomination
 
 
 /**
+ * A semaphore.
+ */
+struct Semaphore
+{
+  /**
+   * Mutex for the semaphore.
+   */
+  pthread_mutex_t mutex;
+
+  /**
+   * Condition variable for the semaphore.
+   */
+  pthread_cond_t cv;
+
+  /**
+   * Counter of the semaphore.
+   */
+  unsigned int ctr;
+};
+
+
+/**
+ * Job in a batch sign request.
+ */
+struct BatchJob;
+
+/**
+ * Handle for a thread that does work in batch signing.
+ */
+struct Worker
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct Worker *prev;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct Worker *next;
+
+  /**
+   * Job this worker should do next.
+   */
+  struct BatchJob *job;
+
+  /**
+   * Semaphore to signal the worker that a job is available.
+   */
+  struct Semaphore sem;
+
+  /**
+   * Handle for this thread.
+   */
+  pthread_t pt;
+
+  /**
+   * Set to true if the worker should terminate.
+   */
+  bool do_shutdown;
+};
+
+
+/**
+ * Job in a batch sign request.
+ */
+struct BatchJob
+{
+
+  /**
+   * Thread doing the work.
+   */
+  struct Worker *worker;
+
+  /**
+   * Semaphore to signal that the job is finished.
+   */
+  struct Semaphore sem;
+
+  /**
+   * Computation status.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Which type of request is this?
+   */
+  enum { TYPE_SIGN, TYPE_RDERIVE } type;
+
+  /**
+   * Details depending on @e type.
+   */
+  union
+  {
+
+    /**
+     * Details if @e type is TYPE_SIGN.
+     */
+    struct
+    {
+      /**
+       * Request we are working on.
+       */
+      const struct TALER_CRYPTO_CsSignRequestMessage *sr;
+
+      /**
+       * Result with the signature.
+       */
+      struct TALER_BlindedDenominationCsSignAnswer cs_answer;
+    } sign;
+
+    /**
+     * Details if type is TYPE_RDERIVE.
+     */
+    struct
+    {
+      /**
+       * Request we are answering.
+       */
+      const struct TALER_CRYPTO_CsRDeriveRequest *rdr;
+
+      /**
+       * Pair of points to return.
+       */
+      struct TALER_DenominationCSPublicRPairP rpairp;
+
+    } rderive;
+
+  } details;
+
+};
+
+/**
+ * Head of DLL of workers ready for more work.
+ */
+static struct Worker *worker_head;
+
+/**
+ * Tail of DLL of workers ready for more work.
+ */
+static struct Worker *worker_tail;
+
+/**
+ * Lock for manipulating the worker DLL.
+ */
+static pthread_mutex_t worker_lock;
+
+/**
+ * Total number of workers that were started.
+ */
+static unsigned int workers;
+
+/**
+ * Semaphore used to grab a worker.
+ */
+static struct Semaphore worker_sem;
+
+/**
  * Return value from main().
  */
 static int global_ret;
@@ -225,6 +383,12 @@ static pthread_mutex_t keys_lock;
  */
 static uint64_t key_gen;
 
+/**
+ * Number of workers to launch. Note that connections to
+ * exchanges are NOT workers.
+ */
+static unsigned int max_workers = 16;
+
 
 /**
  * Generate the announcement message for @a dk.
@@ -267,6 +431,110 @@ generate_response (struct DenominationKey *dk)
 
 
 /**
+ * Do the actual signing work.
+ *
+ * @param h_cs key to sign with
+ * @param planchet message to sign
+ * @param for_melt true if for melting
+ * @param[out] cs_sigp set to the CS signature
+ * @return #TALER_EC_NONE on success
+ */
+static enum TALER_ErrorCode
+do_sign (const struct TALER_CsPubHashP *h_cs,
+         const struct TALER_BlindedCsPlanchet *planchet,
+         bool for_melt,
+         struct TALER_BlindedDenominationCsSignAnswer *cs_sigp)
+{
+  struct GNUNET_CRYPTO_CsRSecret r[2];
+  struct DenominationKey *dk;
+
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  dk = GNUNET_CONTAINER_multihashmap_get (keys,
+                                          &h_cs->hash);
+  if (NULL == dk)
+  {
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing request failed, denomination key %s unknown\n",
+                GNUNET_h2s (&h_cs->hash));
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+  }
+  if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
+  {
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing request failed, denomination key %s is not yet valid\n",
+                GNUNET_h2s (&h_cs->hash));
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received request to sign over bytes with key %s\n",
+              GNUNET_h2s (&h_cs->hash));
+  GNUNET_assert (dk->rc < UINT_MAX);
+  dk->rc++;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  GNUNET_CRYPTO_cs_r_derive (&planchet->nonce.nonce,
+                             for_melt ? "rm" : "rw",
+                             &dk->denom_priv,
+                             r);
+  cs_sigp->b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
+                                             r,
+                                             planchet->c,
+                                             &planchet->nonce.nonce,
+                                             &cs_sigp->s_scalar);
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  GNUNET_assert (dk->rc > 0);
+  dk->rc--;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  return TALER_EC_NONE;
+}
+
+
+/**
+ * Generate error response that signing failed.
+ *
+ * @param client client to send response to
+ * @param ec error code to include
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+fail_sign (struct TES_Client *client,
+           enum TALER_ErrorCode ec)
+{
+  struct TALER_CRYPTO_SignFailure sf = {
+    .header.size = htons (sizeof (sf)),
+    .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
+    .ec = htonl (ec)
+  };
+
+  return TES_transmit (client->csock,
+                       &sf.header);
+}
+
+
+/**
+ * Generate signature response.
+ *
+ * @param client client to send response to
+ * @param cs_answer signature to send
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+send_signature (struct TES_Client *client,
+                const struct TALER_BlindedDenominationCsSignAnswer *cs_answer)
+{
+  struct TALER_CRYPTO_SignResponse sres;
+
+  sres.header.size = htons (sizeof (sres));
+  sres.header.type = htons (TALER_HELPER_CS_MT_RES_SIGNATURE);
+  sres.reserved = htonl (0);
+  sres.cs_answer = *cs_answer;
+  return TES_transmit (client->csock,
+                       &sres.header);
+}
+
+
+/**
  * Handle @a client request @a sr to create signature. Create the
  * signature using the respective key and return the result to
  * the client.
@@ -279,92 +547,496 @@ static enum GNUNET_GenericReturnValue
 handle_sign_request (struct TES_Client *client,
                      const struct TALER_CRYPTO_CsSignRequestMessage *sr)
 {
-  struct DenominationKey *dk;
-  struct GNUNET_CRYPTO_CsRSecret r[2];
   struct TALER_BlindedDenominationCsSignAnswer cs_answer;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
-  bool for_melt;
+  enum TALER_ErrorCode ec;
+  enum GNUNET_GenericReturnValue ret;
+
+  ec = do_sign (&sr->h_cs,
+                &sr->planchet,
+                (0 != ntohl (sr->for_melt)),
+                &cs_answer);
+  if (TALER_EC_NONE != ec)
+  {
+    return fail_sign (client,
+                      ec);
+  }
+  ret = send_signature (client,
+                        &cs_answer);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Sent CS signature after %s\n",
+              GNUNET_TIME_relative2s (
+                GNUNET_TIME_absolute_get_duration (now),
+                GNUNET_YES));
+  return ret;
+}
+
+
+/**
+ * Do the actual deriving work.
+ *
+ * @param h_cs key to sign with
+ * @param nonce nonce to derive from
+ * @param for_melt true if for melting
+ * @param[out] rpairp set to the derived values
+ * @return #TALER_EC_NONE on success
+ */
+static enum TALER_ErrorCode
+do_derive (const struct TALER_CsPubHashP *h_cs,
+           const struct TALER_CsNonce *nonce,
+           bool for_melt,
+           struct TALER_DenominationCSPublicRPairP *rpairp)
+{
+  struct DenominationKey *dk;
+  struct TALER_DenominationCSPrivateRPairP r_priv;
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
-                                          &sr->h_cs.hash);
+                                          &h_cs->hash);
   if (NULL == dk)
   {
-    struct TALER_CRYPTO_SignFailure sf = {
-      .header.size = htons (sizeof (sr)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
-    };
-
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Signing request failed, denomination key %s unknown\n",
-                GNUNET_h2s (&sr->h_cs.hash));
-    return TES_transmit (client->csock,
-                         &sf.header);
+                "R Derive request failed, denomination key %s unknown\n",
+                GNUNET_h2s (&h_cs->hash));
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
   }
   if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
   {
-    /* it is too early */
-    struct TALER_CRYPTO_SignFailure sf = {
-      .header.size = htons (sizeof (sr)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
-    };
-
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Signing request failed, denomination key %s is not yet valid\n",
-                GNUNET_h2s (&sr->h_cs.hash));
-    return TES_transmit (client->csock,
-                         &sf.header);
+                "R Derive request failed, denomination key %s is not yet valid\n",
+                GNUNET_h2s (&h_cs->hash));
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY;
   }
-  for_melt = (0 != ntohl (sr->for_melt));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received request to sign over bytes with key %s\n",
-              GNUNET_h2s (&sr->h_cs.hash));
+              "Received request to derive R with key %s\n",
+              GNUNET_h2s (&h_cs->hash));
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  GNUNET_CRYPTO_cs_r_derive (&sr->planchet.nonce.nonce,
+  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
                              for_melt ? "rm" : "rw",
                              &dk->denom_priv,
-                             r);
-  cs_answer.b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
-                                              r,
-                                              sr->planchet.c,
-                                              &sr->planchet.nonce.nonce,
-                                              &cs_answer.s_scalar);
-
+                             r_priv.r);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   GNUNET_assert (dk->rc > 0);
   dk->rc--;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  {
-    struct TALER_CRYPTO_SignResponse *sr;
-    size_t tsize;
-    enum GNUNET_GenericReturnValue ret;
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[0],
+                                 &rpairp->r_pub[0]);
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[1],
+                                 &rpairp->r_pub[1]);
+  return TALER_EC_NONE;
+}
 
-    tsize = sizeof (*sr) + sizeof(cs_answer);
-    GNUNET_assert (tsize < UINT16_MAX);
-    sr = GNUNET_malloc (tsize);
-    sr->header.size = htons (tsize);
-    sr->header.type = htons (TALER_HELPER_CS_MT_RES_SIGNATURE);
-    sr->cs_answer = cs_answer;
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sending CS signature after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    ret = TES_transmit (client->csock,
-                        &sr->header);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sent CS signature after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    GNUNET_free (sr);
-    return ret;
+
+/**
+ * Generate derivation response.
+ *
+ * @param client client to send response to
+ * @param r_pub public point value pair to send
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+send_derivation (struct TES_Client *client,
+                 const struct TALER_DenominationCSPublicRPairP *r_pub)
+{
+  struct TALER_CRYPTO_RDeriveResponse rdr = {
+    .header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse)),
+    .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE),
+    .r_pub = *r_pub
+  };
+
+  return TES_transmit (client->csock,
+                       &rdr.header);
+}
+
+
+/**
+ * Initialize a semaphore @a sem with a value of @a val.
+ *
+ * @param[out] sem semaphore to initialize
+ * @param val initial value of the semaphore
+ */
+static void
+sem_init (struct Semaphore *sem,
+          unsigned int val)
+{
+  GNUNET_assert (0 ==
+                 pthread_mutex_init (&sem->mutex,
+                                     NULL));
+  GNUNET_assert (0 ==
+                 pthread_cond_init (&sem->cv,
+                                    NULL));
+  sem->ctr = val;
+}
+
+
+/**
+ * Decrement semaphore, blocks until this is possible.
+ *
+ * @param[in,out] sem semaphore to decrement
+ */
+static void
+sem_down (struct Semaphore *sem)
+{
+  GNUNET_assert (0 == pthread_mutex_lock (&sem->mutex));
+  while (0 == sem->ctr)
+  {
+    pthread_cond_wait (&sem->cv,
+                       &sem->mutex);
+  }
+  sem->ctr--;
+  GNUNET_assert (0 == pthread_mutex_unlock (&sem->mutex));
+}
+
+
+/**
+ * Increment semaphore, blocks until this is possible.
+ *
+ * @param[in,out] sem semaphore to decrement
+ */
+static void
+sem_up (struct Semaphore *sem)
+{
+  GNUNET_assert (0 == pthread_mutex_lock (&sem->mutex));
+  sem->ctr++;
+  GNUNET_assert (0 == pthread_mutex_unlock (&sem->mutex));
+  pthread_cond_signal (&sem->cv);
+}
+
+
+/**
+ * Release resources used by @a sem.
+ *
+ * @param[in] sem semaphore to release (except the memory itself)
+ */
+static void
+sem_done (struct Semaphore *sem)
+{
+  GNUNET_break (0 == pthread_cond_destroy (&sem->cv));
+  GNUNET_break (0 == pthread_mutex_destroy (&sem->mutex));
+}
+
+
+/**
+ * Main logic of a worker thread. Grabs work, does it,
+ * grabs more work.
+ *
+ * @param cls a `struct Worker *`
+ * @returns cls
+ */
+static void *
+worker (void *cls)
+{
+  struct Worker *w = cls;
+
+  while (true)
+  {
+    GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+    GNUNET_CONTAINER_DLL_insert (worker_head,
+                                 worker_tail,
+                                 w);
+    GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+    sem_up (&worker_sem);
+    sem_down (&w->sem);
+    if (w->do_shutdown)
+      break;
+    {
+      struct BatchJob *bj = w->job;
+
+      switch (bj->type)
+      {
+      case TYPE_SIGN:
+        {
+          const struct TALER_CRYPTO_CsSignRequestMessage *sr
+            = bj->details.sign.sr;
+
+          bj->ec = do_sign (&sr->h_cs,
+                            &sr->planchet,
+                            (0 != ntohl (sr->for_melt)),
+                            &bj->details.sign.cs_answer);
+          break;
+        }
+      case TYPE_RDERIVE:
+        {
+          const struct TALER_CRYPTO_CsRDeriveRequest *rdr
+            = bj->details.rderive.rdr;
+          bj->ec = do_derive (&rdr->h_cs,
+                              &rdr->nonce,
+                              (0 != ntohl (rdr->for_melt)),
+                              &bj->details.rderive.rpairp);
+          break;
+        }
+      }
+      sem_up (&bj->sem);
+      w->job = NULL;
+    }
+  }
+  return w;
+}
+
+
+/**
+ * Start batch job @a bj to sign @a sr.
+ *
+ * @param sr signature request to answer
+ * @param[out] bj job data structure
+ */
+static void
+start_sign_job (const struct TALER_CRYPTO_CsSignRequestMessage *sr,
+                struct BatchJob *bj)
+{
+  sem_init (&bj->sem,
+            0);
+  bj->type = TYPE_SIGN;
+  bj->details.sign.sr = sr;
+  sem_down (&worker_sem);
+  GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+  bj->worker = worker_head;
+  GNUNET_CONTAINER_DLL_remove (worker_head,
+                               worker_tail,
+                               bj->worker);
+  GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+  bj->worker->job = bj;
+  sem_up (&bj->worker->sem);
+}
+
+
+/**
+ * Start batch job @a bj to derive @a rdr.
+ *
+ * @param rdr derivation request to answer
+ * @param[out] bj job data structure
+ */
+static void
+start_derive_job (const struct TALER_CRYPTO_CsRDeriveRequest *rdr,
+                  struct BatchJob *bj)
+{
+  sem_init (&bj->sem,
+            0);
+  bj->type = TYPE_RDERIVE;
+  bj->details.rderive.rdr = rdr;
+  sem_down (&worker_sem);
+  GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+  bj->worker = worker_head;
+  GNUNET_CONTAINER_DLL_remove (worker_head,
+                               worker_tail,
+                               bj->worker);
+  GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+  bj->worker->job = bj;
+  sem_up (&bj->worker->sem);
+}
+
+
+/**
+ * Finish a job @a bj for a @a client.
+ *
+ * @param client who made the request
+ * @param[in,out] bj job to finish
+ */
+static void
+finish_job (struct TES_Client *client,
+            struct BatchJob *bj)
+{
+  sem_down (&bj->sem);
+  sem_done (&bj->sem);
+  if (TALER_EC_NONE != bj->ec)
+  {
+    fail_sign (client,
+               bj->ec);
+    return;
+  }
+  switch (bj->type)
+  {
+  case TYPE_SIGN:
+    send_signature (client,
+                    &bj->details.sign.cs_answer);
+    break;
+  case TYPE_RDERIVE:
+    send_derivation (client,
+                     &bj->details.rderive.rpairp);
+    break;
+  }
+}
+
+
+/**
+ * Handle @a client request @a sr to create a batch of signature. Creates the
+ * signatures using the respective key and return the results to the client.
+ *
+ * @param client the client making the request
+ * @param bsr the request details
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+handle_batch_sign_request (struct TES_Client *client,
+                           const struct TALER_CRYPTO_BatchSignRequest *bsr)
+{
+  uint32_t bs = ntohl (bsr->batch_size);
+  uint16_t size = ntohs (bsr->header.size) - sizeof (*bsr);
+  const void *off = (const void *) &bsr[1];
+  unsigned int idx = 0;
+  struct BatchJob jobs[bs];
+  bool failure = false;
+
+  if (bs > TALER_MAX_FRESH_COINS)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  while ( (bs > 0) &&
+          (size > sizeof (struct TALER_CRYPTO_CsSignRequestMessage)) )
+  {
+    const struct TALER_CRYPTO_CsSignRequestMessage *sr = off;
+    uint16_t s = ntohs (sr->header.size);
+
+    if (s > size)
+    {
+      failure = true;
+      bs = idx;
+      break;
+    }
+    start_sign_job (sr,
+                    &jobs[idx++]);
+    off += s;
+    size -= s;
+  }
+  for (unsigned int i = 0; i<bs; i++)
+    finish_job (client,
+                &jobs[i]);
+  if (failure)
+  {
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sf)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_BATCH_SIGN_FAILURE),
+      .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
+    };
+
+    GNUNET_break (0);
+    return TES_transmit (client->csock,
+                         &sf.header);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Handle @a client request @a sr to create a batch of derivations. Creates the
+ * derivations using the respective key and return the results to the client.
+ *
+ * @param client the client making the request
+ * @param bdr the request details
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+handle_batch_derive_request (struct TES_Client *client,
+                             const struct TALER_CRYPTO_BatchDeriveRequest *bdr)
+{
+  uint32_t bs = ntohl (bdr->batch_size);
+  uint16_t size = ntohs (bdr->header.size) - sizeof (*bdr);
+  const void *off = (const void *) &bdr[1];
+  unsigned int idx = 0;
+  struct BatchJob jobs[bs];
+  bool failure = false;
+
+  if (bs > TALER_MAX_FRESH_COINS)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  while ( (bs > 0) &&
+          (size > sizeof (struct TALER_CRYPTO_CsRDeriveRequest)) )
+  {
+    const struct TALER_CRYPTO_CsRDeriveRequest *rdr = off;
+    uint16_t s = ntohs (rdr->header.size);
+
+    if ( (s > size) ||
+         (s != sizeof (*rdr)) )
+    {
+      failure = true;
+      bs = idx;
+      break;
+    }
+    start_derive_job (rdr,
+                      &jobs[idx++]);
+    off += s;
+    size -= s;
+  }
+  for (unsigned int i = 0; i<bs; i++)
+    finish_job (client,
+                &jobs[i]);
+  if (failure)
+  {
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sf)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_BATCH_RDERIVE_FAILURE),
+      .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
+    };
+
+    GNUNET_break (0);
+    return TES_transmit (client->csock,
+                         &sf.header);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Start worker thread for batch processing.
+ *
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+start_worker (void)
+{
+  struct Worker *w;
+
+  w = GNUNET_new (struct Worker);
+  sem_init (&w->sem,
+            0);
+  if (0 != pthread_create (&w->pt,
+                           NULL,
+                           &worker,
+                           w))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "pthread_create");
+    GNUNET_free (w);
+    return GNUNET_SYSERR;
+  }
+  workers++;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Stop all worker threads.
+ */
+static void
+stop_workers (void)
+{
+  while (workers > 0)
+  {
+    struct Worker *w;
+    void *result;
+
+    sem_down (&worker_sem);
+    GNUNET_assert (0 == pthread_mutex_lock (&worker_lock));
+    w = worker_head;
+    GNUNET_CONTAINER_DLL_remove (worker_head,
+                                 worker_tail,
+                                 w);
+    GNUNET_assert (0 == pthread_mutex_unlock (&worker_lock));
+    w->do_shutdown = true;
+    sem_up (&w->sem);
+    pthread_join (w->pt,
+                  &result);
+    GNUNET_assert (result == w);
+    sem_done (&w->sem);
+    GNUNET_free (w);
+    workers--;
   }
 }
 
@@ -536,88 +1208,35 @@ static enum GNUNET_GenericReturnValue
 handle_r_derive_request (struct TES_Client *client,
                          const struct TALER_CRYPTO_CsRDeriveRequest *rdr)
 {
-  struct DenominationKey *dk;
-  struct TALER_DenominationCSPrivateRPairP r_priv;
   struct TALER_DenominationCSPublicRPairP r_pub;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
-  bool for_melt;
+  enum TALER_ErrorCode ec;
+  enum GNUNET_GenericReturnValue ret;
 
-  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
-  dk = GNUNET_CONTAINER_multihashmap_get (keys,
-                                          &rdr->h_cs.hash);
-  if (NULL == dk)
+  ec = do_derive (&rdr->h_cs,
+                  &rdr->nonce,
+                  (0 != ntohl (rdr->for_melt)),
+                  &r_pub);
+  if (TALER_EC_NONE != ec)
   {
     struct TALER_CRYPTO_RDeriveFailure rdf = {
-      .header.size = htons (sizeof (rdr)),
+      .header.size = htons (sizeof (rdf)),
       .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
+      .ec = htonl (ec)
     };
 
-    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "R Derive request failed, denomination key %s unknown\n",
-                GNUNET_h2s (&rdr->h_cs.hash));
     return TES_transmit (client->csock,
                          &rdf.header);
   }
-  if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
-  {
-    /* it is too early */
-    struct TALER_CRYPTO_RDeriveFailure rdf = {
-      .header.size = htons (sizeof (rdr)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
-      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
-    };
 
-    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "R Derive request failed, denomination key %s is not yet valid\n",
-                GNUNET_h2s (&rdr->h_cs.hash));
-    return TES_transmit (client->csock,
-                         &rdf.header);
-  }
-  for_melt = (0 != ntohl (rdr->for_melt));
+  ret = send_derivation (client,
+                         &r_pub);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received request to derive R with key %s\n",
-              GNUNET_h2s (&rdr->h_cs.hash));
-  GNUNET_assert (dk->rc < UINT_MAX);
-  dk->rc++;
-  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  GNUNET_CRYPTO_cs_r_derive (&rdr->nonce.nonce,
-                             for_melt ? "rm" : "rw",
-                             &dk->denom_priv,
-                             r_priv.r);
-  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[0],
-                                 &r_pub.r_pub[0]);
-  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[1],
-                                 &r_pub.r_pub[1]);
-  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
-  GNUNET_assert (dk->rc > 0);
-  dk->rc--;
-  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-
-  {
-    struct TALER_CRYPTO_RDeriveResponse rdr = {
-      .header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE),
-      .r_pub = r_pub
-    };
-    enum GNUNET_GenericReturnValue ret;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sending CS Derived R after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    ret = TES_transmit (client->csock,
-                        &rdr.header);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sent CS Derived R after %s\n",
-                GNUNET_TIME_relative2s (
-                  GNUNET_TIME_absolute_get_duration (now),
-                  GNUNET_YES));
-    return ret;
-  }
+              "Sent CS Derived R after %s\n",
+              GNUNET_TIME_relative2s (
+                GNUNET_TIME_absolute_get_duration (now),
+                GNUNET_YES));
+  return ret;
 }
 
 
@@ -654,6 +1273,24 @@ cs_work_dispatch (struct TES_Client *client,
     return handle_revoke_request (
       client,
       (const struct TALER_CRYPTO_CsRevokeRequest *) hdr);
+  case TALER_HELPER_CS_MT_REQ_BATCH_SIGN:
+    if (msize <= sizeof (struct TALER_CRYPTO_BatchSignRequest))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return handle_batch_sign_request (
+      client,
+      (const struct TALER_CRYPTO_BatchSignRequest *) hdr);
+  case TALER_HELPER_CS_MT_REQ_BATCH_RDERIVE:
+    if (msize <= sizeof (struct TALER_CRYPTO_BatchDeriveRequest))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return handle_batch_derive_request (
+      client,
+      (const struct TALER_CRYPTO_BatchDeriveRequest *) hdr);
   case TALER_HELPER_CS_MT_REQ_RDERIVE:
     if (msize != sizeof (struct TALER_CRYPTO_CsRDeriveRequest))
     {
@@ -1467,6 +2104,8 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (keygen_task);
     keygen_task = NULL;
   }
+  stop_workers ();
+  sem_done (&worker_sem);
 }
 
 
@@ -1526,8 +2165,19 @@ run (void *cls,
                                  &cb);
   if (0 != global_ret)
     return;
+  sem_init (&worker_sem,
+            0);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
+  if (0 == max_workers)
+    max_workers = 1; /* FIXME-#7272: or determine from CPU? */
+  for (unsigned int i = 0; i<max_workers; i++)
+    if (GNUNET_OK !=
+        start_worker ())
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   /* Load denominations */
   keys = GNUNET_CONTAINER_multihashmap_create (65536,
                                                GNUNET_YES);
@@ -1585,6 +2235,11 @@ main (int argc,
                                     "TIMESTAMP",
                                     "pretend it is a different time for the update",
                                     &now_tmp),
+    GNUNET_GETOPT_option_uint ('w',
+                               "workers",
+                               "COUNT",
+                               "use COUNT workers for parallel processing of batch requests",
+                               &max_workers),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

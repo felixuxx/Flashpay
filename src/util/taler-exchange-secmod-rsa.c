@@ -1568,7 +1568,9 @@ parse_key (struct Denomination *denom,
          NULL != pos;
          pos = pos->next)
     {
-      if (GNUNET_TIME_timestamp_cmp (pos->anchor, >, anchor))
+      if (GNUNET_TIME_timestamp_cmp (pos->anchor,
+                                     >,
+                                     anchor))
         break;
       before = pos;
     }
