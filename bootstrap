@@ -8,6 +8,11 @@ if ! git --version >/dev/null; then
   exit 1
 fi
 
+if ! htmlark --version >/dev/null; then
+  echo "htmlark not installed"
+  exit 1
+fi
+
 
 echo "$0: Updating submodules"
 echo | git submodule update --init

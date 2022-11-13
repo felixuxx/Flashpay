@@ -56,13 +56,13 @@ EXTRA_DIST = \
   gana/gnu-taler-error-codes/Makefile \
   tos/Makefile \
   tos/README \
-  tos/bfh.rst \
-  tos/tos.rst \
+  tos/bfh-v0.rst \
+  tos/tos-v0.rst \
   tos/conf.py.in \
   tos/locale/de/LC_MESSAGES/tos.po \
   pp/Makefile \
   pp/README \
-  pp/pp.rst \
+  pp/pp-v0.rst \
   pp/conf.py \
   pp/locale/de/LC_MESSAGES/pp.po \
   $(rdata_DATA) \
@@ -76,10 +76,10 @@ TOS_LANGUAGES="en de"
 PP_LANGUAGES="en de"
 
 # Change the terms-of-service version (Etag) to generate here!
-# This value should be incremented whenever there is a substantive
+# This value should be modified whenever there is a substantive
 # change in the original text (but not for the translations).
-TOS_VERSION=0
-PP_VERSION=0
+TOS_VERSION=tos-v0
+PP_VERSION=pp-v0
 
 update-tos:
 	VERSION=$(TOS_VERSION) ./update-tos.sh $(TOS_LANGUAGES)

@@ -14,7 +14,8 @@ cd pp
 for l in $@
 do
     mkdir -p $l
-    echo Generating PP for language $l
+    echo "Generating PP for language $l"
+    cat conf.py.in | sed -e "s/%VERSION%/$VERSION/g" > conf.py
     # 'f' is for the supported formats, note that the 'make' target
     # MUST match the file extension.
     for f in html txt pdf epub xml
@@ -22,7 +23,12 @@ do
         rm -rf _build
         echo "  Generating format $f"
         make -e SPHINXOPTS="-D language='$l'" $f >>sphinx.log 2>>sphinx.err < /dev/null
-        mv _build/$f/pp.$f $l/${VERSION}.$f
+        if test $f = "html"
+        then
+            htmlark -o $l/${VERSION}.$f _build/$f/${VERSION}.$f
+        else
+            mv _build/$f/${VERSION}.$f $l/${VERSION}.$f
+        fi
     done
 done
 cd ..
