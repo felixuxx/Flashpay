@@ -10,6 +10,7 @@ fi
 
 if ! htmlark --version >/dev/null; then
   echo "htmlark not installed"
+  echo "Run 'pip install htmlark'"
   exit 1
 fi
 
