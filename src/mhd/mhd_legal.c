@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019, 2020 Taler Systems SA
+  Copyright (C) 2019, 2020, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -175,13 +175,15 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   struct GNUNET_TIME_Absolute a;
   struct GNUNET_TIME_Timestamp m;
   char dat[128];
+  char *langs;
 
   a = GNUNET_TIME_relative_to_absolute (MAX_TERMS_CACHING);
   m = GNUNET_TIME_absolute_to_timestamp (a);
   TALER_MHD_get_date_string (m.abs_time,
                              dat);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Setting 'Expires' header to '%s'\n",
+              "Setting '%s' header to '%s'\n",
+              MHD_HTTP_HEADER_EXPIRES,
               dat);
   if (NULL != legal)
   {
@@ -220,6 +222,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   }
 
   t = NULL;
+  langs = NULL;
   if (NULL != legal)
   {
     const char *mime;
@@ -245,6 +248,20 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
            (TALER_MHD_xmime_matches (mime,
                                      p->mime_type)) )
       {
+        if (NULL == langs)
+        {
+          langs = GNUNET_strdup (p->language);
+        }
+        else
+        {
+          char *tmp = langs;
+
+          GNUNET_asprintf (&langs,
+                           "%s %s",
+                           tmp,
+                           p->language);
+          GNUNET_free (tmp);
+        }
         if ( (NULL == t) ||
              (! TALER_MHD_xmime_matches (mime,
                                          t->mime_type)) ||
@@ -306,6 +323,14 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                 MHD_add_response_header (resp,
                                          MHD_HTTP_HEADER_EXPIRES,
                                          dat));
+  if (NULL != langs)
+  {
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (resp,
+                                           "Acceptable-Languages",
+                                           langs));
+    GNUNET_free (langs);
+  }
   /* Set cache control headers: our response varies depending on these headers */
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (resp,
@@ -558,7 +583,10 @@ load_language (struct TALER_MHD_Legal *legal,
 
     if (fn[0] == '.')
       continue;
-    load_terms (legal, path, lang, fn);
+    load_terms (legal,
+                path,
+                lang,
+                fn);
   }
   GNUNET_break (0 == closedir (d));
   GNUNET_free (dname);
@@ -621,7 +649,9 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
     if (lang[0] == '.')
       continue;
-    load_language (legal, path, lang);
+    load_language (legal,
+                   path,
+                   lang);
   }
   GNUNET_break (0 == closedir (d));
   GNUNET_free (path);
