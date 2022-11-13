@@ -2352,6 +2352,11 @@ TALER_CRYPTO_helper_rsa_sign (
  * that it created the signature. Thus, signals may result in a small
  * differences in the signature counters.  Retrying in this case may work.
  *
+ * Note that in case of errors, the @a bss array may still have been partially
+ * filled with signatures, which in this case must be freed by the caller
+ * (this is in contrast to the #TALER_CRYPTO_helper_rsa_sign() API which never
+ * returns any signatures if there was an error).
+ *
  * @param dh helper process connection
  * @param rsrs array with details about the requested signatures
  * @param rsrs_length length of the @a rsrs array

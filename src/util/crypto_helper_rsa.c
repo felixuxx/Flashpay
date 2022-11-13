@@ -601,8 +601,241 @@ TALER_CRYPTO_helper_rsa_batch_sign (
   unsigned int rsrs_length,
   struct TALER_BlindedDenominationSignature *bss)
 {
-  GNUNET_break (0);
-  return -1; /* FIXME #7272: NOT IMPLEMENTED! */
+  enum TALER_ErrorCode ec = TALER_EC_INVALID;
+  unsigned int rpos;
+  unsigned int rend;
+  unsigned int wpos;
+
+  memset (bss,
+          0,
+          sizeof (*bss) * rsrs_length);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Starting signature process\n");
+  if (GNUNET_OK !=
+      try_connect (dh))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to connect to helper\n");
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting %u signatures\n",
+              rsrs_length);
+  rpos = 0;
+  rend = 0;
+  while (rpos < rsrs_length)
+  {
+    unsigned int mlen = sizeof (struct TALER_CRYPTO_BatchSignRequest);
+
+    while ( (rend < rsrs_length) &&
+            (mlen
+             + sizeof (struct TALER_CRYPTO_SignRequest)
+             + rsrs[rend].msg_size < UINT16_MAX) )
+    {
+      mlen += sizeof (struct TALER_CRYPTO_SignRequest) + rsrs[rend].msg_size;
+      rend++;
+    }
+    {
+      char obuf[mlen] GNUNET_ALIGN;
+      struct TALER_CRYPTO_BatchSignRequest *bsr
+        = (struct TALER_CRYPTO_BatchSignRequest *) obuf;
+      void *wpos;
+
+      bsr->header.type = htons (TALER_HELPER_RSA_MT_REQ_BATCH_SIGN);
+      bsr->header.size = htons (mlen);
+      bsr->batch_size = htonl (rend - rpos);
+      wpos = &bsr[1];
+      for (unsigned int i = rpos; i<rend; i++)
+      {
+        struct TALER_CRYPTO_SignRequest *sr = wpos;
+        const struct TALER_CRYPTO_RsaSignRequest *rsr = &rsrs[i];
+
+        sr->header.type = htons (TALER_HELPER_RSA_MT_REQ_SIGN);
+        sr->header.size = htons (sizeof (*sr) + rsr->msg_size);
+        sr->reserved = htonl (0);
+        sr->h_rsa = *rsr->h_rsa;
+        memcpy (&sr[1],
+                rsr->msg,
+                rsr->msg_size);
+        wpos += sizeof (*sr) + rsr->msg_size;
+      }
+      GNUNET_assert (wpos == &obuf[mlen]);
+      if (GNUNET_OK !=
+          TALER_crypto_helper_send_all (dh->sock,
+                                        obuf,
+                                        sizeof (obuf)))
+      {
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "send");
+        do_disconnect (dh);
+        return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
+      }
+    }
+    rpos = rend;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Awaiting reply\n");
+  wpos = 0;
+  {
+    char buf[UINT16_MAX];
+    size_t off = 0;
+    const struct GNUNET_MessageHeader *hdr
+      = (const struct GNUNET_MessageHeader *) buf;
+    bool finished = false;
+
+    while (1)
+    {
+      uint16_t msize;
+      ssize_t ret;
+
+      ret = recv (dh->sock,
+                  &buf[off],
+                  sizeof (buf) - off,
+                  (finished && (0 == off))
+                  ? MSG_DONTWAIT
+                  : 0);
+      if (ret < 0)
+      {
+        if (EINTR == errno)
+          continue;
+        if (EAGAIN == errno)
+        {
+          GNUNET_assert (finished);
+          GNUNET_assert (0 == off);
+          return ec;
+        }
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "recv");
+        do_disconnect (dh);
+        ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
+        break;
+      }
+      if (0 == ret)
+      {
+        GNUNET_break (0 == off);
+        if (! finished)
+          ec = TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        return ec;
+      }
+      off += ret;
+more:
+      if (off < sizeof (struct GNUNET_MessageHeader))
+        continue;
+      msize = ntohs (hdr->size);
+      if (off < msize)
+        continue;
+      switch (ntohs (hdr->type))
+      {
+      case TALER_HELPER_RSA_MT_RES_SIGNATURE:
+        if (msize < sizeof (struct TALER_CRYPTO_SignResponse))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        if (finished)
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        {
+          const struct TALER_CRYPTO_SignResponse *sr =
+            (const struct TALER_CRYPTO_SignResponse *) buf;
+          struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+
+          rsa_signature = GNUNET_CRYPTO_rsa_signature_decode (
+            &sr[1],
+            msize - sizeof (*sr));
+          if (NULL == rsa_signature)
+          {
+            GNUNET_break_op (0);
+            do_disconnect (dh);
+            ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+            goto end;
+          }
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                      "Received %u signature\n",
+                      wpos);
+          bss[wpos].cipher = TALER_DENOMINATION_RSA;
+          bss[wpos].details.blinded_rsa_signature = rsa_signature;
+          wpos++;
+          if (wpos == rsrs_length)
+          {
+            ec = TALER_EC_NONE;
+            finished = true;
+          }
+          break;
+        }
+      case TALER_HELPER_RSA_MT_RES_SIGN_FAILURE:
+        if (msize != sizeof (struct TALER_CRYPTO_SignFailure))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        {
+          const struct TALER_CRYPTO_SignFailure *sf =
+            (const struct TALER_CRYPTO_SignFailure *) buf;
+
+          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                      "Signing failed!\n");
+          finished = true;
+          break;
+        }
+      case TALER_HELPER_RSA_MT_AVAIL:
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Received new key!\n");
+        if (GNUNET_OK !=
+            handle_mt_avail (dh,
+                             hdr))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        break; /* while(1) loop ensures we recvfrom() again */
+      case TALER_HELPER_RSA_MT_PURGE:
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Received revocation!\n");
+        if (GNUNET_OK !=
+            handle_mt_purge (dh,
+                             hdr))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        break; /* while(1) loop ensures we recvfrom() again */
+      case TALER_HELPER_RSA_SYNCED:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Synchronized add odd time with RSA helper!\n");
+        dh->synced = true;
+        break;
+      default:
+        GNUNET_break_op (0);
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Received unexpected message of type %u\n",
+                    ntohs (hdr->type));
+        do_disconnect (dh);
+        ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+        goto end;
+      }
+      memmove (buf,
+               &buf[msize],
+               off - msize);
+      off -= msize;
+      goto more;
+    } /* while(1) */
+end:
+    return ec;
+  }
 }
 
 
