@@ -2593,8 +2593,25 @@ TALER_CRYPTO_helper_cs_revoke (
 
 
 /**
- * Ask the helper to derive R using the @a nonce and denomination key
- * associated with @a h_cs.
+ * Information about what we should derive for.
+ */
+struct TALER_CRYPTO_CsDeriveRequest
+{
+  /**
+   * Hash of the CS public key to use to sign.
+   */
+  const struct TALER_CsPubHashP *h_cs;
+
+  /**
+   * Nonce to use.
+   */
+  const struct TALER_CsNonce *nonce;
+};
+
+
+/**
+ * Ask the helper to derive R using the information
+ * from @a cdr.
  *
  * This operation will block until the R has been obtained.  Should
  * this process receive a signal (that is not ignored) while the operation is
@@ -2603,7 +2620,7 @@ TALER_CRYPTO_helper_cs_revoke (
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper to process connection
- * @param h_cs hash of the CS public key to revoke
+ * @param cdr derivation input data
  * @param nonce witdhraw nonce
  * @param[out] crp set to the pair of R values
  * @return set to the error code (or #TALER_EC_NONE on success)
@@ -2611,14 +2628,13 @@ TALER_CRYPTO_helper_cs_revoke (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive_withdraw (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_CsNonce *nonce,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   struct TALER_DenominationCSPublicRPairP *crp);
 
 
 /**
- * Ask the helper to derive R using the @a nonce and denomination key
- * associated with @a h_cs.
+ * Ask the helper to derive R using the information
+ * from @a cdr.
  *
  * This operation will block until the R has been obtained.  Should
  * this process receive a signal (that is not ignored) while the operation is
@@ -2627,16 +2643,14 @@ TALER_CRYPTO_helper_cs_r_derive_withdraw (
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper to process connection
- * @param h_cs hash of the CS public key to revoke
- * @param nonce witdhraw nonce
+ * @param cdr derivation input data
  * @param[out] crp set to the pair of R values
  * @return set to the error code (or #TALER_EC_NONE on success)
  */
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive_melt (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_CsNonce *nonce,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   struct TALER_DenominationCSPublicRPairP *crp);
 
 

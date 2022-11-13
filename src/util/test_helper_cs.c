@@ -289,11 +289,17 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                 "Requesting R derivation with key %s\n",
                 GNUNET_h2s (&keys[i].h_cs.hash));
     alg_values.cipher = TALER_DENOMINATION_CS;
-    ec = TALER_CRYPTO_helper_cs_r_derive_withdraw (
-      dh,
-      &keys[i].h_cs,
-      &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
-      &alg_values.details.cs_values);
+    {
+      struct TALER_CRYPTO_CsDeriveRequest cdr = {
+        .h_cs = &keys[i].h_cs,
+        .nonce = &pd.blinded_planchet.details.cs_blinded_planchet.nonce
+      };
+
+      ec = TALER_CRYPTO_helper_cs_r_derive_withdraw (
+        dh,
+        &cdr,
+        &alg_values.details.cs_values);
+    }
     switch (ec)
     {
     case TALER_EC_NONE:
@@ -374,6 +380,10 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
     struct TALER_CsPubHashP rnd;
     struct TALER_CsNonce nonce;
     struct TALER_DenominationCSPublicRPairP crp;
+    struct TALER_CRYPTO_CsDeriveRequest cdr = {
+      .h_cs = &rnd,
+      .nonce = &nonce,
+    };
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
@@ -382,8 +392,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                 &nonce,
                                 sizeof (nonce));
     ec = TALER_CRYPTO_helper_cs_r_derive_withdraw (dh,
-                                                   &rnd,
-                                                   &nonce,
+                                                   &cdr,
                                                    &crp);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
@@ -424,6 +433,10 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
     {
       struct TALER_PlanchetDetail pd;
       struct TALER_CRYPTO_CsSignRequest csr;
+      struct TALER_CRYPTO_CsDeriveRequest cdr = {
+        .h_cs = &keys[i].h_cs,
+        .nonce = &pd.blinded_planchet.details.cs_blinded_planchet.nonce
+      };
 
       pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       // keys[i].denom_pub.cipher = TALER_DENOMINATION_CS;
@@ -434,10 +447,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       alg_values.cipher = TALER_DENOMINATION_CS;
       ec = TALER_CRYPTO_helper_cs_r_derive_withdraw (
         dh,
-        &keys[i].h_cs,
-        &pd.blinded_planchet.
-        details.
-        cs_blinded_planchet.nonce,
+        &cdr,
         &alg_values.details.cs_values);
       if (TALER_EC_NONE != ec)
         continue;
@@ -622,6 +632,10 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
       {
         struct TALER_CoinPubHashP c_hash;
         struct TALER_PlanchetDetail pd;
+        struct TALER_CRYPTO_CsDeriveRequest cdr = {
+          .h_cs = &keys[i].h_cs,
+          .nonce = &pd.blinded_planchet.details.cs_blinded_planchet.nonce
+        };
 
         pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
         TALER_cs_withdraw_nonce_derive (&ps,
@@ -630,8 +644,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
         alg_values.cipher = TALER_DENOMINATION_CS;
         ec = TALER_CRYPTO_helper_cs_r_derive_melt (
           dh,
-          &keys[i].h_cs,
-          &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
+          &cdr,
           &alg_values.details.cs_values);
         if (TALER_EC_NONE != ec)
           continue;

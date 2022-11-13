@@ -853,13 +853,12 @@ more:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive_withdraw (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_CsNonce *nonce,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   struct TALER_DenominationCSPublicRPairP *crp)
 {
   return helper_cs_r_derive (dh,
-                             h_cs,
-                             nonce,
+                             cdr->h_cs,
+                             cdr->nonce,
                              false,
                              crp);
 }
@@ -868,15 +867,38 @@ TALER_CRYPTO_helper_cs_r_derive_withdraw (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive_melt (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_CsNonce *nonce,
+  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
   struct TALER_DenominationCSPublicRPairP *crp)
 {
   return helper_cs_r_derive (dh,
-                             h_cs,
-                             nonce,
+                             cdr->h_cs,
+                             cdr->nonce,
                              true,
                              crp);
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_batch_sign_melt (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CRYPTO_CsSignRequest *reqs,
+  unsigned int reqs_length,
+  struct TALER_BlindedDenominationSignature *bss)
+{
+  GNUNET_break (0); // FIXME
+  return -1;
+}
+
+
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_batch_sign_withdraw (
+  struct TALER_CRYPTO_CsDenominationHelper *dh,
+  const struct TALER_CRYPTO_CsSignRequest *reqs,
+  unsigned int reqs_length,
+  struct TALER_BlindedDenominationSignature *bss)
+{
+  GNUNET_break (0); // FIXME
+  return -1;
 }
 
 

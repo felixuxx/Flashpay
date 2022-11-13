@@ -2874,10 +2874,15 @@ TEH_keys_denomination_cs_r_pub_melt (
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
 
-  return TALER_CRYPTO_helper_cs_r_derive_melt (ksh->helpers->csdh,
-                                               &hd->h_details.h_cs,
-                                               nonce,
-                                               r_pub);
+  {
+    struct TALER_CRYPTO_CsDeriveRequest cdr = {
+      .h_cs = &hd->h_details.h_cs,
+      .nonce = nonce
+    };
+    return TALER_CRYPTO_helper_cs_r_derive_melt (ksh->helpers->csdh,
+                                                 &cdr,
+                                                 r_pub);
+  }
 }
 
 
@@ -2905,11 +2910,16 @@ TEH_keys_denomination_cs_r_pub_withdraw (
   {
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
+  {
+    struct TALER_CRYPTO_CsDeriveRequest cdr = {
+      .h_cs = &hd->h_details.h_cs,
+      .nonce = nonce
+    };
 
-  return TALER_CRYPTO_helper_cs_r_derive_withdraw (ksh->helpers->csdh,
-                                                   &hd->h_details.h_cs,
-                                                   nonce,
-                                                   r_pub);
+    return TALER_CRYPTO_helper_cs_r_derive_withdraw (ksh->helpers->csdh,
+                                                     &cdr,
+                                                     r_pub);
+  }
 }
 
 
