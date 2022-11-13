@@ -439,8 +439,6 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       };
 
       pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
-      // keys[i].denom_pub.cipher = TALER_DENOMINATION_CS;
-
       TALER_cs_withdraw_nonce_derive (&ps,
                                       &pd.blinded_planchet.details.
                                       cs_blinded_planchet.nonce);
@@ -581,6 +579,209 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
     {
       if (TALER_EC_NONE == ec)
         TALER_blinded_denom_sig_free (&ds);
+      GNUNET_break (0);
+      return 17;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing with invalid key %s failed as desired\n",
+                GNUNET_h2s (&rnd.hash));
+  }
+  return 0;
+}
+
+
+/**
+ * Test batch signing logic.
+ *
+ * @param dh handle to the helper
+ * @param batch_size how large should the batch be
+ * @param check_sigs also check unknown key and signatures
+ * @return 0 on success
+ */
+static int
+test_batch_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
+                    unsigned int batch_size,
+                    bool check_sigs)
+{
+  struct TALER_BlindedDenominationSignature ds[batch_size];
+  enum TALER_ErrorCode ec;
+  bool success = false;
+  struct TALER_PlanchetMasterSecretP ps[batch_size];
+  struct TALER_CoinSpendPrivateKeyP coin_priv[batch_size];
+  union TALER_DenominationBlindingKeyP bks[batch_size];
+  struct TALER_CoinPubHashP c_hash[batch_size];
+  struct TALER_ExchangeWithdrawValues alg_values[batch_size];
+
+  for (unsigned int i = 0; i<batch_size; i++)
+    TALER_planchet_master_setup_random (&ps[i]);
+  for (unsigned int k = 0; k<MAX_KEYS; k++)
+  {
+    if (! keys[k].valid)
+      continue;
+    {
+      struct TALER_PlanchetDetail pd[batch_size];
+      struct TALER_CRYPTO_CsSignRequest csr[batch_size];
+      struct TALER_CRYPTO_CsDeriveRequest cdr[batch_size];
+      struct TALER_DenominationCSPublicRPairP crps[batch_size];
+
+      for (unsigned int i = 0; i<batch_size; i++)
+      {
+        cdr[i].h_cs = &keys[k].h_cs;
+        cdr[i].nonce =
+          &pd[i].blinded_planchet.details.cs_blinded_planchet.nonce;
+        pd[i].blinded_planchet.cipher = TALER_DENOMINATION_CS;
+        TALER_cs_withdraw_nonce_derive (
+          &ps[i],
+          &pd[i].blinded_planchet.details.cs_blinded_planchet.nonce);
+        alg_values[i].cipher = TALER_DENOMINATION_CS;
+      }
+      ec = TALER_CRYPTO_helper_cs_r_batch_derive_withdraw (
+        dh,
+        cdr,
+        batch_size,
+        crps);
+      if (TALER_EC_NONE != ec)
+        continue;
+      for (unsigned int i = 0; i<batch_size; i++)
+      {
+        alg_values[i].details.cs_values = crps[i];
+        TALER_planchet_setup_coin_priv (&ps[i],
+                                        &alg_values[i],
+                                        &coin_priv[i]);
+        TALER_planchet_blinding_secret_create (&ps[i],
+                                               &alg_values[i],
+                                               &bks[i]);
+        GNUNET_assert (GNUNET_YES ==
+                       TALER_planchet_prepare (&keys[k].denom_pub,
+                                               &alg_values[i],
+                                               &bks[i],
+                                               &coin_priv[i],
+                                               NULL, /* no age commitment */
+                                               &c_hash[i],
+                                               &pd[i]));
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Requesting signature with key %s\n",
+                    GNUNET_h2s (&keys[k].h_cs.hash));
+        csr[i].h_cs = &keys[k].h_cs;
+        csr[i].blinded_planchet
+          = &pd[i].blinded_planchet.details.cs_blinded_planchet;
+      }
+      ec = TALER_CRYPTO_helper_cs_batch_sign_withdraw (
+        dh,
+        csr,
+        batch_size,
+        ds);
+    }
+    switch (ec)
+    {
+    case TALER_EC_NONE:
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_remaining (
+                                      keys[k].start_time.abs_time),
+                                    >,
+                                    GNUNET_TIME_UNIT_SECONDS))
+      {
+        /* key worked too early */
+        GNUNET_break (0);
+        return 4;
+      }
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_duration (
+                                      keys[k].start_time.abs_time),
+                                    >,
+                                    keys[k].validity_duration))
+      {
+        /* key worked too later */
+        GNUNET_break (0);
+        return 5;
+      }
+      if (check_sigs)
+      {
+        for (unsigned int i = 0; i<batch_size; i++)
+        {
+          struct TALER_FreshCoin coin;
+
+          if (GNUNET_OK !=
+              TALER_planchet_to_coin (&keys[k].denom_pub,
+                                      &ds[i],
+                                      &bks[i],
+                                      &coin_priv[i],
+                                      NULL, /* no age commitment */
+                                      &c_hash[i],
+                                      &alg_values[i],
+                                      &coin))
+          {
+            GNUNET_break (0);
+            return 6;
+          }
+        }
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Received valid signature for key %s\n",
+                    GNUNET_h2s (&keys[k].h_cs.hash));
+      }
+      success = true;
+      break;
+    case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
+      /* This 'failure' is expected, we're testing also for the
+         error handling! */
+      if ( (GNUNET_TIME_relative_is_zero (
+              GNUNET_TIME_absolute_get_remaining (
+                keys[k].start_time.abs_time))) &&
+           (GNUNET_TIME_relative_cmp (
+              GNUNET_TIME_absolute_get_duration (
+                keys[k].start_time.abs_time),
+              <,
+              keys[k].validity_duration)) )
+      {
+        /* key should have worked! */
+        GNUNET_break (0);
+        return 6;
+      }
+      break;
+    default:
+      /* unexpected error */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected error %d\n",
+                  ec);
+      return 7;
+    }
+  }
+  if (! success)
+  {
+    /* no valid key for signing found, also bad */
+    GNUNET_break (0);
+    return 16;
+  }
+
+  /* check signing does not work if the key is unknown */
+  if (check_sigs)
+  {
+    struct TALER_PlanchetDetail pd;
+    struct TALER_CsPubHashP rnd;
+    struct TALER_CRYPTO_CsSignRequest csr;
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &rnd,
+                                sizeof (rnd));
+    pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+    GNUNET_assert (GNUNET_YES ==
+                   TALER_planchet_prepare (&keys[0].denom_pub,
+                                           &alg_values[0],
+                                           &bks[0],
+                                           &coin_priv[0],
+                                           NULL, /* no age commitment */
+                                           &c_hash[0],
+                                           &pd));
+    csr.h_cs = &rnd;
+    csr.blinded_planchet
+      = &pd.blinded_planchet.details.cs_blinded_planchet;
+    ec = TALER_CRYPTO_helper_cs_batch_sign_withdraw (
+      dh,
+      &csr,
+      1,
+      &ds[0]);
+    if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
+    {
+      if (TALER_EC_NONE == ec)
+        TALER_blinded_denom_sig_free (ds);
       GNUNET_break (0);
       return 17;
     }
@@ -813,6 +1014,34 @@ run_test (void)
   if (0 == ret)
     ret = test_signing (dh);
   if (0 == ret)
+    ret = test_batch_signing (dh,
+                              2,
+                              true);
+  if (0 == ret)
+    ret = test_batch_signing (dh,
+                              256,
+                              true);
+  for (unsigned int i = 0; i<5; i++)
+  {
+    static unsigned int batches[] = { 1, 4, 16, 64, 256 };
+    unsigned int batch_size = batches[i];
+    struct GNUNET_TIME_Absolute start;
+    struct GNUNET_TIME_Relative duration;
+
+    start = GNUNET_TIME_absolute_get ();
+    if (0 != ret)
+      break;
+    ret = test_batch_signing (dh,
+                              batch_size,
+                              false);
+    duration = GNUNET_TIME_absolute_get_duration (start);
+    fprintf (stderr,
+             "%4u (batch) signature operations took %s (total real time)\n",
+             (unsigned int) batch_size,
+             GNUNET_STRINGS_relative_time_to_string (duration,
+                                                     GNUNET_YES));
+  }
+  if (0 == ret)
     ret = perf_signing (dh,
                         "sequential");
   TALER_CRYPTO_helper_cs_disconnect (dh);
@@ -835,13 +1064,14 @@ main (int argc,
   int ret;
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
+  const char *loglev = "WARNING";
 
   (void) argc;
   (void) argv;
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-helper-cs",
-                    "WARNING",
+                    loglev,
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
@@ -857,7 +1087,7 @@ main (int argc,
                                     "-c",
                                     "test_helper_cs.conf",
                                     "-L",
-                                    "WARNING",
+                                    loglev,
                                     NULL);
   if (NULL == helper)
   {

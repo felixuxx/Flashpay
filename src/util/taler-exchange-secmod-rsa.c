@@ -766,6 +766,9 @@ handle_batch_sign_request (struct TES_Client *client,
     off += s;
     size -= s;
   }
+  GNUNET_break_op (0 == size);
+  bs = GNUNET_MIN (bs,
+                   idx);
   for (unsigned int i = 0; i<bs; i++)
     finish_job (client,
                 &jobs[i]);

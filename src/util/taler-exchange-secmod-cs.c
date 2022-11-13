@@ -513,6 +513,28 @@ fail_sign (struct TES_Client *client,
 
 
 /**
+ * Generate error response that deriving failed.
+ *
+ * @param client client to send response to
+ * @param ec error code to include
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+fail_derive (struct TES_Client *client,
+             enum TALER_ErrorCode ec)
+{
+  struct TALER_CRYPTO_RDeriveFailure sf = {
+    .header.size = htons (sizeof (sf)),
+    .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
+    .ec = htonl (ec)
+  };
+
+  return TES_transmit (client->csock,
+                       &sf.header);
+}
+
+
+/**
  * Generate signature response.
  *
  * @param client client to send response to
@@ -842,19 +864,25 @@ finish_job (struct TES_Client *client,
 {
   sem_down (&bj->sem);
   sem_done (&bj->sem);
-  if (TALER_EC_NONE != bj->ec)
-  {
-    fail_sign (client,
-               bj->ec);
-    return;
-  }
   switch (bj->type)
   {
   case TYPE_SIGN:
+    if (TALER_EC_NONE != bj->ec)
+    {
+      fail_sign (client,
+                 bj->ec);
+      return;
+    }
     send_signature (client,
                     &bj->details.sign.cs_answer);
     break;
   case TYPE_RDERIVE:
+    if (TALER_EC_NONE != bj->ec)
+    {
+      fail_derive (client,
+                   bj->ec);
+      return;
+    }
     send_derivation (client,
                      &bj->details.rderive.rpairp);
     break;
@@ -878,16 +906,19 @@ handle_batch_sign_request (struct TES_Client *client,
   uint16_t size = ntohs (bsr->header.size) - sizeof (*bsr);
   const void *off = (const void *) &bsr[1];
   unsigned int idx = 0;
-  struct BatchJob jobs[bs];
+  struct BatchJob jobs[GNUNET_NZL (bs)];
   bool failure = false;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Handling batch sign request of size %u\n",
+              (unsigned int) bs);
   if (bs > TALER_MAX_FRESH_COINS)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
   while ( (bs > 0) &&
-          (size > sizeof (struct TALER_CRYPTO_CsSignRequestMessage)) )
+          (size >= sizeof (struct TALER_CRYPTO_CsSignRequestMessage)) )
   {
     const struct TALER_CRYPTO_CsSignRequestMessage *sr = off;
     uint16_t s = ntohs (sr->header.size);
@@ -903,6 +934,9 @@ handle_batch_sign_request (struct TES_Client *client,
     off += s;
     size -= s;
   }
+  GNUNET_break_op (0 == size);
+  bs = GNUNET_MIN (bs,
+                   idx);
   for (unsigned int i = 0; i<bs; i++)
     finish_job (client,
                 &jobs[i]);
@@ -941,13 +975,16 @@ handle_batch_derive_request (struct TES_Client *client,
   struct BatchJob jobs[bs];
   bool failure = false;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Handling batch derivation request of size %u\n",
+              (unsigned int) bs);
   if (bs > TALER_MAX_FRESH_COINS)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
   while ( (bs > 0) &&
-          (size > sizeof (struct TALER_CRYPTO_CsRDeriveRequest)) )
+          (size >= sizeof (struct TALER_CRYPTO_CsRDeriveRequest)) )
   {
     const struct TALER_CRYPTO_CsRDeriveRequest *rdr = off;
     uint16_t s = ntohs (rdr->header.size);
@@ -964,20 +1001,17 @@ handle_batch_derive_request (struct TES_Client *client,
     off += s;
     size -= s;
   }
+  GNUNET_break_op (0 == size);
+  bs = GNUNET_MIN (bs,
+                   idx);
   for (unsigned int i = 0; i<bs; i++)
     finish_job (client,
                 &jobs[i]);
   if (failure)
   {
-    struct TALER_CRYPTO_SignFailure sf = {
-      .header.size = htons (sizeof (sf)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_BATCH_RDERIVE_FAILURE),
-      .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
-    };
-
     GNUNET_break (0);
-    return TES_transmit (client->csock,
-                         &sf.header);
+    return fail_derive (client,
+                        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE);
   }
   return GNUNET_OK;
 }
@@ -1219,14 +1253,8 @@ handle_r_derive_request (struct TES_Client *client,
                   &r_pub);
   if (TALER_EC_NONE != ec)
   {
-    struct TALER_CRYPTO_RDeriveFailure rdf = {
-      .header.size = htons (sizeof (rdf)),
-      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
-      .ec = htonl (ec)
-    };
-
-    return TES_transmit (client->csock,
-                         &rdf.header);
+    return fail_derive (client,
+                        ec);
   }
 
   ret = send_derivation (client,
