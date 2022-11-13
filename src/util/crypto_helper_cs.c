@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+  Copyright (C) 2020, 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -419,9 +419,9 @@ helper_cs_sign (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting signature\n");
   {
-    char buf[sizeof (struct TALER_CRYPTO_CsSignRequest)];
-    struct TALER_CRYPTO_CsSignRequest *sr
-      = (struct TALER_CRYPTO_CsSignRequest *) buf;
+    char buf[sizeof (struct TALER_CRYPTO_CsSignRequestMessage)];
+    struct TALER_CRYPTO_CsSignRequestMessage *sr
+      = (struct TALER_CRYPTO_CsSignRequestMessage *) buf;
 
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_CS_MT_REQ_SIGN);
@@ -594,13 +594,12 @@ end:
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign_melt (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  const struct TALER_CRYPTO_CsSignRequest *req,
   struct TALER_BlindedDenominationSignature *bs)
 {
   return helper_cs_sign (dh,
-                         h_cs,
-                         blinded_planchet,
+                         req->h_cs,
+                         req->blinded_planchet,
                          true,
                          bs);
 }
@@ -609,13 +608,12 @@ TALER_CRYPTO_helper_cs_sign_melt (
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign_withdraw (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  const struct TALER_CRYPTO_CsSignRequest *req,
   struct TALER_BlindedDenominationSignature *bs)
 {
   return helper_cs_sign (dh,
-                         h_cs,
-                         blinded_planchet,
+                         req->h_cs,
+                         req->blinded_planchet,
                          false,
                          bs);
 }

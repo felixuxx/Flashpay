@@ -277,7 +277,7 @@ generate_response (struct DenominationKey *dk)
  */
 static enum GNUNET_GenericReturnValue
 handle_sign_request (struct TES_Client *client,
-                     const struct TALER_CRYPTO_CsSignRequest *sr)
+                     const struct TALER_CRYPTO_CsSignRequestMessage *sr)
 {
   struct DenominationKey *dk;
   struct GNUNET_CRYPTO_CsRSecret r[2];
@@ -340,20 +340,6 @@ handle_sign_request (struct TES_Client *client,
   GNUNET_assert (dk->rc > 0);
   dk->rc--;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  // if (NULL == cs_answer)
-  // {
-  //   struct TALER_CRYPTO_SignFailure sf = {
-  //     .header.size = htons (sizeof (sf)),
-  //     .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
-  //     .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
-  //   };
-
-  //   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-  //               "Signing request failed, worker failed to produce signature\n");
-  //   return TES_transmit (client->csock,
-  //                        &sf.header);
-  // }
-
   {
     struct TALER_CRYPTO_SignResponse *sr;
     size_t tsize;
@@ -651,14 +637,14 @@ cs_work_dispatch (struct TES_Client *client,
   switch (ntohs (hdr->type))
   {
   case TALER_HELPER_CS_MT_REQ_SIGN:
-    if (msize < sizeof (struct TALER_CRYPTO_CsSignRequest))
+    if (msize < sizeof (struct TALER_CRYPTO_CsSignRequestMessage))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
     return handle_sign_request (
       client,
-      (const struct TALER_CRYPTO_CsSignRequest *) hdr);
+      (const struct TALER_CRYPTO_CsSignRequestMessage *) hdr);
   case TALER_HELPER_CS_MT_REQ_REVOKE:
     if (msize != sizeof (struct TALER_CRYPTO_CsRevokeRequest))
     {

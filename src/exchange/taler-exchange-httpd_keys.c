@@ -2781,11 +2781,16 @@ TEH_keys_denomination_sign_withdraw (
     }
   case TALER_DENOMINATION_CS:
     TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
-    return TALER_CRYPTO_helper_cs_sign_withdraw (
-      ksh->helpers->csdh,
-      &hd->h_details.h_cs,
-      &bp->details.cs_blinded_planchet,
-      bs);
+    {
+      struct TALER_CRYPTO_CsSignRequest csr;
+
+      csr.h_cs = &hd->h_details.h_cs;
+      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
+      return TALER_CRYPTO_helper_cs_sign_withdraw (
+        ksh->helpers->csdh,
+        &csr,
+        bs);
+    }
   default:
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
@@ -2827,12 +2832,17 @@ TEH_keys_denomination_sign_melt (
         bs);
     }
   case TALER_DENOMINATION_CS:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
-    return TALER_CRYPTO_helper_cs_sign_melt (
-      ksh->helpers->csdh,
-      &hd->h_details.h_cs,
-      &bp->details.cs_blinded_planchet,
-      bs);
+    {
+      struct TALER_CRYPTO_CsSignRequest csr;
+
+      csr.h_cs = &hd->h_details.h_cs;
+      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
+      TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
+      return TALER_CRYPTO_helper_cs_sign_melt (
+        ksh->helpers->csdh,
+        &csr,
+        bs);
+    }
   default:
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }

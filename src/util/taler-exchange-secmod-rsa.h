@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -136,7 +136,7 @@ struct TALER_CRYPTO_SignRequest
 
 
 /**
- * Message sent if a signature is requested.
+ * Message sent if a batch of signatures is requested.
  */
 struct TALER_CRYPTO_BatchSignRequest
 {
@@ -151,7 +151,7 @@ struct TALER_CRYPTO_BatchSignRequest
   uint32_t batch_size;
 
   /*
-   * Followed by @e batch_size batch sign requests.
+   * Followed by @e batch_size sign requests.
    */
 
 };

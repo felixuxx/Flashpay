@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -26,17 +26,19 @@
 #define TALER_HELPER_CS_MT_PURGE 1
 #define TALER_HELPER_CS_MT_AVAIL 2
 
-#define TALER_HELPER_CS_MT_REQ_INIT 4
+#define TALER_HELPER_CS_MT_REQ_INIT 3
+#define TALER_HELPER_CS_MT_REQ_BATCH_SIGN 4
 #define TALER_HELPER_CS_MT_REQ_SIGN 5
 #define TALER_HELPER_CS_MT_REQ_REVOKE 6
-#define TALER_HELPER_CS_MT_REQ_RDERIVE 7
+#define TALER_HELPER_CS_MT_REQ_BATCH_RDERIVE 7
+#define TALER_HELPER_CS_MT_REQ_RDERIVE 8
 
-#define TALER_HELPER_CS_MT_RES_SIGNATURE 8
-#define TALER_HELPER_CS_MT_RES_SIGN_FAILURE 9
-#define TALER_HELPER_CS_MT_RES_RDERIVE 10
-#define TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE 11
+#define TALER_HELPER_CS_MT_RES_SIGNATURE 9
+#define TALER_HELPER_CS_MT_RES_SIGN_FAILURE 10
+#define TALER_HELPER_CS_MT_RES_RDERIVE 11
+#define TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE 12
 
-#define TALER_HELPER_CS_SYNCED 12
+#define TALER_HELPER_CS_SYNCED 13
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -114,7 +116,7 @@ struct TALER_CRYPTO_CsKeyPurgeNotification
 /**
  * Message sent if a signature is requested.
  */
-struct TALER_CRYPTO_CsSignRequest
+struct TALER_CRYPTO_CsSignRequestMessage
 {
   /**
    * Type is #TALER_HELPER_CS_MT_REQ_SIGN.
@@ -138,6 +140,29 @@ struct TALER_CRYPTO_CsSignRequest
   struct TALER_BlindedCsPlanchet planchet;
 
 };
+
+
+/**
+ * Message sent if a batch of signatures is requested.
+ */
+struct TALER_CRYPTO_BatchSignRequest
+{
+  /**
+   * Type is #TALER_HELPER_CS_MT_REQ_BATCH_SIGN.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * Number of signatures to create, in NBO.
+   */
+  uint32_t batch_size;
+
+  /*
+   * Followed by @e batch_size batch sign requests.
+   */
+
+};
+
 
 /**
  * Message sent if a signature is requested.
@@ -164,6 +189,29 @@ struct TALER_CRYPTO_CsRDeriveRequest
    */
   struct TALER_CsNonce nonce;
 };
+
+
+/**
+ * Message sent if a batch of derivations is requested.
+ */
+struct TALER_CRYPTO_BatchDeriveRequest
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_REQ_BATCH_RDERIVE.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * Number of derivations to create, in NBO.
+   */
+  uint32_t batch_size;
+
+  /*
+   * Followed by @e batch_size derive requests.
+   */
+
+};
+
 
 /**
  * Message sent if a key was revoked.

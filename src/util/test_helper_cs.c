@@ -423,6 +423,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       continue;
     {
       struct TALER_PlanchetDetail pd;
+      struct TALER_CRYPTO_CsSignRequest csr;
 
       pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       // keys[i].denom_pub.cipher = TALER_DENOMINATION_CS;
@@ -458,11 +459,12 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
+      csr.h_cs = &keys[i].h_cs;
+      csr.blinded_planchet
+        = &pd.blinded_planchet.details.cs_blinded_planchet;
       ec = TALER_CRYPTO_helper_cs_sign_withdraw (
         dh,
-        &keys[i].h_cs,
-        &pd.blinded_planchet.details.
-        cs_blinded_planchet,
+        &csr,
         &ds);
     }
     switch (ec)
@@ -544,6 +546,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
   {
     struct TALER_PlanchetDetail pd;
     struct TALER_CsPubHashP rnd;
+    struct TALER_CRYPTO_CsSignRequest csr;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
@@ -557,11 +560,12 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                            NULL, /* no age commitment */
                                            &c_hash,
                                            &pd));
-
+    csr.h_cs = &rnd;
+    csr.blinded_planchet
+      = &pd.blinded_planchet.details.cs_blinded_planchet;
     ec = TALER_CRYPTO_helper_cs_sign_withdraw (
       dh,
-      &rnd,
-      &pd.blinded_planchet.details.cs_blinded_planchet,
+      &csr,
       &ds);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
@@ -627,9 +631,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
         ec = TALER_CRYPTO_helper_cs_r_derive_melt (
           dh,
           &keys[i].h_cs,
-          &pd.blinded_planchet.
-          details.
-          cs_blinded_planchet.nonce,
+          &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
           &alg_values.details.cs_values);
         if (TALER_EC_NONE != ec)
           continue;
@@ -652,12 +654,14 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
         {
           struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
           struct GNUNET_TIME_Relative delay;
+          struct TALER_CRYPTO_CsSignRequest csr;
 
+          csr.h_cs = &keys[i].h_cs;
+          csr.blinded_planchet
+            = &pd.blinded_planchet.details.cs_blinded_planchet;
           ec = TALER_CRYPTO_helper_cs_sign_melt (
             dh,
-            &keys[i].h_cs,
-            &pd.blinded_planchet.details.
-            cs_blinded_planchet,
+            &csr,
             &ds);
           if (TALER_EC_NONE != ec)
             break;

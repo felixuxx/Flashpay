@@ -2467,6 +2467,23 @@ TALER_CRYPTO_helper_cs_poll (struct TALER_CRYPTO_CsDenominationHelper *dh);
 
 
 /**
+ * Information about what we should sign over.
+ */
+struct TALER_CRYPTO_CsSignRequest
+{
+  /**
+   * Hash of the CS public key to use to sign.
+   */
+  const struct TALER_CsPubHashP *h_cs;
+
+  /**
+   * Blinded planchet containing c and the nonce.
+   */
+  const struct TALER_BlindedCsPlanchet *blinded_planchet;
+};
+
+
+/**
  * Request helper @a dh to sign @a msg using the public key corresponding to
  * @a h_denom_pub.
  *
@@ -2477,16 +2494,14 @@ TALER_CRYPTO_helper_cs_poll (struct TALER_CRYPTO_CsDenominationHelper *dh);
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper process connection
- * @param h_cs hash of the CS public key to use to sign
- * @param blinded_planchet blinded planchet containing c and nonce
+ * @param req information about the key to sign with and the value to sign
  * @param[out] bs set to the blind signature
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign_melt (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  const struct TALER_CRYPTO_CsSignRequest *req,
   struct TALER_BlindedDenominationSignature *bs);
 
 
@@ -2501,16 +2516,14 @@ TALER_CRYPTO_helper_cs_sign_melt (
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper process connection
- * @param h_cs hash of the CS public key to use to sign
- * @param blinded_planchet blinded planchet containing c and nonce
+ * @param req information about the key to sign with and the value to sign
  * @param[out] bs set to the blind signature
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign_withdraw (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  const struct TALER_CRYPTO_CsSignRequest *req,
   struct TALER_BlindedDenominationSignature *bs);
 
 
