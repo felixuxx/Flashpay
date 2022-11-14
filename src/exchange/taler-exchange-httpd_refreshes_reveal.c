@@ -749,12 +749,15 @@ clean_age:
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec;
+    struct TEH_CoinSignData csd = {
+      .h_denom_pub = &rrcs[i].h_denom_pub,
+      .bp = &rcds[i].blinded_planchet
+    };
 
     // FIXME #7272: replace with a batch call that
     // passes all coins in once go!
     ec = TEH_keys_denomination_sign_melt (
-      &rrcs[i].h_denom_pub,
-      &rcds[i].blinded_planchet,
+      &csd,
       &rrcs[i].coin_sig);
     if (TALER_EC_NONE != ec)
     {

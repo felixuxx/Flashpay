@@ -448,11 +448,17 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
-  /* Sign before transaction! */
-  ec = TEH_keys_denomination_sign_withdraw (
-    &wc.collectable.denom_pub_hash,
-    &wc.blinded_planchet,
-    &wc.collectable.sig);
+  {
+    struct TEH_CoinSignData csd = {
+      .h_denom_pub = &wc.collectable.denom_pub_hash,
+      .bp = &wc.blinded_planchet
+    };
+
+    /* Sign before transaction! */
+    ec = TEH_keys_denomination_sign_withdraw (
+      &csd,
+      &wc.collectable.sig);
+  }
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);

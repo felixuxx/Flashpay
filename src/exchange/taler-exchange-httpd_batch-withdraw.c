@@ -422,10 +422,13 @@ prepare_transaction (const struct TEH_RequestContext *rc,
   {
     struct PlanchetContext *pc = &wc->planchets[i];
     enum TALER_ErrorCode ec;
+    struct TEH_CoinSignData csds = {
+      .h_denom_pub = &pc->collectable.denom_pub_hash,
+      .bp = &pc->blinded_planchet
+    };
 
     ec = TEH_keys_denomination_sign_withdraw (
-      &pc->collectable.denom_pub_hash,
-      &pc->blinded_planchet,
+      &csds,
       &pc->collectable.sig);
     if (TALER_EC_NONE != ec)
     {

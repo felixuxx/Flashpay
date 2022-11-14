@@ -246,37 +246,77 @@ TEH_keys_denomination_by_hash2 (
   struct MHD_Connection *conn,
   MHD_RESULT *mret);
 
+/**
+ * Information needed to create a blind signature.
+ */
+struct TEH_CoinSignData
+{
+  /**
+   * Hash of key to sign with.
+   */
+  const struct TALER_DenominationHashP *h_denom_pub;
+
+  /**
+   * Blinded planchet to sign over.
+   */
+  const struct TALER_BlindedPlanchet *bp;
+};
+
 
 /**
- * Request to sign @a msg using the public key corresponding to
- * @a h_denom_pub during a withdraw operation.
+ * Request to sign @a csd for regular withdrawing.
  *
- * @param h_denom_pub hash of the public key to use to sign
- * @param bp blinded planchet to sign
+ * @param csd identifies data to blindly sign and key to sign with
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_withdraw (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_BlindedPlanchet *bp,
+  const struct TEH_CoinSignData *csd,
   struct TALER_BlindedDenominationSignature *bs);
 
 
 /**
- * Request to sign @a msg using the public key corresponding to
- * @a h_denom_pub during a refresh operation.
+ * Request to sign @a csds for regular withdrawing.
  *
- * @param h_denom_pub hash of the public key to use to sign
- * @param bp blinded planchet to sign
+ * @param csds array with data to blindly sign (and keys to sign with)
+ * @param csds_length length of @a csds array
+ * @param[out] bss array set to the blind signature on success; must be of length @a csds_length
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_denomination_batch_sign_withdraw (
+  const struct TEH_CoinSignData *csds,
+  unsigned int csds_length,
+  struct TALER_BlindedDenominationSignature *bss);
+
+
+/**
+ * Request to sign @a csd for melting.
+ *
+ * @param csd identifies data to blindly sign and key to sign with
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
 TEH_keys_denomination_sign_melt (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_BlindedPlanchet *bp,
+  const struct TEH_CoinSignData *csd,
   struct TALER_BlindedDenominationSignature *bs);
+
+
+/**
+ * Request to sign @a csds for melting.
+ *
+ * @param csds array with data to blindly sign (and keys to sign with)
+ * @param csds_length length of @a csds array
+ * @param[out] bss array set to the blind signature on success; must be of length @a csds_length
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_denomination_batch_sign_melt (
+  const struct TEH_CoinSignData *csds,
+  unsigned int csds_length,
+  struct TALER_BlindedDenominationSignature *bss);
 
 
 /**
