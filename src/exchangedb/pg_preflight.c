@@ -26,6 +26,18 @@
 #include "pg_helper.h"
 
 
+/**
+ * Connect to the database if the connection does not exist yet.
+ *
+ * @param pg the plugin-specific state
+ * @param skip_prepare true if we should skip prepared statement setup
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TEH_PG_internal_setup (struct PostgresClosure *pg,
+                       bool skip_prepare);
+
+
 enum GNUNET_GenericReturnValue
 TEH_PG_preflight (void *cls)
 {
@@ -38,9 +50,8 @@ TEH_PG_preflight (void *cls)
   if (! pg->init)
   {
     if (GNUNET_OK !=
-
-        internal_setup (pg,
-                        false))
+        TEH_PG_internal_setup (pg,
+                               false))
       return GNUNET_SYSERR;
   }
   if (NULL == pg->transaction_name)

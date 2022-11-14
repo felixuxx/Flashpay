@@ -130,7 +130,6 @@
 } while (0)
 
 
-
 /**
  * Create the necessary tables if they are not present
  *
@@ -156,7 +155,6 @@ postgres_create_tables (void *cls)
   GNUNET_PQ_disconnect (conn);
   return ret;
 }
-
 
 
 /**
@@ -262,7 +260,7 @@ postgres_setup_foreign_servers (void *cls,
  * @param[in,out] pg connection to initialize
  * @return #GNUNET_OK on success
  */
-static enum GNUNET_GenericReturnValue
+enum GNUNET_GenericReturnValue
 prepare_statements (struct PostgresClosure *pg)
 {
   enum GNUNET_GenericReturnValue ret;
@@ -342,7 +340,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM denominations"
       " LEFT JOIN "
       "   denomination_revocations USING (denominations_serial);"),
-    
+
     /* Used in #postgres_iterate_auditor_denominations() */
     GNUNET_PQ_make_prepare (
       "select_auditor_denoms",
@@ -491,9 +489,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",closing_fee_frac"
       ",close_request_row"
       ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);"),
-   
-   
-   
+
+
     /* Used in #postgres_reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
       "reserve_update",
@@ -565,7 +562,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",ruuid"
       " FROM exchange_do_batch_withdraw"
       " ($1,$2,$3,$4,$5);"),
-   
+
     /* Used in #postgres_do_deposit() to execute a deposit,
        checking the coin's balance in the process as needed. */
     GNUNET_PQ_make_prepare (
@@ -1309,7 +1306,7 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE dep.coin_pub=$1"
       "   AND dep.merchant_pub=$3"
       "   AND dep.h_contract_terms=$2"),
-   
+
     /* Used in #postgres_get_wire_fee() */
     GNUNET_PQ_make_prepare (
       "get_wire_fee",
@@ -1739,7 +1736,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    WHERE denom_pub_hash=$2);"),
 
 
-       /* Used in #postgres_begin_shard() */
+    /* Used in #postgres_begin_shard() */
     GNUNET_PQ_make_prepare (
       "get_open_shard",
       "SELECT"
@@ -1814,9 +1811,6 @@ prepare_statements (struct PostgresClosure *pg)
       "DO UPDATE SET manifest=$2"),
 
 
-   
-   
-   
     /* Used in #postgres_select_purse_by_merge_pub */
     GNUNET_PQ_make_prepare (
       "select_purse_by_merge_pub",
@@ -1832,8 +1826,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",purse_sig"
       " FROM purse_requests"
       " WHERE merge_pub=$1;"),
-   
-     
+
+
     /* Used in #postgres_do_account_merge() */
     GNUNET_PQ_make_prepare (
       "call_account_merge",
@@ -1842,7 +1836,6 @@ prepare_statements (struct PostgresClosure *pg)
       "  ($1, $2, $3);"),
 
 
-   
     /* Used in #postgres_update_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "update_legitimization_process",
@@ -1854,11 +1847,6 @@ prepare_statements (struct PostgresClosure *pg)
       "      h_payto=$3"
       "  AND legitimization_process_serial_id=$1"
       "  AND provider_section=$2;"),
-   
-     
-   
-   
-   
 
 
     GNUNET_PQ_PREPARED_STATEMENT_END
@@ -1880,9 +1868,9 @@ prepare_statements (struct PostgresClosure *pg)
  * @param skip_prepare true if we should skip prepared statement setup
  * @return #GNUNET_OK on success
  */
-static enum GNUNET_GenericReturnValue
-internal_setup (struct PostgresClosure *pg,
-                bool skip_prepare)
+enum GNUNET_GenericReturnValue
+TEH_PG_internal_setup (struct PostgresClosure *pg,
+                       bool skip_prepare)
 {
   if (NULL == pg->conn)
   {
@@ -1934,8 +1922,6 @@ internal_setup (struct PostgresClosure *pg,
     return GNUNET_OK;
   return prepare_statements (pg);
 }
-
-
 
 
 /**
@@ -2002,7 +1988,6 @@ postgres_event_notify (void *cls,
                           extra,
                           extra_size);
 }
-
 
 
 /**
@@ -2835,12 +2820,12 @@ postgres_reserves_in_insert (void *cls,
        (We are only run in a larger transaction for performance.) */
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = TEH_PG_commit(pg);
+    cs = TEH_PG_commit (pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
         TEH_PG_start (pg,
-                        "reserve-update-serializable"))
+                      "reserve-update-serializable"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -2920,7 +2905,7 @@ postgres_reserves_in_insert (void *cls,
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-       TEH_PG_start_read_committed (pg, "reserve-insert-continued"))
+        TEH_PG_start_read_committed (pg, "reserve-insert-continued"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -3027,8 +3012,6 @@ postgres_do_batch_withdraw (
                                                    params,
                                                    rs);
 }
-
-
 
 
 /**
@@ -5094,7 +5077,6 @@ postgres_lookup_transfer_by_deposit (
     return qs;
   }
 }
-
 
 
 /**
@@ -7960,8 +7942,6 @@ postgres_insert_auditor (void *cls,
 }
 
 
-
-
 /**
  * Check the last date an exchange wire account was modified.
  *
@@ -8434,8 +8414,6 @@ postgres_add_denomination_key (
 }
 
 
-
-
 /**
  * Lookup signing key meta data.
  *
@@ -8537,8 +8515,6 @@ postgres_select_auditor_denom_sig (
 }
 
 
-
-
 /**
  * Function called to grab a work shard on an operation @a op. Runs in its
  * own transaction.
@@ -8565,7 +8541,7 @@ postgres_begin_shard (void *cls,
   {
     if (GNUNET_OK !=
         TEH_PG_start (pg,
-                        "begin_shard"))
+                      "begin_shard"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -8803,7 +8779,6 @@ postgres_complete_shard (void *cls,
 }
 
 
-
 /**
  * Function called to release a revolving shard
  * back into the work pool.  Clears the
@@ -8895,8 +8870,6 @@ postgres_set_extension_manifest (void *cls,
 }
 
 
-
-
 /**
  * Function called to store configuration data about a partner
  * exchange that we are federated with.
@@ -8937,13 +8910,6 @@ postgres_insert_partner (void *cls,
                                              "insert_partner",
                                              params);
 }
-
-
-
-
-
-
-
 
 
 /**
@@ -9045,8 +9011,6 @@ postgres_select_purse_by_merge_pub (
 }
 
 
-
-
 /**
  * Set the current @a balance in the purse
  * identified by @a purse_pub. Used by the auditor
@@ -9074,22 +9038,6 @@ postgres_set_purse_balance (
                                              "set_purse_balance",
                                              params);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /**
@@ -9190,8 +9138,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     return NULL;
   }
   if (GNUNET_OK !=
-      internal_setup (pg,
-                      true))
+      TEH_PG_internal_setup (pg,
+                             true))
   {
     GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->currency);
@@ -9202,22 +9150,14 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
- 
   plugin->create_tables = &postgres_create_tables;
-
   plugin->setup_foreign_servers = &postgres_setup_foreign_servers;
- 
- 
-
- 
   plugin->event_listen = &postgres_event_listen;
   plugin->event_listen_cancel = &postgres_event_listen_cancel;
   plugin->event_notify = &postgres_event_notify;
-
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
   plugin->iterate_denominations = &postgres_iterate_denominations;
- 
   plugin->iterate_active_auditors = &postgres_iterate_active_auditors;
   plugin->iterate_auditor_denominations =
     &postgres_iterate_auditor_denominations;
@@ -9229,7 +9169,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->do_batch_withdraw = &postgres_do_batch_withdraw;
   plugin->get_policy_details = &postgres_get_policy_details;
   plugin->persist_policy_details = &postgres_persist_policy_details;
-
   plugin->do_deposit = &postgres_do_deposit;
   plugin->add_policy_fulfillment_proof = &postgres_add_policy_fulfillment_proof;
   plugin->do_melt = &postgres_do_melt;
@@ -9338,11 +9277,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_auditor_denom_sig;
   plugin->select_auditor_denom_sig
     = &postgres_select_auditor_denom_sig;
-
-
   plugin->add_denomination_key
     = &postgres_add_denomination_key;
-
   plugin->lookup_signing_key
     = &postgres_lookup_signing_key;
   plugin->begin_shard
@@ -9351,34 +9287,20 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_abort_shard;
   plugin->complete_shard
     = &postgres_complete_shard;
-
   plugin->release_revolving_shard
     = &postgres_release_revolving_shard;
   plugin->delete_shard_locks
     = &postgres_delete_shard_locks;
   plugin->set_extension_manifest
     = &postgres_set_extension_manifest;
-
   plugin->insert_partner
     = &postgres_insert_partner;
-
-
-
   plugin->expire_purse
     = &postgres_expire_purse;
   plugin->select_purse_by_merge_pub
     = &postgres_select_purse_by_merge_pub;
-  
-
   plugin->set_purse_balance
     = &postgres_set_purse_balance;
-
-
-
-
-
-
-
 
   /* NEW style, sort alphabetically! */
   plugin->do_reserve_open
@@ -9464,9 +9386,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->lookup_kyc_requirement_by_row
     = &TEH_PG_lookup_kyc_requirement_by_row;
   plugin->insert_kyc_requirement_for_account
-    = &TEH_PG_insert_kyc_requirement_for_account;  
+    = &TEH_PG_insert_kyc_requirement_for_account;
 
-  
+
   plugin->lookup_kyc_process_by_account
     = &TEH_PG_lookup_kyc_process_by_account;
   plugin->update_kyc_process_by_row
@@ -9529,7 +9451,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_rollback;
 
 
-  
   return plugin;
 }
 

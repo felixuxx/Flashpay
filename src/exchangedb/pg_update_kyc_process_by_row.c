@@ -77,10 +77,10 @@ TEh_PG_update_kyc_process_by_row (
       GNUNET_PQ_query_param_end
     };
 
-    postgres_event_notify (pg,
-                           &rep.header,
-                           NULL,
-                           0);
+    GNUNET_PQ_event_notify (pg->conn,
+                            &rep.header,
+                            NULL,
+                            0);
     PREPARE (pg,
              "alert_kyc_status_change",
              "INSERT INTO kyc_alerts"
@@ -99,5 +99,3 @@ TEh_PG_update_kyc_process_by_row (
   }
   return qs;
 }
-
-

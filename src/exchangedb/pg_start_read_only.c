@@ -23,11 +23,12 @@
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "pg_start_read_only.h"
+#include "pg_preflight.h"
 #include "pg_helper.h"
 
 enum GNUNET_GenericReturnValue
 TEH_PG_start_read_only (void *cls,
-                          const char *name)
+                        const char *name)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
