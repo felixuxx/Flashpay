@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_denomination_info (
   void *cls,
@@ -72,9 +71,7 @@ TEH_PG_insert_denomination_info (
                  TALER_denom_fee_check_currency (
                    issue->value.currency,
                    &issue->fees));
- /* Used in #postgres_insert_denomination_info() and
-     #postgres_add_denomination_key() */
-  PREPARE (pg, 
+  PREPARE (pg,
            "denomination_insert",
            "INSERT INTO denominations "
            "(denom_pub_hash"
@@ -102,4 +99,3 @@ TEH_PG_insert_denomination_info (
                                              "denomination_insert",
                                              params);
 }
-
