@@ -455,8 +455,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     };
 
     /* Sign before transaction! */
-    ec = TEH_keys_denomination_sign_withdraw (
+    ec = TEH_keys_denomination_sign (
       &csd,
+      false,
       &wc.collectable.sig);
   }
   if (TALER_EC_NONE != ec)

@@ -264,43 +264,17 @@ struct TEH_CoinSignData
 
 
 /**
- * Request to sign @a csd for regular withdrawing.
- *
- * @param csd identifies data to blindly sign and key to sign with
- * @param[out] bs set to the blind signature on success
- * @return #TALER_EC_NONE on success
- */
-enum TALER_ErrorCode
-TEH_keys_denomination_sign_withdraw (
-  const struct TEH_CoinSignData *csd,
-  struct TALER_BlindedDenominationSignature *bs);
-
-
-/**
- * Request to sign @a csds for regular withdrawing.
- *
- * @param csds array with data to blindly sign (and keys to sign with)
- * @param csds_length length of @a csds array
- * @param[out] bss array set to the blind signature on success; must be of length @a csds_length
- * @return #TALER_EC_NONE on success
- */
-enum TALER_ErrorCode
-TEH_keys_denomination_batch_sign_withdraw (
-  const struct TEH_CoinSignData *csds,
-  unsigned int csds_length,
-  struct TALER_BlindedDenominationSignature *bss);
-
-
-/**
  * Request to sign @a csd for melting.
  *
  * @param csd identifies data to blindly sign and key to sign with
+ * @param for_melt true if this is for a melt operation
  * @param[out] bs set to the blind signature on success
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_sign_melt (
+TEH_keys_denomination_sign (
   const struct TEH_CoinSignData *csd,
+  bool for_melt,
   struct TALER_BlindedDenominationSignature *bs);
 
 
@@ -309,46 +283,66 @@ TEH_keys_denomination_sign_melt (
  *
  * @param csds array with data to blindly sign (and keys to sign with)
  * @param csds_length length of @a csds array
+ * @param for_melt true if this is for a melt operation
  * @param[out] bss array set to the blind signature on success; must be of length @a csds_length
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_batch_sign_melt (
+TEH_keys_denomination_batch_sign (
   const struct TEH_CoinSignData *csds,
   unsigned int csds_length,
+  bool for_melt,
   struct TALER_BlindedDenominationSignature *bss);
 
 
 /**
- * Request to derive CS @a r_pub using the denomination corresponding to @a h_denom_pub
- * and @a nonce for withdrawing.
+ * Information needed to derive the CS r_pub.
+ */
+struct TEH_CsDeriveData
+{
+  /**
+   * Hash of key to sign with.
+   */
+  const struct TALER_DenominationHashP *h_denom_pub;
+
+  /**
+   * Nonce to use.
+   */
+  const struct TALER_CsNonce *nonce;
+};
+
+
+/**
+ * Request to derive CS @a r_pub using the denomination and nonce from @a cdd.
  *
- * @param h_denom_pub hash of the public key to use to derive r_pub
- * @param nonce withdraw/refresh nonce
+ * @param cdd data to compute @a r_pub from
+ * @param for_melt true if this is for a melt operation
  * @param[out] r_pub where to write the result
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub_withdraw (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_CsNonce *nonce,
+TEH_keys_denomination_cs_r_pub (
+  const struct TEH_CsDeriveData *cdd,
+  bool for_melt,
   struct TALER_DenominationCSPublicRPairP *r_pub);
 
 
 /**
- * Request to derive CS @a r_pub using the denomination corresponding to @a h_denom_pub
- * and @a nonce for melting.
+ * Request to derive a bunch of CS @a r_pubs using the
+ * denominations and nonces from @a cdds.
  *
- * @param h_denom_pub hash of the public key to use to derive r_pub
- * @param nonce withdraw/refresh nonce
- * @param[out] r_pub where to write the result
+ * @param cdds array to compute @a r_pubs from
+ * @param cdds_length length of the @a cdds array
+ * @param for_melt true if this is for a melt operation
+ * @param[out] r_pubs array where to write the result; must be of length @a cdds_length
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub_melt (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_CsNonce *nonce,
-  struct TALER_DenominationCSPublicRPairP *r_pub);
+TEH_keys_denomination_cs_batch_r_pub (
+  const struct TEH_CsDeriveData *cdds,
+  unsigned int cdds_length,
+  bool for_melt,
+  struct TALER_DenominationCSPublicRPairP *r_pubs);
 
 
 /**

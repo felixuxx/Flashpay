@@ -378,32 +378,17 @@ more:
 }
 
 
-/**
- * Request helper @a dh to sign @a msg using the public key corresponding to
- * @a h_denom_pub.
- *
- * This operation will block until the signature has been obtained.  Should
- * this process receive a signal (that is not ignored) while the operation is
- * pending, the operation will fail.  Note that the helper may still believe
- * that it created the signature. Thus, signals may result in a small
- * differences in the signature counters.  Retrying in this case may work.
- *
- * @param dh helper process connection
- * @param h_cs hash of the CS public key to use to sign
- * @param blinded_planchet blinded planchet containing c and nonce
- * @param for_melt true if the HKDF for melt should be used
- * @param[out] bs set to the blind signature
- * @return #TALER_EC_NONE on success
- */
-static enum TALER_ErrorCode
-helper_cs_sign (
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CsPubHashP *h_cs,
-  const struct TALER_BlindedCsPlanchet *blinded_planchet,
+  const struct TALER_CRYPTO_CsSignRequest *req,
   bool for_melt,
   struct TALER_BlindedDenominationSignature *bs)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
+  const struct TALER_CsPubHashP *h_cs = req->h_cs;
+  const struct TALER_BlindedCsPlanchet *blinded_planchet =
+    req->blinded_planchet;
 
   bs->cipher = TALER_DENOMINATION_INVALID;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -592,34 +577,6 @@ end:
 }
 
 
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_sign_melt (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *req,
-  struct TALER_BlindedDenominationSignature *bs)
-{
-  return helper_cs_sign (dh,
-                         req->h_cs,
-                         req->blinded_planchet,
-                         true,
-                         bs);
-}
-
-
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_sign_withdraw (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *req,
-  struct TALER_BlindedDenominationSignature *bs)
-{
-  return helper_cs_sign (dh,
-                         req->h_cs,
-                         req->blinded_planchet,
-                         false,
-                         bs);
-}
-
-
 void
 TALER_CRYPTO_helper_cs_revoke (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
@@ -650,31 +607,15 @@ TALER_CRYPTO_helper_cs_revoke (
 }
 
 
-/**
- * Ask the helper to derive R using the @a nonce and denomination key
- * associated with @a h_cs.
- *
- * This operation will block until the R has been obtained.  Should
- * this process receive a signal (that is not ignored) while the operation is
- * pending, the operation will fail.  Note that the helper may still believe
- * that it created the signature. Thus, signals may result in a small
- * differences in the signature counters.  Retrying in this case may work.
- *
- * @param dh helper to process connection
- * @param h_cs hash of the CS public key to revoke
- * @param nonce witdhraw nonce
- * @param for_melt true if the HKDF for melt should be used
- * @param[out] crp set to the pair of R values
- * @return set to the error code (or #TALER_EC_NONE on success)
- */
-static enum TALER_ErrorCode
-helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
-                    const struct TALER_CsPubHashP *h_cs,
-                    const struct TALER_CsNonce *nonce,
-                    bool for_melt,
-                    struct TALER_DenominationCSPublicRPairP *crp)
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
+                                 const struct TALER_CRYPTO_CsDeriveRequest *cdr,
+                                 bool for_melt,
+                                 struct TALER_DenominationCSPublicRPairP *crp)
 {
   enum TALER_ErrorCode ec = TALER_EC_INVALID;
+  const struct TALER_CsPubHashP *h_cs = cdr->h_cs;
+  const struct TALER_CsNonce *nonce = cdr->nonce;
 
   memset (crp,
           0,
@@ -852,51 +793,7 @@ more:
 
 
 enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_derive_withdraw (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
-  struct TALER_DenominationCSPublicRPairP *crp)
-{
-  return helper_cs_r_derive (dh,
-                             cdr->h_cs,
-                             cdr->nonce,
-                             false,
-                             crp);
-}
-
-
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_derive_melt (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdr,
-  struct TALER_DenominationCSPublicRPairP *crp)
-{
-  return helper_cs_r_derive (dh,
-                             cdr->h_cs,
-                             cdr->nonce,
-                             true,
-                             crp);
-}
-
-
-/**
- * Request helper @a dh to sign batch of @a reqs requests.
- *
- * This operation will block until the signature has been obtained.  Should
- * this process receive a signal (that is not ignored) while the operation is
- * pending, the operation will fail.  Note that the helper may still believe
- * that it created the signature. Thus, signals may result in a small
- * differences in the signature counters.  Retrying in this case may work.
- *
- * @param dh helper process connection
- * @param reqs information about the keys to sign with and the values to sign
- * @param reqs_length length of the @a reqs array
- * @param for_melt true if this is for a melt operation
- * @param[out] bs array set to the blind signatures, must be of length @a reqs_length!
- * @return #TALER_EC_NONE on success
- */
-static enum TALER_ErrorCode
-helper_cs_batch_sign (
+TALER_CRYPTO_helper_cs_batch_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CRYPTO_CsSignRequest *reqs,
   unsigned int reqs_length,
@@ -1141,53 +1038,7 @@ more:
 
 
 enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_batch_sign_melt (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *reqs,
-  unsigned int reqs_length,
-  struct TALER_BlindedDenominationSignature *bss)
-{
-  return helper_cs_batch_sign (dh,
-                               reqs,
-                               reqs_length,
-                               true,
-                               bss);
-}
-
-
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_batch_sign_withdraw (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsSignRequest *reqs,
-  unsigned int reqs_length,
-  struct TALER_BlindedDenominationSignature *bss)
-{
-  return helper_cs_batch_sign (dh,
-                               reqs,
-                               reqs_length,
-                               false,
-                               bss);
-}
-
-
-/**
- * Ask the helper to derive R using the information from @a cdrs.
- *
- * This operation will block until the R has been obtained.  Should
- * this process receive a signal (that is not ignored) while the operation is
- * pending, the operation will fail.  Note that the helper may still believe
- * that it created the signature. Thus, signals may result in a small
- * differences in the signature counters.  Retrying in this case may work.
- *
- * @param dh helper to process connection
- * @param cdrs array with derivation input data
- * @param cdrs_length length of the @a cdrs array
- * @param for_melt true if this is for a melt operation
- * @param[out] crp array set to the pair of R values, must be of length @a cdrs_length
- * @return set to the error code (or #TALER_EC_NONE on success)
- */
-static enum TALER_ErrorCode
-helper_cs_r_batch_derive (
+TALER_CRYPTO_helper_cs_r_batch_derive (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
   unsigned int cdrs_length,
@@ -1426,36 +1277,6 @@ more:
               wpos,
               ec);
   return ec;
-}
-
-
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_batch_derive_withdraw (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
-  unsigned int cdrs_length,
-  struct TALER_DenominationCSPublicRPairP *crps)
-{
-  return helper_cs_r_batch_derive (dh,
-                                   cdrs,
-                                   cdrs_length,
-                                   false,
-                                   crps);
-}
-
-
-enum TALER_ErrorCode
-TALER_CRYPTO_helper_cs_r_batch_derive_melt (
-  struct TALER_CRYPTO_CsDenominationHelper *dh,
-  const struct TALER_CRYPTO_CsDeriveRequest *cdrs,
-  unsigned int cdrs_length,
-  struct TALER_DenominationCSPublicRPairP *crps)
-{
-  return helper_cs_r_batch_derive (dh,
-                                   cdrs,
-                                   cdrs_length,
-                                   true,
-                                   crps);
 }
 
 

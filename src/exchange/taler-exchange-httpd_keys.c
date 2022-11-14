@@ -2746,8 +2746,9 @@ TEH_keys_denomination_by_hash2 (
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_sign_withdraw (
+TEH_keys_denomination_sign (
   const struct TEH_CoinSignData *csd,
+  bool for_melt,
   struct TALER_BlindedDenominationSignature *bs)
 {
   struct TEH_KeyStateHandle *ksh;
@@ -2787,9 +2788,10 @@ TEH_keys_denomination_sign_withdraw (
 
       csr.h_cs = &hd->h_details.h_cs;
       csr.blinded_planchet = &bp->details.cs_blinded_planchet;
-      return TALER_CRYPTO_helper_cs_sign_withdraw (
+      return TALER_CRYPTO_helper_cs_sign (
         ksh->helpers->csdh,
         &csr,
+        for_melt,
         bs);
     }
   default:
@@ -2799,118 +2801,135 @@ TEH_keys_denomination_sign_withdraw (
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_batch_sign_withdraw (
+TEH_keys_denomination_batch_sign (
   const struct TEH_CoinSignData *csds,
   unsigned int csds_length,
+  bool for_melt,
   struct TALER_BlindedDenominationSignature *bss)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
-#if 0
+  struct TALER_CRYPTO_RsaSignRequest rsrs[csds_length];
+  struct TALER_CRYPTO_CsSignRequest csrs[csds_length];
+  struct TALER_BlindedDenominationSignature rs[csds_length];
+  struct TALER_BlindedDenominationSignature cs[csds_length];
+  unsigned int rsrs_pos = 0;
+  unsigned int csrs_pos = 0;
+  enum TALER_ErrorCode ec;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
     return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
-  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
-                                          &h_denom_pub->hash);
-  if (NULL == hd)
-    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  if (bp->cipher != hd->denom_pub.cipher)
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  switch (hd->denom_pub.cipher)
+  for (unsigned int i = 0; i<csds_length; i++)
   {
-  case TALER_DENOMINATION_RSA:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
-    {
-      struct TALER_CRYPTO_RsaSignRequest rsr = {
-        .h_rsa = &hd->h_details.h_rsa,
-        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
-        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
-      };
+    const struct TALER_DenominationHashP *h_denom_pub = csds[i].h_denom_pub;
+    const struct TALER_BlindedPlanchet *bp = csds[i].bp;
 
-      return TALER_CRYPTO_helper_rsa_sign (
-        ksh->helpers->rsadh,
-        &rsr,
-        bs);
-    }
-  case TALER_DENOMINATION_CS:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
+    hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                            &h_denom_pub->hash);
+    if (NULL == hd)
+      return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+    if (bp->cipher != hd->denom_pub.cipher)
+      return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+    switch (hd->denom_pub.cipher)
     {
-      struct TALER_CRYPTO_CsSignRequest csr;
-
-      csr.h_cs = &hd->h_details.h_cs;
-      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
-      return TALER_CRYPTO_helper_cs_sign_withdraw (
-        ksh->helpers->csdh,
-        &csr,
-        bs);
+    case TALER_DENOMINATION_RSA:
+      rsrs[rsrs_pos].h_rsa = &hd->h_details.h_rsa;
+      rsrs[rsrs_pos].msg
+        = bp->details.rsa_blinded_planchet.blinded_msg;
+      rsrs[rsrs_pos].msg_size
+        = bp->details.rsa_blinded_planchet.blinded_msg_size;
+      rsrs_pos++;
+      break;
+    case TALER_DENOMINATION_CS:
+      csrs[csrs_pos].h_cs = &hd->h_details.h_cs;
+      csrs[csrs_pos].blinded_planchet = &bp->details.cs_blinded_planchet;
+      csrs_pos++;
+      break;
+    default:
+      return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
     }
-  default:
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
-#endif
+
+  if ( (0 != csrs_pos) &&
+       (0 != rsrs_pos) )
+  {
+    memset (rs,
+            0,
+            sizeof (rs));
+    memset (cs,
+            0,
+            sizeof (cs));
+  }
+  ec = TALER_EC_NONE;
+  if (0 != csrs_pos)
+  {
+    ec = TALER_CRYPTO_helper_cs_batch_sign (
+      ksh->helpers->csdh,
+      csrs,
+      csrs_pos,
+      for_melt,
+      (0 == rsrs_pos) ? bss : cs);
+    if (TALER_EC_NONE != ec)
+    {
+      for (unsigned int i = 0; i<csrs_pos; i++)
+        TALER_blinded_denom_sig_free (&cs[i]);
+      return ec;
+    }
+    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS] += csrs_pos;
+  }
+  if (0 != rsrs_pos)
+  {
+    ec = TALER_CRYPTO_helper_rsa_batch_sign (
+      ksh->helpers->rsadh,
+      rsrs,
+      rsrs_pos,
+      (0 == csrs_pos) ? bss : rs);
+    if (TALER_EC_NONE != ec)
+    {
+      for (unsigned int i = 0; i<csrs_pos; i++)
+        TALER_blinded_denom_sig_free (&cs[i]);
+      for (unsigned int i = 0; i<rsrs_pos; i++)
+        TALER_blinded_denom_sig_free (&rs[i]);
+      return ec;
+    }
+    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA] += rsrs_pos;
+  }
+
+  if ( (0 != csrs_pos) &&
+       (0 != rsrs_pos) )
+  {
+    rsrs_pos = 0;
+    csrs_pos = 0;
+    for (unsigned int i = 0; i<csds_length; i++)
+    {
+      const struct TALER_BlindedPlanchet *bp = csds[i].bp;
+
+      switch (bp->cipher)
+      {
+      case TALER_DENOMINATION_RSA:
+        bss[i] = rs[rsrs_pos++];
+        break;
+      case TALER_DENOMINATION_CS:
+        bss[i] = cs[csrs_pos++];
+        break;
+      default:
+        GNUNET_assert (0);
+      }
+    }
+  }
+  return TALER_EC_NONE;
 }
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_sign_melt (
-  const struct TEH_CoinSignData *csd,
-  struct TALER_BlindedDenominationSignature *bs)
-{
-  const struct TALER_DenominationHashP *h_denom_pub = csd->h_denom_pub;
-  const struct TALER_BlindedPlanchet *bp = csd->bp;
-  struct TEH_KeyStateHandle *ksh;
-  struct HelperDenomination *hd;
-
-  ksh = TEH_keys_get_state ();
-  if (NULL == ksh)
-    return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
-  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
-                                          &h_denom_pub->hash);
-  if (NULL == hd)
-    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  if (bp->cipher != hd->denom_pub.cipher)
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  switch (hd->denom_pub.cipher)
-  {
-  case TALER_DENOMINATION_RSA:
-    TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_RSA]++;
-    {
-      struct TALER_CRYPTO_RsaSignRequest rsr = {
-        .h_rsa = &hd->h_details.h_rsa,
-        .msg = bp->details.rsa_blinded_planchet.blinded_msg,
-        .msg_size = bp->details.rsa_blinded_planchet.blinded_msg_size
-      };
-
-      return TALER_CRYPTO_helper_rsa_sign (
-        ksh->helpers->rsadh,
-        &rsr,
-        bs);
-    }
-  case TALER_DENOMINATION_CS:
-    {
-      struct TALER_CRYPTO_CsSignRequest csr;
-
-      csr.h_cs = &hd->h_details.h_cs;
-      csr.blinded_planchet = &bp->details.cs_blinded_planchet;
-      TEH_METRICS_num_signatures[TEH_MT_SIGNATURE_CS]++;
-      return TALER_CRYPTO_helper_cs_sign_melt (
-        ksh->helpers->csdh,
-        &csr,
-        bs);
-    }
-  default:
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  }
-}
-
-
-enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub_melt (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_CsNonce *nonce,
+TEH_keys_denomination_cs_r_pub (
+  const struct TEH_CsDeriveData *cdd,
+  bool for_melt,
   struct TALER_DenominationCSPublicRPairP *r_pub)
 {
+  const struct TALER_DenominationHashP *h_denom_pub = cdd->h_denom_pub;
+  const struct TALER_CsNonce *nonce = cdd->nonce;
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
 
@@ -2935,47 +2954,54 @@ TEH_keys_denomination_cs_r_pub_melt (
       .h_cs = &hd->h_details.h_cs,
       .nonce = nonce
     };
-    return TALER_CRYPTO_helper_cs_r_derive_melt (ksh->helpers->csdh,
-                                                 &cdr,
-                                                 r_pub);
+    return TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
+                                            &cdr,
+                                            for_melt,
+                                            r_pub);
   }
 }
 
 
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub_withdraw (
-  const struct TALER_DenominationHashP *h_denom_pub,
-  const struct TALER_CsNonce *nonce,
-  struct TALER_DenominationCSPublicRPairP *r_pub)
+TEH_keys_denomination_cs_batch_r_pub (
+  const struct TEH_CsDeriveData *cdds,
+  unsigned int cdds_length,
+  bool for_melt,
+  struct TALER_DenominationCSPublicRPairP *r_pubs)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
+  struct TALER_CRYPTO_CsDeriveRequest cdrs[cdds_length];
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
   }
-  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
-                                          &h_denom_pub->hash);
-  if (NULL == hd)
+  for (unsigned int i = 0; i<cdds_length; i++)
   {
-    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-  }
-  if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
-  {
-    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-  }
-  {
-    struct TALER_CRYPTO_CsDeriveRequest cdr = {
-      .h_cs = &hd->h_details.h_cs,
-      .nonce = nonce
-    };
+    const struct TALER_DenominationHashP *h_denom_pub = cdds[i].h_denom_pub;
+    const struct TALER_CsNonce *nonce = cdds[i].nonce;
 
-    return TALER_CRYPTO_helper_cs_r_derive_withdraw (ksh->helpers->csdh,
-                                                     &cdr,
-                                                     r_pub);
+    hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                            &h_denom_pub->hash);
+    if (NULL == hd)
+    {
+      return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+    }
+    if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+    {
+      return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+    }
+    cdrs[i].h_cs = &hd->h_details.h_cs;
+    cdrs[i].nonce = nonce;
   }
+
+  return TALER_CRYPTO_helper_cs_r_batch_derive (ksh->helpers->csdh,
+                                                cdrs,
+                                                cdds_length,
+                                                for_melt,
+                                                r_pubs);
 }
 
 

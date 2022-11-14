@@ -179,9 +179,16 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
 
         /* derive r_pub */
         // FIXME-#7272: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
-        ec = TEH_keys_denomination_cs_r_pub_melt (denom_pub_hash,
-                                                  nonce,
-                                                  r_pub);
+        {
+          const struct TEH_CsDeriveData cdd = {
+            .h_denom_pub = denom_pub_hash,
+            .nonce = nonce
+          };
+
+          ec = TEH_keys_denomination_cs_r_pub (&cdd,
+                                               true,
+                                               r_pub);
+        }
         if (TALER_EC_NONE != ec)
         {
           GNUNET_break (0);
@@ -315,10 +322,14 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
   /* derive r_pub */
   {
     enum TALER_ErrorCode ec;
+    const struct TEH_CsDeriveData cdd = {
+      .h_denom_pub = &denom_pub_hash,
+      .nonce = &nonce
+    };
 
-    ec = TEH_keys_denomination_cs_r_pub_withdraw (&denom_pub_hash,
-                                                  &nonce,
-                                                  &ewv.details.cs_values);
+    ec = TEH_keys_denomination_cs_r_pub (&cdd,
+                                         false,
+                                         &ewv.details.cs_values);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);

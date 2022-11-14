@@ -427,8 +427,9 @@ prepare_transaction (const struct TEH_RequestContext *rc,
       .bp = &pc->blinded_planchet
     };
 
-    ec = TEH_keys_denomination_sign_withdraw (
+    ec = TEH_keys_denomination_sign (
       &csds,
+      false,
       &pc->collectable.sig);
     if (TALER_EC_NONE != ec)
     {
