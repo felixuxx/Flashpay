@@ -120,6 +120,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_insert_close_request.c pg_insert_close_request.h \
   pg_delete_aggregation_transient.h pg_delete_aggregation_transient.c \
   pg_get_link_data.h pg_get_link_data.c \
+  pg_drop_tables.h pg_drop_tables.c \
   pg_insert_purse_request.h pg_insert_purse_request.c \
   pg_insert_records_by_table.c pg_insert_records_by_table.h \
   pg_insert_reserve_open_deposit.c pg_insert_reserve_open_deposit.h \

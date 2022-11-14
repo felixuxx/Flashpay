@@ -26,7 +26,7 @@
 #include "pg_helper.h"
 
 enum GNUNET_DB_QueryStatus
-TEh_PG_update_kyc_process_by_row (
+TEH_PG_update_kyc_process_by_row (
   void *cls,
   uint64_t process_row,
   const char *provider_section,

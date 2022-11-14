@@ -35,9 +35,9 @@
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-postgres_get_extension_manifest (void *cls,
-                                 const char *extension_name,
-                                 char **manifest)
+TEH_PG_get_extension_manifest (void *cls,
+                               const char *extension_name,
+                               char **manifest)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -54,7 +54,7 @@ postgres_get_extension_manifest (void *cls,
   };
 
   *manifest = NULL;
-    /* Used in #postgres_get_extension_manifest */
+  /* Used in #postgres_get_extension_manifest */
   PREPARE (pg,
            "get_extension_manifest",
            "SELECT "
