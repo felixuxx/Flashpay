@@ -75,10 +75,11 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
 
   {
     struct TALER_ExchangeWithdrawValues ewvs[csr_requests_num];
-
     {
       struct TALER_CsNonce nonces[csr_requests_num];
       struct TALER_DenominationHashP denom_pub_hashes[csr_requests_num];
+      struct TEH_CsDeriveData cdds[csr_requests_num];
+      struct TALER_DenominationCSPublicRPairP r_pubs[csr_requests_num];
 
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {
@@ -114,8 +115,6 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
         const struct TALER_CsNonce *nonce = &nonces[i];
         const struct TALER_DenominationHashP *denom_pub_hash =
           &denom_pub_hashes[i];
-        struct TALER_DenominationCSPublicRPairP *r_pub
-          = &ewvs[i].details.cs_values;
 
         ewvs[i].cipher = TALER_DENOMINATION_CS;
         /* check denomination referenced by denom_pub_hash */
@@ -176,28 +175,23 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
               denom_pub_hash);
           }
         }
-
-        /* derive r_pub */
-        // FIXME-#7272: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
-        {
-          const struct TEH_CsDeriveData cdd = {
-            .h_denom_pub = denom_pub_hash,
-            .nonce = nonce
-          };
-
-          ec = TEH_keys_denomination_cs_r_pub (&cdd,
-                                               true,
-                                               r_pub);
-        }
-        if (TALER_EC_NONE != ec)
-        {
-          GNUNET_break (0);
-          return TALER_MHD_reply_with_ec (rc->connection,
-                                          ec,
-                                          NULL);
-        }
+        cdds[i].h_denom_pub = denom_pub_hash;
+        cdds[i].nonce = nonce;
+      } /* for (i) */
+      ec = TEH_keys_denomination_cs_batch_r_pub (cdds,
+                                                 csr_requests_num,
+                                                 true,
+                                                 r_pubs);
+      if (TALER_EC_NONE != ec)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_ec (rc->connection,
+                                        ec,
+                                        NULL);
       }
-    }
+      for (unsigned int i = 0; i < csr_requests_num; i++)
+        ewvs[i].details.cs_values = r_pubs[i];
+    } /* end scope */
 
     /* send response */
     {

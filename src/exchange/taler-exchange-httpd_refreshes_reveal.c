@@ -750,20 +750,21 @@ clean_age:
               (unsigned int) rctx->num_fresh_coins);
 
   /* create fresh coin signatures */
-  for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
+    struct TEH_CoinSignData csds[rctx->num_fresh_coins];
+    struct TALER_BlindedDenominationSignature bss[rctx->num_fresh_coins];
     enum TALER_ErrorCode ec;
-    struct TEH_CoinSignData csd = {
-      .h_denom_pub = &rrcs[i].h_denom_pub,
-      .bp = &rcds[i].blinded_planchet
-    };
 
-    // FIXME #7272: replace with a batch call that
-    // passes all coins in once go!
-    ec = TEH_keys_denomination_sign (
-      &csd,
+    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
+    {
+      csds[i].h_denom_pub = &rrcs[i].h_denom_pub;
+      csds[i].bp = &rcds[i].blinded_planchet;
+    }
+    ec = TEH_keys_denomination_batch_sign (
+      csds,
+      rctx->num_fresh_coins,
       true,
-      &rrcs[i].coin_sig);
+      bss);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
@@ -772,8 +773,9 @@ clean_age:
                                      NULL);
       goto cleanup;
     }
+    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
+      rrcs[i].coin_sig = bss[i];
   }
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
 

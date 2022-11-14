@@ -413,24 +413,24 @@ static MHD_RESULT
 prepare_transaction (const struct TEH_RequestContext *rc,
                      struct BatchWithdrawContext *wc)
 {
-  /* Note: We could check the reserve balance here,
-     just to be reasonably sure that the reserve has
-     a sufficient balance before doing the "expensive"
-     signatures... */
-  /* Sign before transaction! */
+  struct TEH_CoinSignData csds[wc->planchets_length];
+  struct TALER_BlindedDenominationSignature bss[wc->planchets_length];
+
   for (unsigned int i = 0; i<wc->planchets_length; i++)
   {
     struct PlanchetContext *pc = &wc->planchets[i];
-    enum TALER_ErrorCode ec;
-    struct TEH_CoinSignData csds = {
-      .h_denom_pub = &pc->collectable.denom_pub_hash,
-      .bp = &pc->blinded_planchet
-    };
 
-    ec = TEH_keys_denomination_sign (
-      &csds,
+    csds[i].h_denom_pub = &pc->collectable.denom_pub_hash;
+    csds[i].bp = &pc->blinded_planchet;
+  }
+  {
+    enum TALER_ErrorCode ec;
+
+    ec = TEH_keys_denomination_batch_sign (
+      csds,
+      wc->planchets_length,
       false,
-      &pc->collectable.sig);
+      bss);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
@@ -438,6 +438,12 @@ prepare_transaction (const struct TEH_RequestContext *rc,
                                       ec,
                                       NULL);
     }
+  }
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
+  {
+    struct PlanchetContext *pc = &wc->planchets[i];
+
+    pc->collectable.sig = bss[i];
   }
 
   /* run transaction */
