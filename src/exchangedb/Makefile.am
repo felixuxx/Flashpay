@@ -68,7 +68,10 @@ endif
 
 libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   plugin_exchangedb_common.c plugin_exchangedb_common.h \
+  pg_setup_wire_target.h pg_setup_wire_target.c \
+  pg_compute_shard.h pg_compute_shard.c \
   plugin_exchangedb_postgres.c pg_helper.h \
+  pg_reserves_update.h pg_reserves_update.c \
   pg_insert_aggregation_tracking.h pg_insert_aggregation_tracking.c \
   pg_select_aggregation_amounts_for_kyc_check.h pg_select_aggregation_amounts_for_kyc_check.c \
   pg_lookup_wire_fee_by_time.h pg_lookup_wire_fee_by_time.c \
@@ -90,6 +93,106 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_purse_merge.h pg_select_purse_merge.c \
   pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
   pg_insert_drain_profit.h pg_insert_drain_profit.c \
+  pg_create_tables.h pg_create_tables.c \
+  pg_setup_foreign_servers.h pg_setup_foreign_servers.c \
+  pg_event_listen.h pg_event_listen.c \
+  pg_event_listen_cancel.h pg_event_listen_cancel.c \
+  pg_event_notify.h pg_event_notify.c \
+  pg_get_denomination_info.h pg_get_denomination_info.c \
+  pg_iterate_denomination_info.h pg_iterate_denomination_info.c \
+  pg_iterate_denominations.h pg_iterate_denominations.c \
+  pg_iterate_active_auditors.h pg_iterate_active_auditors.c \
+  pg_iterate_auditor_denominations.h pg_iterate_auditor_denominations.c \
+  pg_reserves_get.h pg_reserves_get.c \
+  pg_reserves_get_origin.h pg_reserves_get_origin.c \
+  pg_drain_kyc_alert.h pg_drain_kyc_alert.c \
+  pg_reserves_in_insert.h pg_reserves_in_insert.c \
+  pg_get_withdraw_info.h pg_get_withdraw_info.c \
+  pg_do_batch_withdraw.h pg_do_batch_withdraw.c \
+  pg_get_policy_details.h pg_get_policy_details.c \
+  pg_persist_policy_details.h pg_persist_policy_details.c \
+  pg_do_deposit.h pg_do_deposit.c \
+  pg_add_policy_fulfillment_proof.h pg_add_policy_fulfillment_proof.c \
+  pg_do_melt.h pg_do_melt.c \
+  pg_do_refund.h pg_do_refund.c \
+  pg_do_recoup.h pg_do_recoup.c \
+  pg_do_recoup_refresh.h pg_do_recoup_refresh.c \
+  pg_get_reserve_balance.h pg_get_reserve_balance.c \
+  pg_count_known_coins.h pg_count_known_coins.c \
+  pg_ensure_coin_known.h pg_ensure_coin_known.c \
+  pg_get_known_coin.h pg_get_known_coin.c \
+  pg_get_coin_denomination.h pg_get_coin_denomination.c \
+  pg_have_deposit2.h pg_have_deposit2.c \
+  pg_aggregate.h pg_aggregate.c \
+  pg_create_aggregation_transient.h pg_create_aggregation_transient.c \
+  pg_select_aggregation_transient.h pg_select_aggregation_transient.c \
+  pg_find_aggregation_transient.h pg_find_aggregation_transient.c \
+  pg_update_aggregation_transient.h pg_update_aggregation_transient.c \
+  pg_get_ready_deposit.h pg_get_ready_deposit.c \
+  pg_insert_deposit.h pg_insert_deposit.c \
+  pg_insert_refund.h pg_insert_refund.c \
+  pg_select_refunds_by_coin.h pg_select_refunds_by_coin.c \
+  pg_get_melt.h pg_get_melt.c \
+  pg_insert_refresh_reveal.h pg_insert_refresh_reveal.c \
+  pg_get_refresh_reveal.h pg_get_refresh_reveal.c \
+  pg_lookup_wire_transfer.h pg_lookup_wire_transfer.c \
+  pg_lookup_transfer_by_deposit.h pg_lookup_transfer_by_deposit.c \
+  pg_insert_wire_fee.h pg_insert_wire_fee.c \
+  pg_insert_global_fee.h pg_insert_global_fee.c \
+  pg_get_wire_fee.h pg_get_wire_fee.c \
+  pg_get_global_fee.h pg_get_global_fee.c \
+  pg_get_global_fees.h pg_get_global_fees.c \
+  pg_insert_reserve_closed.h pg_insert_reserve_closed.c \
+  pg_wire_prepare_data_insert.h pg_wire_prepare_data_insert.c \
+  pg_wire_prepare_data_mark_finished.h pg_wire_prepare_data_mark_finished.c \
+  pg_wire_prepare_data_mark_failed.h pg_wire_prepare_data_mark_failed.c \
+  pg_wire_prepare_data_get.h pg_wire_prepare_data_get.c \
+  pg_start_deferred_wire_out.h pg_start_deferred_wire_out.c \
+  pg_store_wire_transfer_out.h pg_store_wire_transfer_out.c \
+  pg_gc.h pg_gc.c \
+  pg_select_deposits_above_serial_id.h pg_select_deposits_above_serial_id.c \
+  pg_select_history_requests_above_serial_id.h pg_select_history_requests_above_serial_id.c \
+  pg_select_purse_decisions_above_serial_id.h pg_select_purse_decisions_above_serial_id.c \
+  pg_select_purse_deposits_by_purse.h pg_select_purse_deposits_by_purse.c \
+  pg_select_refreshes_above_serial_id.h pg_select_refreshes_above_serial_id.c \
+  pg_select_refunds_above_serial_id.h pg_select_refunds_above_serial_id.c \
+  pg_select_reserves_in_above_serial_id.h pg_select_reserves_in_above_serial_id.c \
+  pg_select_reserves_in_above_serial_id_by_account.h pg_select_reserves_in_above_serial_id_by_account.c \
+  pg_select_withdrawals_above_serial_id.h pg_select_withdrawals_above_serial_id.c \
+  pg_select_wire_out_above_serial_id.h pg_select_wire_out_above_serial_id.c \
+  pg_select_wire_out_above_serial_id_by_account.h pg_select_wire_out_above_serial_id_by_account.c \
+  pg_select_recoup_above_serial_id.h pg_select_recoup_above_serial_id.c \
+  pg_select_recoup_refresh_above_serial_id.h pg_select_recoup_refresh_above_serial_id.c \
+  pg_get_reserve_by_h_blind.h pg_get_reserve_by_h_blind.c \
+  pg_get_old_coin_by_h_blind.h pg_get_old_coin_by_h_blind.c \
+  pg_insert_denomination_revocation.h pg_insert_denomination_revocation.c \
+  pg_get_denomination_revocation.h pg_get_denomination_revocation.c \
+  pg_select_deposits_missing_wire.h pg_select_deposits_missing_wire.c \
+  pg_lookup_auditor_timestamp.h pg_lookup_auditor_timestamp.c \
+  pg_lookup_auditor_status.h pg_lookup_auditor_status.c \
+  pg_insert_auditor.h pg_insert_auditor.c \
+  pg_lookup_wire_timestamp.h pg_lookup_wire_timestamp.c \
+  pg_insert_wire.h pg_insert_wire.c \
+  pg_update_wire.h pg_update_wire.c \
+  pg_get_wire_accounts.h pg_get_wire_accounts.c \
+  pg_get_wire_fees.h pg_get_wire_fees.c \
+  pg_insert_signkey_revocation.h pg_insert_signkey_revocation.c \
+  pg_lookup_signkey_revocation.h pg_lookup_signkey_revocation.c \
+  pg_lookup_denomination_key.h pg_lookup_denomination_key.c \
+  pg_insert_auditor_denom_sig.h pg_insert_auditor_denom_sig.c \
+  pg_select_auditor_denom_sig.h pg_select_auditor_denom_sig.c \
+  pg_add_denomination_key.h pg_add_denomination_key.c \
+  pg_lookup_signing_key.h pg_lookup_signing_key.c \
+  pg_begin_shard.h pg_begin_shard.c \
+  pg_abort_shard.h pg_abort_shard.c \
+  pg_complete_shard.h pg_complete_shard.c \
+  pg_release_revolving_shard.h pg_release_revolving_shard.c \
+  pg_delete_shard_locks.h pg_delete_shard_locks.c \
+  pg_set_extension_manifest.h pg_set_extension_manifest.c \
+  pg_insert_partner.h pg_insert_partner.c \
+  pg_expire_purse.h pg_expire_purse.c \
+  pg_select_purse_by_merge_pub.h pg_select_purse_by_merge_pub.c \
+  pg_set_purse_balance.h pg_set_purse_balance.c \
   pg_do_reserve_purse.h pg_do_reserve_purse.c \
   pg_lookup_global_fee_by_time.h pg_lookup_global_fee_by_time.c \
   pg_do_purse_deposit.h pg_do_purse_deposit.c \
