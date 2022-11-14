@@ -265,10 +265,9 @@ prepare_statements (struct PostgresClosure *pg)
 {
   enum GNUNET_GenericReturnValue ret;
   struct GNUNET_PQ_PreparedStatement ps[] = {
-    /* Used in #postgres_insert_denomination_info() and
-     #postgres_add_denomination_key() */
+    /* Used in #postgres_add_denomination_key() */
     GNUNET_PQ_make_prepare (
-      "denomination_insert",
+      "add_denomination_key",
       "INSERT INTO denominations "
       "(denom_pub_hash"
       ",denom_pub"
@@ -8409,7 +8408,7 @@ postgres_add_denomination_key (
                  TALER_denom_fee_check_currency (meta->value.currency,
                                                  &meta->fees));
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "denomination_insert",
+                                             "add_denomination_key",
                                              iparams);
 }
 
