@@ -98,9 +98,9 @@ run (void *cls)
     goto cleanup;
   }
 
-  for (unsigned int i = 0; i< 5;i++)
+  for (unsigned int i = 0; i< 6;i++)
   {
-    static unsigned int batches[]={1, 2, 4, 16, 64};
+    static unsigned int batches[]={1, 1, 2, 4, 16, 64};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
     struct TALER_Amount value;
     unsigned int batch_size = batches[i];
@@ -109,7 +109,6 @@ run (void *cls)
     struct TALER_ReservePublicKeyP reserve_pub;
     
     now = GNUNET_TIME_timestamp_get();
-    RND_BLK (&reserve_pub);
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":1.000010",
                                            &value));
@@ -117,6 +116,7 @@ run (void *cls)
                    "test_by_exchange_j");
     for (unsigned int k=0;k<batch_size;k++)
     {
+      RND_BLK (&reserve_pub);
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
               plugin->reserves_in_insert (plugin->cls,
                                           &reserve_pub,
@@ -160,7 +160,7 @@ main (int argc,
     return -1;
   }
   GNUNET_log_setup (argv[0],
-                    "DEBUG",
+                    "WARNING",
                     NULL);
   plugin_name++;
   (void) GNUNET_asprintf (&testname,
