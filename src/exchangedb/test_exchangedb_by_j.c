@@ -98,23 +98,23 @@ run (void *cls)
     goto cleanup;
   }
 
-  for (unsigned int i = 0; i< 6;i++)
+  for (unsigned int i = 0; i< 7; i++)
   {
-    static unsigned int batches[]={1, 1, 2, 4, 16, 64};
+    static unsigned int batches[] = {1, 1, 0, 2, 4, 16, 64};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
     struct TALER_Amount value;
     unsigned int batch_size = batches[i];
     struct GNUNET_TIME_Timestamp now;
     struct GNUNET_TIME_Relative duration;
     struct TALER_ReservePublicKeyP reserve_pub;
-    
-    now = GNUNET_TIME_timestamp_get();
+
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":1.000010",
                                            &value));
+    now = GNUNET_TIME_timestamp_get ();
     plugin->start (plugin->cls,
                    "test_by_exchange_j");
-    for (unsigned int k=0;k<batch_size;k++)
+    for (unsigned int k = 0; k<batch_size; k++)
     {
       RND_BLK (&reserve_pub);
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -127,14 +127,14 @@ run (void *cls)
                                           4));
     }
     plugin->commit (plugin->cls);
-    duration = GNUNET_TIME_absolute_get_duration(now.abs_time);
-    fprintf (stderr,
+    duration = GNUNET_TIME_absolute_get_duration (now.abs_time);
+    fprintf (stdout,
              "for a batchsize equal to %d it took %s\n",
              batch_size,
-             GNUNET_STRINGS_relative_time_to_string(duration,
-                                                    GNUNET_YES) );
+             GNUNET_STRINGS_relative_time_to_string (duration,
+                                                     GNUNET_YES) );
   }
- drop:
+drop:
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
 cleanup:
@@ -151,7 +151,7 @@ main (int argc,
   char *config_filename;
   char *testname;
   struct GNUNET_CONFIGURATION_Handle *cfg;
-  
+
   (void) argc;
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
