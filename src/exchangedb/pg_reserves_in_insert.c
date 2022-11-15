@@ -59,12 +59,12 @@ notify_on_reserve (struct PostgresClosure *pg,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_in_insert (void *cls,
-                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                             const struct TALER_Amount *balance,
-                             struct GNUNET_TIME_Timestamp execution_time,
-                             const char *sender_account_details,
-                             const char *exchange_account_section,
-                             uint64_t wire_ref)
+                           const struct TALER_ReservePublicKeyP *reserve_pub,
+                           const struct TALER_Amount *balance,
+                           struct GNUNET_TIME_Timestamp execution_time,
+                           const char *sender_account_details,
+                           const char *exchange_account_section,
+                           uint64_t wire_ref)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs1;
@@ -107,9 +107,6 @@ TEH_PG_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     /* Note: query uses 'on conflict do nothing' */
-
-
-
     PREPARE (pg,
              "reserve_create",
              "INSERT INTO reserves "
@@ -122,7 +119,6 @@ TEH_PG_reserves_in_insert (void *cls,
              "($1, $2, $3, $4, $5)"
              " ON CONFLICT DO NOTHING"
              " RETURNING reserve_uuid;");
-
     qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "reserve_create",
                                                     params,
@@ -153,7 +149,6 @@ TEH_PG_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_timestamp (&execution_time),
       GNUNET_PQ_query_param_end
     };
-
 
     PREPARE (pg,
              "reserves_in_add_transaction",
@@ -207,7 +202,7 @@ TEH_PG_reserves_in_insert (void *cls,
       return cs;
     if (GNUNET_OK !=
         TEH_PG_start (pg,
-                        "reserve-update-serializable"))
+                      "reserve-update-serializable"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -217,7 +212,7 @@ TEH_PG_reserves_in_insert (void *cls,
     enum GNUNET_DB_QueryStatus reserve_exists;
 
     reserve_exists = TEH_PG_reserves_get (pg,
-                                            &reserve);
+                                          &reserve);
     switch (reserve_exists)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -287,7 +282,8 @@ TEH_PG_reserves_in_insert (void *cls,
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-       TEH_PG_start_read_committed (pg, "reserve-insert-continued"))
+        TEH_PG_start_read_committed (pg,
+                                     "reserve-insert-continued"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;

@@ -274,15 +274,27 @@ libtalerexchangedb_la_LDFLAGS = \
 
 check_PROGRAMS = \
   test-exchangedb-postgres \
-  bench-db-postgres
-
+  bench-db-postgres\
+  test-exchangedb-by-j-postgres
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
-  test-exchangedb-postgres
-
+  test-exchangedb-postgres\
+  test-exchangedb-by-j-postgres
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  $(XLIB)
+
+test_exchangedb_by_j_postgres_SOURCES = \
+  test_exchangedb_by_j.c
+test_exchangedb_by_j_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
