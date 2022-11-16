@@ -14,15 +14,15 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_reserves_in_insert.c
+ * @file exchangedb/pg_bash_reserves_in_insert.c
  * @brief Implementation of the reserves_in_insert function for Postgres
- * @author Christian Grothoff
+ * @author JOSEPHxu
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_reserves_in_insert.h"
+#include "pg_batch_reserves_in_insert.h"
 #include "pg_helper.h"
 #include "pg_start.h"
 #include "pg_start_read_committed.h"
@@ -60,13 +60,10 @@ notify_on_reserve (struct PostgresClosure *pg,
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_reserves_in_insert (void *cls,
-                           const struct TALER_ReservePublicKeyP *reserve_pub,
-                           const struct TALER_Amount *balance,
-                           struct GNUNET_TIME_Timestamp execution_time,
-                           const char *sender_account_details,
-                           const char *exchange_account_section,
-                           uint64_t wire_ref)
+TEH_PG_batch_reserves_in_insert (void *cls,
+                              const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                              unsigned int reserves_length,
+                              enum GNUNET_DB_QueryStatus *results)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs1;
@@ -75,16 +72,16 @@ TEH_PG_reserves_in_insert (void *cls,
   struct GNUNET_TIME_Timestamp gc;
   uint64_t reserve_uuid;
 
-  reserve.pub = *reserve_pub;
+  reserve.pub = reserves->reserve_pub;
   expiry = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_absolute_add (execution_time.abs_time,
+    GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
                               pg->idle_reserve_expiration_time));
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
                               pg->legal_reserve_expiration_time));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating reserve %s with expiration in %s\n",
-              TALER_B2S (reserve_pub),
+              TALER_B2S (&(reserves->reserve_pub)),
               GNUNET_STRINGS_relative_time_to_string (
                 pg->idle_reserve_expiration_time,
                 GNUNET_NO));
@@ -94,8 +91,8 @@ TEH_PG_reserves_in_insert (void *cls,
      the 'add' operation needs the reserve entry as a foreign key. */
   {
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      TALER_PQ_query_param_amount (balance),
+      GNUNET_PQ_query_param_auto_from_type (&(reserves->reserve_pub)),
+      TALER_PQ_query_param_amount (&(reserves->balance)),
       GNUNET_PQ_query_param_timestamp (&expiry),
       GNUNET_PQ_query_param_timestamp (&gc),
       GNUNET_PQ_query_param_end
@@ -111,16 +108,8 @@ TEH_PG_reserves_in_insert (void *cls,
     /* Note: query uses 'on conflict do nothing' */
     PREPARE (pg,
              "reserve_create",
-             "INSERT INTO reserves "
-             "(reserve_pub"
-             ",current_balance_val"
-             ",current_balance_frac"
-             ",expiration_date"
-             ",gc_date"
-             ") VALUES "
-             "($1, $2, $3, $4, $5)"
-             " ON CONFLICT DO NOTHING"
-             " RETURNING reserve_uuid;");
+             "SELECT bash_reserves_in('34', '20','//asdddfs3', '60', '20'),bash_reserves_in('24', '10','//dfs3', '40', '50'),bash_reserves_in('42', '40','//d43', '40', '50'),bash_reserves_in('44', '10','//ghs3', '40', '50') AS existed from reserves;");
+
     qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "reserve_create",
                                                     params,
@@ -137,18 +126,18 @@ TEH_PG_reserves_in_insert (void *cls,
     struct TALER_PaytoHashP h_payto;
 
     qs3 = TEH_PG_setup_wire_target (pg,
-                                    sender_account_details,
+                                    reserves->sender_account_details,
                                     &h_payto);
     if (qs3 < 0)
       return qs3;
     /* We do not have the UUID, so insert by public key */
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
-      GNUNET_PQ_query_param_uint64 (&wire_ref),
-      TALER_PQ_query_param_amount (balance),
-      GNUNET_PQ_query_param_string (exchange_account_section),
+      GNUNET_PQ_query_param_uint64 (&(reserves->wire_reference)),
+      TALER_PQ_query_param_amount (&(reserves->balance)),
+      GNUNET_PQ_query_param_string (reserves->exchange_account_name),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      GNUNET_PQ_query_param_timestamp (&execution_time),
+      GNUNET_PQ_query_param_timestamp (&reserves->execution_time),
       GNUNET_PQ_query_param_end
     };
 
@@ -187,7 +176,7 @@ TEH_PG_reserves_in_insert (void *cls,
   {
     /* New reserve, we are finished */
     notify_on_reserve (pg,
-                       reserve_pub);
+                       &(reserves->reserve_pub));
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 
@@ -245,7 +234,7 @@ TEH_PG_reserves_in_insert (void *cls,
     if (0 >
         TALER_amount_add (&updated_reserve.balance,
                           &reserve.balance,
-                          balance))
+                          &reserves->balance))
     {
       /* currency overflow or incompatible currency */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -275,7 +264,7 @@ TEH_PG_reserves_in_insert (void *cls,
     }
   }
   notify_on_reserve (pg,
-                     reserve_pub);
+                     &reserves->reserve_pub);
   /* Go back to original transaction mode */
   {
     enum GNUNET_DB_QueryStatus cs;

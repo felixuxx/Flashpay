@@ -2521,3 +2521,61 @@ BEGIN
 END $$;
 
 COMMIT;
+
+/*************************************************************/
+
+
+CREATE OR REPLACE FUNCTION bash_reserves_in(
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN rpub BYTEA,
+  IN now INT8,
+  IN min_reserve_gc INT8,
+  OUT reserve_found BOOLEAN,
+  OUT ruuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  existed BOOLEAN;
+  not_existed BOOLEAN;
+BEGIN
+  SELECT reserves.reserve_uuid into ruuid from reserves
+  where reserves.reserve_pub = rpub;
+  IF ruuid IS NOT NULL
+  THEN
+    existed = TRUE;
+    UPDATE reserves
+     SET (current_balance_val
+     	  ,current_balance_frac
+   	   ,expiration_date
+   	    ,gc_date) =
+   	     (amount_val
+   	      ,amount_frac
+   	       ,now
+   	        ,min_reserve_gc)
+      WHERE
+      reserve_pub = rpub
+      RETURNING existed into reserve_found;
+  END IF;
+  IF NOT FOUND
+  THEN
+    SELECT MAX(reserve_uuid)+1 into ruuid from reserves;
+    existed = FALSE;
+    INSERT INTO reserves
+    (reserve_uuid
+    ,reserve_pub
+    ,current_balance_val
+    ,current_balance_frac
+    ,expiration_date
+    ,gc_date)
+    VALUES
+    (ruuid
+    ,rpub
+    ,amount_val
+    ,amount_frac
+    ,now
+    ,min_reserve_gc) RETURNING existed into reserve_found;
+
+  END IF;
+
+END $$;
