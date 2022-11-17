@@ -91,6 +91,7 @@ closer_run (void *cls,
 
     rcmd = TALER_TESTING_interpreter_lookup_command (is,
                                                      as->reserve_ref);
+    GNUNET_assert (NULL != rcmd);
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_pub (rcmd,
                                              &reserve_pubp))

@@ -183,13 +183,7 @@ status_run (void *cls,
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->reserve_reference);
-
-  if (NULL == create_reserve)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
+  GNUNET_assert (NULL != create_reserve);
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_pub (create_reserve,
                                            &ss->reserve_pubp))
@@ -328,6 +322,7 @@ finish_run (void *cls,
   poll_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ps->poll_reference);
+  GNUNET_assert (NULL != poll_reserve);
   GNUNET_assert (poll_reserve->run == &status_run);
   ss = poll_reserve->cls;
   if (NULL == ss->rsh)

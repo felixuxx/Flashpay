@@ -163,7 +163,7 @@ deposit_cb (void *cls,
 
       purse_cmd = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                             ds->purse_ref);
-
+      GNUNET_assert (NULL != purse_cmd);
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_sig (purse_cmd,
                                                &reserve_sig))
@@ -270,6 +270,7 @@ deposit_run (void *cls,
 
   purse_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                         ds->purse_ref);
+  GNUNET_assert (NULL != purse_cmd);
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_purse_pub (purse_cmd,
                                          &purse_pub))
@@ -291,13 +292,7 @@ deposit_run (void *cls,
 
     coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                          cr->command_ref);
-    if (NULL == coin_cmd)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-
+    GNUNET_assert (NULL != coin_cmd);
     if ( (GNUNET_OK !=
           TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                              cr->coin_index,

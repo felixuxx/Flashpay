@@ -232,7 +232,7 @@ withdraw_cs_stage_two_callback (
                                 &wh->pd))
     {
       GNUNET_break (0);
-      GNUNET_free (wh);
+      break;
     }
     wh->wh2 = TALER_EXCHANGE_withdraw2 (wh->exchange,
                                         &wh->pd,

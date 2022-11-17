@@ -82,7 +82,7 @@ struct JanssonClosure
    * Last bang we found.
    */
   enum Bang found_bang;
-  
+
   /**
    * Language for i18n lookups.
    */
@@ -129,11 +129,11 @@ find (struct JanssonClosure *e, const char *name)
 
     if (0 == strcmp (bang, "i18n"))
       e->found_bang = BANG_I18N;
-    else if (0 == strcmp(bang, "stringify"))
+    else if (0 == strcmp (bang, "stringify"))
       e->found_bang = BANG_STRINGIFY;
-    else if (0 == strcmp(bang, "amount_decimal"))
+    else if (0 == strcmp (bang, "amount_decimal"))
       e->found_bang = BANG_AMOUNT_CURRENCY;
-    else if (0 == strcmp(bang, "amount_currency"))
+    else if (0 == strcmp (bang, "amount_currency"))
       e->found_bang = BANG_AMOUNT_DECIMAL;
   }
 
@@ -157,7 +157,7 @@ find (struct JanssonClosure *e, const char *name)
 
 
 static int
-start(void *closure)
+start (void *closure)
 {
   struct JanssonClosure *e = closure;
   e->depth = 0;
@@ -174,25 +174,25 @@ static int
 emituw (void *closure, const char *buffer, size_t size, int escape, FILE *file)
 {
   struct JanssonClosure *e = closure;
-  if (!escape)
+  if (! escape)
     e->writecb (file, buffer, size);
   else
     do
     {
       switch (*buffer)
       {
-        case '<':
-          e->writecb (file, "&lt;", 4);
-          break;
-        case '>':
-          e->writecb (file, "&gt;", 4);
-          break;
-        case '&':
-          e->writecb (file, "&amp;", 5);
-          break;
-        default:
-          e->writecb (file, buffer, 1);
-          break;
+      case '<':
+        e->writecb (file, "&lt;", 4);
+        break;
+      case '>':
+        e->writecb (file, "&gt;", 4);
+        break;
+      case '&':
+        e->writecb (file, "&amp;", 5);
+        break;
+      default:
+        e->writecb (file, buffer, 1);
+        break;
       }
       buffer++;
     }
@@ -202,10 +202,10 @@ emituw (void *closure, const char *buffer, size_t size, int escape, FILE *file)
 
 
 static int
-enter(void *closure, const char *name)
+enter (void *closure, const char *name)
 {
   struct JanssonClosure *e = closure;
-  json_t *o = find(e, name);
+  json_t *o = find (e, name);
   if (++e->depth >= MUSTACH_MAX_DEPTH)
     return MUSTACH_ERROR_TOO_DEEP;
 
@@ -277,6 +277,7 @@ next (void *closure)
   return 1;
 }
 
+
 static int
 leave (void *closure)
 {
@@ -287,11 +288,13 @@ leave (void *closure)
   return 0;
 }
 
+
 static void
 freecb (void *v)
 {
   free (v);
 }
+
 
 static int
 get (void *closure, const char *name, struct mustach_sbuf *sbuf)
@@ -300,7 +303,7 @@ get (void *closure, const char *name, struct mustach_sbuf *sbuf)
   json_t *obj;
 
   if ( (0 == strcmp (name, "*") ) &&
-       (e->stack[e->depth].is_objiter ) )
+       (e->stack[e->depth].is_objiter) )
   {
     sbuf->value = json_object_iter_key (e->stack[e->depth].iter);
     return MUSTACH_OK;
@@ -310,56 +313,57 @@ get (void *closure, const char *name, struct mustach_sbuf *sbuf)
   {
     switch (e->found_bang)
     {
-      case BANG_I18N:
-      case BANG_NONE:
+    case BANG_I18N:
+    case BANG_NONE:
+      {
+        const char *s = json_string_value (obj);
+        if (NULL != s)
         {
-          const char *s = json_string_value (obj);
-          if (NULL != s)
-          {
-            sbuf->value = s;
-            return MUSTACH_OK;
-          }
+          sbuf->value = s;
+          return MUSTACH_OK;
         }
-        break;
-      case BANG_STRINGIFY:
-        sbuf->value = json_dumps (obj, JSON_INDENT (2));
+      }
+      break;
+    case BANG_STRINGIFY:
+      sbuf->value = json_dumps (obj, JSON_INDENT (2));
+      sbuf->freecb = freecb;
+      return MUSTACH_OK;
+    case BANG_AMOUNT_DECIMAL:
+      {
+        char *s;
+        char *c;
+        if (! json_is_string (obj))
+          break;
+        s = GNUNET_strdup (json_string_value (obj));
+        c = strchr (s, ':');
+        if (NULL != c)
+          *c = 0;
+        sbuf->value = s;
         sbuf->freecb = freecb;
         return MUSTACH_OK;
-      case BANG_AMOUNT_DECIMAL:
-        {
-          char *s;
-          char *c;
-          if (!json_is_string (obj))
-            break;
-          s = strdup (json_string_value (obj));
-          c = strchr (s, ':');
-          if (NULL != c)
-            *c = 0;
-          sbuf->value = s;
-          sbuf->freecb = freecb;
-          return MUSTACH_OK;
-        }
-        break;
-      case BANG_AMOUNT_CURRENCY:
-        {
-          const char *s;
-          if (!json_is_string (obj))
-            break;
-          s = json_string_value (obj);
-          s = strchr (s, ':');
-          if (NULL == s)
-            break;
-          sbuf->value = s + 1;
-          return MUSTACH_OK;
-        }
-        break;
-      default:
-        break;
+      }
+      break;
+    case BANG_AMOUNT_CURRENCY:
+      {
+        const char *s;
+        if (! json_is_string (obj))
+          break;
+        s = json_string_value (obj);
+        s = strchr (s, ':');
+        if (NULL == s)
+          break;
+        sbuf->value = s + 1;
+        return MUSTACH_OK;
+      }
+      break;
+    default:
+      break;
     }
   }
   sbuf->value = "";
   return MUSTACH_OK;
 }
+
 
 static struct mustach_itf itf = {
   .start = start,
@@ -367,7 +371,7 @@ static struct mustach_itf itf = {
   .enter = enter,
   .next = next,
   .leave = leave,
-  .partial =NULL,
+  .partial = NULL,
   .get = get,
   .emit = NULL,
   .stop = NULL
@@ -385,33 +389,41 @@ static struct mustach_itf itfuw = {
   .stop = NULL
 };
 
-int fmustach_jansson (const char *template, json_t *root, FILE *file)
+int
+fmustach_jansson (const char *template, json_t *root, FILE *file)
 {
   struct JanssonClosure e = { 0 };
   e.root = root;
-  return fmustach(template, &itf, &e, file);
+  return fmustach (template, &itf, &e, file);
 }
 
-int fdmustach_jansson (const char *template, json_t *root, int fd)
+
+int
+fdmustach_jansson (const char *template, json_t *root, int fd)
 {
   struct JanssonClosure e = { 0 };
   e.root = root;
-  return fdmustach(template, &itf, &e, fd);
+  return fdmustach (template, &itf, &e, fd);
 }
 
-int mustach_jansson (const char *template, json_t *root, char **result, size_t *size)
+
+int
+mustach_jansson (const char *template, json_t *root, char **result,
+                 size_t *size)
 {
   struct JanssonClosure e = { 0 };
   e.root = root;
   e.writecb = NULL;
-  return mustach(template, &itf, &e, result, size);
+  return mustach (template, &itf, &e, result, size);
 }
 
-int umustach_jansson (const char *template, json_t *root, mustach_jansson_write_cb writecb, void *closure)
+
+int
+umustach_jansson (const char *template, json_t *root, mustach_jansson_write_cb
+                  writecb, void *closure)
 {
   struct JanssonClosure e = { 0 };
   e.root = root;
   e.writecb = writecb;
-  return fmustach(template, &itfuw, &e, closure);
+  return fmustach (template, &itfuw, &e, closure);
 }
-

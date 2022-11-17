@@ -1484,6 +1484,8 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     while (NULL != (lp = GNUNET_CONTAINER_heap_remove_root (h->lp_heap)))
       lp_trigger (lp,
                   h);
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->big_lock));
     GNUNET_break (sizeof (val) ==
 #ifdef __linux__
                   write (h->lp_event,
@@ -1492,8 +1494,6 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
 #endif
                          &val,
                          sizeof (val)));
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
     GNUNET_break (0 ==
                   pthread_join (h->lp_thread,
                                 &ret));
@@ -3012,7 +3012,7 @@ handle_bank_integration (struct TALER_FAKEBANK_Handle *h,
       char dummy;
 
       if (1 != sscanf (lp_s,
-                       "%lld%c",
+                       "%llu%c",
                        &d,
                        &dummy))
       {
@@ -3427,6 +3427,7 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
       acc = lookup_account (h,
                             username,
                             username);
+      GNUNET_assert (NULL != acc);
       acc->password = GNUNET_strdup (password);
       acc->balance = h->signup_bonus; /* magic money creation! */
     }

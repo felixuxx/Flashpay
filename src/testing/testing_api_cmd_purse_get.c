@@ -188,13 +188,7 @@ status_run (void *cls,
   create_purse
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->purse_reference);
-
-  if (NULL == create_purse)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
+  GNUNET_assert (NULL != create_purse);
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_purse_pub (create_purse,
                                          &ss->purse_pub))
@@ -311,6 +305,7 @@ finish_run (void *cls,
   poll_purse
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ps->poll_reference);
+  GNUNET_assert (NULL != poll_purse);
   GNUNET_assert (poll_purse->run == &status_run);
   ss = poll_purse->cls;
   if (NULL == ss->pgh)

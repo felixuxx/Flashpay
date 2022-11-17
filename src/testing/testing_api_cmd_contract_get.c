@@ -115,6 +115,7 @@ get_cb (void *cls,
   }
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->contract_ref);
+  GNUNET_assert (NULL != ref);
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
     const struct TALER_PurseMergePrivateKeyP *mp;

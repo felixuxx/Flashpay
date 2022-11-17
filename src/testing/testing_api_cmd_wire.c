@@ -105,6 +105,12 @@ wire_cb (void *cls,
       char *method;
 
       method = TALER_payto_get_method (accounts[i].payto_uri);
+      if (NULL == method)
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (ws->is);
+        return;
+      }
       if (0 == strcmp (ws->expected_method,
                        method))
       {
