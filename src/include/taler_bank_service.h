@@ -261,6 +261,11 @@ struct TALER_BANK_CreditHistoryHandle;
 struct TALER_BANK_CreditDetails
 {
   /**
+   * Serial ID of the wire transfer.
+   */
+  uint64_t serial_id;
+
+  /**
    * Amount that was transferred
    */
   struct TALER_Amount amount;
@@ -271,22 +276,71 @@ struct TALER_BANK_CreditDetails
   struct GNUNET_TIME_Timestamp execution_date;
 
   /**
-   * Reserve public key encoded in the wire
-   * transfer subject.
+   * Reserve public key encoded in the wire transfer subject.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * payto://-URL of the source account that
-   * send the funds.
+   * payto://-URL of the source account that send the funds.
    */
   const char *debit_account_uri;
 
   /**
-   * payto://-URL of the target account that
-   * received the funds.
+   * payto://-URL of the target account that received the funds.
    */
   const char *credit_account_uri;
+};
+
+
+/**
+ * Response details for a history request.
+ */
+struct TALER_BANK_CreditHistoryResponse
+{
+
+  /**
+   * HTTP status.  Note that #MHD_HTTP_OK and #MHD_HTTP_NO_CONTENT are both
+   * successful replies, but @e details will only contain @e success information
+   * if this is set to #MHD_HTTP_OK.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Array of transactions recevied.
+       */
+      const struct TALER_BANK_CreditDetails *details;
+
+      /**
+       * Length of the @e details array.
+       */
+      unsigned int details_length;
+
+    } success;
+
+  } details;
+
 };
 
 
@@ -295,25 +349,12 @@ struct TALER_BANK_CreditDetails
  * the bank for the credit transaction history.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol),
- *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
- *                    last callback is always of this status (even if `abs(num_results)` were
- *                    already returned).
- * @param ec detailed error code
- * @param serial_id monotonically increasing counter corresponding to the transaction
- * @param details details about the wire transfer
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @param reply details about the response
  */
-typedef enum GNUNET_GenericReturnValue
+typedef void
 (*TALER_BANK_CreditHistoryCallback)(
   void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  uint64_t serial_id,
-  const struct TALER_BANK_CreditDetails *details,
-  const json_t *json);
+  const struct TALER_BANK_CreditHistoryResponse *reply);
 
 
 /**
@@ -370,6 +411,11 @@ struct TALER_BANK_DebitHistoryHandle;
 struct TALER_BANK_DebitDetails
 {
   /**
+   * Serial ID of the wire transfer.
+   */
+  uint64_t serial_id;
+
+  /**
    * Amount that was transferred
    */
   struct TALER_Amount amount;
@@ -390,16 +436,66 @@ struct TALER_BANK_DebitDetails
   const char *exchange_base_url;
 
   /**
-   * payto://-URI of the source account that
-   * send the funds.
+   * payto://-URI of the source account that send the funds.
    */
   const char *debit_account_uri;
 
   /**
-   * payto://-URI of the target account that
-   * received the funds.
+   * payto://-URI of the target account that received the funds.
    */
   const char *credit_account_uri;
+
+};
+
+
+/**
+ * Response details for a history request.
+ */
+struct TALER_BANK_DebitHistoryResponse
+{
+
+  /**
+   * HTTP status.  Note that #MHD_HTTP_OK and #MHD_HTTP_NO_CONTENT are both
+   * successful replies, but @e details will only contain @e success information
+   * if this is set to #MHD_HTTP_OK.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+
+      /**
+       * Array of transactions initiated.
+       */
+      const struct TALER_BANK_DebitDetails *details;
+
+      /**
+       * Length of the @e details array.
+       */
+      unsigned int details_length;
+
+    } success;
+
+  } details;
 
 };
 
@@ -409,25 +505,12 @@ struct TALER_BANK_DebitDetails
  * the bank for the debit transaction history.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol),
- *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
- *                    last callback is always of this status (even if `abs(num_results)` were
- *                    already returned).
- * @param ec detailed error code
- * @param serial_id monotonically increasing counter corresponding to the transaction
- * @param details details about the wire transfer
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @param reply details about the response
  */
-typedef enum GNUNET_GenericReturnValue
+typedef void
 (*TALER_BANK_DebitHistoryCallback)(
   void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  uint64_t serial_id,
-  const struct TALER_BANK_DebitDetails *details,
-  const json_t *json);
+  const struct TALER_BANK_DebitHistoryResponse *reply);
 
 
 /**

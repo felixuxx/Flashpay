@@ -606,187 +606,192 @@ do_commit (struct WireAccount *wa)
 
 
 /**
+ * We got incoming transaction details from the bank. Add them
+ * to the database.
+ *
+ * @param wa wire account we are handling
+ * @param details array of transaction details
+ * @param details_length length of the @a details array
+ * @return true on success
+ */
+static bool
+process_reply (struct WireAccount *wa,
+               const struct TALER_BANK_CreditDetails *details,
+               unsigned int details_length)
+{
+  uint64_t lroff = wa->latest_row_off;
+
+  /* check serial IDs for range constraints */
+  for (unsigned int i = 0; i<details_length; i++)
+  {
+    const struct TALER_BANK_CreditDetails *cd = &details[i];
+
+    if (cd->serial_id < lroff)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Serial ID %llu not monotonic (got %llu before). Failing!\n",
+                  (unsigned long long) cd->serial_id,
+                  (unsigned long long) lroff);
+      db_plugin->rollback (db_plugin->cls);
+      GNUNET_SCHEDULER_shutdown ();
+      wa->hh = NULL;
+      return false;
+    }
+    if (cd->serial_id >= wa->max_row_off)
+    {
+      /* We got 'limit' transactions back from the bank, so we should not
+         introduce any delay before the next call. */
+      wa->delay = false;
+    }
+    if (cd->serial_id > wa->shard_end)
+    {
+      /* we are *past* the current shard (likely because the serial_id of the
+         shard_end happens to not exist in the DB). So commit and stop this
+         iteration! */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Serial ID %llu past shard end at %llu, ending iteration early!\n",
+                  (unsigned long long) cd->serial_id,
+                  (unsigned long long) wa->shard_end);
+      details_length = i;
+      wa->delay = false;
+      break;
+    }
+    lroff = cd->serial_id;
+  }
+  if (0 == details_length)
+  {
+    /* Server should have used 204, not 200! */
+    GNUNET_break_op (0);
+    return true;
+  }
+  if (GNUNET_OK !=
+      db_plugin->start_read_committed (db_plugin->cls,
+                                       "wirewatch check for incoming wire transfers"))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to start database transaction!\n");
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    wa->hh = NULL;
+    return false;
+  }
+  wa->started_transaction = true;
+
+  for (unsigned int i = 0; i<details_length; i++)
+  {
+    const struct TALER_BANK_CreditDetails *cd = &details[i];
+    enum GNUNET_DB_QueryStatus qs;
+
+    /* FIXME #7276: Consider using Postgres multi-valued insert here,
+   for up to 15x speed-up according to
+   https://dba.stackexchange.com/questions/224989/multi-row-insert-vs-transactional-single-row-inserts#225006
+   (Note: this may require changing both the
+   plugin API as well as modifying how this function is called.) */
+    qs = db_plugin->reserves_in_insert (db_plugin->cls,
+                                        &cd->reserve_pub,
+                                        &cd->amount,
+                                        cd->execution_date,
+                                        cd->debit_account_uri,
+                                        wa->ai->section_name,
+                                        cd->serial_id);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      db_plugin->rollback (db_plugin->cls);
+      wa->started_transaction = false;
+      GNUNET_SCHEDULER_shutdown ();
+      wa->hh = NULL;
+      return false;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Got DB soft error for reserves_in_insert. Rolling back.\n");
+      handle_soft_error (wa);
+      wa->hh = NULL;
+      return true;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      /* Either wirewatch was freshly started after the system was
+         shutdown and we're going over an incomplete shard again
+         after being restarted, or the shard lock period was too
+         short (number of workers set incorrectly?) and a 2nd
+         wirewatcher has been stealing our work while we are still
+         at it. */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Attempted to import transaction %llu (%s) twice. "
+                  "This should happen rarely (if not, ask for support).\n",
+                  (unsigned long long) cd->serial_id,
+                  wa->job_name);
+      db_plugin->rollback (db_plugin->cls);
+      wa->latest_row_off = cd->serial_id;
+      wa->started_transaction = false;
+      /* already existed, ok, let's just continue */
+      return true;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      wa->latest_row_off = cd->serial_id;
+      /* normal case */
+      break;
+    }
+  }
+  do_commit (wa);
+  if (check_shard_done (wa))
+    account_completed (wa);
+  else
+    task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
+                                     wa);
+  return true;
+}
+
+
+/**
  * Callbacks of this type are used to serve the result of asking
  * the bank for the transaction history.
  *
- * @param cls closure with the `struct WioreAccount *` we are processing
- * @param http_status HTTP status code from the server
- * @param ec taler error code
- * @param serial_id identification of the position at which we are querying
- * @param details details about the wire transfer
- * @param json raw JSON response
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @param cls closure with the `struct WireAccount *` we are processing
+ * @param reply response we got from the bank
  */
-static enum GNUNET_GenericReturnValue
+static void
 history_cb (void *cls,
-            unsigned int http_status,
-            enum TALER_ErrorCode ec,
-            uint64_t serial_id,
-            const struct TALER_BANK_CreditDetails *details,
-            const json_t *json)
+            const struct TALER_BANK_CreditHistoryResponse *reply)
 {
   struct WireAccount *wa = cls;
-  enum GNUNET_DB_QueryStatus qs;
+  bool ok;
 
-  (void) json;
   GNUNET_assert (NULL == task);
-  if (NULL == details)
+  wa->hh = NULL;
+  switch (reply->http_status)
   {
-    wa->hh = NULL;
-    if ( (! ( (MHD_HTTP_NOT_FOUND == http_status) &&
-              (ignore_account_404) ) ) &&
-         ( (MHD_HTTP_NO_CONTENT != http_status) &&
-           ( (TALER_EC_NONE != ec) ||
-             (MHD_HTTP_OK != http_status) ) ) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Error fetching history: %s (%u)\n",
-                  TALER_ErrorCode_get_hint (ec),
-                  http_status);
-      if (! (exit_on_error || test_mode) )
-      {
-        account_completed (wa);
-        return GNUNET_OK;
-      }
-      GNUNET_SCHEDULER_shutdown ();
-      return GNUNET_OK;
-    }
-    if (wa->started_transaction)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "End of list. Committing progress on %s of (%llu,%llu]!\n",
-                  wa->job_name,
-                  (unsigned long long) wa->batch_start,
-                  (unsigned long long) wa->latest_row_off);
-      do_commit (wa);
-      return GNUNET_OK; /* will be ignored anyway */
-    }
-    /* We did not even start a transaction. */
-    if ( (wa->delay) &&
-         (test_mode) &&
-         (NULL == wa->next) )
-    {
-      /* We exit on idle */
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Shutdown due to test mode!\n");
-      GNUNET_SCHEDULER_shutdown ();
-      return GNUNET_OK;
-    }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No transactions in history response, moving on.\n");
-    account_completed (wa);
-    return GNUNET_OK; /* will be ignored anyway */
+  case 0:
+    ok = false;
+  case MHD_HTTP_OK:
+    ok = process_reply (wa,
+                        reply->details.success.details,
+                        reply->details.success.details_length);
+    break;
+  case MHD_HTTP_NO_CONTENT:
+    ok = true;
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    ok = ignore_account_404;
+    break;
+  default:
+    ok = false;
+    break;
   }
 
-  /* We did get 'details' from the bank. Do sanity checks before inserting. */
-  if (serial_id < wa->latest_row_off)
+  if (! ok)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Serial ID %llu not monotonic (got %llu before). Failing!\n",
-                (unsigned long long) serial_id,
-                (unsigned long long) wa->latest_row_off);
+                "Error fetching history: %s (%u)\n",
+                TALER_ErrorCode_get_hint (reply->ec),
+                reply->http_status);
+    if (! (exit_on_error || test_mode) )
+    {
+      account_completed (wa);
+      return;
+    }
     GNUNET_SCHEDULER_shutdown ();
-    wa->hh = NULL;
-    return GNUNET_SYSERR;
+    return;
   }
-  /* If we got 'limit' transactions back from the bank,
-     we should not introduce any delay before the next
-     call. */
-  if (serial_id >= wa->max_row_off)
-    wa->delay = false;
-  if (serial_id > wa->shard_end)
-  {
-    /* we are *past* the current shard (likely because the serial_id of the
-       shard_end happens to not exist in the DB). So commit and stop this
-       iteration! */
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Serial ID %llu past shard end at %llu, ending iteration early!\n",
-                (unsigned long long) serial_id,
-                (unsigned long long) wa->shard_end);
-    wa->latest_row_off = serial_id - 1; /* excluding serial_id! */
-    wa->hh = NULL;
-    if (wa->started_transaction)
-    {
-      GNUNET_assert (NULL == task);
-      do_commit (wa);
-    }
-    else
-    {
-      GNUNET_assert (NULL == task);
-      if (check_shard_done (wa))
-        account_completed (wa);
-      else
-        task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
-                                         wa);
-    }
-    return GNUNET_SYSERR;
-  }
-  if (! wa->started_transaction)
-  {
-    if (GNUNET_OK !=
-        db_plugin->start_read_committed (db_plugin->cls,
-                                         "wirewatch check for incoming wire transfers"))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to start database transaction!\n");
-      global_ret = EXIT_FAILURE;
-      GNUNET_SCHEDULER_shutdown ();
-      wa->hh = NULL;
-      return GNUNET_SYSERR;
-    }
-    wa->started_transaction = true;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Adding wire transfer over %s with (hashed) subject `%s'\n",
-              TALER_amount2s (&details->amount),
-              TALER_B2S (&details->reserve_pub));
-  /* FIXME #7276: Consider using Postgres multi-valued insert here,
-     for up to 15x speed-up according to
-     https://dba.stackexchange.com/questions/224989/multi-row-insert-vs-transactional-single-row-inserts#225006
-     (Note: this may require changing both the
-     plugin API as well as modifying how this function is called.) */
-  qs = db_plugin->reserves_in_insert (db_plugin->cls,
-                                      &details->reserve_pub,
-                                      &details->amount,
-                                      details->execution_date,
-                                      details->debit_account_uri,
-                                      wa->ai->section_name,
-                                      serial_id);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls);
-    wa->started_transaction = false;
-    GNUNET_SCHEDULER_shutdown ();
-    wa->hh = NULL;
-    return GNUNET_SYSERR;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Got DB soft error for reserves_in_insert. Rolling back.\n");
-    handle_soft_error (wa);
-    wa->hh = NULL;
-    return GNUNET_SYSERR;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    /* Either wirewatch was freshly started after the system was
-       shutdown and we're going over an incomplete shard again
-       after being restarted, or the shard lock period was too
-       short (number of workers set incorrectly?) and a 2nd
-       wirewatcher has been stealing our work while we are still
-       at it. */
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Attempted to import transaction %llu (%s) twice. "
-                "This should happen rarely (if not, ask for support).\n",
-                (unsigned long long) serial_id,
-                wa->job_name);
-    /* already existed, ok, let's just continue */
-    break;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    /* normal case */
-    break;
-  }
-  wa->latest_row_off = serial_id;
-  return GNUNET_OK;
 }
 
 

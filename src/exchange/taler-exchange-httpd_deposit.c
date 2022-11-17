@@ -74,20 +74,20 @@ reply_deposit_success (
   struct TALER_ExchangeSignatureP sig;
   enum TALER_ErrorCode ec;
 
-  if (TALER_EC_NONE !=
-      (ec = TALER_exchange_online_deposit_confirmation_sign (
-         &TEH_keys_exchange_sign_,
-         h_contract_terms,
-         h_wire,
-         h_policy,
-         exchange_timestamp,
-         wire_deadline,
-         refund_deadline,
-         amount_without_fee,
-         coin_pub,
-         merchant,
-         &pub,
-         &sig)))
+  ec = TALER_exchange_online_deposit_confirmation_sign (
+    &TEH_keys_exchange_sign_,
+    h_contract_terms,
+    h_wire,
+    h_policy,
+    exchange_timestamp,
+    wire_deadline,
+    refund_deadline,
+    amount_without_fee,
+    coin_pub,
+    merchant,
+    &pub,
+    &sig);
+  if (TALER_EC_NONE != ec)
   {
     return TALER_MHD_reply_with_ec (connection,
                                     ec,
@@ -187,8 +187,6 @@ deposit_transaction (void *cls,
                             mhd_ret);
   if (qs < 0)
     return qs;
-
-
   /* If the deposit has a policy associated to it, persist it.  This will
    * insert or update the record. */
   if (dc->has_policy)
@@ -203,16 +201,14 @@ deposit_transaction (void *cls,
     if (qs < 0)
       return qs;
   }
-
-
   qs = TEH_plugin->do_deposit (
     TEH_plugin->cls,
     dc->deposit,
     dc->known_coin_id,
     &dc->h_payto,
     (dc->has_policy)
-             ? &dc->policy_details_serial_id
-             : NULL,
+    ? &dc->policy_details_serial_id
+    : NULL,
     &dc->exchange_timestamp,
     &balance_ok,
     &in_conflict);
