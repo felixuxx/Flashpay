@@ -2520,62 +2520,120 @@ BEGIN
                policy_details_serial_id = out_policy_details_serial_id;
 END $$;
 
-COMMIT;
-
-/*************************************************************/
-
-
-CREATE OR REPLACE FUNCTION bash_reserves_in(
-  IN amount_val INT8,
-  IN amount_frac INT4,
-  IN rpub BYTEA,
-  IN now INT8,
-  IN min_reserve_gc INT8,
-  OUT reserve_found BOOLEAN,
+CREATE OR REPLACE FUNCTION batch_reserves_in(
+  IN in_reserve_pub BYTEA,
+  IN in_current_balance_val INT8,
+  IN in_current_balance_frac INT4,
+  IN in_expiration_date INT8,
+  IN in_gc_date INT8,
+  IN in_wire_ref INT8,
+  IN in_credit_val INT8,
+  IN in_credit_frac INT4,
+  IN in_exchange_account_name VARCHAR,
+  IN in_exectution_date INT4,
+  IN in_wire_source_h_payto BYTEA,    ---h_payto
+  IN in_payto_uri VARCHAR,
+  IN in_reserve_expiration INT8,
+  OUT out_reserve_found BOOLEAN,
+  OUT transaction_duplicate BOOLEAN,
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  existed BOOLEAN;
-  not_existed BOOLEAN;
+  my_amount_val INT8;
+DECLARE
+  my_amount_frac INT4;
 BEGIN
-  SELECT reserves.reserve_uuid into ruuid from reserves
-  where reserves.reserve_pub = rpub;
-  IF ruuid IS NOT NULL
-  THEN
-    existed = TRUE;
-    UPDATE reserves
-     SET (current_balance_val
-     	  ,current_balance_frac
-   	   ,expiration_date
-   	    ,gc_date) =
-   	     (amount_val
-   	      ,amount_frac
-   	       ,now
-   	        ,min_reserve_gc)
-      WHERE
-      reserve_pub = rpub
-      RETURNING existed into reserve_found;
-  END IF;
-  IF NOT FOUND
-  THEN
-    SELECT MAX(reserve_uuid)+1 into ruuid from reserves;
-    existed = FALSE;
-    INSERT INTO reserves
-    (reserve_uuid
-    ,reserve_pub
+
+  SELECT
+    current_balance_val
+   ,current_balance_frac
+  INTO
+    my_amount_val
+   ,my_amount_frac
+  FROM reserves
+  WHERE reserves.reserve_pub = in_reserve_pub;
+
+  INSERT INTO reserves
+    (reserve_pub
     ,current_balance_val
     ,current_balance_frac
     ,expiration_date
     ,gc_date)
     VALUES
-    (ruuid
-    ,rpub
-    ,amount_val
-    ,amount_frac
-    ,now
-    ,min_reserve_gc) RETURNING existed into reserve_found;
+    (in_reserve_pub
+    ,in_current_balance_val
+    ,in_current_balance_frac
+    ,in_expiration_date
+    ,in_gc_date)
+    ON CONFLICT DO NOTHING
+    RETURNING reserves.reserve_uuid INTO ruuid;
 
+  --IF THE INSERT WAS NOT SUCCESSFUL, REMEMBER IT
+  IF NOT FOUND
+  THEN
+    out_reserve_found = FALSE;
+  ELSE
+    out_reserve_found = TRUE;
   END IF;
 
+  --SIMPLE INSERT ON CONFLICT DO NOTHING
+  INSERT INTO wire_targets
+    (wire_target_h_payto
+    ,payto_uri)
+    VALUES
+    (in_wire_source_h_payto
+    ,in_payto_uri)
+  ON CONFLICT DO NOTHING;
+
+  INSERT INTO reserves_in
+    (reserve_pub
+    ,wire_reference
+    ,credit_val
+    ,credit_frac
+    ,exchange_account_section
+    ,wire_source_h_payto
+    ,execution_date)
+    VALUES
+    (in_reserve_pub
+    ,in_wire_ref
+    ,in_current_balance_val
+    ,in_credit_frac
+    ,in_exchange_account_section
+    ,in_wire_source_h_payto
+    ,in_execution_date);
+
+  --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
+  IF FOUND
+  THEN
+    transaction_duplicate = FALSE;
+    IF out_reserve_found = TRUE
+    THEN
+      UPDATE reserves
+        SET
+           in_current_balance_frac=in_current_balance_frac+my_amount_frac
+             - CASE
+               WHEN in_current_balance_frac + my_amount_frac >= 100000000
+                 THEN 100000000
+               ELSE 0
+               END
+              ,in_current_balance_val=in_current_balance_val+my_amount_val
+             + CASE
+               WHEN in_current_balance_frac + my_amount_frac >= 100000000
+                 THEN 1
+               ELSE 0
+               END
+               ,expiration_date=GREATEST(in_expiration_date,in_reserve_expiration)
+               ,gc_date=GREATEST(in_gc_date,in_reserve_expiration)
+      	      WHERE reserves.reserve_pub=in_reserve_pub;
+      RETURN;
+    ELSE
+      RETURN;
+    END IF;
+  ELSE
+    transaction_duplicate = TRUE;
+    RETURN;
+  END IF;
 END $$;
+
+COMMIT;

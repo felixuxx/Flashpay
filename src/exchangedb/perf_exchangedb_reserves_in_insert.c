@@ -33,7 +33,7 @@ static int result;
  */
 #define FAILIF(cond)                            \
   do {                                          \
-      if (! (cond)) {break;}                    \
+    if (! (cond)) { break;}                     \
     GNUNET_break (0);                           \
     goto drop;                                  \
   } while (0)
@@ -107,31 +107,27 @@ run (void *cls)
     struct GNUNET_TIME_Absolute now;
     struct GNUNET_TIME_Timestamp ts;
     struct GNUNET_TIME_Relative duration;
-    struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
-    enum GNUNET_DB_QueryStatus results[batch_size];
+    struct TALER_ReservePublicKeyP reserve_pub;
+
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":1.000010",
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
     plugin->start (plugin->cls,
-                   "test_by_j");
-
+                   "test_by_exchange_j");
     for (unsigned int k = 0; k<batch_size; k++)
     {
-      RND_BLK (&reserves[k].reserve_pub);
-      reserves[k].balance = value;
-      reserves[k].execution_time = ts;
-      reserves[k].sender_account_details = sndr;
-      reserves[k].exchange_account_name = "name";
-
+      RND_BLK (&reserve_pub);
+      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+              plugin->reserves_in_insert (plugin->cls,
+                                          &reserve_pub,
+                                          &value,
+                                          ts,
+                                          sndr,
+                                          "section",
+                                          4));
     }
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->batch_reserves_in_insert (plugin->cls,
-                                              reserves,
-                                              batch_size,
-                                              results));
-
     plugin->commit (plugin->cls);
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,

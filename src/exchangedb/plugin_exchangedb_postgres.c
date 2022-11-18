@@ -5446,8 +5446,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
+
   plugin->batch_reserves_in_insert
     = &TEH_PG_batch_reserves_in_insert;
+
   return plugin;
 }
 
