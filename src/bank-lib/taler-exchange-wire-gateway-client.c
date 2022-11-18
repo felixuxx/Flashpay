@@ -152,83 +152,72 @@ do_shutdown (void *cls)
 
 
 /**
- * Callback used to process ONE entry in the transaction
+ * Callback used to process the transaction
  * history returned by the bank.
  *
  * @param cls closure
- * @param http_status HTTP status code from server
- * @param ec taler error code
- * @param serial_id identification of the position at
- *        which we are returning data
- * @param details details about the wire transfer
- * @param json original full response from server
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to
- *         abort iteration
+ * @param reply response we got from the bank
  */
-static enum GNUNET_GenericReturnValue
+static void
 credit_history_cb (void *cls,
-                   unsigned int http_status,
-                   enum TALER_ErrorCode ec,
-                   uint64_t serial_id,
-                   const struct TALER_BANK_CreditDetails *details,
-                   const json_t *json)
+                   const struct TALER_BANK_CreditHistoryResponse *reply)
 {
   (void) cls;
 
   chh = NULL;
-  if (MHD_HTTP_OK != http_status)
+  switch (reply->http_status)
   {
-    if ( (MHD_HTTP_NO_CONTENT != http_status) ||
-         (TALER_EC_NONE != ec) )
-    {
-      if (0 == http_status)
-      {
-        fprintf (stderr,
-                 "Failed to obtain HTTP reply from `%s'\n",
-                 auth.wire_gateway_url);
-      }
-      else
-      {
-        fprintf (stderr,
-                 "Failed to obtain credit history from `%s': HTTP status %u (%s)\n",
-                 auth.wire_gateway_url,
-                 http_status,
-                 TALER_ErrorCode_get_hint (ec));
-      }
-      if (NULL != json)
-        json_dumpf (json,
-                    stderr,
-                    JSON_INDENT (2));
-      global_ret = 2;
-      GNUNET_SCHEDULER_shutdown ();
-      return GNUNET_NO;
-    }
+  case 0:
+    fprintf (stderr,
+             "Failed to obtain HTTP reply from `%s'\n",
+             auth.wire_gateway_url);
+    global_ret = 2;
+    break;
+  case MHD_HTTP_NO_CONTENT:
     fprintf (stdout,
-             "End of transactions list.\n");
+             "No transactions.\n");
     global_ret = 0;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_NO;
+    break;
+  case MHD_HTTP_OK:
+    for (unsigned int i = 0; i<reply->details.success.details_length; i++)
+    {
+      const struct TALER_BANK_CreditDetails *cd =
+        &reply->details.success.details[i];
+
+      /* If credit/debit accounts were specified, use as a filter */
+      if ( (NULL != credit_account) &&
+           (0 != strcasecmp (credit_account,
+                             cd->credit_account_uri) ) )
+        continue;
+      if ( (NULL != debit_account) &&
+           (0 != strcasecmp (debit_account,
+                             cd->debit_account_uri) ) )
+        continue;
+      fprintf (stdout,
+               "%llu: %s->%s (%s) over %s at %s\n",
+               (unsigned long long) cd->serial_id,
+               cd->debit_account_uri,
+               cd->credit_account_uri,
+               TALER_B2S (&cd->reserve_pub),
+               TALER_amount2s (&cd->amount),
+               GNUNET_TIME_timestamp2s (cd->execution_date));
+    }
+    global_ret = 0;
+    break;
+  default:
+    fprintf (stderr,
+             "Failed to obtain credit history from `%s': HTTP status %u (%s)\n",
+             auth.wire_gateway_url,
+             reply->http_status,
+             TALER_ErrorCode_get_hint (reply->ec));
+    if (NULL != reply->response)
+      json_dumpf (reply->response,
+                  stderr,
+                  JSON_INDENT (2));
+    global_ret = 2;
+    break;
   }
-
-  /* If credit/debit accounts were specified, use as a filter */
-  if ( (NULL != credit_account) &&
-       (0 != strcasecmp (credit_account,
-                         details->credit_account_uri) ) )
-    return GNUNET_OK;
-  if ( (NULL != debit_account) &&
-       (0 != strcasecmp (debit_account,
-                         details->debit_account_uri) ) )
-    return GNUNET_OK;
-
-  fprintf (stdout,
-           "%llu: %s->%s (%s) over %s at %s\n",
-           (unsigned long long) serial_id,
-           details->debit_account_uri,
-           details->credit_account_uri,
-           TALER_B2S (&details->reserve_pub),
-           TALER_amount2s (&details->amount),
-           GNUNET_TIME_timestamp2s (details->execution_date));
-  return GNUNET_OK;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
@@ -264,84 +253,71 @@ execute_credit_history (void)
 
 
 /**
- * Function with the debit debit transaction history.
+ * Function with the debit transaction history.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol),
- *                    #MHD_HTTP_NO_CONTENT if there are no more results; on success the
- *                    last callback is always of this status (even if `abs(num_results)` were
- *                    already returned).
- * @param ec detailed error code
- * @param serial_id monotonically increasing counter corresponding to the transaction
- * @param details details about the wire transfer
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @param reply response details
  */
-static enum GNUNET_GenericReturnValue
+static void
 debit_history_cb (void *cls,
-                  unsigned int http_status,
-                  enum TALER_ErrorCode ec,
-                  uint64_t serial_id,
-                  const struct TALER_BANK_DebitDetails *details,
-                  const json_t *json)
+                  const struct TALER_BANK_DebitHistoryResponse *reply)
 {
   (void) cls;
 
   dhh = NULL;
-  if (MHD_HTTP_OK != http_status)
+  switch (reply->http_status)
   {
-    if ( (MHD_HTTP_NO_CONTENT != http_status) ||
-         (TALER_EC_NONE != ec) )
-    {
-      if (0 == http_status)
-      {
-        fprintf (stderr,
-                 "Failed to obtain HTTP reply from `%s'\n",
-                 auth.wire_gateway_url);
-      }
-      else
-      {
-        fprintf (stderr,
-                 "Failed to obtain debit history from `%s': HTTP status %u (%s)\n",
-                 auth.wire_gateway_url,
-                 http_status,
-                 TALER_ErrorCode_get_hint (ec));
-      }
-      if (NULL != json)
-        json_dumpf (json,
-                    stderr,
-                    JSON_INDENT (2));
-      global_ret = 2;
-      GNUNET_SCHEDULER_shutdown ();
-      return GNUNET_NO;
-    }
+  case 0:
+    fprintf (stderr,
+             "Failed to obtain HTTP reply from `%s'\n",
+             auth.wire_gateway_url);
+    global_ret = 2;
+    break;
+  case MHD_HTTP_NO_CONTENT:
     fprintf (stdout,
-             "End of transactions list.\n");
+             "No transactions.\n");
     global_ret = 0;
-    GNUNET_SCHEDULER_shutdown ();
-    return GNUNET_NO;
+    break;
+  case MHD_HTTP_OK:
+    for (unsigned int i = 0; i<reply->details.success.details_length; i++)
+    {
+      const struct TALER_BANK_DebitDetails *dd =
+        &reply->details.success.details[i];
+
+      /* If credit/debit accounts were specified, use as a filter */
+      if ( (NULL != credit_account) &&
+           (0 != strcasecmp (credit_account,
+                             dd->credit_account_uri) ) )
+        continue;
+      if ( (NULL != debit_account) &&
+           (0 != strcasecmp (debit_account,
+                             dd->debit_account_uri) ) )
+        continue;
+      fprintf (stdout,
+               "%llu: %s->%s (%s) over %s at %s\n",
+               (unsigned long long) dd->serial_id,
+               dd->debit_account_uri,
+               dd->credit_account_uri,
+               TALER_B2S (&dd->wtid),
+               TALER_amount2s (&dd->amount),
+               GNUNET_TIME_timestamp2s (dd->execution_date));
+    }
+    global_ret = 0;
+    break;
+  default:
+    fprintf (stderr,
+             "Failed to obtain debit history from `%s': HTTP status %u (%s)\n",
+             auth.wire_gateway_url,
+             reply->http_status,
+             TALER_ErrorCode_get_hint (reply->ec));
+    if (NULL != reply->response)
+      json_dumpf (reply->response,
+                  stderr,
+                  JSON_INDENT (2));
+    global_ret = 2;
+    break;
   }
-
-  /* If credit/debit accounts were specified, use as a filter */
-  if ( (NULL != credit_account) &&
-       (0 != strcasecmp (credit_account,
-                         details->credit_account_uri) ) )
-    return GNUNET_OK;
-  if ( (NULL != debit_account) &&
-       (0 != strcasecmp (debit_account,
-                         details->debit_account_uri) ) )
-    return GNUNET_OK;
-
-  fprintf (stdout,
-           "%llu: %s->%s (%s) over %s at %s\n",
-           (unsigned long long) serial_id,
-           details->debit_account_uri,
-           details->credit_account_uri,
-           TALER_B2S (&details->wtid),
-           TALER_amount2s (&details->amount),
-           GNUNET_TIME_timestamp2s (details->execution_date));
-  return GNUNET_OK;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 

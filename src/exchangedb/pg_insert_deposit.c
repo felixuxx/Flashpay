@@ -26,18 +26,20 @@
 #include "pg_helper.h"
 #include "pg_setup_wire_target.h"
 #include "pg_compute_shard.h"
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_deposit (void *cls,
-                         struct GNUNET_TIME_Timestamp exchange_timestamp,
-                         const struct TALER_EXCHANGEDB_Deposit *deposit)
+                       struct GNUNET_TIME_Timestamp exchange_timestamp,
+                       const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct PostgresClosure *pg = cls;
   struct TALER_PaytoHashP h_payto;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_PG_setup_wire_target (pg,
-                          deposit->receiver_wire_account,
-                          &h_payto);
+                                 deposit->receiver_wire_account,
+                                 &h_payto);
   if (qs < 0)
     return qs;
   if (GNUNET_TIME_timestamp_cmp (deposit->wire_deadline,

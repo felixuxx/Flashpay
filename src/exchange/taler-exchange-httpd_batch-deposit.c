@@ -290,7 +290,6 @@ batch_deposit_transaction (void *cls,
                               mhd_ret);
     if (qs < 0)
       return qs;
-
     qs = TEH_plugin->do_deposit (
       TEH_plugin->cls,
       deposit,
