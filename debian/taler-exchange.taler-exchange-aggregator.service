@@ -1,6 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange aggregator service
 PartOf=taler-exchange.target
+After=postgres.service
 
 [Service]
 User=taler-exchange-aggregator

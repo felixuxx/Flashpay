@@ -1,6 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange expire service
 PartOf=taler-exchange.target
+After=postgres.service
 
 [Service]
 User=taler-exchange-expire
