@@ -443,6 +443,8 @@ transaction_completed (void)
   {
     /* Transaction list was drained and we are in
        test mode. So we are done. */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Transaction list drained and in test mode. Exiting\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -566,6 +568,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
       /* normal case */
       break;
     }
+    progress = true;
   }
   latest_row_off = lroff;
   shard_done = (shard_end <= latest_row_off);

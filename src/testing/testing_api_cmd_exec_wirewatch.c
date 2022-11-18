@@ -71,6 +71,7 @@ wirewatch_run (void *cls,
                                "-S", "1",
                                "-w", "0",
                                "-t", /* exit when done */
+                               "-L", "DEBUG",
                                NULL);
   if (NULL == ws->wirewatch_proc)
   {
