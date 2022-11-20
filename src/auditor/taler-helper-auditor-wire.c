@@ -1775,13 +1775,16 @@ conclude_account (struct WireAccount *wa)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Reconciling CREDIT processing of account `%s'\n",
               wa->ai->section_name);
-  GNUNET_CONTAINER_multihashmap_iterate (in_map,
-                                         &complain_in_not_found,
-                                         wa);
-  /* clean up before 2nd phase */
-  GNUNET_CONTAINER_multihashmap_iterate (in_map,
-                                         &free_rii,
-                                         NULL);
+  if (NULL != in_map)
+  {
+    GNUNET_CONTAINER_multihashmap_iterate (in_map,
+                                           &complain_in_not_found,
+                                           wa);
+    /* clean up before 2nd phase */
+    GNUNET_CONTAINER_multihashmap_iterate (in_map,
+                                           &free_rii,
+                                           NULL);
+  }
   process_credits (wa->next);
 }
 
