@@ -240,7 +240,13 @@ function audit_only () {
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves-inc.json 2> ${MY_TMP_DIR}/test-audit-reserves-inc.log || exit_fail "incremental reserves audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> ${MY_TMP_DIR}/test-wire-audit.log || exit_fail "wire audit failed"
+    rm -f ${MY_TMP_DIR}/test-wire-audit.log
+    thaw() {
+      $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2>> ${MY_TMP_DIR}/test-wire-audit.log
+    }
+    thaw || ( echo -e " FIRST CALL TO taler-helper-auditor-wire FAILED,\nRETRY AFTER TWO SECONDS..." | tee -a ${MY_TMP_DIR}/test-wire-audit.log
+	      sleep 2
+	      thaw || exit_fail "wire audit failed" )
     echo -n "."
     $VALGRIND taler-helper-auditor-wire -i -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> ${MY_TMP_DIR}/test-wire-audit-inc.log || exit_fail "wire audit inc failed"
     echo -n "."
