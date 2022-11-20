@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017--2021 Taler Systems SA
+  Copyright (C) 2017--2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -77,6 +77,11 @@ static enum GNUNET_GenericReturnValue
 parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
                        const json_t *history)
 {
+  struct TALER_BANK_DebitHistoryResponse dhr = {
+    .http_status = MHD_HTTP_OK,
+    .ec = TALER_EC_NONE,
+    .response = history
+  };
   json_t *history_array;
 
   if (NULL == (history_array = json_object_get (history,
@@ -90,51 +95,47 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  for (unsigned int i = 0; i<json_array_size (history_array); i++)
   {
-    struct TALER_BANK_DebitDetails td;
-    uint64_t row_id;
-    struct GNUNET_JSON_Specification hist_spec[] = {
-      TALER_JSON_spec_amount_any ("amount",
-                                  &td.amount),
-      GNUNET_JSON_spec_timestamp ("date",
-                                  &td.execution_date),
-      GNUNET_JSON_spec_uint64 ("row_id",
-                               &row_id),
-      GNUNET_JSON_spec_fixed_auto ("wtid",
-                                   &td.wtid),
-      GNUNET_JSON_spec_string ("credit_account",
-                               &td.credit_account_uri),
-      GNUNET_JSON_spec_string ("debit_account",
-                               &td.debit_account_uri),
-      GNUNET_JSON_spec_string ("exchange_base_url",
-                               &td.exchange_base_url),
-      GNUNET_JSON_spec_end ()
-    };
-    json_t *transaction = json_array_get (history_array,
-                                          i);
+    size_t len = json_array_size (history_array);
+    struct TALER_BANK_DebitDetails dd[len];
 
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (transaction,
-                           hist_spec,
-                           NULL, NULL))
+    for (unsigned int i = 0; i<len; i++)
     {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
+      struct TALER_BANK_DebitDetails *td = &dd[i];
+      struct GNUNET_JSON_Specification hist_spec[] = {
+        TALER_JSON_spec_amount_any ("amount",
+                                    &td->amount),
+        GNUNET_JSON_spec_timestamp ("date",
+                                    &td->execution_date),
+        GNUNET_JSON_spec_uint64 ("row_id",
+                                 &td->serial_id),
+        GNUNET_JSON_spec_fixed_auto ("wtid",
+                                     &td->wtid),
+        GNUNET_JSON_spec_string ("credit_account",
+                                 &td->credit_account_uri),
+        GNUNET_JSON_spec_string ("debit_account",
+                                 &td->debit_account_uri),
+        GNUNET_JSON_spec_string ("exchange_base_url",
+                                 &td->exchange_base_url),
+        GNUNET_JSON_spec_end ()
+      };
+      json_t *transaction = json_array_get (history_array,
+                                            i);
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             hist_spec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
     }
-    if (GNUNET_OK !=
-        hh->hcb (hh->hcb_cls,
-                 MHD_HTTP_OK,
-                 TALER_EC_NONE,
-                 row_id,
-                 &td,
-                 transaction))
-    {
-      hh->hcb = NULL;
-      GNUNET_JSON_parse_free (hist_spec);
-      return GNUNET_OK;
-    }
-    GNUNET_JSON_parse_free (hist_spec);
+    dhr.details.success.details_length = len;
+    dhr.details.success.details = dd;
+    hh->hcb (hh->hcb_cls,
+             &dhr);
   }
   return GNUNET_OK;
 }
@@ -154,69 +155,64 @@ handle_debit_history_finished (void *cls,
                                const void *response)
 {
   struct TALER_BANK_DebitHistoryHandle *hh = cls;
-  const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_BANK_DebitHistoryResponse dhr = {
+    .http_status = MHD_HTTP_OK,
+    .response = response
+  };
 
   hh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dhr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         parse_account_history (hh,
-                               j))
+                               dhr.response))
     {
       GNUNET_break_op (0);
-      response_code = 0;
-      ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      dhr.http_status = 0;
+      dhr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
       break;
     }
-    response_code = MHD_HTTP_NO_CONTENT; /* signal end of list */
-    ec = TALER_EC_NONE;
-    break;
+    TALER_BANK_debit_history_cancel (hh);
+    return;
   case MHD_HTTP_NO_CONTENT:
-    ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break_op (0);
-    ec = TALER_JSON_get_error_code (j);
+    dhr.ec = TALER_JSON_get_error_code (dhr.response);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says the HTTP Authentication
        failed. May happen if HTTP authentication is used and the
        user supplied a wrong username/password combination. */
-    ec = TALER_JSON_get_error_code (j);
+    dhr.ec = TALER_JSON_get_error_code (dhr.response);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify: the bank is either unaware
        of the endpoint (not a bank), or of the account.
        We should pass the JSON (?) reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    dhr.ec = TALER_JSON_get_error_code (dhr.response);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    dhr.ec = TALER_JSON_get_error_code (dhr.response);
     break;
   default:
     /* unexpected response code */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
-    ec = TALER_JSON_get_error_code (j);
+    dhr.ec = TALER_JSON_get_error_code (dhr.response);
     break;
   }
-  if (NULL != hh->hcb)
-    hh->hcb (hh->hcb_cls,
-             response_code,
-             ec,
-             0LLU,
-             NULL,
-             j);
+  hh->hcb (hh->hcb_cls,
+           &dhr);
   TALER_BANK_debit_history_cancel (hh);
 }
 

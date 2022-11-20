@@ -370,99 +370,86 @@ check_result (struct History *h,
  * finally check it against what the bank returned.
  *
  * @param cls closure.
- * @param http_status HTTP response code, #MHD_HTTP_OK (200)
- *        for successful status request 0 if the bank's reply is
- *        bogus (fails to follow the protocol),
- *        #MHD_HTTP_NO_CONTENT if there are no more results; on
- *        success the last callback is always of this status
- *        (even if `abs(num_results)` were already returned).
- * @param ec taler status code.
- * @param row_id monotonically increasing counter corresponding to
- *        the transaction.
- * @param details details about the wire transfer.
- * @param json detailed response from the HTTPD, or NULL if
- *        reply was not in JSON.
- * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
+ * @param chr http response details
  */
-static enum GNUNET_GenericReturnValue
+static void
 history_cb (void *cls,
-            unsigned int http_status,
-            enum TALER_ErrorCode ec,
-            uint64_t row_id,
-            const struct TALER_BANK_CreditDetails *details,
-            const json_t *json)
+            const struct TALER_BANK_CreditHistoryResponse *chr)
 {
   struct TALER_TESTING_Interpreter *is = cls;
   struct HistoryState *hs = is->commands[is->ip].cls;
 
-  (void) row_id;
-  if (NULL == details)
+  hs->hh = NULL;
+  switch (chr->http_status)
   {
-    hs->hh = NULL;
-    if ( (MHD_HTTP_NOT_FOUND == http_status) &&
-         (0 == hs->total) )
+  case 0:
+    GNUNET_break (0);
+    goto error;
+  case MHD_HTTP_OK:
+    for (unsigned int i = 0; i<chr->details.success.details_length; i++)
+    {
+      const struct TALER_BANK_CreditDetails *cd =
+        &chr->details.success.details[i];
+
+      /* check current element */
+      if (GNUNET_OK !=
+          check_result (hs->h,
+                        hs->total,
+                        hs->results_obtained,
+                        cd))
+      {
+        GNUNET_break (0);
+        json_dumpf (chr->response,
+                    stderr,
+                    JSON_COMPACT);
+        hs->failed = true;
+        hs->hh = NULL;
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      hs->results_obtained++;
+    }
+    TALER_TESTING_interpreter_next (is);
+    return;
+  case MHD_HTTP_NO_CONTENT:
+    if (0 == hs->total)
     {
       /* not found is OK for empty history */
       TALER_TESTING_interpreter_next (is);
-      return GNUNET_OK;
+      return;
     }
-    if ( (hs->results_obtained != hs->total) ||
-         (hs->failed) ||
-         (MHD_HTTP_NO_CONTENT != http_status) )
+    GNUNET_break (0);
+    goto error;
+  case MHD_HTTP_NOT_FOUND:
+    if (0 == hs->total)
     {
-      GNUNET_break (0);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Expected history of length %u, got %llu;"
-                  " HTTP status code: %u/%d, failed: %d\n",
-                  hs->total,
-                  (unsigned long long) hs->results_obtained,
-                  http_status,
-                  (int) ec,
-                  hs->failed ? 1 : 0);
-      print_expected (hs->h,
-                      hs->total,
-                      UINT_MAX);
-      TALER_TESTING_interpreter_fail (is);
-      return GNUNET_SYSERR;
+      /* not found is OK for empty history */
+      TALER_TESTING_interpreter_next (is);
+      return;
     }
-    TALER_TESTING_interpreter_next (is);
-    return GNUNET_OK;
-  }
-  if (MHD_HTTP_OK != http_status)
-  {
+    GNUNET_break (0);
+    goto error;
+  default:
     hs->hh = NULL;
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unwanted response code from /history/incoming: %u\n",
-                http_status);
+                chr->http_status);
     TALER_TESTING_interpreter_fail (is);
-    return GNUNET_SYSERR;
+    return;
   }
-
-  /* check current element */
-  if (GNUNET_OK !=
-      check_result (hs->h,
-                    hs->total,
-                    hs->results_obtained,
-                    details))
-  {
-    char *acc;
-
-    GNUNET_break (0);
-    acc = json_dumps (json,
-                      JSON_COMPACT);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Result %u was `%s'\n",
-                (unsigned int) hs->results_obtained++,
-                acc);
-    if (NULL != acc)
-      free (acc);
-    hs->failed = true;
-    hs->hh = NULL;
-    TALER_TESTING_interpreter_fail (is);
-    return GNUNET_SYSERR;
-  }
-  hs->results_obtained++;
-  return GNUNET_OK;
+error:
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Expected history of length %u, got %llu;"
+              " HTTP status code: %u/%d, failed: %d\n",
+              hs->total,
+              (unsigned long long) hs->results_obtained,
+              chr->http_status,
+              (int) chr->ec,
+              hs->failed ? 1 : 0);
+  print_expected (hs->h,
+                  hs->total,
+                  UINT_MAX);
+  TALER_TESTING_interpreter_fail (is);
 }
 
 
