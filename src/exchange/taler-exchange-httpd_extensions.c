@@ -20,6 +20,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_dbevents.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_extensions.h"
 #include "taler_json_lib.h"
@@ -156,6 +157,10 @@ extension_update_event_cb (void *cls,
                 TALER_age_mask_to_string (&conf->mask));
 
   }
+
+  // Finally, call TEH_keys_update_states in order to refresh the cached
+  // values.
+  TEH_keys_update_states ();
 }
 
 
