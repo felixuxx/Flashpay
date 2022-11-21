@@ -114,6 +114,8 @@ run (void *cls)
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
+    for (unsigned int r=0;r<10;r++)
+    {
     plugin->start (plugin->cls,
                    "test_by_exchange_j");
     for (unsigned int k = 0; k<batch_size; k++)
@@ -129,6 +131,7 @@ run (void *cls)
                                           4));
     }
     plugin->commit (plugin->cls);
+    }
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
              "for a batchsize equal to %d it took %s\n",
@@ -136,6 +139,7 @@ run (void *cls)
              GNUNET_STRINGS_relative_time_to_string (duration,
                                                      GNUNET_NO) );
   }
+  result = 0;
 drop:
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls));
