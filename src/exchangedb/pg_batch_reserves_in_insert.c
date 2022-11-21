@@ -25,6 +25,7 @@
 #include "pg_batch_reserves_in_insert.h"
 #include "pg_helper.h"
 #include "pg_start.h"
+#include "pg_rollback.h"
 #include "pg_start_read_committed.h"
 #include "pg_commit.h"
 #include "pg_reserves_get.h"
@@ -97,7 +98,6 @@ TEH_PG_batch_reserves_in_insert (void *cls,
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserves->reserve_pub), /*$1*/
-      TALER_PQ_query_param_amount (&reserves->balance),  /*$2+3*/
       GNUNET_PQ_query_param_timestamp (&expiry),  /*$4*/
       GNUNET_PQ_query_param_timestamp (&gc),  /*$5*/
       GNUNET_PQ_query_param_uint64 (&reserves->wire_reference), /*6*/
@@ -121,6 +121,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
       GNUNET_PQ_result_spec_end
     };
 
+
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     /* Note: query uses 'on conflict do nothing' */
@@ -129,21 +130,23 @@ TEH_PG_batch_reserves_in_insert (void *cls,
              "SELECT "
              "out_reserve_found AS conflicted"
              ",transaction_duplicate"
-             ",ruuid"
+             ",ruuid AS reserve_uuid"
              " FROM batch_reserves_in"
-             " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);");
+             " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
 
     qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "reserve_create",
                                                     params,
                                                     rs);
+
+
     if (qs1 < 0)
       return qs1;
   }
-
+  if ((int)conflicted == 0 && (int)transaction_duplicate == 1)
+    TEH_PG_rollback(pg);
   notify_on_reserve (pg,
                      &reserves->reserve_pub);
-
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }

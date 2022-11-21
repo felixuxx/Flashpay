@@ -2522,15 +2522,13 @@ END $$;
 
 CREATE OR REPLACE FUNCTION batch_reserves_in(
   IN in_reserve_pub BYTEA,
-  IN in_current_balance_val INT8,
-  IN in_current_balance_frac INT4,
   IN in_expiration_date INT8,
   IN in_gc_date INT8,
   IN in_wire_ref INT8,
   IN in_credit_val INT8,
   IN in_credit_frac INT4,
   IN in_exchange_account_name VARCHAR,
-  IN in_exectution_date INT4,
+  IN in_exectution_date INT8,
   IN in_wire_source_h_payto BYTEA,    ---h_payto
   IN in_payto_uri VARCHAR,
   IN in_reserve_expiration INT8,
@@ -2545,15 +2543,6 @@ DECLARE
   my_amount_frac INT4;
 BEGIN
 
-  SELECT
-    current_balance_val
-   ,current_balance_frac
-  INTO
-    my_amount_val
-   ,my_amount_frac
-  FROM reserves
-  WHERE reserves.reserve_pub = in_reserve_pub;
-
   INSERT INTO reserves
     (reserve_pub
     ,current_balance_val
@@ -2562,18 +2551,19 @@ BEGIN
     ,gc_date)
     VALUES
     (in_reserve_pub
-    ,in_current_balance_val
-    ,in_current_balance_frac
+    ,in_credit_val
+    ,in_credit_frac
     ,in_expiration_date
     ,in_gc_date)
-    ON CONFLICT DO NOTHING
-    RETURNING reserves.reserve_uuid INTO ruuid;
+   ON CONFLICT DO NOTHING
+   RETURNING reserve_uuid INTO ruuid;
 
-  --IF THE INSERT WAS NOT SUCCESSFUL, REMEMBER IT
-  IF NOT FOUND
+  IF FOUND
   THEN
+    -- We made a change, so the reserve did not previously exist.
     out_reserve_found = FALSE;
   ELSE
+    -- We made no change, which means the reserve existed.
     out_reserve_found = TRUE;
   END IF;
 
@@ -2597,42 +2587,52 @@ BEGIN
     VALUES
     (in_reserve_pub
     ,in_wire_ref
-    ,in_current_balance_val
+    ,in_credit_val
     ,in_credit_frac
-    ,in_exchange_account_section
+    ,in_exchange_account_name
     ,in_wire_source_h_payto
-    ,in_execution_date);
+    ,in_expiration_date);
 
   --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
   IF FOUND
   THEN
     transaction_duplicate = FALSE;
-    IF out_reserve_found = TRUE
+    IF out_reserve_found
     THEN
       UPDATE reserves
         SET
-           in_current_balance_frac=in_current_balance_frac+my_amount_frac
+           current_balance_frac = current_balance_frac+in_credit_frac
              - CASE
-               WHEN in_current_balance_frac + my_amount_frac >= 100000000
+               WHEN current_balance_frac + in_credit_frac >= 100000000
                  THEN 100000000
-               ELSE 0
+               ELSE 1
                END
-              ,in_current_balance_val=in_current_balance_val+my_amount_val
+              ,current_balance_val = current_balance_val+in_credit_val
              + CASE
-               WHEN in_current_balance_frac + my_amount_frac >= 100000000
+               WHEN current_balance_frac + in_credit_frac >= 100000000
                  THEN 1
                ELSE 0
                END
-               ,expiration_date=GREATEST(in_expiration_date,in_reserve_expiration)
-               ,gc_date=GREATEST(in_gc_date,in_reserve_expiration)
+               ,expiration_date=GREATEST(expiration_date,in_expiration_date)
+               ,gc_date=GREATEST(gc_date,in_expiration_date)
       	      WHERE reserves.reserve_pub=in_reserve_pub;
+      out_reserve_found = TRUE;
       RETURN;
     ELSE
+      out_reserve_found=FALSE;
       RETURN;
     END IF;
+    out_reserve_found = TRUE;
   ELSE
     transaction_duplicate = TRUE;
-    RETURN;
+    IF out_reserve_found
+    THEN
+      out_reserve_found = TRUE;
+      RETURN;
+    ELSE
+      out_reserve_found = FALSE;
+      RETURN;
+    END IF;
   END IF;
 END $$;
 

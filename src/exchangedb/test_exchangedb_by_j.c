@@ -98,9 +98,9 @@ run (void *cls)
     goto cleanup;
   }
 
-  for (unsigned int i = 0; i< 8; i++)
+  for (unsigned int i = 0; i< 7; i++)
   {
-    static unsigned int batches[] = {1, 1, 0, 2, 4, 16, 64, 256};
+    static unsigned int batches[] = {1, 1, 2, 4, 16, 64, 256};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
     struct TALER_Amount value;
     unsigned int batch_size = batches[i];
@@ -124,6 +124,7 @@ run (void *cls)
       reserves[k].execution_time = ts;
       reserves[k].sender_account_details = sndr;
       reserves[k].exchange_account_name = "name";
+      reserves[k].wire_reference = k;
 
     }
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
