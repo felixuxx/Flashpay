@@ -2623,8 +2623,8 @@ TEH_keys_update_states ()
 }
 
 
-struct TEH_KeyStateHandle *
-TEH_keys_get_state2 (bool management_only)
+static struct TEH_KeyStateHandle *
+keys_get_state (bool management_only)
 {
   struct TEH_KeyStateHandle *old_ksh;
   struct TEH_KeyStateHandle *ksh;
@@ -2660,19 +2660,28 @@ TEH_keys_get_state2 (bool management_only)
 
 
 struct TEH_KeyStateHandle *
+TEH_keys_get_state_for_management_only (void)
+{
+  return keys_get_state (true);
+}
+
+
+struct TEH_KeyStateHandle *
 TEH_keys_get_state (void)
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = TEH_keys_get_state2 (false);
+  ksh = keys_get_state (false);
   if (NULL == ksh)
     return NULL;
+
   if (ksh->management_only)
   {
     if (GNUNET_OK !=
         finish_keys_response (ksh))
       return NULL;
   }
+
   return ksh;
 }
 
@@ -2715,6 +2724,7 @@ TEH_keys_denomination_by_hash (
                                         NULL);
     return NULL;
   }
+
   return TEH_keys_denomination_by_hash2 (ksh,
                                          h_denom_pub,
                                          conn,
@@ -3410,7 +3420,7 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct HelperSignkey *hsk;
   struct GNUNET_PeerIdentity pid;
 
-  ksh = TEH_keys_get_state2 (true);
+  ksh = TEH_keys_get_state_for_management_only ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -3580,7 +3590,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
   json_t *reply;
 
   (void) rh;
-  ksh = TEH_keys_get_state2 (true);
+  ksh = TEH_keys_get_state_for_management_only ();
   if (NULL == ksh)
   {
     return TALER_MHD_reply_with_error (connection,

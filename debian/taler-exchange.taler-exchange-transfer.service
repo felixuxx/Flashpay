@@ -1,6 +1,6 @@
 [Unit]
 Description=Taler Exchange Transfer Service
-After=network.target
+After=network.target postgres.service
 PartOf=taler-exchange.target
 
 [Service]

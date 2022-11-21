@@ -90,8 +90,7 @@ TALER_TESTING_history_entry_cmp (
          (GNUNET_TIME_timestamp_cmp (
             h1->details.history_details.request_timestamp,
             ==,
-            h2->details.history_details.
-            request_timestamp)) &&
+            h2->details.history_details.request_timestamp)) &&
          (0 ==
           GNUNET_memcmp (&h1->details.history_details.reserve_sig,
                          &h2->details.history_details.reserve_sig)) )
@@ -131,10 +130,42 @@ TALER_TESTING_history_entry_cmp (
       return 0;
     return 1;
   case TALER_EXCHANGE_RTT_OPEN:
-    // FIXME: verify response...
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.open_request.request_timestamp,
+            ==,
+            h2->details.open_request.request_timestamp)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.open_request.reserve_expiration,
+            ==,
+            h2->details.open_request.reserve_expiration)) &&
+         (h1->details.open_request.purse_limit ==
+          h2->details.open_request.purse_limit) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.open_request.reserve_payment,
+                            &h2->details.open_request.reserve_payment)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.open_request.reserve_sig,
+                         &h2->details.open_request.reserve_sig)) )
+      return 0;
     return 1;
   case TALER_EXCHANGE_RTT_CLOSE:
-    // FIXME: verify response...
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (GNUNET_TIME_timestamp_cmp (
+            h1->details.close_request.request_timestamp,
+            ==,
+            h2->details.close_request.request_timestamp)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.close_request.target_account_h_payto,
+                         &h2->details.close_request.target_account_h_payto)) &&
+         (0 ==
+          GNUNET_memcmp (&h1->details.close_request.reserve_sig,
+                         &h2->details.close_request.reserve_sig)) )
+      return 0;
     return 1;
   }
   GNUNET_assert (0);

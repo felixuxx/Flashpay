@@ -168,18 +168,12 @@ TEH_check_invariants (void);
 struct TEH_KeyStateHandle *
 TEH_keys_get_state (void);
 
-
 /**
- * Obtain the key state. Should ONLY be used
- * directly if @a management_only is true. Otherwise use #TEH_keys_get_state().
- *
- * @param management_only if we should NOT run finish_keys_response()
- *                  because we only need the state for the /management/keys API
- * @return NULL on error
+ * Obtain the key state if we should NOT run finish_keys_response() because we
+ * only need the state for the /management/keys API
  */
 struct TEH_KeyStateHandle *
-TEH_keys_get_state2 (bool management_only);
-
+TEH_keys_get_state_for_management_only (void);
 
 /**
  * Something changed in the database. Rebuild all key states.  This function

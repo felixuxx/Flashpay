@@ -1,6 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange closer service
 PartOf=taler-exchange.target
+After=network.target postgres.service
 
 [Service]
 User=taler-exchange-closer

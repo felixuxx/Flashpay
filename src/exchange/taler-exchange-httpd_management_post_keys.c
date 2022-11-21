@@ -376,8 +376,7 @@ TEH_handler_management_post_keys (
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/keys\n");
-  akc.ksh = TEH_keys_get_state2 (true); /* may start its own transaction, thus
-                                     must be done here, before we run ours! */
+  akc.ksh = TEH_keys_get_state_for_management_only (); /* may start its own transaction, thus must be done here, before we run ours! */
   if (NULL == akc.ksh)
   {
     GNUNET_break_op (0);

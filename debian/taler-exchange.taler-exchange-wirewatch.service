@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange wirewatch service
-After=network.target
+After=network.target postgres.service
 PartOf=taler-exchange.target
 
 [Service]
