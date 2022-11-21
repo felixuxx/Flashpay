@@ -63,7 +63,7 @@ EXTRA_DIST = \
   pp/Makefile \
   pp/README \
   pp/pp-v0.rst \
-  pp/conf.py \
+  pp/conf.py.in \
   pp/locale/de/LC_MESSAGES/pp.po \
   $(rdata_DATA) \
   coverage.sh \
