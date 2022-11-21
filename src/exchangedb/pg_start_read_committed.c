@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_start_read_commited.c
- * @brief Implementation of the start_read_commited function for Postgres
+ * @file exchangedb/pg_start_read_committed.c
+ * @brief Implementation of the start_read_committed function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -28,7 +28,7 @@
 
 enum GNUNET_GenericReturnValue
 TEH_PG_start_read_committed (void *cls,
-                               const char *name)
+                             const char *name)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {

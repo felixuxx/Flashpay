@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_lookup_wire_tranfer.c
- * @brief Implementation of the lookup_wire_tranfer function for Postgres
+ * @file exchangedb/pg_lookup_wire_transfer.c
+ * @brief Implementation of the lookup_wire_transfer function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -128,6 +128,7 @@ handle_wt_result (void *cls,
   }
 }
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_wire_transfer (
   void *cls,
@@ -148,7 +149,7 @@ TEH_PG_lookup_wire_transfer (
   ctx.pg = pg;
   ctx.status = GNUNET_OK;
   /* check if the melt record exists and get it */
-    /* Used in #postgres_lookup_wire_transfer */
+  /* Used in #postgres_lookup_wire_transfer */
   PREPARE (pg,
            "lookup_transactions",
            "SELECT"

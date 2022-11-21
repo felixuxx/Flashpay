@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_prefligth.h
- * @brief implementation of the prefligth function for Postgres
+ * @file exchangedb/pg_preflight.h
+ * @brief implementation of the preflight function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_PREFLIGHT_H
-#define PG_PREFLIGHT_H
+#ifndef PG_PREFLIGTH_H
+#define PG_PREFLIGTH_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -40,4 +40,5 @@
 
 enum GNUNET_GenericReturnValue
 TEH_PG_preflight (void *cls);
+
 #endif

@@ -994,6 +994,7 @@ TEH_RESPONSE_compile_reserve_history (
  * requested withdraw operation.
  *
  * @param connection connection to the client
+ * @param ec error code to return
  * @param ebalance expected balance based on our database
  * @param withdraw_amount amount that the client requested to withdraw
  * @param rh reserve history to return

@@ -46,7 +46,7 @@ struct WireFeeLookupContext
 
 
 /**
- * Helper function for #postgres_lookup_wire_fee_by_time().
+ * Helper function for #TEH_PG_lookup_wire_fee_by_time().
  * Calls the callback with the wire fee structure.
  *
  * @param cls a `struct WireFeeLookupContext`
@@ -138,7 +138,7 @@ TEH_PG_lookup_wire_fee_by_time (
     .fees = fees,
     .pg = pg
   };
-      /* used in #postgres_lookup_wire_fee_by_time() */
+  /* used in #postgres_lookup_wire_fee_by_time() */
   PREPARE (pg,
            "lookup_wire_fee_by_time",
            "SELECT"

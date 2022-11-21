@@ -26,8 +26,6 @@
 #include "pg_helper.h"
 
 
-
-
 /**
  * Closure for #dominations_cb_helper()
  */
@@ -51,7 +49,7 @@ struct DenomsIteratorContext
 
 
 /**
- * Helper function for #postgres_iterate_denominations().
+ * Helper function for #TEH_PG_iterate_denominations().
  * Calls the callback with each denomination key.
  *
  * @param cls a `struct DenomsIteratorContext`
@@ -130,8 +128,8 @@ dominations_cb_helper (void *cls,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_denominations (void *cls,
-                                TALER_EXCHANGEDB_DenominationsCallback cb,
-                                void *cb_cls)
+                              TALER_EXCHANGEDB_DenominationsCallback cb,
+                              void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -143,7 +141,7 @@ TEH_PG_iterate_denominations (void *cls,
     .pg = pg
   };
 
-    /* Used in #postgres_iterate_denominations() */
+  /* Used in #postgres_iterate_denominations() */
   PREPARE (pg,
            "select_denominations",
            "SELECT"

@@ -43,7 +43,7 @@ struct AuditorDenomsIteratorContext
 
 
 /**
- * Helper function for #postgres_iterate_auditor_denominations().
+ * Helper function for #TEH_PG_iterate_auditor_denominations().
  * Calls the callback with each auditor and denomination pair.
  *
  * @param cls a `struct AuditorDenomsIteratorContext`
@@ -102,7 +102,7 @@ TEH_PG_iterate_auditor_denominations (
     .cb = cb,
     .cb_cls = cb_cls,
   };
-    /* Used in #postgres_iterate_auditor_denominations() */
+  /* Used in #postgres_iterate_auditor_denominations() */
   PREPARE (pg,
            "select_auditor_denoms",
            "SELECT"
@@ -113,7 +113,7 @@ TEH_PG_iterate_auditor_denominations (
            " JOIN auditors USING (auditor_uuid)"
            " JOIN denominations USING (denominations_serial)"
            " WHERE auditors.is_active;");
-    return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_auditor_denoms",
                                                params,
                                                &auditor_denoms_cb_helper,

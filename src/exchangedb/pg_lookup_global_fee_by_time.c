@@ -60,7 +60,7 @@ struct GlobalFeeLookupContext
 
 
 /**
- * Helper function for #postgres_lookup_global_fee_by_time().
+ * Helper function for #TEH_PG_lookup_global_fee_by_time().
  * Calls the callback with each denomination key.
  *
  * @param cls a `struct GlobalFeeLookupContext`
@@ -138,9 +138,6 @@ global_fee_by_time_helper (void *cls,
 }
 
 
-
-
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_global_fee_by_time (
   void *cls,
@@ -186,4 +183,3 @@ TEH_PG_lookup_global_fee_by_time (
                                                &global_fee_by_time_helper,
                                                &wlc);
 }
-

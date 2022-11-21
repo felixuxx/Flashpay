@@ -2519,7 +2519,7 @@ TALER_CRYPTO_helper_cs_sign (
  * @param reqs information about the keys to sign with and the values to sign
  * @param reqs_length length of the @a reqs array
  * @param for_melt true if this is for a melt operation
- * @param[out] bs array set to the blind signatures, must be of length @a reqs_length!
+ * @param[out] bss array set to the blind signatures, must be of length @a reqs_length!
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
@@ -2606,7 +2606,7 @@ TALER_CRYPTO_helper_cs_r_derive (
  * @param cdrs array with derivation input data
  * @param cdrs_length length of the @a cdrs array
  * @param for_melt true if this is for a melt operation
- * @param[out] crp array set to the pair of R values, must be of length @a cdrs_length
+ * @param[out] crps array set to the pair of R values, must be of length @a cdrs_length
  * @return set to the error code (or #TALER_EC_NONE on success)
  */
 enum TALER_ErrorCode

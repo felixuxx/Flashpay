@@ -45,7 +45,7 @@ struct AuditorsIteratorContext
 
 
 /**
- * Helper function for #postgres_iterate_active_auditors().
+ * Helper function for #TEH_PG_iterate_active_auditors().
  * Calls the callback with each auditor.
  *
  * @param cls a `struct SignkeysIteratorContext`
@@ -91,11 +91,10 @@ auditors_cb_helper (void *cls,
 }
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_active_auditors (void *cls,
-                                  TALER_EXCHANGEDB_AuditorsCallback cb,
-                                  void *cb_cls)
+                                TALER_EXCHANGEDB_AuditorsCallback cb,
+                                void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -105,7 +104,7 @@ TEH_PG_iterate_active_auditors (void *cls,
     .cb = cb,
     .cb_cls = cb_cls,
   };
-    /* Used in #postgres_iterate_active_auditors() */
+
   PREPARE (pg,
            "select_auditors",
            "SELECT"

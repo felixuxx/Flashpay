@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_lookup_wire_tranfer.h
- * @brief implementation of the lookup_wire_tranfer function for Postgres
+ * @file exchangedb/pg_lookup_wire_transfer.h
+ * @brief implementation of the lookup_wire_transfer function for Postgres
  * @author Christian Grothoff
  */
 #ifndef PG_LOOKUP_WIRE_TRANSFER_H

@@ -49,7 +49,7 @@ struct DenomIteratorContext
 
 
 /**
- * Helper function for #postgres_iterate_denomination_info().
+ * Helper function for #TEH_PG_iterate_denomination_info().
  * Calls the callback with each denomination key.
  *
  * @param cls a `struct DenomIteratorContext`
@@ -132,14 +132,6 @@ domination_cb_helper (void *cls,
 }
 
 
-
-
-
-
-
-
-
-
 /**
  * Fetch information about all known denomination keys.
  *
@@ -150,8 +142,8 @@ domination_cb_helper (void *cls,
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_denomination_info (void *cls,
-                                    TALER_EXCHANGEDB_DenominationCallback cb,
-                                    void *cb_cls)
+                                  TALER_EXCHANGEDB_DenominationCallback cb,
+                                  void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -163,7 +155,7 @@ TEH_PG_iterate_denomination_info (void *cls,
     .pg = pg
   };
 
-   /* Used in #postgres_iterate_denomination_info() */
+  /* Used in #postgres_iterate_denomination_info() */
   PREPARE (pg,
            "denomination_iterate",
            "SELECT"

@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_start_read_commited.h
- * @brief implementation of the start_read_commited function for Postgres
+ * @file exchangedb/pg_start_read_committed.h
+ * @brief implementation of the start_read_committed function for Postgres
  * @author Christian Grothoff
  */
 #ifndef PG_START_READ_COMMITTED_H

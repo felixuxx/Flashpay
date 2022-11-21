@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 /**
  * Closure for #signkeys_cb_helper()
  */
@@ -46,7 +45,7 @@ struct SignkeysIteratorContext
 
 
 /**
- * Helper function for #postgres_iterate_active_signkeys().
+ * Helper function for #TEH_PG_iterate_active_signkeys().
  * Calls the callback with each signkey.
  *
  * @param cls a `struct SignkeysIteratorContext`
@@ -107,8 +106,8 @@ signkeys_cb_helper (void *cls,
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_active_signkeys (void *cls,
-                                  TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
-                                  void *cb_cls)
+                                TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
+                                void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now = {0};
@@ -120,7 +119,7 @@ TEH_PG_iterate_active_signkeys (void *cls,
     .cb = cb,
     .cb_cls = cb_cls,
   };
- 
+
   PREPARE (pg,
            "select_signkeys",
            "SELECT"

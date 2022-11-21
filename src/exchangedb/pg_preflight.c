@@ -14,8 +14,8 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_prefligth.c
- * @brief Implementation of the prefligth function for Postgres
+ * @file exchangedb/pg_preflight.c
+ * @brief Implementation of the preflight function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
