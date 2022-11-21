@@ -1790,7 +1790,7 @@ conclude_account (struct WireAccount *wa)
 
 
 /**
- * Analyze credit transation @a details into @a wa.
+ * Analyze credit transaction @a details into @a wa.
  *
  * @param[in,out] wa account that received the transfer
  * @param details transfer details

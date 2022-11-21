@@ -328,7 +328,7 @@ struct TALER_BANK_CreditHistoryResponse
     {
 
       /**
-       * Array of transactions recevied.
+       * Array of transactions received.
        */
       const struct TALER_BANK_CreditDetails *details;
 
