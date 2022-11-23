@@ -31,6 +31,8 @@
 #include "pg_reserves_update.h"
 #include "pg_setup_wire_target.h"
 #include "pg_event_notify.h"
+
+
 /**
  * Generate event notification for the reserve
  * change.
@@ -38,7 +40,6 @@
  * @param pg plugin state
  * @param reserve_pub reserve to notfiy on
  */
-
 static void
 notify_on_reserve (struct PostgresClosure *pg,
                    const struct TALER_ReservePublicKeyP *reserve_pub)
@@ -52,10 +53,11 @@ notify_on_reserve (struct PostgresClosure *pg,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Notifying on reserve!\n");
   TEH_PG_event_notify (pg,
-                         &rep.header,
-                         NULL,
-                         0);
+                       &rep.header,
+                       NULL,
+                       0);
 }
+
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_in_insert (void *cls,
@@ -135,8 +137,8 @@ TEH_PG_reserves_in_insert (void *cls,
     struct TALER_PaytoHashP h_payto;
 
     qs3 = TEH_PG_setup_wire_target (pg,
-                             sender_account_details,
-                             &h_payto);
+                                    sender_account_details,
+                                    &h_payto);
     if (qs3 < 0)
       return qs3;
     /* We do not have the UUID, so insert by public key */

@@ -207,7 +207,7 @@
 #include "pg_reserves_update.h"
 #include "pg_setup_wire_target.h"
 #include "pg_compute_shard.h"
-
+#include "pg_batch_reserves_in_insert.h"
 /**
  * Set to 1 to enable Postgres auto_explain module. This will
  * slow down things a _lot_, but also provide extensive logging
@@ -5446,6 +5446,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
+
+  plugin->batch_reserves_in_insert
+    = &TEH_PG_batch_reserves_in_insert;
 
   return plugin;
 }
