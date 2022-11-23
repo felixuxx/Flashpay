@@ -91,9 +91,22 @@ run (void *cls)
     result = 77;
     goto cleanup;
   }
+<<<<<<< HEAD
   for (unsigned int i = 0; i< 7; i++)
+=======
+  if (GNUNET_OK !=
+      plugin->setup_partitions (plugin->cls,
+                                num_partitions))
   {
-    static unsigned int batches[] = {1, 1, 2, 4, 16, 64, 256};
+    GNUNET_break (0);
+    result = 77;
+    goto cleanup;
+  }
+
+  for (unsigned int i = 0; i< 8; i++)
+>>>>>>> 26922c6d (batch modifications)
+  {
+    static unsigned int batches[] = {1, 1,0, 2, 4, 16, 64, 256};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
     struct TALER_Amount value;
     unsigned int batch_size = batches[i];
@@ -101,6 +114,7 @@ run (void *cls)
     struct GNUNET_TIME_Timestamp ts;
     struct GNUNET_TIME_Relative duration;
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
+    /*   struct TALER_EXCHANGEDB_ReserveInInfo reserves2[batch_size];*/
     enum GNUNET_DB_QueryStatus results[batch_size];
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":1.000010",
@@ -109,9 +123,14 @@ run (void *cls)
     ts = GNUNET_TIME_timestamp_get ();
     for (unsigned int r = 0; r<10; r++)
     {
+<<<<<<< HEAD
       plugin->start_read_committed (plugin->cls,
                                     "test_by_j");
 
+=======
+       plugin->start (plugin->cls,
+         "test_by_exchange_j");
+>>>>>>> 26922c6d (batch modifications)
       for (unsigned int k = 0; k<batch_size; k++)
       {
         RND_BLK (&reserves[k].reserve_pub);
@@ -120,6 +139,7 @@ run (void *cls)
         reserves[k].sender_account_details = sndr;
         reserves[k].exchange_account_name = "name";
         reserves[k].wire_reference = k;
+<<<<<<< HEAD
 
       }
       FAILIF (batch_size !=
@@ -129,13 +149,42 @@ run (void *cls)
                                                 results));
 
       plugin->commit (plugin->cls);
+=======
+      }
+      FAILIF (batch_size !=
+            plugin->batch_reserves_in_insert (plugin->cls,
+                                              reserves,
+                                              batch_size,
+                                              results));
+      /*plugin->commit (plugin->cls);*/
+>>>>>>> 26922c6d (batch modifications)
     }
+    /*
+    for (unsigned int s=0;s<10;s++)
+    {
+      for (unsigned int k = 0; k<batch_size; k++)
+      {
+        RND_BLK (&reserves2[k].reserve_pub);
+        reserves2[k].balance = value;
+        reserves2[k].execution_time = ts;
+        reserves2[k].sender_account_details = sndr;
+        reserves2[k].exchange_account_name = "name";
+        reserves2[k].wire_reference = k;
+      }
+      FAILIF (batch_size !=
+            plugin->batch_reserves_in_insert (plugin->cls,
+                                              reserves2,
+                                              batch_size,
+                                              results));
+                                              }*/
+
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
              "for a batchsize equal to %d it took %s\n",
              batch_size,
              GNUNET_STRINGS_relative_time_to_string (duration,
                                                      GNUNET_NO) );
+
   }
   result = 0;
 drop:
@@ -155,7 +204,6 @@ main (int argc,
   char *config_filename;
   char *testname;
   struct GNUNET_CONFIGURATION_Handle *cfg;
-
   (void) argc;
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
@@ -163,6 +211,7 @@ main (int argc,
     GNUNET_break (0);
     return -1;
   }
+
   GNUNET_log_setup (argv[0],
                     "WARNING",
                     NULL);
