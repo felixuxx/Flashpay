@@ -28,10 +28,10 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_ready_deposit (void *cls,
-                            uint64_t start_shard_row,
-                            uint64_t end_shard_row,
-                            struct TALER_MerchantPublicKeyP *merchant_pub,
-                            char **payto_uri)
+                          uint64_t start_shard_row,
+                          uint64_t end_shard_row,
+                          struct TALER_MerchantPublicKeyP *merchant_pub,
+                          char **payto_uri)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now = {0};
@@ -57,9 +57,6 @@ TEH_PG_get_ready_deposit (void *cls,
               "Finding ready deposits by deadline %s (%llu)\n",
               GNUNET_TIME_absolute2s (now),
               (unsigned long long) now.abs_value_us);
-
-
-    /* Used in #postgres_get_ready_deposit() */
   PREPARE (pg,
            "deposits_get_ready",
            "SELECT"
@@ -78,17 +75,8 @@ TEH_PG_get_ready_deposit (void *cls,
            "   dbr.wire_deadline ASC"
            "  ,dbr.shard ASC"
            " LIMIT 1;");
-
-
-
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "deposits_get_ready",
                                                    params,
                                                    rs);
 }
-
-
-
-
-
-
