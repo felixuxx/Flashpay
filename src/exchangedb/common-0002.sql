@@ -172,3 +172,34 @@ COMMENT ON FUNCTION create_shard_server2
   IS 'Create a shard server on the master
       node with all foreign tables and user mappings';
 
+
+
+--------------------------------
+
+CREATE TABLE IF NOT EXISTS partitioned_tables
+  (name VARCHAR PRIMARY KEY NOT NULL);
+
+INSERT INTO partitioned_tables
+    (name)
+  VALUES
+    ('wire_targets')
+   ,('refunds')
+  ON CONFLICT DO NOTHING;
+
+
+CREATE OR REPLACE FUNCTION drop_default_partitions()
+  RETURNS VOID
+  LANGUAGE plpgsql
+AS $$
+DECLARE
+  tc CURSOR FOR SELECT name FROM partitioned_tables;
+BEGIN
+
+  RAISE NOTICE 'Dropping default table partitions';
+  FOR rec IN tc
+  LOOP
+    EXECUTE FORMAT (
+      'DROP TABLE IF EXISTS %s_default ;'::text,
+    rec.name;
+END  
+$$;
