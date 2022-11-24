@@ -19,7 +19,12 @@ sqlinputs = \
   exchange-0001.sql.in \
   exchange-0001-part.sql \
   shard-0001-part.sql \
-  shard-0001.sql.in
+  shard-0001.sql.in \
+  common-0002.sql \
+  exchange-0002.sql.in \
+  exchange-0002-part.sql \
+  shard-0002-part.sql \
+  shard-0002.sql.in
 
 sql_DATA = \
   benchmark-0001.sql \
@@ -37,16 +42,28 @@ BUILT_SOURCES = \
 
 CLEANFILES = \
   shard-0001.sql \
-  exchange-0001.sql
+  exchange-0001.sql \
+  shard-0002.sql \
+  exchange-0002.sql 
 
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql exchange-0001.sql.in
 	chmod +w $@ || true
 	gcc -E -P -undef - < exchange-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
+exchange-0002.sql: common-0002.sql exchange-0002-part.sql exchange-0002.sql.in
+	chmod +w $@ || true
+	gcc -E -P -undef - < exchange-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
+	chmod ugo-w $@
+
 shard-0001.sql: common-0001.sql shard-0001-part.sql exchange-0001.sql.in
 	chmod +w $@ || true
 	gcc -E -P -undef - < shard-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
+	chmod ugo-w $@
+
+shard-0002.sql: common-0002.sql shard-0002-part.sql exchange-0002.sql.in
+	chmod +w $@ || true
+	gcc -E -P -undef - < shard-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 EXTRA_DIST = \
