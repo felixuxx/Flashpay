@@ -23,7 +23,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 
-/**
+/**o
  * Global result from the testcase.
  */
 static int result;
@@ -33,7 +33,7 @@ static int result;
  */
 #define FAILIF(cond)                            \
   do {                                          \
-    if (! (cond)) {break;}                    \
+      if (! (cond)) {break;}                    \
     GNUNET_break (0);                           \
     goto drop;                                  \
   } while (0)
@@ -83,17 +83,12 @@ run (void *cls)
   }
   (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls,
-                             true,
-                             num_partitions))
+      plugin->create_tables (plugin->cls))
   {
     GNUNET_break (0);
     result = 77;
     goto cleanup;
   }
-
-  for (unsigned int i = 0; i< 7; i++)
-
   if (GNUNET_OK !=
       plugin->setup_partitions (plugin->cls,
                                 num_partitions))
@@ -104,7 +99,6 @@ run (void *cls)
   }
 
   for (unsigned int i = 0; i< 8; i++)
-
   {
     static unsigned int batches[] = {1, 1,0, 2, 4, 16, 64, 256};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
@@ -114,17 +108,16 @@ run (void *cls)
     struct GNUNET_TIME_Timestamp ts;
     struct GNUNET_TIME_Relative duration;
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
-    /*   struct TALER_EXCHANGEDB_ReserveInInfo reserves2[batch_size];*/
     enum GNUNET_DB_QueryStatus results[batch_size];
     GNUNET_assert (GNUNET_OK ==
                    TALER_string_to_amount (CURRENCY ":1.000010",
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
-    for (unsigned int r = 0; r<10; r++)
+    for (unsigned int r=0;r<10;r++)
     {
 
-       for (unsigned int k = 0; k<batch_size; k++)
+      for (unsigned int k = 0; k<batch_size; k++)
       {
         RND_BLK (&reserves[k].reserve_pub);
         reserves[k].balance = value;
@@ -138,7 +131,7 @@ run (void *cls)
                                               reserves,
                                               batch_size,
                                               results));
-    }
+      }
 
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
@@ -168,20 +161,20 @@ main (int argc,
   struct GNUNET_CONFIGURATION_Handle *cfg;
   (void) argc;
   result = -1;
-  if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
+   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {
     GNUNET_break (0);
     return -1;
-  }
+    }
 
   GNUNET_log_setup (argv[0],
                     "WARNING",
                     NULL);
-  plugin_name++;
-  (void) GNUNET_asprintf (&testname,
+   plugin_name++;
+    (void) GNUNET_asprintf (&testname,
                           "test-exchange-db-%s",
                           plugin_name);
-  (void) GNUNET_asprintf (&config_filename,
+    (void) GNUNET_asprintf (&config_filename,
                           "%s.conf",
                           testname);
   fprintf (stdout,
@@ -204,6 +197,5 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
-
 
 /* end of test_exchangedb_by_j.c */

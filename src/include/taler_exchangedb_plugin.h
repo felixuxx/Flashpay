@@ -3453,6 +3453,21 @@ struct TALER_EXCHANGEDB_Plugin
                               unsigned int reserves_length,
                               enum GNUNET_DB_QueryStatus *results);
 
+  /**
+   * Insert a batch of incoming transaction into reserves.  New reserves are
+   * also created through this function.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserves
+   * @param reserves_length length of the @a reserves array
+   * @param[out] results array of transaction status codes of length @a reserves_length,
+   *             set to the status of the
+   */
+  enum GNUNET_DB_QueryStatus
+  (*batch2_reserves_in_insert)(void *cls,
+                              const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                              unsigned int reserves_length,
+                              enum GNUNET_DB_QueryStatus *results);
 
   /**
    * Locate a nonce for use with a particular public key.

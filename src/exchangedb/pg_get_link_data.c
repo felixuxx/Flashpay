@@ -178,25 +178,55 @@ TEH_PG_get_link_data (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct LinkDataContext ldctx;
 
-  PREPARE (pg,
-           "get_link",
-           "SELECT "
-           " tp.transfer_pub"
-           ",denoms.denom_pub"
-           ",rrc.ev_sig"
-           ",rrc.ewv"
-           ",rrc.link_sig"
-           ",rrc.freshcoin_index"
-           ",rrc.coin_ev"
-           " FROM refresh_commitments"
-           "     JOIN refresh_revealed_coins rrc"
-           "       USING (melt_serial_id)"
-           "     JOIN refresh_transfer_keys tp"
-           "       USING (melt_serial_id)"
-           "     JOIN denominations denoms"
-           "       ON (rrc.denominations_serial = denoms.denominations_serial)"
-           " WHERE old_coin_pub=$1"
-           " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
+  if (NULL == getenv ("NEW_LOGIC"))
+  {
+    PREPARE (pg,
+             "get_link",
+             "SELECT "
+             " tp.transfer_pub"
+             ",denoms.denom_pub"
+             ",rrc.ev_sig"
+             ",rrc.ewv"
+             ",rrc.link_sig"
+             ",rrc.freshcoin_index"
+             ",rrc.coin_ev"
+             " FROM refresh_commitments"
+             "     JOIN refresh_revealed_coins rrc"
+             "       USING (melt_serial_id)"
+             "     JOIN refresh_transfer_keys tp"
+             "       USING (melt_serial_id)"
+             "     JOIN denominations denoms"
+             "       ON (rrc.denominations_serial = denoms.denominations_serial)"
+             " WHERE old_coin_pub=$1"
+             " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
+  }
+
+  else
+  {
+    PREPARE (pg,
+             "get_link",
+             "WITH rc AS MATERIALIZED ("
+             "SELECT"
+             "* FROM refresh_commitments"
+             "WHERE old_coin_pub=$1"
+             ")"
+             "SELECT "
+             " tp.transfer_pub"
+             ",denoms.denom_pub"
+             ",rrc.ev_sig"
+             ",rrc.ewv"
+             ",rrc.link_sig"
+             ",rrc.freshcoin_index"
+             ",rrc.coin_ev"
+             " FROM refresh_revealed_coins rrc"
+             "       USING (melt_serial_id)"
+             "     JOIN refresh_transfer_keys tp"
+             "       USING (melt_serial_id)"
+             "     JOIN denominations denoms"
+             "       USING (denominations_serial)"
+             " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
+  }
+
   ldctx.ldc = ldc;
   ldctx.ldc_cls = ldc_cls;
   ldctx.last = NULL;
