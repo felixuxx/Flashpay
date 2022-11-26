@@ -15,37 +15,37 @@ pkgcfg_DATA = \
 sqldir = $(prefix)/share/taler/sql/exchange/
 
 sqlinputs = \
-  common-0001.sql \
-  exchange-0001.sql.in \
-  exchange-0001-part.sql \
-  common-0002.sql \
+  0002-*.sql \
+  0003-*.sql \
   exchange-0002.sql.in \
-  exchange-0002-part.sql
+  exchange-0003.sql.in
 
 sql_DATA = \
   benchmark-0001.sql \
   versioning.sql \
   exchange-0001.sql \
+  exchange-0002.sql \
   drop.sql \
   procedures.sql
 
 BUILT_SOURCES = \
-  exchange-0001.sql \
+  benchmark-0001.sql \
   drop.sql \
+  exchange-0001.sql \
   procedures.sql
 
 CLEANFILES = \
-  exchange-0001.sql \
-  exchange-0002.sql
+  exchange-0002.sql \
+  exchange-0003.sql
 
-exchange-0001.sql: common-0001.sql exchange-0001-part.sql exchange-0001.sql.in
-	chmod +w $@ || true
-	gcc -E -P -undef - < exchange-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
-	chmod ugo-w $@
-
-exchange-0002.sql: common-0002.sql exchange-0002-part.sql exchange-0002.sql.in
+exchange-0002.sql: exchange-0002.sql.in 0002-*.sql
 	chmod +w $@ || true
 	gcc -E -P -undef - < exchange-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
+	chmod ugo-w $@
+
+exchange-0003.sql: exchange-0003.sql.in 0003-*.sql
+	chmod +w $@ || true
+	gcc -E -P -undef - < exchange-0003.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 EXTRA_DIST = \

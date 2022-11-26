@@ -103,7 +103,6 @@
 #include "pg_start.h"
 #include "pg_rollback.h"
 #include "pg_create_tables.h"
-#include "pg_setup_foreign_servers.h"
 #include "pg_event_listen.h"
 #include "pg_event_listen_cancel.h"
 #include "pg_event_notify.h"

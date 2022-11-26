@@ -5,10 +5,6 @@ test-exchangedb-postgres
 test-exchangedb-signkeys
 test-perf-taler-exchangedb
 bench-db-postgres
-exchange-0001.sql
-shard-0000.sql
-shard-0001.sql
-drop0001.sql
 shard-drop0001.sqltest-exchangedb-by-j-postgres
 test-exchangedb-by-j-postgres
 perf-exchangedb-reserves-in-insert-postgres
