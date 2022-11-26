@@ -50,19 +50,9 @@ static int gc_db;
 static uint32_t num_partitions;
 
 /**
- * -F option: setup a sharded database, i.e. create foreign tables/server
- */
-static int shard_db;
-
-/**
  * -f option: force partitions to be created when there is only one
  */
 static int force_create_partitions;
-
-/**
- * -S option: setup a database on a shard server, creates tables with suffix shard_idx
- */
-static uint32_t shard_idx;
 
 /**
  * Main function that will be run.
@@ -100,21 +90,6 @@ run (void *cls,
                   "Could not drop tables as requested. Either database was not yet initialized, or permission denied. Consult the logs. Will still try to create new tables.\n");
     }
   }
-  if (0 < shard_idx)
-  {
-    if (GNUNET_OK !=
-        plugin->create_shard_tables (plugin->cls,
-                                     shard_idx))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not create shard database\n");
-      global_ret = EXIT_NOTINSTALLED;
-    }
-    /* We do not want to continue if we are on a shard */
-    TALER_EXCHANGEDB_plugin_unload (plugin);
-    plugin = NULL;
-    return;
-  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -132,16 +107,9 @@ run (void *cls,
         && force_create_partitions))
   {
     enum GNUNET_GenericReturnValue r = GNUNET_OK;
-    if (shard_db)
-    {
-      r = plugin->setup_foreign_servers (plugin->cls,
-                                         num_partitions);
-    }
-    else
-    {
-      r = plugin->setup_partitions (plugin->cls,
-                                    num_partitions);
-    }
+
+    r = plugin->setup_partitions (plugin->cls,
+                                  num_partitions);
     if (GNUNET_OK != r)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -220,17 +188,8 @@ main (int argc,
     GNUNET_GETOPT_option_uint ('P',
                                "partition",
                                "NUMBER",
-                               "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node (NOTE: sharding add -F for sharding)",
+                               "Setup a partitioned database where each table which can be partitioned holds NUMBER partitions on a single DB node",
                                &num_partitions),
-    GNUNET_GETOPT_option_flag ('F',
-                               "foreign",
-                               "Setup a sharded database with foreign servers (shards) / tables rather than a partitioned one, must be called as DB superuser.",
-                               &shard_db),
-    GNUNET_GETOPT_option_uint ('S',
-                               "shard",
-                               "INDEX",
-                               "Setup a shard server, creates tables with INDEX as suffix",
-                               &shard_idx),
     GNUNET_GETOPT_option_flag ('f',
                                "force",
                                "Force partitions to be created if there is only one partition",

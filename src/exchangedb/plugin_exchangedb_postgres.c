@@ -65,10 +65,8 @@
 #include "pg_iterate_active_signkeys.h"
 #include "pg_preflight.h"
 #include "pg_commit.h"
-#include "pg_create_shard_tables.h"
 #include "pg_insert_aggregation_tracking.h"
 #include "pg_drop_tables.h"
-#include "pg_setup_partitions.h"
 #include "pg_select_satisfied_kyc_processes.h"
 #include "pg_select_aggregation_amounts_for_kyc_check.h"
 #include "pg_kyc_provider_account_lookup.h"
@@ -123,6 +121,7 @@
 #include "pg_get_policy_details.h"
 #include "pg_persist_policy_details.h"
 #include "pg_do_deposit.h"
+#include "pg_setup_partitions.h"
 #include "pg_add_policy_fulfillment_proof.h"
 #include "pg_do_melt.h"
 #include "pg_do_refund.h"
@@ -384,9 +383,6 @@ TEH_PG_internal_setup (struct PostgresClosure *pg,
 }
 
 
-
-
-
 /**
  * Closure for #get_refunds_cb().
  */
@@ -454,9 +450,6 @@ get_refunds_cb (void *cls,
       return;
   }
 }
-
-
-
 
 
 /* Get the details of a policy, referenced by its hash code
@@ -1627,8 +1620,9 @@ postgres_ensure_coin_known (void *cls,
   return TALER_EXCHANGEDB_CKS_PRESENT;
 }
 
+
 enum GNUNET_DB_QueryStatus
-setup_wire_target(
+setup_wire_target (
   struct PostgresClosure *pg,
   const char *payto_uri,
   struct TALER_PaytoHashP *h_payto)
@@ -1654,6 +1648,8 @@ setup_wire_target(
                                              "insert_kyc_status",
                                              iparams);
 }
+
+
 /**
  * Insert information about deposited coin into the database.
  *
@@ -2866,7 +2862,7 @@ postgres_insert_reserve_closed (
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       (qs = TEH_PG_reserves_get (cls,
-                                   &reserve)))
+                                 &reserve)))
   {
     /* Existence should have been checked before we got here... */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2893,7 +2889,7 @@ postgres_insert_reserve_closed (
     GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   }
   return TEH_PG_reserves_update (cls,
-                          &reserve);
+                                 &reserve);
 }
 
 
@@ -5168,12 +5164,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_commit;
   plugin->preflight
     = &TEH_PG_preflight;
-  plugin->create_shard_tables
-    = &TEH_PG_create_shard_tables;
   plugin->insert_aggregation_tracking
     = &TEH_PG_insert_aggregation_tracking;
-  plugin->setup_partitions
-    = &TEH_PG_setup_partitions;
   plugin->select_aggregation_amounts_for_kyc_check
     = &TEH_PG_select_aggregation_amounts_for_kyc_check;
 
@@ -5245,11 +5237,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_start;
   plugin->rollback
     = &TEH_PG_rollback;
-
- plugin->create_tables
+  plugin->create_tables
     = &TEH_PG_create_tables;
-  plugin->setup_foreign_servers
-    = &TEH_PG_setup_foreign_servers;
   plugin->event_listen
     = &TEH_PG_event_listen;
   plugin->event_listen_cancel
@@ -5446,7 +5435,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
-
+  plugin->setup_partitions
+    = &TEH_PG_setup_partitions;
   plugin->batch_reserves_in_insert
     = &TEH_PG_batch_reserves_in_insert;
 

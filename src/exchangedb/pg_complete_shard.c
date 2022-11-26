@@ -27,12 +27,11 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_complete_shard (void *cls,
-                         const char *job_name,
-                         uint64_t start_row,
-                         uint64_t end_row)
+                       const char *job_name,
+                       uint64_t start_row,
+                       uint64_t end_row)
 {
   struct PostgresClosure *pg = cls;
-
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (job_name),
     GNUNET_PQ_query_param_uint64 (&start_row),
@@ -44,8 +43,6 @@ TEH_PG_complete_shard (void *cls,
               "Completing shard %llu-%llu\n",
               (unsigned long long) start_row,
               (unsigned long long) end_row);
-
-
   PREPARE (pg,
            "complete_shard",
            "UPDATE work_shards"

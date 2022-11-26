@@ -24,7 +24,6 @@ SELECT _v.register_patch('exchange-0002', NULL, NULL);
 
 SET search_path TO exchange;
 
-#include "common-0002.sql"
-#include "exchange-0002-part.sql"
+#include "0002-denominations.sql"
 
 COMMIT;

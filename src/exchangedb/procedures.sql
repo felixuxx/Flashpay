@@ -23,6 +23,7 @@ SET search_path TO exchange;
 --                      Stored procedures
 ---------------------------------------------------------------------------
 
+
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN cs_nonce BYTEA,
   IN amount_val INT8,

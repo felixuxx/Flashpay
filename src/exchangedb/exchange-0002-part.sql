@@ -31,3 +31,6 @@ CREATE TABLE IF NOT EXISTS wire_targets_default
 
 SELECT add_constraints_to_wire_targets_partition('default');
 
+
+
+SELECT create_tables('exchange-0002');

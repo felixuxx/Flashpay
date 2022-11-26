@@ -18,33 +18,25 @@ sqlinputs = \
   common-0001.sql \
   exchange-0001.sql.in \
   exchange-0001-part.sql \
-  shard-0001-part.sql \
-  shard-0001.sql.in \
   common-0002.sql \
   exchange-0002.sql.in \
-  exchange-0002-part.sql \
-  shard-0002-part.sql \
-  shard-0002.sql.in
+  exchange-0002-part.sql
 
 sql_DATA = \
   benchmark-0001.sql \
   versioning.sql \
   exchange-0001.sql \
   drop.sql \
-  procedures.sql \
-  shard-0001.sql
+  procedures.sql
 
 BUILT_SOURCES = \
-  shard-0001.sql \
   exchange-0001.sql \
   drop.sql \
   procedures.sql
 
 CLEANFILES = \
-  shard-0001.sql \
   exchange-0001.sql \
-  shard-0002.sql \
-  exchange-0002.sql 
+  exchange-0002.sql
 
 exchange-0001.sql: common-0001.sql exchange-0001-part.sql exchange-0001.sql.in
 	chmod +w $@ || true
@@ -54,16 +46,6 @@ exchange-0001.sql: common-0001.sql exchange-0001-part.sql exchange-0001.sql.in
 exchange-0002.sql: common-0002.sql exchange-0002-part.sql exchange-0002.sql.in
 	chmod +w $@ || true
 	gcc -E -P -undef - < exchange-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
-	chmod ugo-w $@
-
-shard-0001.sql: common-0001.sql shard-0001-part.sql exchange-0001.sql.in
-	chmod +w $@ || true
-	gcc -E -P -undef - < shard-0001.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
-	chmod ugo-w $@
-
-shard-0002.sql: common-0002.sql shard-0002-part.sql exchange-0002.sql.in
-	chmod +w $@ || true
-	gcc -E -P -undef - < shard-0002.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
 EXTRA_DIST = \
@@ -111,7 +93,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
   pg_insert_drain_profit.h pg_insert_drain_profit.c \
   pg_create_tables.h pg_create_tables.c \
-  pg_setup_foreign_servers.h pg_setup_foreign_servers.c \
   pg_event_listen.h pg_event_listen.c \
   pg_event_listen_cancel.h pg_event_listen_cancel.c \
   pg_event_notify.h pg_event_notify.c \
@@ -225,7 +206,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_do_batch_withdraw_insert.h pg_do_batch_withdraw_insert.c \
   pg_do_reserve_open.c pg_do_reserve_open.h \
   pg_do_withdraw.h pg_do_withdraw.c \
-  pg_create_shard_tables.h pg_create_shard_tables.c \
   pg_preflight.h pg_preflight.c \
   pg_iterate_active_signkeys.h pg_iterate_active_signkeys.c \
   pg_commit.h pg_commit.c \
