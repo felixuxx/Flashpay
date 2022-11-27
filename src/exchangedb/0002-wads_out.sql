@@ -98,6 +98,7 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_partner'
+    ' FOREIGN KEY(partner_serial_id)'
     ' REFERENCES partners(partner_serial_id) ON DELETE CASCADE'
   );
 END

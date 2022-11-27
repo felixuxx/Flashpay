@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_aggregation_tracking(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -31,18 +31,18 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (deposit_serial_id)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'mapping from wire transfer identifiers (WTID) to deposits (and back)'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'identifier of the wire transfer'
     ,'wtid_raw'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -57,7 +57,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'aggregation_tracking';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_wtid_raw_index '
     'ON ' || table_name || ' '
@@ -86,8 +86,10 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_deposit'
+    ' FOREIGN KEY (deposit_serial_id) '
     ' REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE' -- FIXME change to coin_pub + deposit_serial_id for more efficient deposit???
     ',ADD CONSTRAINT ' || table_name || '_foreign_wtid_raw'
+    ' FOREIGN KEY (wtid_raw) '
     ' REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE'
   );
 END

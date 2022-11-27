@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS kyc_alerts
+CREATE TABLE kyc_alerts
   (h_payto BYTEA PRIMARY KEY CHECK (LENGTH(h_payto)=32)
   ,trigger_type INT4 NOT NULL
   ,UNIQUE(trigger_type,h_payto)
@@ -25,17 +25,3 @@ COMMENT ON COLUMN kyc_alerts.h_payto
   IS 'hash of the payto://-URI for which the KYC status changed';
 COMMENT ON COLUMN kyc_alerts.trigger_type
   IS 'identifies the receiver of the alert, as the same h_payto may require multiple components to be notified';
-
-
-INSERT INTO exchange_tables
-    (name
-    ,version
-    ,action
-    ,partitioned
-    ,by_range)
-  VALUES
-    ('kyc_alerts'
-    ,'exchange-0002'
-    ,'create'
-    ,FALSE
-    ,FALSE);

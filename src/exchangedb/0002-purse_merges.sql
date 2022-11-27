@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_purse_merges(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -35,42 +35,42 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (purse_pub)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Merge requests where a purse-owner requested merging the purse into the account'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'identifies the partner exchange, NULL in case the target reserve lives at this exchange'
     ,'partner_serial_id'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'public key of the target reserve'
     ,'reserve_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'public key of the purse'
     ,'purse_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'signature by the purse private key affirming the merge, of type TALER_SIGNATURE_WALLET_PURSE_MERGE'
     ,'merge_sig'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'when was the merge message signed'
     ,'merge_timestamp'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -85,7 +85,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'purse_merges';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   -- FIXME: change to materialized index by reserve_pub!
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_reserve_pub '
@@ -115,10 +115,13 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_partner_serial_id'
+    ' FOREIGN KEY (partner_serial_id) '
     ' REFERENCES partners(partner_serial_id) ON DELETE CASCADE'
     ',ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub'
+    ' FOREIGN KEY (reserve_pub) '
     ' REFERENCES reserves (reserve_pub) ON DELETE CASCADE'
     ',ADD CONSTRAINT ' || table_name || '_foreign_purse_pub'
+    ' FOREIGN KEY (purse_pub) '
     ' REFERENCES purse_requests (purse_pub) ON DELETE CASCADE'
   );
 END

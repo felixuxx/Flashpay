@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_refresh_revealed_coins(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -37,54 +37,54 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (melt_serial_id)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Revelations about the new coins that are to be created during a melting session.'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'needed for exchange-auditor replication logic'
     ,'rrc_serial'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Identifies the refresh commitment (rc) of the melt operation.'
     ,'melt_serial_id'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'index of the fresh coin being created (one melt operation may result in multiple fresh coins)'
     ,'freshcoin_index'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'envelope of the new coin to be signed'
     ,'coin_ev'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'exchange contributed values in the creation of the fresh coin (see /csr)'
     ,'ewv'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'hash of the envelope of the new coin to be signed (for lookups)'
     ,'h_coin_ev'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'exchange signature over the envelope'
     ,'ev_sig'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -99,7 +99,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'refresh_revealed_coins';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_coins_by_melt_serial_id_index '
     'ON ' || table_name || ' '
@@ -129,8 +129,10 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_melt'
+    ' FOREIGN KEY (melt_serial_id)'
     ' REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE'
     ',ADD CONSTRAINT ' || table_name || '_foreign_denom'
+    ' FOREIGN KEY (denominations_serial)'
     ' REFERENCES denominations (denominations_serial) ON DELETE CASCADE'
   );
 END

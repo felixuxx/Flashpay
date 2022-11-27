@@ -15,7 +15,7 @@
 --
 
 
-CREATE TABLE IF NOT EXISTS partner_accounts
+CREATE TABLE partner_accounts
   (payto_uri VARCHAR PRIMARY KEY
   ,partner_serial_id INT8 REFERENCES partners(partner_serial_id) ON DELETE CASCADE
   ,partner_master_sig BYTEA CHECK (LENGTH(partner_master_sig)=64)
@@ -31,17 +31,3 @@ COMMENT ON COLUMN partner_accounts.partner_master_sig
   IS 'Signature of purpose TALER_SIGNATURE_MASTER_WIRE_DETAILS by the partner master public key';
 COMMENT ON COLUMN partner_accounts.last_seen
   IS 'Last time we saw this account as being active at the partner exchange. Used to select the most recent entry, and to detect when we should check again.';
-
-
-INSERT INTO exchange_tables
-    (name
-    ,version
-    ,action
-    ,partitioned
-    ,by_range)
-  VALUES
-    ('partner_accounts'
-    ,'exchange-0002'
-    ,'create'
-    ,FALSE
-    ,FALSE);

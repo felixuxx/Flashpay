@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_wire_targets(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -29,23 +29,24 @@ BEGIN
     ') %s ;'
     ,'wire_targets'
     ,'PARTITION BY HASH (wire_target_h_payto)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'All senders and recipients of money via the exchange'
     ,'wire_targets'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)'
     ,'payto_uri'
     ,'wire_targets'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Unsalted hash of payto_uri'
     ,'wire_target_h_payto'
-    ,shard_suffix
+    ,'wire_targets'
+    ,partition_suffix
   );
 END $$;
 
@@ -56,11 +57,14 @@ CREATE FUNCTION constrain_table_wire_targets(
 RETURNS void
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  table_name VARCHAR DEFAULT 'wire_targets';
 BEGIN
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
-    'ALTER TABLE wire_targets_' || partition_suffix || ' '
-      'ADD CONSTRAINT wire_targets_' || partition_suffix || '_wire_target_serial_id_key '
-        'UNIQUE (wire_target_serial_id)'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_wire_target_serial_id_key'
+    ' UNIQUE (wire_target_serial_id)'
   );
 END
 $$;

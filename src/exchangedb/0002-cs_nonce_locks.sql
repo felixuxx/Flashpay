@@ -68,7 +68,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'cs_nonce_locks';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_cs_nonce_lock_serial_id_key'

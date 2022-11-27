@@ -27,21 +27,47 @@
 
 
 enum GNUNET_GenericReturnValue
-TEH_PG_create_tables (void *cls)
+TEH_PG_create_tables (void *cls,
+                      bool support_partitions,
+                      uint32_t num_partitions)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
-  enum GNUNET_GenericReturnValue ret;
+  enum GNUNET_GenericReturnValue ret = GNUNET_OK;
+  struct GNUNET_PQ_QueryParam params[] = {
+    support_partitions
+    ? GNUNET_PQ_query_param_uint32 (&num_partitions)
+    : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_PreparedStatement ps[] = {
+    GNUNET_PQ_make_prepare ("create_tables",
+                            "SELECT"
+                            " exchange.do_create_tables"
+                            " ($1);"),
+    GNUNET_PQ_PREPARED_STATEMENT_END
+  };
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_try_execute ("SET search_path TO exchange;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
 
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      "exchange-",
-                                     NULL,
-                                     NULL);
+                                     es,
+                                     ps);
   if (NULL == conn)
     return GNUNET_SYSERR;
-  ret = GNUNET_PQ_exec_sql (conn,
-                            "procedures");
+  if (0 >
+      GNUNET_PQ_eval_prepared_non_select (conn,
+                                          "create_tables",
+                                          params))
+    ret = GNUNET_SYSERR;
+  if (GNUNET_OK == ret)
+    ret = GNUNET_PQ_exec_sql (conn,
+                              "procedures");
   GNUNET_PQ_disconnect (conn);
   return ret;
 }

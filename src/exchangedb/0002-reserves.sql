@@ -95,6 +95,11 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_unique_uuid'
+    ' UNIQUE (reserve_uuid)'
+  );
+  EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_expiration_index '
     'ON ' || table_name || ' '
     '(expiration_date'

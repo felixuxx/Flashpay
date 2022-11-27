@@ -91,7 +91,9 @@ run (void *cls,
     }
   }
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
+      plugin->create_tables (plugin->cls,
+                             force_create_partitions || num_partitions > 0,
+                             num_partitions))
   {
     fprintf (stderr,
              "Failed to initialize database.\n");
@@ -99,31 +101,6 @@ run (void *cls,
     plugin = NULL;
     global_ret = EXIT_NOPERMISSION;
     return;
-  }
-  if (1 <
-      num_partitions
-      || (
-        1 == num_partitions
-        && force_create_partitions))
-  {
-    enum GNUNET_GenericReturnValue r = GNUNET_OK;
-
-    r = plugin->setup_partitions (plugin->cls,
-                                  num_partitions);
-    if (GNUNET_OK != r)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup partitions. Dropping default ones again\n");
-      if (GNUNET_OK != plugin->drop_tables (plugin->cls))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Could not drop tables after failed partitioning, please delete the DB manually\n");
-      }
-      TALER_EXCHANGEDB_plugin_unload (plugin);
-      plugin = NULL;
-      global_ret = EXIT_NOTINSTALLED;
-      return;
-    }
   }
   if (gc_db || clear_shards)
   {

@@ -158,6 +158,7 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_wad_in'
+    ' FOREIGN KEY(wad_in_serial_id)'
     ' REFERENCES wads_in (wad_in_serial_id) ON DELETE CASCADE'
   );
 END $$;

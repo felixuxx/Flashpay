@@ -16,7 +16,7 @@
 
 
 CREATE FUNCTION create_table_purse_decision(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -34,18 +34,18 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (purse_pub)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Purses that were decided upon (refund or merge)'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Public key of the purse'
     ,'purse_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -59,7 +59,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'purse_decision';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_purse_action_serial_id_key'

@@ -61,12 +61,12 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF partition_suffix IS NULL
+  IF (partition_suffix IS NULL)
   THEN
     -- no partitioning, disable option
     main_table_partition_str = '';
   ELSE
-    IF partition_suffix > 0
+    IF (partition_suffix::int > 0)
     THEN
       -- sharding, add shard name
       table_name=table_name || '_' || partition_suffix;
@@ -93,7 +93,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF ( (partition_suffix IS NOT NULL) AND
-       (partition_suffix > 0) )
+       (partition_suffix::int > 0) )
   THEN
     -- sharding, add shard name
     table_name=table_name || '_' || partition_suffix;
@@ -120,7 +120,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF ( (partition_suffix IS NOT NULL) AND
-       (partition_suffix > 0) )
+       (partition_suffix::int > 0) )
   THEN
     -- sharding, add shard name
     table_name=table_name || '_' || partition_suffix;
@@ -142,7 +142,7 @@ COMMENT ON FUNCTION comment_partitioned_column
 ---------------------------------------------------------------------------
 
 
-CREATE FUNCTION create_tables(
+CREATE FUNCTION do_create_tables(
   num_partitions INTEGER
 -- NULL: no partitions, add foreign constraints
 -- 0: no partitions, no foreign constraints
@@ -159,7 +159,7 @@ DECLARE
           ,action
           ,partitioned
           ,by_range
-      FROM exchange_tables
+      FROM exchange.exchange_tables
      WHERE NOT finished
      ORDER BY table_serial_id ASC;
 BEGIN
@@ -167,14 +167,14 @@ BEGIN
   LOOP
     CASE rec.action
     -- "create" actions apply to master and partitions
-    WHEN "create"
+    WHEN 'create'
     THEN
       IF (rec.partitioned AND
           (num_partitions IS NOT NULL))
       THEN
         -- Create master table with partitioning.
         EXECUTE FORMAT(
-          'PERFORM %s_table_%s (%s)'::text
+          'SELECT exchange.%s_table_%s (%s)'::text
           ,rec.action
           ,rec.name
           ,0
@@ -187,7 +187,7 @@ BEGIN
           THEN
             -- Range partition
             EXECUTE FORMAT(
-              'CREATE TABLE IF NOT EXISTS %s_default'
+              'CREATE TABLE exchange.%s_default'
               ' PARTITION OF %s'
               ' FOR DEFAULT'
              ,rec.name
@@ -196,7 +196,7 @@ BEGIN
           ELSE
             -- Hash partition
             EXECUTE FORMAT(
-              'CREATE TABLE IF NOT EXISTS %s_default'
+              'CREATE TABLE exchange.%s_default'
               ' PARTITION OF %s'
               ' FOR VALUES WITH (MODULUS 1, REMAINDER 0)'
              ,rec.name
@@ -207,7 +207,7 @@ BEGIN
           FOR i IN 1..num_partitions LOOP
             -- Create num_partitions
             EXECUTE FORMAT(
-               'CREATE TABLE IF NOT EXISTS %I'
+               'CREATE TABLE exchange.%I'
                ' PARTITION OF %I'
                ' FOR VALUES WITH (MODULUS %s, REMAINDER %s)'
               ,rec.name || '_' || i
@@ -220,31 +220,29 @@ BEGIN
       ELSE
         -- Only create master table. No partitions.
         EXECUTE FORMAT(
-          'PERFORM %s_table_%s (%s)'::text
+          'SELECT exchange.%s_table_%s ()'::text
           ,rec.action
           ,rec.name
-          ,NULL
         );
       END IF;
     -- Constrain action apply to master OR each partition
-    WHEN "constrain"
+    WHEN 'constrain'
     THEN
       ASSERT rec.partitioned, 'constrain action only applies to partitioned tables';
       IF (num_partitions IS NULL)
       THEN
         -- Constrain master table
         EXECUTE FORMAT(
-          'PERFORM %s_table_%s (%s)'::text
+           'SELECT exchange.%s_table_%s (NULL)'::text
           ,rec.action
           ,rec.name
-          ,NULL
         );
       ELSE
         IF (num_partitions = 0)
         THEN
           -- Constrain default table
           EXECUTE FORMAT(
-            'PERFORM %s_table_%s (%s)'::text
+             'SELECT exchange.%s_table_%s (%s)'::text
             ,rec.action
             ,rec.name
             ,'default'
@@ -253,7 +251,7 @@ BEGIN
           -- Constrain each partition
           FOR i IN 1..num_partitions LOOP
             EXECUTE FORMAT(
-              'PERFORM %s_table_%s (%s)'::text
+              'SELECT exchange.%s_table_%s (%s)'::text
               ,rec.action
               ,rec.name
               ,i
@@ -262,22 +260,22 @@ BEGIN
         END IF;
       END IF;
     -- Foreign actions only apply if partitioning is off
-    WHEN "foreign"
+    WHEN 'foreign'
     THEN
       IF (num_partitions IS NULL)
       THEN
-        -- Only create master table. No partitions.
+        -- Add foreign constraints
         EXECUTE FORMAT(
-          'PERFORM %s_table_%s (%s)'::text
+          'SELECT exchange.%s_table_%s (%s)'::text
           ,rec.action
           ,rec.name
           ,NULL
         );
       END IF;
-    WHEN "master"
+    WHEN 'master'
     THEN
       EXECUTE FORMAT(
-        'PERFORM %s_table_%s'::text
+        'SELECT exchange.%s_table_%s ()'::text
         ,rec.action
         ,rec.name
       );
@@ -285,13 +283,13 @@ BEGIN
       ASSERT FALSE, 'unsupported action type: ' || rec.action;
     END CASE;  -- END CASE (rec.action)
     -- Mark as finished
-    UPDATE exchange_tables
+    UPDATE exchange.exchange_tables
        SET finished=TRUE
      WHERE table_serial_id=rec.table_serial_id;
   END LOOP; -- create/alter/drop actions
 END $$;
 
-COMMENT ON FUNCTION create_tables
+COMMENT ON FUNCTION do_create_tables
   IS 'Creates all tables for the given number of partitions that need creating. Does NOT support sharding.';
 
 

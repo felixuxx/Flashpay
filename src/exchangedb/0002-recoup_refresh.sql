@@ -16,7 +16,7 @@
 
 
 CREATE FUNCTION create_table_recoup_refresh(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -38,36 +38,36 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Table of coins that originated from a refresh operation and that were recouped. Links the (fresh) coin to the melted operation (and thus the old coin). A recoup on a refreshed coin credits the old coin and debits the fresh coin.'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Refreshed coin of a revoked denomination where the residual value is credited to the old coin. Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!'
     ,'coin_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'FIXME: (To be) used for garbage collection (in the absence of foreign constraints, in the future)'
     ,'known_coin_id'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Link to the refresh operation. Also identifies the h_blind_ev of the recouped coin (as h_coin_ev).'
     ,'rrc_serial'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.'
     ,'coin_blind'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -82,7 +82,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'recoup_refresh';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   -- FIXME: any query using this index will be slow. Materialize index or change query?
   -- Also: which query uses this index?
   EXECUTE FORMAT (
@@ -114,10 +114,13 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_coin_pub'
+    ' FOREIGN KEY (coin_pub) '
     ' REFERENCES known_coins (coin_pub)'
-    ' ADD CONSTRAINT ' || table_name || '_foreign_known_coin_id'
+    ',ADD CONSTRAINT ' || table_name || '_foreign_known_coin_id'
+    ' FOREIGN KEY (known_coin_id) '
     ' REFERENCES known_coins (known_coin_id) ON DELETE CASCADE'
-    ' ADD CONSTRAINT ' || table_name || '_foreign_rrc_serial'
+    ',ADD CONSTRAINT ' || table_name || '_foreign_rrc_serial'
+    ' FOREIGN KEY (rrc_serial) '
     ' REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE'
   );
 END

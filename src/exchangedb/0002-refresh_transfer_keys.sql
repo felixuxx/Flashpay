@@ -86,19 +86,17 @@ END
 $$;
 
 
-CREATE FUNCTION foreign_table_refresh_transfer_keys(
-  IN partition_suffix VARCHAR
-)
+CREATE FUNCTION foreign_table_refresh_transfer_keys()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'refresh_transfer_keys';
 BEGIN
-  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || 'foreign_melt_serial_id'
+    ' FOREIGN KEY (melt_serial_id)'
     ' REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE'
   );
 END

@@ -3132,49 +3132,17 @@ struct TALER_EXCHANGEDB_Plugin
    * Create the necessary tables if they are not present
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param support_partitions true to enable partitioning support (disables foreign key constraints)
+   * @param num_partitions number of partitions to create,
+   *     (0 to not actually use partitions, 1 to only
+   *      setup a default partition, >1 for real partitions)
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
   enum GNUNET_GenericReturnValue
-  (*create_tables)(void *cls);
+  (*create_tables)(void *cls,
+                   bool support_partitions,
+                   uint32_t num_partitions);
 
-  /**
-   * Initialize the database of a shard node
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param idx the current shard index, will be appended to tables as suffix
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
-   */
-  enum GNUNET_GenericReturnValue
-  (*create_shard_tables)(void *cls,
-                         uint32_t idx);
-
-  /**
-   * Change already present tables of the database to num partitions
-   * Only has an effect if there are default partitions only
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param num the number of partitions to create for each partitioned table
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
-   */
-  enum GNUNET_GenericReturnValue
-  (*setup_partitions)(void *cls,
-                      uint32_t num);
-
-  /**
-   * Change already present tables of the database to num foreign tables on
-   * num foreign servers (shards).
-   * Only has an effect if there are default partitions only
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param num the number of shard servers to create. The shard servers
-   *            must follow the numbering of [1-N], have the same user as
-   *            the master and have tables named $TABLE_$N where $N is the same
-   *            as the servers index of N.
-   * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
-   */
-  enum GNUNET_GenericReturnValue
-  (*setup_foreign_servers)(void *cls,
-                           uint32_t num);
 
   /**
    * Start a transaction.
@@ -3480,7 +3448,8 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*batch_reserves_in_insert)(void *cls,
-                              const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                              const struct
+                              TALER_EXCHANGEDB_ReserveInInfo *reserves,
                               unsigned int reserves_length,
                               enum GNUNET_DB_QueryStatus *results);
 

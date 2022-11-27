@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_purse_requests(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -45,72 +45,72 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (purse_pub)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Requests establishing purses, associating them with a contract but without a target reserve'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Public key of the purse'
     ,'purse_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Local time when the purse was created. Determines applicable purse fees.'
     ,'purse_creation'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'When the purse is set to expire'
     ,'purse_expiration'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Hash of the contract the parties are to agree to'
     ,'h_contract_terms'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'see the enum TALER_WalletAccountMergeFlags'
     ,'flags'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'set to TRUE if this purse currently counts against the number of free purses in the respective reserve'
     ,'in_reserve_quota'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Total amount expected to be in the purse'
     ,'amount_with_fee_val'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Purse fee the client agreed to pay from the reserve (accepted by the exchange at the time the purse was created). Zero if in_reserve_quota is TRUE.'
     ,'purse_fee_val'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
     'Total amount actually in the purse (updated)'
     ,'balance_val'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST'
     ,'purse_sig'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -124,7 +124,7 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'purse_requests';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
 
   -- FIXME: change to materialized index by merge_pub!
   EXECUTE FORMAT (
@@ -132,7 +132,7 @@ BEGIN
     'ON ' || table_name || ' '
     '(merge_pub);'
   );
-  -- FIXME: drop index on master (crosses shards)?
+  -- FIXME: drop index on master (crosses partitions)?
   -- Or use materialized index? (needed?)
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_purse_expiration '

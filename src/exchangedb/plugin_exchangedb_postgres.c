@@ -120,7 +120,6 @@
 #include "pg_get_policy_details.h"
 #include "pg_persist_policy_details.h"
 #include "pg_do_deposit.h"
-#include "pg_setup_partitions.h"
 #include "pg_add_policy_fulfillment_proof.h"
 #include "pg_do_melt.h"
 #include "pg_do_refund.h"
@@ -5434,8 +5433,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
-  plugin->setup_partitions
-    = &TEH_PG_setup_partitions;
   plugin->batch_reserves_in_insert
     = &TEH_PG_batch_reserves_in_insert;
 

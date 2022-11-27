@@ -71,9 +71,9 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name || ' '
-      'ADD CONSTRAINT ' || table_name || '_reserve_out_serial_id_key '
-        'UNIQUE (reserve_out_serial_id)'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_reserve_out_serial_id_key'
+    ' UNIQUE (reserve_out_serial_id)'
   );
   -- FIXME: change query to use reserves_out_by_reserve instead and materialize execution_date there as well???
   EXECUTE FORMAT (
@@ -97,11 +97,13 @@ DECLARE
   table_name VARCHAR default 'reserves_out';
 BEGIN
   EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name || ' '
-      'ADD CONSTRAINT ' || table_name || '_foreign_denom '
-      'REFERENCES denominations (denominations_serial)'
-      'ADD CONSTRAINT ' || table_name || '_foreign_reserve '
-      'REFERENCES reserves (reserve_uuid) ON DELETE CASCADE'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_foreign_denom'
+    ' FOREIGN KEY (denominations_serial)'
+    ' REFERENCES denominations (denominations_serial)'
+    ',ADD CONSTRAINT ' || table_name || '_foreign_reserve '
+    ' FOREIGN KEY (reserve_uuid)'
+    ' REFERENCES reserves (reserve_uuid) ON DELETE CASCADE'
   );
 END
 $$;
@@ -125,7 +127,7 @@ BEGIN
     ,'PARTITION BY HASH (reserve_uuid)'
     ,partition_suffix
   );
-  PERFORM comment_partitioned_column (
+  PERFORM comment_partitioned_table (
      'Information in this table is strictly redundant with that of reserves_out, but saved by a different primary key for fast lookups by reserve public key/uuid.'
     ,table_name
     ,partition_suffix

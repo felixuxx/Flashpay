@@ -105,8 +105,10 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_reserves_out'
+    ' FOREIGN KEY (reserve_out_serial_id) '
     ' REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE'
     ',ADD CONSTRAINT ' || table_name || '_foreign_coin_pub'
+    ' FOREIGN KEY (coin_pub) '
     ' REFERENCES known_coins (coin_pub)'
   );
 END

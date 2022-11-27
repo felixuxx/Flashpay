@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE TABLE IF NOT EXISTS wire_accounts
+CREATE TABLE wire_accounts
   (payto_uri VARCHAR PRIMARY KEY
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,is_active BOOLEAN NOT NULL
@@ -32,17 +32,3 @@ COMMENT ON COLUMN wire_accounts.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
 -- "wire_accounts" has no sequence because it is a 'mutable' table
 --            and is of no concern to the auditor
-
-
-INSERT INTO exchange_tables
-    (name
-    ,version
-    ,action
-    ,partitioned
-    ,by_range)
-  VALUES
-    ('wire_accounts'
-    ,'exchange-0002'
-    ,'create'
-    ,FALSE
-    ,FALSE);

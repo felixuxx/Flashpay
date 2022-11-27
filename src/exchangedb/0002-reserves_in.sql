@@ -61,8 +61,7 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
-END
-$$;
+END $$;
 
 
 CREATE FUNCTION constrain_table_reserves_in(
@@ -76,9 +75,9 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
-    'ALTER TABLE reserves_in_' || partition_suffix || ' '
-      'ADD CONSTRAINT reserves_in_' || partition_suffix || '_reserve_in_serial_id_key '
-        'UNIQUE (reserve_in_serial_id)'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_reserve_in_serial_id_key'
+    ' UNIQUE (reserve_in_serial_id)'
   );
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_by_reserve_in_serial_id_index '

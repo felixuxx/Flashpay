@@ -213,7 +213,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_expired_reserves.c pg_get_expired_reserves.h \
   pg_start.h pg_start.c \
   pg_rollback.h pg_rollback.c \
-  pg_setup_partitions.h pg_setup_partitions.c \
   pg_get_purse_request.c pg_get_purse_request.h \
   pg_get_reserve_history.c pg_get_reserve_history.h \
   pg_get_unfinished_close_requests.c pg_get_unfinished_close_requests.h \

@@ -64,11 +64,11 @@ DECLARE
 BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name || ' '
-      'ADD CONSTRAINT ' || table_name || '_by_uuid '
-        'PRIMARY KEY (open_request_uuid),'
-      'ADD CONSTRAINT ' || table_name || '_by_time '
-        'UNIQUE (reserve_pub,request_timestamp)'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_by_uuid'
+    ' PRIMARY KEY (open_request_uuid)'
+    ',ADD CONSTRAINT ' || table_name || '_by_time'
+    ' UNIQUE (reserve_pub,request_timestamp)'
   );
 END
 $$;
@@ -82,9 +82,10 @@ DECLARE
   table_name VARCHAR default 'reserves_open_requests';
 BEGIN
   EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name || ' '
-      'ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub '
-      'REFERENCES reserves (reserve_pub) ON DELETE CASCADE'
+    'ALTER TABLE ' || table_name ||
+    ' ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub '
+    ' FOREIGN KEY (reserve_pub)'
+    ' REFERENCES reserves (reserve_pub) ON DELETE CASCADE'
   );
 END
 $$;

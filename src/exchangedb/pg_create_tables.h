@@ -29,9 +29,16 @@
  * Create the necessary tables if they are not present
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param support_partitions true to enable partitioning support (disables foreign key constraints)
+ * @param num_partitions number of partitions to create,
+ *     (0 to not actually use partitions, 1 to only
+ *      setup a default partition, >1 for real partitions)
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
 enum GNUNET_GenericReturnValue
-TEH_PG_create_tables (void *cls);
+TEH_PG_create_tables (void *cls,
+                      bool support_partitions,
+                      uint32_t num_partitions);
+
 
 #endif

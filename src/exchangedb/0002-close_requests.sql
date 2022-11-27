@@ -112,6 +112,7 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub'
+    ' FOREIGN KEY (reserve_pub) '
     ' REFERENCES reserves(reserve_pub) ON DELETE CASCADE'
   );
 END

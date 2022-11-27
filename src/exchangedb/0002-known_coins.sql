@@ -16,7 +16,7 @@
 
 
 CREATE FUNCTION create_table_known_coins(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -36,42 +36,42 @@ BEGIN
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (coin_pub)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'information about coins and their signatures, so we do not have to store the signatures more than once if a coin is involved in multiple operations'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Denomination of the coin, determines the value of the original coin and applicable fees for coin-specific operations.'
     ,'denominations_serial'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'EdDSA public key of the coin'
     ,'coin_pub'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Value of the coin that remains to be spent'
     ,'remaining_val'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Optional hash of the age commitment for age restrictions as per DD 24 (active if denom_type has the respective bit set)'
     ,'age_commitment_hash'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'This is the signature of the exchange that affirms that the coin is a valid coin. The specific signature type depends on denom_type of the denomination.'
     ,'denom_sig'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END
 $$;
@@ -86,7 +86,7 @@ AS $$
 DECLARE
   table_name VARCHAR default 'known_coins';
 BEGIN
-  table_name = concat_ws('_', table_name, shard_suffix);
+  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_known_coin_id_key'
@@ -106,6 +106,7 @@ BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_denominations'
+    ' FOREIGN KEY (denominations_serial) '
     ' REFERENCES denominations (denominations_serial) ON DELETE CASCADE'
   );
 END
