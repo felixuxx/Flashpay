@@ -42,7 +42,9 @@ TEH_PG_do_purse_deposit (
   struct GNUNET_TIME_Timestamp reserve_expiration;
   uint64_t partner_id = 0; /* FIXME #7271: WAD support... */
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&partner_id),
+    (0 == partner_id)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_uint64 (&partner_id),
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),

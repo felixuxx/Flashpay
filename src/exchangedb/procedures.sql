@@ -1654,7 +1654,7 @@ BEGIN
 
 IF in_partner_url IS NULL
 THEN
-  my_partner_serial_id=0;
+  my_partner_serial_id=NULL;
 ELSE
   SELECT
     partner_serial_id
@@ -1817,7 +1817,6 @@ ELSE
 
 END IF;
 
-
 RETURN;
 
 END $$;
@@ -1851,7 +1850,7 @@ INSERT INTO exchange.purse_merges
     ,merge_sig
     ,merge_timestamp)
   VALUES
-    (0
+    (NULL
     ,in_reserve_pub
     ,in_purse_pub
     ,in_merge_sig

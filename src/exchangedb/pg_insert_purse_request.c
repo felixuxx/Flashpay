@@ -63,28 +63,25 @@ TEH_PG_insert_purse_request (
   };
 
   *in_conflict = false;
-
-
-  PREPARE ( pg,
-            "insert_purse_request",
-            "INSERT INTO purse_requests"
-            "  (purse_pub"
-            "  ,merge_pub"
-            "  ,purse_creation"
-            "  ,purse_expiration"
-            "  ,h_contract_terms"
-            "  ,age_limit"
-            "  ,flags"
-            "  ,in_reserve_quota"
-            "  ,amount_with_fee_val"
-            "  ,amount_with_fee_frac"
-            "  ,purse_fee_val"
-
-            "  ,purse_fee_frac"
-            "  ,purse_sig"
-            "  ) VALUES "
-            "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
-            "  ON CONFLICT DO NOTHING;");
+  PREPARE (pg,
+           "insert_purse_request",
+           "INSERT INTO purse_requests"
+           "  (purse_pub"
+           "  ,merge_pub"
+           "  ,purse_creation"
+           "  ,purse_expiration"
+           "  ,h_contract_terms"
+           "  ,age_limit"
+           "  ,flags"
+           "  ,in_reserve_quota"
+           "  ,amount_with_fee_val"
+           "  ,amount_with_fee_frac"
+           "  ,purse_fee_val"
+           "  ,purse_fee_frac"
+           "  ,purse_sig"
+           "  ) VALUES "
+           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+           "  ON CONFLICT DO NOTHING;");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_purse_request",
                                            params);
@@ -100,14 +97,14 @@ TEH_PG_insert_purse_request (
     struct TALER_PurseContractSignatureP purse_sig2;
 
     qs = TEH_PG_get_purse_request (pg,
-                                     purse_pub,
-                                     &merge_pub2,
-                                     &purse_expiration2,
-                                     &h_contract_terms2,
-                                     &age_limit2,
-                                     &amount2,
-                                     &balance,
-                                     &purse_sig2);
+                                   purse_pub,
+                                   &merge_pub2,
+                                   &purse_expiration2,
+                                   &h_contract_terms2,
+                                   &age_limit2,
+                                   &amount2,
+                                   &balance,
+                                   &purse_sig2);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (0);
@@ -127,8 +124,3 @@ TEH_PG_insert_purse_request (
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 }
-
-
-
-
-
