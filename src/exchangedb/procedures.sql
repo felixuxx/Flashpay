@@ -1519,7 +1519,7 @@ out_conflict=FALSE;
 out_balance_ok=TRUE;
 
 -- See if we can finish the merge or need to update the trigger time and partner.
-SELECT partner_serial_id
+SELECT COALESCE(partner_serial_id,0)
       ,reserve_pub
   INTO psi
       ,my_reserve_pub

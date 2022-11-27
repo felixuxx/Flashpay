@@ -803,7 +803,7 @@ TEH_PG_get_reserve_history (void *cls,
            "     ON (am.purse_pub = pm.purse_pub AND"
            "         am.reserve_pub = pm.reserve_pub)"
            " WHERE pm.reserve_pub=$1"
-           "  AND pm.partner_serial_id=0" /* must be local! */
+           "  AND COALESCE(pm.partner_serial_id,0)=0" /* must be local! */
            "  AND NOT pdes.refunded;");
   PREPARE (pg,
            "history_by_reserve",
@@ -1097,7 +1097,7 @@ TEH_PG_get_reserve_status (void *cls,
            "         am.reserve_pub = pm.reserve_pub)"
            " WHERE pm.reserve_pub=$1"
            "  AND pm.merge_timestamp >= $2"
-           "  AND pm.partner_serial_id=0" /* must be local! */
+           "  AND COALESCE(pm.partner_serial_id,0)=0" /* must be local! */
            "  AND NOT pdes.refunded;");
   PREPARE (pg,
            "history_by_reserve_truncated",
