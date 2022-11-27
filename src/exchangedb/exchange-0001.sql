@@ -38,7 +38,7 @@ COMMENT ON COLUMN exchange_tables.name
 COMMENT ON COLUMN exchange_tables.version
   IS 'Version of the DB in which the given action happened';
 COMMENT ON COLUMN exchange_tables.action
-  IS 'Action to take on the table (e.g. create, alter, constrain, foreign, or drop). Create, alter and drop are done for master and partitions; constrain is only for partitions or for master if there are no partitions; foreign only on master if there are no partitions.';
+  IS 'Action to take on the table (e.g. create, alter, constrain, foreign, or drop). Create, alter and drop are done for master and each partition; constrain is only for partitions or for master if there are no partitions; master only on master (takes no argument); foreign only on master if there are no partitions.';
 COMMENT ON COLUMN exchange_tables.partitioned
   IS 'TRUE if the table is partitioned';
 COMMENT ON COLUMN exchange_tables.by_range
@@ -94,7 +94,7 @@ BEGIN
 END
 $$;
 
-COMMENT ON FUNCTION create_partitioned_table
+COMMENT ON FUNCTION comment_partitioned_table
   IS 'Generic function to create a comment on table that is partitioned.';
 
 
@@ -121,7 +121,7 @@ BEGIN
 END
 $$;
 
-COMMENT ON FUNCTION create_partitioned_table
+COMMENT ON FUNCTION comment_partitioned_column
   IS 'Generic function to create a comment on column of a table that is partitioned.';
 
 
@@ -139,6 +139,7 @@ CREATE FUNCTION create_tables(
   LANGUAGE plpgsql
 AS $$
 DECLARE
+  -- FIXME: use only ONE cursor and then switch on action!
   tc CURSOR FOR
     SELECT table_serial_id
           ,name
@@ -172,6 +173,17 @@ DECLARE
      WHERE NOT finished
        AND partitioned
        AND action='foreign'
+     ORDER BY table_serial_id ASC;
+DECLARE
+  tm CURSOR FOR
+    SELECT table_serial_id
+          ,name
+          ,action
+          ,by_range
+      FROM exchange_tables
+     WHERE NOT finished
+       AND partitioned
+       AND action='master'
      ORDER BY table_serial_id ASC;
 BEGIN
 
@@ -285,10 +297,9 @@ BEGIN
     THEN
       -- Add foreign constraints
       EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
+        'PERFORM %s_table_%s ()'::text
         ,rec.action
         ,rec.name
-        ,NULL
       );
     END IF
     UPDATE exchange_tables
