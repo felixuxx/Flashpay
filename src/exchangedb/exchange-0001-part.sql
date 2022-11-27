@@ -14,26 +14,6 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- ------------------------------ purse_merges ----------------------------------------
-
-SELECT create_table_purse_merges();
-
-COMMENT ON TABLE purse_merges
-  IS 'Merge requests where a purse-owner requested merging the purse into the account';
-COMMENT ON COLUMN purse_merges.partner_serial_id
-  IS 'identifies the partner exchange, NULL in case the target reserve lives at this exchange';
-COMMENT ON COLUMN purse_merges.reserve_pub
-  IS 'public key of the target reserve';
-COMMENT ON COLUMN purse_merges.purse_pub
-  IS 'public key of the purse';
-COMMENT ON COLUMN purse_merges.merge_sig
-  IS 'signature by the purse private key affirming the merge, of type TALER_SIGNATURE_WALLET_PURSE_MERGE';
-COMMENT ON COLUMN purse_merges.merge_timestamp
-  IS 'when was the merge message signed';
-
-SELECT add_constraints_to_purse_merges_partition('default');
-
-
 -- ------------------------------ account_merges ----------------------------------------
 
 SELECT create_table_account_merges();
