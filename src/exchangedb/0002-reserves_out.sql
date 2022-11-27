@@ -109,3 +109,22 @@ BEGIN
 
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('reserves_out'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE),
+    ('reserves_out_by_reserve' -- FIXME: do like this?
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

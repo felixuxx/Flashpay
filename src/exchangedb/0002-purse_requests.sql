@@ -83,3 +83,17 @@ BEGIN
   );
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('purse_requests'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

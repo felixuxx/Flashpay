@@ -144,3 +144,27 @@ BEGIN
 
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('deposits'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE),
+    ('deposits_by_ready' -- FIXME: do this?
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE),
+    ('deposits_for_matching' -- FIXME: do this?
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

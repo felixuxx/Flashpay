@@ -74,3 +74,17 @@ BEGIN
   );
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('wad_out_entries'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

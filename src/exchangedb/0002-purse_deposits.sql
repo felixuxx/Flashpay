@@ -66,3 +66,17 @@ BEGIN
   );
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('purse-deposits'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

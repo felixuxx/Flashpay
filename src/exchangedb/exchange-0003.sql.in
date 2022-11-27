@@ -28,7 +28,6 @@ COMMENT ON SCHEMA exchange IS 'taler-exchange data';
 SET search_path TO exchange;
 
 
-#include "0003-partner_accounts.sql"
 #include "0003-purse_actions.sql"
 #include "0003-purse_deletion.sql"
 

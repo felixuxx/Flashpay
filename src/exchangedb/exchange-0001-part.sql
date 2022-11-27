@@ -14,28 +14,6 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-
-
-
--- ------------------------------ wire_targets ----------------------------------------
-
-SELECT create_table_wire_targets();
-
-COMMENT ON TABLE wire_targets
-  IS 'All senders and recipients of money via the exchange';
-COMMENT ON COLUMN wire_targets.payto_uri
-  IS 'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)';
-COMMENT ON COLUMN wire_targets.wire_target_h_payto
-  IS 'Unsalted hash of payto_uri';
-
-
-CREATE TABLE IF NOT EXISTS wire_targets_default
-  PARTITION OF wire_targets
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
-SELECT add_constraints_to_wire_targets_partition('default');
-
-
 -- ------------------------------ legitimization_processes ----------------------------------------
 
 SELECT create_table_legitimization_processes();
@@ -55,10 +33,6 @@ COMMENT ON COLUMN legitimization_processes.provider_user_id
 COMMENT ON COLUMN legitimization_processes.provider_legitimization_id
   IS 'Identifier for the specific legitimization process at the provider. NULL if legitimization was not started.';
 
-CREATE TABLE IF NOT EXISTS legitimization_processes_default
-  PARTITION OF legitimization_processes
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_legitimization_processes_partition('default');
 
 
@@ -74,10 +48,6 @@ COMMENT ON COLUMN legitimization_requirements.h_payto
   IS 'foreign key linking the entry to the wire_targets table, NOT a primary key (multiple legitimizations are possible per wire target)';
 COMMENT ON COLUMN legitimization_requirements.required_checks
   IS 'space-separated list of required checks';
-
-CREATE TABLE IF NOT EXISTS legitimization_requirements_default
-  PARTITION OF legitimization_requirements
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_legitimization_requirements_partition('default');
 
@@ -102,10 +72,6 @@ COMMENT ON COLUMN reserves.expiration_date
 COMMENT ON COLUMN reserves.gc_date
   IS 'Used to forget all information about a reserve during garbage collection';
 
-CREATE TABLE IF NOT EXISTS reserves_default
-  PARTITION OF reserves
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 -- ------------------------------ reserves_in ----------------------------------------
 
 SELECT create_table_reserves_in();
@@ -119,9 +85,6 @@ COMMENT ON COLUMN reserves_in.reserve_pub
 COMMENT ON COLUMN reserves_in.credit_val
   IS 'Amount that was transferred into the reserve';
 
-CREATE TABLE IF NOT EXISTS reserves_in_default
-  PARTITION OF reserves_in
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_reserves_in_partition('default');
 
@@ -134,9 +97,6 @@ COMMENT ON TABLE reserves_close
 COMMENT ON COLUMN reserves_close.wire_target_h_payto
   IS 'Identifies the credited bank account (and KYC status). Note that closing does not depend on KYC.';
 
-CREATE TABLE IF NOT EXISTS reserves_close_default
-  PARTITION OF reserves_close
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_reserves_close_partition('default');
 
@@ -154,10 +114,6 @@ COMMENT ON TABLE reserves_open_requests
 COMMENT ON COLUMN reserves_open_requests.reserve_payment_val
   IS 'Funding to pay for the request from the reserve balance itself.';
 
-CREATE TABLE IF NOT EXISTS reserves_open_requests_default
-  PARTITION OF reserves_open_requests
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_reserves_open_request_partition('default');
 
 
@@ -170,9 +126,6 @@ COMMENT ON TABLE reserves_open_deposits
 COMMENT ON COLUMN reserves_open_deposits.reserve_pub
   IS 'Identifies the specific reserve being paid for (possibly together with reserve_sig).';
 
-CREATE TABLE IF NOT EXISTS reserves_open_deposits_default
-  PARTITION OF reserves_open_deposits
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_reserves_open_deposits_partition('default');
 
@@ -188,10 +141,6 @@ COMMENT ON COLUMN reserves_out.h_blind_ev
 COMMENT ON COLUMN reserves_out.denominations_serial
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
 
-CREATE TABLE IF NOT EXISTS reserves_out_default
-  PARTITION OF reserves_out
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_reserves_out_partition('default');
 
 
@@ -199,10 +148,6 @@ SELECT create_table_reserves_out_by_reserve();
 
 COMMENT ON TABLE reserves_out_by_reserve
   IS 'Information in this table is strictly redundant with that of reserves_out, but saved by a different primary key for fast lookups by reserve public key/uuid.';
-
-CREATE TABLE IF NOT EXISTS reserves_out_by_reserve_default
-  PARTITION OF reserves_out_by_reserve
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE OR REPLACE FUNCTION reserves_out_by_reserve_insert_trigger()
   RETURNS trigger
@@ -243,97 +188,6 @@ CREATE TRIGGER reserves_out_on_delete
    FOR EACH ROW EXECUTE FUNCTION reserves_out_by_reserve_delete_trigger();
 
 
--- ------------------------------ auditors ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS auditors
-  (auditor_uuid BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
-  ,auditor_name VARCHAR NOT NULL
-  ,auditor_url VARCHAR NOT NULL
-  ,is_active BOOLEAN NOT NULL
-  ,last_change INT8 NOT NULL
-  );
-COMMENT ON TABLE auditors
-  IS 'Table with auditors the exchange uses or has used in the past. Entries never expire as we need to remember the last_change column indefinitely.';
-COMMENT ON COLUMN auditors.auditor_pub
-  IS 'Public key of the auditor.';
-COMMENT ON COLUMN auditors.auditor_url
-  IS 'The base URL of the auditor.';
-COMMENT ON COLUMN auditors.is_active
-  IS 'true if we are currently supporting the use of this auditor.';
-COMMENT ON COLUMN auditors.last_change
-  IS 'Latest time when active status changed. Used to detect replays of old messages.';
-
-
--- ------------------------------ auditor_denom_sigs ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS auditor_denom_sigs
-  (auditor_denom_serial BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,auditor_uuid INT8 NOT NULL REFERENCES auditors (auditor_uuid) ON DELETE CASCADE
-  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
-  ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
-  ,PRIMARY KEY (denominations_serial, auditor_uuid)
-  );
-COMMENT ON TABLE auditor_denom_sigs
-  IS 'Table with auditor signatures on exchange denomination keys.';
-COMMENT ON COLUMN auditor_denom_sigs.auditor_uuid
-  IS 'Identifies the auditor.';
-COMMENT ON COLUMN auditor_denom_sigs.denominations_serial
-  IS 'Denomination the signature is for.';
-COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
-  IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';
-
-
--- ------------------------------ exchange_sign_keys ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS exchange_sign_keys
-  (esk_serial BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,valid_from INT8 NOT NULL
-  ,expire_sign INT8 NOT NULL
-  ,expire_legal INT8 NOT NULL
-  );
-COMMENT ON TABLE exchange_sign_keys
-  IS 'Table with master public key signatures on exchange online signing keys.';
-COMMENT ON COLUMN exchange_sign_keys.exchange_pub
-  IS 'Public online signing key of the exchange.';
-COMMENT ON COLUMN exchange_sign_keys.master_sig
-  IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
-COMMENT ON COLUMN exchange_sign_keys.valid_from
-  IS 'Time when this online signing key will first be used to sign messages.';
-COMMENT ON COLUMN exchange_sign_keys.expire_sign
-  IS 'Time when this online signing key will no longer be used to sign.';
-COMMENT ON COLUMN exchange_sign_keys.expire_legal
-  IS 'Time when this online signing key legally expires.';
-
-
--- ------------------------------ signkey_revocations ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS signkey_revocations
-  (signkey_revocations_serial_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,esk_serial INT8 PRIMARY KEY REFERENCES exchange_sign_keys (esk_serial) ON DELETE CASCADE
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  );
-COMMENT ON TABLE signkey_revocations
-  IS 'Table storing which online signing keys have been revoked';
-
-
--- ------------------------------ extensions ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS extensions
-  (extension_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,name VARCHAR NOT NULL UNIQUE
-  ,manifest BYTEA
-  );
-COMMENT ON TABLE extensions
-  IS 'Configurations of the activated extensions';
-COMMENT ON COLUMN extensions.name
-  IS 'Name of the extension';
-COMMENT ON COLUMN extensions.manifest
-  IS 'Manifest of the extension as JSON-blob, maybe NULL.  It contains common meta-information and extension-specific configuration.';
-
-
 -- ------------------------------ known_coins ----------------------------------------
 
 SELECT create_table_known_coins();
@@ -351,10 +205,6 @@ COMMENT ON COLUMN known_coins.age_commitment_hash
 COMMENT ON COLUMN known_coins.denom_sig
   IS 'This is the signature of the exchange that affirms that the coin is a valid coin. The specific signature type depends on denom_type of the denomination.';
 
-CREATE TABLE IF NOT EXISTS known_coins_default
-  PARTITION OF known_coins
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_known_coins_partition('default');
 
 
@@ -370,10 +220,6 @@ COMMENT ON COLUMN refresh_commitments.rc
   IS 'Commitment made by the client, hash over the various client inputs in the cut-and-choose protocol';
 COMMENT ON COLUMN refresh_commitments.old_coin_pub
   IS 'Coin being melted in the refresh process.';
-
-CREATE TABLE IF NOT EXISTS refresh_commitments_default
-  PARTITION OF refresh_commitments
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_refresh_commitments_partition('default');
 
@@ -399,10 +245,6 @@ COMMENT ON COLUMN refresh_revealed_coins.h_coin_ev
 COMMENT ON COLUMN refresh_revealed_coins.ev_sig
   IS 'exchange signature over the envelope';
 
-CREATE TABLE IF NOT EXISTS refresh_revealed_coins_default
-  PARTITION OF refresh_revealed_coins
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_refresh_revealed_coins_partition('default');
 
 
@@ -421,76 +263,8 @@ COMMENT ON COLUMN refresh_transfer_keys.transfer_pub
 COMMENT ON COLUMN refresh_transfer_keys.transfer_privs
   IS 'array of TALER_CNC_KAPPA - 1 transfer private keys that have been revealed, with the gamma entry being skipped';
 
-CREATE TABLE IF NOT EXISTS refresh_transfer_keys_default
-  PARTITION OF refresh_transfer_keys
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_refresh_transfer_keys_partition('default');
 
-
--- ------------------------------ policy_fulfillments -------------------------------------
-
-CREATE TABLE IF NOT EXISTS policy_fulfillments
-  (fulfillment_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE PRIMARY KEY
-  ,fulfillment_timestamp INT8 NOT NULL
-  ,fulfillment_proof VARCHAR
-  ,h_fulfillment_proof BYTEA NOT NULL CHECK(LENGTH(h_fulfillment_proof) = 64) UNIQUE
-  ,policy_hash_codes BYTEA NOT NULL CHECK(0 = MOD(LENGTH(policy_hash_codes), 16))
-  );
-COMMENT ON TABLE policy_fulfillments
-  IS 'Proofs of fulfillment of policies that were set in deposits';
-COMMENT ON COLUMN policy_fulfillments.fulfillment_timestamp
-  IS 'Timestamp of the arrival of a proof of fulfillment';
-COMMENT ON COLUMN policy_fulfillments.fulfillment_proof
-  IS 'JSON object with a proof of the fulfillment of a policy. Supported details depend on the policy extensions supported by the exchange.';
-COMMENT ON COLUMN policy_fulfillments.h_fulfillment_proof
-  IS 'Hash of the fulfillment_proof';
-COMMENT ON COLUMN policy_fulfillments.policy_hash_codes
-  IS 'Concatenation of the policy_hash_code of all policy_details that are fulfilled by this proof';
-
--- ------------------------------ policy_details ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS policy_details
-  (policy_details_serial_id BIGINT GENERATED BY DEFAULT AS IDENTITY
-  ,policy_hash_code BYTEA PRIMARY KEY CHECK(LENGTH(policy_hash_code)=16)
-  ,policy_json VARCHAR
-  ,deadline INT8 NOT NULL
-  ,commitment_val INT8 NOT NULL
-  ,commitment_frac INT4 NOT NULL
-  ,accumulated_total_val INT8 NOT NULL
-  ,accumulated_total_frac INT4 NOT NULL
-  ,fee_val INT8 NOT NULL
-  ,fee_frac INT4 NOT NULL
-  ,transferable_val INT8 NOT NULL
-  ,transferable_frac INT8 NOT NULL
-  ,fulfillment_state smallint NOT NULL CHECK(fulfillment_state between 0 and 5)
-  ,fulfillment_id BIGINT NULL REFERENCES policy_fulfillments (fulfillment_id) ON DELETE CASCADE
-  );
-COMMENT ON TABLE policy_details
-  IS 'Policies that were provided with deposits via policy extensions.';
-COMMENT ON COLUMN policy_details.policy_hash_code
-  IS 'ID (GNUNET_HashCode) that identifies a policy.  Will be calculated by the policy extension based on the content';
-COMMENT ON COLUMN policy_details.policy_json
-  IS 'JSON object with options set that the exchange needs to consider when executing a deposit. Supported details depend on the policy extensions supported by the exchange.';
-COMMENT ON COLUMN policy_details.deadline
-  IS 'Deadline until the policy must be marked as fulfilled (maybe "forever")';
-COMMENT ON COLUMN policy_details.commitment_val
-  IS 'The amount that this policy commits to.  Invariant: commitment >= fee';
-COMMENT ON COLUMN policy_details.accumulated_total_val
-  IS 'The sum of all contributions of all deposit that reference this policy.  Invariant: The fulfilment_state must be Insufficient as long as accumulated_total < commitment';
-COMMENT ON COLUMN policy_details.fee_val
-  IS 'The fee for this policy, due when the policy is fulfilled or timed out';
-COMMENT ON COLUMN policy_details.transferable_val
-  IS 'The amount that on fulfillment or timeout will be transferred to the payto-URI''s of the corresponding deposit''s.  The policy fees must have been already deducted from it.  Invariant: fee+transferable <= accumulated_total.  The remaining amount (accumulated_total - fee - transferable) can be refreshed by the owner of the coins when the state is Timeout or Success.';
-COMMENT ON COLUMN policy_details.fulfillment_state
-  IS 'State of the fulfillment:
-       - 0 (Failure)
-       - 1 (Insufficient)
-       - 2 (Ready)
-       - 4 (Success)
-       - 5 (Timeout)';
-COMMENT ON COLUMN policy_details.fulfillment_id
-  IS 'Reference to the proof of the fulfillment of this policy, if it exists.  Invariant: If not NULL, this entry''s .hash_code MUST be part of the corresponding policy_fulfillments.policy_hash_codes array.';
 
 -- ------------------------------ deposits ----------------------------------------
 
@@ -513,10 +287,6 @@ COMMENT ON COLUMN deposits.policy_blocked
 COMMENT ON COLUMN deposits.policy_details_serial_id
   IS 'References policy extensions table, NULL if extensions are not used';
 
-CREATE TABLE IF NOT EXISTS deposits_default
-  PARTITION OF deposits
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_deposits_partition('default');
 
 
@@ -525,20 +295,11 @@ SELECT create_table_deposits_by_ready();
 COMMENT ON TABLE deposits_by_ready
   IS 'Enables fast lookups for deposits_get_ready, auto-populated via TRIGGER below';
 
-CREATE TABLE IF NOT EXISTS deposits_by_ready_default
-  PARTITION OF deposits_by_ready
-  DEFAULT;
-
 
 SELECT create_table_deposits_for_matching();
 
 COMMENT ON TABLE deposits_for_matching
   IS 'Enables fast lookups for deposits_iterate_matching, auto-populated via TRIGGER below';
-
-CREATE TABLE IF NOT EXISTS deposits_for_matching_default
-  PARTITION OF deposits_for_matching
-  DEFAULT;
-
 
 CREATE OR REPLACE FUNCTION deposits_insert_trigger()
   RETURNS trigger
@@ -683,10 +444,6 @@ COMMENT ON COLUMN refunds.deposit_serial_id
 COMMENT ON COLUMN refunds.rtransaction_id
   IS 'used by the merchant to make refunds unique in case the same coin for the same deposit gets a subsequent (higher) refund';
 
-CREATE TABLE IF NOT EXISTS refunds_default
-  PARTITION OF refunds
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_refunds_partition('default');
 
 
@@ -700,10 +457,6 @@ COMMENT ON COLUMN wire_out.exchange_account_section
   IS 'identifies the configuration section with the debit account of this payment';
 COMMENT ON COLUMN wire_out.wire_target_h_payto
   IS 'Identifies the credited bank account and KYC status';
-
-CREATE TABLE IF NOT EXISTS wire_out_default
-  PARTITION OF wire_out
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_wire_out_partition('default');
 
@@ -737,11 +490,6 @@ COMMENT ON COLUMN aggregation_transient.amount_val
 COMMENT ON COLUMN aggregation_transient.wtid_raw
   IS 'identifier of the wire transfer';
 
-CREATE TABLE IF NOT EXISTS aggregation_transient_default
-  PARTITION OF aggregation_transient
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
-
 -- ------------------------------ aggregation_tracking ----------------------------------------
 
 SELECT create_table_aggregation_tracking();
@@ -751,63 +499,7 @@ COMMENT ON TABLE aggregation_tracking
 COMMENT ON COLUMN aggregation_tracking.wtid_raw
   IS 'identifier of the wire transfer';
 
-CREATE TABLE IF NOT EXISTS aggregation_tracking_default
-  PARTITION OF aggregation_tracking
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_aggregation_tracking_partition('default');
-
-
--- ------------------------------ wire_fee ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS wire_fee
-  (wire_fee_serial BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,wire_method VARCHAR NOT NULL
-  ,start_date INT8 NOT NULL
-  ,end_date INT8 NOT NULL
-  ,wire_fee_val INT8 NOT NULL
-  ,wire_fee_frac INT4 NOT NULL
-  ,closing_fee_val INT8 NOT NULL
-  ,closing_fee_frac INT4 NOT NULL
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,PRIMARY KEY (wire_method, start_date)
-  );
-COMMENT ON TABLE wire_fee
-  IS 'list of the wire fees of this exchange, by date';
-COMMENT ON COLUMN wire_fee.wire_fee_serial
-  IS 'needed for exchange-auditor replication logic';
-
-CREATE INDEX IF NOT EXISTS wire_fee_by_end_date_index
-  ON wire_fee
-  (end_date);
-
-
--- ------------------------------ global_fee ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS global_fee
-  (global_fee_serial BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,start_date INT8 NOT NULL
-  ,end_date INT8 NOT NULL
-  ,history_fee_val INT8 NOT NULL
-  ,history_fee_frac INT4 NOT NULL
-  ,account_fee_val INT8 NOT NULL
-  ,account_fee_frac INT4 NOT NULL
-  ,purse_fee_val INT8 NOT NULL
-  ,purse_fee_frac INT4 NOT NULL
-  ,purse_timeout INT8 NOT NULL
-  ,history_expiration INT8 NOT NULL
-  ,purse_account_limit INT4 NOT NULL
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,PRIMARY KEY (start_date)
-  );
-COMMENT ON TABLE global_fee
-  IS 'list of the global fees of this exchange, by date';
-COMMENT ON COLUMN global_fee.global_fee_serial
-  IS 'needed for exchange-auditor replication logic';
-
-CREATE INDEX IF NOT EXISTS global_fee_by_end_date_index
-  ON global_fee
-  (end_date);
 
 
 -- ------------------------------ recoup ----------------------------------------
@@ -825,10 +517,6 @@ COMMENT ON COLUMN recoup.coin_sig
 COMMENT ON COLUMN recoup.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the withdraw operation.';
 
-CREATE TABLE IF NOT EXISTS recoup_default
-  PARTITION OF recoup
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_recoup_partition('default');
 
 
@@ -836,10 +524,6 @@ SELECT create_table_recoup_by_reserve();
 
 COMMENT ON TABLE recoup_by_reserve
   IS 'Information in this table is strictly redundant with that of recoup, but saved by a different primary key for fast lookups by reserve_out_serial_id.';
-
-CREATE TABLE IF NOT EXISTS recoup_by_reserve_default
-  PARTITION OF recoup_by_reserve
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE OR REPLACE FUNCTION recoup_insert_trigger()
   RETURNS trigger
@@ -896,10 +580,6 @@ COMMENT ON COLUMN recoup_refresh.rrc_serial
 COMMENT ON COLUMN recoup_refresh.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.';
 
-CREATE TABLE IF NOT EXISTS recoup_refresh_default
-  PARTITION OF recoup_refresh
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_recoup_refresh_partition('default');
 
 
@@ -916,33 +596,6 @@ COMMENT ON COLUMN prewire.finished
 COMMENT ON COLUMN prewire.buf
   IS 'serialized data to send to the bank to execute the wire transfer';
 
-CREATE TABLE IF NOT EXISTS prewire_default
-  PARTITION OF prewire
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
-
--- ------------------------------ wire_accounts ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS wire_accounts
-  (payto_uri VARCHAR PRIMARY KEY
-  ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
-  ,is_active BOOLEAN NOT NULL
-  ,last_change INT8 NOT NULL
-  );
-COMMENT ON TABLE wire_accounts
-  IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';
-COMMENT ON COLUMN wire_accounts.payto_uri
-  IS 'payto URI (RFC 8905) with the bank account of the exchange.';
-COMMENT ON COLUMN wire_accounts.master_sig
-  IS 'Signature of purpose TALER_SIGNATURE_MASTER_WIRE_DETAILS';
-COMMENT ON COLUMN wire_accounts.is_active
-  IS 'true if we are currently supporting the use of this account.';
-COMMENT ON COLUMN wire_accounts.last_change
-  IS 'Latest time when active status changed. Used to detect replays of old messages.';
--- "wire_accounts" has no sequence because it is a 'mutable' table
---            and is of no concern to the auditor
-
-
 -- ------------------------------ cs_nonce_locks ----------------------------------------
 
 SELECT create_table_cs_nonce_locks();
@@ -956,119 +609,8 @@ COMMENT ON COLUMN cs_nonce_locks.op_hash
 COMMENT ON COLUMN cs_nonce_locks.max_denomination_serial
   IS 'Maximum number of a CS denomination serial the nonce could be used with, for GC';
 
-CREATE TABLE IF NOT EXISTS cs_nonce_locks_default
-  PARTITION OF cs_nonce_locks
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_cs_nonce_locks_partition('default');
 
-
--- ------------------------------ work_shards ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS work_shards
-  (shard_serial_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,last_attempt INT8 NOT NULL
-  ,start_row INT8 NOT NULL
-  ,end_row INT8 NOT NULL
-  ,completed BOOLEAN NOT NULL DEFAULT FALSE
-  ,job_name VARCHAR NOT NULL
-  ,PRIMARY KEY (job_name, start_row)
-  );
-COMMENT ON TABLE work_shards
-  IS 'coordinates work between multiple processes working on the same job';
-COMMENT ON COLUMN work_shards.shard_serial_id
-  IS 'unique serial number identifying the shard';
-COMMENT ON COLUMN work_shards.last_attempt
-  IS 'last time a worker attempted to work on the shard';
-COMMENT ON COLUMN work_shards.completed
-  IS 'set to TRUE once the shard is finished by a worker';
-COMMENT ON COLUMN work_shards.start_row
-  IS 'row at which the shard scope starts, inclusive';
-COMMENT ON COLUMN work_shards.end_row
-  IS 'row at which the shard scope ends, exclusive';
-COMMENT ON COLUMN work_shards.job_name
-  IS 'unique name of the job the workers on this shard are performing';
-
-CREATE INDEX IF NOT EXISTS work_shards_by_job_name_completed_last_attempt_index
-  ON work_shards
-  (job_name
-  ,completed
-  ,last_attempt ASC
-  );
-
-
--- ------------------------------ revolving_work_shards ----------------------------------------
-
-CREATE UNLOGGED TABLE IF NOT EXISTS revolving_work_shards
-  (shard_serial_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,last_attempt INT8 NOT NULL
-  ,start_row INT4 NOT NULL
-  ,end_row INT4 NOT NULL
-  ,active BOOLEAN NOT NULL DEFAULT FALSE
-  ,job_name VARCHAR NOT NULL
-  ,PRIMARY KEY (job_name, start_row)
-  );
-COMMENT ON TABLE revolving_work_shards
-  IS 'coordinates work between multiple processes working on the same job with partitions that need to be repeatedly processed; unlogged because on system crashes the locks represented by this table will have to be cleared anyway, typically using "taler-exchange-dbinit -s"';
-COMMENT ON COLUMN revolving_work_shards.shard_serial_id
-  IS 'unique serial number identifying the shard';
-COMMENT ON COLUMN revolving_work_shards.last_attempt
-  IS 'last time a worker attempted to work on the shard';
-COMMENT ON COLUMN revolving_work_shards.active
-  IS 'set to TRUE when a worker is active on the shard';
-COMMENT ON COLUMN revolving_work_shards.start_row
-  IS 'row at which the shard scope starts, inclusive';
-COMMENT ON COLUMN revolving_work_shards.end_row
-  IS 'row at which the shard scope ends, exclusive';
-COMMENT ON COLUMN revolving_work_shards.job_name
-  IS 'unique name of the job the workers on this shard are performing';
-
-CREATE INDEX IF NOT EXISTS revolving_work_shards_by_job_name_active_last_attempt_index
-  ON revolving_work_shards
-  (job_name
-  ,active
-  ,last_attempt
-  );
-
---------------------------------------------------------------------------
---                        Tables for P2P payments
---------------------------------------------------------------------------
-
--- ------------------------------ partners ----------------------------------------
-
-CREATE TABLE IF NOT EXISTS partners
-  (partner_serial_id BIGINT GENERATED BY DEFAULT AS IDENTITY UNIQUE
-  ,partner_master_pub BYTEA NOT NULL CHECK(LENGTH(partner_master_pub)=32)
-  ,start_date INT8 NOT NULL
-  ,end_date INT8 NOT NULL
-  ,next_wad INT8 NOT NULL DEFAULT (0)
-  ,wad_frequency INT8 NOT NULL
-  ,wad_fee_val INT8 NOT NULL
-  ,wad_fee_frac INT4 NOT NULL
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,partner_base_url TEXT NOT NULL
-  );
-COMMENT ON TABLE partners
-  IS 'exchanges we do wad transfers to';
-COMMENT ON COLUMN partners.partner_master_pub
-  IS 'offline master public key of the partner';
-COMMENT ON COLUMN partners.start_date
-  IS 'starting date of the partnership';
-COMMENT ON COLUMN partners.end_date
-  IS 'end date of the partnership';
-COMMENT ON COLUMN partners.next_wad
-  IS 'at what time should we do the next wad transfer to this partner (frequently updated); set to forever after the end_date';
-COMMENT ON COLUMN partners.wad_frequency
-  IS 'how often do we promise to do wad transfers';
-COMMENT ON COLUMN partners.wad_fee_val
-  IS 'how high is the fee for a wallet to be added to a wad to this partner';
-COMMENT ON COLUMN partners.partner_base_url
-  IS 'base URL of the REST API for this partner';
-COMMENT ON COLUMN partners.master_sig
-  IS 'signature of our master public key affirming the partnership, of purpose TALER_SIGNATURE_MASTER_PARTNER_DETAILS';
-
-CREATE INDEX IF NOT EXISTS partner_by_wad_time
-  ON partners (next_wad ASC);
 
 -- ------------------------------ purse_requests ----------------------------------------
 
@@ -1097,10 +639,6 @@ COMMENT ON COLUMN purse_requests.balance_val
 COMMENT ON COLUMN purse_requests.purse_sig
   IS 'Signature of the purse affirming the purse parameters, of type TALER_SIGNATURE_PURSE_REQUEST';
 
-CREATE TABLE IF NOT EXISTS purse_requests_default
-  PARTITION OF purse_requests
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_purse_requests_partition('default');
 
 
@@ -1112,10 +650,6 @@ COMMENT ON TABLE purse_decision
   IS 'Purses that were decided upon (refund or merge)';
 COMMENT ON COLUMN purse_decision.purse_pub
   IS 'Public key of the purse';
-
-CREATE TABLE IF NOT EXISTS purse_decision_default
-  PARTITION OF purse_decision
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_purse_decision_partition('default');
 
@@ -1137,10 +671,6 @@ COMMENT ON COLUMN purse_merges.merge_sig
 COMMENT ON COLUMN purse_merges.merge_timestamp
   IS 'when was the merge message signed';
 
-CREATE TABLE IF NOT EXISTS purse_merges_default
-  PARTITION OF purse_merges
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_purse_merges_partition('default');
 
 
@@ -1156,10 +686,6 @@ COMMENT ON COLUMN account_merges.purse_pub
   IS 'public key of the purse';
 COMMENT ON COLUMN account_merges.reserve_sig
   IS 'signature by the reserve private key affirming the merge, of type TALER_SIGNATURE_WALLET_ACCOUNT_MERGE';
-
-CREATE TABLE IF NOT EXISTS account_merges_default
-  PARTITION OF account_merges
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_account_merges_partition('default');
 
@@ -1179,10 +705,6 @@ COMMENT ON COLUMN contracts.pub_ckey
 COMMENT ON COLUMN contracts.e_contract
   IS 'AES-GCM encrypted contract terms (contains gzip compressed JSON after decryption)';
 
-CREATE TABLE IF NOT EXISTS contracts_default
-  PARTITION OF contracts
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_contracts_partition('default');
 
 
@@ -1199,10 +721,6 @@ COMMENT ON COLUMN history_requests.reserve_sig
 COMMENT ON COLUMN history_requests.history_fee_val
   IS 'History fee approved by the signature';
 
-CREATE TABLE IF NOT EXISTS history_requests_default
-  PARTITION OF history_requests
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 -- ------------------------------ close_requests ----------------------------------------
 
 SELECT create_table_close_requests();
@@ -1217,10 +735,6 @@ COMMENT ON COLUMN close_requests.close_val
   IS 'Balance of the reserve at the time of closing, to be wired to the associated bank account (minus the closing fee)';
 COMMENT ON COLUMN close_requests.payto_uri
   IS 'Identifies the credited bank account. Optional.';
-
-CREATE TABLE IF NOT EXISTS close_requests_default
-  PARTITION OF close_requests
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_close_requests_partition('default');
 
@@ -1241,10 +755,6 @@ COMMENT ON COLUMN purse_deposits.amount_with_fee_val
 COMMENT ON COLUMN purse_deposits.coin_sig
   IS 'Signature of the coin affirming the deposit into the purse, of type TALER_SIGNATURE_PURSE_DEPOSIT';
 
-CREATE TABLE IF NOT EXISTS purse_deposits_default
-  PARTITION OF purse_deposits
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_purse_deposits_partition('default');
 
 
@@ -1262,10 +772,6 @@ COMMENT ON COLUMN wads_out.amount_val
   IS 'Amount that was wired';
 COMMENT ON COLUMN wads_out.execution_time
   IS 'Time when the wire transfer was scheduled';
-
-CREATE TABLE IF NOT EXISTS wads_out_default
-  PARTITION OF wads_out
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_wads_out_partition('default');
 
@@ -1299,10 +805,6 @@ COMMENT ON COLUMN wad_out_entries.reserve_sig
 COMMENT ON COLUMN wad_out_entries.purse_sig
   IS 'Signature by the purse of purpose TALER_SIGNATURE_PURSE_MERGE';
 
-CREATE TABLE IF NOT EXISTS wad_out_entries_default
-  PARTITION OF wad_out_entries
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_wad_out_entries_partition('default');
 
 -- ------------------------------ wads_in ----------------------------------------
@@ -1319,10 +821,6 @@ COMMENT ON COLUMN wads_in.amount_val
   IS 'Actual amount that was received by our exchange';
 COMMENT ON COLUMN wads_in.arrival_time
   IS 'Time when the wad was received';
-
-CREATE TABLE IF NOT EXISTS wads_in_default
-  PARTITION OF wads_in
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 SELECT add_constraints_to_wads_in_partition('default');
 
@@ -1356,13 +854,4 @@ COMMENT ON COLUMN wad_in_entries.reserve_sig
 COMMENT ON COLUMN wad_in_entries.purse_sig
   IS 'Signature by the purse of purpose TALER_SIGNATURE_PURSE_MERGE';
 
-CREATE TABLE IF NOT EXISTS wad_in_entries_default
-  PARTITION OF wad_in_entries
-  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
-
 SELECT add_constraints_to_wad_in_entries_partition('default');
-
-
--- ------------------------------ partner_accounts ----------------------------------------
-
------------------------ router helper table (not synchronzied) ------------------------

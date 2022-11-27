@@ -65,3 +65,17 @@ BEGIN
   );
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('refresh_commitments'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

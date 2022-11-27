@@ -58,3 +58,17 @@ CREATE TRIGGER purse_requests_on_insert
 COMMENT ON TRIGGER purse_requests_on_insert
         ON purse_requests
   IS 'Here we install an entry for the purse expiration.';
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('purse_actions'
+    ,'exchange-0002'
+    ,'create'
+    ,FALSE
+    ,FALSE);

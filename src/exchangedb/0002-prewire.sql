@@ -61,3 +61,17 @@ BEGIN
 
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('prewire'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);

@@ -58,3 +58,17 @@ BEGIN
         'UNIQUE (legitimization_requirement_serial_id)');
 END
 $$;
+
+
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('legitimization_requirements'
+    ,'exchange-0002'
+    ,'create'
+    ,TRUE
+    ,FALSE);
