@@ -404,22 +404,22 @@ INSERT INTO exchange_tables
     ,'exchange-0002'
     ,'create'
     ,TRUE
-    ,FALSE),
+    ,TRUE),
     ('deposits_by_ready'
     ,'exchange-0002'
     ,'constrain'
     ,TRUE
-    ,FALSE),
+    ,TRUE),
     ('deposits_for_matching'
     ,'exchange-0002'
     ,'create'
     ,TRUE
-    ,FALSE),
+    ,TRUE),
     ('deposits_for_matching'
     ,'exchange-0002'
     ,'constrain'
     ,TRUE
-    ,FALSE),
+    ,TRUE),
     ('deposits'
     ,'exchange-0002'
     ,'master'

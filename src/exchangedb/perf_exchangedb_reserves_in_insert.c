@@ -83,21 +83,14 @@ run (void *cls)
   }
   (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
+      plugin->create_tables (plugin->cls,
+                             true,
+                             num_partitions))
   {
     GNUNET_break (0);
     result = 77;
     goto cleanup;
   }
-  if (GNUNET_OK !=
-      plugin->setup_partitions (plugin->cls,
-                                num_partitions))
-  {
-    GNUNET_break (0);
-    result = 77;
-    goto cleanup;
-  }
-
   for (unsigned int i = 0; i< 8; i++)
   {
     static unsigned int batches[] = {1, 1, 0, 2, 4, 16, 64, 256};
@@ -114,23 +107,23 @@ run (void *cls)
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
-    for (unsigned int r=0;r<10;r++)
+    for (unsigned int r = 0; r<10; r++)
     {
-    plugin->start (plugin->cls,
-                   "test_by_exchange_j");
-    for (unsigned int k = 0; k<batch_size; k++)
-    {
-      RND_BLK (&reserve_pub);
-      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->reserves_in_insert (plugin->cls,
-                                          &reserve_pub,
-                                          &value,
-                                          ts,
-                                          sndr,
-                                          "section",
-                                          4));
-    }
-    plugin->commit (plugin->cls);
+      plugin->start (plugin->cls,
+                     "test_by_exchange_j");
+      for (unsigned int k = 0; k<batch_size; k++)
+      {
+        RND_BLK (&reserve_pub);
+        FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                plugin->reserves_in_insert (plugin->cls,
+                                            &reserve_pub,
+                                            &value,
+                                            ts,
+                                            sndr,
+                                            "section",
+                                            4));
+      }
+      plugin->commit (plugin->cls);
     }
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
@@ -195,5 +188,6 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
+
 
 /* end of test_exchangedb_by_j.c */

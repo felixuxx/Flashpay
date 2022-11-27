@@ -33,7 +33,7 @@ static int result;
  */
 #define FAILIF(cond)                            \
   do {                                          \
-      if (! (cond)) {break;}                    \
+    if (! (cond)) {break;}                    \
     GNUNET_break (0);                           \
     goto drop;                                  \
   } while (0)
@@ -83,21 +83,14 @@ run (void *cls)
   }
   (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
+      plugin->create_tables (plugin->cls,
+                             true,
+                             num_partitions))
   {
     GNUNET_break (0);
     result = 77;
     goto cleanup;
   }
-  if (GNUNET_OK !=
-      plugin->setup_partitions (plugin->cls,
-                                num_partitions))
-  {
-    GNUNET_break (0);
-    result = 77;
-    goto cleanup;
-  }
-
   for (unsigned int i = 0; i< 7; i++)
   {
     static unsigned int batches[] = {1, 1, 2, 4, 16, 64, 256};
@@ -114,28 +107,28 @@ run (void *cls)
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
-    for (unsigned int r=0;r<10;r++)
+    for (unsigned int r = 0; r<10; r++)
     {
-    plugin->start_read_committed (plugin->cls,
-                                  "test_by_j");
+      plugin->start_read_committed (plugin->cls,
+                                    "test_by_j");
 
-    for (unsigned int k = 0; k<batch_size; k++)
-    {
-      RND_BLK (&reserves[k].reserve_pub);
-      reserves[k].balance = value;
-      reserves[k].execution_time = ts;
-      reserves[k].sender_account_details = sndr;
-      reserves[k].exchange_account_name = "name";
-      reserves[k].wire_reference = k;
+      for (unsigned int k = 0; k<batch_size; k++)
+      {
+        RND_BLK (&reserves[k].reserve_pub);
+        reserves[k].balance = value;
+        reserves[k].execution_time = ts;
+        reserves[k].sender_account_details = sndr;
+        reserves[k].exchange_account_name = "name";
+        reserves[k].wire_reference = k;
 
-    }
-    FAILIF (batch_size !=
-            plugin->batch_reserves_in_insert (plugin->cls,
-                                              reserves,
-                                              batch_size,
-                                              results));
+      }
+      FAILIF (batch_size !=
+              plugin->batch_reserves_in_insert (plugin->cls,
+                                                reserves,
+                                                batch_size,
+                                                results));
 
-    plugin->commit (plugin->cls);
+      plugin->commit (plugin->cls);
     }
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
@@ -200,5 +193,6 @@ main (int argc,
   GNUNET_free (testname);
   return result;
 }
+
 
 /* end of test_exchangedb_by_j.c */

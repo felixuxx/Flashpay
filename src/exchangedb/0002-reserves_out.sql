@@ -132,14 +132,25 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
+END $$;
+
+
+CREATE FUNCTION constrain_table_reserves_out_by_reserve(
+  IN partition_suffix VARCHAR DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name VARCHAR DEFAULT 'reserves_out_by_reserve';
+BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_main_index '
     'ON ' || table_name || ' '
     '(reserve_uuid);'
   );
-END
-$$;
+END $$;
 
 
 CREATE FUNCTION reserves_out_by_reserve_insert_trigger()
@@ -215,6 +226,11 @@ INSERT INTO exchange_tables
     ('reserves_out_by_reserve'
     ,'exchange-0002'
     ,'create'
+    ,TRUE
+    ,FALSE),
+    ('reserves_out_by_reserve'
+    ,'exchange-0002'
+    ,'constrain'
     ,TRUE
     ,FALSE),
     ('reserves_out'

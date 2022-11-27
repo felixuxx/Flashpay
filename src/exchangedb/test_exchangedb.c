@@ -1245,13 +1245,9 @@ run (void *cls)
   }
   (void) plugin->drop_tables (plugin->cls);
   if (GNUNET_OK !=
-      plugin->create_tables (plugin->cls))
-  {
-    result = 77;
-    goto cleanup;
-  }
-  if (GNUNET_OK !=
-      plugin->setup_partitions (plugin->cls, num_partitions))
+      plugin->create_tables (plugin->cls,
+                             true,
+                             num_partitions))
   {
     result = 77;
     goto cleanup;

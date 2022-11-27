@@ -177,7 +177,7 @@ BEGIN
           'SELECT exchange.%s_table_%s (%s)'::text
           ,rec.action
           ,rec.name
-          ,0
+          ,quote_literal('0')
         );
         IF (rec.by_range OR
             (num_partitions = 0))
@@ -189,7 +189,7 @@ BEGIN
             EXECUTE FORMAT(
               'CREATE TABLE exchange.%s_default'
               ' PARTITION OF %s'
-              ' FOR DEFAULT'
+              ' DEFAULT'
              ,rec.name
              ,rec.name
             );
@@ -238,14 +238,15 @@ BEGIN
           ,rec.name
         );
       ELSE
-        IF (num_partitions = 0)
+        IF ( (num_partitions = 0) OR
+             (rec.by_range) )
         THEN
           -- Constrain default table
           EXECUTE FORMAT(
              'SELECT exchange.%s_table_%s (%s)'::text
             ,rec.action
             ,rec.name
-            ,'default'
+            ,quote_literal('default')
           );
         ELSE
           -- Constrain each partition
@@ -254,7 +255,7 @@ BEGIN
               'SELECT exchange.%s_table_%s (%s)'::text
               ,rec.action
               ,rec.name
-              ,i
+              ,quote_literal(i)
             );
           END LOOP;
         END IF;
