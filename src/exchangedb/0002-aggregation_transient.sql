@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE OR REPLACE FUNCTION create_table_aggregation_transient(
+CREATE FUNCTION create_table_aggregation_transient(
   IN shard_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
@@ -23,22 +23,37 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'aggregation_transient';
 BEGIN
-
   PERFORM create_partitioned_table(
-    'CREATE TABLE IF NOT EXISTS %I '
-      '(amount_val INT8 NOT NULL'
-      ',amount_frac INT4 NOT NULL'
-      ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
-      ',merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)'
-      ',exchange_account_section TEXT NOT NULL'
-      ',legitimization_requirement_serial_id INT8 NOT NULL DEFAULT(0)'
-      ',wtid_raw BYTEA NOT NULL CHECK (LENGTH(wtid_raw)=32)'
-      ') %s ;'
+    'CREATE TABLE %I '
+    '(amount_val INT8 NOT NULL'
+    ',amount_frac INT4 NOT NULL'
+    ',wire_target_h_payto BYTEA CHECK (LENGTH(wire_target_h_payto)=32)'
+    ',merchant_pub BYTEA CHECK (LENGTH(merchant_pub)=32)'
+    ',exchange_account_section TEXT NOT NULL'
+    ',legitimization_requirement_serial_id INT8 NOT NULL DEFAULT(0)'
+    ',wtid_raw BYTEA NOT NULL CHECK (LENGTH(wtid_raw)=32)'
+    ') %s ;'
+    ,table_name
+    ,'PARTITION BY HASH (wire_target_h_payto)'
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_table(
+    'aggregations currently happening (lacking wire_out, usually because the amount is too low); this table is not replicated'
+    ,table_name
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_column(
+       'Sum of all of the aggregated deposits (without deposit fees)'
+      ,'amount_val'
       ,table_name
-      ,'PARTITION BY HASH (wire_target_h_payto)'
       ,shard_suffix
   );
-
+  PERFORM comment_partitioned_column(
+       'identifier of the wire transfer'
+      ,'wtid_raw'
+      ,table_name
+      ,shard_suffix
+  );
 END
 $$;
 
