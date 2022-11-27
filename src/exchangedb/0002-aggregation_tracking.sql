@@ -88,9 +88,6 @@ BEGIN
     ' ADD CONSTRAINT ' || table_name || '_foreign_deposit'
     ' FOREIGN KEY (deposit_serial_id) '
     ' REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE' -- FIXME change to coin_pub + deposit_serial_id for more efficient deposit???
-    ',ADD CONSTRAINT ' || table_name || '_foreign_wtid_raw'
-    ' FOREIGN KEY (wtid_raw) '
-    ' REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE'
   );
 END
 $$;
