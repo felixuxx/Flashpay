@@ -19,6 +19,7 @@ BEGIN;
 
 
 SELECT _v.unregister_patch('exchange-0001');
+SELECT _v.unregister_patch('exchange-0002');
 
 DROP SCHEMA exchange CASCADE;
 

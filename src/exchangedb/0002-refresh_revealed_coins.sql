@@ -39,48 +39,48 @@ BEGIN
     ,'PARTITION BY HASH (melt_serial_id)'
     ,shard_suffix
   );
-  PEFORM comment_partitioned_table(
+  PERFORM comment_partitioned_table(
      'Revelations about the new coins that are to be created during a melting session.'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'needed for exchange-auditor replication logic'
     ,'rrc_serial'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'Identifies the refresh commitment (rc) of the melt operation.'
     ,'melt_serial_id'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'index of the fresh coin being created (one melt operation may result in multiple fresh coins)'
     ,'freshcoin_index'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'envelope of the new coin to be signed'
     ,'coin_ev'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'exchange contributed values in the creation of the fresh coin (see /csr)'
     ,'ewv'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'hash of the envelope of the new coin to be signed (for lookups)'
     ,'h_coin_ev'
     ,table_name
     ,shard_suffix
   );
-  PEFORM comment_partitioned_column(
+  PERFORM comment_partitioned_column(
      'exchange signature over the envelope'
     ,'ev_sig'
     ,table_name

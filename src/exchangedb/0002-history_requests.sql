@@ -15,7 +15,7 @@
 --
 
 
-CREATE OR create_table_history_requests(
+CREATE FUNCTION create_table_history_requests(
   IN shard_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
@@ -64,7 +64,7 @@ BEGIN
 END $$;
 
 
-CREATE OR foreign_table_history_requests()
+CREATE FUNCTION foreign_table_history_requests()
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$

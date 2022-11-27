@@ -14,14 +14,9 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
 BEGIN;
 
 SET search_path TO exchange;
-
----------------------------------------------------------------------------
---                      Stored procedures
----------------------------------------------------------------------------
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(

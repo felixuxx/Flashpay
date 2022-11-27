@@ -21,17 +21,3 @@ CREATE TABLE IF NOT EXISTS denomination_revocations
   );
 COMMENT ON TABLE denomination_revocations
   IS 'remembering which denomination keys have been revoked';
-
-
-INSERT INTO exchange_tables
-    (name
-    ,version
-    ,action
-    ,partitioned
-    ,by_range)
-  VALUES
-    ('denomination_revocations'
-    ,'exchange-0002'
-    ,'create'
-    ,FALSE
-    ,FALSE);

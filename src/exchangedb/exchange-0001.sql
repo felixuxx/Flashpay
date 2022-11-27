@@ -14,8 +14,12 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
 BEGIN;
+
+SELECT _v.register_patch('exchange-0001', NULL, NULL);
+
+CREATE SCHEMA exchange;
+COMMENT ON SCHEMA exchange IS 'taler-exchange data';
 
 SET search_path TO exchange;
 
@@ -38,7 +42,7 @@ COMMENT ON COLUMN exchange_tables.name
 COMMENT ON COLUMN exchange_tables.version
   IS 'Version of the DB in which the given action happened';
 COMMENT ON COLUMN exchange_tables.action
-  IS 'Action to take on the table (e.g. create, alter, constrain, foreign, or drop). Create, alter and drop are done for master and each partition; constrain is only for partitions or for master if there are no partitions; master only on master (takes no argument); foreign only on master if there are no partitions.';
+  IS 'Action to take on the table (e.g. create, constrain, foreign, or drop). Create is done for the master table and each partition; constrain is only for partitions or for master if there are no partitions; master only on master (takes no argument); foreign only on master if there are no partitions.';
 COMMENT ON COLUMN exchange_tables.partitioned
   IS 'TRUE if the table is partitioned';
 COMMENT ON COLUMN exchange_tables.by_range
@@ -48,51 +52,58 @@ COMMENT ON COLUMN exchange_tables.finished
 
 
 CREATE FUNCTION create_partitioned_table(
-   IN table_definition VARCHAR
-  ,IN table_name VARCHAR
-  ,IN main_table_partition_str VARCHAR -- Used only when it is the main table - we do not partition shard tables
-  ,IN shard_suffix VARCHAR DEFAULT NULL
+   IN table_definition VARCHAR -- SQL template for table creation
+  ,IN table_name VARCHAR -- base name of the table
+  ,IN main_table_partition_str VARCHAR -- declaration for how to partition the table
+  ,IN partition_suffix VARCHAR DEFAULT NULL -- NULL: no partitioning, 0: yes partitioning, no sharding, >0: sharding
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF shard_suffix IS NOT NULL THEN
-    table_name=table_name || '_' || shard_suffix;
+  IF partition_suffix IS NULL
+  THEN
+    -- no partitioning, disable option
     main_table_partition_str = '';
+  ELSE
+    IF partition_suffix > 0
+    THEN
+      -- sharding, add shard name
+      table_name=table_name || '_' || partition_suffix;
+    END IF;
   END IF;
   EXECUTE FORMAT(
     table_definition,
     table_name,
     main_table_partition_str
   );
-END
-$$;
+END $$;
 
 COMMENT ON FUNCTION create_partitioned_table
-  IS 'Generic function to create a table that is partitioned.';
+  IS 'Generic function to create a table that is partitioned or sharded.';
 
 
 CREATE FUNCTION comment_partitioned_table(
    IN table_comment VARCHAR
   ,IN table_name VARCHAR
-  ,IN shard_suffix VARCHAR DEFAULT NULL
+  ,IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF shard_suffix IS NOT NULL THEN
-    table_name=table_name || '_' || shard_suffix;
-    main_table_partition_str = '';
+  IF ( (partition_suffix IS NOT NULL) AND
+       (partition_suffix > 0) )
+  THEN
+    -- sharding, add shard name
+    table_name=table_name || '_' || partition_suffix;
   END IF;
   EXECUTE FORMAT(
-     COMMENT ON TABLE %s IS '%s'
+     'COMMENT ON TABLE %s IS %s'
     ,table_name
-    ,table_comment
+    ,quote_literal(table_comment)
   );
-END
-$$;
+END $$;
 
 COMMENT ON FUNCTION comment_partitioned_table
   IS 'Generic function to create a comment on table that is partitioned.';
@@ -102,34 +113,37 @@ CREATE FUNCTION comment_partitioned_column(
    IN table_comment VARCHAR
   ,IN column_name VARCHAR
   ,IN table_name VARCHAR
-  ,IN shard_suffix VARCHAR DEFAULT NULL
+  ,IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF shard_suffix IS NOT NULL THEN
-    table_name=table_name || '_' || shard_suffix;
-    main_table_partition_str = '';
+  IF ( (partition_suffix IS NOT NULL) AND
+       (partition_suffix > 0) )
+  THEN
+    -- sharding, add shard name
+    table_name=table_name || '_' || partition_suffix;
   END IF;
   EXECUTE FORMAT(
-     COMMENT ON COLUMN %s.%s IS '%s'
+     'COMMENT ON COLUMN %s.%s IS %s'
     ,table_name
     ,column_name
-    ,table_comment
+    ,quote_literal(table_comment)
   );
-END
-$$;
+END $$;
 
 COMMENT ON FUNCTION comment_partitioned_column
   IS 'Generic function to create a comment on column of a table that is partitioned.';
 
 
+---------------------------------------------------------------------------
+--                   Main DB setup loop
+---------------------------------------------------------------------------
 
 
 CREATE FUNCTION create_tables(
   num_partitions INTEGER
--- FIXME: not implemented like this, but likely good:
 -- NULL: no partitions, add foreign constraints
 -- 0: no partitions, no foreign constraints
 -- 1: only 1 default partition
@@ -139,176 +153,146 @@ CREATE FUNCTION create_tables(
   LANGUAGE plpgsql
 AS $$
 DECLARE
-  -- FIXME: use only ONE cursor and then switch on action!
   tc CURSOR FOR
     SELECT table_serial_id
           ,name
           ,action
+          ,partitioned
           ,by_range
       FROM exchange_tables
      WHERE NOT finished
-       AND partitioned
-       AND (action='create'
-         OR action='alter'
-         OR action='drop')
-     ORDER BY table_serial_id ASC;
-DECLARE
-  ta CURSOR FOR
-    SELECT table_serial_id
-          ,name
-          ,action
-          ,by_range
-      FROM exchange_tables
-     WHERE NOT finished
-       AND partitioned
-       AND action='constrain'
-     ORDER BY table_serial_id ASC;
-DECLARE
-  tf CURSOR FOR
-    SELECT table_serial_id
-          ,name
-          ,action
-          ,by_range
-      FROM exchange_tables
-     WHERE NOT finished
-       AND partitioned
-       AND action='foreign'
-     ORDER BY table_serial_id ASC;
-DECLARE
-  tm CURSOR FOR
-    SELECT table_serial_id
-          ,name
-          ,action
-          ,by_range
-      FROM exchange_tables
-     WHERE NOT finished
-       AND partitioned
-       AND action='master'
      ORDER BY table_serial_id ASC;
 BEGIN
-
-  -- run create/alter/drop actions
   FOR rec IN tc
   LOOP
-    -- First create the master table, either
-    -- completely unpartitioned, or with one
-    -- master and the 'default' partition
-    IF IS NULL num_partitions
+    CASE rec.action
+    -- "create" actions apply to master and partitions
+    WHEN "create"
     THEN
-      -- No partitions at all.
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
-        ,rec.action
-        ,rec.name
-        ,NULL
-      );
-    ELSE
-      -- One default partition only.
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
-        ,rec.action
-        ,rec.name
-        ,0
-      );
-
-    IF NOT IS NULL num_partitions
-    THEN
-      IF rec.by_range
+      IF (rec.partitioned AND
+          (num_partitions IS NOT NULL))
       THEN
-        -- range partitions (only create default)
-        -- Create default partition.
+        -- Create master table with partitioning.
         EXECUTE FORMAT(
-           'CREATE TABLE %s_default PARTITION OF %s DEFAULT'
+          'PERFORM %s_table_%s (%s)'::text
+          ,rec.action
           ,rec.name
-          ,rec.name
+          ,0
         );
-      ELSE
-        -- hash partitions
-        IF 0=num_partitions
+        IF (rec.by_range OR
+            (num_partitions = 0))
         THEN
           -- Create default partition.
-          EXECUTE FORMAT(
-             'CREATE TABLE IF NOT EXISTS %s_default PARTITION OF %s FOR VALUES WITH (MODULUS 1, REMAINDER 0)'
-            ,rec.name
-            ,rec.name
-          );
-        END IF
-        FOR i IN 1..num_partitions LOOP
-          -- Create num_partitions
-          EXECUTE FORMAT(
-             'CREATE TABLE IF NOT EXISTS %I'
-             ' PARTITION OF %I'
-             ' FOR VALUES WITH (MODULUS %s, REMAINDER %s)'
-            ,rec.name || '_' || i
-            ,rec.name
-            ,num_partitions
-            ,i-1
-          );
-        END LOOP;
+          IF (rec.by_range)
+          THEN
+            -- Range partition
+            EXECUTE FORMAT(
+              'CREATE TABLE IF NOT EXISTS %s_default'
+              ' PARTITION OF %s'
+              ' FOR DEFAULT'
+             ,rec.name
+             ,rec.name
+            );
+          ELSE
+            -- Hash partition
+            EXECUTE FORMAT(
+              'CREATE TABLE IF NOT EXISTS %s_default'
+              ' PARTITION OF %s'
+              ' FOR VALUES WITH (MODULUS 1, REMAINDER 0)'
+             ,rec.name
+             ,rec.name
+            );
+          END IF;
+        ELSE
+          FOR i IN 1..num_partitions LOOP
+            -- Create num_partitions
+            EXECUTE FORMAT(
+               'CREATE TABLE IF NOT EXISTS %I'
+               ' PARTITION OF %I'
+               ' FOR VALUES WITH (MODULUS %s, REMAINDER %s)'
+              ,rec.name || '_' || i
+              ,rec.name
+              ,num_partitions
+              ,i-1
+            );
+          END LOOP;
+        END IF;
+      ELSE
+        -- Only create master table. No partitions.
+        EXECUTE FORMAT(
+          'PERFORM %s_table_%s (%s)'::text
+          ,rec.action
+          ,rec.name
+          ,NULL
+        );
       END IF;
-    END IF;
+    -- Constrain action apply to master OR each partition
+    WHEN "constrain"
+    THEN
+      ASSERT rec.partitioned, 'constrain action only applies to partitioned tables';
+      IF (num_partitions IS NULL)
+      THEN
+        -- Constrain master table
+        EXECUTE FORMAT(
+          'PERFORM %s_table_%s (%s)'::text
+          ,rec.action
+          ,rec.name
+          ,NULL
+        );
+      ELSE
+        IF (num_partitions = 0)
+        THEN
+          -- Constrain default table
+          EXECUTE FORMAT(
+            'PERFORM %s_table_%s (%s)'::text
+            ,rec.action
+            ,rec.name
+            ,'default'
+          );
+        ELSE
+          -- Constrain each partition
+          FOR i IN 1..num_partitions LOOP
+            EXECUTE FORMAT(
+              'PERFORM %s_table_%s (%s)'::text
+              ,rec.action
+              ,rec.name
+              ,i
+            );
+          END LOOP;
+        END IF;
+      END IF;
+    -- Foreign actions only apply if partitioning is off
+    WHEN "foreign"
+    THEN
+      IF (num_partitions IS NULL)
+      THEN
+        -- Only create master table. No partitions.
+        EXECUTE FORMAT(
+          'PERFORM %s_table_%s (%s)'::text
+          ,rec.action
+          ,rec.name
+          ,NULL
+        );
+      END IF;
+    WHEN "master"
+    THEN
+      EXECUTE FORMAT(
+        'PERFORM %s_table_%s'::text
+        ,rec.action
+        ,rec.name
+      );
+    ELSE
+      ASSERT FALSE, 'unsupported action type: ' || rec.action;
+    END CASE;  -- END CASE (rec.action)
+    -- Mark as finished
     UPDATE exchange_tables
        SET finished=TRUE
      WHERE table_serial_id=rec.table_serial_id;
   END LOOP; -- create/alter/drop actions
-
-  -- Run constrain actions
-  FOR rec IN ta
-  LOOP
-    IF IS NULL num_partitions
-    THEN
-      -- Constrain master
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
-        ,rec.action
-        ,rec.name
-        ,NULL
-      );
-    END IF
-
-    IF 0=num_partitions
-    THEN
-      -- constrain default partition
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
-        ,rec.action
-        ,rec.name
-        ,0
-      );
-    END IF
-    FOR i IN 1..num_partitions LOOP
-      -- constrain each partition
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s (%s)'::text
-        ,rec.action
-        ,rec.name
-        ,i::varchar
-      );
-    END LOOP;
-    UPDATE exchange_tables
-       SET finished=TRUE
-     WHERE table_serial_id=rec.table_serial_id;
-  END LOOP;
-
-  -- run foreign actions
-  FOR rec IN tf
-  LOOP
-    IF IS NULL num_partitions
-    THEN
-      -- Add foreign constraints
-      EXECUTE FORMAT(
-        'PERFORM %s_table_%s ()'::text
-        ,rec.action
-        ,rec.name
-      );
-    END IF
-    UPDATE exchange_tables
-       SET finished=TRUE
-     WHERE table_serial_id=rec.table_serial_id;
-  END LOOP;
-
-END
-$$;
+END $$;
 
 COMMENT ON FUNCTION create_tables
-  IS 'Creates all tables for the given number of partitions that need creating.';
+  IS 'Creates all tables for the given number of partitions that need creating. Does NOT support sharding.';
+
+
+COMMIT;

@@ -15,7 +15,7 @@
 --
 
 CREATE FUNCTION create_table_wads_in(
-  IN shard_suffix VARCHAR DEFAULT NULL
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -35,36 +35,36 @@ BEGIN
      ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (wad_id)'
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_table(
      'Incoming exchange-to-exchange wad wire transfers'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Unique identifier of the wad, part of the wire transfer subject'
     ,'wad_id'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Base URL of the originating URL, also part of the wire transfer subject'
     ,'origin_exchange_url'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Actual amount that was received by our exchange'
     ,'amount_val'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
   PERFORM comment_partitioned_column(
      'Time when the wad was received'
     ,'arrival_time'
     ,table_name
-    ,shard_suffix
+    ,partition_suffix
   );
 END $$;
 

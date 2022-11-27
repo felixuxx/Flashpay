@@ -49,7 +49,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_table(
-    'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
+    'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).'
     ,table_name
     ,partition_suffix
   );

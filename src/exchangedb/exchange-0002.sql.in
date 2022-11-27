@@ -14,14 +14,9 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
--- Everything in one big transaction
 BEGIN;
 
--- Check patch versioning is in place.
 SELECT _v.register_patch('exchange-0002', NULL, NULL);
-
--------------------- Schema ----------------------------
-
 SET search_path TO exchange;
 
 #include "0002-denominations.sql"
