@@ -60,7 +60,7 @@
 #include <pthread.h>
 #include <libpq-fe.h>
 
-/**WHAT I ADD**/
+/**NEW INCLUDES**/
 #include "pg_insert_purse_request.h"
 #include "pg_iterate_active_signkeys.h"
 #include "pg_preflight.h"
@@ -483,81 +483,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   }
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
-  plugin->get_policy_details = &postgres_get_policy_details;
-  plugin->add_policy_fulfillment_proof = &postgres_add_policy_fulfillment_proof;
-  plugin->do_melt = &postgres_do_melt;
-  plugin->do_refund = &postgres_do_refund;
-  plugin->do_recoup = &postgres_do_recoup;
-  plugin->do_recoup_refresh = &postgres_do_recoup_refresh;
-  plugin->get_reserve_balance = &postgres_get_reserve_balance;
-  plugin->count_known_coins = &postgres_count_known_coins;
-  plugin->ensure_coin_known = &postgres_ensure_coin_known;
-  plugin->get_known_coin = &postgres_get_known_coin;
-  plugin->get_coin_denomination = &postgres_get_coin_denomination;
-  plugin->have_deposit2 = &postgres_have_deposit2;
-  plugin->aggregate = &postgres_aggregate;
-  plugin->create_aggregation_transient
-    = &postgres_create_aggregation_transient;
-  plugin->select_aggregation_transient
-    = &postgres_select_aggregation_transient;
-  plugin->find_aggregation_transient
-    = &postgres_find_aggregation_transient;
-  plugin->update_aggregation_transient
-    = &postgres_update_aggregation_transient;
-  plugin->get_ready_deposit = &postgres_get_ready_deposit;
-  plugin->insert_deposit = &postgres_insert_deposit;
-  plugin->insert_refund = &postgres_insert_refund;
-  plugin->select_refunds_by_coin = &postgres_select_refunds_by_coin;
-  plugin->get_melt = &postgres_get_melt;
-  plugin->insert_refresh_reveal = &postgres_insert_refresh_reveal;
-  plugin->get_refresh_reveal = &postgres_get_refresh_reveal;
-  plugin->lookup_wire_transfer = &postgres_lookup_wire_transfer;
-  plugin->lookup_transfer_by_deposit = &postgres_lookup_transfer_by_deposit;
-  plugin->insert_wire_fee = &postgres_insert_wire_fee;
-  plugin->insert_global_fee = &postgres_insert_global_fee;
-  plugin->get_wire_fee = &postgres_get_wire_fee;
-  plugin->get_global_fee = &postgres_get_global_fee;
-  plugin->get_global_fees = &postgres_get_global_fees;
-  plugin->insert_reserve_closed = &postgres_insert_reserve_closed;
-  plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
-  plugin->wire_prepare_data_mark_finished =
-    &postgres_wire_prepare_data_mark_finished;
-  plugin->wire_prepare_data_mark_failed =
-    &postgres_wire_prepare_data_mark_failed;
-  plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
-  plugin->start_deferred_wire_out = &postgres_start_deferred_wire_out;
-  plugin->store_wire_transfer_out = &postgres_store_wire_transfer_out;
-  plugin->gc = &postgres_gc;
-
-  plugin->select_deposits_above_serial_id
-    = &postgres_select_deposits_above_serial_id;
-  plugin->select_history_requests_above_serial_id
-    = &postgres_select_history_requests_above_serial_id;
-  plugin->select_purse_decisions_above_serial_id
-    = &postgres_select_purse_decisions_above_serial_id;
-  plugin->select_purse_deposits_by_purse
-    = &postgres_select_purse_deposits_by_purse;
-  plugin->select_refreshes_above_serial_id
-    = &postgres_select_refreshes_above_serial_id;
-  plugin->select_refunds_above_serial_id
-    = &postgres_select_refunds_above_serial_id;
-  plugin->select_reserves_in_above_serial_id
-    = &postgres_select_reserves_in_above_serial_id;
-  plugin->select_reserves_in_above_serial_id_by_account
-    = &postgres_select_reserves_in_above_serial_id_by_account;
-  plugin->select_withdrawals_above_serial_id
-    = &postgres_select_withdrawals_above_serial_id;
-  plugin->select_wire_out_above_serial_id
-    = &postgres_select_wire_out_above_serial_id;
-  plugin->select_wire_out_above_serial_id_by_account
-    = &postgres_select_wire_out_above_serial_id_by_account;
-  plugin->select_recoup_above_serial_id
-    = &postgres_select_recoup_above_serial_id;
-  plugin->select_recoup_refresh_above_serial_id
-    = &postgres_select_recoup_refresh_above_serial_id;
-  plugin->get_reserve_by_h_blind
-    = &postgres_get_reserve_by_h_blind;
-
   /* New style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;

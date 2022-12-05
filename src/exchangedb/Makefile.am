@@ -291,7 +291,6 @@ TESTS = \
   test-exchangedb-batch-reserves-in-insert-postgres
 
 
-
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \

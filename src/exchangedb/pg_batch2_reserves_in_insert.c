@@ -65,11 +65,15 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid;
   bool conflicted;
+  bool conflicted2;
   bool transaction_duplicate;
+  bool transaction_duplicate2;
   bool need_update = false;
+  bool need_update2 = false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   bool conflicts[reserves_length];
+  bool conflicts2[reserves_length];
   char *notify_s[reserves_length];
 
   if (GNUNET_OK !=
@@ -82,10 +86,12 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
            "reserve_create",
            "SELECT "
            "out_reserve_found AS conflicted"
+           ",out_reserve_found2 AS conflicted2"
            ",transaction_duplicate"
+           ",transaction_duplicate2"
            ",ruuid AS reserve_uuid"
            " FROM batch2_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
                               pg->idle_reserve_expiration_time));
@@ -134,15 +140,21 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_string (notify_s[i]),
       GNUNET_PQ_query_param_auto_from_type (&reserve->reserve_pub),
+      GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
       TALER_PQ_query_param_amount (&reserve->balance),
-      GNUNET_PQ_query_param_timestamp (&expiry),
-      GNUNET_PQ_query_param_timestamp (&gc),
+      GNUNET_PQ_query_param_string (reserve->exchange_account_name),
+      GNUNET_PQ_query_param_timestamp (&reserve->execution_time),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
+      GNUNET_PQ_query_param_string (reserve->sender_account_details),
+      GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_end
     };
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_bool ("conflicted",
                                   &conflicted),
+            GNUNET_PQ_result_spec_bool ("conflicted2",
+                                  &conflicted2),
       GNUNET_PQ_result_spec_bool ("transaction_duplicate",
                                   &transaction_duplicate),
       GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
@@ -171,14 +183,15 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
    conflicts[i] = conflicted;
-   //   fprintf(stdout, "%d", conflicts[i]);
-   if (!conflicts[i] && transaction_duplicate)
+   conflicts2[i] = conflicted2;
+   //  fprintf(stdout, "%d", conflicts[i]);
+   if (!conflicts[i] && !conflicts2[i]&& transaction_duplicate)
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
-   need_update |= conflicted;
+   need_update |= conflicted |= conflicted2;
   }
   // commit
   {
