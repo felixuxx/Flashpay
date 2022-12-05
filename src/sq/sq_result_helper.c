@@ -23,7 +23,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_sq_lib.h>
 #include "taler_sq_lib.h"
-#include "taler_amount_lib.h"
+#include "taler_util.h"
 
 
 /**

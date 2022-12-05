@@ -28,7 +28,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_templating_lib.h"
-#include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_kyclogic_plugin.h"
 #include <gnunet/gnunet_mhd_compat.h>

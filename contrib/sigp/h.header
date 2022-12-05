@@ -27,6 +27,5 @@
 #ifndef TALER_SIGNATURES_H
 #define TALER_SIGNATURES_H
 
-#include <gnunet/gnunet_util_lib.h>
-#include "taler_amount_lib.h"
-#include "taler_crypto_lib.h"
+
+

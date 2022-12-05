@@ -19,6 +19,10 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff <christian@grothoff.org>
  */
+#if ! defined (__TALER_UTIL_LIB_H_INSIDE__)
+#error "Only <taler_util.h> can be included directly."
+#endif
+
 #ifndef TALER_CRYPTO_LIB_H
 #define TALER_CRYPTO_LIB_H
 

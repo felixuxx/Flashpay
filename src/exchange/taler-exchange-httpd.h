@@ -25,7 +25,7 @@
 
 #include <microhttpd.h>
 #include "taler_json_lib.h"
-#include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_kyclogic_plugin.h"
 #include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>

@@ -21,6 +21,8 @@
 #ifndef TALER_UTIL_H
 #define TALER_UTIL_H
 
+#define __TALER_UTIL_LIB_H_INSIDE__
+
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
 #include "taler_amount_lib.h"
@@ -550,5 +552,7 @@ TALER_age_mask_to_string (
 enum GNUNET_GenericReturnValue
 TALER_JSON_parse_age_groups (const json_t *root,
                              struct TALER_AgeMask *mask);
+
+#undef __TALER_UTIL_LIB_H_INSIDE__
 
 #endif

@@ -18,6 +18,10 @@
  * @brief amount-representation utility functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  */
+#if ! defined (__TALER_UTIL_LIB_H_INSIDE__)
+#error "Only <taler_util.h> can be included directly."
+#endif
+
 #ifndef TALER_AMOUNT_LIB_H
 #define TALER_AMOUNT_LIB_H
 

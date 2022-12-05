@@ -22,7 +22,7 @@
 #define TALER_EXTENSIONS_H
 
 #include <gnunet/gnunet_util_lib.h>
-#include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_extensions_policy.h"

@@ -26,7 +26,7 @@
 #include "exchange_api_curl_defaults.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
-#include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_json_lib.h"
 
 /**
