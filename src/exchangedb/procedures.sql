@@ -1557,7 +1557,14 @@ INSERT INTO purse_decision
 VALUES
   (in_purse_pub
   ,in_now
-  ,FALSE);
+  ,FALSE)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  out_conflict=TRUE;
+  RETURN;
+END IF;
 
 IF (my_in_reserve_quota)
 THEN

@@ -1171,9 +1171,8 @@ TALER_EXCHANGE_batch_deposit (
  * @param deposit the batch deposit permission request handle
  */
 void
-TALER_EXCHANGE_batch_deposit_force_dc (struct
-                                       TALER_EXCHANGE_BatchDepositHandle *
-                                       deposit);
+TALER_EXCHANGE_batch_deposit_force_dc (
+  struct TALER_EXCHANGE_BatchDepositHandle *deposit);
 
 
 /**
@@ -1183,8 +1182,8 @@ TALER_EXCHANGE_batch_deposit_force_dc (struct
  * @param deposit the deposit permission request handle
  */
 void
-TALER_EXCHANGE_batch_deposit_cancel (struct
-                                     TALER_EXCHANGE_BatchDepositHandle *deposit);
+TALER_EXCHANGE_batch_deposit_cancel (
+  struct TALER_EXCHANGE_BatchDepositHandle *deposit);
 
 
 /* *********************  /coins/$COIN_PUB/refund *********************** */
@@ -1241,15 +1240,15 @@ typedef void
  *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_RefundHandle *
-TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
-                       const struct TALER_Amount *amount,
-                       const struct
-                       TALER_PrivateContractHashP *h_contract_terms,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       uint64_t rtransaction_id,
-                       const struct TALER_MerchantPrivateKeyP *merchant_priv,
-                       TALER_EXCHANGE_RefundCallback cb,
-                       void *cb_cls);
+TALER_EXCHANGE_refund (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_Amount *amount,
+  const struct TALER_PrivateContractHashP *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  uint64_t rtransaction_id,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  TALER_EXCHANGE_RefundCallback cb,
+  void *cb_cls);
 
 
 /**

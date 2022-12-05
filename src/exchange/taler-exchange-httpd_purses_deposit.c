@@ -185,13 +185,14 @@ deposit_transaction (void *cls,
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
         return qs;
+      GNUNET_break (0 != qs);
       TALER_LOG_WARNING (
         "Failed to store purse deposit information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_STORE_FAILED,
                                              "do purse deposit");
-      return qs;
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (! balance_ok)
     {
@@ -203,6 +204,9 @@ deposit_transaction (void *cls,
             &coin->cpi.coin_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+    // FIXME: there is also a 'conflict' case where the purse was already
+    // decided (fully paid up OR expired), we should probably distinguish
+    // those better!
     if (conflict)
     {
       struct TALER_Amount amount;
