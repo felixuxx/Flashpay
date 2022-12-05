@@ -63,6 +63,13 @@ AS_IF([test "x$doc_only" != xyes],[
 # Force some CFLAGS
 CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 
+TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
+TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
+
+AC_SUBST(TALER_LIB_LDFLAGS)
+AC_SUBST(TALER_PLUGIN_LDFLAGS)
+
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h sys/socket.h sys/un.h netinet/in.h netinet/ip.h])
 
@@ -74,6 +81,7 @@ need_libgcrypt_version=1.6.1
 AC_DEFINE_UNQUOTED([NEED_LIBGCRYPT_VERSION], ["$need_libgcrypt_version"],
                                              [minimum version of libgcrypt required])
 AM_PATH_LIBGCRYPT([$need_libgcrypt_version])
+
 
 
 # should expensive tests be run?
@@ -133,20 +141,12 @@ AS_CASE([$with_gnunet],
         [no], [AC_MSG_ERROR([--with-gnunet is required])],
         [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
          CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
-AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_util_lib.h],
- [AC_CHECK_LIB([gnunetutil], [GNUNET_SCHEDULER_run], libgnunetutil=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif
-        #include <gnunet/gnunet_common.h>
-       #if GNUNET_UTIL_VERSION < 0x00A0104
-        #fail libgnunetutil is too old
-       #endif])
+AC_CHECK_HEADERS([gnunet/gnunet_util_lib.h],
+ [AC_CHECK_LIB([gnunetutil], [GNUNET_SCHEDULER_run], libgnunetutil=1)])
 AS_IF([test $libgnunetutil != 1],
   [AC_MSG_ERROR([[
 ***
-*** You need libgnunetutil > 0.14.0 to build this program.
-*** (Yes, ">", libgnunetutil 0.14.0 is NOT enough.)
+*** You need libgnunetutil >= 0.19.0 to build this program.
 *** This library is part of GNUnet, available at
 ***   https://gnunet.org
 *** ]])])
@@ -165,11 +165,8 @@ AS_CASE([$with_gnunet],
         [no], [AC_MSG_ERROR([--with-gnunet is required])],
         [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
          CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
-AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_json_lib.h],
- [AC_CHECK_LIB([gnunetjson], [GNUNET_JSON_parse], libgnunetjson=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
+AC_CHECK_HEADERS([gnunet/gnunet_json_lib.h],
+ [AC_CHECK_LIB([gnunetjson], [GNUNET_JSON_parse], libgnunetjson=1)])
 AS_IF([test $libgnunetjson != 1],
   [AC_MSG_ERROR([[
 ***
@@ -231,11 +228,8 @@ AS_CASE([$with_gnunet],
         [no], [AC_MSG_ERROR([--with-gnunet is required])],
         [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
          CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
-AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_curl_lib.h],
- [AC_CHECK_LIB([gnunetcurl], [GNUNET_CURL_get_select_info], libgnunetcurl=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
+AC_CHECK_HEADERS([gnunet/gnunet_curl_lib.h],
+ [AC_CHECK_LIB([gnunetcurl], [GNUNET_CURL_get_select_info], libgnunetcurl=1)])
 AS_IF([test $libgnunetcurl != 1],
   [AC_MSG_ERROR([[
 ***
@@ -250,6 +244,12 @@ CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
 
+# test for postgres
+AX_LIB_POSTGRESQL([13.0])
+AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
+
+AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
+
 # Check for GNUnet's libgnunetpq.
 libgnunetpq=0
 AC_MSG_CHECKING([for libgnunetpq])
@@ -262,12 +262,9 @@ AS_CASE([$with_gnunet],
         [yes], [],
         [no], [AC_MSG_ERROR([--with-gnunet is required])],
         [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
-         CPPFLAGS="-I$with_gnunet/include $CPPFLAGS"])
-AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_pq_lib.h],
- [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_result_spec_string], libgnunetpq=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
+         CPPFLAGS="-I$with_gnunet/include ${CPPFLAGS} ${POSTGRESQL_CPPFLAGS}"])
+AC_CHECK_HEADERS([gnunet/gnunet_pq_lib.h],
+ [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_result_spec_string], libgnunetpq=1)])
 AS_IF([test $libgnunetpq != 1],
   [AC_MSG_ERROR([[
 ***
@@ -277,15 +274,15 @@ AS_IF([test $libgnunetpq != 1],
 *** is recent!)
 *** ]])])
 
+CFLAGS_SAVE=$CFLAGS
+LDFLAGS_SAVE=$LDFLAGS
+LIBS_SAVE="$LIBS"
 
 # Check for GNUnet's libgnunetsq
 libgnunetsq=0
 AC_MSG_CHECKING([for libgnunetsq])
 AC_CHECK_HEADERS([gnunet/gnunet_sq_lib.h],
- [AC_CHECK_LIB([gnunetsq], [GNUNET_SQ_result_spec_string], libgnunetsq=1)],
-  [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
+ [AC_CHECK_LIB([gnunetsq], [GNUNET_SQ_result_spec_string], libgnunetsq=1)])
 
 
 # check for libmicrohttpd
@@ -324,22 +321,6 @@ AS_IF([test $jansson = 0],
 *** ]])])
 
 
-# test for postgres
-AX_LIB_POSTGRESQL([13.0])
-AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
-
-TALER_LIB_LDFLAGS="-export-dynamic -no-undefined"
-TALER_PLUGIN_LDFLAGS="-export-dynamic -avoid-version -module -no-undefined"
-
-AC_SUBST(TALER_LIB_LDFLAGS)
-AC_SUBST(TALER_PLUGIN_LDFLAGS)
-
-CFLAGS_SAVE=$CFLAGS
-LDFLAGS_SAVE=$LDFLAGS
-LIBS_SAVE="$LIBS"
-
-
-AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 
 CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
@@ -389,10 +370,7 @@ AS_CASE([$with_twister],
          CPPFLAGS="-I$with_twister/include $CPPFLAGS"])
 
 AC_CHECK_HEADERS([taler/taler_twister_service.h],
- [AC_CHECK_LIB([talertwister], [TALER_TWISTER_connect], talertwister=1)],
-   [], [#ifdef HAVE_GNUNET_PLATFORM_H
-        #include <gnunet/platform.h>
-       #endif])
+ [AC_CHECK_LIB([talertwister], [TALER_TWISTER_connect], talertwister=1)])
 AM_CONDITIONAL(HAVE_TWISTER, test x$talertwister = x1)
 
 # should developer logic be compiled (not-for-production code)?

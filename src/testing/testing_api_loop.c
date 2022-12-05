@@ -827,7 +827,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   sigpipe = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install (
-    GNUNET_SIGCHLD,
+    SIGCHLD,
     &sighandler_child_death);
   is.ctx = GNUNET_CURL_init (
     &GNUNET_CURL_gnunet_scheduler_reschedule,
