@@ -3192,11 +3192,13 @@ TALER_wallet_reserve_close_verify (
  * Sign a request by a wallet to perform a KYC check.
  *
  * @param reserve_priv key identifying the wallet/account
+ * @param balance_threshold the balance threshold the wallet is about to cross
  * @param[out] reserve_sig resulting signature
  */
 void
 TALER_wallet_account_setup_sign (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_Amount *balance_threshold,
   struct TALER_ReserveSignatureP *reserve_sig);
 
 
@@ -3204,12 +3206,14 @@ TALER_wallet_account_setup_sign (
  * Verify account setup request.
  *
  * @param reserve_pub reserve the setup request was for
+ * @param balance_threshold the balance threshold the wallet is about to cross
  * @param reserve_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_account_setup_verify (
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *balance_threshold,
   const struct TALER_ReserveSignatureP *reserve_sig);
 
 

@@ -604,42 +604,75 @@ TALER_wallet_withdraw_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+
+/**
+ * @brief Format used for to generate the signature on a request to withdraw
+ * coins from a reserve.
+ */
+struct TALER_AccountSetupRequestSignaturePS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_WALLET_ACCOUNT_SETUP.
+   * Used with an EdDSA signature of a `struct TALER_ReservePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Balance threshold the wallet is about to cross.
+   */
+  struct TALER_AmountNBO threshold;
+
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
 void
 TALER_wallet_account_setup_sign (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_Amount *balance_threshold,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
+  struct TALER_AccountSetupRequestSignaturePS asap = {
+    .purpose.size = htonl (sizeof (asap)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
   };
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
-                                            &purpose,
-                                            &reserve_sig->eddsa_signature));
+  TALER_amount_hton (&asap.threshold,
+                     balance_threshold);
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &asap,
+                            &reserve_sig->eddsa_signature);
 }
 
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_account_setup_verify (
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_Amount *balance_threshold,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
+  struct TALER_AccountSetupRequestSignaturePS asap = {
+    .purpose.size = htonl (sizeof (asap)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
   };
 
-  return GNUNET_CRYPTO_eddsa_verify_ (
+  TALER_amount_hton (&asap.threshold,
+                     balance_threshold);
+  return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_WALLET_ACCOUNT_SETUP,
-    &purpose,
+    &asap,
     &reserve_sig->eddsa_signature,
     &reserve_pub->eddsa_pub);
 }
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
+
 
 /**
  * Response by which a wallet requests a full

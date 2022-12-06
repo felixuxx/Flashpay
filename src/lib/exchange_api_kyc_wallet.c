@@ -170,6 +170,7 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &reserve_pub.eddsa_pub);
   TALER_wallet_account_setup_sign (reserve_priv,
+                                   balance,
                                    &reserve_sig);
   req = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("balance",

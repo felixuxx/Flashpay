@@ -164,8 +164,6 @@ TEH_handler_kyc_wallet (
                                  &reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                  &reserve_pub),
-    // FIXME: add balance threshold crossed to the request
-    // to spec and client API!
     TALER_JSON_spec_amount ("balance",
                             TEH_currency,
                             &krc.balance),
@@ -184,10 +182,9 @@ TEH_handler_kyc_wallet (
     return MHD_YES;   /* failure */
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
-  // FIXME: add balance threshold crossed to
-  // what the wallet signs over!
   if (GNUNET_OK !=
       TALER_wallet_account_setup_verify (&reserve_pub,
+                                         &krc.balance,
                                          &reserve_sig))
   {
     GNUNET_break_op (0);
