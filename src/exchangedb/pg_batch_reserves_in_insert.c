@@ -169,7 +169,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
    conflicts[i] = conflicted;
-   //   fprintf(stdout, "%d", conflicts[i]);
+   //  fprintf(stdout, "%d", conflicts[i]);
    if (!conflicts[i] && transaction_duplicate)
    {
      GNUNET_break (0);

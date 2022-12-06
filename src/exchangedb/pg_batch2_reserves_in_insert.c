@@ -64,6 +64,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   struct GNUNET_TIME_Timestamp gc;
   struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid;
+  uint64_t reserve_uuid2;
   bool conflicted;
   bool conflicted2;
   bool transaction_duplicate;
@@ -90,6 +91,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
            ",transaction_duplicate"
            ",transaction_duplicate2"
            ",ruuid AS reserve_uuid"
+           ",ruuid2 AS reserve_uuid2"
            " FROM batch2_reserves_insert"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
@@ -124,45 +126,53 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
     notify_s[i] = compute_notify_on_reserve (&reserve->reserve_pub);
   }
 
-  for (unsigned int i=0;i<reserves_length;i++)
+  for (unsigned int i=0;i<(reserves_length & ~1);i+=2)
   {
-    const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
+    const struct TALER_EXCHANGEDB_ReserveInInfo *reserve0 = &reserves[i];
+    const struct TALER_EXCHANGEDB_ReserveInInfo *reserve1 = &reserves[i+1];
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&reserve->reserve_pub),
+      GNUNET_PQ_query_param_auto_from_type (&reserve0->reserve_pub),
       GNUNET_PQ_query_param_timestamp (&expiry),
       GNUNET_PQ_query_param_timestamp (&gc),
-      GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
-      TALER_PQ_query_param_amount (&reserve->balance),
-      GNUNET_PQ_query_param_string (reserve->exchange_account_name),
-      GNUNET_PQ_query_param_timestamp (&reserve->execution_time),
+      GNUNET_PQ_query_param_uint64 (&reserve0->wire_reference),
+      TALER_PQ_query_param_amount (&reserve0->balance),
+      GNUNET_PQ_query_param_string (reserve0->exchange_account_name),
+      GNUNET_PQ_query_param_timestamp (&reserve0->execution_time),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      GNUNET_PQ_query_param_string (reserve->sender_account_details),
+      GNUNET_PQ_query_param_string (reserve0->sender_account_details),
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_string (notify_s[i]),
-      GNUNET_PQ_query_param_auto_from_type (&reserve->reserve_pub),
-      GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
-      TALER_PQ_query_param_amount (&reserve->balance),
-      GNUNET_PQ_query_param_string (reserve->exchange_account_name),
-      GNUNET_PQ_query_param_timestamp (&reserve->execution_time),
+      GNUNET_PQ_query_param_auto_from_type (&reserve1->reserve_pub),
+      GNUNET_PQ_query_param_uint64 (&reserve1->wire_reference),
+      TALER_PQ_query_param_amount (&reserve1->balance),
+      GNUNET_PQ_query_param_string (reserve1->exchange_account_name),
+      GNUNET_PQ_query_param_timestamp (&reserve1->execution_time),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      GNUNET_PQ_query_param_string (reserve->sender_account_details),
+      GNUNET_PQ_query_param_string (reserve1->sender_account_details),
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
       GNUNET_PQ_query_param_end
     };
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_bool ("conflicted",
                                   &conflicted),
-            GNUNET_PQ_result_spec_bool ("conflicted2",
+      GNUNET_PQ_result_spec_bool ("conflicted2",
                                   &conflicted2),
       GNUNET_PQ_result_spec_bool ("transaction_duplicate",
                                   &transaction_duplicate),
+      GNUNET_PQ_result_spec_bool ("transaction_duplicate2",
+                                  &transaction_duplicate2),
       GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
                                     &reserve_uuid),
+      GNUNET_PQ_result_spec_uint64 ("reserve_uuid2",
+                                    &reserve_uuid2),
       GNUNET_PQ_result_spec_end
     };
 
-    TALER_payto_hash (reserve->sender_account_details,
+    TALER_payto_hash (reserve0->sender_account_details,
+                      &h_payto);
+    TALER_payto_hash (reserve1->sender_account_details,
                       &h_payto);
 
     /* Note: query uses 'on conflict do nothing' */
@@ -178,14 +188,20 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                   qs1);
       return qs1;
     }
+    if (reserves_length & 1)
+    {
+      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[reserves_length-1];
+      // single insert logic here
+    }
    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
    results[i] = (transaction_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
    conflicts[i] = conflicted;
    conflicts2[i] = conflicted2;
-   //  fprintf(stdout, "%d", conflicts[i]);
-   if (!conflicts[i] && !conflicts2[i]&& transaction_duplicate)
+   //    fprintf(stdout, "%d", conflicts[i]);
+   // fprintf(stdout, "%d", conflicts2[i]);
+   if ((!conflicts[i] && transaction_duplicate) ||(!conflicts2[i] && transaction_duplicate2))
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
