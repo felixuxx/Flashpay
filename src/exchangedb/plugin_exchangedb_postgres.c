@@ -249,8 +249,6 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM wire_targets"
       " WHERE wire_target_h_payto=$1"
       " LIMIT 1;"),
-
-
     /* Used in #postgres_ensure_coin_known() */
     GNUNET_PQ_make_prepare (
       "get_known_coin_dh",
@@ -289,12 +287,6 @@ prepare_statements (struct PostgresClosure *pg)
       "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
       " WHERE ref.refund_serial_id=$1"
       " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);"),
-    /* Used in #postgres_do_account_merge() */
-    GNUNET_PQ_make_prepare (
-      "call_account_merge",
-      "SELECT 1"
-      " FROM exchange_do_account_merge"
-      "  ($1, $2, $3);"),
     /* Used in #postgres_update_kyc_requirement_by_row() */
     GNUNET_PQ_make_prepare (
       "update_legitimization_process",
@@ -490,56 +482,6 @@ postgres_get_policy_details (
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_policy_details",
-                                                   params,
-                                                   rs);
-}
-
-
-/* Persist the details to a policy in the policy_details table.  If there
- * already exists a policy, update the fields accordingly.
- *
- * @param details The policy details that should be persisted.  If an entry for
- *        the given details->hash_code exists, the values will be updated.
- * @param[out] policy_details_serial_id The row ID of the policy details
- * @param[out] accumulated_total The total amount accumulated in that policy
- * @param[out] fulfillment_state The state of policy.  If the state was Insufficient prior to the call and the provided deposit raises the accumulated_total above the commitment, it will be set to Ready.
- * @return query execution status
- */
-static enum GNUNET_DB_QueryStatus
-postgres_persist_policy_details (
-  void *cls,
-  const struct TALER_PolicyDetails *details,
-  uint64_t *policy_details_serial_id,
-  struct TALER_Amount *accumulated_total,
-  enum TALER_PolicyFulfillmentState *fulfillment_state)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&details->hash_code),
-    TALER_PQ_query_param_json (details->policy_json),
-    GNUNET_PQ_query_param_timestamp (&details->deadline),
-    TALER_PQ_query_param_amount (&details->commitment),
-    TALER_PQ_query_param_amount (&details->accumulated_total),
-    TALER_PQ_query_param_amount (&details->policy_fee),
-    TALER_PQ_query_param_amount (&details->transferable_amount),
-    GNUNET_PQ_query_param_auto_from_type (&details->fulfillment_state),
-    (details->no_policy_fulfillment_id)
-     ?  GNUNET_PQ_query_param_null ()
-     : GNUNET_PQ_query_param_uint64 (&details->policy_fulfillment_id),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("policy_details_serial_id",
-                                  policy_details_serial_id),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("accumulated_total",
-                                 accumulated_total),
-    GNUNET_PQ_result_spec_uint32 ("fulfillment_state",
-                                  fulfillment_state),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "call_insert_or_update_policy_details",
                                                    params,
                                                    rs);
 }
@@ -5019,7 +4961,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
   plugin->get_policy_details = &postgres_get_policy_details;
-  plugin->persist_policy_details = &postgres_persist_policy_details;
   plugin->add_policy_fulfillment_proof = &postgres_add_policy_fulfillment_proof;
   plugin->do_melt = &postgres_do_melt;
   plugin->do_refund = &postgres_do_refund;

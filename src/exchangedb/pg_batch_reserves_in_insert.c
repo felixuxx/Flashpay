@@ -62,7 +62,8 @@ notify_on_reserve (struct PostgresClosure *pg,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_batch_reserves_in_insert (void *cls,
-                                 const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                                 const struct
+                                 TALER_EXCHANGEDB_ReserveInInfo *reserves,
                                  unsigned int reserves_length,
                                  enum GNUNET_DB_QueryStatus *results)
 {
@@ -83,7 +84,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
            "out_reserve_found AS conflicted"
            ",transaction_duplicate"
            ",ruuid AS reserve_uuid"
-           " FROM batch_reserves_in"
+           " FROM exchange_do_batch_reserves_in"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
@@ -101,7 +102,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
      time; we do this before adding the actual transaction to "reserves_in",
      as for a new reserve it can't be a duplicate 'add' operation, and as
      the 'add' operation needs the reserve entry as a foreign key. */
-  for (unsigned int i=0;i<reserves_length;i++)
+  for (unsigned int i = 0; i<reserves_length; i++)
   {
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
     struct GNUNET_PQ_QueryParam params[] = {
@@ -136,7 +137,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
                                                     params,
                                                     rs);
     if (qs1 < 0)
-      return qs1; 
+      return qs1;
     notify_on_reserve (pg,
                        &reserve->reserve_pub);
     GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
@@ -144,7 +145,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     if ( (! conflicted) && transaction_duplicate)
-      TEH_PG_rollback(pg);
+      TEH_PG_rollback (pg);
   }
   return reserves_length;
 }

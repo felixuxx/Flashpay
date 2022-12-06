@@ -1,0 +1,41 @@
+--
+-- This file is part of TALER
+-- Copyright (C) 2014--2022 Taler Systems SA
+--
+-- TALER is free software; you can redistribute it and/or modify it under the
+-- terms of the GNU General Public License as published by the Free Software
+-- Foundation; either version 3, or (at your option) any later version.
+--
+-- TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+-- A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License along with
+-- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+--
+
+BEGIN;
+
+SET search_path TO exchange;
+
+#include "exchange_do_withdraw.sql"
+#include "exchange_do_batch_withdraw.sql"
+#include "exchange_do_batch_withdraw_insert.sql"
+#include "exchange_do_recoup_by_reserve.sql"
+#include "exchange_do_deposit.sql"
+#include "exchange_do_melt.sql"
+#include "exchange_do_refund.sql"
+#include "exchange_do_recoup_to_reserve.sql"
+#include "exchange_do_recoup_to_coin.sql"
+#include "exchange_do_gc.sql"
+#include "exchange_do_purse_deposit.sql"
+#include "exchange_do_reserve_purse.sql"
+#include "exchange_do_expire_purse.sql"
+#include "exchange_do_history_request.sql"
+#include "exchange_do_reserve_open_deposit.sql"
+#include "exchange_do_reserve_open.sql"
+#include "exchange_do_insert_or_update_policy_details.sql"
+#include "exchange_do_batch_reserves_in.sql"
+
+
+COMMIT;

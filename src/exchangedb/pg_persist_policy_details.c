@@ -59,7 +59,7 @@ TEH_PG_persist_policy_details (
     GNUNET_PQ_result_spec_end
   };
 
-  
+  // FIXME: prepare missing!!?!
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_insert_or_update_policy_details",
                                                    params,
