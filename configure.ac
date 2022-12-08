@@ -246,9 +246,18 @@ LIBS=$LIBS_SAVE
 
 # test for postgres
 AX_LIB_POSTGRESQL([13.0])
-AS_IF([test "x$found_postgresql" = "xyes"],[postgres=true])
-
-AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
+AS_IF([test "x$found_postgresql" = "xyes"],
+  [SAVE_CPPFLAGS="$CPPFLAGS"
+   CPPFLAGS="$POSTGRES_CPPFLAGS $CPPFLAGS"
+   AC_CHECK_HEADERS([libpq-fe.h], [postgres=1], [postgres=0])])
+AS_IF([test "x$postgres" != "x1"],
+  [AC_MSG_ERROR([[
+***
+*** You need libpq(-dev) >= 13.0 to build this program.
+*** ]])])
+AM_CONDITIONAL([HAVE_POSTGRESQL], [test "x$postgres" = "x1"])
+AC_DEFINE_UNQUOTED([HAVE_POSTGRESQL], [$postgres],
+                   [Define to 1 if Postgres is available])
 
 # Check for GNUnet's libgnunetpq.
 libgnunetpq=0
