@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_batch_reserves_in_insert.c
+ * @file exchangedb/pg_batch4_reserves_in_insert.c
  * @brief Implementation of the reserves_in_insert function for Postgres
  * @author Joseph Xu
  */
@@ -33,7 +33,6 @@
 #include "pg_setup_wire_target.h"
 #include "pg_event_notify.h"
 #include "pg_preflight.h"
-
 
 /**
  * Generate event notification for the reserve change.
@@ -54,9 +53,8 @@ compute_notify_on_reserve (const struct TALER_ReservePublicKeyP *reserve_pub)
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_batch_reserves_in_insert (void *cls,
-                                 const struct
-                                 TALER_EXCHANGEDB_ReserveInInfo *reserves,
+TEH_PG_batch4_reserves_in_insert (void *cls,
+                                 const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
                                  unsigned int reserves_length,
                                  enum GNUNET_DB_QueryStatus *results)
 {
@@ -67,11 +65,15 @@ TEH_PG_batch_reserves_in_insert (void *cls,
   struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid;
   bool conflicted;
+  bool conflicted2;
   bool transaction_duplicate;
+  bool transaction_duplicate2;
   bool need_update = false;
+  bool need_update2 = false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   bool conflicts[reserves_length];
+  bool conflicts2[reserves_length];
   char *notify_s[reserves_length];
 
   if (GNUNET_OK !=
@@ -84,10 +86,12 @@ TEH_PG_batch_reserves_in_insert (void *cls,
            "reserve_create",
            "SELECT "
            "out_reserve_found AS conflicted"
+           ",out_reserve_found2 AS conflicted2"
            ",transaction_duplicate"
+           ",transaction_duplicate2"
            ",ruuid AS reserve_uuid"
-           " FROM batch_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);");
+           " FROM batch2_reserves_insert"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
                               pg->idle_reserve_expiration_time));
@@ -114,7 +118,7 @@ TEH_PG_batch_reserves_in_insert (void *cls,
      time; we do this before adding the actual transaction to "reserves_in",
      as for a new reserve it can't be a duplicate 'add' operation, and as
      the 'add' operation needs the reserve entry as a foreign key. */
-  for (unsigned int i = 0; i<reserves_length; i++)
+  for (unsigned int i=0;i<reserves_length;i++)
   {
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
     notify_s[i] = compute_notify_on_reserve (&reserve->reserve_pub);
@@ -135,12 +139,22 @@ TEH_PG_batch_reserves_in_insert (void *cls,
       GNUNET_PQ_query_param_string (reserve->sender_account_details),
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_string (notify_s[i]),
+      GNUNET_PQ_query_param_auto_from_type (&reserve->reserve_pub),
+      GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
+      TALER_PQ_query_param_amount (&reserve->balance),
+      GNUNET_PQ_query_param_string (reserve->exchange_account_name),
+      GNUNET_PQ_query_param_timestamp (&reserve->execution_time),
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
+      GNUNET_PQ_query_param_string (reserve->sender_account_details),
+      GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_end
     };
 
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_bool ("conflicted",
                                   &conflicted),
+            GNUNET_PQ_result_spec_bool ("conflicted2",
+                                  &conflicted2),
       GNUNET_PQ_result_spec_bool ("transaction_duplicate",
                                   &transaction_duplicate),
       GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
@@ -169,14 +183,15 @@ TEH_PG_batch_reserves_in_insert (void *cls,
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
    conflicts[i] = conflicted;
+   conflicts2[i] = conflicted2;
    //  fprintf(stdout, "%d", conflicts[i]);
-   if (!conflicts[i] && transaction_duplicate)
+   if (!conflicts[i] && !conflicts2[i]&& transaction_duplicate)
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
-   need_update |= conflicted;
+   need_update |= conflicted |= conflicted2;
   }
   // commit
   {

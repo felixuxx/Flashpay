@@ -243,6 +243,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
   pg_batch_reserves_in_insert.h pg_batch_reserves_in_insert.c \
+  pg_batch2_reserves_in_insert.h pg_batch2_reserves_in_insert.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
@@ -280,12 +281,16 @@ check_PROGRAMS = \
   test-exchangedb-postgres \
   bench-db-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
-  test-exchangedb-by-j-postgres
+  test-exchangedb-by-j-postgres\
+  test-exchangedb-batch-reserves-in-insert-postgres
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-postgres\
   test-exchangedb-by-j-postgres\
-  perf-exchangedb-reserves-in-insert-postgres
+  perf-exchangedb-reserves-in-insert-postgres\
+  test-exchangedb-batch-reserves-in-insert-postgres
+
+
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
@@ -332,6 +337,30 @@ bench_db_postgres_LDADD = \
   -lgnunetpq \
   -lgnunetutil \
   $(XLIB)
+
+
+test_exchangedb_batch_reserves_in_insert_postgres_SOURCES = \
+  test_exchangedb_batch_reserves_in_insert.c
+test_exchangedb_batch_reserves_in_insert_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  $(XLIB)
+
+bench_db_postgres_SOURCES = \
+  bench_db.c
+bench_db_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -lgnunetpq \
+  -lgnunetutil \
+  $(XLIB)
+
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la

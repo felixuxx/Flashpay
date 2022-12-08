@@ -138,15 +138,19 @@ TEH_PG_select_refunds_by_coin (
     // FIXME-Joseph
     PREPARE (pg,
              "get_refunds_by_coin_and_contract",
+             "WITH rc AS MATERIALIZED("
              "SELECT"
-             " ref.amount_with_fee_val"
-             ",ref.amount_with_fee_frac"
-             " FROM refunds ref"
-             " JOIN deposits dep"
-             "   USING (coin_pub,deposit_serial_id)"
-             " WHERE ref.coin_pub=$1"
-             "   AND dep.merchant_pub=$2"
-             "   AND dep.h_contract_terms=$3;");
+             " * FROM refunds ref"
+             "WHERE ref.coin_pub=$1"
+                "AND dep.merchant_pub=$2"
+                "AND dep.h_contract_terms=$3"
+             ")"
+             "SELECT"
+             "   ref.amount_with_fee_val"
+             "  ,ref.amount_with_fee_frac"
+             "FROM deposits dep"
+             "JOIN rc"
+             "   USING (coin_pub,deposit_serial_id)");
   }
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_refunds_by_coin_and_contract",
