@@ -414,7 +414,7 @@ handle_purse_deposit_finished (void *cls,
     } /* ec switch */
     break;
   case MHD_HTTP_GONE:
-    /* could happen if denomination was revoked */
+    /* could happen if denomination was revoked or purse expired */
     /* Note: one might want to check /keys for revocation
        signature here, alas tricky in case our /keys
        is outdated => left to clients */
