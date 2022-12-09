@@ -26,6 +26,7 @@ CREATE OR REPLACE FUNCTION exchange_do_purse_deposit(
   IN in_reserve_expiration INT8,
   IN in_now INT8,
   OUT out_balance_ok BOOLEAN,
+  OUT out_late BOOLEAN,
   OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
@@ -75,6 +76,7 @@ THEN
   THEN
     -- Deposit exists, but with differences. Not allowed.
     out_balance_ok=FALSE;
+    out_late=FALSE;
     out_conflict=TRUE;
     RETURN;
   END IF;
@@ -106,6 +108,7 @@ IF NOT FOUND
 THEN
   -- Insufficient balance.
   out_balance_ok=FALSE;
+  out_late=FALSE;
   out_conflict=FALSE;
   RETURN;
 END IF;
@@ -141,6 +144,8 @@ SELECT COALESCE(partner_serial_id,0)
 
 IF NOT FOUND
 THEN
+  -- Purse was not yet merged.  We are done.
+  out_late=FALSE;
   RETURN;
 END IF;
 
@@ -159,6 +164,7 @@ SELECT
          OR (amount_with_fee_val < balance_val) ) );
 IF NOT FOUND
 THEN
+  out_late=FALSE;
   RETURN;
 END IF;
 
@@ -175,9 +181,12 @@ ON CONFLICT DO NOTHING;
 
 IF NOT FOUND
 THEN
-  out_conflict=TRUE;
+  -- Purse already decided, likely expired.
+  out_late=TRUE;
   RETURN;
 END IF;
+
+out_late=FALSE;
 
 IF (my_in_reserve_quota)
 THEN
@@ -216,7 +225,7 @@ ELSE
 
   IF NOT FOUND
   THEN
-
+    -- Reserve existed, thus UPDATE instead of INSERT.
     UPDATE reserves
       SET
        current_balance_frac=current_balance_frac+my_amount_frac
@@ -240,5 +249,3 @@ END IF;
 
 
 END $$;
-
-

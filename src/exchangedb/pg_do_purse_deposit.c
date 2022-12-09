@@ -35,6 +35,7 @@ TEH_PG_do_purse_deposit (
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *amount_minus_fee,
   bool *balance_ok,
+  bool *too_late,
   bool *conflict)
 {
   struct PostgresClosure *pg = cls;
@@ -57,6 +58,8 @@ TEH_PG_do_purse_deposit (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("balance_ok",
                                 balance_ok),
+    GNUNET_PQ_result_spec_bool ("too_late",
+                                too_late),
     GNUNET_PQ_result_spec_bool ("conflict",
                                 conflict),
     GNUNET_PQ_result_spec_end
@@ -72,6 +75,7 @@ TEH_PG_do_purse_deposit (
            "SELECT "
            " out_balance_ok AS balance_ok"
            ",out_conflict AS conflict"
+           ",out_late AS too_late"
            " FROM exchange_do_purse_deposit"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
 

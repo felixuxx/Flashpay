@@ -43,6 +43,7 @@
  *        remaining balance is below @a amount;
  *             in this case, the return value will be
  *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
+ * @param[out] too_late set to true if it is too late to deposit into the purse
  * @param[out] conflict set to true if the deposit failed due to a conflict (coin already spent,
  *             or deposited into this purse with a different amount)
  * @return transaction status code
@@ -56,6 +57,7 @@ TEH_PG_do_purse_deposit (
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_Amount *amount_minus_fee,
   bool *balance_ok,
+  bool *too_late,
   bool *conflict);
 
 #endif

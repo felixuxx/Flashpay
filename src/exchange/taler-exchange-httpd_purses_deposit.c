@@ -166,6 +166,7 @@ deposit_transaction (void *cls,
     struct TEH_PurseDepositedCoin *coin = &pcc->coins[i];
     bool balance_ok = false;
     bool conflict = true;
+    bool too_late = true;
 
     qs = TEH_make_coin_known (&coin->cpi,
                               connection,
@@ -180,6 +181,7 @@ deposit_transaction (void *cls,
                                        &coin->coin_sig,
                                        &coin->amount_minus_fee,
                                        &balance_ok,
+                                       &too_late,
                                        &conflict);
     if (qs <= 0)
     {
@@ -204,9 +206,16 @@ deposit_transaction (void *cls,
             &coin->cpi.coin_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    // FIXME: there is also a 'conflict' case where the purse was already
-    // decided (fully paid up OR expired), we should probably distinguish
-    // those better!
+    if (too_late)
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+      *mhd_ret
+        = TALER_MHD_reply_with_ec (
+            connection,
+            TALER_EC_EXCHANGE_PURSE_DEPOSIT_DECIDED_ALREADY,
+            NULL);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     if (conflict)
     {
       struct TALER_Amount amount;

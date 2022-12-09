@@ -3465,9 +3465,10 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*batch2_reserves_in_insert)(void *cls,
-                              const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                              unsigned int reserves_length,
-                              enum GNUNET_DB_QueryStatus *results);
+                               const struct
+                               TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                               unsigned int reserves_length,
+                               enum GNUNET_DB_QueryStatus *results);
 
   /**
    * Locate a nonce for use with a particular public key.
@@ -5911,6 +5912,7 @@ struct TALER_EXCHANGEDB_Plugin
    *        remaining balance is below @a amount;
    *             in this case, the return value will be
    *             #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT despite the failure
+   * @param[out] too_late it is too late to deposit into this purse
    * @param[out] conflict the same coin was deposited into
    *        this purse with a different amount already
    * @return transaction status code
@@ -5924,6 +5926,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_CoinSpendSignatureP *coin_sig,
     const struct TALER_Amount *amount_minus_fee,
     bool *balance_ok,
+    bool *too_late,
     bool *conflict);
 
 

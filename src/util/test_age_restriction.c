@@ -21,7 +21,6 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include "taler_crypto_lib.h"
 
 extern uint8_t
 get_age_group (

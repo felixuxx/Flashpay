@@ -201,6 +201,7 @@ create_transaction (void *cls,
     struct TEH_PurseDepositedCoin *coin = &pcc->coins[i];
     bool balance_ok = false;
     bool conflict = true;
+    bool too_late = true;
 
     qs = TEH_make_coin_known (&coin->cpi,
                               connection,
@@ -215,6 +216,7 @@ create_transaction (void *cls,
                                        &coin->coin_sig,
                                        &coin->amount_minus_fee,
                                        &balance_ok,
+                                       &too_late,
                                        &conflict);
     if (qs <= 0)
     {
@@ -241,6 +243,15 @@ create_transaction (void *cls,
             TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
             &coin->cpi.denom_pub_hash,
             &coin->cpi.coin_pub);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (too_late)
+    {
+      *mhd_ret
+        = TALER_MHD_reply_with_ec (
+            connection,
+            TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+            "too late to deposit on purse creation");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (conflict)
