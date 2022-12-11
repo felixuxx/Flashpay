@@ -732,6 +732,7 @@ decode_keys_json (const json_t *resp_obj,
   struct GNUNET_HashCode hash_xor = {0};
   struct TALER_ExchangePublicKeyP pub;
   const char *currency;
+  const char *asset_type;
   json_t *wblwk = NULL;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("denominations_sig",
@@ -746,6 +747,8 @@ decode_keys_json (const json_t *resp_obj,
                                     &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_string ("currency",
                              &currency),
+    GNUNET_JSON_spec_string ("asset_type",
+                             &asset_type),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("wallet_balance_limit_without_kyc",
                              &wblwk),
@@ -815,6 +818,7 @@ decode_keys_json (const json_t *resp_obj,
                              (check_sig) ? mspec : &mspec[2],
                              NULL, NULL));
   key_data->currency = GNUNET_strdup (currency);
+  key_data->asset_type = GNUNET_strdup (asset_type);
 
   /* parse the global fees */
   {
@@ -1233,6 +1237,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
   GNUNET_free (key_data->wallet_balance_limit_without_kyc);
   GNUNET_free (key_data->version);
   GNUNET_free (key_data->currency);
+  GNUNET_free (key_data->asset_type);
   GNUNET_free (key_data->global_fees);
 }
 
@@ -1917,6 +1922,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
                              kd->version),
     GNUNET_JSON_pack_string ("currency",
                              kd->currency),
+    GNUNET_JSON_pack_string ("asset_type",
+                             kd->asset_type),
     GNUNET_JSON_pack_data_auto ("master_public_key",
                                 &kd->master_pub),
     GNUNET_JSON_pack_time_rel ("reserve_closing_delay",

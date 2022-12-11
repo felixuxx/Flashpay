@@ -457,6 +457,11 @@ static struct GNUNET_SCHEDULER_Task *keys_tt;
 static struct GNUNET_TIME_Relative signkey_legal_duration;
 
 /**
+ * What type of asset are we dealing with here?
+ */
+static char *asset_type;
+
+/**
  * RSA security module public key, all zero if not known.
  */
 static struct TALER_SecurityModulePublicKeyP denom_rsa_sm_pub;
@@ -1279,6 +1284,17 @@ TEH_keys_init ()
                                "SIGNKEY_LEGAL_DURATION");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "ASSET_TYPE",
+                                             &asset_type))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               "exchange",
+                               "ASSET_TYPE");
+    asset_type = GNUNET_strdup ("fiat");
+  }
   keys_eh = TEH_plugin->event_listen (TEH_plugin->cls,
                                       GNUNET_TIME_UNIT_FOREVER_REL,
                                       &es,
@@ -1856,6 +1872,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                              TEH_base_url),
     GNUNET_JSON_pack_string ("currency",
                              TEH_currency),
+    GNUNET_JSON_pack_string ("asset_type",
+                             asset_type),
     GNUNET_JSON_pack_data_auto ("master_public_key",
                                 &TEH_master_public_key),
     GNUNET_JSON_pack_time_rel ("reserve_closing_delay",

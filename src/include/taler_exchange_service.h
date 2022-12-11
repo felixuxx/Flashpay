@@ -358,6 +358,14 @@ struct TALER_EXCHANGE_Keys
    */
   unsigned int denom_keys_size;
 
+  /**
+   * Asset type used by the exchange. Typical values
+   * are "fiat" or "crypto" or "regional" or "stock".
+   * Wallets should adjust their UI/UX based on this
+   * value.
+   */
+  char *asset_type;
+
 };
 
 
