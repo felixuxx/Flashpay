@@ -92,17 +92,6 @@ run (void *cls)
     goto cleanup;
   }
 
-  for (unsigned int i = 0; i< 7; i++)
-
-  if (GNUNET_OK !=
-      plugin->setup_partitions (plugin->cls,
-                                num_partitions))
-  {
-    GNUNET_break (0);
-    result = 77;
-    goto cleanup;
-  }
-
   for (unsigned int i = 0; i< 8; i++)
 
   {
@@ -134,7 +123,7 @@ run (void *cls)
         reserves[k].wire_reference = k;
       }
       FAILIF (batch_size !=
-            plugin->batch_reserves_in_insert (plugin->cls,
+            plugin->batch2_reserves_in_insert (plugin->cls,
                                               reserves,
                                               batch_size,
                                               results));

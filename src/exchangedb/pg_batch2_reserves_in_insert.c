@@ -1,3 +1,4 @@
+
 /*
    This file is part of TALER
    Copyright (C) 2022 Taler Systems SA
@@ -93,7 +94,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
            ",transaction_duplicate2"
            ",ruuid AS reserve_uuid"
            ",ruuid2 AS reserve_uuid2"
-           " FROM batch2_reserves_insert"
+           " FROM exchange_do_batch2_reserves_insert"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
@@ -199,18 +200,18 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
     results[i] = (transaction_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-    conflicts[i] = conflicted;
-    conflicts2[i] = conflicted2;
-    //    fprintf(stdout, "%d", conflicts[i]);
-    // fprintf(stdout, "%d", conflicts2[i]);
-    if ((! conflicts[i] && transaction_duplicate) || (! conflicts2[i] &&
-                                                      transaction_duplicate2))
-    {
-      GNUNET_break (0);
-      TEH_PG_rollback (pg);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    need_update |= conflicted |= conflicted2;
+   conflicts[i] = conflicted;
+   conflicts2[i] = conflicted2;
+   // fprintf(stdout, "%d",conflicts[i]);
+   // fprintf(stdout, "%d", conflicts2[i]);
+   if ((!conflicts[i] && transaction_duplicate) ||(!conflicts2[i] && transaction_duplicate2))
+   {
+     GNUNET_break (0);
+     TEH_PG_rollback (pg);
+     return GNUNET_DB_STATUS_HARD_ERROR;
+   }
+   need_update |= conflicted;
+   need_update2 |= conflicted2;
   }
   // commit
   {
@@ -237,7 +238,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   enum GNUNET_DB_QueryStatus qs2;
   PREPARE (pg,
            "reserves_in_add_transaction",
-           "SELECT batch_reserves_update"
+           "CALL exchange_do_batch_reserves_update"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
   for (unsigned int i = 0; i<reserves_length; i++)
   {

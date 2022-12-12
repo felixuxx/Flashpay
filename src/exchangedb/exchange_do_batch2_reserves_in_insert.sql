@@ -1,0 +1,221 @@
+--
+-- This file is part of TALER
+-- Copyright (C) 2014--2022 Taler Systems SA
+--
+-- TALER is free software; you can redistribute it and/or modify it under the
+-- terms of the GNU General Public License as published by the Free Software
+-- Foundation; either version 3, or (at your option) any later version.
+--
+-- TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+-- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+-- A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License along with
+-- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+--
+CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
+  IN in_reserve_pub BYTEA,
+  IN in_expiration_date INT8,
+  IN in_gc_date INT8,
+  IN in_wire_ref INT8,
+  IN in_credit_val INT8,
+  IN in_credit_frac INT4,
+  IN in_exchange_account_name VARCHAR,
+  IN in_exectution_date INT8,
+  IN in_wire_source_h_payto BYTEA,    ---h_payto
+  IN in_payto_uri VARCHAR,
+  IN in_reserve_expiration INT8,
+  IN in_notify text,
+  IN in2_reserve_pub BYTEA,
+  IN in2_wire_ref INT8,
+  IN in2_credit_val INT8,
+  IN in2_credit_frac INT4,
+  IN in2_exchange_account_name VARCHAR,
+  IN in2_exectution_date INT8,
+  IN in2_wire_source_h_payto BYTEA,    ---h_payto
+  IN in2_payto_uri VARCHAR,
+  IN in2_reserve_expiration INT8,
+  OUT out_reserve_found BOOLEAN,
+  OUT out_reserve_found2 BOOLEAN,
+  OUT transaction_duplicate BOOLEAN,
+  OUT transaction_duplicate2 BOOLEAN,
+  OUT ruuid INT8,
+  OUT ruuid2 INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  curs_reserve_exist CURSOR
+  FOR SELECT reserve_pub
+  FROM reserves
+  WHERE ruuid = reserves.reserve_uuid OR ruuid2 = reserves.reserve_uuid;
+
+  curs_transaction_exist CURSOR
+  FOR SELECT reserve_pub
+  FROM reserves_in
+  WHERE in_reserve_pub = reserves_in.reserve_pub
+  OR reserves_in.reserve_pub = in2_reserve_pub;
+
+  i RECORD;
+
+BEGIN
+
+  --SIMPLE INSERT ON CONFLICT DO NOTHING
+  INSERT INTO wire_targets
+    (wire_target_h_payto
+    ,payto_uri)
+    VALUES
+    (in_wire_source_h_payto
+    ,in_payto_uri),
+    (in2_wire_source_h_payto
+    ,in2_payto_uri)
+  ON CONFLICT DO NOTHING;
+
+  FOR k IN curs_reserve_exist
+  LOOP
+    IF in_reserve_pub = k.reserve_pub
+    THEN
+         out_reserve_found = TRUE;
+    END IF;
+
+    IF in2_reserve_pub = k.reserve_pub
+    THEN
+         out_reserve_found2 = TRUE;
+    END IF;
+
+    IF out_reserve_found AND out_reserve_found2
+    THEN
+        EXIT;
+    END IF;
+  END LOOP;
+
+
+  IF out_reserve_found IS NULL
+  THEN
+        out_reserve_found=FALSE;
+  END IF;
+  IF out_reserve_found2 IS NULL
+  THEN
+        out_reserve_found2 = FALSE;
+  END IF;
+  IF out_reserve_found AND out_reserve_found2
+  THEN
+     transaction_duplicate = FALSE;
+     transaction_duplicate2 = FALSE;
+     RETURN;
+  END IF;
+
+  /*LOOP TO STORE UUID*/
+  FOR i IN
+  WITH input_rows
+  (reserve_pub
+    ,current_balance_val
+    ,current_balance_frac
+    ,expiration_date
+    ,gc_date)
+  AS
+  (
+   VALUES
+    (in_reserve_pub
+    ,in_credit_val
+    ,in_credit_frac
+    ,in_expiration_date
+    ,in_gc_date),
+    (in2_reserve_pub
+    ,in2_credit_val
+    ,in2_credit_frac
+    ,in_expiration_date
+    ,in_gc_date)
+   ), ins AS (
+   INSERT INTO reserves
+   (reserve_pub
+    ,current_balance_val
+    ,current_balance_frac
+    ,expiration_date
+    ,gc_date)
+    SELECT * FROM input_rows
+    ON CONFLICT DO NOTHING
+    RETURNING reserve_uuid)
+   SELECT
+	*
+   FROM
+	(
+		SELECT
+			reserve_uuid,
+			ROW_NUMBER () OVER (ORDER BY reserve_uuid)
+		FROM
+			ins
+	) x
+  LOOP
+    IF i.ROW_NUMBER = 1
+    THEN
+      ruuid = i.reserve_uuid;
+    ELSE
+      ruuid2 = i.reserve_uuid;
+    END IF;
+  END LOOP;
+
+
+
+  PERFORM pg_notify(in_notify, NULL);
+
+  INSERT INTO reserves_in
+    (reserve_pub
+    ,wire_reference
+    ,credit_val
+    ,credit_frac
+    ,exchange_account_section
+    ,wire_source_h_payto
+    ,execution_date)
+    VALUES
+    (in_reserve_pub
+    ,in_wire_ref
+    ,in_credit_val
+    ,in_credit_frac
+    ,in_exchange_account_name
+    ,in_wire_source_h_payto
+    ,in_expiration_date),
+    (in2_reserve_pub
+    ,in2_wire_ref
+    ,in2_credit_val
+    ,in2_credit_frac
+    ,in2_exchange_account_name
+    ,in2_wire_source_h_payto
+    ,in_expiration_date)
+    ON CONFLICT DO NOTHING;
+  IF FOUND
+  THEN
+    transaction_duplicate = FALSE;  /*HAPPY PATH THERE IS NO DUPLICATE TRANS AND NEW RESERVE*/
+    transaction_duplicate2 = FALSE;
+    RETURN;
+  ELSE
+    FOR l IN curs_transaction_exist
+    LOOP
+      IF in_reserve_pub = l.reserve_pub
+      THEN
+         transaction_duplicate = TRUE;
+      END IF;
+
+      IF in2_reserve_pub = l.reserve_pub
+      THEN
+         transaction_duplicate2 = TRUE;
+      END IF;
+
+      IF transaction_duplicate AND transaction_duplicate2
+      THEN
+        RETURN;
+      END IF;
+    END LOOP;
+  END IF;
+
+  IF transaction_duplicate IS NULL
+  THEN
+        transaction_duplicate=FALSE;
+  END IF;
+  IF transaction_duplicate2 IS NULL
+  THEN
+        transaction_duplicate2 = FALSE;
+  END IF;
+
+  RETURN;
+END $$;
+

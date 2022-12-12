@@ -86,7 +86,7 @@ TEH_PG_batch_reserves_in_insert (
            "out_reserve_found AS conflicted"
            ",transaction_duplicate"
            ",ruuid AS reserve_uuid"
-           " FROM batch_reserves_insert"
+           " FROM exchange_do_batch_reserves_in_insert"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);");
   expiry = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
@@ -203,7 +203,7 @@ TEH_PG_batch_reserves_in_insert (
   enum GNUNET_DB_QueryStatus qs2;
   PREPARE (pg,
            "reserves_in_add_transaction",
-           "SELECT batch_reserves_update"
+           "SELECT exchange_do_batch_reserves_update"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
   for (unsigned int i = 0; i<reserves_length; i++)
   {
