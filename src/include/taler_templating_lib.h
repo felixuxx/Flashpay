@@ -25,6 +25,23 @@
 
 
 /**
+ * Fill in Mustach template @a tmpl using the data from @a root
+ * and return the result in @a result.
+ *
+ * @param tmpl 0-terminated string with Mustach template
+ * @param root JSON data to fill into the template
+ * @param[out] result where to write the result
+ * @param[out] result_size where to write the length of the result
+ * @return 0 on success, otherwise Mustach-specific error code
+ */
+int
+TALER_TEMPLATING_fill (const char *tmpl,
+                       const json_t *root,
+                       void **result,
+                       size_t *result_size);
+
+
+/**
  * Load a @a template and substitute using @a root, returning the result in a
  * @a reply encoded suitable for the @a connection with the given @a
  * http_status code.  On errors, the @a http_status code

@@ -171,6 +171,31 @@ make_static_url (struct MHD_Connection *con,
 }
 
 
+int
+TALER_TEMPLATING_fill (const char *tmpl,
+                       const json_t *root,
+                       void **result,
+                       size_t *result_size)
+{
+  int eno;
+
+  if (0 !=
+      (eno = mustach_jansson (tmpl,
+                              (json_t *) root,
+                              (char **) result,
+                              result_size)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "mustach failed on template with error %d\n",
+                eno);
+    *result = NULL;
+    *result_size = 0;
+    return eno;
+  }
+  return eno;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_TEMPLATING_build (struct MHD_Connection *connection,
                         unsigned int *http_status,
