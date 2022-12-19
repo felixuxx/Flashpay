@@ -836,7 +836,7 @@ lock_shard (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Continuing from %llu\n",
-                lastest_row_off);
+                latest_row_off);
     GNUNET_break (latest_row_off >= batch_start); /* resume where we left things */
   }
   else
