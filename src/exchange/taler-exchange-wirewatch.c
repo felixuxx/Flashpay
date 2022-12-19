@@ -517,7 +517,9 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
     return;
   }
   started_transaction = true;
-
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Importing %u transactions\n",
+              details_length);
   for (unsigned int i = 0; i<details_length; i++)
   {
     const struct TALER_BANK_CreditDetails *cd = &details[i];
