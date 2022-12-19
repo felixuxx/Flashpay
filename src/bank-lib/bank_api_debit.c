@@ -97,8 +97,9 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
   }
   {
     size_t len = json_array_size (history_array);
-    struct TALER_BANK_DebitDetails dd[len];
+    struct TALER_BANK_DebitDetails dd[GNUNET_NZL (len)];
 
+    GNUNET_break_op (0 != len);
     for (unsigned int i = 0; i<len; i++)
     {
       struct TALER_BANK_DebitDetails *td = &dd[i];
