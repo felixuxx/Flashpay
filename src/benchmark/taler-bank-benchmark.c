@@ -560,6 +560,17 @@ parallel_benchmark (void)
                                         "-c", cfg_filename,
                                         "-r",
                                         NULL);
+      if (NULL == dbinit)
+      {
+        if (NULL != bankd)
+        {
+          GNUNET_OS_process_kill (bankd,
+                                  SIGTERM);
+          GNUNET_OS_process_destroy (bankd);
+          bankd = NULL;
+        }
+        return GNUNET_SYSERR;
+      }
       GNUNET_break (GNUNET_OK ==
                     GNUNET_OS_process_wait (dbinit));
       GNUNET_OS_process_destroy (dbinit);
