@@ -422,7 +422,6 @@ schedule_transfers (void)
 static void
 transaction_completed (void)
 {
-  GNUNET_assert (! started_transaction);
   if ( (batch_start + batch_size ==
         latest_row_off) &&
        (batch_size < MAXIMUM_BATCH_SIZE) )
@@ -848,7 +847,7 @@ lock_shard (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Continuing from %llu\n",
-                latest_row_off);
+                (unsigned long long) latest_row_off);
     GNUNET_break (latest_row_off >= batch_start); /* resume where we left things */
   }
   else
