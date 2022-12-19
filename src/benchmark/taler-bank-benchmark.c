@@ -552,16 +552,20 @@ parallel_benchmark (void)
 
     {
       struct GNUNET_OS_Process *dbinit;
+      char buf[1024];
 
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Running DB init with `%s'\n",
-                  cfg_filename);
+                  "Running DB init with `%s' at %s\n",
+                  cfg_filename,
+                  getcwd (buf));
       dbinit = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                         NULL, NULL, NULL,
                                         "taler-exchange-dbinit",
                                         "taler-exchange-dbinit",
                                         "-c", cfg_filename,
                                         "-r",
+                                        (NULL != loglev) ? "-L" : NULL,
+                                        loglev,
                                         NULL);
       if (NULL == dbinit)
       {
@@ -577,6 +581,9 @@ parallel_benchmark (void)
       GNUNET_break (GNUNET_OK ==
                     GNUNET_OS_process_wait (dbinit));
       GNUNET_OS_process_destroy (dbinit);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Done with DB init with `%s'\n",
+                  cfg_filename);
     }
     /* start exchange wirewatch */
     for (unsigned int w = 0; w<start_wirewatch; w++)
