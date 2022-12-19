@@ -73,6 +73,10 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Running with CFG `%s'\n",
+              cfgfile);
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
