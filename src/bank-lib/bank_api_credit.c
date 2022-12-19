@@ -155,7 +155,7 @@ handle_credit_history_finished (void *cls,
 {
   struct TALER_BANK_CreditHistoryHandle *hh = cls;
   struct TALER_BANK_CreditHistoryResponse chr = {
-    .http_status = MHD_HTTP_OK,
+    .http_status = response_code,
     .response = response
   };
 

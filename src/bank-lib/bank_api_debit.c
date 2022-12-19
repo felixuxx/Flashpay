@@ -157,7 +157,7 @@ handle_debit_history_finished (void *cls,
 {
   struct TALER_BANK_DebitHistoryHandle *hh = cls;
   struct TALER_BANK_DebitHistoryResponse dhr = {
-    .http_status = MHD_HTTP_OK,
+    .http_status = response_code,
     .response = response
   };
 
