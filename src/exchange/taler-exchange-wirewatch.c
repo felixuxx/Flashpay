@@ -559,21 +559,15 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
                   "This should happen rarely (if not, ask for support).\n",
                   (unsigned long long) cd->serial_id,
                   job_name);
-      db_plugin->rollback (db_plugin->cls);
-      started_transaction = false;
-      progress = true;
-      latest_row_off = cd->serial_id;
-      /* already existed, ok, let's just continue */
-      transaction_completed ();
-      return;
+      break;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Imported transaction %llu.",
                   (unsigned long long) cd->serial_id);
       /* normal case */
+      progress = true;
       break;
     }
-    progress = true;
   }
   latest_row_off = lroff;
   shard_done = (shard_end <= latest_row_off);
@@ -839,9 +833,19 @@ lock_shard (void *cls)
   if ( (shard_open) &&
        (shard_start == last_shard_start) &&
        (shard_end == last_shard_end) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Continuing from %llu\n",
+                lastest_row_off);
     GNUNET_break (latest_row_off >= batch_start); /* resume where we left things */
+  }
   else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Resetting shard start to original start point (%d)\n",
+                shard_open ? 1 : 0);
     latest_row_off = batch_start;
+  }
   shard_open = true;
   task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
                                    NULL);
