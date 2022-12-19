@@ -559,7 +559,9 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
                   job_name);
       db_plugin->rollback (db_plugin->cls);
       started_transaction = false;
+      progress = true;
       /* already existed, ok, let's just continue */
+      transaction_completed ();
       return;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
