@@ -54,9 +54,10 @@ compute_notify_on_reserve (const struct TALER_ReservePublicKeyP *reserve_pub)
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_batch2_reserves_in_insert (void *cls,
-                                 const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                                 unsigned int reserves_length,
-                                 enum GNUNET_DB_QueryStatus *results)
+                                  const struct
+                                  TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                                  unsigned int reserves_length,
+                                  enum GNUNET_DB_QueryStatus *results)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs1;
@@ -102,15 +103,15 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                               pg->legal_reserve_expiration_time));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating reserve %s with expiration in %s\n",
-              TALER_B2S (&(reserves->reserve_pub)),
+              TALER_B2S (reserves->reserve_pub),
               GNUNET_STRINGS_relative_time_to_string (
                 pg->idle_reserve_expiration_time,
                 GNUNET_NO));
 
   {
     if (GNUNET_OK !=
-        TEH_PG_start_read_committed(pg,
-                                   "READ_COMMITED"))
+        TEH_PG_start_read_committed (pg,
+                                     "READ_COMMITED"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -120,31 +121,31 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
      time; we do this before adding the actual transaction to "reserves_in",
      as for a new reserve it can't be a duplicate 'add' operation, and as
      the 'add' operation needs the reserve entry as a foreign key. */
-  for (unsigned int i=0;i<reserves_length;i++)
+  for (unsigned int i = 0; i<reserves_length; i++)
   {
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
-    notify_s[i] = compute_notify_on_reserve (&reserve->reserve_pub);
+    notify_s[i] = compute_notify_on_reserve (reserve->reserve_pub);
   }
 
-  for (unsigned int i=0;i<(reserves_length & ~1);i+=2)
+  for (unsigned int i = 0; i<(reserves_length & ~1); i += 2)
   {
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve0 = &reserves[i];
-    const struct TALER_EXCHANGEDB_ReserveInInfo *reserve1 = &reserves[i+1];
+    const struct TALER_EXCHANGEDB_ReserveInInfo *reserve1 = &reserves[i + 1];
     struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&reserve0->reserve_pub),
+      GNUNET_PQ_query_param_auto_from_type (reserve0->reserve_pub),
       GNUNET_PQ_query_param_timestamp (&expiry),
       GNUNET_PQ_query_param_timestamp (&gc),
       GNUNET_PQ_query_param_uint64 (&reserve0->wire_reference),
-      TALER_PQ_query_param_amount (&reserve0->balance),
+      TALER_PQ_query_param_amount (reserve0->balance),
       GNUNET_PQ_query_param_string (reserve0->exchange_account_name),
       GNUNET_PQ_query_param_timestamp (&reserve0->execution_time),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
       GNUNET_PQ_query_param_string (reserve0->sender_account_details),
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
       GNUNET_PQ_query_param_string (notify_s[i]),
-      GNUNET_PQ_query_param_auto_from_type (&reserve1->reserve_pub),
+      GNUNET_PQ_query_param_auto_from_type (reserve1->reserve_pub),
       GNUNET_PQ_query_param_uint64 (&reserve1->wire_reference),
-      TALER_PQ_query_param_amount (&reserve1->balance),
+      TALER_PQ_query_param_amount (reserve1->balance),
       GNUNET_PQ_query_param_string (reserve1->exchange_account_name),
       GNUNET_PQ_query_param_timestamp (&reserve1->execution_time),
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
@@ -190,24 +191,26 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
     }
     if (reserves_length & 1)
     {
-      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[reserves_length-1];
+      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve =
+        &reserves[reserves_length - 1];
       // single insert logic here
     }
-   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
-   results[i] = (transaction_duplicate)
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
+    results[i] = (transaction_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-   conflicts[i] = conflicted;
-   conflicts2[i] = conflicted2;
-   //    fprintf(stdout, "%d", conflicts[i]);
-   // fprintf(stdout, "%d", conflicts2[i]);
-   if ((!conflicts[i] && transaction_duplicate) ||(!conflicts2[i] && transaction_duplicate2))
-   {
-     GNUNET_break (0);
-     TEH_PG_rollback (pg);
-     return GNUNET_DB_STATUS_HARD_ERROR;
-   }
-   need_update |= conflicted |= conflicted2;
+    conflicts[i] = conflicted;
+    conflicts2[i] = conflicted2;
+    //    fprintf(stdout, "%d", conflicts[i]);
+    // fprintf(stdout, "%d", conflicts2[i]);
+    if ((! conflicts[i] && transaction_duplicate) || (! conflicts2[i] &&
+                                                      transaction_duplicate2))
+    {
+      GNUNET_break (0);
+      TEH_PG_rollback (pg);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    need_update |= conflicted |= conflicted2;
   }
   // commit
   {
@@ -218,13 +221,13 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       return cs;
   }
 
-  if (!need_update)
+  if (! need_update)
     goto exit;
   // begin serializable
   {
     if (GNUNET_OK !=
-        TEH_PG_start(pg,
-                     "reserve-insert-continued"))
+        TEH_PG_start (pg,
+                      "reserve-insert-continued"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -236,17 +239,17 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
            "reserves_in_add_transaction",
            "SELECT batch_reserves_update"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
-  for (unsigned int i=0;i<reserves_length;i++)
+  for (unsigned int i = 0; i<reserves_length; i++)
   {
     if (! conflicts[i])
       continue;
     {
       const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
       struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (&reserve->reserve_pub),
+        GNUNET_PQ_query_param_auto_from_type (reserve->reserve_pub),
         GNUNET_PQ_query_param_timestamp (&expiry),
         GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
-        TALER_PQ_query_param_amount (&reserve->balance),
+        TALER_PQ_query_param_amount (reserve->balance),
         GNUNET_PQ_query_param_string (reserve->exchange_account_name),
         GNUNET_PQ_query_param_bool (conflicted),
         GNUNET_PQ_query_param_auto_from_type (&h_payto),
@@ -274,8 +277,8 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       return cs;
   }
 
- exit:
-  for (unsigned int i=0;i<reserves_length;i++)
+exit:
+  for (unsigned int i = 0; i<reserves_length; i++)
     GNUNET_free (notify_s[i]);
 
   return reserves_length;

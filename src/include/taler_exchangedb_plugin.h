@@ -2573,8 +2573,8 @@ struct TALER_EXCHANGEDB_KycStatus
 
 struct TALER_EXCHANGEDB_ReserveInInfo
 {
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct TALER_Amount balance;
+  const struct TALER_ReservePublicKeyP *reserve_pub;
+  const struct TALER_Amount *balance;
   struct GNUNET_TIME_Timestamp execution_time;
   const char *sender_account_details;
   const char *exchange_account_name;
@@ -3447,11 +3447,12 @@ struct TALER_EXCHANGEDB_Plugin
    *             set to the status of the
    */
   enum GNUNET_DB_QueryStatus
-  (*batch_reserves_in_insert)(void *cls,
-                              const struct
-                              TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                              unsigned int reserves_length,
-                              enum GNUNET_DB_QueryStatus *results);
+  (*batch_reserves_in_insert)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+    unsigned int reserves_length,
+    enum GNUNET_DB_QueryStatus *results);
+
 
   /**
    * Insert a batch of incoming transaction into reserves.  New reserves are
@@ -3464,11 +3465,12 @@ struct TALER_EXCHANGEDB_Plugin
    *             set to the status of the
    */
   enum GNUNET_DB_QueryStatus
-  (*batch2_reserves_in_insert)(void *cls,
-                               const struct
-                               TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                               unsigned int reserves_length,
-                               enum GNUNET_DB_QueryStatus *results);
+  (*batch2_reserves_in_insert)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+    unsigned int reserves_length,
+    enum GNUNET_DB_QueryStatus *results);
+
 
   /**
    * Locate a nonce for use with a particular public key.
