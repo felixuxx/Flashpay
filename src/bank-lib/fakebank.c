@@ -2257,23 +2257,20 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     if ( (NULL == t) ||
          overflow)
     {
-      GNUNET_free (debit_payto);
       if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
           (0 < ha.delta))
       {
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
+        {
+          GNUNET_free (debit_payto);
           return TALER_MHD_reply_with_ec (
             connection,
             TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
             NULL);
-        return TALER_MHD_REPLY_JSON_PACK (
-          connection,
-          MHD_HTTP_OK,
-          GNUNET_JSON_pack_array_steal (
-            "outgoing_transactions",
-            history));
+        }
+        goto finish;
       }
       *con_cls = &special_ptr;
       start_lp (h,
@@ -2285,6 +2282,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
       json_decref (history);
+      GNUNET_free (debit_payto);
       return MHD_YES;
     }
     if (t->debit_account != acc)
@@ -2397,6 +2395,16 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
+finish:
+  if (0 == json_array_size (history))
+  {
+    json_decref (history);
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
+  }
   GNUNET_free (debit_payto);
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
@@ -2500,11 +2508,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
             connection,
             TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
             NULL);
-        return TALER_MHD_REPLY_JSON_PACK (connection,
-                                          MHD_HTTP_OK,
-                                          GNUNET_JSON_pack_array_steal (
-                                            "incoming_transactions",
-                                            history));
+        goto finish;
       }
       *con_cls = &special_ptr;
       start_lp (h,
@@ -2608,6 +2612,16 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
+finish:
+  if (0 == json_array_size (history))
+  {
+    json_decref (history);
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
+  }
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
                                     GNUNET_JSON_pack_array_steal (
