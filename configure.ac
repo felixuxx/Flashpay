@@ -271,7 +271,8 @@ AS_CASE([$with_gnunet],
         [yes], [],
         [no], [AC_MSG_ERROR([--with-gnunet is required])],
         [LDFLAGS="-L$with_gnunet/lib $LDFLAGS"
-         CPPFLAGS="-I$with_gnunet/include ${CPPFLAGS} ${POSTGRESQL_CPPFLAGS}"])
+         CPPFLAGS="-I$with_gnunet/include ${CPPFLAGS}"])
+CPPFLAGS="${CPPFLAGS} ${POSTGRESQL_CPPFLAGS}"
 AC_CHECK_HEADERS([gnunet/gnunet_pq_lib.h],
  [AC_CHECK_LIB([gnunetpq], [GNUNET_PQ_result_spec_string], libgnunetpq=1)])
 AS_IF([test $libgnunetpq != 1],

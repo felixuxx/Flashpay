@@ -583,7 +583,8 @@ parallel_benchmark (void)
                                               "taler-exchange-wirewatch",
                                               "taler-exchange-wirewatch",
                                               "-c", cfg_filename,
-                                              "-L", loglev,
+                                              (NULL != loglev) ? "-L" : NULL,
+                                              loglev,
                                               NULL);
       if (NULL == wirewatch[w])
       {
@@ -659,8 +660,9 @@ parallel_benchmark (void)
                                               "taler-exchange-wirewatch",
                                               "taler-exchange-wirewatch",
                                               "-c", cfg_filename,
-                                              "-L", loglev,
                                               "-t",
+                                              (NULL != loglev) ? "-L" : NULL,
+                                              loglev,
                                               NULL);
       /* wait for it to finish! */
       GNUNET_break (GNUNET_OK ==
@@ -684,8 +686,9 @@ parallel_benchmark (void)
                                               "taler-exchange-wirewatch",
                                               "taler-exchange-wirewatch",
                                               "-c", cfg_filename,
-                                              "-L", loglev,
                                               "-t",
+                                              (NULL != loglev) ? "-L" : NULL,
+                                              loglev,
                                               NULL);
       /* wait for it to finish! */
       GNUNET_break (GNUNET_OK ==
