@@ -168,15 +168,15 @@ TEH_PG_batch_reserves_in_insert (
     results[i] = (transaction_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-    conflicts[i] = conflicted;
-    //  fprintf(stdout, "%d", conflicts[i]);
-    if (! conflicts[i] && transaction_duplicate)
-    {
-      GNUNET_break (0);
-      TEH_PG_rollback (pg);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    need_update |= conflicted;
+   conflicts[i] = conflicted;
+   //   fprintf(stdout, "%d", conflicts[i]);
+   if (!conflicts[i] && transaction_duplicate)
+   {
+     GNUNET_break (0);
+     TEH_PG_rollback (pg);
+     return GNUNET_DB_STATUS_HARD_ERROR;
+   }
+   need_update |= conflicted;
   }
   // commit
   {

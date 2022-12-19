@@ -28,6 +28,7 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_batch2_reserves_in_insert (void *cls,
                                  const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
                                  unsigned int reserves_length,
+                                  unsigned int batch_size,
                                  enum GNUNET_DB_QueryStatus *results);
 
 #endif

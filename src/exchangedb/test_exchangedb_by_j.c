@@ -22,6 +22,8 @@
 #include "taler_exchangedb_lib.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "math.h"
+#define ROUNDS 100
 
 /**
  * Global result from the testcase.
@@ -71,6 +73,9 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 static void
 run (void *cls)
 {
+  static const unsigned int batches[] = {1, 2, 3, 4, 16 };
+  struct GNUNET_TIME_Relative times[sizeof (batches)/sizeof(*batches)];
+  unsigned long long sqrs[sizeof (batches)/sizeof(*batches)];
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   const uint32_t num_partitions = 10;
 
@@ -81,7 +86,8 @@ run (void *cls)
     result = 77;
     return;
   }
-  (void) plugin->drop_tables (plugin->cls);
+
+
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls,
                              true,
@@ -92,51 +98,76 @@ run (void *cls)
     goto cleanup;
   }
 
-  for (unsigned int i = 0; i< 8; i++)
-
-  {
-    static unsigned int batches[] = {1, 1,0, 2, 4, 16, 64, 256};
-    const char *sndr = "payto://x-taler-bank/localhost:8080/1";
-    struct TALER_Amount value;
-    unsigned int batch_size = batches[i];
-    struct GNUNET_TIME_Absolute now;
-    struct GNUNET_TIME_Timestamp ts;
-    struct GNUNET_TIME_Relative duration;
-    struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
-    /*   struct TALER_EXCHANGEDB_ReserveInInfo reserves2[batch_size];*/
-    enum GNUNET_DB_QueryStatus results[batch_size];
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_string_to_amount (CURRENCY ":1.000010",
-                                           &value));
-    now = GNUNET_TIME_absolute_get ();
-    ts = GNUNET_TIME_timestamp_get ();
-    for (unsigned int r = 0; r<10; r++)
+  memset (times, 0, sizeof (times));
+  memset (sqrs, 0, sizeof (sqrs));
+  for (unsigned int r = 0; r < ROUNDS; r++)
     {
-
-       for (unsigned int k = 0; k<batch_size; k++)
+    for (unsigned int i = 0; i< 5; i++)
       {
-        RND_BLK (&reserves[k].reserve_pub);
-        reserves[k].balance = value;
-        reserves[k].execution_time = ts;
-        reserves[k].sender_account_details = sndr;
-        reserves[k].exchange_account_name = "name";
-        reserves[k].wire_reference = k;
+        const char *sndr = "payto://x-taler-bank/localhost:8080/1";
+        struct TALER_Amount value;
+        unsigned int batch_size = batches[i];
+        unsigned int iterations = 1024*10;
+        struct GNUNET_TIME_Absolute now;
+        struct GNUNET_TIME_Timestamp ts;
+        struct GNUNET_TIME_Relative duration;
+        struct TALER_EXCHANGEDB_ReserveInInfo reserves[iterations];
+        enum GNUNET_DB_QueryStatus results[iterations];
+        unsigned long long duration_sq;
+
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_string_to_amount (CURRENCY ":1.000010",
+                                               &value));
+        now = GNUNET_TIME_absolute_get ();
+        ts = GNUNET_TIME_timestamp_get ();
+        for (unsigned int r = 0; r<iterations; r++)
+          {
+            RND_BLK (&reserves[r].reserve_pub);
+            reserves[r].balance = value;
+            reserves[r].execution_time = ts;
+            reserves[r].sender_account_details = sndr;
+            reserves[r].exchange_account_name = "name";
+            reserves[r].wire_reference = r;
+          }
+        FAILIF (iterations !=
+                plugin->batch2_reserves_in_insert (plugin->cls,
+                                                   reserves,
+                                                   iterations,
+                                                   batch_size,
+                                                   results));
+        duration = GNUNET_TIME_absolute_get_duration (now);
+        times[i] = GNUNET_TIME_relative_add (times[i],
+                                             duration);
+        duration_sq = duration.rel_value_us * duration.rel_value_us;
+        GNUNET_assert (duration_sq / duration.rel_value_us == duration.rel_value_us);
+        GNUNET_assert (sqrs[i] + duration_sq >= sqrs[i]);
+        sqrs[i] += duration_sq;
+        fprintf (stdout,
+                 "for a batchsize equal to %d it took %s\n",
+                 batch_size,
+                 GNUNET_STRINGS_relative_time_to_string (duration,
+                                                         GNUNET_NO) );
+
+        system ("./test.sh"); //DELETE AFTER TIMER
       }
-      FAILIF (batch_size !=
-            plugin->batch2_reserves_in_insert (plugin->cls,
-                                              reserves,
-                                              batch_size,
-                                              results));
+    }
+    for (unsigned int i = 0; i< 5; i++)
+    {
+      struct GNUNET_TIME_Relative avg;
+      double avg_dbl;
+      double variance;
+
+      avg = GNUNET_TIME_relative_divide (times[i],
+                                         ROUNDS);
+      avg_dbl = avg.rel_value_us;
+      variance = sqrs[i] - (avg_dbl * avg_dbl * ROUNDS);
+      fprintf(stdout,
+              "Batch[%2u]: %8llu ± %6.0f\n",
+              batches[i],
+              (unsigned long long) avg.rel_value_us,
+              sqrt (variance / (ROUNDS-1)));
     }
 
-    duration = GNUNET_TIME_absolute_get_duration (now);
-    fprintf (stdout,
-             "for a batchsize equal to %d it took %s\n",
-             batch_size,
-             GNUNET_STRINGS_relative_time_to_string (duration,
-                                                     GNUNET_NO) );
-
-  }
   result = 0;
 drop:
   GNUNET_break (GNUNET_OK ==

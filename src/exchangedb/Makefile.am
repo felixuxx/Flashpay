@@ -315,6 +315,7 @@ test_exchangedb_by_j_postgres_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil \
+  -lm \
   $(XLIB)
 
 

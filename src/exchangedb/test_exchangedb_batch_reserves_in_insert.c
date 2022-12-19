@@ -94,12 +94,13 @@ run (void *cls)
 
   for (unsigned int i = 0; i< 8; i++)
   {
-    static unsigned int batches[] = {1, 1,0, 2, 4, 16, 64, 256};
+    static unsigned int batches[] = {1, 1, 2, 3, 4, 16, 64, 256};
     const char *sndr = "payto://x-taler-bank/localhost:8080/1";
     struct TALER_Amount value;
     unsigned int batch_size = batches[i];
     struct GNUNET_TIME_Absolute now;
     struct GNUNET_TIME_Timestamp ts;
+    unsigned int iterations = 1024 / batch_size;
     struct GNUNET_TIME_Relative duration;
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
     enum GNUNET_DB_QueryStatus results[batch_size];
@@ -108,9 +109,9 @@ run (void *cls)
                                            &value));
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
-    for (unsigned int r=0;r<10;r++)
-    {
 
+    for (unsigned int r = 0; r<iterations; r++)
+    {
       for (unsigned int k = 0; k<batch_size; k++)
       {
         RND_BLK (&reserves[k].reserve_pub);

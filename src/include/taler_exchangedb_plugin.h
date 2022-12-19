@@ -3469,6 +3469,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
     unsigned int reserves_length,
+    unsigned int batch_size,
     enum GNUNET_DB_QueryStatus *results);
 
 
