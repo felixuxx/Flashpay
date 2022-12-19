@@ -560,6 +560,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
       db_plugin->rollback (db_plugin->cls);
       started_transaction = false;
       progress = true;
+      latest_row_off = cd->serial_id;
       /* already existed, ok, let's just continue */
       transaction_completed ();
       return;
