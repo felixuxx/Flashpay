@@ -576,9 +576,6 @@ parallel_benchmark (void)
       GNUNET_break (GNUNET_OK ==
                     GNUNET_OS_process_wait (dbinit));
       GNUNET_OS_process_destroy (dbinit);
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Done with DB init with `%s'\n",
-                  cfg_filename);
     }
     /* start exchange wirewatch */
     for (unsigned int w = 0; w<start_wirewatch; w++)

@@ -2312,14 +2312,21 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       pos = t;
     }
   }
+  if (0 == ha.delta)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No debit transactions exist after given starting point\n");
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
+  }
   if (NULL != pos)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning %lld debit transactions starting (inclusive) from %llu\n",
                 (long long) ha.delta,
                 (unsigned long long) pos->row_id);
-  else
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No debit transactions exist after given starting point\n");
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
@@ -2525,14 +2532,21 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       pos = t;
     }
   }
+  if (0 == ha.delta)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No credit transactions exist after given starting point\n");
+    return TALER_MHD_reply_static (connection,
+                                   MHD_HTTP_NO_CONTENT,
+                                   NULL,
+                                   NULL,
+                                   0);
+  }
   if (NULL != pos)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning %lld credit transactions starting (inclusive) from %llu\n",
                 (long long) ha.delta,
                 (unsigned long long) pos->row_id);
-  else
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No credit transactions exist after given starting point\n");
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
