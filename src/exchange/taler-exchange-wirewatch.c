@@ -377,6 +377,8 @@ handle_soft_error (void)
   }
   /* Reset to beginning of transaction, and go again
      from there. */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Encountered soft error, resetting start point to batch start\n");
   latest_row_off = batch_start;
   GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&continue_with_shard,
@@ -595,6 +597,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
       break;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       /* normal case */
+      progress = true;
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Completed shard %s (%llu,%llu] after %s\n",
                   job_name,
@@ -606,31 +609,40 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
       break;
     }
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Committing %s progress (%llu,%llu] at %llu\n (%s)",
-              job_name,
-              (unsigned long long) shard_start,
-              (unsigned long long) shard_end,
-              (unsigned long long) latest_row_off,
-              shard_done
+  if (! progress)
+  {
+    db_plugin->rollback (db_plugin->cls);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Committing %s progress (%llu,%llu] at %llu\n (%s)",
+                job_name,
+                (unsigned long long) shard_start,
+                (unsigned long long) shard_end,
+                (unsigned long long) latest_row_off,
+                shard_done
               ? "shard done"
               : "shard incomplete");
-  qs = db_plugin->commit (db_plugin->cls);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    /* reduce transaction size to reduce rollback probability */
-    handle_soft_error ();
-    return;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    started_transaction = false;
-    /* normal case */
-    break;
+    qs = db_plugin->commit (db_plugin->cls);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      /* reduce transaction size to reduce rollback probability */
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Got DB soft error on commit. Reducing transaction size.\n");
+      handle_soft_error ();
+      return;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      started_transaction = false;
+      /* normal case */
+      break;
+    }
   }
   if (shard_done)
   {
