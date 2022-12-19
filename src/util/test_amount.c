@@ -21,7 +21,6 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include "taler_amount_lib.h"
 
 
 int
