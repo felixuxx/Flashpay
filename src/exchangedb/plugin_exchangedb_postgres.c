@@ -399,7 +399,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb-postgres",
-                               "CONFIG");
+                               "SQL_DIR");
     GNUNET_free (pg);
     return NULL;
   }

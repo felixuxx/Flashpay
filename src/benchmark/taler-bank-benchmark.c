@@ -552,12 +552,7 @@ parallel_benchmark (void)
 
     {
       struct GNUNET_OS_Process *dbinit;
-      char buf[1024];
 
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Running DB init with `%s' at %s\n",
-                  cfg_filename,
-                  getcwd (buf, sizeof (buf)));
       dbinit = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                         NULL, NULL, NULL,
                                         "taler-exchange-dbinit",
