@@ -23,7 +23,7 @@ CREATE OR REPLACE PROCEDURE exchange_do_batch_reserves_update(
   IN in_exchange_account_name VARCHAR,
   IN in_reserve_found BOOLEAN,
   IN in_wire_source_h_payto BYTEA,
-  IN in_notify text)    ---h_payto
+  IN in_notify text)
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -48,7 +48,7 @@ BEGIN
 --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
   IF FOUND
   THEN
---    transaction_duplicate = FALSE;
+
     IF in_reserve_found
     THEN
       UPDATE reserves

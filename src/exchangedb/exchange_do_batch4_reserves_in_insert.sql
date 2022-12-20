@@ -72,15 +72,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs_reserve_exist refcursor;
-
 DECLARE
-  curs_transaction_exist CURSOR
-  FOR SELECT reserve_pub
-  FROM reserves_in
-  WHERE in_reserve_pub = reserves_in.reserve_pub
-  OR in2_reserve_pub = reserves_in.reserve_pub
-  OR in3_reserve_pub = reserves_in.reserve_pub
-  OR in4_reserve_pub = reserves_in.reserve_pub;
+  k INT8;
+DECLARE
+  curs_transaction_exist refcursor;
 DECLARE
   i RECORD;
 
@@ -98,7 +93,7 @@ BEGIN
   ruuid2=0;
   ruuid3=0;
   ruuid4=0;
-
+  k=0;
   --SIMPLE INSERT ON CONFLICT DO NOTHING
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -147,104 +142,41 @@ BEGIN
      RETURNING reserve_uuid,reserve_pub)
     SELECT * FROM reserve_changes;
 
-  FETCH FROM curs_reserve_exist INTO i;
-  IF FOUND
-  THEN
-    IF in_reserve_pub = i.reserve_pub
-    THEN
-       out_reserve_found = FALSE;
-       ruuid = i.reserve_uuid;
-    END IF;
-    IF in2_reserve_pub = i.reserve_pub
-    THEN
-        out_reserve_found2 = FALSE;
-        ruuid2 = i.reserve_uuid;
-    END IF;
-    IF in3_reserve_pub = i.reserve_pub
-    THEN
-        out_reserve_found3 = FALSE;
-        ruuid3 = i.reserve_uuid;
-    END IF;
-    IF in4_reserve_pub = i.reserve_pub
-    THEN
-        out_reserve_found4 = FALSE;
-        ruuid4 = i.reserve_uuid;
-    END IF;
+  WHILE k < 4 LOOP
     FETCH FROM curs_reserve_exist INTO i;
     IF FOUND
     THEN
       IF in_reserve_pub = i.reserve_pub
       THEN
-        out_reserve_found = FALSE;
-        ruuid = i.reserve_uuid;
-      END IF;
-      IF in2_reserve_pub = i.reserve_pub
-      THEN
-        out_reserve_found2 = FALSE;
-        ruuid2 = i.reserve_uuid;
-      END IF;
-      IF in3_reserve_pub = i.reserve_pub
-      THEN
-        out_reserve_found3 = FALSE;
-        ruuid3 = i.reserve_uuid;
-      END IF;
-      IF in4_reserve_pub = i.reserve_pub
-      THEN
-        out_reserve_found4 = FALSE;
-        ruuid4 = i.reserve_uuid;
-      END IF;
-    END IF;
-    FETCH FROM curs_reserve_exist INTO i;
-    IF FOUND
-    THEN
-      IF in_reserve_pub = i.reserve_pub
-      THEN
-          out_reserve_found = FALSE;
-          ruuid = i.reserve_uuid;
+         out_reserve_found = FALSE;
+         ruuid = i.reserve_uuid;
+         k = k+1;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found2 = FALSE;
           ruuid2 = i.reserve_uuid;
+          k=k+1;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found3 = FALSE;
           ruuid3 = i.reserve_uuid;
+          k=k+1;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found4 = FALSE;
           ruuid4 = i.reserve_uuid;
+          k=k+1;
       END IF;
     END IF;
-    FETCH FROM curs_reserve_exist INTO i;
-    IF FOUND
-    THEN
-      IF in_reserve_pub = i.reserve_pub
-      THEN
-          out_reserve_found = FALSE;
-          ruuid = i.reserve_uuid;
-      END IF;
-      IF in2_reserve_pub = i.reserve_pub
-      THEN
-          out_reserve_found2 = FALSE;
-          ruuid2 = i.reserve_uuid;
-      END IF;
-      IF in3_reserve_pub = i.reserve_pub
-      THEN
-          out_reserve_found3 = FALSE;
-          ruuid3 = i.reserve_uuid;
-      END IF;
-      IF in4_reserve_pub = i.reserve_pub
-      THEN
-          out_reserve_found4 = FALSE;
-          ruuid4 = i.reserve_uuid;
-      END IF;
-    END IF;
-  END IF;
+  END LOOP;
   CLOSE curs_reserve_exist;
-  IF out_reserve_found AND out_reserve_found2 AND out_reserve_found3 AND out_reserve_found4
+  IF out_reserve_found
+  AND out_reserve_found2
+  AND out_reserve_found3
+  AND out_reserve_found4
   THEN
       RETURN;
   END IF;
@@ -254,7 +186,10 @@ BEGIN
   PERFORM pg_notify(in3_notify, NULL);
   PERFORM pg_notify(in4_notify, NULL);
 
-  INSERT INTO reserves_in
+  k=0;
+  OPEN curs_transaction_exist FOR
+  WITH reserve_in_changes AS (
+    INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
     ,credit_val
@@ -262,7 +197,7 @@ BEGIN
     ,exchange_account_section
     ,wire_source_h_payto
     ,execution_date)
-    VALUES
+      VALUES
     (in_reserve_pub
     ,in_wire_ref
     ,in_credit_val
@@ -291,43 +226,39 @@ BEGIN
     ,in4_exchange_account_name
     ,in4_wire_source_h_payto
     ,in_expiration_date)
-    ON CONFLICT DO NOTHING;
-  IF FOUND
-  THEN
-    transaction_duplicate = FALSE;  /*HAPPY PATH THERE IS NO DUPLICATE TRANS AND NEW RESERVE*/
-    transaction_duplicate2 = FALSE;
-    transaction_duplicate3 = FALSE;
-    transaction_duplicate4 = FALSE;
-    RETURN;
-  ELSE
-    FOR l IN curs_transaction_exist
-    LOOP
-      IF in_reserve_pub = l.reserve_pub
+     ON CONFLICT DO NOTHING
+     RETURNING reserve_pub)
+    SELECT * FROM reserve_in_changes;
+  WHILE k < 4 LOOP
+    FETCH FROM curs_transaction_exist INTO i;
+    IF FOUND
+    THEN
+      IF in_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate = TRUE;
+         k=k+1;
       END IF;
-
-      IF in2_reserve_pub = l.reserve_pub
+      IF in2_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate2 = TRUE;
+         k=k+1;
       END IF;
-      IF in3_reserve_pub = l.reserve_pub
+      IF in3_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate3 = TRUE;
+         k=k+1;
       END IF;
-      IF in4_reserve_pub = l.reserve_pub
+      IF in4_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate4 = TRUE;
+         k=k+1;
       END IF;
-
-      IF transaction_duplicate AND transaction_duplicate2 AND transaction_duplicate3 AND transaction_duplicate4
-      THEN
-        RETURN;
-      END IF;
-    END LOOP;
-  END IF;
-
-  CLOSE curs_reserve_exist;
+    END IF;
+  END LOOP;
   CLOSE curs_transaction_exist;
+
   RETURN;
+
+
+
 END $$;

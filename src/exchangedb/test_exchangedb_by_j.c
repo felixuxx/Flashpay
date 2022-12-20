@@ -23,7 +23,7 @@
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include "math.h"
-#define ROUNDS 100
+#define ROUNDS 10
 
 /**
  * Global result from the testcase.
@@ -73,7 +73,7 @@ static struct TALER_EXCHANGEDB_Plugin *plugin;
 static void
 run (void *cls)
 {
-  static const unsigned int batches[] = {1, 2, 3, 4, 16 };
+  static const unsigned int batches[] = {1, 2, 3, 4, 8, 16 };
   struct GNUNET_TIME_Relative times[sizeof (batches)/sizeof(*batches)];
   unsigned long long sqrs[sizeof (batches)/sizeof(*batches)];
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
@@ -102,7 +102,7 @@ run (void *cls)
   memset (sqrs, 0, sizeof (sqrs));
   for (unsigned int r = 0; r < ROUNDS; r++)
     {
-    for (unsigned int i = 0; i< 5; i++)
+    for (unsigned int i = 0; i< 6; i++)
       {
         const char *sndr = "payto://x-taler-bank/localhost:8080/1";
         struct TALER_Amount value;
@@ -153,7 +153,7 @@ run (void *cls)
         system ("./test.sh"); //DELETE AFTER TIMER
       }
     }
-    for (unsigned int i = 0; i< 5; i++)
+    for (unsigned int i = 0; i< 6; i++)
     {
       struct GNUNET_TIME_Relative avg;
       double avg_dbl;

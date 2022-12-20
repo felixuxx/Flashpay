@@ -39,4 +39,6 @@ SET search_path TO exchange;
 #include "exchange_do_batch_reserves_update.sql"
 #include "exchange_do_batch2_reserves_in_insert.sql"
 #include "exchange_do_batch4_reserves_in_insert.sql"
+#include "exchange_do_batch8_reserves_in_insert.sql"
+
 COMMIT;
