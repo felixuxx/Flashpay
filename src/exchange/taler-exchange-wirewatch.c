@@ -1071,7 +1071,7 @@ history_cb (void *cls,
                               reply->details.success.details_length);
       break;
     }
-    break;
+    return;
   case MHD_HTTP_NO_CONTENT:
     transaction_completed ();
     return;
@@ -1083,12 +1083,12 @@ history_cb (void *cls,
     }
     break;
   default:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error fetching history: %s (%u)\n",
+                TALER_ErrorCode_get_hint (reply->ec),
+                reply->http_status);
     break;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Error fetching history: %s (%u)\n",
-              TALER_ErrorCode_get_hint (reply->ec),
-              reply->http_status);
   if (! exit_on_error)
   {
     transaction_completed ();
