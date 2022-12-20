@@ -210,6 +210,8 @@ shutdown_task (void *cls)
 
   if (NULL != hh)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "History request cancelled on shutdown\n");
     TALER_BANK_credit_history_cancel (hh);
     hh = NULL;
   }
@@ -1037,14 +1039,16 @@ history_cb (void *cls,
     const char *mode = getenv ("TALER_USE_BATCH");
     char dummy;
 
-    if (1 != sscanf (mode,
-                     "%d%c",
-                     &batch_mode,
-                     &dummy))
+    if ( (NULL == mode) ||
+         (1 != sscanf (mode,
+                       "%d%c",
+                       &batch_mode,
+                       &dummy)) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Bad batch mode `%s' specified\n",
-                  mode);
+      if (NULL != mode)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Bad batch mode `%s' specified\n",
+                    mode);
       batch_mode = -1;
     }
   }
