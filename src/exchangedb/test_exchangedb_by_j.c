@@ -108,6 +108,7 @@ run (void *cls)
         struct TALER_Amount value;
         unsigned int batch_size = batches[i];
         unsigned int iterations = 1024*10;
+        struct TALER_ReservePublicKeyP reserve_pubs[iterations];
         struct GNUNET_TIME_Absolute now;
         struct GNUNET_TIME_Timestamp ts;
         struct GNUNET_TIME_Relative duration;
@@ -122,8 +123,9 @@ run (void *cls)
         ts = GNUNET_TIME_timestamp_get ();
         for (unsigned int r = 0; r<iterations; r++)
           {
-            RND_BLK (&reserves[r].reserve_pub);
-            reserves[r].balance = value;
+            RND_BLK (&reserve_pubs[r]);
+            reserves[r].reserve_pub = &reserve_pubs[r];
+            reserves[r].balance = &value;
             reserves[r].execution_time = ts;
             reserves[r].sender_account_details = sndr;
             reserves[r].exchange_account_name = "name";
