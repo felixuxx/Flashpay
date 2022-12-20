@@ -1043,7 +1043,7 @@ history_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Bad batch mode `%s' specified\n",
-                  batch_mode);
+                  mode);
       batch_mode = -1;
     }
   }
