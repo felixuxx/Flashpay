@@ -1071,6 +1071,7 @@ history_cb (void *cls,
                               reply->details.success.details_length);
       break;
     }
+    break;
   case MHD_HTTP_NO_CONTENT:
     transaction_completed ();
     return;
