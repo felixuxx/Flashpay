@@ -923,7 +923,8 @@ process_reply_batched2 (unsigned int batch_size,
       return;
     case GNUNET_DB_STATUS_SOFT_ERROR:
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Got DB soft error for batch_reserves_in_insert. Rolling back.\n");
+                  "Got DB soft error for batch2_reserves_in_insert (%u). Rolling back.\n",
+                  batch_size);
       handle_soft_error ();
       return;
     default:
