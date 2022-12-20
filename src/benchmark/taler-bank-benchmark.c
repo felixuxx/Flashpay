@@ -168,6 +168,11 @@ static enum BenchmarkMode mode;
 static int linger;
 
 /**
+ * Do not initialize or reset the database.
+ */
+static int incremental;
+
+/**
  * Configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -550,6 +555,7 @@ parallel_benchmark (void)
       return GNUNET_SYSERR;
     }
 
+    if (0 == incremental)
     {
       struct GNUNET_OS_Process *dbinit;
 
@@ -769,6 +775,10 @@ main (int argc,
                                "linger",
                                "linger around until key press",
                                &linger),
+    GNUNET_GETOPT_option_flag ('i',
+                               "incremental",
+                               "skip initializing and resetting the database",
+                               &incremental),
     GNUNET_GETOPT_option_string ('l',
                                  "logfile",
                                  "LF",
