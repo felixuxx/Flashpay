@@ -820,21 +820,22 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
 
   enum GNUNET_DB_QueryStatus qs3;
   PREPARE (pg,
-           "reserves_in_add_transaction",
+           "reserves_update",
            "CALL exchange_do_batch_reserves_update"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
   for (unsigned int i = 0; i<reserves_length; i++)
   {
+
     if (! conflicts[i])
       continue;
     {
-      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
+      //      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
       struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (reserve->reserve_pub),
+        GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
         GNUNET_PQ_query_param_timestamp (&expiry),
-        GNUNET_PQ_query_param_uint64 (&reserve->wire_reference),
-        TALER_PQ_query_param_amount (reserve->balance),
-        GNUNET_PQ_query_param_string (reserve->exchange_account_name),
+        GNUNET_PQ_query_param_uint64 (&reserves[i].wire_reference),
+        TALER_PQ_query_param_amount (reserves[i].balance),
+        GNUNET_PQ_query_param_string (reserves[i].exchange_account_name),
         GNUNET_PQ_query_param_bool (conflicts[i]),
         GNUNET_PQ_query_param_auto_from_type (&h_payto),
         GNUNET_PQ_query_param_string (notify_s[i]),
@@ -842,12 +843,12 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       };
 
       qs3 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                "reserves_in_add_transaction",
+                                                "reserves_update",
                                                 params);
       if (qs3<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves (%d)\n",
+                    "Failed to update (%d)\n",
                     qs3);
         return qs3;
       }

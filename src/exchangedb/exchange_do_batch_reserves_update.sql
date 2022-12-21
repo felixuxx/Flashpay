@@ -26,8 +26,13 @@ CREATE OR REPLACE PROCEDURE exchange_do_batch_reserves_update(
   IN in_notify text)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  i RECORD;
+DECLARE
+  curs refcursor;
 BEGIN
-
+  OPEN curs FOR
+  WITH reserves_update AS (
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -43,12 +48,14 @@ BEGIN
     ,in_credit_frac
     ,in_exchange_account_name
     ,in_wire_source_h_payto
-    ,in_expiration_date);
+    ,in_expiration_date)
+    ON CONFLICT DO NOTHING
+    RETURNING reserve_pub, credit_val, credit_frac)
+    SELECT * FROM reserves_in;
 
---IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
-  IF FOUND
+  FETCH FROM curs INTO i;
+  IF FOUND    --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
   THEN
-
     IF in_reserve_found
     THEN
       UPDATE reserves
@@ -67,9 +74,21 @@ BEGIN
                END
                ,expiration_date=GREATEST(expiration_date,in_expiration_date)
                ,gc_date=GREATEST(gc_date,in_expiration_date)
-      	      WHERE reserves.reserve_pub=in_reserve_pub;
+      	      WHERE reserve_pub=in_reserve_pub;
     END IF;
     PERFORM pg_notify(in_notify, NULL);
+  ELSE
+    CLOSE curs;
+    IF ! out_reserve_found
+    THEN
+      ROLLBACK;
+    END IF;
+    PERFORM pg_notify(in_notify, NULL);
+
+/*    UPDATE reserves_in
+    SET credit_frac = credit_frac - in_credit_frac
+    AND credit_val = credit_val + in_credit_val
+    WHERE reserve_pub = in_reserve_pub;*/
   END IF;
 
 END $$;

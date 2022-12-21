@@ -107,7 +107,7 @@ run (void *cls)
         const char *sndr = "payto://x-taler-bank/localhost:8080/1";
         struct TALER_Amount value;
         unsigned int batch_size = batches[i];
-        unsigned int iterations = 1024*10;
+        unsigned int iterations = 16;//1024*10;
         struct TALER_ReservePublicKeyP reserve_pubs[iterations];
         struct GNUNET_TIME_Absolute now;
         struct GNUNET_TIME_Timestamp ts;
