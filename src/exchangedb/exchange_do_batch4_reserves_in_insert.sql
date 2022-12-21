@@ -150,27 +150,24 @@ BEGIN
       THEN
          out_reserve_found = FALSE;
          ruuid = i.reserve_uuid;
-         k = k+1;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found2 = FALSE;
           ruuid2 = i.reserve_uuid;
-          k=k+1;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found3 = FALSE;
           ruuid3 = i.reserve_uuid;
-          k=k+1;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
           out_reserve_found4 = FALSE;
           ruuid4 = i.reserve_uuid;
-          k=k+1;
       END IF;
     END IF;
+  k=k+1;
   END LOOP;
   CLOSE curs_reserve_exist;
   IF out_reserve_found
@@ -236,24 +233,21 @@ BEGIN
       IF in_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate = TRUE;
-         k=k+1;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate2 = TRUE;
-         k=k+1;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate3 = TRUE;
-         k=k+1;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
          transaction_duplicate4 = TRUE;
-         k=k+1;
       END IF;
     END IF;
+  k=k+1;
   END LOOP;
   CLOSE curs_transaction_exist;
 

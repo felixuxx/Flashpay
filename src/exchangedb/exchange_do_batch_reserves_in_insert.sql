@@ -34,6 +34,9 @@ LANGUAGE plpgsql
 AS $$
 
 BEGIN
+ruuid= 0;
+out_reserve_found = TRUE;
+transaction_duplicate= FALSE;
   --SIMPLE INSERT ON CONFLICT DO NOTHING
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -56,9 +59,7 @@ BEGIN
     ,in_expiration_date
     ,in_gc_date)
    ON CONFLICT DO NOTHING
-   RETURNING reserve_uuid INTO ruuid;
-   PERFORM pg_notify(in_notify, NULL);
-
+   RETURNING reserves.reserve_uuid INTO ruuid;
   IF FOUND
   THEN
     -- We made a change, so the reserve did not previously exist.
@@ -68,7 +69,7 @@ BEGIN
     out_reserve_found = TRUE; /*RESERVE EXISTED BUT WE DO NOT KNOW ANY INFORMATIONS ABOUT TRANSACTION, RETURN*/
     RETURN;
   END IF;
-
+  PERFORM pg_notify(in_notify, NULL);
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -91,7 +92,9 @@ BEGIN
     transaction_duplicate = FALSE;  /*HAPPY PATH THERE IS NO DUPLICATE TRANS AND NEW RESERVE*/
     RETURN;
   ELSE
-    transaction_duplicate = TRUE; /*HAPPY PATH IF THERE IS A DUPLICATE TRANS WE JUST NEED TO ROLLBACK COMPLAIN*/
+    transaction_duplicate = TRUE;
+    /*HAPPY PATH IF THERE IS A DUPLICATE TRANS WE JUST NEED TO ROLLBACK COMPLAIN*/
     RETURN;
   END IF;
+  RETURN;
 END $$;
