@@ -46,20 +46,12 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   curs_reserve_exist REFCURSOR;
-
---  FOR SELECT reserve_pub
---  FROM reserves
---  WHERE in_reserve_pub = reserves.reserve_pub
---  OR in2_reserve_pub = reserves.reserve_pub;
 DECLARE
-  curs_transaction_exist CURSOR
-  FOR SELECT reserve_pub
-  FROM reserves_in
-  WHERE in_reserve_pub = reserves_in.reserve_pub
-  OR in2_reserve_pub = reserves_in.reserve_pub;
+  curs_transaction_exist refcursor;
 DECLARE
   i RECORD;
-
+DECLARE
+  r RECORD;
 BEGIN
   --SIMPLE INSERT ON CONFLICT DO NOTHING
   transaction_duplicate=FALSE;
@@ -138,6 +130,8 @@ BEGIN
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);
 
+  OPEN curs_transaction_exist FOR
+  WITH reserve_in_exist AS (
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -161,33 +155,34 @@ BEGIN
     ,in2_exchange_account_name
     ,in2_wire_source_h_payto
     ,in_expiration_date)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT DO NOTHING
+    RETURNING reserve_pub)
+  SELECT * FROM reserve_in_exist;
+  FETCH FROM curs_transaction_exist INTO r;
   IF FOUND
   THEN
-    transaction_duplicate = FALSE;  /*HAPPY PATH THERE IS NO DUPLICATE TRANS AND NEW RESERVE*/
-    transaction_duplicate2 = FALSE;
-    RETURN;
-  ELSE
-    FOR l IN curs_transaction_exist
-    LOOP
-      IF in_reserve_pub = l.reserve_pub
+    IF in_reserve_pub = r.reserve_pub
+    THEN
+       transaction_duplicate = TRUE;
+    END IF;
+    IF in2_reserve_pub = i.reserve_pub
+    THEN
+       transaction_duplicate = TRUE;
+    END IF;
+    FETCH FROM curs_transaction_exist INTO r;
+    IF FOUND
+    THEN
+      IF in_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate = TRUE;
+        transaction_duplicate = TRUE;
       END IF;
-
-      IF in2_reserve_pub = l.reserve_pub
+      IF in2_reserve_pub = i.reserve_pub
       THEN
-         transaction_duplicate2 = TRUE;
+        transaction_duplicate = TRUE;
       END IF;
-
-      IF transaction_duplicate AND transaction_duplicate2
-      THEN
-        RETURN;
-      END IF;
-    END LOOP;
+    END IF;
   END IF;
 
-  CLOSE curs_reserve_exist;
   CLOSE curs_transaction_exist;
   RETURN;
 END $$;
