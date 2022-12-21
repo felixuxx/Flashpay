@@ -253,6 +253,4 @@ BEGIN
 
   RETURN;
 
-
-
 END $$;
