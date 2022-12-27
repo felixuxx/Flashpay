@@ -66,7 +66,7 @@ transaction_duplicate= FALSE;
     out_reserve_found = FALSE;
   ELSE
     -- We made no change, which means the reserve existed.
-    out_reserve_found = TRUE; /*RESERVE EXISTED BUT WE DO NOT KNOW ANY INFORMATIONS ABOUT TRANSACTION, RETURN*/
+    out_reserve_found = TRUE; /*RESERVE EXISTED BUT WE DO NOT HAVE ANY INFORMATION ABOUT TRANSACTION, RETURN*/
     RETURN;
   END IF;
   PERFORM pg_notify(in_notify, NULL);
