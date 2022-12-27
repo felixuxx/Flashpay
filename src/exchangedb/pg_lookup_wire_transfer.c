@@ -55,7 +55,7 @@ struct WireTransferResultContext
 /**
  * Function to be called with the results of a SELECT statement
  * that has returned @a num_results results.  Helper function
- * for #postgres_lookup_wire_transfer().
+ * for #TEH_PG_lookup_wire_transfer().
  *
  * @param cls closure of type `struct WireTransferResultContext *`
  * @param result the postgres result
@@ -148,8 +148,6 @@ TEH_PG_lookup_wire_transfer (
   ctx.cb_cls = cb_cls;
   ctx.pg = pg;
   ctx.status = GNUNET_OK;
-  /* check if the melt record exists and get it */
-  /* Used in #postgres_lookup_wire_transfer */
   PREPARE (pg,
            "lookup_transactions",
            "SELECT"

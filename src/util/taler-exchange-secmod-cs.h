@@ -198,7 +198,7 @@ struct TALER_CRYPTO_CsRDeriveRequest
 struct TALER_CRYPTO_BatchDeriveRequest
 {
   /**
-   * Type is #TALER_HELPER_RSA_MT_REQ_BATCH_RDERIVE.
+   * Type is #TALER_HELPER_CS_MT_REQ_BATCH_RDERIVE.
    */
   struct GNUNET_MessageHeader header;
 
