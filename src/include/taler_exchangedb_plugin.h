@@ -5950,7 +5950,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_PurseContractPublicKeyP *purse_pub,
     const struct TALER_PurseContractSignatureP *purse_sig,
-    bool *dediced,
+    bool *decided,
     bool *found);
 
 

@@ -50,6 +50,7 @@
 #include "taler-exchange-httpd_purses_create.h"
 #include "taler-exchange-httpd_purses_deposit.h"
 #include "taler-exchange-httpd_purses_get.h"
+#include "taler-exchange-httpd_purses_delete.h"
 #include "taler-exchange-httpd_purses_merge.h"
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_recoup-refresh.h"
