@@ -51,6 +51,16 @@ TEH_PG_update_kyc_process_by_row (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  PREPARE (pg,
+           "update_legitimization_process",
+           "UPDATE legitimization_processes"
+           " SET provider_user_id=$4"
+           "    ,provider_legitimization_id=$5"
+           "    ,expiration_time=GREATEST(expiration_time,$6)"
+           " WHERE"
+           "      h_payto=$3"
+           "  AND legitimization_process_serial_id=$1"
+           "  AND provider_section=$2;");
   qs = GNUNET_PQ_eval_prepared_non_select (
     pg->conn,
     "update_legitimization_process",

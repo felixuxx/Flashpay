@@ -43,7 +43,6 @@ TEH_PG_drop_tables (void *cls)
   {
     GNUNET_PQ_disconnect (pg->conn);
     pg->conn = NULL;
-    pg->init = false;
   }
   conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",

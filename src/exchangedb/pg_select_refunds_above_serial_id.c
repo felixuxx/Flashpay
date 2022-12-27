@@ -178,7 +178,7 @@ TEH_PG_select_refunds_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Fetch refunds with rowid '\geq' the given parameter */
+  /* Fetch refunds with rowid '\geq' the given parameter */
   PREPARE (pg,
            "audit_get_refunds_incr",
            "SELECT"
@@ -200,6 +200,19 @@ TEH_PG_select_refunds_above_serial_id (
            "     ON (kc.denominations_serial=denom.denominations_serial)"
            " WHERE ref.refund_serial_id>=$1"
            " ORDER BY ref.refund_serial_id ASC;");
+  PREPARE (pg,
+           "test_refund_full",
+           "SELECT"
+           " CAST(SUM(CAST(ref.amount_with_fee_frac AS INT8)) AS INT8) AS s_f"
+           ",CAST(SUM(ref.amount_with_fee_val) AS INT8) AS s_v"
+           ",dep.amount_with_fee_val"
+           ",dep.amount_with_fee_frac"
+           " FROM refunds ref"
+           "   JOIN deposits dep"
+           "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
+           " WHERE ref.refund_serial_id=$1"
+           " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);");
+
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_refunds_incr",
                                              params,

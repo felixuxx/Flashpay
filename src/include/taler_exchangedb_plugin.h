@@ -5934,6 +5934,27 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called to explicitly delete a purse.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param purse_pub purse to delete
+   * @param purse_sig signature affirming the deletion
+   * @param[out] decided set to true if the purse was
+   *        already decided and thus could not be deleted
+   * @param[out] found set to true if the purse was found
+   *        (if false, purse could not be deleted)
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_purse_delete)(
+    void *cls,
+    const struct TALER_PurseContractPublicKeyP *purse_pub,
+    const struct TALER_PurseContractSignatureP *purse_sig,
+    bool *dediced,
+    bool *found);
+
+
+  /**
    * Set the current @a balance in the purse
    * identified by @a purse_pub. Used by the auditor
    * to update the balance as calculated by the auditor.

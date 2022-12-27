@@ -23,6 +23,9 @@
  * @author Marcello Stanisci
  */
 #include "platform.h"
+#include <poll.h>
+#include <pthread.h>
+#include <libpq-fe.h>
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
@@ -56,11 +59,6 @@
 #include "pg_select_reserve_close_info.h"
 #include "pg_select_reserve_closed_above_serial_id.h"
 #include "pg_select_reserve_open_above_serial_id.h"
-#include <poll.h>
-#include <pthread.h>
-#include <libpq-fe.h>
-
-/**NEW INCLUDES**/
 #include "pg_insert_purse_request.h"
 #include "pg_iterate_active_signkeys.h"
 #include "pg_preflight.h"
@@ -94,6 +92,7 @@
 #include "pg_begin_revolving_shard.h"
 #include "pg_get_extension_manifest.h"
 #include "pg_insert_history_request.h"
+#include "pg_do_purse_delete.h"
 #include "pg_do_purse_merge.h"
 #include "pg_start_read_committed.h"
 #include "pg_start_read_only.h"
@@ -233,94 +232,13 @@
 
 
 /**
- * Initialize prepared statements for @a pg.
- *
- * @param[in,out] pg connection to initialize
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-prepare_statements (struct PostgresClosure *pg)
-{
-  enum GNUNET_GenericReturnValue ret;
-  struct GNUNET_PQ_PreparedStatement ps[] = {
-    GNUNET_PQ_make_prepare (
-      "get_kyc_h_payto",
-      "SELECT"
-      " wire_target_h_payto"
-      " FROM wire_targets"
-      " WHERE wire_target_h_payto=$1"
-      " LIMIT 1;"),
-    /* Used in #postgres_ensure_coin_known() */
-    GNUNET_PQ_make_prepare (
-      "get_known_coin_dh",
-      "SELECT"
-      " denominations.denom_pub_hash"
-      " FROM known_coins"
-      " JOIN denominations USING (denominations_serial)"
-      " WHERE coin_pub=$1;"),
-    /* Store information about the desired denominations for a
-       refresh operation, used in #postgres_insert_refresh_reveal() */
-    GNUNET_PQ_make_prepare (
-      "insert_refresh_revealed_coin",
-      "INSERT INTO refresh_revealed_coins "
-      "(melt_serial_id "
-      ",freshcoin_index "
-      ",link_sig "
-      ",denominations_serial "
-      ",coin_ev"
-      ",ewv"
-      ",h_coin_ev"
-      ",ev_sig"
-      ") SELECT $1, $2, $3, "
-      "         denominations_serial, $5, $6, $7, $8"
-      "    FROM denominations"
-      "   WHERE denom_pub_hash=$4"
-      " ON CONFLICT DO NOTHING;"),
-    GNUNET_PQ_make_prepare (
-      "test_refund_full",
-      "SELECT"
-      " CAST(SUM(CAST(ref.amount_with_fee_frac AS INT8)) AS INT8) AS s_f"
-      ",CAST(SUM(ref.amount_with_fee_val) AS INT8) AS s_v"
-      ",dep.amount_with_fee_val"
-      ",dep.amount_with_fee_frac"
-      " FROM refunds ref"
-      "   JOIN deposits dep"
-      "     ON (ref.coin_pub=dep.coin_pub AND ref.deposit_serial_id=dep.deposit_serial_id)"
-      " WHERE ref.refund_serial_id=$1"
-      " GROUP BY (dep.amount_with_fee_val, dep.amount_with_fee_frac);"),
-    /* Used in #postgres_update_kyc_requirement_by_row() */
-    GNUNET_PQ_make_prepare (
-      "update_legitimization_process",
-      "UPDATE legitimization_processes"
-      " SET provider_user_id=$4"
-      "    ,provider_legitimization_id=$5"
-      "    ,expiration_time=GREATEST(expiration_time,$6)"
-      " WHERE"
-      "      h_payto=$3"
-      "  AND legitimization_process_serial_id=$1"
-      "  AND provider_section=$2;"),
-    GNUNET_PQ_PREPARED_STATEMENT_END
-  };
-
-  ret = GNUNET_PQ_prepare_statements (pg->conn,
-                                      ps);
-  if (GNUNET_OK != ret)
-    return ret;
-  pg->init = true;
-  return GNUNET_OK;
-}
-
-
-/**
  * Connect to the database if the connection does not exist yet.
  *
  * @param pg the plugin-specific state
- * @param skip_prepare true if we should skip prepared statement setup
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TEH_PG_internal_setup (struct PostgresClosure *pg,
-                       bool skip_prepare)
+TEH_PG_internal_setup (struct PostgresClosure *pg)
 {
   if (NULL == pg->conn)
   {
@@ -366,11 +284,7 @@ TEH_PG_internal_setup (struct PostgresClosure *pg,
   }
   if (NULL == pg->transaction_name)
     GNUNET_PQ_reconnect_if_down (pg->conn);
-  if (pg->init)
-    return GNUNET_OK;
-  if (skip_prepare)
-    return GNUNET_OK;
-  return prepare_statements (pg);
+  return GNUNET_OK;
 }
 
 
@@ -472,8 +386,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     return NULL;
   }
   if (GNUNET_OK !=
-      TEH_PG_internal_setup (pg,
-                             true))
+      TEH_PG_internal_setup (pg))
   {
     GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->currency);
@@ -483,7 +396,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   }
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
-  /* New style, sort alphabetically! */
   plugin->do_reserve_open
     = &TEH_PG_do_reserve_open;
   plugin->drop_tables
@@ -542,7 +454,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_reserve_closed_above_serial_id;
   plugin->select_reserve_open_above_serial_id
     = &TEH_PG_select_reserve_open_above_serial_id;
-  /*need to sort*/
   plugin->insert_purse_request
     = &TEH_PG_insert_purse_request;
   plugin->iterate_active_signkeys
@@ -555,7 +466,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_aggregation_tracking;
   plugin->select_aggregation_amounts_for_kyc_check
     = &TEH_PG_select_aggregation_amounts_for_kyc_check;
-
   plugin->select_satisfied_kyc_processes
     = &TEH_PG_select_satisfied_kyc_processes;
   plugin->kyc_provider_account_lookup
@@ -610,6 +520,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_insert_history_request;
   plugin->do_purse_merge
     = &TEH_PG_do_purse_merge;
+  plugin->do_purse_delete
+    = &TEH_PG_do_purse_delete;
   plugin->start_read_committed
     = &TEH_PG_start_read_committed;
   plugin->start_read_only

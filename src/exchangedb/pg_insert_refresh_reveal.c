@@ -43,6 +43,22 @@ TEH_PG_insert_refresh_reveal (
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  PREPARE (pg,
+           "insert_refresh_revealed_coin",
+           "INSERT INTO refresh_revealed_coins "
+           "(melt_serial_id "
+           ",freshcoin_index "
+           ",link_sig "
+           ",denominations_serial "
+           ",coin_ev"
+           ",ewv"
+           ",h_coin_ev"
+           ",ev_sig"
+           ") SELECT $1, $2, $3, "
+           "         denominations_serial, $5, $6, $7, $8"
+           "    FROM denominations"
+           "   WHERE denom_pub_hash=$4"
+           " ON CONFLICT DO NOTHING;");
   for (uint32_t i = 0; i<num_rrcs; i++)
   {
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
@@ -76,17 +92,16 @@ TEH_PG_insert_refresh_reveal (
       GNUNET_PQ_query_param_end
     };
 
-        /* Used in #postgres_insert_refresh_reveal() to store the transfer
-       keys we learned */
+    /* Used in #postgres_insert_refresh_reveal() to store the transfer
+   keys we learned */
     PREPARE (pg,
-      "insert_refresh_transfer_keys",
-      "INSERT INTO refresh_transfer_keys "
-      "(melt_serial_id"
-      ",transfer_pub"
-      ",transfer_privs"
-      ") VALUES ($1, $2, $3)"
-      " ON CONFLICT DO NOTHING;");
-
+             "insert_refresh_transfer_keys",
+             "INSERT INTO refresh_transfer_keys "
+             "(melt_serial_id"
+             ",transfer_pub"
+             ",transfer_privs"
+             ") VALUES ($1, $2, $3)"
+             " ON CONFLICT DO NOTHING;");
     return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "insert_refresh_transfer_keys",
                                                params);
