@@ -28,7 +28,7 @@ COMMENT ON TABLE aml_staff
 COMMENT ON COLUMN aml_staff.decider_pub
   IS 'Public key of the AML staff member.';
 COMMENT ON COLUMN aml_staff.master_sig
-  IS 'The master public key signature on the AML staff member status.';
+  IS 'The master public key signature on the AML staff member status, of type TALER_SIGNATURE_MASTER_AML_KEY.';
 COMMENT ON COLUMN aml_staff.decider_name
   IS 'Name of the staff member.';
 COMMENT ON COLUMN aml_staff.is_active

@@ -500,6 +500,43 @@ struct TALER_PurseMergeSignatureP
 
 
 /**
+ * @brief Type of online public keys used by AML officers.
+ */
+struct TALER_AmlOfficerPublicKeyP
+{
+  /**
+   * Taler uses EdDSA for AML decision signing.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * @brief Type of online private keys used to identify
+ * AML officers.
+ */
+struct TALER_AmlOfficerPrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for AML decision signing.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * @brief Type of signatures used by AML officers.
+ */
+struct TALER_AmlOfficerSignatureP
+{
+  /**
+   * Taler uses EdDSA for AML decision signing.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
  * @brief Type of blinding keys for Taler.
  * must be 32 bytes (DB)
  */
@@ -2820,6 +2857,31 @@ TALER_wallet_purse_create_verify (
 
 
 /**
+ * Sign a request to delete a purse.
+ *
+ * @param purse_priv key identifying the purse
+ * @param[out] purse_sig resulting signature
+ */
+void
+TALER_wallet_purse_delete_sign (
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  struct TALER_PurseContractSignatureP *purse_sig);
+
+
+/**
+ * Verify a purse deletion request.
+ *
+ * @param purse_pub purse’s public key
+ * @param purse_sig the signature made with purpose #TALER_SIGNATURE_WALLET_PURSE_DELETE
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_delete_verify (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig);
+
+
+/**
  * Sign a request to upload an encrypted contract.
  *
  * @param econtract encrypted contract
@@ -4526,6 +4588,47 @@ TALER_exchange_online_purse_status_verify (
 
 
 /* ********************* offline signing ************************** */
+
+
+/**
+ * Create AML officer status change signature.
+ *
+ * @param officer_pub public key of the AML officer
+ * @param officer_name name of the officer
+ * @param change_date when to affect the status change
+ * @param is_active true to enable the officer
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_aml_officer_status_sign (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *officer_name,
+  struct GNUNET_TIME_Timestamp change_date,
+  bool is_active,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify AML officer status change signature.
+ *
+ * @param officer_pub public key of the AML officer
+ * @param officer_name name of the officer
+ * @param change_date when to affect the status change
+ * @param is_active true to enable the officer
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_aml_officer_status_verify (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *officer_name,
+  struct GNUNET_TIME_Timestamp change_date,
+  bool is_active,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
 
 
 /**

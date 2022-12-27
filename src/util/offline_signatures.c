@@ -27,6 +27,97 @@ GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * @brief Signature made by the exchange offline key over the information of
+ * an AML officer status change.
+ */
+struct TALER_MasterAmlOfficerStatusPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_AML_KEY.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_TimestampNBO change_date;
+
+  /**
+   * Public key of the AML officer.
+   */
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
+
+  /**
+   * Hash over the AML officer's name.
+   */
+  struct GNUNET_HashCode h_officer_name GNUNET_PACKED;
+
+  /**
+   * 1 if enabled, 0 if disabled, in NBO.
+   */
+  uint32_t is_active GNUNET_PACKED;
+};
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_exchange_offline_aml_officer_status_sign (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *officer_name,
+  struct GNUNET_TIME_Timestamp change_date,
+  bool is_active,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterAmlOfficerStatusPS as = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_AML_KEY),
+    .purpose.size = htonl (sizeof (as)),
+    .change_date = GNUNET_TIME_timestamp_hton (change_date),
+    .officer_pub = *officer_pub,
+    .is_active = htonl (is_active ? 1 : 0)
+  };
+
+  GNUNET_CRYPTO_hash (officer_name,
+                      strlen (officer_name) + 1,
+                      &as.h_officer_name);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &as,
+                            &master_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_aml_officer_status_verify (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *officer_name,
+  struct GNUNET_TIME_Timestamp change_date,
+  bool is_active,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_MasterAmlOfficerStatusPS as = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_AML_KEY),
+    .purpose.size = htonl (sizeof (as)),
+    .change_date = GNUNET_TIME_timestamp_hton (change_date),
+    .officer_pub = *officer_pub,
+    .is_active = htonl (is_active ? 1 : 0)
+  };
+
+  GNUNET_CRYPTO_hash (officer_name,
+                      strlen (officer_name) + 1,
+                      &as.h_officer_name);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_AML_KEY,
+                                     &as,
+                                     &master_sig->eddsa_signature,
+                                     &master_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Signature made by the exchange offline key over the information of
  * an auditor to be added to the exchange's set of auditors.
  */
 struct TALER_MasterAddAuditorPS

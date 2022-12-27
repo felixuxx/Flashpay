@@ -907,6 +907,59 @@ TALER_wallet_purse_create_verify (
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Message signed to delete a purse.
+ */
+struct TALER_PurseDeletePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_WALLET_PURSE_DELETE
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_wallet_purse_delete_sign (
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  struct TALER_PurseContractSignatureP *purse_sig)
+{
+  struct TALER_PurseDeletePS pm = {
+    .purpose.size = htonl (sizeof (pm)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_DELETE)
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&purse_priv->eddsa_priv,
+                            &pm,
+                            &purse_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_purse_delete_verify (
+  const struct TALER_PurseContractPublicKeyP *purse_pub,
+  const struct TALER_PurseContractSignatureP *purse_sig)
+{
+  struct TALER_PurseDeletePS pm = {
+    .purpose.size = htonl (sizeof (pm)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_PURSE_DELETE)
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_PURSE_DELETE,
+    &pm,
+    &purse_sig->eddsa_signature,
+    &purse_pub->eddsa_pub);
+}
+
+
 void
 TALER_wallet_purse_status_sign (
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
