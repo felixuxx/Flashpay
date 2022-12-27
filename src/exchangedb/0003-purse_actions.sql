@@ -15,23 +15,49 @@
 --
 
 
-CREATE TABLE IF NOT EXISTS purse_actions
-  (purse_pub BYTEA NOT NULL PRIMARY KEY CHECK(LENGTH(purse_pub)=32)
-  ,action_date INT8 NOT NULL
-  ,partner_serial_id INT8
+CREATE OR REPLACE FUNCTION create_table_purse_actions(
+  IN partition_suffix VARCHAR DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name VARCHAR DEFAULT 'purse_actions';
+BEGIN
+  PERFORM create_partitioned_table(
+    'CREATE TABLE IF NOT EXISTS %I'
+      '(purse_pub BYTEA NOT NULL PRIMARY KEY CHECK(LENGTH(purse_pub)=32)'
+      ',action_date INT8 NOT NULL'
+      ',partner_serial_id INT8'
+    ') %s ;'
+    ,table_name
+    ,'PARTITION BY HASH (purse_pub)'
+    ,partition_suffix
   );
-COMMENT ON TABLE purse_actions
-  IS 'purses awaiting some action by the router';
-COMMENT ON COLUMN purse_actions.purse_pub
-  IS 'public (contract) key of the purse';
-COMMENT ON COLUMN purse_actions.action_date
-  IS 'when is the purse ready for action';
-COMMENT ON COLUMN purse_actions.partner_serial_id
-  IS 'wad target of an outgoing wire transfer, 0 for local, NULL if the purse is unmerged and thus the target is still unknown';
-
-CREATE INDEX IF NOT EXISTS purse_action_by_target
-  ON purse_actions
-  (partner_serial_id,action_date);
+  PERFORM comment_partitioned_table(
+     'purses awaiting some action by the router'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'public (contract) key of the purse'
+    ,'purse_pub'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'when is the purse ready for action'
+    ,'action_date'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'wad target of an outgoing wire transfer, 0 for local, NULL if the purse is unmerged and thus the target is still unknown'
+    ,'partner_serial_id'
+    ,table_name
+    ,partition_suffix
+  );
+END $$;
 
 
 CREATE OR REPLACE FUNCTION purse_requests_insert_trigger()
@@ -48,16 +74,32 @@ BEGIN
     ,NEW.purse_expiration);
   RETURN NEW;
 END $$;
+
 COMMENT ON FUNCTION purse_requests_insert_trigger()
   IS 'When a purse is created, insert it into the purse_action table to take action when the purse expires.';
 
-CREATE TRIGGER purse_requests_on_insert
-  AFTER INSERT
-   ON purse_requests
-   FOR EACH ROW EXECUTE FUNCTION purse_requests_insert_trigger();
-COMMENT ON TRIGGER purse_requests_on_insert
-        ON purse_requests
-  IS 'Here we install an entry for the purse expiration.';
+
+CREATE OR REPLACE FUNCTION master_table_purse_actions()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name VARCHAR DEFAULT 'purse_actions';
+BEGIN
+  -- Create global index
+  CREATE INDEX IF NOT EXISTS purse_action_by_target
+    ON purse_actions
+    (partner_serial_id,action_date);
+
+  -- Setup trigger
+  CREATE TRIGGER purse_requests_on_insert
+    AFTER INSERT
+    ON purse_requests
+    FOR EACH ROW EXECUTE FUNCTION purse_requests_insert_trigger();
+  COMMENT ON TRIGGER purse_requests_on_insert
+          ON purse_requests
+    IS 'Here we install an entry for the purse expiration.';
+END $$;
 
 
 INSERT INTO exchange_tables
@@ -68,7 +110,12 @@ INSERT INTO exchange_tables
     ,by_range)
   VALUES
     ('purse_actions'
-    ,'exchange-0002'
+    ,'exchange-0003'
     ,'create'
-    ,FALSE
+    ,TRUE
+    ,FALSE),
+    ('purse_actions'
+    ,'exchange-0003'
+    ,'master'
+    ,TRUE
     ,FALSE);

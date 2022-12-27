@@ -21,5 +21,8 @@ SET search_path TO exchange;
 
 #include "0003-purse_actions.sql"
 #include "0003-purse_deletion.sql"
+#include "0003-kyc_attributes.sql"
+#include "0003-aml_status.sql"
+#include "0003-aml_history.sql"
 
 COMMIT;
