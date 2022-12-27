@@ -32,7 +32,8 @@ BEGIN
       ',new_status INT4 NOT NULL DEFAULT(0)'
       ',decision_time INT8 NOT NULL DEFAULT(0)'
       ',justification VARCHAR NOT NULL'
-      ',decider VARCHAR NOT NULL'
+      ',decider_pub BYTEA PRIMARY KEY CHECK (LENGTH(decider_pub)=32)'
+      ',decider_sig BYTEA PRIMARY KEY CHECK (LENGTH(decider_sig)=64)'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (h_payto)'
@@ -74,8 +75,14 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Name of the staff member who made the AML decision'
-    ,'decider'
+     'Public key of the staff member who made the AML decision'
+    ,'decider_pub'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'Signature key of the staff member affirming the AML decision; of type AML_DECISION'
+    ,'decider_sig'
     ,table_name
     ,partition_suffix
   );
