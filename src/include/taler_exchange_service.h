@@ -4983,7 +4983,7 @@ struct TALER_EXCHANGE_PurseDeleteHandle;
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
  */
-struct TALER_EXCHANGE_PurseCreateDepositHandle *
+struct TALER_EXCHANGE_PurseDeleteHandle *
 TALER_EXCHANGE_purse_delete (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
