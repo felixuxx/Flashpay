@@ -62,6 +62,10 @@ THEN
   RETURN;
 END IF;
 
+-- Delete contract associated with purse, if it exists.
+DELETE FROM contracts
+  WHERE purse_pub=in_purse_pub;
+
 -- store purse decision
 INSERT INTO purse_decision
   (purse_pub

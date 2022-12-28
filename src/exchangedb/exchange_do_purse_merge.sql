@@ -42,6 +42,7 @@ DECLARE
   my_in_reserve_quota BOOLEAN;
 BEGIN
 
+
 IF in_partner_url IS NULL
 THEN
   my_partner_serial_id=NULL;
@@ -124,6 +125,27 @@ THEN
   out_conflict=FALSE;
   RETURN;
 END IF;
+
+
+-- Remember how this purse was finished. This will conflict
+-- if the purse was already decided previously.
+INSERT INTO purse_decision
+  (purse_pub
+  ,action_timestamp
+  ,refunded)
+VALUES
+  (in_purse_pub
+  ,in_merge_timestamp
+  ,FALSE)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Purse was already decided (possibly deleted or merged differently).
+  out_conflict=TRUE;
+  RETURN;
+END IF;
+
 out_conflict=FALSE;
 
 
@@ -138,15 +160,6 @@ INSERT INTO reserves
   ,in_expiration_date)
   ON CONFLICT DO NOTHING;
 
--- Remember how this purse was finished.
-INSERT INTO purse_decision
-  (purse_pub
-  ,action_timestamp
-  ,refunded)
-VALUES
-  (in_purse_pub
-  ,in_merge_timestamp
-  ,FALSE);
 
 IF (my_in_reserve_quota)
 THEN
