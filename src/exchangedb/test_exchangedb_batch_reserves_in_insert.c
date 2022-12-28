@@ -100,8 +100,9 @@ run (void *cls)
     unsigned int batch_size = batches[i];
     struct GNUNET_TIME_Absolute now;
     struct GNUNET_TIME_Timestamp ts;
-    unsigned int iterations = 1024 / batch_size;
+    unsigned int iterations = 16;
     struct GNUNET_TIME_Relative duration;
+    struct TALER_ReservePublicKeyP reserve_pubs[batch_size];
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];
     enum GNUNET_DB_QueryStatus results[batch_size];
     GNUNET_assert (GNUNET_OK ==
@@ -110,23 +111,23 @@ run (void *cls)
     now = GNUNET_TIME_absolute_get ();
     ts = GNUNET_TIME_timestamp_get ();
 
-    for (unsigned int r = 0; r<iterations; r++)
-    {
-      for (unsigned int k = 0; k<batch_size; k++)
+
+    for (unsigned int k = 0; k<batch_size; k++)
       {
-        RND_BLK (&reserves[k].reserve_pub);
-        reserves[k].balance = value;
+        RND_BLK (&reserve_pubs[k]);
+        reserves[k].reserve_pub = &reserve_pubs[k];
+        reserves[k].balance = &value;
         reserves[k].execution_time = ts;
         reserves[k].sender_account_details = sndr;
         reserves[k].exchange_account_name = "name";
         reserves[k].wire_reference = k;
       }
-      FAILIF (batch_size !=
+    FAILIF (batch_size !=
             plugin->batch_reserves_in_insert (plugin->cls,
                                               reserves,
                                               batch_size,
                                               results));
-      }
+
 
     duration = GNUNET_TIME_absolute_get_duration (now);
     fprintf (stdout,
