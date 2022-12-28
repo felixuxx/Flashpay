@@ -31,111 +31,6 @@
 #include <gnunet/gnunet_mhd_compat.h>
 
 
-/* ************* NOTE: OLD KYC logic,***********
-   new logic is in taler-exchange-httpd_kyc.h!
-   ********************************************* */
-
-/**
- * Enumeration for our KYC modes.
- */
-enum TEH_KycMode
-{
-  /**
-   * KYC is disabled.
-   */
-  TEH_KYC_NONE = 0,
-
-  /**
-   * We use Oauth2.0.
-   */
-  TEH_KYC_OAUTH2 = 1
-};
-
-
-/**
- * Structure describing our KYC configuration.
- */
-struct TEH_KycOptions
-{
-  /**
-   * What KYC mode are we in?
-   */
-  enum TEH_KycMode mode;
-
-  /**
-   * Maximum amount that can be withdrawn in @e withdraw_period without
-   * needing KYC.
-   * Only valid if @e mode is not #TEH_KYC_NONE and
-   * if @e withdraw_period is non-zero.
-   */
-  struct TALER_Amount withdraw_limit;
-
-  /**
-   * Maximum balance a wallet can hold without
-   * needing KYC.
-   * Only valid if @e mode is not #TEH_KYC_NONE and
-   * if the amount specified is valid.
-   */
-  struct TALER_Amount wallet_balance_limit;
-
-  /**
-   * Time period over which @e withdraw_limit applies.
-   * Only valid if @e mode is not #TEH_KYC_NONE.
-   */
-  struct GNUNET_TIME_Relative withdraw_period;
-
-  /**
-   * Details depending on @e mode.
-   */
-  union
-  {
-
-    /**
-     * Configuration details if @e mode is #TEH_KYC_OAUTH2.
-     */
-    struct
-    {
-
-      /**
-       * URL of the OAuth2.0 endpoint for KYC checks.
-       * (token/auth)
-       */
-      char *auth_url;
-
-      /**
-       * URL of the OAuth2.0 endpoint for KYC checks.
-       */
-      char *login_url;
-
-      /**
-       * URL of the user info access endpoint.
-       */
-      char *info_url;
-
-      /**
-       * Our client ID for OAuth2.0.
-       */
-      char *client_id;
-
-      /**
-       * Our client secret for OAuth2.0.
-       */
-      char *client_secret;
-
-      /**
-       * Where to redirect clients after the
-       * Web-based KYC process is done?
-       */
-      char *post_kyc_redirect_url;
-
-    } oauth2;
-
-  } details;
-};
-
-
-extern struct TEH_KycOptions TEH_kyc_config;
-
 /**
  * How long is caching /keys allowed at most?
  */
@@ -301,11 +196,10 @@ struct TEH_RequestHandler
   union
   {
     /**
-     * Function to call to handle a GET requests (and those
+     * Function to call to handle GET requests (and those
      * with @e method NULL).
      *
      * @param rc context for the request
-     * @param mime_type the @e mime_type for the reply (hint, can be NULL)
      * @param args array of arguments, needs to be of length @e args_expected
      * @return MHD result code
      */
@@ -315,7 +209,7 @@ struct TEH_RequestHandler
 
 
     /**
-     * Function to call to handle a POST request.
+     * Function to call to handle POST requests.
      *
      * @param rc context for the request
      * @param json uploaded JSON data
@@ -326,6 +220,17 @@ struct TEH_RequestHandler
     (*post)(struct TEH_RequestContext *rc,
             const json_t *root,
             const char *const args[]);
+
+    /**
+     * Function to call to handle DELETE requests.
+     *
+     * @param rc context for the request
+     * @param args array of arguments, needs to be of length @e args_expected
+     * @return MHD result code
+     */
+    MHD_RESULT
+      (*delete)(struct TEH_RequestContext *rc,
+                const char *const args[]);
 
   } handler;
 

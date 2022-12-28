@@ -116,11 +116,6 @@ struct TALER_AgeRestrictionConfig TEH_age_restriction_config = {0};
 static struct MHD_Daemon *mhd;
 
 /**
- * Our KYC configuration.
- */
-struct TEH_KycOptions TEH_kyc_config;
-
-/**
  * How long is caching /keys allowed at most? (global)
  */
 struct GNUNET_TIME_Relative TEH_max_keys_caching;
@@ -732,12 +727,16 @@ proceed_with_handler (struct TEH_RequestContext *rc,
 
     /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
        so we test for 'root' to decide which handler to invoke. */
-    if (NULL != root)
+    if (0 == strcasecmp (rh->method,
+                         MHD_HTTP_METHOD_POST))
       ret = rh->handler.post (rc,
                               root,
                               args);
-    else /* We also only have "POST" or "GET" in the API for at this point
-      (OPTIONS/HEAD are taken care of earlier) */
+    else if (0 == strcasecmp (rh->method,
+                              MHD_HTTP_METHOD_DELETE))
+      ret = rh->handler.delete (rc,
+                                args);
+    else /* Only GET left */
       ret = rh->handler.get (rc,
                              args);
   }
@@ -975,7 +974,7 @@ handle_post_management (struct TEH_RequestContext *rc,
 
 
 /**
- * Handle a get "/management" request.
+ * Handle a GET "/management" request.
  *
  * @param rc request context
  * @param args array of additional options (must be [0] == "keys")
@@ -1225,7 +1224,7 @@ handle_mhd_request (void *cls,
       .url = "purses",
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &handle_post_purses,
-      .nargs = 2 // ??
+      .nargs = 2
     },
     /* Getting purse status */
     {
@@ -1233,6 +1232,13 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_purses_get,
       .nargs = 2
+    },
+    /* Deleting purse */
+    {
+      .url = "purses",
+      .method = MHD_HTTP_METHOD_DELETE,
+      .handler.delete = &TEH_handler_purses_delete,
+      .nargs = 1
     },
     /* Getting contracts */
     {
@@ -1526,185 +1532,6 @@ handle_mhd_request (void *cls,
 
 
 /**
- * Load general KYC configuration parameters for the exchange server into the
- * #TEH_kyc_config variable.
- *
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-parse_kyc_settings (void)
-{
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
-                                           "exchange",
-                                           "KYC_WITHDRAW_PERIOD",
-                                           &TEH_kyc_config.withdraw_period))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KYC_WITHDRAW_PERIOD",
-                               "valid relative time expected");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_TIME_relative_is_zero (TEH_kyc_config.withdraw_period))
-    return GNUNET_OK;
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "KYC_WITHDRAW_LIMIT",
-                               &TEH_kyc_config.withdraw_limit))
-    return GNUNET_SYSERR;
-  if (0 != strcasecmp (TEH_kyc_config.withdraw_limit.currency,
-                       TEH_currency))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KYC_WITHDRAW_LIMIT",
-                               "currency mismatch");
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
-/**
- * Load OAuth2.0 configuration parameters for the exchange server into the
- * #TEH_kyc_config variable.
- *
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-parse_kyc_oauth_cfg (void)
-{
-  char *s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_OAUTH2_AUTH_URL",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_AUTH_URL");
-    return GNUNET_SYSERR;
-  }
-  if ( (! TALER_url_valid_charset (s)) ||
-       ( (0 != strncasecmp (s,
-                            "http://",
-                            strlen ("http://"))) &&
-         (0 != strncasecmp (s,
-                            "https://",
-                            strlen ("https://"))) ) )
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_AUTH_URL",
-                               "not a valid URL");
-    GNUNET_free (s);
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.auth_url = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_OAUTH2_LOGIN_URL",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_LOGIN_URL");
-    return GNUNET_SYSERR;
-  }
-  if ( (! TALER_url_valid_charset (s)) ||
-       ( (0 != strncasecmp (s,
-                            "http://",
-                            strlen ("http://"))) &&
-         (0 != strncasecmp (s,
-                            "https://",
-                            strlen ("https://"))) ) )
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_LOGIN_URL",
-                               "not a valid URL");
-    GNUNET_free (s);
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.login_url = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_INFO_URL",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_INFO_URL");
-    return GNUNET_SYSERR;
-  }
-  if ( (! TALER_url_valid_charset (s)) ||
-       ( (0 != strncasecmp (s,
-                            "http://",
-                            strlen ("http://"))) &&
-         (0 != strncasecmp (s,
-                            "https://",
-                            strlen ("https://"))) ) )
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_INFO_URL",
-                               "not a valid URL");
-    GNUNET_free (s);
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.info_url = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_OAUTH2_CLIENT_ID",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_CLIENT_ID");
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.client_id = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_OAUTH2_CLIENT_SECRET",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_CLIENT_SECRET");
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.client_secret = s;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                             "exchange-kyc-oauth2",
-                                             "KYC_OAUTH2_POST_URL",
-                                             &s))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-kyc-oauth2",
-                               "KYC_OAUTH2_POST_URL");
-    return GNUNET_SYSERR;
-  }
-  TEH_kyc_config.details.oauth2.post_kyc_redirect_url = s;
-  return GNUNET_OK;
-}
-
-
-/**
  * Load configuration parameters for the exchange
  * server into the corresponding global variables.
  *
@@ -1717,47 +1544,6 @@ exchange_serve_process_config (void)
       TALER_KYCLOGIC_kyc_init (TEH_cfg))
   {
     return GNUNET_SYSERR;
-  }
-  {
-    char *kyc_mode;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
-                                               "exchange",
-                                               "KYC_MODE",
-                                               &kyc_mode))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "KYC_MODE");
-      return GNUNET_SYSERR;
-    }
-    if (0 == strcasecmp (kyc_mode,
-                         "NONE"))
-    {
-      TEH_kyc_config.mode = TEH_KYC_NONE;
-    }
-    else if (0 == strcasecmp (kyc_mode,
-                              "OAUTH2"))
-    {
-      TEH_kyc_config.mode = TEH_KYC_OAUTH2;
-      if (GNUNET_OK !=
-          parse_kyc_oauth_cfg ())
-      {
-        GNUNET_free (kyc_mode);
-        return GNUNET_SYSERR;
-      }
-    }
-    else
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "KYC_MODE",
-                                 "Must be 'NONE' or 'OAUTH2'");
-      GNUNET_free (kyc_mode);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_free (kyc_mode);
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
@@ -1823,35 +1609,6 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
 
-  if (TEH_KYC_NONE != TEH_kyc_config.mode)
-  {
-    if (GNUNET_YES ==
-        GNUNET_CONFIGURATION_have_value (TEH_cfg,
-                                         "exchange",
-                                         "KYC_WALLET_BALANCE_LIMIT"))
-    {
-      if ( (GNUNET_OK !=
-            TALER_config_get_amount (TEH_cfg,
-                                     "exchange",
-                                     "KYC_WALLET_BALANCE_LIMIT",
-                                     &TEH_kyc_config.wallet_balance_limit)) ||
-           (0 != strcasecmp (TEH_currency,
-                             TEH_kyc_config.wallet_balance_limit.currency)) )
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "KYC_WALLET_BALANCE_LIMIT",
-                                   "valid amount expected");
-        return GNUNET_SYSERR;
-      }
-    }
-    else
-    {
-      memset (&TEH_kyc_config.wallet_balance_limit,
-              0,
-              sizeof (TEH_kyc_config.wallet_balance_limit));
-    }
-  }
   {
     char *master_public_key_str;
 
@@ -1881,12 +1638,6 @@ exchange_serve_process_config (void)
       return GNUNET_SYSERR;
     }
     GNUNET_free (master_public_key_str);
-  }
-  if (TEH_KYC_NONE != TEH_kyc_config.mode)
-  {
-    if (GNUNET_OK !=
-        parse_kyc_settings ())
-      return GNUNET_SYSERR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Launching exchange with public key `%s'...\n",
