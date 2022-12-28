@@ -4943,6 +4943,65 @@ TALER_EXCHANGE_purse_create_with_deposit_cancel (
 
 
 /**
+ * Response generated for a purse deletion request.
+ */
+struct TALER_EXCHANGE_PurseDeleteResponse
+{
+  /**
+   * Full HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+
+/**
+ * Function called with information about the deletion
+ * of a purse.
+ *
+ * @param cls closure
+ * @param pdr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_PurseDeleteCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_PurseDeleteResponse *pdr);
+
+
+/**
+ * @brief Handle for a DELETE /purses/$PID request.
+ */
+struct TALER_EXCHANGE_PurseDeleteHandle;
+
+
+/**
+ * Asks the exchange to delete a purse. Will only succeed if
+ * the purse was not yet merged and did not yet time out.
+ *
+ * @param exchange the exchange to interact with
+ * @param purse_priv private key of the purse
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_PurseCreateDepositHandle *
+TALER_EXCHANGE_purse_delete (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_PurseContractPrivateKeyP *purse_priv,
+  TALER_EXCHANGE_PurseDeleteCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_purse_delete() operation.
+ *
+ * @param pdh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_purse_delete_cancel (
+  struct TALER_EXCHANGE_PurseDeleteHandle *pdh);
+
+
+/**
  * Response generated for an account merge request.
  */
 struct TALER_EXCHANGE_AccountMergeResponse
