@@ -54,7 +54,13 @@ INSERT INTO purse_deletion
   ,purse_sig)
 VALUES
   (in_purse_pub
-  ,in_purse_sig);
+  ,in_purse_sig)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
 
 -- store purse decision
 INSERT INTO purse_decision
