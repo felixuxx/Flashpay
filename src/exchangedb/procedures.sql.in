@@ -29,6 +29,7 @@ SET search_path TO exchange;
 #include "exchange_do_recoup_to_coin.sql"
 #include "exchange_do_gc.sql"
 #include "exchange_do_purse_deposit.sql"
+#include "exchange_do_purse_merge.sql"
 #include "exchange_do_reserve_purse.sql"
 #include "exchange_do_expire_purse.sql"
 #include "exchange_do_delete_purse.sql"
