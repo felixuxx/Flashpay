@@ -100,7 +100,6 @@ run (void *cls)
     unsigned int batch_size = batches[i];
     struct GNUNET_TIME_Absolute now;
     struct GNUNET_TIME_Timestamp ts;
-    unsigned int iterations = 16;
     struct GNUNET_TIME_Relative duration;
     struct TALER_ReservePublicKeyP reserve_pubs[batch_size];
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[batch_size];

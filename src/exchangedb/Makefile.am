@@ -283,15 +283,13 @@ check_PROGRAMS = \
   bench-db-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-by-j-postgres\
-  test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres
+  test-exchangedb-batch-reserves-in-insert-postgres
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-postgres\
   test-exchangedb-by-j-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
-  test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres
+  test-exchangedb-batch-reserves-in-insert-postgres
 
 
 test_exchangedb_postgres_SOURCES = \
@@ -365,27 +363,6 @@ bench_db_postgres_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-test_exchangedb_populate_table_postgres_SOURCES = \
-  test_exchangedb_populate_table.c
-test_exchangedb_populate_table_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetjson \
-  -lgnunetutil \
-  $(XLIB)
-
-bench_db_postgres_SOURCES = \
-  bench_db.c
-bench_db_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -lgnunetpq \
-  -lgnunetutil \
-  $(XLIB)
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la
