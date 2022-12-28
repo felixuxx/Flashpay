@@ -207,6 +207,7 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                         const char *const args[2])
 {
   struct GetContext *gc = rc->rh_ctx;
+  bool purse_deleted;
   MHD_RESULT res;
 
   if (NULL == gc)
@@ -312,7 +313,8 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
                                    &gc->amount,
                                    &gc->deposited,
                                    &gc->h_contract,
-                                   &gc->merge_timestamp);
+                                   &gc->merge_timestamp,
+                                   &purse_deleted);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -367,11 +369,14 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
       gc->eh = eh2;
     }
   }
-  if (GNUNET_TIME_absolute_is_past (gc->purse_expiration.abs_time))
+  if (GNUNET_TIME_absolute_is_past (gc->purse_expiration.abs_time) ||
+      purse_deleted)
   {
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_GONE,
-                                       TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+                                       purse_deleted
+                                       ? TALER_EC_EXCHANGE_GENERIC_PURSE_DELETED
+                                       : TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
                                        GNUNET_TIME_timestamp2s (
                                          gc->purse_expiration));
   }

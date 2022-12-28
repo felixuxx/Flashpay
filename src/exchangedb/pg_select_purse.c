@@ -35,7 +35,8 @@ TEH_PG_select_purse (
   struct TALER_Amount *amount,
   struct TALER_Amount *deposited,
   struct TALER_PrivateContractHashP *h_contract_terms,
-  struct GNUNET_TIME_Timestamp *merge_timestamp)
+  struct GNUNET_TIME_Timestamp *merge_timestamp,
+  bool *purse_deleted)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -57,6 +58,8 @@ TEH_PG_select_purse (
       GNUNET_PQ_result_spec_timestamp ("merge_timestamp",
                                        merge_timestamp),
       NULL),
+    GNUNET_PQ_result_spec_bool ("purse_deleted",
+                                purse_deleted),
     GNUNET_PQ_result_spec_end
   };
 
@@ -72,8 +75,10 @@ TEH_PG_select_purse (
            ",balance_val"
            ",balance_frac"
            ",merge_timestamp"
+           ",purse_sig IS NOT NULL AS purse_deleted"
            " FROM purse_requests"
            " LEFT JOIN purse_merges USING (purse_pub)"
+           " LEFT JOIN purse_deletion USING (purse_pub)"
            " WHERE purse_pub=$1;");
   *merge_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

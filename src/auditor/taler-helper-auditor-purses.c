@@ -308,6 +308,14 @@ struct PurseSummary
    */
   bool had_pi;
 
+  /**
+   * Was the purse deleted?  FIXME: Not yet handled (do we need to? purse
+   * might just appear as expired eventually; but in the meantime, exchange
+   * may seem to have refunded the coins for no good reason...), also we do
+   * not yet check the deletion signature.
+   */
+  bool purse_deleted;
+
 };
 
 
@@ -407,7 +415,8 @@ setup_purse (struct PurseContext *pc,
                                     &ps->total_value,
                                     &ps->exchange_balance,
                                     &ps->h_contract_terms,
-                                    &ps->merge_timestamp);
+                                    &ps->merge_timestamp,
+                                    &ps->purse_deleted);
   if (0 >= qs)
   {
     GNUNET_free (ps);

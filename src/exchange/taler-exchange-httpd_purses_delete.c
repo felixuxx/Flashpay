@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include "taler_dbevents.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_common_deposit.h"
@@ -130,6 +131,23 @@ TEH_handler_purses_delete (
       connection,
       TALER_EC_EXCHANGE_PURSE_DELETE_ALREADY_DECIDED,
       NULL);
+  }
+  {
+    /* Possible minor optimization: integrate notification with
+       transaction above... */
+    struct TALER_PurseEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+      .purse_pub = purse_pub
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Notifying about purse deletion %s\n",
+                TALER_B2S (&purse_pub));
+    TEH_plugin->event_notify (TEH_plugin->cls,
+                              &rep.header,
+                              NULL,
+                              0);
   }
   /* success */
   return TALER_MHD_reply_static (connection,

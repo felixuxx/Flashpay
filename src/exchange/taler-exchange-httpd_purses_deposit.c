@@ -374,6 +374,7 @@ TEH_handler_purses_deposit (
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp create_timestamp;
     struct GNUNET_TIME_Timestamp merge_timestamp;
+    bool was_deleted;
 
     qs = TEH_plugin->select_purse (
       TEH_plugin->cls,
@@ -383,7 +384,8 @@ TEH_handler_purses_deposit (
       &pcc.amount,
       &pcc.deposit_total,
       &pcc.h_contract_terms,
-      &merge_timestamp);
+      &merge_timestamp,
+      &was_deleted);
     switch (qs)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
@@ -406,12 +408,16 @@ TEH_handler_purses_deposit (
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
       break; /* handled below */
     }
-    if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time))
+    if (GNUNET_TIME_absolute_is_past (pcc.purse_expiration.abs_time) ||
+        was_deleted)
     {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_GONE,
-                                         TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
-                                         NULL);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        was_deleted
+        ? TALER_EC_EXCHANGE_GENERIC_PURSE_DELETED
+        : TALER_EC_EXCHANGE_GENERIC_PURSE_EXPIRED,
+        GNUNET_TIME_timestamp2s (pcc.purse_expiration));
     }
   }
 
