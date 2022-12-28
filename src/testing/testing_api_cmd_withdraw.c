@@ -360,14 +360,12 @@ withdraw_run (void *cls,
     = TALER_TESTING_interpreter_lookup_command (
         is,
         ws->reserve_reference);
-
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
                                             &rp))
@@ -376,7 +374,6 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (NULL == ws->exchange_url)
     ws->exchange_url
       = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));

@@ -2568,6 +2568,21 @@ TALER_TESTING_cmd_purse_create_with_deposit (
 
 
 /**
+ * Deletes a purse.
+ *
+ * @param label command label
+ * @param expected_http_status what HTTP status do we expect to get returned from the exchange
+ * @param purse_cmd command that created the purse
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_purse_delete (
+  const char *label,
+  unsigned int expected_http_status,
+  const char *purse_cmd);
+
+
+/**
  * Retrieve contract (also checks that the contract matches
  * the upload command).
  *
