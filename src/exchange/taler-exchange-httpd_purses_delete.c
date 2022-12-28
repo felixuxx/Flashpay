@@ -127,7 +127,6 @@ TEH_handler_purses_delete (
   }
   if (decided)
   {
-    GNUNET_break_op (0);
     return TALER_MHD_reply_with_ec (
       connection,
       TALER_EC_EXCHANGE_PURSE_DELETE_ALREADY_DECIDED,
