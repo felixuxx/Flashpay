@@ -208,6 +208,10 @@ TALER_EXCHANGE_purse_delete (
     GNUNET_free (xhdr);
   }
   eh = TALER_EXCHANGE_curl_easy_get_ (pdh->url);
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_CUSTOMREQUEST,
+                                   MHD_HTTP_METHOD_DELETE));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for purse delete: `%s'\n",
               pdh->url);
