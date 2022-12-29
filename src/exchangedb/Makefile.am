@@ -297,6 +297,7 @@ check_PROGRAMS = \
   test-exchangedb-by-j-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
   test-exchangedb-populate-table-postgres
+
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   test-exchangedb-postgres\
@@ -304,7 +305,6 @@ TESTS = \
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
   test-exchangedb-populate-table-postgres
-
 
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
@@ -398,6 +398,7 @@ bench_db_postgres_LDADD = \
   -lgnunetpq \
   -lgnunetutil \
   $(XLIB)
+
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la
