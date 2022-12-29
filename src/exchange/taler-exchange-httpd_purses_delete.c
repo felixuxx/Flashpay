@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include "taler_dbevents.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_common_deposit.h"
@@ -35,13 +36,27 @@
 
 MHD_RESULT
 TEH_handler_purses_delete (
-  struct MHD_Connection *connection,
-  const struct TALER_PurseContractPublicKeyP *purse_pub)
+  struct TEH_RequestContext *rc,
+  const char *const args[1])
 {
+  struct MHD_Connection *connection = rc->connection;
+  struct TALER_PurseContractPublicKeyP purse_pub;
   struct TALER_PurseContractSignatureP purse_sig;
   bool found;
   bool decided;
 
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &purse_pub,
+                                     sizeof (purse_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_PURSE_PUB_MALFORMED,
+                                       args[0]);
+  }
   {
     const char *sig;
 
@@ -66,7 +81,7 @@ TEH_handler_purses_delete (
   }
 
   if (GNUNET_OK !=
-      TALER_wallet_purse_delete_verify (purse_pub,
+      TALER_wallet_purse_delete_verify (&purse_pub,
                                         &purse_sig))
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/delete request\n");
@@ -89,7 +104,7 @@ TEH_handler_purses_delete (
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TEH_plugin->do_purse_delete (TEH_plugin->cls,
-                                      purse_pub,
+                                      &purse_pub,
                                       &purse_sig,
                                       &decided,
                                       &found);
@@ -116,6 +131,23 @@ TEH_handler_purses_delete (
       connection,
       TALER_EC_EXCHANGE_PURSE_DELETE_ALREADY_DECIDED,
       NULL);
+  }
+  {
+    /* Possible minor optimization: integrate notification with
+       transaction above... */
+    struct TALER_PurseEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_PURSE_DEPOSITED),
+      .purse_pub = purse_pub
+    };
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Notifying about purse deletion %s\n",
+                TALER_B2S (&purse_pub));
+    TEH_plugin->event_notify (TEH_plugin->cls,
+                              &rep.header,
+                              NULL,
+                              0);
   }
   /* success */
   return TALER_MHD_reply_static (connection,

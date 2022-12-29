@@ -29,14 +29,14 @@
 /**
  * Handle a DELETE "/purses/$PURSE_PUB" request.
  *
- * @param connection the MHD connection to handle
- * @param purse_pub public key of the purse
+ * @param rc request details about the request to handle
+ * @param args argument with the public key of the purse
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_purses_delete (
-  struct MHD_Connection *connection,
-  const struct TALER_PurseContractPublicKeyP *purse_pub);
+  struct TEH_RequestContext *rc,
+  const char *const args[1]);
 
 
 #endif

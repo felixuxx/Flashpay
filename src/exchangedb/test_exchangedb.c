@@ -1351,6 +1351,7 @@ run (void *cls)
     RND_BLK (&age_hash);
     for (size_t i = 0; i < sizeof(p_ah) / sizeof(p_ah[0]); i++)
     {
+
       RND_BLK (&coin_pub);
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_blind (&dkp->pub,

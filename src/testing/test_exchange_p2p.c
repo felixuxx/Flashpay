@@ -159,6 +159,19 @@ run (void *cls,
   };
   struct TALER_TESTING_Command push[] = {
     TALER_TESTING_cmd_purse_create_with_deposit (
+      "purse-with-deposit-for-delete",
+      MHD_HTTP_OK,
+      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      true, /* upload contract */
+      GNUNET_TIME_UNIT_MINUTES, /* expiration */
+      "withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    TALER_TESTING_cmd_purse_delete (
+      "purse-with-deposit-delete",
+      MHD_HTTP_NO_CONTENT,
+      "purse-with-deposit-for-delete"),
+    TALER_TESTING_cmd_purse_create_with_deposit (
       "purse-with-deposit",
       MHD_HTTP_OK,
       "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",

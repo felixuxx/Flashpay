@@ -77,6 +77,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_offline_sign_keys.c \
   testing_api_cmd_offline_sign_extensions.c \
   testing_api_cmd_purse_create_deposit.c \
+  testing_api_cmd_purse_delete.c \
   testing_api_cmd_purse_deposit.c \
   testing_api_cmd_purse_get.c \
   testing_api_cmd_purse_merge.c \

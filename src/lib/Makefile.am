@@ -52,6 +52,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_melt.c \
   exchange_api_purse_create_with_deposit.c \
   exchange_api_purse_create_with_merge.c \
+  exchange_api_purse_delete.c \
   exchange_api_purse_deposit.c \
   exchange_api_purse_merge.c \
   exchange_api_purses_get.c \

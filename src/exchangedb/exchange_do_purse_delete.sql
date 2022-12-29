@@ -14,7 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE OR REPLACE FUNCTION exchange_do_delete_purse(
+CREATE OR REPLACE FUNCTION exchange_do_purse_delete(
   IN in_purse_pub BYTEA,
   IN in_purse_sig BYTEA,
   IN in_now INT8,
@@ -28,7 +28,7 @@ DECLARE
   my_in_reserve_quota BOOLEAN;
 BEGIN
 
-SELECT COUNT(*) FROM purse_decision
+PERFORM refunded FROM purse_decision
   WHERE purse_pub=in_purse_pub;
 IF FOUND
 THEN
@@ -49,7 +49,7 @@ THEN
 END IF;
 
 -- store reserve deletion
-INSERT INTO purse_deletion
+INSERT INTO exchange.purse_deletion
   (purse_pub
   ,purse_sig)
 VALUES
@@ -115,5 +115,5 @@ END LOOP;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_delete_purse(BYTEA,BYTEA,INT8)
+COMMENT ON FUNCTION exchange_do_purse_delete(BYTEA,BYTEA,INT8)
   IS 'Delete a previously undecided purse and refund the coins (if any).';
