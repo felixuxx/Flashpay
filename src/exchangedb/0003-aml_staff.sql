@@ -21,6 +21,7 @@ CREATE TABLE aml_staff
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,decider_name VARCHAR NOT NULL
   ,is_active BOOLEAN NOT NULL
+  ,read_only BOOLEAN NOT NULL
   ,last_change INT8 NOT NULL
   );
 COMMENT ON TABLE aml_staff
@@ -33,5 +34,7 @@ COMMENT ON COLUMN aml_staff.decider_name
   IS 'Name of the staff member.';
 COMMENT ON COLUMN aml_staff.is_active
   IS 'true if we are currently supporting the use of this AML staff member.';
+COMMENT ON COLUMN aml_staff.is_active
+  IS 'true if the member has read-only access.';
 COMMENT ON COLUMN aml_staff.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';

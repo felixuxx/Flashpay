@@ -53,7 +53,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     '0 for AML decision required, 1 for AML is OK, -1 for account is frozen (prevents further transactions)'
+     '0 for all OK, 1 for AML decision required, 2 for account is frozen (prevents further transactions)'
     ,'status'
     ,table_name
     ,partition_suffix

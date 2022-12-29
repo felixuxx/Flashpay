@@ -66,20 +66,20 @@ TEH_PG_select_purse (
   PREPARE (pg,
            "select_purse",
            "SELECT "
-           " merge_pub"
-           ",purse_creation"
-           ",purse_expiration"
-           ",h_contract_terms"
-           ",amount_with_fee_val"
-           ",amount_with_fee_frac"
-           ",balance_val"
-           ",balance_frac"
-           ",merge_timestamp"
-           ",purse_sig IS NOT NULL AS purse_deleted"
-           " FROM purse_requests"
-           " LEFT JOIN purse_merges USING (purse_pub)"
-           " LEFT JOIN purse_deletion USING (purse_pub)"
-           " WHERE purse_pub=$1;");
+           " pr.merge_pub"
+           ",pr.purse_creation"
+           ",pr.purse_expiration"
+           ",pr.h_contract_terms"
+           ",pr.amount_with_fee_val"
+           ",pr.amount_with_fee_frac"
+           ",pr.balance_val"
+           ",pr.balance_frac"
+           ",pm.merge_timestamp"
+           ",pd.purse_sig IS NOT NULL AS purse_deleted"
+           " FROM purse_requests pr"
+           " LEFT JOIN purse_merges pm ON (pm.purse_pub = pr.purse_pub)"
+           " LEFT JOIN purse_deletion pd ON (pd.purse_pub = pr.purse_pub)"
+           " WHERE pr.purse_pub=$1;");
   *merge_timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_purse",

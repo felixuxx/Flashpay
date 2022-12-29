@@ -1336,15 +1336,11 @@ help_purse_deposit (struct CoinHistoryParseContext *pc,
   }
   if (refunded)
   {
-    /* We add the amount to refunds here, the original
-       deposit will be added to the balance later because
-       we still return GNUNET_YES, thus effectively
-       cancelling out this operation with respect to
-       the final balance. */
+    /* We wave the deposit fee. */
     if (0 >
         TALER_amount_add (&pc->rtotal,
                           &pc->rtotal,
-                          amount))
+                          &pc->dk->fees.deposit))
     {
       /* overflow in refund history? inconceivable! Bad exchange! */
       GNUNET_break_op (0);
@@ -1412,15 +1408,6 @@ help_purse_refund (struct CoinHistoryParseContext *pc,
         TALER_amount_cmp (&refund_fee,
                           &pc->dk->fees.refund)) )
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (0 >
-      TALER_amount_add (&pc->rtotal,
-                        &pc->rtotal,
-                        amount))
-  {
-    /* overflow in refund history? inconceivable! Bad exchange! */
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }

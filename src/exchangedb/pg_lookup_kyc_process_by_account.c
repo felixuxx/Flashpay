@@ -25,6 +25,7 @@
 #include "pg_lookup_kyc_process_by_account.h"
 #include "pg_helper.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_kyc_process_by_account (
   void *cls,
@@ -59,7 +60,7 @@ TEH_PG_lookup_kyc_process_by_account (
 
   *provider_account_id = NULL;
   *provider_legitimization_id = NULL;
-   /* Used in #postgres_lookup_kyc_process_by_account() */
+  /* Used in #postgres_lookup_kyc_process_by_account() */
   PREPARE (pg,
            "lookup_process_by_account",
            "SELECT "

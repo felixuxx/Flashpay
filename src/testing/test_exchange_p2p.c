@@ -174,17 +174,17 @@ run (void *cls,
     TALER_TESTING_cmd_purse_create_with_deposit (
       "purse-with-deposit",
       MHD_HTTP_OK,
-      "{\"amount\":\"EUR:1\",\"summary\":\"ice cream\"}",
+      "{\"amount\":\"EUR:0.99\",\"summary\":\"ice cream\"}",
       true, /* upload contract */
       GNUNET_TIME_UNIT_MINUTES, /* expiration */
       "withdraw-coin-1",
-      "EUR:1.01",
+      "EUR:1.00",
       NULL),
     TALER_TESTING_cmd_purse_poll (
       "push-poll-purse-before-merge",
       MHD_HTTP_OK,
       "purse-with-deposit",
-      "EUR:1",
+      "EUR:0.99",
       true,
       GNUNET_TIME_UNIT_MINUTES),
     TALER_TESTING_cmd_contract_get (
@@ -206,13 +206,13 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "push-check-post-merge-reserve-balance-get",
       "create-reserve-1",
-      "EUR:1.03",
+      "EUR:1.02",
       MHD_HTTP_OK),
     /* POST history doesn't yet support P2P transfers */
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
-      "EUR:1.03",
+      "EUR:1.02",
       MHD_HTTP_OK),
     /* Test conflicting merge */
     TALER_TESTING_cmd_purse_merge (
@@ -261,12 +261,12 @@ run (void *cls,
     TALER_TESTING_cmd_status (
       "pull-check-post-merge-reserve-balance-get",
       "create-reserve-1",
-      "EUR:2.02",
+      "EUR:2.01",
       MHD_HTTP_OK),
     TALER_TESTING_cmd_reserve_status (
       "push-check-post-merge-reserve-balance-post",
       "create-reserve-1",
-      "EUR:2.02",
+      "EUR:2.01",
       MHD_HTTP_OK),
     /* create 2nd purse for a deposit conflict */
     TALER_TESTING_cmd_purse_create_with_reserve (

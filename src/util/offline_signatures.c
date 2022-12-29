@@ -54,7 +54,7 @@ struct TALER_MasterAmlOfficerStatusPS
   struct GNUNET_HashCode h_officer_name GNUNET_PACKED;
 
   /**
-   * 1 if enabled, 0 if disabled, in NBO.
+   * Bitmask: 1 if enabled; 2 for read-only access. in NBO.
    */
   uint32_t is_active GNUNET_PACKED;
 };
@@ -67,6 +67,7 @@ TALER_exchange_offline_aml_officer_status_sign (
   const char *officer_name,
   struct GNUNET_TIME_Timestamp change_date,
   bool is_active,
+  bool read_only,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -75,7 +76,7 @@ TALER_exchange_offline_aml_officer_status_sign (
     .purpose.size = htonl (sizeof (as)),
     .change_date = GNUNET_TIME_timestamp_hton (change_date),
     .officer_pub = *officer_pub,
-    .is_active = htonl (is_active ? 1 : 0)
+    .is_active = htonl ((is_active ? 1 : 0) + (read_only ? 2 : 0))
   };
 
   GNUNET_CRYPTO_hash (officer_name,
@@ -93,6 +94,7 @@ TALER_exchange_offline_aml_officer_status_verify (
   const char *officer_name,
   struct GNUNET_TIME_Timestamp change_date,
   bool is_active,
+  bool read_only,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -101,7 +103,7 @@ TALER_exchange_offline_aml_officer_status_verify (
     .purpose.size = htonl (sizeof (as)),
     .change_date = GNUNET_TIME_timestamp_hton (change_date),
     .officer_pub = *officer_pub,
-    .is_active = htonl (is_active ? 1 : 0)
+    .is_active = htonl ((is_active ? 1 : 0) + (read_only ? 2 : 0))
   };
 
   GNUNET_CRYPTO_hash (officer_name,

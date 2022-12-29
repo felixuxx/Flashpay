@@ -2245,6 +2245,31 @@ typedef void
 
 
 /**
+ * Callback with KYC attributes about a particular user.
+ *
+ * @param cls closure
+ * @param h_payto account for which the attribute data is stored
+ * @param provider_section provider that must be checked
+ * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+ *        digits can be 0 if exact day, month or year are unknown
+ * @param collection_time when was the data collected
+ * @param expiration_time when does the data expire
+ * @param enc_attributes_size number of bytes in @a enc_attributes
+ * @param enc_attributes encrypted attribute data
+ */
+typedef void
+(*TALER_EXCHANGEDB_AttributeCallback)(
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const char *provider_section,
+  const char *birthdate,
+  struct GNUNET_TIME_Timestamp collection_time,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  size_t enc_attributes_size,
+  const void *enc_attributes);
+
+
+/**
  * Function called with details about deposits that have been made,
  * with the goal of auditing the deposit's execution.
  *
@@ -3098,6 +3123,46 @@ typedef void
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyInformation *issue);
+
+
+/**
+ * Return AML status.
+ *
+ * @param cls closure
+ * @param row_id current row in AML status table
+ * @param h_payto account for which the attribute data is stored
+ * @param threshold currently monthly threshold that would trigger an AML check
+ * @param decision_time when was the last decision made
+ */
+typedef void
+(*TALER_EXCHANGEDB_AmlStatusCallback)(
+  void *cls,
+  uint64_t row_id,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_Amount *threshold,
+  enum TALER_AmlDecisionState status);
+
+
+/**
+ * Return historic AML decision.
+ *
+ * @param cls closure
+ * @param new_threshold new monthly threshold that would trigger an AML check
+ * @param new_status AML decision status
+ * @param decision_time when was the decision made
+ * @param justification human-readable text justifying the decision
+ * @param decider_pub public key of the staff member
+ * @param decider_sig signature of the staff member
+ */
+typedef void
+(*TALER_EXCHANGEDB_AmlHistoryCallback)(
+  void *cls,
+  const struct TALER_Amount *new_threshold,
+  enum TALER_AmlDecisionState new_status,
+  struct GNUNET_TIME_Absolute decision_time,
+  const char *justification,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  const struct TALER_AmlOfficerSignatureP *decider_sig);
 
 
 /**
@@ -6433,6 +6498,248 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Absolute time_limit,
     TALER_EXCHANGEDB_KycAmountCallback kac,
     void *kac_cls);
+
+
+  // FIXME: functions below here not yet implemented!
+
+  /**
+   * Store KYC attribute data.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param kyc_prox key for similarity search
+   * @param provider_section provider that must be checked
+   * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+   *        digits can be 0 if exact day, month or year are unknown
+   * @param collection_time when was the data collected
+   * @param expiration_time when does the data expire
+   * @param enc_attributes_size number of bytes in @a enc_attributes
+   * @param enc_attributes encrypted attribute data
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_kyc_attributes)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct GNUNET_ShortHashCode *kyc_prox,
+    const char *provider_section,
+    const char *birthdate,
+    struct GNUNET_TIME_Timestamp collection_time,
+    struct GNUNET_TIME_Timestamp expiration_time,
+    size_t enc_attributes_size,
+    const void *enc_attributes);
+
+
+  /**
+   * Update KYC attribute data.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param kyc_prox key for similarity search
+   * @param provider_section provider that must be checked
+   * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+   *        digits can be 0 if exact day, month or year are unknown
+   * @param collection_time when was the data collected
+   * @param expiration_time when does the data expire
+   * @param enc_attributes_size number of bytes in @a enc_attributes
+   * @param enc_attributes encrypted attribute data
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_kyc_attributes)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct GNUNET_ShortHashCode *kyc_prox,
+    const char *provider_section,
+    const char *birthdate,
+    struct GNUNET_TIME_Timestamp collection_time,
+    struct GNUNET_TIME_Timestamp expiration_time,
+    size_t enc_attributes_size,
+    const void *enc_attributes);
+
+
+  /**
+   * Lookup similar KYC attribute data.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param kyc_prox key for similarity search
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_similar_kyc_attributes)(
+    void *cls,
+    const struct GNUNET_ShortHashCode *kyc_prox,
+    TALER_EXCHANGEDB_AttributeCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Lookup KYC attribute data for a specific account.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_kyc_attributes)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_AttributeCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Insert AML staff record.
+   *
+   * @param cls closure
+   * @param decider_pub public key of the staff member
+   * @param master_sig offline signature affirming the AML officer
+   * @param decider_name full name of the staff member
+   * @param is_active true to enable, false to set as inactive
+   * @param read_only true to set read-only access
+   * @param last_change when was the change made effective
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_aml_officer)(
+    void *cls,
+    const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+    const struct TALER_MasterSignatureP *master_sig,
+    const char *decider_name,
+    bool is_active,
+    bool read_only,
+    struct GNUNET_TIME_Absolute last_change);
+
+
+  /**
+   * Update AML staff record.
+   *
+   * @param cls closure
+   * @param decider_pub public key of the staff member
+   * @param master_sig offline signature affirming the AML officer
+   * @param decider_name full name of the staff member
+   * @param is_active true to enable, false to set as inactive
+   * @param read_only true to set read-only access
+   * @param last_change when was the change made effective
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_aml_officer)(
+    void *cls,
+    const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+    const struct TALER_MasterSignatureP *master_sig,
+    const char *decider_name,
+    bool is_active,
+    bool read_only,
+    struct GNUNET_TIME_Absolute last_change);
+
+
+  /**
+   * Fetch AML staff record.
+   *
+   * @param cls closure
+   * @param decider_pub public key of the staff member
+   * @param[out] master_sig offline signature affirming the AML officer
+   * @param[out] decider_name full name of the staff member
+   * @param[out] is_active true to enable, false to set as inactive
+   * @param[out] read_only true to set read-only access
+   * @param[out] last_change when was the change made effective
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_aml_officer)(
+    void *cls,
+    const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+    struct TALER_MasterSignatureP *master_sig,
+    char **decider_name,
+    bool *is_active,
+    bool *read_only,
+    struct GNUNET_TIME_Absolute *last_change);
+
+
+  /**
+   * Trigger AML process, an account has crossed the threshold. Inserts or
+   * updates the AML status.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param threshold_crossed existing threshold that was crossed
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*trigger_aml_process)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_Amount *threshold_crossed);
+
+
+  /**
+   * Lookup AML decisions that have a particular state.
+   *
+   * @param cls closure
+   * @param decision which decision states to filter by
+   * @param row_off offset to start from
+   * @param forward true to go forward in time, false to go backwards
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aml_processes)(
+    void *cls,
+    enum TALER_AmlDecisionState decision,
+    uint64_t row_off,
+    bool forward,
+    TALER_EXCHANGEDB_AmlStatusCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Lookup AML decision history for a particular account.
+   *
+   * @param cls closure
+   * @param h_payto which account should we return the AML decision history for
+   * @param cb callback to invoke on each match
+   * @param cb_cls closure for @a cb
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aml_history)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    TALER_EXCHANGEDB_AmlHistoryCallback cb,
+    void *cb_cls);
+
+
+  /**
+   * Insert an AML decision. Inserts into AML history and insert or updates AML
+   * status.
+   *
+   * @param cls closure
+   * @param h_payto account for which the attribute data is stored
+   * @param new_threshold new monthly threshold that would trigger an AML check
+   * @param new_status AML decision status
+   * @param decision_time when was the decision made
+   * @param justification human-readable text justifying the decision
+   * @param decider_pub public key of the staff member
+   * @param decider_sig signature of the staff member
+   * @return database transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_aml_decision)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_Amount *new_threshold,
+    enum TALER_AmlDecisionState new_status,
+    struct GNUNET_TIME_Absolute decision_time,
+    const char *justification,
+    const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+    const struct TALER_AmlOfficerSignatureP *decider_sig);
 
 
 };

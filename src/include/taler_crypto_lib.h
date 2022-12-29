@@ -147,6 +147,18 @@ struct TALER_ReserveSignatureP
 
 
 /**
+ * (Symmetric) key used to encrypt KYC attribute data in the database.
+ */
+struct TALER_AttributeKeyP
+{
+  /**
+   * Actual key material.
+   */
+  struct GNUNET_HashCode key;
+};
+
+
+/**
  * @brief Type of public keys to for merchant authorizations.
  * Merchants can issue refunds using the corresponding
  * private key.
@@ -533,6 +545,30 @@ struct TALER_AmlOfficerSignatureP
    * Taler uses EdDSA for AML decision signing.
    */
   struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
+ * Bitmask with possible AML decision states.
+ */
+enum TALER_AmlDecisionState
+{
+
+  /**
+   * All AML requirements are currently satisfied.
+   */
+  TALER_AML_NONE = 0,
+
+  /**
+   * An AML investigation is pending.
+   */
+  TALER_AML_PENDING = 1,
+
+  /**
+   * An AML decision has concluded that the funds must be frozen.
+   */
+  TALER_AML_FROZEN = 2
+
 };
 
 
@@ -4597,6 +4633,7 @@ TALER_exchange_online_purse_status_verify (
  * @param officer_name name of the officer
  * @param change_date when to affect the status change
  * @param is_active true to enable the officer
+ * @param read_only true to only allow read-only access
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
@@ -4606,6 +4643,7 @@ TALER_exchange_offline_aml_officer_status_sign (
   const char *officer_name,
   struct GNUNET_TIME_Timestamp change_date,
   bool is_active,
+  bool read_only,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -4617,6 +4655,7 @@ TALER_exchange_offline_aml_officer_status_sign (
  * @param officer_name name of the officer
  * @param change_date when to affect the status change
  * @param is_active true to enable the officer
+ * @param read_only true to only allow read-only access
  * @param master_pub public key to verify against
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
@@ -4627,6 +4666,7 @@ TALER_exchange_offline_aml_officer_status_verify (
   const char *officer_name,
   struct GNUNET_TIME_Timestamp change_date,
   bool is_active,
+  bool read_only,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
