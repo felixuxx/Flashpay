@@ -32,8 +32,8 @@ BEGIN
       ',new_status INT4 NOT NULL DEFAULT(0)'
       ',decision_time INT8 NOT NULL DEFAULT(0)'
       ',justification VARCHAR NOT NULL'
-      ',decider_pub BYTEA PRIMARY KEY CHECK (LENGTH(decider_pub)=32)'
-      ',decider_sig BYTEA PRIMARY KEY CHECK (LENGTH(decider_sig)=64)'
+      ',decider_pub BYTEA CHECK (LENGTH(decider_pub)=32)'
+      ',decider_sig BYTEA CHECK (LENGTH(decider_sig)=64)'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (h_payto)'

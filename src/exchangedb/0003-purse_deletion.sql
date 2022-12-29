@@ -51,7 +51,7 @@ COMMENT ON FUNCTION create_table_purse_deletion
 
 
 CREATE OR REPLACE FUNCTION constrain_table_purse_deletion(
-  IN partition_suffix VARCHAR
+  IN partition_suffix VARCHAR DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -68,8 +68,7 @@ BEGIN
 END $$;
 
 
-CREATE OR REPLACE FUNCTION create_table_purse_requests_was_deleted (
-  IN partition_suffix VARCHAR
+CREATE OR REPLACE FUNCTION master_table_purse_requests_was_deleted (
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -77,18 +76,13 @@ AS $$
 DECLARE
   table_name VARCHAR DEFAULT 'purse_requests';
 BEGIN
-  table_name = concat_ws('_', table_name, partition_suffix);
   EXECUTE FORMAT (
-    'ALTER TABLE ' || table_name ||
+    'ALTER TABLE exchange.' || table_name ||
     ' ADD COLUMN'
     ' was_deleted BOOLEAN NOT NULL DEFAULT(FALSE)'
   );
-  PERFORM comment_partitioned_column(
-     'TRUE if the purse was explicitly deleted (purse must have an entry in the purse_deletion table)'
-    ,'was_deleted'
-    ,table_name
-    ,partition_suffix
-  );
+  COMMENT ON COLUMN purse_requests.was_deleted
+    IS 'TRUE if the purse was explicitly deleted (purse must have an entry in the purse_deletion table)';
 END $$;
 
 
@@ -111,6 +105,6 @@ INSERT INTO exchange_tables
     ,FALSE),
     ('purse_requests_was_deleted'
     ,'exchange-0003'
-    ,'create'
+    ,'master'
     ,TRUE
     ,FALSE);

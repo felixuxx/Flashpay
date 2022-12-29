@@ -27,6 +27,7 @@ sql_DATA = \
   versioning.sql \
   exchange-0001.sql \
   exchange-0002.sql \
+  exchange-0003.sql \
   drop.sql \
   procedures.sql
 

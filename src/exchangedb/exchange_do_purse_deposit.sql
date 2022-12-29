@@ -83,6 +83,19 @@ THEN
 END IF;
 
 
+-- Check if purse was deleted, if so, abort and prevent deposit.
+PERFORM
+  FROM exchange.purse_deletion
+  WHERE purse_pub = in_purse_pub;
+IF FOUND
+THEN
+  out_late=TRUE;
+  out_balance_ok=FALSE;
+  out_conflict=FALSE;
+  RETURN;
+END IF;
+
+
 -- Debit the coin
 -- Check and update balance of the coin.
 UPDATE known_coins

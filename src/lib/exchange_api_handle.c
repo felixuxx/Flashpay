@@ -1276,7 +1276,7 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Forcing re-download of all exchange keys\n");
-    GNUNET_break (GNUNET_YES == force_download);
+    GNUNET_break (force_download);
     exchange->state = MHS_INIT;
   }
   if ( (! force_download) &&
