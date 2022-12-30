@@ -10,3 +10,6 @@ test-exchangedb-by-j-postgres
 perf-exchangedb-reserves-in-insert-postgres
 exchange-0002.sql
 procedures.sql
+exchange-0003.sql
+test-exchangedb-batch-reserves-in-insert-postgres
+test-exchangedb-populate-table-postgres

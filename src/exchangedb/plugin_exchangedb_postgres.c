@@ -205,6 +205,19 @@
 #include "pg_compute_shard.h"
 #include "pg_batch_reserves_in_insert.h"
 #include "pg_batch2_reserves_in_insert.h"
+#include "pg_insert_kyc_attributes.h"
+#include "pg_update_kyc_attributes.h"
+#include "pg_select_similar_kyc_attributes.h"
+#include "pg_select_kyc_attributes.h"
+#include "pg_insert_aml_officer.h"
+#include "pg_update_aml_officer.h"
+#include "pg_lookup_aml_officer.h"
+#include "pg_trigger_aml_process.h"
+#include "pg_select_aml_process.h"
+#include "pg_select_aml_history.h"
+#include "pg_insert_aml_decision.h"
+
+
 /**
  * Set to 1 to enable Postgres auto_explain module. This will
  * slow down things a _lot_, but also provide extensive logging
@@ -738,7 +751,30 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_batch_reserves_in_insert;
   plugin->batch2_reserves_in_insert
     = &TEH_PG_batch2_reserves_in_insert;
-
+#if 0
+  plugin->insert_kyc_attributes
+    = &TEH_PG_insert_kyc_attributes;
+  plugin->update_kyc_attributes
+    = &TEH_PG_update_kyc_attributes;
+  plugin->select_similar_kyc_attributes
+    = &TEH_PG_select_similar_kyc_attributes;
+  plugin->select_kyc_attributes
+    = &TEH_PG_select_kyc_attributes;
+  plugin->insert_aml_officer
+    = &TEH_PG_insert_aml_officer;
+  plugin->update_aml_officer
+    = &TEH_PG_update_aml_officer;
+  plugin->lookup_aml_officer
+    = &TEH_PG_lookup_aml_officer;
+  plugin->trigger_aml_process
+    = &TEH_PG_trigger_aml_process;
+  plugin->select_aml_process
+    = &TEH_PG_select_aml_process;
+  plugin->select_aml_history
+    = &TEH_PG_select_aml_history;
+  plugin->insert_aml_decision
+    = &TEH_PG_insert_aml_decision;
+#endif
   return plugin;
 }
 
