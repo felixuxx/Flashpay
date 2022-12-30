@@ -43,7 +43,7 @@ TEH_PG_update_aml_officer (
     GNUNET_PQ_query_param_string (decider_name),
     GNUNET_PQ_query_param_bool (is_active),
     GNUNET_PQ_query_param_bool (read_only),
-    GNUNET_PQ_query_param_timestamp (&last_change),
+    GNUNET_PQ_query_param_absolute_time (&last_change),
     GNUNET_PQ_query_param_end
   };
 

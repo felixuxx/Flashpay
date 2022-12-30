@@ -43,7 +43,7 @@ TEH_PG_insert_aml_decision (
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     TALER_PQ_query_param_amount (new_threshold),
     GNUNET_PQ_query_param_uint32 (&ns),
-    GNUNET_PQ_query_param_timestamp (&decision_time),
+    GNUNET_PQ_query_param_absolute_time (&decision_time),
     GNUNET_PQ_query_param_string (justification),
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),

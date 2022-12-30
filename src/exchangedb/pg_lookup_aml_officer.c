@@ -35,6 +35,37 @@ TEH_PG_lookup_aml_officer (
   bool *read_only,
   struct GNUNET_TIME_Absolute *last_change)
 {
-  GNUNET_break (0); // FIXME: not implemeted!
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (decider_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
+    GNUNET_PQ_result_spec_string ("decider_name",
+                                  decider_name),
+    GNUNET_PQ_result_spec_bool ("is_active",
+                                is_active),
+    GNUNET_PQ_result_spec_bool ("read_only",
+                                read_only),
+    GNUNET_PQ_result_spec_absolute_time ("last_change",
+                                         last_change),
+    GNUNET_PQ_result_spec_end
+  };
+
+  PREPARE (pg,
+           "lookup_aml_officer",
+           "SELECT "
+           " master_sig"
+           ",decider_name"
+           ",is_active"
+           ",read_only"
+           ",last_change"
+           " FROM aml_staff"
+           " WHERE decider_pub=$1;");
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "lookup_aml_officer",
+                                                   params,
+                                                   rs);
 }
