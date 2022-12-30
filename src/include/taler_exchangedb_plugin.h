@@ -6690,7 +6690,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
-  (*select_aml_processes)(
+  (*select_aml_process)(
     void *cls,
     enum TALER_AmlDecisionState decision,
     uint64_t row_off,

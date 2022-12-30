@@ -26,4 +26,20 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Trigger AML process, an account has crossed the threshold. Inserts or
+ * updates the AML status.
+ *
+ * @param cls closure
+ * @param h_payto account for which the attribute data is stored
+ * @param threshold_crossed existing threshold that was crossed
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_trigger_aml_process (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_Amount *threshold_crossed);
+
+
 #endif

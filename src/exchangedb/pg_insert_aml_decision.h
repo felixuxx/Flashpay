@@ -26,4 +26,30 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Insert an AML decision. Inserts into AML history and insert or updates AML
+ * status.
+ *
+ * @param cls closure
+ * @param h_payto account for which the attribute data is stored
+ * @param new_threshold new monthly threshold that would trigger an AML check
+ * @param new_status AML decision status
+ * @param decision_time when was the decision made
+ * @param justification human-readable text justifying the decision
+ * @param decider_pub public key of the staff member
+ * @param decider_sig signature of the staff member
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_insert_aml_decision (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_Amount *new_threshold,
+  enum TALER_AmlDecisionState new_status,
+  struct GNUNET_TIME_Absolute decision_time,
+  const char *justification,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  const struct TALER_AmlOfficerSignatureP *decider_sig);
+
+
 #endif

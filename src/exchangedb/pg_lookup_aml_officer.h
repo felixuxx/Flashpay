@@ -26,4 +26,26 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Fetch AML staff record.
+ *
+ * @param cls closure
+ * @param decider_pub public key of the staff member
+ * @param[out] master_sig offline signature affirming the AML officer
+ * @param[out] decider_name full name of the staff member
+ * @param[out] is_active true to enable, false to set as inactive
+ * @param[out] read_only true to set read-only access
+ * @param[out] last_change when was the change made effective
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_lookup_aml_officer (
+  void *cls,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  struct TALER_MasterSignatureP *master_sig,
+  char **decider_name,
+  bool *is_active,
+  bool *read_only,
+  struct GNUNET_TIME_Absolute *last_change);
+
 #endif

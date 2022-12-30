@@ -26,4 +26,21 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Lookup AML decision history for a particular account.
+ *
+ * @param cls closure
+ * @param h_payto which account should we return the AML decision history for
+ * @param cb callback to invoke on each match
+ * @param cb_cls closure for @a cb
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_aml_history (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_AmlHistoryCallback cb,
+  void *cb_cls);
+
+
 #endif

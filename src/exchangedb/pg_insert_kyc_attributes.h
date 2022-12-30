@@ -26,4 +26,31 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Store KYC attribute data.
+ *
+ * @param cls closure
+ * @param h_payto account for which the attribute data is stored
+ * @param kyc_prox key for similarity search
+ * @param provider_section provider that must be checked
+ * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+ *        digits can be 0 if exact day, month or year are unknown
+ * @param collection_time when was the data collected
+ * @param expiration_time when does the data expire
+ * @param enc_attributes_size number of bytes in @a enc_attributes
+ * @param enc_attributes encrypted attribute data
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_insert_kyc_attributes (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct GNUNET_ShortHashCode *kyc_prox,
+  const char *provider_section,
+  const char *birthdate,
+  struct GNUNET_TIME_Timestamp collection_time,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  size_t enc_attributes_size,
+  const void *enc_attributes);
+
 #endif

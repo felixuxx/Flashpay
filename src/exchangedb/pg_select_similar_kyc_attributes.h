@@ -26,4 +26,21 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Lookup KYC attribute data for a specific account.
+ *
+ * @param cls closure
+ * @param h_payto account for which the attribute data is stored
+ * @param cb callback to invoke on each match
+ * @param cb_cls closure for @a cb
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_kyc_attributes (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_AttributeCallback cb,
+  void *cb_cls);
+
+
 #endif

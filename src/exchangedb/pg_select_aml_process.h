@@ -26,4 +26,25 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Lookup AML decisions that have a particular state.
+ *
+ * @param cls closure
+ * @param decision which decision states to filter by
+ * @param row_off offset to start from
+ * @param forward true to go forward in time, false to go backwards
+ * @param cb callback to invoke on each match
+ * @param cb_cls closure for @a cb
+ * @return database transaction status
+ */
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_aml_process (
+  void *cls,
+  enum TALER_AmlDecisionState decision,
+  uint64_t row_off,
+  bool forward,
+  TALER_EXCHANGEDB_AmlStatusCallback cb,
+  void *cb_cls);
+
+
 #endif
