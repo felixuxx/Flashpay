@@ -3132,7 +3132,7 @@ typedef void
  * @param row_id current row in AML status table
  * @param h_payto account for which the attribute data is stored
  * @param threshold currently monthly threshold that would trigger an AML check
- * @param decision_time when was the last decision made
+ * @param status what is the current AML decision
  */
 typedef void
 (*TALER_EXCHANGEDB_AmlStatusCallback)(
@@ -6562,7 +6562,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup similar KYC attribute data.
    *
    * @param cls closure
-   * @param h_payto account for which the attribute data is stored
    * @param kyc_prox key for similarity search
    * @param cb callback to invoke on each match
    * @param cb_cls closure for @a cb

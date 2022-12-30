@@ -30,7 +30,6 @@
  * Lookup similar KYC attribute data.
  *
  * @param cls closure
- * @param h_payto account for which the attribute data is stored
  * @param kyc_prox key for similarity search
  * @param cb callback to invoke on each match
  * @param cb_cls closure for @a cb
