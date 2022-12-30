@@ -24,3 +24,17 @@
 #include "taler_pq_lib.h"
 #include "pg_select_aml_process.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_aml_process (
+  void *cls,
+  enum TALER_AmlDecisionState decision,
+  uint64_t row_off,
+  bool forward,
+  TALER_EXCHANGEDB_AmlStatusCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

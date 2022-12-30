@@ -24,3 +24,19 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_insert_aml_decision (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_Amount *new_threshold,
+  enum TALER_AmlDecisionState new_status,
+  struct GNUNET_TIME_Absolute decision_time,
+  const char *justification,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  const struct TALER_AmlOfficerSignatureP *decider_sig)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

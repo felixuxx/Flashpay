@@ -24,3 +24,15 @@
 #include "taler_pq_lib.h"
 #include "pg_select_similar_kyc_attributes.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_similar_kyc_attributes (
+  void *cls,
+  const struct GNUNET_ShortHashCode *kyc_prox,
+  TALER_EXCHANGEDB_AttributeCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

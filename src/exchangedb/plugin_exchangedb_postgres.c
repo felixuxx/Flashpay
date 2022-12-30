@@ -751,7 +751,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_batch_reserves_in_insert;
   plugin->batch2_reserves_in_insert
     = &TEH_PG_batch2_reserves_in_insert;
-#if 0
   plugin->insert_kyc_attributes
     = &TEH_PG_insert_kyc_attributes;
   plugin->update_kyc_attributes
@@ -774,7 +773,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_aml_history;
   plugin->insert_aml_decision
     = &TEH_PG_insert_aml_decision;
-#endif
   return plugin;
 }
 

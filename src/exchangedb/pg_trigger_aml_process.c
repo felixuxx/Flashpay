@@ -24,3 +24,14 @@
 #include "taler_pq_lib.h"
 #include "pg_trigger_aml_process.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_trigger_aml_process (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_Amount *threshold_crossed)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

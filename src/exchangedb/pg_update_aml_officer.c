@@ -24,3 +24,18 @@
 #include "taler_pq_lib.h"
 #include "pg_update_aml_officer.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_update_aml_officer (
+  void *cls,
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
+  const struct TALER_MasterSignatureP *master_sig,
+  const char *decider_name,
+  bool is_active,
+  bool read_only,
+  struct GNUNET_TIME_Absolute last_change)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

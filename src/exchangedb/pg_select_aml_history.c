@@ -24,3 +24,14 @@
 #include "taler_pq_lib.h"
 #include "pg_select_aml_history.h"
 #include "pg_helper.h"
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_select_aml_history (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  TALER_EXCHANGEDB_AmlHistoryCallback cb,
+  void *cb_cls)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}

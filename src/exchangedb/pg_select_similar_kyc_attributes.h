@@ -27,20 +27,20 @@
 
 
 /**
- * Lookup KYC attribute data for a specific account.
+ * Lookup similar KYC attribute data.
  *
  * @param cls closure
  * @param h_payto account for which the attribute data is stored
+ * @param kyc_prox key for similarity search
  * @param cb callback to invoke on each match
  * @param cb_cls closure for @a cb
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_select_kyc_attributes (
+TEH_PG_select_similar_kyc_attributes (
   void *cls,
-  const struct TALER_PaytoHashP *h_payto,
+  const struct GNUNET_ShortHashCode *kyc_prox,
   TALER_EXCHANGEDB_AttributeCallback cb,
   void *cb_cls);
-
 
 #endif

@@ -24,3 +24,20 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_kyc_attributes.h"
 #include "pg_helper.h"
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_insert_kyc_attributes (
+  void *cls,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct GNUNET_ShortHashCode *kyc_prox,
+  const char *provider_section,
+  const char *birthdate,
+  struct GNUNET_TIME_Timestamp collection_time,
+  struct GNUNET_TIME_Timestamp expiration_time,
+  size_t enc_attributes_size,
+  const void *enc_attributes)
+{
+  GNUNET_break (0); // FIXME: not implemeted!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
