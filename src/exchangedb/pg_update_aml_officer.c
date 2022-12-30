@@ -36,6 +36,27 @@ TEH_PG_update_aml_officer (
   bool read_only,
   struct GNUNET_TIME_Absolute last_change)
 {
-  GNUNET_break (0); // FIXME: not implemeted!
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (decider_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_string (decider_name),
+    GNUNET_PQ_query_param_bool (is_active),
+    GNUNET_PQ_query_param_bool (read_only),
+    GNUNET_PQ_query_param_timestamp (&last_change),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "update_aml_staff",
+           "UPDATE aml_staff SET "
+           " master_sig=$2"
+           ",decider_name=$3"
+           ",is_active=$4"
+           ",read_only=$5"
+           ",last_change=$6"
+           " WHERE decider_pub=$1 AND last_change < $6;");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "update_aml_staff",
+                                             params);
 }

@@ -28,9 +28,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire (void *cls,
-                      const char *payto_uri,
-                      struct GNUNET_TIME_Timestamp start_date,
-                      const struct TALER_MasterSignatureP *master_sig)
+                    const char *payto_uri,
+                    struct GNUNET_TIME_Timestamp start_date,
+                    const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -40,7 +40,6 @@ TEH_PG_insert_wire (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-      /* used in #postgres_insert_wire() */
   PREPARE (pg,
            "insert_wire",
            "INSERT INTO wire_accounts "

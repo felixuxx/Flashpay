@@ -114,6 +114,7 @@ BEGIN
   );
 END $$;
 
+-- FIXME: also have INSERT on AML decisions to update AML status!
 
 INSERT INTO exchange_tables
     (name

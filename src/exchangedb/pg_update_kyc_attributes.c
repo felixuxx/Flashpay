@@ -38,6 +38,31 @@ TEH_PG_update_kyc_attributes (
   size_t enc_attributes_size,
   const void *enc_attributes)
 {
-  GNUNET_break (0); // FIXME: not implemeted!
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    GNUNET_PQ_query_param_auto_from_type (kyc_prox),
+    GNUNET_PQ_query_param_string (provider_section),
+    (NULL == birthdate)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (birthdate),
+    GNUNET_PQ_query_param_timestamp (&collection_time),
+    GNUNET_PQ_query_param_timestamp (&expiration_time),
+    GNUNET_PQ_query_param_fixed_size (enc_attributes,
+                                      enc_attributes_size),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "update_kyc_attributes",
+           "UPDATE kyc_attributes SET "
+           " kyc_prox=$2"
+           ",birthdate=$4"
+           ",collection_time=$5"
+           ",expiration_time=$6"
+           ",encrypted_attributes=$7"
+           " WHERE h_payto=$1 AND provider_section=$3;");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "update_kyc_attributes",
+                                             params);
 }
