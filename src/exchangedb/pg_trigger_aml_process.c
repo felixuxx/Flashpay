@@ -32,6 +32,28 @@ TEH_PG_trigger_aml_process (
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_Amount *threshold_crossed)
 {
-  GNUNET_break (0); // FIXME: not implemeted!
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_payto),
+    TALER_PQ_query_param_amount (threshold_crossed),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "trigger_aml_process",
+           "INSERT INTO aml_status"
+           "(h_payto"
+           ",threshold_val"
+           ",threshold_frac"
+           ",status)"
+           "VALUES"
+           "($1, $2, $3, 1)" // 1: decision needed
+           "ON CONFLICT DO"
+           " UPDATE SET"
+           "   threshold_val=$2"
+           "  ,threshold_frac=$3"
+           "  ,status=status | 1;"); // do not clear 'frozen' status
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "trigger_aml_process",
+                                             params);
 }

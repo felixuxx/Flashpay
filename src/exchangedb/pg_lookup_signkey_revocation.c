@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_signkey_revocation (
   void *cls,
@@ -43,7 +42,6 @@ TEH_PG_lookup_signkey_revocation (
                                           master_sig),
     GNUNET_PQ_result_spec_end
   };
-
 
   PREPARE (pg,
            "lookup_signkey_revocation",

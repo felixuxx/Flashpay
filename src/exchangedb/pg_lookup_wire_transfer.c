@@ -48,7 +48,7 @@ struct WireTransferResultContext
   /**
    * Set to #GNUNET_SYSERR on serious errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -141,13 +141,14 @@ TEH_PG_lookup_wire_transfer (
     GNUNET_PQ_query_param_auto_from_type (wtid),
     GNUNET_PQ_query_param_end
   };
-  struct WireTransferResultContext ctx;
+  struct WireTransferResultContext ctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
   enum GNUNET_DB_QueryStatus qs;
 
-  ctx.cb = cb;
-  ctx.cb_cls = cb_cls;
-  ctx.pg = pg;
-  ctx.status = GNUNET_OK;
   PREPARE (pg,
            "lookup_transactions",
            "SELECT"
