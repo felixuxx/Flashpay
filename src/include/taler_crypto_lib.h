@@ -604,6 +604,19 @@ struct TALER_RefreshCommitmentP
 
 
 /**
+ * Symmetric key we use to encrypt KYC attributes
+ * in our database.
+ */
+struct TALER_AttributeEncryptionKeyP
+{
+  /**
+   * The key is a hash code.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
  * Token used for access control to the merchant's unclaimed
  * orders.
  */
@@ -1789,6 +1802,37 @@ enum GNUNET_GenericReturnValue
 TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_CoinPubHashP *c_hash);
+
+
+/**
+ * Encrypts KYC attributes for storage in the database.
+ *
+ * @param key encryption key to use
+ * @param attr set of attributes to encrypt
+ * @param[out] enc_attr encrypted attribute data
+ * @param[out] enc_attr_size number of bytes in @a enc_attr
+ */
+void
+TALER_CRYPTO_kyc_attributes_encrypt (
+  const struct TALER_AttributeEncryptionKeyP *key,
+  const json_t *attr,
+  void **enc_attr,
+  size_t *enc_attr_size);
+
+
+/**
+ * Encrypts KYC attributes for storage in the database.
+ *
+ * @param key encryption key to use
+ * @param enc_attr encrypted attribute data
+ * @param enc_attr_size number of bytes in @a enc_attr
+ * @return set of decrypted attributes, NULL on failure
+ */
+json_t *
+TALER_CRYPTO_kyc_attributes_decrypt (
+  const struct TALER_AttributeEncryptionKeyP *key,
+  const void *enc_attr,
+  size_t enc_attr_size);
 
 
 /**

@@ -109,14 +109,14 @@ derive_key (const void *key_material,
  * @param[out] res_size size of the ciphertext
  */
 static void
-contract_encrypt (const struct NonceP *nonce,
-                  const void *key,
-                  size_t key_len,
-                  const void *data,
-                  size_t data_size,
-                  const char *salt,
-                  void **res,
-                  size_t *res_size)
+blob_encrypt (const struct NonceP *nonce,
+              const void *key,
+              size_t key_len,
+              const void *data,
+              size_t data_size,
+              const char *salt,
+              void **res,
+              size_t *res_size)
 {
   size_t ciphertext_size;
   struct SymKeyP skey;
@@ -127,10 +127,13 @@ contract_encrypt (const struct NonceP *nonce,
               salt,
               &skey);
   ciphertext_size = crypto_secretbox_NONCEBYTES
-                    + crypto_secretbox_MACBYTES + data_size;
+                    + crypto_secretbox_MACBYTES
+                    + data_size;
   *res_size = ciphertext_size;
   *res = GNUNET_malloc (ciphertext_size);
-  memcpy (*res, nonce, crypto_secretbox_NONCEBYTES);
+  memcpy (*res,
+          nonce,
+          crypto_secretbox_NONCEBYTES);
   GNUNET_assert (0 ==
                  crypto_secretbox_easy (*res + crypto_secretbox_NONCEBYTES,
                                         data,
@@ -153,13 +156,13 @@ contract_encrypt (const struct NonceP *nonce,
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-contract_decrypt (const void *key,
-                  size_t key_len,
-                  const void *data,
-                  size_t data_size,
-                  const char *salt,
-                  void **res,
-                  size_t *res_size)
+blob_decrypt (const void *key,
+              size_t key_len,
+              const void *data,
+              size_t data_size,
+              const char *salt,
+              void **res,
+              size_t *res_size)
 {
   const struct NonceP *nonce;
   struct SymKeyP skey;
@@ -278,14 +281,14 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
                               sizeof (nonce));
-  contract_encrypt (&nonce,
-                    &key,
-                    sizeof (key),
-                    hdr,
-                    sizeof (*hdr) + cbuf_size,
-                    MERGE_SALT,
-                    econtract,
-                    econtract_size);
+  blob_encrypt (&nonce,
+                &key,
+                sizeof (key),
+                hdr,
+                sizeof (*hdr) + cbuf_size,
+                MERGE_SALT,
+                econtract,
+                econtract_size);
   GNUNET_free (hdr);
 }
 
@@ -316,13 +319,13 @@ TALER_CRYPTO_contract_decrypt_for_merge (
     return NULL;
   }
   if (GNUNET_OK !=
-      contract_decrypt (&key,
-                        sizeof (key),
-                        econtract,
-                        econtract_size,
-                        MERGE_SALT,
-                        &xhdr,
-                        &hdr_size))
+      blob_decrypt (&key,
+                    sizeof (key),
+                    econtract,
+                    econtract_size,
+                    MERGE_SALT,
+                    &xhdr,
+                    &hdr_size))
   {
     GNUNET_break_op (0);
     return NULL;
@@ -407,6 +410,7 @@ TALER_CRYPTO_contract_encrypt_for_deposit (
                                            &key));
   cstr = json_dumps (contract_terms,
                      JSON_COMPACT | JSON_SORT_KEYS);
+  GNUNET_assert (NULL != cstr);
   clen = strlen (cstr);
   cbuf_size = compressBound (clen);
   xbuf = GNUNET_malloc (cbuf_size);
@@ -426,14 +430,14 @@ TALER_CRYPTO_contract_encrypt_for_deposit (
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
                               sizeof (nonce));
-  contract_encrypt (&nonce,
-                    &key,
-                    sizeof (key),
-                    hdr,
-                    sizeof (*hdr) + cbuf_size,
-                    DEPOSIT_SALT,
-                    &xecontract,
-                    &xecontract_size);
+  blob_encrypt (&nonce,
+                &key,
+                sizeof (key),
+                hdr,
+                sizeof (*hdr) + cbuf_size,
+                DEPOSIT_SALT,
+                &xecontract,
+                &xecontract_size);
   GNUNET_free (hdr);
   /* prepend purse_pub */
   *econtract = GNUNET_malloc (xecontract_size + sizeof (*purse_pub));
@@ -481,13 +485,13 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
   econtract += sizeof (*purse_pub);
   econtract_size -= sizeof (*purse_pub);
   if (GNUNET_OK !=
-      contract_decrypt (&key,
-                        sizeof (key),
-                        econtract,
-                        econtract_size,
-                        DEPOSIT_SALT,
-                        &xhdr,
-                        &hdr_size))
+      blob_decrypt (&key,
+                    sizeof (key),
+                    econtract,
+                    econtract_size,
+                    DEPOSIT_SALT,
+                    &xhdr,
+                    &hdr_size))
   {
     GNUNET_break_op (0);
     return NULL;
@@ -518,6 +522,123 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
                   &clen,
                   (const Bytef *) &hdr[1],
                   hdr_size - sizeof (*hdr)))
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (cstr);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  GNUNET_free (xhdr);
+  ret = json_loadb ((char *) cstr,
+                    clen,
+                    JSON_DECODE_ANY,
+                    &json_error);
+  if (NULL == ret)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (cstr);
+    return NULL;
+  }
+  GNUNET_free (cstr);
+  return ret;
+}
+
+
+/**
+ * Salt we use when encrypting KYC attributes.
+ */
+#define ATTRIBUTE_SALT "kyc-attributes"
+
+
+void
+TALER_CRYPTO_kyc_attributes_encrypt (
+  const struct TALER_AttributeEncryptionKeyP *key,
+  const json_t *attr,
+  void **enc_attr,
+  size_t *enc_attr_size)
+{
+  uLongf cbuf_size;
+  char *cstr;
+  uLongf clen;
+  void *xbuf;
+  int ret;
+  uint32_t belen;
+  struct NonceP nonce;
+
+  cstr = json_dumps (attr,
+                     JSON_COMPACT | JSON_SORT_KEYS);
+  GNUNET_assert (NULL != cstr);
+  clen = strlen (cstr);
+  GNUNET_assert (clen <= UINT32_MAX);
+  cbuf_size = compressBound (clen);
+  xbuf = GNUNET_malloc (cbuf_size + sizeof (uint32_t));
+  belen = htonl ((uint32_t) clen);
+  memcpy (xbuf,
+          &belen,
+          sizeof (belen));
+  ret = compress (xbuf + 4,
+                  &cbuf_size,
+                  (const Bytef *) cstr,
+                  clen);
+  GNUNET_assert (Z_OK == ret);
+  free (cstr);
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &nonce,
+                              sizeof (nonce));
+  blob_encrypt (&nonce,
+                key,
+                sizeof (*key),
+                xbuf,
+                cbuf_size + sizeof (uint32_t),
+                ATTRIBUTE_SALT,
+                enc_attr,
+                enc_attr_size);
+  GNUNET_free (xbuf);
+}
+
+
+json_t *
+TALER_CRYPTO_kyc_attributes_decrypt (
+  const struct TALER_AttributeEncryptionKeyP *key,
+  const void *enc_attr,
+  size_t enc_attr_size)
+{
+  void *xhdr;
+  size_t hdr_size;
+  char *cstr;
+  uLongf clen;
+  json_error_t json_error;
+  json_t *ret;
+  uint32_t belen;
+
+  if (GNUNET_OK !=
+      blob_decrypt (key,
+                    sizeof (*key),
+                    enc_attr,
+                    enc_attr_size,
+                    ATTRIBUTE_SALT,
+                    &xhdr,
+                    &hdr_size))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  memcpy (&belen,
+          xhdr,
+          sizeof (belen));
+  clen = ntohl (belen);
+  if (clen >= GNUNET_MAX_MALLOC_CHECKED)
+  {
+    GNUNET_break_op (0);
+    GNUNET_free (xhdr);
+    return NULL;
+  }
+  cstr = GNUNET_malloc (clen + 1);
+  if (Z_OK !=
+      uncompress ((Bytef *) cstr,
+                  &clen,
+                  (const Bytef *) (xhdr + sizeof (uint32_t)),
+                  hdr_size - sizeof (uint32_t)))
   {
     GNUNET_break_op (0);
     GNUNET_free (cstr);

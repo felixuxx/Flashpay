@@ -150,12 +150,12 @@ test_planchets_rsa (uint8_t age)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
                               sizeof (ps));
-
+  GNUNET_log_skip (1, GNUNET_YES);
   GNUNET_assert (GNUNET_SYSERR ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
                                           TALER_DENOMINATION_INVALID));
-
+  GNUNET_log_skip (1, GNUNET_YES);
   GNUNET_assert (GNUNET_SYSERR ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
@@ -481,12 +481,51 @@ test_contracts (void)
 }
 
 
+static int
+test_attributes (void)
+{
+  struct TALER_AttributeEncryptionKeyP key;
+  void *eattr;
+  size_t eattr_size;
+  json_t *c;
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &key,
+                              sizeof (key));
+  c = json_pack ("{s:s}", "test", "value");
+  GNUNET_assert (NULL != c);
+  TALER_CRYPTO_kyc_attributes_encrypt (&key,
+                                       c,
+                                       &eattr,
+                                       &eattr_size);
+  json_decref (c);
+  c = TALER_CRYPTO_kyc_attributes_decrypt (&key,
+                                           eattr,
+                                           eattr_size);
+  GNUNET_free (eattr);
+  if (NULL == c)
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  GNUNET_assert (0 ==
+                 strcmp ("value",
+                         json_string_value (json_object_get (c,
+                                                             "test"))));
+  json_decref (c);
+  return 0;
+}
+
+
 int
 main (int argc,
       const char *const argv[])
 {
   (void) argc;
   (void) argv;
+  GNUNET_log_setup ("test-crypto",
+                    "WARNING",
+                    NULL);
   if (0 != test_high_level ())
     return 1;
   if (0 != test_planchets (0))
@@ -499,6 +538,8 @@ main (int argc,
     return 5;
   if (0 != test_contracts ())
     return 6;
+  if (0 != test_attributes ())
+    return 7;
   return 0;
 }
 
