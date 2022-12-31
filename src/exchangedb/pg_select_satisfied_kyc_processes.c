@@ -26,17 +26,8 @@
 #include "pg_helper.h"
 
 
-
-
-
-
-
-
-
-
-
 /**
- * Closure for #get_wire_fees_cb().
+ * Closure for #get_legitimizations_cb().
  */
 struct GetLegitimizationsContext
 {
@@ -105,7 +96,6 @@ get_legitimizations_cb (void *cls,
 }
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_satisfied_kyc_processes (
   void *cls,
@@ -128,7 +118,7 @@ TEH_PG_select_satisfied_kyc_processes (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-   /* Used in #postgres_select_satisfied_kyc_processes() */
+
   PREPARE (pg,
            "get_satisfied_legitimizations",
            "SELECT "
@@ -136,7 +126,6 @@ TEH_PG_select_satisfied_kyc_processes (
            " FROM legitimization_processes"
            " WHERE h_payto=$1"
            "   AND expiration_time>=$2;");
-
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
     "get_satisfied_legitimizations",

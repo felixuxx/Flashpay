@@ -137,6 +137,7 @@ deposit_serial_helper_cb (void *cls,
   }
 }
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_deposits_above_serial_id (
   void *cls,
@@ -157,7 +158,7 @@ TEH_PG_select_deposits_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Fetch deposits with rowid '\geq' the given parameter */
+  /* Fetch deposits with rowid '\geq' the given parameter */
   PREPARE (pg,
            "audit_get_deposits_incr",
            "SELECT"
