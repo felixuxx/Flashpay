@@ -2354,6 +2354,58 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
   size_t econtract_size);
 
 
+/* **************** AML officer signatures **************** */
+
+
+/**
+ * Sign AML decision.
+ *
+ * @param justification human-readable justification
+ * @param decision_time when was the decision made
+ * @param new_threshold at what monthly amount threshold
+ *                      should a revision be triggered
+ * @param h_payto payto URI hash of the account the
+ *                      decision is about
+ * @param new_state updated AML state
+ * @param officer_priv private key of AML officer
+ * @param[out] officer_sig where to write the signature
+ */
+void
+TALER_officer_aml_decision_sign (
+  const char *justification,
+  struct GNUNET_TIME_Timestamp decision_time,
+  const struct TALER_Amount *new_threshold,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_AmlDecisionState new_state,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  struct TALER_AmlOfficerSignatureP *officer_sig);
+
+
+/**
+ * Verify AML decision.
+ *
+ * @param justification human-readable justification
+ * @param decision_time when was the decision made
+ * @param new_threshold at what monthly amount threshold
+ *                      should a revision be triggered
+ * @param h_payto payto URI hash of the account the
+ *                      decision is about
+ * @param new_state updated AML state
+ * @param officer_pub public key of AML officer
+ * @param officer_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_officer_aml_decision_verify (
+  const char *justification,
+  struct GNUNET_TIME_Timestamp decision_time,
+  const struct TALER_Amount *new_threshold,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_AmlDecisionState new_state,
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const struct TALER_AmlOfficerSignatureP *officer_sig);
+
+
 /* **************** Helper-based RSA operations **************** */
 
 /**
@@ -2521,6 +2573,7 @@ TALER_CRYPTO_helper_rsa_revoke (
 void
 TALER_CRYPTO_helper_rsa_disconnect (
   struct TALER_CRYPTO_RsaDenominationHelper *dh);
+
 
 /* **************** Helper-based CS operations **************** */
 
