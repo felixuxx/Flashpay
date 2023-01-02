@@ -183,7 +183,7 @@ verify_extensions_from_json (
     if (critical != extension->critical
         || 0 != strcmp (version, extension->version) // FIXME-oec: libtool compare
         || NULL == config
-        || GNUNET_OK != extension->load_config (NULL, config))
+        || GNUNET_OK != extension->load_config (config, NULL))
       return GNUNET_SYSERR;
 
     sec->extensions[i].type = extension->type;
