@@ -128,13 +128,13 @@ struct TALER_Extension
    * @brief Handler to read an extension-specific configuration in JSON
    * encoding and enable the extension.  Must be implemented by the extension.
    *
-   * @param ext The extension object. If NULL, the configuration will only be checked.
-   * @param config A JSON blob
+   * @param[in] ext The extension object. If NULL, the configuration will only be checked.
+   * @param[in,out] config A JSON blob
    * @return GNUNET_OK if the json was a valid configuration for the extension.
    */
   enum GNUNET_GenericReturnValue (*load_config)(
-    struct TALER_Extension *ext,
-    json_t *config);
+    const json_t *config,
+    struct TALER_Extension *ext);
 
   /**
    * @brief Handler to return the manifest of the extension in JSON encoding.

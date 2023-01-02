@@ -118,14 +118,14 @@ extension_update_event_cb (void *cls,
                   err.text,
                   err.source);
       GNUNET_break (0);
-      free (manifest_js);
+      free (manifest_str);
       return;
     }
 
     // Call the parser for the extension
     ret = extension->load_config (
-      (struct TALER_Extension *) extension,
-      json_object_get (manifest_js, "config"));
+      json_object_get (manifest_js, "config"),
+      (struct TALER_Extension *) extension);
 
     if (GNUNET_OK != ret)
     {

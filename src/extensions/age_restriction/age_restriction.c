@@ -64,8 +64,8 @@ age_restriction_disable (
  */
 static enum GNUNET_GenericReturnValue
 age_restriction_load_config (
-  struct TALER_Extension *ext,
-  json_t *jconfig)
+  const json_t *jconfig,
+  struct TALER_Extension *ext)
 {
   struct TALER_AgeMask mask = {0};
   enum GNUNET_GenericReturnValue ret;
@@ -93,7 +93,6 @@ age_restriction_load_config (
 
   ext->config = &AR_config;
   ext->enabled = true;
-  json_decref (jconfig);
 
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
               "loaded new age restriction config with age groups: %s\n",

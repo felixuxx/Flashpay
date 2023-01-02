@@ -334,12 +334,12 @@ TALER_extensions_load_manifests (
     if (critical != extension->critical
         || 0 != strcmp (version, extension->version) // TODO: libtool compare?
         || NULL == config
-        || GNUNET_OK != extension->load_config (NULL, config))
+        || GNUNET_OK != extension->load_config (config, NULL))
       return GNUNET_SYSERR;
 
     /* This _should_ work now */
     if (GNUNET_OK !=
-        extension->load_config (extension, config))
+        extension->load_config (config, extension))
       return GNUNET_SYSERR;
 
     extension->enabled = true;
