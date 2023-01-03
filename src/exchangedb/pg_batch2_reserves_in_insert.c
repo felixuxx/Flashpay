@@ -14,7 +14,7 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_batch_reserves_in_insert.c
+ * @file exchangedb/pg_batch2_reserves_in_insert.c
  * @brief Implementation of the reserves_in_insert function for Postgres
  * @author Joseph Xu
  */
@@ -22,7 +22,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_batch_reserves_in_insert.h"
+#include "pg_batch2_reserves_in_insert.h"
 #include "pg_helper.h"
 #include "pg_start.h"
 #include "pg_rollback.h"
