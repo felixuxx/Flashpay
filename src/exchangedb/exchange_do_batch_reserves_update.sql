@@ -79,7 +79,7 @@ BEGIN
     PERFORM pg_notify(in_notify, NULL);
   ELSE
     CLOSE curs;
-    IF ! out_reserve_found
+    IF NOT in_reserve_found
     THEN
       ROLLBACK;
     END IF;

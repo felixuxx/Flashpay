@@ -75,7 +75,7 @@ static int result;
  */
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 static struct TALER_DenomFeeSet fees;
-
+static struct TALER_MerchantWireHashP h_wire_wt;
 
 struct DenomKeyPair
 {
@@ -275,7 +275,7 @@ run (void *cls)
   const uint32_t num_partitions = 10;
   struct DenomKeyPair *dkp = NULL;
   struct GNUNET_TIME_Timestamp ts;
-  struct TALER_EXCHANGEDB_Deposit depos;
+  struct TALER_EXCHANGEDB_Deposit depos[NUMBER_DEPOSIT];
   struct GNUNET_TIME_Timestamp deadline;
   struct TALER_Amount value;
   union TALER_DenominationBlindingKeyP bks;
@@ -293,9 +293,6 @@ run (void *cls)
   ZR_BLK (&cbc2);
   RND_BLK (&reserve_pub);
 
-  memset (&depos,
-          0,
-          sizeof (depos));
   memset (&ref,
           0,
           sizeof (ref));
@@ -340,7 +337,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fees.refund));
-
   ts = GNUNET_TIME_timestamp_get ();
   deadline = GNUNET_TIME_timestamp_get ();
   dkp = create_denom_key_pair (RSA_KEY_SIZE,
@@ -402,123 +398,130 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (CURRENCY,
                                         &cbc.withdraw_fee));
+  for (unsigned int i=0; i< NUMBER_DEPOSIT; i++)
+    {
+      fprintf(stdout, "%d\n", i);
+      depos[i].deposit_fee = fees.deposit;
 
-  /*wire + deposit for get_ready_deposit*/
-  depos.deposit_fee = fees.deposit;
+      RND_BLK (&depos[i].coin.coin_pub);
 
-  RND_BLK (&depos.coin.coin_pub);
+      TALER_denom_pub_hash (&dkp->pub,
+                            &depos[i].coin.denom_pub_hash);
+      // TALER_denom_pub_hash (&dkp->pub,
+      //                    &ref.coin.denom_pub_hash);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_denom_sig_unblind (&depos[i].coin.denom_sig,
+                                              &cbc.sig,
+                                              &bks,
+                                              &c_hash,
+                                              &alg_values,
+                                              &dkp->pub));
 
-  TALER_denom_pub_hash (&dkp->pub,
-                        &depos.coin.denom_pub_hash);
-  TALER_denom_pub_hash (&dkp->pub,
-                        &ref.coin.denom_pub_hash);
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_denom_sig_unblind (&depos.coin.denom_sig,
-                                          &cbc.sig,
-                                          &bks,
-                                          &c_hash,
-                                          &alg_values,
-                                          &dkp->pub));
+      RND_BLK (&depos[i].merchant_pub);
+      RND_BLK (&depos[i].csig);
+      RND_BLK (&depos[i].h_contract_terms);
+      RND_BLK (&depos[i].wire_salt);
+      depos[i].amount_with_fee = value;
+      depos[i].refund_deadline = deadline;
+      depos[i].wire_deadline = deadline;
+      depos[i].receiver_wire_account =
+        "payto://iban/DE67830654080004822650?receiver-name=Test";
+      TALER_merchant_wire_signature_hash (
+                                          "payto://iban/DE67830654080004822650?receiver-name=Test",
+                                          &depos[i].wire_salt,
+                                          &h_wire_wt);
+      depos[i].timestamp = ts;
+      result = 8;
+        {
+          uint64_t known_coin_id;
+          struct TALER_DenominationHashP dph;
+          struct TALER_AgeCommitmentHash agh;
+          FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
+                  plugin->ensure_coin_known (plugin->cls,
+                                             &depos[i].coin,
+                                             &known_coin_id,
+                                             &dph,
+                                             &agh));
+        }
 
-  {
-    uint64_t known_coin_id;
-    struct TALER_DenominationHashP dph;
-    struct TALER_AgeCommitmentHash agh;
+        /*wire + deposit for get_ready_deposit*/
 
-    FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
-            plugin->ensure_coin_known (plugin->cls,
-                                       &depos.coin,
-                                       &known_coin_id,
-                                       &dph,
-                                       &agh));
-  }
-  {
-    RND_BLK (&depos.merchant_pub);
-    RND_BLK (&depos.csig);
-    RND_BLK (&depos.h_contract_terms);
-    RND_BLK (&depos.wire_salt);
-    depos.amount_with_fee = value;
-    depos.refund_deadline = deadline;
-    depos.wire_deadline = deadline;
-    depos.receiver_wire_account =
-      "payto://iban/DE67830654080004822650?receiver-name=Test";
-    depos.timestamp = ts;
-    result = 8;
-  }
-  /*STORE INTO DEPOSIT*/
-  {
-    struct GNUNET_TIME_Timestamp now;
-    struct GNUNET_TIME_Timestamp r;
-    struct TALER_Amount deposit_fee;
-    struct TALER_MerchantWireHashP h_wire;
+        /*STORE INTO DEPOSIT*/
+        {
+          struct GNUNET_TIME_Timestamp now;
+          struct GNUNET_TIME_Timestamp r;
+          struct TALER_Amount deposit_fee;
+          struct TALER_MerchantWireHashP h_wire;
 
-    now = GNUNET_TIME_timestamp_get ();
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->insert_deposit (plugin->cls,
-                                    now,
-                                    &depos));
-        TALER_merchant_wire_signature_hash (depos.receiver_wire_account,
-                                        &depos.wire_salt,
-                                        &h_wire);
-    FAILIF (1 !=
-            plugin->have_deposit2 (plugin->cls,
-                                   &depos.h_contract_terms,
-                                   &h_wire,
-                                   &depos.coin.coin_pub,
-                                   &depos.merchant_pub,
-                                   depos.refund_deadline,
-                                   &deposit_fee,
-                                   &r));
-    FAILIF (GNUNET_TIME_timestamp_cmp (now,
-                                       !=,
-                                       r));
-  }
-  {
-    struct GNUNET_TIME_Timestamp start_range;
-    struct GNUNET_TIME_Timestamp end_range;
+          now = GNUNET_TIME_timestamp_get ();
+          FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                  plugin->insert_deposit (plugin->cls,
+                                          now,
+                                          &depos[i]));
+          TALER_merchant_wire_signature_hash (depos[i].receiver_wire_account,
+                                              &depos[i].wire_salt,
+                                              &h_wire);
+          FAILIF (1 !=
+                  plugin->have_deposit2 (plugin->cls,
+                                         &depos[i].h_contract_terms,
+                                         &h_wire,
+                                         &depos[i].coin.coin_pub,
+                                         &depos[i].merchant_pub,
+                                         depos[i].refund_deadline,
+                                         &deposit_fee,
+                                         &r));
+          FAILIF (GNUNET_TIME_timestamp_cmp (now,
+                                             !=,
+                                             r));
+        }
+        {
+          struct GNUNET_TIME_Timestamp start_range;
+          struct GNUNET_TIME_Timestamp end_range;
 
-    start_range = GNUNET_TIME_absolute_to_timestamp (
-      GNUNET_TIME_absolute_subtract (deadline.abs_time,
-                                     GNUNET_TIME_UNIT_SECONDS));
-    end_range = GNUNET_TIME_absolute_to_timestamp (
-      GNUNET_TIME_absolute_add (deadline.abs_time,
-                                GNUNET_TIME_UNIT_SECONDS));
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->select_deposits_missing_wire (plugin->cls,
-                                                  start_range,
-                                                  end_range,
-                                                  &wire_missing_cb,
-                                                  &depos));
-    FAILIF (8 != result);
-  }
-  auditor_row_cnt = 0;
-  FAILIF (0 >=
-          plugin->select_deposits_above_serial_id (plugin->cls,
-                                                   0,
-                                                   &audit_deposit_cb,
-                                                   NULL));
-  FAILIF (0 == auditor_row_cnt);
-  result = 8;
-  sleep (2);
-  /*CREATE DEPOSIT*/
-  {
-    struct TALER_MerchantPublicKeyP merchant_pub2;
-    char *payto_uri2;
+          start_range = GNUNET_TIME_absolute_to_timestamp (
+                                                           GNUNET_TIME_absolute_subtract (deadline.abs_time,
+                                                                                          GNUNET_TIME_UNIT_SECONDS));
+          end_range = GNUNET_TIME_absolute_to_timestamp (
+                                                         GNUNET_TIME_absolute_add (deadline.abs_time,
+                                                                                   GNUNET_TIME_UNIT_SECONDS));
+          /*Aborted*/
+          FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                  plugin->select_deposits_missing_wire (plugin->cls,
+                                                        start_range,
+                                                        end_range,
+                                                        &wire_missing_cb,
+                                                        &depos[i]));
 
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->get_ready_deposit (plugin->cls,
-                                       0,
+          FAILIF (8 != result);
+        }
+        auditor_row_cnt = 0;
+        FAILIF (0 >=
+                plugin->select_deposits_above_serial_id (plugin->cls,
+                                                         0,
+                                                         &audit_deposit_cb,
+                                                         NULL));
+        FAILIF (0 == auditor_row_cnt);
+        result = 8;
+        sleep (2);
+        /*CREATE DEPOSIT*/
+        {
+          struct TALER_MerchantPublicKeyP merchant_pub2;
+          char *payto_uri2;
+
+          FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                  plugin->get_ready_deposit (plugin->cls,
+                                             0,
                                        INT32_MAX,
-                                       &merchant_pub2,
-                                       &payto_uri2));
-    FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
-                                &depos.merchant_pub));
-    FAILIF (0 != strcmp (payto_uri2,
-                         depos.receiver_wire_account));
-    TALER_payto_hash (payto_uri2,
-                      &wire_target_h_payto);
-    GNUNET_free (payto_uri2);
-    }
+                                             &merchant_pub2,
+                                             &payto_uri2));
+          FAILIF (0 != GNUNET_memcmp (&merchant_pub2,
+                                      &depos[i].merchant_pub));
+          FAILIF (0 != strcmp (payto_uri2,
+                               depos[i].receiver_wire_account));
+          TALER_payto_hash (payto_uri2,
+                            &wire_target_h_payto);
+          GNUNET_free (payto_uri2);
+        }
   /* {
     RND_BLK (&ref.details.merchant_pub);
     RND_BLK(&ref.details.merchant_sig);
@@ -530,7 +533,10 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_refund (plugin->cls,
                                    &ref));
-  }*/
+                                   }*/
+
+    }
+
   result = 0;
 drop:
   GNUNET_break (GNUNET_OK ==
@@ -538,7 +544,9 @@ drop:
 cleanup:
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
-  TALER_denom_sig_free (&depos.coin.denom_sig);
+  for (unsigned int i=0; i<NUMBER_DEPOSIT; i++){
+    TALER_denom_sig_free (&depos[i].coin.denom_sig);}
+
   TALER_denom_sig_free (&ref.coin.denom_sig);
   TALER_blinded_denom_sig_free (&cbc.sig);
   dkp = NULL;

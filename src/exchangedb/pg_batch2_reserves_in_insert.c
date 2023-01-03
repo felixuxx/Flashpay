@@ -819,15 +819,13 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   }
 
   enum GNUNET_DB_QueryStatus qs3;
-  PREPARE (pg,
-           "reserves_update",
-           "CALL exchange_do_batch_reserves_update"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
+
   for (unsigned int i = 0; i<reserves_length; i++)
   {
 
     if (! conflicts[i])
       continue;
+    //   fprintf(stdout, "%d\n", conflicts[i]);
     {
       //      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
       struct GNUNET_PQ_QueryParam params[] = {
@@ -841,7 +839,10 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
         GNUNET_PQ_query_param_string (notify_s[i]),
         GNUNET_PQ_query_param_end
       };
-
+      PREPARE (pg,
+               "reserves_update",
+               "CALL exchange_do_batch_reserves_update"
+               " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
       qs3 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                 "reserves_update",
                                                 params);
