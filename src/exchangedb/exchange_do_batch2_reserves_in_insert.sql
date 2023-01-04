@@ -148,7 +148,7 @@ BEGIN
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date),
-    (in3_reserve_pub
+    (in2_reserve_pub
     ,in2_wire_ref
     ,in2_credit_val
     ,in2_credit_frac
