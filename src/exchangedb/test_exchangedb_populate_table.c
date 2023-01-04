@@ -538,7 +538,6 @@ run (void *cls)
             plugin->insert_refund (plugin->cls,
                                    &ref));
                                    }*/
-    
     }
 
   result = 0;

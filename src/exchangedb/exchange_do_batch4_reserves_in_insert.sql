@@ -249,16 +249,17 @@ BEGIN
     END IF;
   k=k+1;
   END LOOP;
-/*  IF transaction_duplicate
+
+  IF transaction_duplicate
   OR transaction_duplicate2
   OR transaction_duplicate3
   OR transaction_duplicate4
   THEN
     RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
-
+    ROLLBACK;
     CLOSE curs_transaction_exist;
     RETURN;
-  END IF;*/
+  END IF;
   CLOSE curs_transaction_exist;
   RETURN;
 

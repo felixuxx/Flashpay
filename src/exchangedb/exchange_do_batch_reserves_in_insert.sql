@@ -94,9 +94,9 @@ transaction_duplicate= TRUE;
     RETURN;
   ELSE
     -- Unhappy...
---    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
+    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
     transaction_duplicate = TRUE;
---    ROLLBACK;
+    ROLLBACK;
     RETURN;
   END IF;
   RETURN;

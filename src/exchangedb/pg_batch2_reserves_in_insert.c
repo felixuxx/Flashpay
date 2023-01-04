@@ -764,6 +764,8 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       t_duplicate |= transaction_duplicate[i+1];
       t_duplicate |= transaction_duplicate[i+2];
       t_duplicate |= transaction_duplicate[i+3];
+      //  fprintf(stdout, "%ld %ld c:%d t:%d %d %d %d\n", reserve_uuid[i], reserve_uuid[i+1], conflicts[i], t_duplicate, t_duplicate, transaction_duplicate[i+2], transaction_duplicate[i+3]);
+
       i += 4;
       break;
     case 3:
@@ -791,7 +793,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       t_duplicate |= transaction_duplicate[i];
       t_duplicate |= transaction_duplicate[i+1];
 
-      //fprintf(stdout, "%ld %ld c:%d t:%d\n", reserve_uuid[i], reserve_uuid[i+1], conflicts[i], transaction_duplicate[i]);
       i += 2;
       break;
     case 1:
@@ -835,13 +836,19 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       return cs;
     }
   }
-
   if (! need_update)
   {
     goto exit;
   }
+  /*  fprintf(stdout, "t : %d", t_duplicate);
   if (t_duplicate)
-    goto exit;
+    {
+      GNUNET_break (0);
+      TEH_PG_rollback (pg);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  */
+
   // begin serializable
   {
     if (GNUNET_OK !=
@@ -864,7 +871,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
     {
       if (! conflicts[i])
         continue;
-      //   fprintf(stdout, "%d\n", conflicts[i]);
       {
         bool duplicate;
         struct GNUNET_PQ_QueryParam params[] = {
@@ -889,7 +895,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
         if (qs3<0)
           {
             GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                        "Failed to update (%d)\n",
+                        "Failed to update reserves (%d)\n",
                         qs3);
             results[i] = qs3;
             return qs3;

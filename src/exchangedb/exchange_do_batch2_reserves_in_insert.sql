@@ -182,13 +182,13 @@ BEGIN
       END IF;
     END IF;
   END IF;
-/*  IF transaction_duplicate
+  IF transaction_duplicate
   OR transaction_duplicate2
   THEN
     CLOSE curs_transaction_exist;
     ROLLBACK;
     RETURN;
-  END IF;*/
+  END IF;
   CLOSE curs_transaction_exist;
   RETURN;
 END $$;
