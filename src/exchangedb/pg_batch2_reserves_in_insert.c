@@ -111,7 +111,7 @@ insert1(struct PostgresClosure *pg,
     if (qs2 < 0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to create reserves (%d)\n",
+                    "Failed to create reserves 1(%d)\n",
                     qs2);
         results[0] = qs2;
         return qs2;
@@ -812,6 +812,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
         GNUNET_break (0);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
+      //  fprintf(stdout, "%ld\n", reserve_uuid[i]);
       need_update |= conflicts[i];
       t_duplicate |= transaction_duplicate[i];
 

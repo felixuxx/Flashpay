@@ -1066,10 +1066,10 @@ history_cb (void *cls,
       process_reply (reply->details.success.details,
                      reply->details.success.details_length);
       break;
-    case 0:
+      /*    case 0:
       process_reply_batched (reply->details.success.details,
                              reply->details.success.details_length);
-      break;
+                             break;*/
     default:
       process_reply_batched2 ((unsigned int) batch_mode,
                               reply->details.success.details,
