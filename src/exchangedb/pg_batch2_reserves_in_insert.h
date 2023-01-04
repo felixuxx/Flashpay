@@ -16,7 +16,7 @@
 /**
  * @file exchangedb/pg_batch2_reserves_in_insert.h
  * @brief implementation of the batch2_reserves_in_insert function for Postgres
- * @author Christian Grothoff
+ * @author Joseph XU
  */
 #ifndef PG_BATCH2_RESERVES_IN_INSERT_H
 #define PG_BATCH2_RESERVES_IN_INSERT_H

@@ -14,25 +14,19 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-CREATE OR REPLACE PROCEDURE exchange_do_batch_reserves_update(
+CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_update(
   IN in_reserve_pub BYTEA,
   IN in_expiration_date INT8,
   IN in_wire_ref INT8,
   IN in_credit_val INT8,
   IN in_credit_frac INT4,
   IN in_exchange_account_name VARCHAR,
-  IN in_reserve_found BOOLEAN,
   IN in_wire_source_h_payto BYTEA,
-  IN in_notify text)
+  IN in_notify text,
+  OUT out_duplicate BOOLEAN)
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  i RECORD;
-DECLARE
-  curs refcursor;
 BEGIN
-  OPEN curs FOR
-  WITH reserves_update AS (
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -49,46 +43,31 @@ BEGIN
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date)
-    ON CONFLICT DO NOTHING
-    RETURNING reserve_pub, credit_val, credit_frac)
-    SELECT * FROM reserves_in;
-
-  FETCH FROM curs INTO i;
-  IF FOUND    --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
+    ON CONFLICT DO NOTHING;
+  IF FOUND
   THEN
-    IF in_reserve_found
-    THEN
-      UPDATE reserves
-        SET
-           current_balance_frac = current_balance_frac+in_credit_frac
-             - CASE
-               WHEN current_balance_frac + in_credit_frac >= 100000000
-                 THEN 100000000
-               ELSE 1
-               END
-              ,current_balance_val = current_balance_val+in_credit_val
-             + CASE
-               WHEN current_balance_frac + in_credit_frac >= 100000000
-                 THEN 1
-               ELSE 0
-               END
-               ,expiration_date=GREATEST(expiration_date,in_expiration_date)
-               ,gc_date=GREATEST(gc_date,in_expiration_date)
-      	      WHERE reserve_pub=in_reserve_pub;
-    END IF;
+    --IF THE INSERTION WAS A SUCCESS IT MEANS NO DUPLICATED TRANSACTION
+    out_duplicate = FALSE;
+    UPDATE reserves
+      SET
+         current_balance_frac = current_balance_frac+in_credit_frac
+           - CASE
+             WHEN current_balance_frac + in_credit_frac >= 100000000
+               THEN 100000000
+             ELSE 1
+             END
+            ,current_balance_val = current_balance_val+in_credit_val
+           + CASE
+             WHEN current_balance_frac + in_credit_frac >= 100000000
+               THEN 1
+             ELSE 0
+             END
+             ,expiration_date=GREATEST(expiration_date,in_expiration_date)
+             ,gc_date=GREATEST(gc_date,in_expiration_date)
+   	        WHERE reserve_pub=in_reserve_pub;
     PERFORM pg_notify(in_notify, NULL);
   ELSE
-    CLOSE curs;
-    IF NOT in_reserve_found
-    THEN
-      ROLLBACK;
-    END IF;
-    PERFORM pg_notify(in_notify, NULL);
-
-/*    UPDATE reserves_in
-    SET credit_frac = credit_frac - in_credit_frac
-    AND credit_val = credit_val + in_credit_val
-    WHERE reserve_pub = in_reserve_pub;*/
+    out_duplicate = TRUE;
   END IF;
-
+  RETURN;
 END $$;

@@ -66,9 +66,6 @@ TEH_PG_batch_reserves_in_insert (
   struct GNUNET_TIME_Timestamp gc;
   struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid;
-  bool conflicted;
-  bool transaction_duplicate;
-  bool need_update = false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   bool conflicts[reserves_length];
@@ -100,15 +97,12 @@ TEH_PG_batch_reserves_in_insert (
               GNUNET_STRINGS_relative_time_to_string (
                 pg->idle_reserve_expiration_time,
                 GNUNET_NO));
-
+  if (GNUNET_OK !=
+      TEH_PG_start_read_committed (pg,
+                                   "READ_COMMITED"))
   {
-    if (GNUNET_OK !=
-        TEH_PG_start_read_committed (pg,
-                                     "READ_COMMITED"))
-    {
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   /* Optimistically assume this is a new reserve, create balance for the first
      time; we do this before adding the actual transaction to "reserves_in",
@@ -119,9 +113,12 @@ TEH_PG_batch_reserves_in_insert (
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
     notify_s[i] = compute_notify_on_reserve (reserve->reserve_pub);
   }
-
+  bool need_update = false;
   for (unsigned int i = 0; i<reserves_length; i++)
   {
+    bool conflicted;
+    bool transaction_duplicate;
+
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
       GNUNET_PQ_query_param_timestamp (&expiry),
@@ -136,7 +133,6 @@ TEH_PG_batch_reserves_in_insert (
       GNUNET_PQ_query_param_string (notify_s[i]),
       GNUNET_PQ_query_param_end
     };
-
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_bool ("conflicted",
                                   &conflicted),
@@ -149,31 +145,31 @@ TEH_PG_batch_reserves_in_insert (
 
     TALER_payto_hash (reserves[i].sender_account_details,
                       &h_payto);
-
     /* Note: query uses 'on conflict do nothing' */
     qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "reserve_create",
                                                     params,
                                                     rs);
-
     if (qs1 < 0)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to create reserves (%d)\n",
                   qs1);
+      results[i] = qs1;
       return qs1;
     }
     GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
-
-   conflicts[i] = conflicted;
-   //   fprintf(stdout, "%d", conflicts[i]);
-   if (conflicts[i] && transaction_duplicate)
-   {
-     GNUNET_break (0);
-     TEH_PG_rollback (pg);
-     return GNUNET_DB_STATUS_HARD_ERROR;
-   }
-   need_update |= conflicted;
+    conflicts[i] = conflicted;
+    //   fprintf(stdout, "%d", conflicts[i]);
+    if (conflicts[i] && transaction_duplicate)
+    {
+      GNUNET_break (0);
+      results[i] = GNUNET_DB_STATUS_HARD_ERROR;
+      TEH_PG_rollback (pg);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    results[i] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    need_update |= conflicted;
   }
   // commit
   {
@@ -183,7 +179,6 @@ TEH_PG_batch_reserves_in_insert (
     if (cs < 0)
       return cs;
   }
-
   if (! need_update)
     goto exit;
   // begin serializable
@@ -200,35 +195,46 @@ TEH_PG_batch_reserves_in_insert (
   enum GNUNET_DB_QueryStatus qs2;
   PREPARE (pg,
            "reserves_in_add_transaction",
-           "SELECT exchange_do_batch_reserves_update"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
+           "SELECT"
+           "  out_duplicate AS duplicate"
+           " FROM exchange_do_batch_reserves_update"
+           " ($1,$2,$3,$4,$5,$6,$7,$8);");
   for (unsigned int i = 0; i<reserves_length; i++)
   {
     if (! conflicts[i])
       continue;
     {
+      bool duplicate;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
         GNUNET_PQ_query_param_timestamp (&expiry),
         GNUNET_PQ_query_param_uint64 (&reserves[i].wire_reference),
         TALER_PQ_query_param_amount (reserves[i].balance),
         GNUNET_PQ_query_param_string (reserves[i].exchange_account_name),
-        GNUNET_PQ_query_param_bool (conflicted),
         GNUNET_PQ_query_param_auto_from_type (&h_payto),
         GNUNET_PQ_query_param_string (notify_s[i]),
         GNUNET_PQ_query_param_end
       };
-
-      qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                "reserves_in_add_transaction",
-                                                params);
-      if (qs2<0)
+      struct GNUNET_PQ_ResultSpec rs[] = {
+        GNUNET_PQ_result_spec_bool ("duplicate",
+                                    &duplicate),
+        GNUNET_PQ_result_spec_end
+      };
+      qs2 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                      "reserves_in_add_transaction",
+                                                      params,
+                                                      rs);
+      if (qs2 < 0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to update reserves (%d)\n",
                     qs2);
+        results[i] = qs2;
         return qs2;
       }
+      results[i] = duplicate
+        ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+        : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }
   {
@@ -238,7 +244,6 @@ TEH_PG_batch_reserves_in_insert (
     if (cs < 0)
       return cs;
   }
-
 exit:
   for (unsigned int i = 0; i<reserves_length; i++)
     GNUNET_free (notify_s[i]);

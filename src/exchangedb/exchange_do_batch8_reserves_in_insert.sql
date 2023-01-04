@@ -136,14 +136,14 @@ DECLARE
 
 BEGIN
 --INITIALIZATION
-  transaction_duplicate=FALSE;
-  transaction_duplicate2=FALSE;
-  transaction_duplicate3=FALSE;
-  transaction_duplicate4=FALSE;
-  transaction_duplicate5=FALSE;
-  transaction_duplicate6=FALSE;
-  transaction_duplicate7=FALSE;
-  transaction_duplicate8=FALSE;
+  transaction_duplicate=TRUE;
+  transaction_duplicate2=TRUE;
+  transaction_duplicate3=TRUE;
+  transaction_duplicate4=TRUE;
+  transaction_duplicate5=TRUE;
+  transaction_duplicate6=TRUE;
+  transaction_duplicate7=TRUE;
+  transaction_duplicate8=TRUE;
   out_reserve_found = TRUE;
   out_reserve_found2 = TRUE;
   out_reserve_found3 = TRUE;
@@ -388,41 +388,52 @@ BEGIN
     THEN
       IF in_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate = TRUE;
+         transaction_duplicate = FALSE;
       END IF;
       IF in2_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate2 = TRUE;
+         transaction_duplicate2 = FALSE;
       END IF;
       IF in3_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate3 = TRUE;
+         transaction_duplicate3 = FALSE;
       END IF;
       IF in4_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate4 = TRUE;
+         transaction_duplicate4 = FALSE;
       END IF;
       IF in5_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate5 = TRUE;
+         transaction_duplicate5 = FALSE;
       END IF;
       IF in6_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate6 = TRUE;
+         transaction_duplicate6 = FALSE;
       END IF;
       IF in7_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate7 = TRUE;
+         transaction_duplicate7 = FALSE;
       END IF;
       IF in8_reserve_pub = r.reserve_pub
       THEN
-         transaction_duplicate8 = TRUE;
+         transaction_duplicate8 = FALSE;
       END IF;
-
     END IF;
   k=k+1;
   END LOOP;
-
+/*  IF transaction_duplicate
+  OR transaction_duplicate2
+  OR transaction_duplicate3
+  OR transaction_duplicate4
+  OR transaction_duplicate5
+  OR transaction_duplicate6
+  OR transaction_duplicate7
+  OR transaction_duplicate8
+  THEN
+    CLOSE curs_transaction_existed;
+    ROLLBACK;
+    RETURN;
+  END IF;*/
   CLOSE curs_transaction_existed;
   RETURN;
 END $$;

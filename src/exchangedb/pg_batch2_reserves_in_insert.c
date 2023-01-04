@@ -62,7 +62,8 @@ insert1(struct PostgresClosure *pg,
         struct GNUNET_TIME_Timestamp reserve_expiration,
         bool *transaction_duplicate,
         bool *conflict,
-        uint64_t *reserve_uuid)
+        uint64_t *reserve_uuid,
+        enum GNUNET_DB_QueryStatus results[1])
 {
   enum GNUNET_DB_QueryStatus qs2;
   PREPARE (pg,
@@ -107,23 +108,24 @@ insert1(struct PostgresClosure *pg,
                                                     "batch1_reserve_create",
                                                     params,
                                                     rs);
-
     if (qs2 < 0)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to create reserves (%d)\n",
-                  qs2);
-      return qs2;
-    }
-   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs2);
-
-   if (conflict[0] && transaction_duplicate[0])
-   {
-     GNUNET_break (0);
-     TEH_PG_rollback (pg);
-     return GNUNET_DB_STATUS_HARD_ERROR;
-   }
-   return qs2;
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Failed to create reserves (%d)\n",
+                    qs2);
+        results[0] = qs2;
+        return qs2;
+      }
+    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs2);
+    if ((conflict[0]) && transaction_duplicate[0])
+      {
+        GNUNET_break (0);
+        TEH_PG_rollback (pg);
+        results[0] = GNUNET_DB_STATUS_HARD_ERROR;
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+    results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    return qs2;
 }
 
 
@@ -138,7 +140,8 @@ insert2 (struct PostgresClosure *pg,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid)
+         uint64_t *reserve_uuid,
+         enum GNUNET_DB_QueryStatus results[1])
 {
   enum GNUNET_DB_QueryStatus qs1;
   PREPARE (pg,
@@ -154,7 +157,7 @@ insert2 (struct PostgresClosure *pg,
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22);");
 
     struct GNUNET_PQ_QueryParam params[] = {
-      // THIS is wrong, not 22 args!
+
       GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
       GNUNET_PQ_query_param_timestamp (&expiry),
       GNUNET_PQ_query_param_timestamp (&gc),
@@ -209,6 +212,7 @@ insert2 (struct PostgresClosure *pg,
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to create reserves (%d)\n",
                   qs1);
+      results[0]=qs1;
       return qs1;
     }
 
@@ -224,8 +228,10 @@ insert2 (struct PostgresClosure *pg,
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
+     results[0] = GNUNET_DB_STATUS_HARD_ERROR;
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
+    results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     return qs1;
 }
 
@@ -240,7 +246,8 @@ insert4 (struct PostgresClosure *pg,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid)
+         uint64_t *reserve_uuid,
+         enum GNUNET_DB_QueryStatus results[1])
 {
   enum GNUNET_DB_QueryStatus qs3;
   PREPARE (pg,
@@ -353,13 +360,11 @@ insert4 (struct PostgresClosure *pg,
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to create reserves4 (%d)\n",
                   qs3);
+      results[0] = qs3;
       return qs3;
     }
 
    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs3);
-   /*   results[i] = (transaction_duplicate)
-      ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
-      : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;*/
 
     if (
         ((conflict[0]) && (transaction_duplicate[0]))
@@ -370,8 +375,10 @@ insert4 (struct PostgresClosure *pg,
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
+     results[0] = GNUNET_DB_STATUS_HARD_ERROR;
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
+    results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     return qs3;
 }
 
@@ -386,7 +393,8 @@ insert8 (struct PostgresClosure *pg,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid)
+         uint64_t *reserve_uuid,
+         enum GNUNET_DB_QueryStatus results[1])
 {
   enum GNUNET_DB_QueryStatus qs3;
   PREPARE (pg,
@@ -583,6 +591,7 @@ insert8 (struct PostgresClosure *pg,
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to create reserves8 (%d)\n",
                   qs3);
+      results[0]=qs3;
       return qs3;
     }
 
@@ -604,17 +613,19 @@ insert8 (struct PostgresClosure *pg,
    {
      GNUNET_break (0);
      TEH_PG_rollback (pg);
+     results[0]=GNUNET_DB_STATUS_HARD_ERROR;
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
+    results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     return qs3;
 }
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_batch2_reserves_in_insert (void *cls,
-                                 const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                                 unsigned int reserves_length,
+                                  const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+                                  unsigned int reserves_length,
                                   unsigned int batch_size,
-                                 enum GNUNET_DB_QueryStatus *results)
+                                  enum GNUNET_DB_QueryStatus *results)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs1;
@@ -627,6 +638,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   uint64_t reserve_uuid[reserves_length];
   bool transaction_duplicate[reserves_length];
   bool need_update = false;
+  bool t_duplicate=false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   bool conflicts[reserves_length];
@@ -689,7 +701,8 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                   reserve_expiration,
                   &transaction_duplicate[i],
                   &conflicts[i],
-                  &reserve_uuid[i]);
+                  &reserve_uuid[i],
+                  &results[i]);
 
      if (qs1<0)
       {
@@ -707,6 +720,14 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       need_update |= conflicts[i+5];
       need_update |= conflicts[i+6];
       need_update |= conflicts[i+7];
+      t_duplicate |= transaction_duplicate[i];
+      t_duplicate |= transaction_duplicate[i+1];
+      t_duplicate |= transaction_duplicate[i+2];
+      t_duplicate |= transaction_duplicate[i+3];
+      t_duplicate |= transaction_duplicate[i+4];
+      t_duplicate |= transaction_duplicate[i+5];
+      t_duplicate |= transaction_duplicate[i+6];
+      t_duplicate |= transaction_duplicate[i+7];
       i+=8;
       continue;
     }
@@ -725,7 +746,8 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                   reserve_expiration,
                   &transaction_duplicate[i],
                   &conflicts[i],
-                  &reserve_uuid[i]);
+                  &reserve_uuid[i],
+                  &results[i]);
 
      if (qs4<0)
       {
@@ -738,8 +760,10 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       need_update |= conflicts[i+1];
       need_update |= conflicts[i+2];
       need_update |= conflicts[i+3];
-      //     fprintf(stdout, "%ld %ld %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1], reserve_uuid[i+2], reserve_uuid[i+3]);
-      //fprintf(stdout, "%d %d %d %d\n", transaction_duplicate[i], transaction_duplicate[i+1], transaction_duplicate[i+2], transaction_duplicate[i+3]);
+      t_duplicate |= transaction_duplicate[i];
+      t_duplicate |= transaction_duplicate[i+1];
+      t_duplicate |= transaction_duplicate[i+2];
+      t_duplicate |= transaction_duplicate[i+3];
       i += 4;
       break;
     case 3:
@@ -753,17 +777,21 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                   reserve_expiration,
                   &transaction_duplicate[i],
                   &conflicts[i],
-                  &reserve_uuid[i]);
+                  &reserve_uuid[i],
+                  &results[i]);
       if (qs5<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves (%d)\n",
+                    "Failed to update reserves 2 (%d)\n",
                     qs5);
         return qs5;
       }
       need_update |= conflicts[i];
       need_update |= conflicts[i+1];
-      //      fprintf(stdout, "%ld %ld\n", reserve_uuid[i], reserve_uuid[i+1]);
+      t_duplicate |= transaction_duplicate[i];
+      t_duplicate |= transaction_duplicate[i+1];
+
+      //fprintf(stdout, "%ld %ld c:%d t:%d\n", reserve_uuid[i], reserve_uuid[i+1], conflicts[i], transaction_duplicate[i]);
       i += 2;
       break;
     case 1:
@@ -776,14 +804,19 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                     reserve_expiration,
                     &transaction_duplicate[i],
                     &conflicts[i],
-                    &reserve_uuid[i]);
+                    &reserve_uuid[i],
+                    &results[i]);
       if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs2)
       {
         GNUNET_break (0);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
       need_update |= conflicts[i];
+      t_duplicate |= transaction_duplicate[i];
+
+      // fprintf(stdout, "%ld c:%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
       i += 1;
+
       break;
     case 0:
       GNUNET_assert (0);
@@ -807,6 +840,8 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   {
     goto exit;
   }
+  if (t_duplicate)
+    goto exit;
   // begin serializable
   {
     if (GNUNET_OK !=
@@ -819,42 +854,52 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   }
 
   enum GNUNET_DB_QueryStatus qs3;
-
+  PREPARE (pg,
+           "reserves_update",
+           "SELECT"
+           " out_duplicate AS duplicate "
+           "FROM exchange_do_batch_reserves_update"
+           " ($1,$2,$3,$4,$5,$6,$7,$8);");
   for (unsigned int i = 0; i<reserves_length; i++)
-  {
-
-    if (! conflicts[i])
-      continue;
-    //   fprintf(stdout, "%d\n", conflicts[i]);
     {
-      //      const struct TALER_EXCHANGEDB_ReserveInInfo *reserve = &reserves[i];
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
-        GNUNET_PQ_query_param_timestamp (&expiry),
-        GNUNET_PQ_query_param_uint64 (&reserves[i].wire_reference),
-        TALER_PQ_query_param_amount (reserves[i].balance),
-        GNUNET_PQ_query_param_string (reserves[i].exchange_account_name),
-        GNUNET_PQ_query_param_bool (conflicts[i]),
-        GNUNET_PQ_query_param_auto_from_type (&h_payto),
-        GNUNET_PQ_query_param_string (notify_s[i]),
-        GNUNET_PQ_query_param_end
-      };
-      PREPARE (pg,
-               "reserves_update",
-               "CALL exchange_do_batch_reserves_update"
-               " ($1,$2,$3,$4,$5,$6,$7,$8,$9);");
-      qs3 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                "reserves_update",
-                                                params);
-      if (qs3<0)
+      if (! conflicts[i])
+        continue;
+      //   fprintf(stdout, "%d\n", conflicts[i]);
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update (%d)\n",
-                    qs3);
-        return qs3;
+        bool duplicate;
+        struct GNUNET_PQ_QueryParam params[] = {
+          GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
+          GNUNET_PQ_query_param_timestamp (&expiry),
+          GNUNET_PQ_query_param_uint64 (&reserves[i].wire_reference),
+          TALER_PQ_query_param_amount (reserves[i].balance),
+          GNUNET_PQ_query_param_string (reserves[i].exchange_account_name),
+          GNUNET_PQ_query_param_auto_from_type (&h_payto),
+          GNUNET_PQ_query_param_string (notify_s[i]),
+          GNUNET_PQ_query_param_end
+        };
+        struct GNUNET_PQ_ResultSpec rs[] = {
+          GNUNET_PQ_result_spec_bool ("duplicate",
+                                      &duplicate),
+          GNUNET_PQ_result_spec_end
+        };
+        qs3 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                        "reserves_update",
+                                                        params,
+                                                        rs);
+        if (qs3<0)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                        "Failed to update (%d)\n",
+                        qs3);
+            results[i] = qs3;
+            return qs3;
+          }
+        results[i] = duplicate
+          ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+          : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       }
     }
-  }
+
   {
     enum GNUNET_DB_QueryStatus cs;
 

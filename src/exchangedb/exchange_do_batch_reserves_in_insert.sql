@@ -36,7 +36,7 @@ AS $$
 BEGIN
 ruuid= 0;
 out_reserve_found = TRUE;
-transaction_duplicate= FALSE;
+transaction_duplicate= TRUE;
   --SIMPLE INSERT ON CONFLICT DO NOTHING
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -66,7 +66,7 @@ transaction_duplicate= FALSE;
     out_reserve_found = FALSE;
   ELSE
     -- We made no change, which means the reserve existed.
-    out_reserve_found = TRUE; /*RESERVE EXISTED BUT WE DO NOT HAVE ANY INFORMATION ABOUT TRANSACTION, RETURN*/
+    out_reserve_found = TRUE;
     RETURN;
   END IF;
   PERFORM pg_notify(in_notify, NULL);
@@ -89,11 +89,14 @@ transaction_duplicate= FALSE;
     ON CONFLICT DO NOTHING;
   IF FOUND
   THEN
-    transaction_duplicate = FALSE;  /*HAPPY PATH THERE IS NO DUPLICATE TRANS AND NEW RESERVE*/
+    -- HAPPY PATH THERE IS NO DUPLICATE TRANS
+    transaction_duplicate = FALSE;
     RETURN;
   ELSE
+    -- Unhappy...
+    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
     transaction_duplicate = TRUE;
-    /*HAPPY PATH IF THERE IS A DUPLICATE TRANS WE JUST NEED TO ROLLBACK COMPLAIN*/
+    ROLLBACK;
     RETURN;
   END IF;
   RETURN;

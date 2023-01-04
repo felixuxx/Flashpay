@@ -81,10 +81,10 @@ DECLARE
 
 BEGIN
 --INITIALIZATION
-  transaction_duplicate=FALSE;
-  transaction_duplicate2=FALSE;
-  transaction_duplicate3=FALSE;
-  transaction_duplicate4=FALSE;
+  transaction_duplicate=TRUE;
+  transaction_duplicate2=TRUE;
+  transaction_duplicate3=TRUE;
+  transaction_duplicate4=TRUE;
   out_reserve_found = TRUE;
   out_reserve_found2 = TRUE;
   out_reserve_found3 = TRUE;
@@ -232,25 +232,34 @@ BEGIN
     THEN
       IF in_reserve_pub = i.reserve_pub
       THEN
-         transaction_duplicate = TRUE;
+         transaction_duplicate = FALSE;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
-         transaction_duplicate2 = TRUE;
+         transaction_duplicate2 = FALSE;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
-         transaction_duplicate3 = TRUE;
+         transaction_duplicate3 = FALSE;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
-         transaction_duplicate4 = TRUE;
+         transaction_duplicate4 = FALSE;
       END IF;
     END IF;
   k=k+1;
   END LOOP;
-  CLOSE curs_transaction_exist;
+/*  IF transaction_duplicate
+  OR transaction_duplicate2
+  OR transaction_duplicate3
+  OR transaction_duplicate4
+  THEN
+    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
 
+    CLOSE curs_transaction_exist;
+    RETURN;
+  END IF;*/
+  CLOSE curs_transaction_exist;
   RETURN;
 
 END $$;

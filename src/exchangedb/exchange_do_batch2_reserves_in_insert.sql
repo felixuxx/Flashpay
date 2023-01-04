@@ -54,8 +54,8 @@ DECLARE
   r RECORD;
 BEGIN
   --SIMPLE INSERT ON CONFLICT DO NOTHING
-  transaction_duplicate=FALSE;
-  transaction_duplicate2=FALSE;
+  transaction_duplicate=TRUE;
+  transaction_duplicate2=TRUE;
   out_reserve_found = TRUE;
   out_reserve_found2 = TRUE;
   ruuid=0;
@@ -148,7 +148,7 @@ BEGIN
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date),
-    (in2_reserve_pub
+    (in3_reserve_pub
     ,in2_wire_ref
     ,in2_credit_val
     ,in2_credit_frac
@@ -163,26 +163,32 @@ BEGIN
   THEN
     IF in_reserve_pub = r.reserve_pub
     THEN
-       transaction_duplicate = TRUE;
+       transaction_duplicate = FALSE;
     END IF;
-    IF in2_reserve_pub = i.reserve_pub
+    IF in2_reserve_pub = r.reserve_pub
     THEN
-       transaction_duplicate = TRUE;
+       transaction_duplicate2 = FALSE;
     END IF;
     FETCH FROM curs_transaction_exist INTO r;
     IF FOUND
     THEN
       IF in_reserve_pub = r.reserve_pub
       THEN
-        transaction_duplicate = TRUE;
+        transaction_duplicate = FALSE;
       END IF;
-      IF in2_reserve_pub = i.reserve_pub
+      IF in2_reserve_pub = r.reserve_pub
       THEN
-        transaction_duplicate = TRUE;
+        transaction_duplicate2 = FALSE;
       END IF;
     END IF;
   END IF;
-
+/*  IF transaction_duplicate
+  OR transaction_duplicate2
+  THEN
+    CLOSE curs_transaction_exist;
+    ROLLBACK;
+    RETURN;
+  END IF;*/
   CLOSE curs_transaction_exist;
   RETURN;
 END $$;
