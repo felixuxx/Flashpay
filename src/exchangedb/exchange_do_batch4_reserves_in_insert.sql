@@ -170,13 +170,7 @@ BEGIN
   k=k+1;
   END LOOP;
   CLOSE curs_reserve_exist;
-  IF out_reserve_found
-  AND out_reserve_found2
-  AND out_reserve_found3
-  AND out_reserve_found4
-  THEN
-      RETURN;
-  END IF;
+
 
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);

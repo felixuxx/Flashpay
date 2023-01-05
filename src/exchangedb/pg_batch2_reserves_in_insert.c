@@ -69,7 +69,7 @@ insert1(struct PostgresClosure *pg,
   PREPARE (pg,
            "batch1_reserve_create",
            "SELECT "
-           "out_reserve_found AS conflicted"
+           " out_reserve_found AS conflicted"
            ",transaction_duplicate"
            ",ruuid AS reserve_uuid"
            " FROM exchange_do_batch_reserves_in_insert"
@@ -103,7 +103,6 @@ insert1(struct PostgresClosure *pg,
     TALER_payto_hash (reserves[0].sender_account_details,
                       &h_payto);
 
-    /* Note: query uses 'on conflict do nothing' */
     qs2 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "batch1_reserve_create",
                                                     params,
@@ -168,7 +167,7 @@ insert2 (struct PostgresClosure *pg,
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
       GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
       GNUNET_PQ_query_param_timestamp (&reserve_expiration),
-      GNUNET_PQ_query_param_string (notify_s[0]), // FIXME: 2 different notifies!
+      GNUNET_PQ_query_param_string (notify_s[0]),
       GNUNET_PQ_query_param_string (notify_s[1]),
 
       GNUNET_PQ_query_param_auto_from_type (reserves[1].reserve_pub),
@@ -210,7 +209,7 @@ insert2 (struct PostgresClosure *pg,
     if (qs1 < 0)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to create reserves (%d)\n",
+                  "Failed to create reserves 2(%d)\n",
                   qs1);
       results[0]=qs1;
       return qs1;
@@ -227,7 +226,7 @@ insert2 (struct PostgresClosure *pg,
         )
    {
      GNUNET_break (0);
-     TEH_PG_rollback (pg);
+     TEH_PG_rollback (pg); //ROLLBACK
      results[0] = GNUNET_DB_STATUS_HARD_ERROR;
      return GNUNET_DB_STATUS_HARD_ERROR;
    }
@@ -691,7 +690,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                                   reserves_length - i);
     if (bs >= 8)
     {
-      //     fprintf(stdout, "batch8");
       qs1=insert8(pg,
                   &reserves[i],
                   expiry,
@@ -707,7 +705,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
      if (qs1<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves8 (%d)\n",
+                    "Failed to update reserves 8 (%d)\n",
                     qs1);
         return qs1;
       }

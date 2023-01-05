@@ -289,17 +289,6 @@ BEGIN
   END LOOP;
 
   CLOSE curs_reserve_existed;
-  IF out_reserve_found
-  AND out_reserve_found2
-  AND out_reserve_found3
-  AND out_reserve_found4
-  AND out_reserve_found5
-  AND out_reserve_found6
-  AND out_reserve_found7
-  AND out_reserve_found8
-  THEN
-      RETURN;
-  END IF;
 
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);

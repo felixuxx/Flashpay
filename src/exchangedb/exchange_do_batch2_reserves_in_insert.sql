@@ -122,10 +122,6 @@ BEGIN
     END IF;
   END IF;
   CLOSE curs_reserve_exist;
-  IF out_reserve_found AND out_reserve_found2
-  THEN
-      RETURN;
-  END IF;
 
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);

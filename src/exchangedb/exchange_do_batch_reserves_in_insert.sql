@@ -67,7 +67,6 @@ transaction_duplicate= TRUE;
   ELSE
     -- We made no change, which means the reserve existed.
     out_reserve_found = TRUE;
-    RETURN;
   END IF;
   PERFORM pg_notify(in_notify, NULL);
   INSERT INTO reserves_in
@@ -91,13 +90,11 @@ transaction_duplicate= TRUE;
   THEN
     -- HAPPY PATH THERE IS NO DUPLICATE TRANS
     transaction_duplicate = FALSE;
-    RETURN;
   ELSE
     -- Unhappy...
     RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
     transaction_duplicate = TRUE;
     ROLLBACK;
-    RETURN;
   END IF;
   RETURN;
 END $$;
