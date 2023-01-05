@@ -52,6 +52,8 @@ DECLARE
   i RECORD;
 DECLARE
   r RECORD;
+DECLARE
+  k INT8;
 BEGIN
   --SIMPLE INSERT ON CONFLICT DO NOTHING
   transaction_duplicate=TRUE;
@@ -60,6 +62,7 @@ BEGIN
   out_reserve_found2 = TRUE;
   ruuid=0;
   ruuid2=0;
+  k=0;
   INSERT INTO wire_targets
     (wire_target_h_payto
     ,payto_uri)
@@ -92,35 +95,26 @@ BEGIN
      ON CONFLICT DO NOTHING
      RETURNING reserve_uuid,reserve_pub)
     SELECT * FROM reserve_changes;
-
-  FETCH FROM curs_reserve_exist INTO i;
-  IF FOUND
-  THEN
-    IF in_reserve_pub = i.reserve_pub
-    THEN
-       out_reserve_found = FALSE;
-       ruuid = i.reserve_uuid;
-    END IF;
-    IF in2_reserve_pub = i.reserve_pub
-    THEN
-        out_reserve_found2 = FALSE;
-        ruuid2 = i.reserve_uuid;
-    END IF;
+  WHILE k < 2 LOOP
     FETCH FROM curs_reserve_exist INTO i;
     IF FOUND
     THEN
       IF in_reserve_pub = i.reserve_pub
       THEN
-        out_reserve_found = FALSE;
         ruuid = i.reserve_uuid;
+        IF in_reserve_pub <> in2_reserve_pub
+        THEN
+          out_reserve_found = FALSE;
+         END IF;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
-        out_reserve_found2 = FALSE;
-        ruuid2 = i.reserve_uuid;
-     END IF;
+          out_reserve_found2 = FALSE;
+          ruuid2 = i.reserve_uuid;
+      END IF;
     END IF;
-  END IF;
+    k=k+1;
+  END LOOP;
   CLOSE curs_reserve_exist;
 
   PERFORM pg_notify(in_notify, NULL);

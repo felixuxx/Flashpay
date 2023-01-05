@@ -245,43 +245,123 @@ BEGIN
     THEN
       IF in_reserve_pub = i.reserve_pub
       THEN
-         out_reserve_found = FALSE;
          ruuid = i.reserve_uuid;
+         IF in_reserve_pub
+         NOT IN (in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found = FALSE;
+         END IF;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found2 = FALSE;
-          ruuid2 = i.reserve_uuid;
+         ruuid2 = i.reserve_uuid;
+         IF in2_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found2 = FALSE;
+         END IF;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found3 = FALSE;
-          ruuid3 = i.reserve_uuid;
+         ruuid3 = i.reserve_uuid;
+         IF in3_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found3 = FALSE;
+         END IF;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found4 = FALSE;
-          ruuid4 = i.reserve_uuid;
+         ruuid4 = i.reserve_uuid;
+         IF in4_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found4 = FALSE;
+         END IF;
       END IF;
       IF in5_reserve_pub = i.reserve_pub
       THEN
-         out_reserve_found5 = FALSE;
          ruuid5 = i.reserve_uuid;
+         IF in5_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found5 = FALSE;
+         END IF;
       END IF;
       IF in6_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found6 = FALSE;
-          ruuid6 = i.reserve_uuid;
+         ruuid6 = i.reserve_uuid;
+         IF in6_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in7_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found6 = FALSE;
+         END IF;
       END IF;
       IF in7_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found7 = FALSE;
-          ruuid7 = i.reserve_uuid;
+         ruuid7 = i.reserve_uuid;
+         IF in7_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in8_reserve_pub)
+         THEN
+           out_reserve_found7 = FALSE;
+         END IF;
       END IF;
       IF in8_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found8 = FALSE;
-          ruuid8 = i.reserve_uuid;
+         ruuid8 = i.reserve_uuid;
+         IF in8_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub
+                ,in5_reserve_pub
+                ,in6_reserve_pub
+                ,in7_reserve_pub)
+         THEN
+           out_reserve_found8 = FALSE;
+         END IF;
       END IF;
     END IF;
   k=k+1;
@@ -368,7 +448,6 @@ BEGIN
      ON CONFLICT DO NOTHING
      RETURNING reserve_pub)
     SELECT * FROM reserve_in_changes;
-
 
   WHILE k < 8 LOOP
     FETCH FROM curs_transaction_existed INTO r;

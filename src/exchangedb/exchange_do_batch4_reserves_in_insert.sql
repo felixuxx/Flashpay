@@ -148,23 +148,47 @@ BEGIN
     THEN
       IF in_reserve_pub = i.reserve_pub
       THEN
-         out_reserve_found = FALSE;
          ruuid = i.reserve_uuid;
+         IF in_reserve_pub
+         NOT IN (in2_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub)
+         THEN
+           out_reserve_found = FALSE;
+         END IF;
       END IF;
       IF in2_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found2 = FALSE;
-          ruuid2 = i.reserve_uuid;
+         ruuid2 = i.reserve_uuid;
+         IF in2_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in3_reserve_pub
+                ,in4_reserve_pub)
+         THEN
+           out_reserve_found2 = FALSE;
+         END IF;
       END IF;
       IF in3_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found3 = FALSE;
-          ruuid3 = i.reserve_uuid;
+         ruuid3 = i.reserve_uuid;
+         IF in3_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in4_reserve_pub)
+         THEN
+           out_reserve_found3 = FALSE;
+         END IF;
       END IF;
       IF in4_reserve_pub = i.reserve_pub
       THEN
-          out_reserve_found4 = FALSE;
-          ruuid4 = i.reserve_uuid;
+         ruuid4 = i.reserve_uuid;
+         IF in4_reserve_pub
+         NOT IN (in_reserve_pub
+                ,in2_reserve_pub
+                ,in3_reserve_pub)
+         THEN
+           out_reserve_found4 = FALSE;
+         END IF;
       END IF;
     END IF;
   k=k+1;

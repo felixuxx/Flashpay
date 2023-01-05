@@ -709,8 +709,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                     qs1);
         return qs1;
       }
-     //   fprintf(stdout, "%ld %ld %ld %ld %ld %ld %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1], reserve_uuid[i+2], reserve_uuid[i+3], reserve_uuid[i+4], reserve_uuid[i+5], reserve_uuid[i+6],reserve_uuid[]);
-     //   fprintf(stdout, "%d %d %d %d %d %d %d %d\n", conflicts[i], conflicts[i+1], conflicts[i+2], conflicts[i+3], conflicts[i+4], conflicts[i+5], conflicts[i+6],conflicts[]);
       need_update |= conflicts[i];
       need_update |= conflicts[i+1];
       need_update |= conflicts[i+2];
@@ -763,8 +761,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       t_duplicate |= transaction_duplicate[i+1];
       t_duplicate |= transaction_duplicate[i+2];
       t_duplicate |= transaction_duplicate[i+3];
-      //  fprintf(stdout, "%ld %ld c:%d t:%d %d %d %d\n", reserve_uuid[i], reserve_uuid[i+1], conflicts[i], t_duplicate, t_duplicate, transaction_duplicate[i+2], transaction_duplicate[i+3]);
-
       i += 4;
       break;
     case 3:
@@ -791,7 +787,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       need_update |= conflicts[i+1];
       t_duplicate |= transaction_duplicate[i];
       t_duplicate |= transaction_duplicate[i+1];
-      //     fprintf(stdout, "t : %d %d", transaction_duplicate[i], transaction_duplicate[i+1]);
       i += 2;
       break;
     case 1:
@@ -811,13 +806,9 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
         GNUNET_break (0);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
-      //  fprintf(stdout, "%ld\n", reserve_uuid[i]);
       need_update |= conflicts[i];
       t_duplicate |= transaction_duplicate[i];
-
-      // fprintf(stdout, "%ld c:%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
       i += 1;
-
       break;
     case 0:
       GNUNET_assert (0);
