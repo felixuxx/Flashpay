@@ -244,7 +244,7 @@ BEGIN
   k=k+1;
   END LOOP;
 
-  IF transaction_duplicate
+  /*IF transaction_duplicate
   OR transaction_duplicate2
   OR transaction_duplicate3
   OR transaction_duplicate4
@@ -253,7 +253,7 @@ BEGIN
     ROLLBACK;
     CLOSE curs_transaction_exist;
     RETURN;
-  END IF;
+  END IF;*/
   CLOSE curs_transaction_exist;
   RETURN;
 

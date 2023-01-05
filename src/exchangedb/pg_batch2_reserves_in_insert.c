@@ -116,7 +116,7 @@ insert1(struct PostgresClosure *pg,
         return qs2;
       }
     GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs2);
-    if ((conflict[0]) && transaction_duplicate[0])
+    if ((! conflict[0]) && transaction_duplicate[0])
       {
         GNUNET_break (0);
         TEH_PG_rollback (pg);
@@ -221,8 +221,8 @@ insert2 (struct PostgresClosure *pg,
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;*/
 
     if (
-        ((conflict[0]) && (transaction_duplicate[0]))
-        ||((conflict[1]) && (transaction_duplicate[1]))
+        ((! conflict[0]) && (transaction_duplicate[0]))
+        ||((! conflict[1]) && (transaction_duplicate[1]))
         )
    {
      GNUNET_break (0);
@@ -366,10 +366,10 @@ insert4 (struct PostgresClosure *pg,
    GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs3);
 
     if (
-        ((conflict[0]) && (transaction_duplicate[0]))
-        ||((conflict[1]) && (transaction_duplicate[1]))
-        ||((conflict[2]) && (transaction_duplicate[2]))
-        ||((conflict[3]) && (transaction_duplicate[3]))
+        ((! conflict[0]) && (transaction_duplicate[0]))
+        ||((! conflict[1]) && (transaction_duplicate[1]))
+        ||((! conflict[2]) && (transaction_duplicate[2]))
+        ||((! conflict[3]) && (transaction_duplicate[3]))
         )
    {
      GNUNET_break (0);
@@ -600,14 +600,14 @@ insert8 (struct PostgresClosure *pg,
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;*/
 
     if (
-        ((conflict[0]) && (transaction_duplicate[0]))
-        ||((conflict[1]) && (transaction_duplicate[1]))
-        ||((conflict[2]) && (transaction_duplicate[2]))
-        ||((conflict[3]) && (transaction_duplicate[3]))
-        ||((conflict[4]) && (transaction_duplicate[4]))
-        ||((conflict[5]) && (transaction_duplicate[5]))
-        ||((conflict[6]) && (transaction_duplicate[6]))
-        ||((conflict[7]) && (transaction_duplicate[7]))
+        ((! conflict[0]) && (transaction_duplicate[0]))
+        ||((! conflict[1]) && (transaction_duplicate[1]))
+        ||((! conflict[2]) && (transaction_duplicate[2]))
+        ||((! conflict[3]) && (transaction_duplicate[3]))
+        ||((! conflict[4]) && (transaction_duplicate[4]))
+        ||((! conflict[5]) && (transaction_duplicate[5]))
+        ||((! conflict[6]) && (transaction_duplicate[6]))
+        ||((! conflict[7]) && (transaction_duplicate[7]))
         )
    {
      GNUNET_break (0);
@@ -710,6 +710,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
         return qs1;
       }
      //   fprintf(stdout, "%ld %ld %ld %ld %ld %ld %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1], reserve_uuid[i+2], reserve_uuid[i+3], reserve_uuid[i+4], reserve_uuid[i+5], reserve_uuid[i+6],reserve_uuid[]);
+     //   fprintf(stdout, "%d %d %d %d %d %d %d %d\n", conflicts[i], conflicts[i+1], conflicts[i+2], conflicts[i+3], conflicts[i+4], conflicts[i+5], conflicts[i+6],conflicts[]);
       need_update |= conflicts[i];
       need_update |= conflicts[i+1];
       need_update |= conflicts[i+2];
@@ -790,7 +791,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       need_update |= conflicts[i+1];
       t_duplicate |= transaction_duplicate[i];
       t_duplicate |= transaction_duplicate[i+1];
-
+      //     fprintf(stdout, "t : %d %d", transaction_duplicate[i], transaction_duplicate[i+1]);
       i += 2;
       break;
     case 1:

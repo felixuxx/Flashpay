@@ -238,7 +238,6 @@ BEGIN
      RETURNING reserve_uuid,reserve_pub)
     SELECT * FROM reserve_changes;
 
-
   WHILE k < 8 LOOP
 
     FETCH FROM curs_reserve_existed INTO i;
@@ -410,7 +409,7 @@ BEGIN
     END IF;
   k=k+1;
   END LOOP;
-  IF transaction_duplicate
+ /* IF transaction_duplicate
   OR transaction_duplicate2
   OR transaction_duplicate3
   OR transaction_duplicate4
@@ -422,7 +421,7 @@ BEGIN
     CLOSE curs_transaction_existed;
     ROLLBACK;
     RETURN;
-  END IF;
+  END IF;*/
   CLOSE curs_transaction_existed;
   RETURN;
 END $$;
