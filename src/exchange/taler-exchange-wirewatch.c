@@ -154,6 +154,11 @@ static struct TALER_EXCHANGEDB_Plugin *db_plugin;
 static struct GNUNET_TIME_Relative wirewatch_idle_sleep_interval;
 
 /**
+ * How long do we sleep on serialization conflicts?
+ */
+static struct GNUNET_TIME_Relative wirewatch_conflict_sleep_interval;
+
+/**
  * Modulus to apply to group shards.  The shard size must ultimately be a
  * multiple of the batch size. Thus, if this is not a multiple of the
  * #MAXIMUM_BATCH_SIZE, the batch size will be set to the #shard_size.
@@ -1066,10 +1071,10 @@ history_cb (void *cls,
       process_reply (reply->details.success.details,
                      reply->details.success.details_length);
       break;
-      /*    case 0:
-      process_reply_batched (reply->details.success.details,
-                             reply->details.success.details_length);
-                             break;*/
+    /*    case 0:
+    process_reply_batched (reply->details.success.details,
+                           reply->details.success.details_length);
+                           break;*/
     default:
       process_reply_batched2 ((unsigned int) batch_mode,
                               reply->details.success.details,
@@ -1200,7 +1205,9 @@ lock_shard (void *cls)
     {
       struct GNUNET_TIME_Relative rdelay;
 
-      rdelay = GNUNET_TIME_randomize (wirewatch_idle_sleep_interval);
+      wirewatch_conflict_sleep_interval
+        = GNUNET_TIME_STD_BACKOFF (wirewatch_conflict_sleep_interval);
+      rdelay = GNUNET_TIME_randomize (wirewatch_conflict_sleep_interval);
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Serialization error tying to obtain shard %s, will try again in %s!\n",
                   job_name,
@@ -1227,6 +1234,7 @@ lock_shard (void *cls)
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     /* continued below */
+    wirewatch_conflict_sleep_interval = GNUNET_TIME_UNIT_ZERO;
     break;
   }
   shard_end_time = GNUNET_TIME_relative_to_absolute (delay);
