@@ -32,7 +32,10 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
-
+DECLARE
+  curs refcursor;
+DECLARE
+  i RECORD;
 BEGIN
 ruuid= 0;
 out_reserve_found = TRUE;
@@ -46,28 +49,35 @@ transaction_duplicate= TRUE;
     ,in_payto_uri)
   ON CONFLICT DO NOTHING;
 
-  INSERT INTO reserves
-    (reserve_pub
-    ,current_balance_val
-    ,current_balance_frac
-    ,expiration_date
-    ,gc_date)
-    VALUES
-    (in_reserve_pub
-    ,in_credit_val
-    ,in_credit_frac
-    ,in_expiration_date
-    ,in_gc_date)
-   ON CONFLICT DO NOTHING
-   RETURNING reserves.reserve_uuid INTO ruuid;
+  OPEN curs FOR
+  WITH reserve_changes AS (
+    INSERT INTO reserves
+      (reserve_pub
+      ,current_balance_val
+      ,current_balance_frac
+      ,expiration_date
+      ,gc_date)
+      VALUES
+      (in_reserve_pub
+      ,in_credit_val
+      ,in_credit_frac
+      ,in_expiration_date
+      ,in_gc_date)
+     ON CONFLICT DO NOTHING
+     RETURNING reserve_uuid, reserve_pub)
+   SELECT * FROM reserve_changes;
+  FETCH FROM curs INTO i;
   IF FOUND
   THEN
     -- We made a change, so the reserve did not previously exist.
-    out_reserve_found = FALSE;
-  ELSE
-    -- We made no change, which means the reserve existed.
-    out_reserve_found = TRUE;
+    IF in_reserve_pub = i.reserve_pub
+    THEN
+        out_reserve_found = FALSE;
+        ruuid = i.reserve_uuid;
+    END IF;
   END IF;
+  CLOSE curs;
+
   PERFORM pg_notify(in_notify, NULL);
   INSERT INTO reserves_in
     (reserve_pub
@@ -92,7 +102,7 @@ transaction_duplicate= TRUE;
     transaction_duplicate = FALSE;
   ELSE
     -- Unhappy...
---    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
+    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
     transaction_duplicate = TRUE;
 --    ROLLBACK;
   END IF;

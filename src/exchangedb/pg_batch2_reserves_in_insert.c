@@ -763,6 +763,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       t_duplicate |= transaction_duplicate[i+1];
       t_duplicate |= transaction_duplicate[i+2];
       t_duplicate |= transaction_duplicate[i+3];
+      //  fprintf(stdout, "reserve_uuid : %ld %ld %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1], reserve_uuid[i+2], reserve_uuid[i+3]);
       i += 4;
       break;
     case 3:
@@ -792,6 +793,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       results[i] = (t_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+      //   fprintf(stdout, "reserve_uuid : %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1]);
       i += 2;
       break;
     case 1:
