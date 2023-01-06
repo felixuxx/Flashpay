@@ -29,6 +29,10 @@ do
         else
             mv _build/$f/${VERSION}.$f $l/${VERSION}.$f
         fi
+        if test $f = "txt"
+        then
+            cp $l/${VERSION}.$f $l/${VERSION}.md
+        fi
     done
 done
 cd ..
