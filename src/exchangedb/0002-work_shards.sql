@@ -44,3 +44,7 @@ CREATE INDEX work_shards_by_job_name_completed_last_attempt_index
   ,completed
   ,last_attempt ASC
   );
+
+CREATE INDEX work_shards_by_end_row_index
+  ON work_shards
+  (end_row DESC);
