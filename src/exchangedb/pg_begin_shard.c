@@ -28,13 +28,14 @@
 #include "pg_rollback.h"
 #include "pg_commit.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_begin_shard (void *cls,
-                      const char *job_name,
-                      struct GNUNET_TIME_Relative delay,
-                      uint64_t shard_size,
-                      uint64_t *start_row,
-                      uint64_t *end_row)
+                    const char *job_name,
+                    struct GNUNET_TIME_Relative delay,
+                    uint64_t shard_size,
+                    uint64_t *start_row,
+                    uint64_t *end_row)
 {
   struct PostgresClosure *pg = cls;
 
@@ -42,7 +43,7 @@ TEH_PG_begin_shard (void *cls,
   {
     if (GNUNET_OK !=
         TEH_PG_start (pg,
-                        "begin_shard"))
+                      "begin_shard"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -65,7 +66,6 @@ TEH_PG_begin_shard (void *cls,
       };
 
       past = GNUNET_TIME_absolute_get ();
-
       PREPARE (pg,
                "get_open_shard",
                "SELECT"
@@ -77,7 +77,6 @@ TEH_PG_begin_shard (void *cls,
                "   AND last_attempt<$2"
                " ORDER BY last_attempt ASC"
                " LIMIT 1;");
-
       qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                      "get_open_shard",
                                                      params,
@@ -89,6 +88,8 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Serialization error on getting open shard\n");
         TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -104,8 +105,6 @@ TEH_PG_begin_shard (void *cls,
           };
 
           now = GNUNET_TIME_relative_to_absolute (delay);
-
-
           PREPARE (pg,
                    "reclaim_shard",
                    "UPDATE work_shards"
@@ -113,7 +112,6 @@ TEH_PG_begin_shard (void *cls,
                    " WHERE job_name=$1"
                    "   AND start_row=$3"
                    "   AND end_row=$4");
-
           qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                    "reclaim_shard",
                                                    params);
@@ -124,6 +122,8 @@ TEH_PG_begin_shard (void *cls,
             TEH_PG_rollback (pg);
             return qs;
           case GNUNET_DB_STATUS_SOFT_ERROR:
+            GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                        "Serialization error on claiming open shard\n");
             TEH_PG_rollback (pg);
             continue;
           case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -172,6 +172,8 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Serialization error on getting last shard\n");
         TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -220,6 +222,8 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Serialization error on claiming next shard\n");
         TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -246,6 +250,8 @@ commit:
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Serialization error on commit for beginning shard\n");
         TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
