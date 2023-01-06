@@ -88,7 +88,7 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Serialization error on getting open shard\n");
         TEH_PG_rollback (pg);
         continue;
@@ -122,7 +122,7 @@ TEH_PG_begin_shard (void *cls,
             TEH_PG_rollback (pg);
             return qs;
           case GNUNET_DB_STATUS_SOFT_ERROR:
-            GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+            GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                         "Serialization error on claiming open shard\n");
             TEH_PG_rollback (pg);
             continue;
@@ -172,7 +172,7 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Serialization error on getting last shard\n");
         TEH_PG_rollback (pg);
         continue;
@@ -222,7 +222,7 @@ TEH_PG_begin_shard (void *cls,
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Serialization error on claiming next shard\n");
         TEH_PG_rollback (pg);
         continue;
@@ -250,13 +250,13 @@ commit:
         TEH_PG_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Serialization error on commit for beginning shard\n");
         TEH_PG_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Claimed new shard\n");
         return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       }
