@@ -256,6 +256,8 @@ commit:
         continue;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Claimed new shard\n");
         return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       }
     }
