@@ -100,6 +100,7 @@ insert1(struct PostgresClosure *pg,
       GNUNET_PQ_result_spec_end
     };
 
+
     TALER_payto_hash (reserves[0].sender_account_details,
                       &h_payto);
 
@@ -107,6 +108,7 @@ insert1(struct PostgresClosure *pg,
                                                     "batch1_reserve_create",
                                                     params,
                                                     rs);
+
     if (qs2 < 0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -705,7 +707,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
      if (qs1<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves 8 (%d)\n",
+                    "Failed to create reserve batch_8 (%d)\n",
                     qs1);
         return qs1;
       }
@@ -749,7 +751,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
      if (qs4<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves4 (%d)\n",
+                    "Failed to create reserve batch_4 (%d)\n",
                     qs4);
         return qs4;
       }
@@ -779,7 +781,7 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       if (qs5<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to update reserves 2 (%d)\n",
+                    "Failed to create reserve batch_2 (%d)\n",
                     qs5);
         return qs5;
       }
@@ -804,13 +806,16 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
                     &conflicts[i],
                     &reserve_uuid[i],
                     &results[i]);
-      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs2)
+      if (qs2<0)
       {
-        GNUNET_break (0);
-        return GNUNET_DB_STATUS_HARD_ERROR;
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Failed to create reserve batch_1 (%d)\n)"
+                    ,qs2);
+        return qs2;
       }
       need_update |= conflicts[i];
       t_duplicate |= transaction_duplicate[i];
+      //    fprintf(stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
       i += 1;
       break;
     case 0:
