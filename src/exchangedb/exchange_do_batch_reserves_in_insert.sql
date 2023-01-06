@@ -36,6 +36,8 @@ DECLARE
   curs refcursor;
 DECLARE
   i RECORD;
+DECLARE
+  curs_trans refcursor;
 BEGIN
 ruuid= 0;
 out_reserve_found = TRUE;
@@ -79,6 +81,8 @@ transaction_duplicate= TRUE;
   CLOSE curs;
 
   PERFORM pg_notify(in_notify, NULL);
+  OPEN curs_trans FOR
+  WITH reserve_transaction AS(
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -95,16 +99,18 @@ transaction_duplicate= TRUE;
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_expiration_date)
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT DO NOTHING
+    RETURNING reserve_pub)
+  SELECT * FROM reserve_transaction;
+  FETCH FROM curs_trans INTO i;
   IF FOUND
   THEN
+    IF i.reserve_pub = in_reserve_pub
+    THEN
     -- HAPPY PATH THERE IS NO DUPLICATE TRANS
-    transaction_duplicate = FALSE;
-  ELSE
-    -- Unhappy...
-    RAISE EXCEPTION 'Reserve did not exist, but INSERT into reserves_in gave conflict';
-    transaction_duplicate = TRUE;
---    ROLLBACK;
+       transaction_duplicate = FALSE;
+    END IF;
   END IF;
+  CLOSE curs_trans;
   RETURN;
 END $$;
