@@ -225,13 +225,16 @@ shutdown_task (void *cls)
     db_plugin->rollback (db_plugin->cls);
     started_transaction = false;
   }
-  qs = db_plugin->abort_shard (db_plugin->cls,
-                               job_name,
-                               shard_start,
-                               shard_end);
-  if (qs <= 0)
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to abort work shard on shutdown\n");
+  if (shard_open)
+  {
+    qs = db_plugin->abort_shard (db_plugin->cls,
+                                 job_name,
+                                 shard_start,
+                                 shard_end);
+    if (qs <= 0)
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to abort work shard on shutdown\n");
+  }
   GNUNET_free (job_name);
   if (NULL != ctx)
   {
@@ -327,8 +330,6 @@ exchange_serve_process_config (void)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire accounts configured for credit!\n");
-    TALER_EXCHANGEDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
     return GNUNET_SYSERR;
   }
   TALER_EXCHANGEDB_find_accounts (&add_account_cb,
@@ -339,8 +340,6 @@ exchange_serve_process_config (void)
                 "No accounts enabled for credit!\n");
     GNUNET_SCHEDULER_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
-    TALER_EXCHANGEDB_plugin_unload (db_plugin);
-    db_plugin = NULL;
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -1142,6 +1141,11 @@ continue_with_shard (void *cls)
 }
 
 
+/**
+ * Reserve a shard for us to work on.
+ *
+ * @param cls NULL
+ */
 static void
 lock_shard (void *cls)
 {

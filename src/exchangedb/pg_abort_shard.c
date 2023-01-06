@@ -28,9 +28,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_abort_shard (void *cls,
-                      const char *job_name,
-                      uint64_t start_row,
-                      uint64_t end_row)
+                    const char *job_name,
+                    uint64_t start_row,
+                    uint64_t end_row)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -40,14 +40,13 @@ TEH_PG_abort_shard (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-
   PREPARE (pg,
            "abort_shard",
            "UPDATE work_shards"
            "   SET last_attempt=0"
-           " WHERE job_name = $1 "
-           "    AND start_row = $2 "
-           "    AND end_row = $3;");
+           " WHERE job_name=$1"
+           "   AND start_row=$2"
+           "   AND end_row=$3;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "abort_shard",
                                              params);
