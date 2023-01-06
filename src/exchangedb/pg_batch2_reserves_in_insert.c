@@ -787,6 +787,9 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
       need_update |= conflicts[i+1];
       t_duplicate |= transaction_duplicate[i];
       t_duplicate |= transaction_duplicate[i+1];
+      results[i] = (t_duplicate)
+      ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+      : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       i += 2;
       break;
     case 1:
@@ -831,15 +834,6 @@ TEH_PG_batch2_reserves_in_insert (void *cls,
   {
     goto exit;
   }
-  /*  fprintf(stdout, "t : %d", t_duplicate);
-  if (t_duplicate)
-    {
-      GNUNET_break (0);
-      TEH_PG_rollback (pg);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-  */
-
   // begin serializable
   {
     if (GNUNET_OK !=
