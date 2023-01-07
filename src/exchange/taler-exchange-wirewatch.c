@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016--2022 Taler Systems SA
+  Copyright (C) 2016--2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -50,6 +50,17 @@ static const struct TALER_EXCHANGEDB_AccountInfo *ai;
  * Active request for history.
  */
 static struct TALER_BANK_CreditHistoryHandle *hh;
+
+/**
+ * Set to true if the request for history did actually
+ * return transaction items.
+ */
+static bool hh_returned_data;
+
+/**
+ * When did we start the last @e hh request?
+ */
+static struct GNUNET_TIME_Absolute hh_start_time;
 
 /**
  * Until when is processing this wire plugin delayed?
@@ -455,6 +466,18 @@ transaction_completed (void)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  if (! hh_returned_data)
+  {
+    /* Enforce long polling delay even if the server ignored it
+       and returned earlier */
+    struct GNUNET_TIME_Relative latency;
+    struct GNUNET_TIME_Relative left;
+
+    latency = GNUNET_TIME_absolute_get_duration (hh_start_time);
+    left = GNUNET_TIME_relative_subtract (LONGPOLL_TIMEOUT,
+                                          latency);
+    delayed_until = GNUNET_TIME_relative_to_absolute (left);
+  }
   GNUNET_assert (NULL == task);
   schedule_transfers ();
 }
@@ -482,6 +505,7 @@ process_reply (const struct TALER_BANK_CreditDetails *details,
     transaction_completed ();
     return;
   }
+  hh_returned_data = true;
   /* check serial IDs for range constraints */
   for (unsigned int i = 0; i<details_length; i++)
   {
@@ -720,6 +744,7 @@ process_reply_batched (const struct TALER_BANK_CreditDetails *details,
     enum GNUNET_DB_QueryStatus qss[details_length];
     struct TALER_EXCHANGEDB_ReserveInInfo reserves[details_length];
 
+    hh_returned_data = true;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Importing %u transactions\n",
                 details_length);
@@ -865,6 +890,7 @@ process_reply_batched2 (unsigned int batch_size,
     transaction_completed ();
     return;
   }
+  hh_returned_data = true;
   /* check serial IDs for range constraints */
   for (unsigned int i = 0; i<details_length; i++)
   {
@@ -1121,6 +1147,8 @@ continue_with_shard (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting credit history staring from %llu\n",
               (unsigned long long) latest_row_off);
+  hh_start_time = GNUNET_TIME_absolute_get ();
+  hh_returned_data = false;
   hh = TALER_BANK_credit_history (ctx,
                                   ai->auth,
                                   latest_row_off,
