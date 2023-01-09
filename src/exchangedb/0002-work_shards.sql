@@ -49,3 +49,8 @@ CREATE INDEX work_shards_by_end_row_index
   ON work_shards
   (end_row DESC);
 
+CREATE INDEX work_shards_by_rows
+  ON work_shards
+  (job_name
+  ,start_row
+  ,end_row);
