@@ -55,7 +55,6 @@ DECLARE
 DECLARE
   k INT8;
 BEGIN
-  --SIMPLE INSERT ON CONFLICT DO NOTHING
   transaction_duplicate=TRUE;
   transaction_duplicate2=TRUE;
   out_reserve_found = TRUE;

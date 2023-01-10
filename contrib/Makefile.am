@@ -26,6 +26,7 @@ rdatadir=$(datadir)/taler/exchange
 
 tosen_DATA = \
   tos/en/*.txt \
+  tos/en/*.md \
   tos/en/*.pdf \
   tos/en/*.epub \
   tos/en/*.xml \
@@ -33,6 +34,7 @@ tosen_DATA = \
 
 ppen_DATA = \
   pp/en/*.txt \
+  pp/en/*.md \
   pp/en/*.pdf \
   pp/en/*.epub \
   pp/en/*.xml \
