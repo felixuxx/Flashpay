@@ -886,10 +886,10 @@ TEH_RESPONSE_compile_reserve_history (
                                             merge->merge_timestamp),
                 GNUNET_JSON_pack_timestamp ("purse_expiration",
                                             merge->purse_expiration),
-                TALER_JSON_pack_amount ("amount",
-                                        &merge->amount_with_fee),
                 TALER_JSON_pack_amount ("purse_fee",
                                         &merge->purse_fee),
+                TALER_JSON_pack_amount ("amount",
+                                        &merge->amount_with_fee),
                 GNUNET_JSON_pack_bool ("merged",
                                        merge->merged))))
         {

@@ -369,31 +369,31 @@ persona_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (ps->cfg,
                                            provider_section_name,
-                                           "PERSONA_VALIDITY",
+                                           "KYC_PERSONA_VALIDITY",
                                            &pd->validity))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "PERSONA_VALIDITY");
+                               "KYC_PERSONA_VALIDITY");
     persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "PERSONA_AUTH_TOKEN",
+                                             "KYC_PERSONA_AUTH_TOKEN",
                                              &pd->auth_token))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "PERSONA_AUTH_TOKEN");
+                               "KYC_PERSONA_AUTH_TOKEN");
     persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "SALT",
+                                             "KYC_PERSONA_SALT",
                                              &pd->salt))
   {
     uint32_t salt[8];
@@ -407,36 +407,36 @@ persona_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "PERSONA_SUBDOMAIN",
+                                             "KYC_PERSONA_SUBDOMAIN",
                                              &pd->subdomain))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "PERSONA_SUBDOMAIN");
+                               "KYC_PERSONA_SUBDOMAIN");
     persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_POST_URL",
+                                             "KYC_PERSONA_POST_URL",
                                              &pd->post_kyc_redirect_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_POST_URL");
+                               "KYC_PERSONA_POST_URL");
     persona_unload_configuration (pd);
     return NULL;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "PERSONA_TEMPLATE_ID",
+                                             "KYC_PERSONA_TEMPLATE_ID",
                                              &pd->template_id))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "PERSONA_TEMPLATE_ID");
+                               "KYC_PERSONA_TEMPLATE_ID");
     persona_unload_configuration (pd);
     return NULL;
   }
