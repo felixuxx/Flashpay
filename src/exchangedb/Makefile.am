@@ -353,7 +353,6 @@ bench_db_postgres_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-
 test_exchangedb_batch_reserves_in_insert_postgres_SOURCES = \
   test_exchangedb_batch_reserves_in_insert.c
 test_exchangedb_batch_reserves_in_insert_postgres_LDADD = \
@@ -366,16 +365,6 @@ test_exchangedb_batch_reserves_in_insert_postgres_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-bench_db_postgres_SOURCES = \
-  bench_db.c
-bench_db_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -lgnunetpq \
-  -lgnunetutil \
-  $(XLIB)
-
 test_exchangedb_populate_table_postgres_SOURCES = \
   test_exchangedb_populate_table.c
 test_exchangedb_populate_table_postgres_LDADD = \
@@ -385,16 +374,6 @@ test_exchangedb_populate_table_postgres_LDADD = \
   $(top_builddir)/src/pq/libtalerpq.la \
   -ljansson \
   -lgnunetjson \
-  -lgnunetutil \
-  $(XLIB)
-
-bench_db_postgres_SOURCES = \
-  bench_db.c
-bench_db_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -lgnunetpq \
   -lgnunetutil \
   $(XLIB)
 
