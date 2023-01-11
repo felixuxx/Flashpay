@@ -102,7 +102,7 @@ export EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
 MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
 export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
-BANK_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+BANK_URL="http://localhost:1${BANK_PORT}"
 export AUDITOR_URL=http://localhost:8083/
 AUDITOR_PRIV_FILE=$1.apriv
 AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
@@ -149,7 +149,7 @@ libeufin-sandbox serve --port "1${BANK_PORT}" \
   2> ${MY_TMP_DIR}/libeufin-sandbox-stderr.log &
 echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
 cd $ORIGIN
-export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}/demobanks/default"
+export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}"
 echo $LIBEUFIN_SANDBOX_URL
 set +e
 echo -n "Waiting for Sandbox..."

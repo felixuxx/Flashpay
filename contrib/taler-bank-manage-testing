@@ -37,7 +37,7 @@ libeufin-sandbox serve --port "1$1" \
   > libeufin-sandbox-stdout.log \
   2> libeufin-sandbox-stderr.log &
 echo $! > libeufin-sandbox.pid
-export LIBEUFIN_SANDBOX_URL="http://localhost:1$1/demobanks/default"
+export LIBEUFIN_SANDBOX_URL="http://localhost:1$1/"
 set +e
 echo -n "Waiting for Sandbox.."
 for n in `seq 1 50`; do

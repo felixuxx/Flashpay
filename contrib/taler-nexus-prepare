@@ -17,24 +17,24 @@ FACADE_LABEL="my-facade"
 
 export LIBEUFIN_SANDBOX_USERNAME=exchange
 export LIBEUFIN_SANDBOX_PASSWORD=x
-export LIBEUFIN_SANDBOX_URL=http://localhost:5000/demobanks/default
+export LIBEUFIN_SANDBOX_URL=http://localhost:5000/
 libeufin-cli sandbox demobank register --name "Exchange Company"
 
 export LIBEUFIN_SANDBOX_USERNAME=fortytwo
 export LIBEUFIN_SANDBOX_PASSWORD=x
-export LIBEUFIN_SANDBOX_URL=http://localhost:5000/demobanks/default
+export LIBEUFIN_SANDBOX_URL=http://localhost:5000/
 libeufin-cli sandbox demobank register \
   --name User42 --iban FR7630006000011234567890189
 
 export LIBEUFIN_SANDBOX_USERNAME=fortythree
 export LIBEUFIN_SANDBOX_PASSWORD=x
-export LIBEUFIN_SANDBOX_URL=http://localhost:5000/demobanks/default
+export LIBEUFIN_SANDBOX_URL=http://localhost:5000/
 libeufin-cli sandbox demobank register \
   --name User43 --iban GB33BUKB20201555555555
 
 export LIBEUFIN_SANDBOX_USERNAME=admin
 export LIBEUFIN_SANDBOX_PASSWORD=secret
-export LIBEUFIN_SANDBOX_URL=http://localhost:5000/demobanks/default
+export LIBEUFIN_SANDBOX_URL=http://localhost:5000/
 echo -n "Create EBICS host at Sandbox..."
 libeufin-cli sandbox \
   --sandbox-url "http://localhost:5000" \

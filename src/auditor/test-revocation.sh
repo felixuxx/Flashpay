@@ -140,7 +140,7 @@ function nexus_submit_to_sandbox () {
 function get_payto_uri() {
     export LIBEUFIN_SANDBOX_USERNAME=$1
     export LIBEUFIN_SANDBOX_PASSWORD=$2
-    export LIBEUFIN_SANDBOX_URL=http://localhost:18082/demobanks/default
+    export LIBEUFIN_SANDBOX_URL=http://localhost:18082
     libeufin-cli sandbox demobank info --bank-account $1 | jq --raw-output '.paytoUri'
 }
 
