@@ -1,9 +1,9 @@
 #!/bin/sh
 # This file is in the public domain
-# Wrapper around 'taler-bank-manage' to first configure the required
+# Wrapper around libeufin to first configure the required
 # testing accounts before launching the bank properly.
 #
-# Takes 3 arguments:
+# Takes 4 arguments:
 # $1: the Nexus port (Sandbox port prepends 1 to it)
 # $2: the database name
 # $3: exchange base URL (used to specify the default exchange)
@@ -11,6 +11,12 @@
 
 set -eu
 
+if [ "$1" -eq "--help ];
+then
+    echo "This is a tool to launch a libeufin based bank for testing."
+    echo "Call using: Nexus port number, SQLite file path, exchange base URL, config file path."
+    exit 0
+fi
 if [ "$#" -ne 4 ];
 then
     echo "illegal number of parameters.  \
