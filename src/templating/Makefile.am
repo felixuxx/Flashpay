@@ -21,7 +21,7 @@ libtalertemplating_la_LIBADD = \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -ljansson \
-  -lmhd \
+  -lmicrohttpd \
   -lgnunetutil \
   $(XLIB)
 libtalertemplating_la_LDFLAGS = \
