@@ -42,7 +42,7 @@ COMMENT ON COLUMN exchange_tables.name
 COMMENT ON COLUMN exchange_tables.version
   IS 'Version of the DB in which the given action happened';
 COMMENT ON COLUMN exchange_tables.action
-  IS 'Action to take on the table (e.g. create, constrain, foreign, or drop). Create is done for the master table and each partition; constrain is only for partitions or for master if there are no partitions; master only on master (takes no argument); foreign only on master if there are no partitions.';
+  IS 'Action to take on the table (e.g. create, constrain, or foreign). Create is done for the master table and each partition; constrain is only for partitions or for master if there are no partitions; master only on master (takes no argument); foreign only on master if there are no partitions.';
 COMMENT ON COLUMN exchange_tables.partitioned
   IS 'TRUE if the table is partitioned';
 COMMENT ON COLUMN exchange_tables.by_range
