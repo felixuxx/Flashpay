@@ -139,6 +139,7 @@ taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Fa
 # Launch services
 echo "Launching services (pre audit DB: $TARGET_DB)"
 
+rm -rf ${TARGET_DB}-sandbox.sqlite3
 export LIBEUFIN_SANDBOX_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-sandbox.sqlite3"
 # Create the default demobank.
 cd $MY_TMP_DIR
@@ -230,6 +231,7 @@ unset LIBEUFIN_SANDBOX_USERNAME
 unset LIBEUFIN_SANDBOX_PASSWORD
 # Prepare Nexus, which is the side actually talking
 # to the exchange.
+rm -rf ${TARGET_DB}-nexus.sqlite3
 export LIBEUFIN_NEXUS_DB_CONNECTION="jdbc:sqlite:${TARGET_DB}-nexus.sqlite3"
 # For convenience, username and password are
 # identical to those used at the Sandbox.
