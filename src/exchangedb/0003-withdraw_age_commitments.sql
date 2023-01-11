@@ -36,7 +36,7 @@ BEGIN
       ',timestamp INT8 NOT NULL'
     ') %s ;'
     ,table_name
-    ,'PARTITION BY HASH (h_commitment)'
+    ,'PARTITION BY HASH (reserve_pub)'
     ,partition_suffix
   );
   PERFORM comment_partitioned_table(
@@ -96,9 +96,8 @@ BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
   EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_by_reserve_pub'
-    ' ON ' || table_name ||
-    ' (reserve_pub);'
+    'ALTER TABLE ' || table_name ||
+    ' ADD PRIMARY KEY  (h_commitment, reserve_pub);'
   );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
