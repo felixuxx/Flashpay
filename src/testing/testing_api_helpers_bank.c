@@ -582,7 +582,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   bc->user42_payto = "payto://x-taler-bank/localhost/42?receiver-name=42";
   bc->user43_payto = "payto://x-taler-bank/localhost/43?receiver-name=43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Using pybank %s on port %u\n",
+              "Using bank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
               (unsigned int) port);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

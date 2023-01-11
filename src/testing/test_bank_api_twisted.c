@@ -42,11 +42,6 @@
 #define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank_twisted.conf"
 
 /**
- * Separate config file for running with the pybank.
- */
-#define CONFIG_FILE_PYBANK "test_bank_api_pybank_twisted.conf"
-
-/**
  * True when the test runs against Fakebank.
  */
 static int with_fakebank;
@@ -180,8 +175,7 @@ main (int argc,
   if (with_fakebank)
     cfgfilename = CONFIG_FILE_FAKEBANK;
   else
-    cfgfilename = CONFIG_FILE_PYBANK;
-
+    GNUNET_assert (0);
   if (NULL == (twister_url = TALER_TWISTER_prepare_twister (
                  cfgfilename)))
   {
@@ -212,26 +206,7 @@ main (int argc,
   }
   else
   {
-    TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    if (GNUNET_OK !=
-        TALER_TESTING_prepare_bank (cfgfilename,
-                                    GNUNET_YES,
-                                    "exchange-account-2",
-                                    &bc))
-    {
-      GNUNET_break (0);
-      GNUNET_free (twister_url);
-      return 77;
-    }
-
-    if (NULL == (bankd = TALER_TESTING_run_bank (
-                   cfgfilename,
-                   bc.exchange_auth.wire_gateway_url)))
-    {
-      GNUNET_break (0);
-      GNUNET_free (twister_url);
-      return 77;
-    }
+    GNUNET_assert (0);
   }
 
   sleep (5);
