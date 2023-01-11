@@ -29,13 +29,14 @@ BEGIN
       ',h_commitment BYTEA PRIMARY KEY CHECK (LENGTH(h_commitment)=64)'
       ',amount_with_fee_val INT8 NOT NULL'
       ',amount_with_fee_frac INT4 NOT NULL'
-      ',noreveal_index INT4 NOT NULL'
-      ',reserve_uuid INT8 NOT NULL' -- TODO: can here be the foreign key reference?
+      ',max_age_group INT2 NOT NULL'
+      ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',reserve_sig BYTEA CHECK (LENGTH(reserve_sig)=64)'
+      ',noreveal_index INT4 NOT NULL'
       ',timestamp INT8 NOT NULL'
     ') %s ;'
     ,table_name
-    ,'PARTITION BY HASH (reserve_uuid)' -- TODO: does that make sense?
+    ,'PARTITION BY HASH (h_commitment)'
     ,partition_suffix
   );
   PERFORM comment_partitioned_table(
@@ -50,14 +51,20 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
+     'The maximum age group that the client commits to with this request'
+    ,'max_age_group'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
      'Commitment made by the client, hash over the various client inputs in the cut-and-choose protocol'
     ,'h_commitment'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Reference to the reserve from which the coins are goin to be withdrawn'
-    ,'reserve_uuid'
+     'Reference to the public key of the reserve from which the coins are going to be withdrawn'
+    ,'reserve_pub'
     ,table_name
     ,partition_suffix
   );
@@ -89,14 +96,14 @@ BEGIN
   table_name = concat_ws('_', table_name, partition_suffix);
 
   EXECUTE FORMAT (
-    'CREATE INDEX ' || table_name || '_by_reserve_uuid'
+    'CREATE INDEX ' || table_name || '_by_reserve_pub'
     ' ON ' || table_name ||
-    ' (reserve_uuid);'
+    ' (reserve_pub);'
   );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_withdraw_age_commitment_id_key'
-    ' UNIQUE (withdraw_age_commitment_id)'
+    ' UNIQUE (withdraw_age_commitment_id);'
   );
 END
 $$;
@@ -111,9 +118,9 @@ DECLARE
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
-    ' ADD CONSTRAINT ' || table_name || '_foreign_reserve_uuid'
-    ' FOREIGN KEY (reserve_uuid) '
-    ' REFERENCES reserves (reserve_uuid) ON DELETE CASCADE'
+    ' ADD CONSTRAINT ' || table_name || '_foreign_reserve_pub'
+    ' FOREIGN KEY (reserve_pub)'
+    ' REFERENCES reserves (reserve_pub) ON DELETE CASCADE;'
   );
 END
 $$;

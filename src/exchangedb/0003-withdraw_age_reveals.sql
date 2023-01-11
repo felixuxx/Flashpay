@@ -25,13 +25,13 @@ DECLARE
 BEGIN
   PERFORM create_partitioned_table(
     'CREATE TABLE %I'
-      '(withdraw_age_commitments_id INT8 NOT NULL' -- TODO: can here be the foreign key reference?
+      '(h_commitment BYTEA NOT NULL CHECK (LENGTH(h_commitment)=32)'
       ',freshcoin_index INT4 NOT NULL'
-      ',denominations_serial INT8 NOT NULL' -- TODO: can here be the foreign key reference?
+      ',denominations_serial INT8 NOT NULL'
       ',h_coin_ev BYTEA CHECK (LENGTH(h_coin_ev)=32)'
     ') %s ;'
     ,table_name
-    ,'PARTITION BY HASH (withdraw_age_commitments_id)' -- TODO: does that make sense?
+    ,'PARTITION BY HASH (h_commitment)'
     ,partition_suffix
   );
   PERFORM comment_partitioned_table(
@@ -41,7 +41,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Foreign key reference to the corresponding commitment'
-    ,'withdraw_age_commitments_id'
+    ,'h_commitment'
     ,table_name
     ,partition_suffix
   );
@@ -76,15 +76,15 @@ DECLARE
 BEGIN
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
-    ' ADD CONSTRAINT ' || table_name || '_foreign_withdraw_age_commitment_id'
-    ' FOREIGN KEY (withdraw_age_commitments_id) '
-    ' REFERENCES withdraw_age_commitments (withdraw_age_commitment_id) ON DELETE CASCADE'
+    ' ADD CONSTRAINT ' || table_name || '_foreign_h_commitment'
+    ' FOREIGN KEY (h_commitment)'
+    ' REFERENCES withdraw_age_commitments (h_commitment) ON DELETE CASCADE;'
   );
   EXECUTE FORMAT (
     'ALTER TABLE ' || table_name ||
     ' ADD CONSTRAINT ' || table_name || '_foreign_denominations_serial'
     ' FOREIGN KEY (denominations_serial) '
-    ' REFERENCES denominations (denominations_serial) ON DELETE CASCADE'
+    ' REFERENCES denominations (denominations_serial) ON DELETE CASCADE;'
   );
 END
 $$;
