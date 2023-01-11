@@ -49,11 +49,6 @@ const char *cfgfile;
 static struct TALER_TESTING_BankConfiguration bc;
 
 /**
- * Handle to the Py-bank daemon.
- */
-static struct GNUNET_OS_Process *bankd;
-
-/**
  * Flag indicating whether the test is running against the
  * Fakebank.  Set up at runtime.
  */
