@@ -296,7 +296,9 @@ check_PROGRAMS = \
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-by-j-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres
+  test-exchangedb-populate-table-postgres\
+  test-exchangedb-populate-link-data-postgres\
+  test-exchangedb-populate-ready-deposit-postgres
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
@@ -304,7 +306,9 @@ TESTS = \
   test-exchangedb-by-j-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres
+  test-exchangedb-populate-table-postgres\
+  test-exchangedb-populate-link-data-postgres\
+  test-exchangedb-populate-ready-deposit-postgres
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
@@ -375,6 +379,53 @@ test_exchangedb_populate_table_postgres_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil \
+  -lm \
+  $(XLIB)
+
+bench_db_postgres_SOURCES = \
+  bench_db.c
+bench_db_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -lgnunetpq \
+  -lgnunetutil \
+  $(XLIB)
+
+test_exchangedb_populate_link_data_postgres_SOURCES = \
+  test_exchangedb_populate_link_data.c
+test_exchangedb_populate_link_data_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  -lm \
+  $(XLIB)
+
+bench_db_postgres_SOURCES = \
+  bench_db.c
+bench_db_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -lgnunetpq \
+  -lgnunetutil \
+  $(XLIB)
+
+test_exchangedb_populate_ready_deposit_postgres_SOURCES = \
+  test_exchangedb_populate_ready_deposit.c
+test_exchangedb_populate_ready_deposit_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  -lm \
   $(XLIB)
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \

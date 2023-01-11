@@ -208,7 +208,7 @@ TEH_PG_get_link_data (void *cls,
              "WITH rc AS MATERIALIZED ("
              "SELECT"
              "* FROM refresh_commitments"
-             "WHERE old_coin_pub=$1"
+             " WHERE old_coin_pub=$1"
              ")"
              "SELECT "
              " tp.transfer_pub"
@@ -219,11 +219,10 @@ TEH_PG_get_link_data (void *cls,
              ",rrc.freshcoin_index"
              ",rrc.coin_ev"
              " FROM refresh_revealed_coins rrc"
-             "       USING (melt_serial_id)"
-             "     JOIN refresh_transfer_keys tp"
-             "       USING (melt_serial_id)"
-             "     JOIN denominations denoms"
-             "       USING (denominations_serial)"
+             "  JOIN refresh_transfer_keys tp"
+             "   USING (melt_serial_id)"
+             "  JOIN denominations denoms"
+             "   USING (denominations_serial)"
              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
   }
 

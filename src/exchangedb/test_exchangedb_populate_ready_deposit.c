@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file exchangedb/test_exchangedb_populate_table.c
+ * @file exchangedb/test_exchangedb_populate_ready_deposit.c
  * @brief test cases for DB interaction functions
  * @author Joseph Xu
  */
@@ -24,7 +24,8 @@
 #include "taler_exchangedb_plugin.h"
 #include "math.h"
 
-#define NUM_ROWS 10000
+
+#define NUM_ROWS 1000
 
 /**
  * Global result from the testcase.
@@ -59,11 +60,15 @@ static int result;
  * Currency we use.  Must match test-exchange-db-*.conf.
  */
 #define CURRENCY "EUR"
+
 /**
  * How big do we make the RSA keys?
  */
 #define RSA_KEY_SIZE 1024
-#define ROUNDS 1000
+static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
+
+
+#define ROUNDS 100
 #define MELT_NEW_COINS 5
 #define MELT_NOREVEAL_INDEX 1
 /**
@@ -72,14 +77,18 @@ static int result;
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 static struct TALER_DenomFeeSet fees;
 static struct TALER_MerchantWireHashP h_wire_wt;
+/**
+ * Denomination keys used for fresh coins in melt test.
+ */
+static struct DenomKeyPair **new_dkp;
 
 struct DenomKeyPair
 {
   struct TALER_DenominationPrivateKey priv;
   struct TALER_DenominationPublicKey pub;
 };
-static struct DenomKeyPair **new_dkp;
-static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
+
+
 /**
  * Destroy a denomination key pair.  The key is not necessarily removed from the DB.
  *
@@ -172,28 +181,8 @@ create_denom_key_pair (unsigned int size,
   }
   return dkp;
 }
-/**
- * Callback invoked with information about refunds applicable
- * to a particular coin.
- *
- * @param cls closure with the `struct TALER_EXCHANGEDB_Refund *` we expect to get
- * @param amount_with_fee amount being refunded
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
- */
-static enum GNUNET_GenericReturnValue
-check_refund_cb (void *cls,
-                 const struct TALER_Amount *amount_with_fee)
-{
-  const struct TALER_EXCHANGEDB_Refund *refund = cls;
 
-  if (0 != TALER_amount_cmp (amount_with_fee,
-                             &refund->details.refund_amount))
-  {
-    GNUNET_break (0);
-    result = 66;
-  }
-  return GNUNET_OK;
-}
+
 
 
 /**
@@ -205,32 +194,27 @@ check_refund_cb (void *cls,
 static void
 run (void *cls)
 {
+  struct TALER_EXCHANGEDB_Refresh refresh;
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   const uint32_t num_partitions = 10;
-  struct DenomKeyPair *dkp = NULL;
-  struct GNUNET_TIME_Timestamp ts;
-  struct TALER_EXCHANGEDB_Deposit *depos=NULL;
-  struct GNUNET_TIME_Timestamp deadline;
   struct TALER_Amount value;
-  union TALER_DenominationBlindingKeyP bks;
-  struct TALER_CoinPubHashP c_hash;
   struct TALER_EXCHANGEDB_CollectableBlindcoin cbc;
-  struct TALER_ExchangeWithdrawValues alg_values = {
-    .cipher = TALER_DENOMINATION_RSA
-    };
+  struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
   struct GNUNET_TIME_Relative times = GNUNET_TIME_UNIT_ZERO;
-  unsigned long long sqrs = 0;
+  unsigned long long sqrs=0;
+  struct TALER_EXCHANGEDB_Deposit *depos=NULL;
   struct TALER_EXCHANGEDB_Refund *ref=NULL;
   unsigned int *perm;
   unsigned long long duration_sq;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
-  struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
+  struct TALER_ExchangeWithdrawValues alg_values = {
+    .cipher = TALER_DENOMINATION_RSA
+    };
+
   ref = GNUNET_new_array (ROUNDS +1,
                           struct TALER_EXCHANGEDB_Refund);
   depos = GNUNET_new_array (ROUNDS +1,
                             struct TALER_EXCHANGEDB_Deposit);
-  ZR_BLK (&cbc);
 
   if (NULL ==
       (plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
@@ -256,7 +240,6 @@ run (void *cls)
     goto cleanup;
   }
 
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &value));
@@ -272,12 +255,9 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fees.refund));
-  GNUNET_assert (NUM_ROWS >= ROUNDS);
-
-  ts = GNUNET_TIME_timestamp_get ();
-  deadline = GNUNET_TIME_timestamp_get ();
   //DENOMINATION
   {
+    ZR_BLK (&cbc);
     //PAIR KEY LIST
     new_dkp = GNUNET_new_array (MELT_NEW_COINS,
                               struct DenomKeyPair *);
@@ -337,119 +317,128 @@ run (void *cls)
                                                  bp));
       }
   }
-
   perm = GNUNET_CRYPTO_random_permute (GNUNET_CRYPTO_QUALITY_NONCE,
                                        NUM_ROWS);
-  // begin
+  //BEGIN
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          "Transaction"));
-  for (unsigned int j=0; j< NUM_ROWS; j++)
-  {
-    unsigned int i = perm[j];
-    unsigned int k = (unsigned int)rand()%5;
-    if (i >= ROUNDS)
-      i = ROUNDS; /* throw-away slot, do not keep around */
-    RND_BLK (&coin_pub);
-    RND_BLK (&c_hash);
-    depos[i].deposit_fee = fees.deposit;
-    RND_BLK (&depos[i].coin.coin_pub);
-    TALER_denom_pub_hash (&new_dkp[k]->pub,
-                          &depos[i].coin.denom_pub_hash);
-    // TALER_denom_pub_hash (&dkp->pub,
-    //                    &ref.coin.denom_pub_hash);
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sig_unblind (&depos[i].coin.denom_sig,
-                                            &cbc.sig,
-                                            &bks,
-                                            &c_hash,
-                                            &alg_values,
-                                            &new_dkp[k]->pub));
-    RND_BLK (&depos[i].merchant_pub);
-    RND_BLK (&depos[i].csig);
-    RND_BLK (&depos[i].h_contract_terms);
-    RND_BLK (&depos[i].wire_salt);
-    depos[i].amount_with_fee = value;
-    depos[i].refund_deadline = deadline;
-    depos[i].wire_deadline = deadline;
-    depos[i].receiver_wire_account =
-      "payto://iban/DE67830654080004822650?receiver-name=Test";
-    TALER_merchant_wire_signature_hash (
-                                        "payto://iban/DE67830654080004822650?receiver-name=Test",
-                                        &depos[i].wire_salt,
-                                        &h_wire_wt);
-    depos[i].timestamp = ts;
-      uint64_t known_coin_id;
-    {//ENSURE_COIN_KNOWN
-
-      struct TALER_DenominationHashP dph;
-      struct TALER_AgeCommitmentHash agh;
-      FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
-              plugin->ensure_coin_known (plugin->cls,
-                                         &depos[i].coin,
-                                         &known_coin_id,
-                                         &dph,
-                                         &agh));
-    }
-    /*STORE INTO DEPOSIT*/
+  for (unsigned int j = 0; j < NUM_ROWS; j++)
     {
-      struct GNUNET_TIME_Timestamp now;
-      now = GNUNET_TIME_timestamp_get ();
-      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->insert_deposit (plugin->cls,
-                                      now,
-                                      &depos[i]));
-    }
+      /*** NEED TO INSERT REFRESH COMMITMENTS + ENSURECOIN ***/
+      union TALER_DenominationBlindingKeyP bks;
+      struct GNUNET_TIME_Timestamp deadline;
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_CoinPubHashP c_hash;
+      unsigned int k = (unsigned int)rand()%5;
+      unsigned int i = perm[j];
+      if (i >= ROUNDS)
+        i = ROUNDS; /* throw-away slot, do not keep around */
+      depos[i].deposit_fee = fees.deposit;
+      RND_BLK (&coin_pub);
+      RND_BLK (&c_hash);
+      RND_BLK (&reserve_pub);
+      RND_BLK (&cbc.reserve_sig);
+      TALER_denom_pub_hash (&new_dkp[k]->pub,
+                            &cbc.denom_pub_hash);
+      deadline = GNUNET_TIME_timestamp_get ();
+      RND_BLK (&depos[i].coin.coin_pub);
+      TALER_denom_pub_hash (&new_dkp[k]->pub,
+                            &depos[i].coin.denom_pub_hash);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_denom_sig_unblind (&depos[i].coin.denom_sig,
+                                              &ccoin->coin_sig,
+                                              &bks,
+                                              &c_hash,
+                                              &alg_values,
+                                              &new_dkp[k]->pub));
+      RND_BLK (&depos[i].merchant_pub);
+      RND_BLK (&depos[i].csig);
+      RND_BLK (&depos[i].h_contract_terms);
+      RND_BLK (&depos[i].wire_salt);
+      depos[i].amount_with_fee = value;
+      depos[i].refund_deadline = deadline;
+      depos[i].wire_deadline = deadline;
+      depos[i].receiver_wire_account =
+        "payto://iban/DE67830654080004822650?receiver-name=Test";
+      TALER_merchant_wire_signature_hash (
+                                          "payto://iban/DE67830654080004822650?receiver-name=Test",
+                                          &depos[i].wire_salt,
+                                          &h_wire_wt);
+      cbc.reserve_pub = reserve_pub;
+      cbc.amount_with_fee = value;
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (CURRENCY,
+                                            &cbc.withdraw_fee));
+      {
+        /* INSERT WIRE TARGETS */
+        bool found;
+        bool nonce_ok;
+        bool balance_ok;
+        uint64_t ruuid;
+        struct GNUNET_TIME_Timestamp now;
+        now = GNUNET_TIME_timestamp_get ();
+        FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                plugin->do_withdraw (plugin->cls,
+                                     NULL,
+                                     &cbc,
+                                     now,
+                                     &found,
+                                     &balance_ok,
+                                     &nonce_ok,
+                                     &ruuid));
+      }
 
-    /* 100% Refund */
-    {
-      bool not_found;
-      bool refund_ok;
-      bool gone;
-      bool conflict;
-      ref[i].coin = depos[i].coin;
-      ref[i].details.merchant_pub = depos[i].merchant_pub;
-      RND_BLK(&ref[i].details.merchant_sig);
-      ref[i].details.h_contract_terms = depos[i].h_contract_terms;
-      ref[i].coin.coin_pub = depos[i].coin.coin_pub;
-      ref[i].details.rtransaction_id = i;
-      ref[i].details.refund_amount = value;
-      ref[i].details.refund_fee = fees.refund;
-      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->do_refund (plugin->cls,
-                                 &ref[i],
-                                 &fees.deposit,
-                                 known_coin_id,
-                                 &not_found,
-                                 &refund_ok,
-                                 &gone,
-                                 &conflict));
-
-      /*      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->insert_refund (plugin->cls,
-              &ref[i]));*/
+      {
+        /* ENSURE_COIN_KNOWN */
+        uint64_t known_coin_id;
+        struct TALER_DenominationHashP dph;
+        struct TALER_AgeCommitmentHash agh;
+        FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
+                plugin->ensure_coin_known (plugin->cls,
+                                           &depos[i].coin,
+                                           &known_coin_id,
+                                           &dph,
+                                           &agh));
+        refresh.coin = depos[i].coin;
+        RND_BLK (&refresh.coin_sig);
+        RND_BLK (&refresh.rc);
+        refresh.amount_with_fee = value;
+        refresh.noreveal_index = MELT_NOREVEAL_INDEX;
+      }
+        /*STORE INTO DEPOSIT*/
+        {
+          struct GNUNET_TIME_Timestamp now;
+          now = GNUNET_TIME_timestamp_get ();
+          FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                  plugin->insert_deposit (plugin->cls,
+                                          now,
+                                          &depos[i]));
+        }
+        if (ROUNDS == i)
+          TALER_denom_sig_free (&depos[i].coin.denom_sig);
     }
-    if (ROUNDS == i)
-      TALER_denom_sig_free (&depos[i].coin.denom_sig);
-  }
   /* End of benchmark setup */
-  GNUNET_free (perm);
+  GNUNET_free(perm);
   // commit
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
-  for (unsigned int r = 0; r < ROUNDS; r++)
+  /**** CALL GET LINK DATA ****/
+  for (unsigned int r=0; r< ROUNDS; r++)
   {
     struct GNUNET_TIME_Absolute time;
     struct GNUNET_TIME_Relative duration;
-
-    time = GNUNET_TIME_absolute_get ();
+    struct TALER_MerchantPublicKeyP merchant_pub;
+    char *payto_uri;
+    time = GNUNET_TIME_absolute_get();
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-            plugin->select_refunds_by_coin (plugin->cls,
-                                            &ref[r].coin.coin_pub,
-                                            &ref[r].details.merchant_pub,
-                                            &ref[r].details.h_contract_terms,
-                                            &check_refund_cb,
-                                            &ref[r]));
+            plugin->get_ready_deposit (plugin->cls,
+                                       0,
+                                       INT32_MAX,
+                                       &merchant_pub,
+                                       &payto_uri));
+
     duration = GNUNET_TIME_absolute_get_duration (time);
     times = GNUNET_TIME_relative_add (times,
                                       duration);
@@ -458,6 +447,7 @@ run (void *cls)
     GNUNET_assert (sqrs + duration_sq >= sqrs);
     sqrs += duration_sq;
   }
+
   /* evaluation of performance */
   {
     struct GNUNET_TIME_Relative avg;
@@ -478,8 +468,6 @@ drop:
   GNUNET_break (GNUNET_OK ==
   plugin->drop_tables (plugin->cls));
 cleanup:
-  if (NULL != dkp)
-    destroy_denom_key_pair (dkp);
   if (NULL != revealed_coins)
   {
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
@@ -496,13 +484,12 @@ cleanup:
        cnt++)
     destroy_denom_key_pair (new_dkp[cnt]);
   GNUNET_free (new_dkp);
-  for (unsigned int i=0; i< ROUNDS +1 ; i++)
+  for (unsigned int i=0; i< ROUNDS ; i++)
     {
       TALER_denom_sig_free (&depos[i].coin.denom_sig);
     }
   GNUNET_free(depos);
   GNUNET_free(ref);
-  dkp = NULL;
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }
