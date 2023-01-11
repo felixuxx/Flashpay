@@ -413,7 +413,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'with
       bankBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
     }' \
-    --arg BANK_URL "$BANK_URL/access-api/" \
+    --arg BANK_URL "$BANK_URL/demobanks/default/access-api/" \
     --arg EXCHANGE_URL $EXCHANGE_URL
   )"
 

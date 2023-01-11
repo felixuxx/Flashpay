@@ -418,7 +418,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'runI
     }' \
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
-    --arg BANK_URL "$BANK_URL/access-api/"
+    --arg BANK_URL "$BANK_URL/demobanks/default/access-api/"
   )" &> ${MY_TMP_DIR}/taler-wallet-cli.log
 
 echo "Shutting down services"
