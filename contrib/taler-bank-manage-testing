@@ -11,7 +11,7 @@
 
 set -eu
 
-if [ "$1" -eq "--help" ];
+if [ "$1" = "--help" ];
 then
     echo "This is a tool to launch a libeufin based bank for testing."
     echo "Call using: Nexus port number, SQLite file path, exchange base URL, config file path."
