@@ -1128,6 +1128,7 @@ TEH_RESPONSE_reply_kyc_required (struct MHD_Connection *connection,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_GENERIC_KYC_REQUIRED),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
     GNUNET_JSON_pack_uint64 ("requirement_row",
