@@ -10,6 +10,10 @@ usr/bin/taler-exchange-kyc-tester
 usr/bin/taler-nexus-prepare
 usr/bin/taler-bank-manage-testing
 
+# Man pages
+usr/share/man/man1/taler-exchange-kyc-tester*
+
+
 # Headers
 usr/include/taler/*
 

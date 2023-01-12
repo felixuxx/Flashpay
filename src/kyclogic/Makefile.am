@@ -25,6 +25,7 @@ libtalerkyclogic_la_SOURCES = \
   kyclogic_api.c
 libtalerkyclogic_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
+  -ljansson \
   -lgnunetutil \
   $(XLIB)
 libtalerkyclogic_la_LDFLAGS = \
@@ -69,6 +70,7 @@ libtaler_plugin_kyclogic_template_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_template_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  -lgnunetutil \
   $(XLIB)
 
 libtaler_plugin_kyclogic_oauth2_la_SOURCES = \
@@ -83,6 +85,7 @@ libtaler_plugin_kyclogic_oauth2_la_LDFLAGS = \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
+  -lmicrohttpd \
   -ljansson \
   -lcurl \
   $(XLIB)
@@ -100,6 +103,7 @@ libtaler_plugin_kyclogic_kycaid_la_LDFLAGS = \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
+  -lmicrohttpd \
   -ljansson \
   -lcurl \
   $(XLIB)
@@ -121,6 +125,7 @@ libtaler_plugin_kyclogic_persona_la_LDFLAGS = \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
+  -lmicrohttpd \
   -ljansson \
   -lcurl \
   $(XLIB)

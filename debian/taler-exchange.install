@@ -12,9 +12,11 @@ usr/bin/taler-exchange-transfer
 usr/bin/taler-exchange-wirewatch
 usr/bin/taler-exchange-wire-gateway-client
 usr/lib/*/taler/libtaler_plugin_kyclogic_*.so
+usr/lib/*/taler/libtaler_extension_*.so
 usr/share/man/man1/taler-exchange-aggregator*
 usr/share/man/man1/taler-exchange-closer*
 usr/share/man/man1/taler-exchange-dbinit*
+usr/share/man/man1/taler-exchange-drain*
 usr/share/man/man1/taler-exchange-expire*
 usr/share/man/man1/taler-exchange-httpd*
 usr/share/man/man1/taler-exchange-router*
