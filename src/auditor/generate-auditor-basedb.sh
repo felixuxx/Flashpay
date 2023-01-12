@@ -151,19 +151,12 @@ libeufin-sandbox serve --port "1${BANK_PORT}" \
 echo $! > ${MY_TMP_DIR}/libeufin-sandbox.pid
 cd $ORIGIN
 export LIBEUFIN_SANDBOX_URL="http://localhost:1${BANK_PORT}"
-echo $LIBEUFIN_SANDBOX_URL
 set +e
 echo -n "Waiting for Sandbox..."
 OK=0
 for n in `seq 1 100`; do
   echo -n "."
   sleep 1
-  echo wget --timeout=1 \
-    --user admin --password secret \
-    --tries=3 --waitretry=0 \
-    -o /dev/null -O /dev/null \
-    ${LIBEUFIN_SANDBOX_URL};
-
   if wget --timeout=1 \
     --user admin --password secret --auth-no-challenge \
     --tries=3 --waitretry=0 \
@@ -325,7 +318,12 @@ taler-exchange-httpd -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF -L INFO 2> ${MY_TMP_DIR}/taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> ${MY_TMP_DIR}/taler-exchange-wirewatch.log &
 taler-auditor-httpd -L INFO -c $CONF 2> ${MY_TMP_DIR}/taler-auditor-httpd.log &
+export BANK_PORT
+export EXCHANGE_URL
+export MERCHANT_URL
+export AUDITOR_URL
 
+echo -n "Waiting for services to be available "
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`
 do
@@ -333,14 +331,14 @@ do
     sleep 0.2
     OK=0
     # bank
-    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
+    wget http://localhost:${BANK_PORT}/ -o /dev/null -O /dev/null >/dev/null || continue
     OK=1
     break
 done
 
 if [ 1 != $OK ]
 then
-    exit_skip "Failed to launch services"
+    exit_skip "Failed to launch services (bank)"
 fi
 
 # Wait for all services to be available
@@ -350,18 +348,19 @@ do
     sleep 0.1
     OK=0
     # exchange
-    wget http://localhost:8081/seed -o /dev/null -O /dev/null >/dev/null || continue
+    wget ${EXCHANGE_URL}seed -o /dev/null -O /dev/null >/dev/null || continue
     # merchant
-    wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
+    wget ${MERCHANT_URL} -o /dev/null -O /dev/null >/dev/null || continue
     # Auditor
-    wget http://localhost:8083/ -o /dev/null -O /dev/null >/dev/null || continue
+    wget ${AUDITOR_URL} -o /dev/null -O /dev/null >/dev/null || continue
     OK=1
     break
 done
 
 if [ 1 != $OK ]
 then
-    exit_skip "Failed to launch services"
+    bash
+    exit_skip "Failed to launch services (Taler)"
 fi
 echo -n "Setting up keys"
 taler-exchange-offline -c $CONF \

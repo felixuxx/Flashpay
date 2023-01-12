@@ -382,16 +382,6 @@ test_exchangedb_populate_table_postgres_LDADD = \
   -lm \
   $(XLIB)
 
-bench_db_postgres_SOURCES = \
-  bench_db.c
-bench_db_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -lgnunetpq \
-  -lgnunetutil \
-  $(XLIB)
-
 test_exchangedb_populate_link_data_postgres_SOURCES = \
   test_exchangedb_populate_link_data.c
 test_exchangedb_populate_link_data_postgres_LDADD = \
@@ -403,16 +393,6 @@ test_exchangedb_populate_link_data_postgres_LDADD = \
   -lgnunetjson \
   -lgnunetutil \
   -lm \
-  $(XLIB)
-
-bench_db_postgres_SOURCES = \
-  bench_db.c
-bench_db_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -lgnunetpq \
-  -lgnunetutil \
   $(XLIB)
 
 test_exchangedb_populate_ready_deposit_postgres_SOURCES = \
