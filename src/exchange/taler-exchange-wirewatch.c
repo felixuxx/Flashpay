@@ -478,6 +478,8 @@ transaction_completed (void)
                                           latency);
     delayed_until = GNUNET_TIME_relative_to_absolute (left);
   }
+  if (test_mode)
+    delayed_until = GNUNET_TIME_UNIT_ZERO_ABS;
   GNUNET_assert (NULL == task);
   schedule_transfers ();
 }
