@@ -92,11 +92,10 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   struct TALER_TESTING_LibeufinServices ret = { 0 };
   unsigned int iter;
   char *curl_check_cmd;
-  const char *db_conn = "jdbc:sqlite:/tmp/libeufin-exchange-test.sqlite3";
 
   setenv (
     "LIBEUFIN_NEXUS_DB_CONNECTION",
-    db_conn,
+    "jdbc:sqlite:/tmp/libeufin-exchange-test-nexusdb.sqlite3",
     1); // not overwriting any potentially existing DB.
 
   nexus_proc = GNUNET_OS_start_process (
@@ -146,8 +145,8 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   fprintf (stderr, "\n");
   setenv (
     "LIBEUFIN_SANDBOX_DB_CONNECTION",
-    db_conn,
-    1); // not overwriting existing any potentially existing DB.
+    "jdbc:sqlite:/tmp/libeufin-exchange-test-sandboxdb.sqlite3",
+    1); // not overwriting any potentially existing DB.
   setenv (
     "LIBEUFIN_SANDBOX_ADMIN_PASSWORD",
     "secret",
@@ -299,10 +298,10 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 
 enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_nexus (const char *config_filename,
-                             int reset_db,
-                             const char *config_section,
-                             struct TALER_TESTING_BankConfiguration *bc)
+TALER_TESTING_prepare_libeufin (const char *config_filename,
+                                int reset_db,
+                                const char *config_section,
+                                struct TALER_TESTING_BankConfiguration *bc)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long port;
@@ -367,10 +366,18 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   /* DB preparation */
   if (GNUNET_YES == reset_db)
   {
-    if (0 != system ("rm -f /tmp/libeufin-exchange-test.sqlite3"))
+    if (0 != system ("rm -f /tmp/libeufin-exchange-test-nexusdb.sqlite3"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to invoke db-removal command.\n");
+                  "Failed to invoke db-removal command on nexusdb.\n");
+      GNUNET_free (database);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if (0 != system ("rm -f /tmp/libeufin-exchange-test-sandboxdb.sqlite3"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to invoke db-removal command on sandboxdb.\n");
       GNUNET_free (database);
       GNUNET_CONFIGURATION_destroy (cfg);
       return GNUNET_SYSERR;
