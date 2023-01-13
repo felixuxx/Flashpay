@@ -1373,7 +1373,7 @@ main (int argc,
                                &exit_on_error),
     GNUNET_GETOPT_option_relative_time ('f',
                                         "longpoll-timeout",
-                                        "DELAY"
+                                        "DELAY",
                                         "what is the timeout when asking the bank about new transactions",
                                         &longpoll_timeout),
     GNUNET_GETOPT_option_flag ('I',
