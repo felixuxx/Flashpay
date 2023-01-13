@@ -106,6 +106,12 @@ static struct GNUNET_TIME_Absolute shard_end_time;
 static struct GNUNET_TIME_Relative shard_delay;
 
 /**
+ * How long did we take to finish the last shard
+ * for this account?
+ */
+static struct GNUNET_TIME_Relative longpoll_timeout;
+
+/**
  * Name of our job in the shard table.
  */
 static char *job_name;
@@ -474,7 +480,7 @@ transaction_completed (void)
     struct GNUNET_TIME_Relative left;
 
     latency = GNUNET_TIME_absolute_get_duration (hh_start_time);
-    left = GNUNET_TIME_relative_subtract (LONGPOLL_TIMEOUT,
+    left = GNUNET_TIME_relative_subtract (longpoll_timeout,
                                           latency);
     delayed_until = GNUNET_TIME_relative_to_absolute (left);
   }
@@ -1157,7 +1163,7 @@ continue_with_shard (void *cls)
                                   limit,
                                   test_mode
                                   ? GNUNET_TIME_UNIT_ZERO
-                                  : LONGPOLL_TIMEOUT,
+                                  : longpoll_timeout,
                                   &history_cb,
                                   NULL);
   if (NULL == hh)
@@ -1365,6 +1371,11 @@ main (int argc,
                                "exit-on-error",
                                "terminate wirewatch if we failed to download information from the bank",
                                &exit_on_error),
+    GNUNET_GETOPT_option_relative_time ('f',
+                                        "longpoll-timeout",
+                                        "DELAY"
+                                        "what is the timeout when asking the bank about new transactions",
+                                        &longpoll_timeout),
     GNUNET_GETOPT_option_flag ('I',
                                "ignore-not-found",
                                "continue, even if the bank account of the exchange was not found",
@@ -1390,6 +1401,7 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
+  longpoll_timeout = LONGPOLL_TIMEOUT;
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
