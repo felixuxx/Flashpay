@@ -474,18 +474,17 @@ initiate_task (void *cls)
   hps = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                              sizeof (ih->h_payto));
   GNUNET_asprintf (&redirect_uri,
-                   "%s/kyc-proof/%s/%s/%s",
+                   "%skyc-proof/%s",
                    ps->exchange_base_url,
-                   hps,
-                   pd->section,
-                   legi_s);
+                   pd->section);
   redirect_uri_encoded = TALER_urlencode (redirect_uri);
   GNUNET_free (redirect_uri);
   GNUNET_asprintf (&url,
-                   "%s?client_id=%s&redirect_uri=%s",
+                   "%s?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
                    pd->login_url,
                    pd->client_id,
-                   redirect_uri_encoded);
+                   redirect_uri_encoded,
+                   hps);
   GNUNET_free (redirect_uri_encoded);
   ih->cb (ih->cb_cls,
           TALER_EC_NONE,
@@ -610,8 +609,8 @@ handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
       ph->response
         = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway");
+        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+        "Unexpected response from KYC gateway: proof error");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
       return;
@@ -678,8 +677,8 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
     ph->response
       = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Unexpected response from KYC gateway");
+      TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+      "Unexpected response from KYC gateway: proof success must contain data and status");
     ph->http_status
       = MHD_HTTP_BAD_GATEWAY;
     return;
@@ -713,8 +712,8 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
       ph->response
         = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway");
+        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+        "Unexpected response from KYC gateway: data must contain id");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
       return;
@@ -797,15 +796,23 @@ handle_curl_login_finished (void *cls,
       const char *token_type;
       uint64_t expires_in_s;
       const char *refresh_token;
+      bool no_expires;
+      bool no_refresh;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("access_token",
                                  &access_token),
         GNUNET_JSON_spec_string ("token_type",
                                  &token_type),
-        GNUNET_JSON_spec_uint64 ("expires_in",
-                                 &expires_in_s),
-        GNUNET_JSON_spec_string ("refresh_token",
-                                 &refresh_token),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_uint64 ("expires_in",
+                                   &expires_in_s),
+          &no_expires
+          ),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("refresh_token",
+                                   &refresh_token),
+          &no_refresh
+          ),
         GNUNET_JSON_spec_end ()
       };
       CURL *eh;
@@ -824,8 +831,8 @@ handle_curl_login_finished (void *cls,
           GNUNET_break_op (0);
           ph->response
             = TALER_MHD_make_error (
-                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-                "Unexpected response from KYC gateway");
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway: login finished");
           ph->http_status
             = MHD_HTTP_BAD_GATEWAY;
           break;
@@ -837,8 +844,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Unexpected token type in response from KYC gateway");
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "Unexpected token type in response from KYC gateway");
         ph->http_status
           = MHD_HTTP_BAD_GATEWAY;
         break;
@@ -858,8 +865,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-              "Illegal character in access token");
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "Illegal character in access token");
         ph->http_status
           = MHD_HTTP_BAD_GATEWAY;
         break;
@@ -871,8 +878,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-              TALER_EC_GENERIC_ALLOCATION_FAILURE,
-              "curl_easy_init");
+          TALER_EC_GENERIC_ALLOCATION_FAILURE,
+          "curl_easy_init");
         ph->http_status
           = MHD_HTTP_INTERNAL_SERVER_ERROR;
         break;
@@ -1008,23 +1015,24 @@ oauth2_proof (void *cls,
     char *client_secret;
     char *authorization_code;
 
+    char *redirect_uri_encoded;
+    char *hps;
+
+    hps = GNUNET_STRINGS_data_to_string_alloc (&ph->h_payto,
+                                               sizeof (ph->h_payto));
+
+    GNUNET_asprintf (&redirect_uri,
+                     "%skyc-proof/%s",
+                     ps->exchange_base_url,
+                     pd->section);
+    redirect_uri_encoded = TALER_urlencode (redirect_uri);
+    GNUNET_free (redirect_uri);
+    GNUNET_assert (NULL != redirect_uri_encoded);
+
     client_id = curl_easy_escape (ph->eh,
                                   pd->client_id,
                                   0);
     GNUNET_assert (NULL != client_id);
-    {
-      char *request_uri;
-
-      GNUNET_asprintf (&request_uri,
-                       "%s?client_id=%s",
-                       pd->login_url,
-                       pd->client_id);
-      redirect_uri = curl_easy_escape (ph->eh,
-                                       request_uri,
-                                       0);
-      GNUNET_free (request_uri);
-    }
-    GNUNET_assert (NULL != redirect_uri);
     client_secret = curl_easy_escape (ph->eh,
                                       pd->client_secret,
                                       0);
@@ -1036,12 +1044,13 @@ oauth2_proof (void *cls,
     GNUNET_asprintf (&ph->post_body,
                      "client_id=%s&redirect_uri=%s&client_secret=%s&code=%s&grant_type=authorization_code",
                      client_id,
-                     redirect_uri,
+                     redirect_uri_encoded,
                      client_secret,
                      authorization_code);
     curl_free (authorization_code);
     curl_free (client_secret);
-    curl_free (redirect_uri);
+    curl_free (redirect_uri_encoded);
+    curl_free (hps);
     curl_free (client_id);
   }
   GNUNET_assert (CURLE_OK ==

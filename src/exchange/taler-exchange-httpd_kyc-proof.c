@@ -259,27 +259,39 @@ TEH_handler_kyc_proof (
   const char *const args[3])
 {
   struct KycProofContext *kpc = rc->rh_ctx;
-
+  const char *h_payto;
   if (NULL == kpc)
   {
     /* first time */
-    if ( (NULL == args[0]) ||
-         (NULL == args[1]) )
+    if ( (NULL == args[0]))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                         "'/kyc-proof/$H_PATYO/$LOGIC' required");
+                                         "'/kyc-proof/$LOGIC?state=$H_PAYTO' required");
     }
+
+    h_payto = MHD_lookup_connection_value (rc->connection,
+                                           MHD_GET_ARGUMENT_KIND,
+                                           "state");
+    if ( (NULL == h_payto) )
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "h_payto");
+    }
+
 
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
     rc->rh_ctx = kpc;
     rc->rh_cleaner = &clean_kpc;
     if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (args[0],
-                                       strlen (args[0]),
+        GNUNET_STRINGS_string_to_data (h_payto,
+                                       strlen (h_payto),
                                        &kpc->h_payto,
                                        sizeof (kpc->h_payto)))
     {
@@ -290,7 +302,7 @@ TEH_handler_kyc_proof (
                                          "h_payto");
     }
     if (GNUNET_OK !=
-        TALER_KYCLOGIC_lookup_logic (args[1],
+        TALER_KYCLOGIC_lookup_logic (args[0],
                                      &kpc->logic,
                                      &kpc->pd,
                                      &kpc->provider_section))
@@ -299,14 +311,14 @@ TEH_handler_kyc_proof (
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         args[1]);
+                                         args[0]);
     }
     if (NULL != kpc->provider_section)
     {
       enum GNUNET_DB_QueryStatus qs;
       struct GNUNET_TIME_Absolute expiration;
 
-      if (0 != strcmp (args[1],
+      if (0 != strcmp (args[0],
                        kpc->provider_section))
       {
         GNUNET_break_op (0);
@@ -352,7 +364,7 @@ TEH_handler_kyc_proof (
     }
     kpc->ph = kpc->logic->proof (kpc->logic->cls,
                                  kpc->pd,
-                                 &args[2],
+                                 &args[1],
                                  rc->connection,
                                  &kpc->h_payto,
                                  kpc->process_row,
