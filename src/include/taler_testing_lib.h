@@ -868,6 +868,24 @@ struct GNUNET_OS_Process *
 TALER_TESTING_run_bank (const char *config_filename,
                         const char *bank_url);
 
+
+/**
+ * Prepare libeufin sandbox execution.  Check if the port is available and
+ * reset database.
+ *
+ * @param config_filename configuration file name.
+ * @param reset_db should we reset the bank's database
+ * @param config_section which configuration section should be used
+ * @param[out] bc set to the bank's configuration data
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_TESTING_prepare_libeufin (const char *config_filename,
+                                bool reset_db,
+                                const char *config_section,
+                                struct TALER_TESTING_BankConfiguration *bc);
+
+
 /**
  * Start the (nexus) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare
@@ -909,7 +927,7 @@ TALER_TESTING_run_fakebank (const char *bank_url,
  */
 enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_bank (const char *config_filename,
-                            int reset_db,
+                            bool reset_db,
                             const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc);
 

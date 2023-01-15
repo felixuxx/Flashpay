@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2021 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -299,7 +299,7 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_libeufin (const char *config_filename,
-                                int reset_db,
+                                bool reset_db,
                                 const char *config_section,
                                 struct TALER_TESTING_BankConfiguration *bc)
 {
@@ -354,9 +354,9 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
                                      (uint16_t) port))
   {
-    fprintf (stderr,
-             "Required port %llu not available, skipping.\n",
-             port);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Required port %llu not available, skipping.\n",
+                port);
     GNUNET_break (0);
     GNUNET_free (database);
     GNUNET_CONFIGURATION_destroy (cfg);
@@ -364,7 +364,7 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
   }
 
   /* DB preparation */
-  if (GNUNET_YES == reset_db)
+  if (reset_db)
   {
     if (0 != system ("rm -f /tmp/libeufin-exchange-test-nexusdb.sqlite3"))
     {
@@ -414,11 +414,14 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
               "Relying on nexus %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
               (unsigned int) port);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "exchange payto: %s\n",
               bc->exchange_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "user42_payto: %s\n",
               bc->user42_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "user42_payto: %s\n",
               bc->user43_payto);
   return GNUNET_OK;
 }
@@ -426,7 +429,7 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
 
 enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_bank (const char *config_filename,
-                            int reset_db,
+                            bool reset_db,
                             const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc)
 {
@@ -498,9 +501,9 @@ TALER_TESTING_prepare_bank (const char *config_filename,
       GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
                                      (uint16_t) port))
   {
-    fprintf (stderr,
-             "Required port %llu not available, skipping.\n",
-             port);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Required port %llu not available, skipping.\n",
+                port);
     GNUNET_break (0);
     GNUNET_free (database);
     GNUNET_CONFIGURATION_destroy (cfg);
@@ -508,7 +511,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   }
 
   /* DB preparation */
-  if (GNUNET_YES == reset_db)
+  if (reset_db)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Flushing bank database\n");
