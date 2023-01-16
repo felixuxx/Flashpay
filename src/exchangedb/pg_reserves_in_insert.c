@@ -199,7 +199,7 @@ TEH_PG_reserves_in_insert (void *cls,
        (We are only run in a larger transaction for performance.) */
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = TEH_PG_commit(pg);
+    cs = TEH_PG_commit (pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
@@ -257,7 +257,7 @@ TEH_PG_reserves_in_insert (void *cls,
     updated_reserve.gc = GNUNET_TIME_timestamp_max (gc,
                                                     reserve.gc);
     qs3 = TEH_PG_reserves_update (pg,
-                           &updated_reserve);
+                                  &updated_reserve);
     switch (qs3)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:

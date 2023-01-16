@@ -57,10 +57,21 @@ TEH_PG_do_reserve_purse (
   struct PostgresClosure *pg = cls;
   struct TALER_Amount zero_fee;
   struct TALER_PaytoHashP h_payto;
+  struct GNUNET_TIME_Timestamp reserve_expiration
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                  pg->idle_reserve_expiration_time));
+  struct GNUNET_TIME_Timestamp reserve_gc
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
+                                  pg->legal_reserve_expiration_time));
+
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (purse_pub),
     GNUNET_PQ_query_param_auto_from_type (merge_sig),
     GNUNET_PQ_query_param_timestamp (&merge_timestamp),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+    GNUNET_PQ_query_param_timestamp (&reserve_gc),
     GNUNET_PQ_query_param_auto_from_type (reserve_sig),
     GNUNET_PQ_query_param_bool (NULL == purse_fee),
     TALER_PQ_query_param_amount (NULL == purse_fee

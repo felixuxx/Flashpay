@@ -18,6 +18,8 @@ CREATE OR REPLACE FUNCTION exchange_do_reserve_purse(
   IN in_purse_pub BYTEA,
   IN in_merge_sig BYTEA,
   IN in_merge_timestamp INT8,
+  IN in_reserve_expiration INT8,
+  IN in_reserve_gc INT8,
   IN in_reserve_sig BYTEA,
   IN in_reserve_quota BOOLEAN,
   IN in_purse_fee_val INT8,
@@ -105,6 +107,14 @@ ELSE
       out_no_funds=TRUE;
       RETURN;
     END IF;
+    INSERT INTO exchange.reserves
+      (reserve_pub
+      ,expiration_date
+      ,gc_date)
+    VALUES
+      (in_reserve_pub
+      ,in_reserve_expiration
+      ,in_reserve_gc);
   ELSE
     UPDATE exchange.reserves
       SET
@@ -149,7 +159,7 @@ INSERT INTO exchange.account_merges
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA)
+COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, INT8, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA)
   IS 'Create a purse for a reserve.';
 
 
