@@ -75,7 +75,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Timestamp of when the withdraw-age resquest was received by the exchange'
+     'Timestamp with the time when the withdraw-age request was received by the exchange'
     ,'timestamp'
     ,table_name
     ,partition_suffix

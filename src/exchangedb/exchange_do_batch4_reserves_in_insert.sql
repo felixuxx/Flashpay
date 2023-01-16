@@ -267,7 +267,7 @@ BEGIN
     END IF;
   k=k+1;
   END LOOP;
- /**ROLLBACK TRANSACTION IN SOTRED PROCEDURE IS IT PROSSIBLE ?**/
+ /**ROLLBACK TRANSACTION IN SORTED PROCEDURE IS IT PROSSIBLE ?**/
   /*IF transaction_duplicate
   OR transaction_duplicate2
   OR transaction_duplicate3
