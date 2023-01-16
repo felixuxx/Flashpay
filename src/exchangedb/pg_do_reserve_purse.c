@@ -111,7 +111,7 @@ TEH_PG_do_reserve_purse (
            ",out_no_reserve AS no_reserve"
            ",out_conflict AS conflict"
            " FROM exchange_do_reserve_purse"
-           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+           "  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_reserve_purse",
