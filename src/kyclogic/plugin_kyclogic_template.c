@@ -279,7 +279,6 @@ template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
- * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
  * @param process_row row in the legitimization processes table the legitimization is for
@@ -292,7 +291,6 @@ template_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
 static struct TALER_KYCLOGIC_ProofHandle *
 template_proof (void *cls,
                 const struct TALER_KYCLOGIC_ProviderDetails *pd,
-                const char *const url_path[],
                 struct MHD_Connection *connection,
                 const struct TALER_PaytoHashP *account_id,
                 uint64_t process_row,
@@ -304,7 +302,6 @@ template_proof (void *cls,
   struct PluginState *ps = cls;
   struct TALER_KYCLOGIC_ProofHandle *ph;
 
-  (void) url_path;
   (void) account_id;
   (void) process_row;
   (void) provider_user_id;
