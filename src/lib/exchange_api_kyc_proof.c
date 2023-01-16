@@ -154,8 +154,7 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
   if (NULL == args)
     args = "";
   else
-    GNUNET_assert ( (args[0] == '?') ||
-                    (args[0] == '/') );
+    GNUNET_assert (args[0] == '&');
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
   {
@@ -172,9 +171,9 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
                                          sizeof (hstr));
     *end = '\0';
     GNUNET_asprintf (&arg_str,
-                     "/kyc-proof/%s/%s%s",
-                     hstr,
+                     "/kyc-proof/%s?state=%s%s",
                      logic,
+                     hstr,
                      args);
   }
   kph = GNUNET_new (struct TALER_EXCHANGE_KycProofHandle);

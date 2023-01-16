@@ -44,11 +44,6 @@ struct KycProofGetState
   const char *code;
 
   /**
-   * State to pass.
-   */
-  const char *state;
-
-  /**
    * Logic section name to pass to `/kyc-proof/` handler.
    */
   const char *logic;
@@ -158,10 +153,12 @@ proof_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kps->is);
     return;
   }
-  GNUNET_asprintf (&uargs,
-                   "?code=%s&state=%s",
-                   kps->code,
-                   kps->state);
+  if (NULL == kps->code)
+    uargs = NULL;
+  else
+    GNUNET_asprintf (&uargs,
+                     "&code=%s",
+                     kps->code);
   kps->kph = TALER_EXCHANGE_kyc_proof (is->exchange,
                                        h_payto,
                                        kps->logic,
@@ -235,14 +232,12 @@ TALER_TESTING_cmd_proof_kyc_oauth2 (
   const char *payment_target_reference,
   const char *logic_section,
   const char *code,
-  const char *state,
   unsigned int expected_response_code)
 {
   struct KycProofGetState *kps;
 
   kps = GNUNET_new (struct KycProofGetState);
   kps->code = code;
-  kps->state = state;
   kps->logic = logic_section;
   kps->payment_target_reference = payment_target_reference;
   kps->expected_response_code = expected_response_code;

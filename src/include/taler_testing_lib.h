@@ -2535,7 +2535,6 @@ TALER_TESTING_cmd_check_kyc_get (const char *label,
  * @param logic_section name of the KYC provider section
  *         in the exchange configuration for this proof
  * @param code OAuth 2.0 code to use
- * @param state OAuth 2.0 state to use
  * @param expected_response_code expected HTTP status
  * @return the command
  */
@@ -2545,7 +2544,6 @@ TALER_TESTING_cmd_proof_kyc_oauth2 (
   const char *payment_target_reference,
   const char *logic_section,
   const char *code,
-  const char *state,
   unsigned int expected_response_code);
 
 

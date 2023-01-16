@@ -3600,8 +3600,7 @@ struct TALER_EXCHANGE_KycProofHandle;
  * @param h_payto hash of payto URI identifying the target account
  * @param logic name of the KYC logic to run
  * @param args additional args to pass, can be NULL
- *        or a string to append to the URL. Must
- *        then begin with '/' or '?'.
+ *        or a string to append to the URL. Must then begin with '&'.
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return NULL on error
