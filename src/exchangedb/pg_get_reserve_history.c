@@ -1157,7 +1157,12 @@ TEH_PG_get_reserve_status (void *cls,
                                                &rhc);
     if ( (0 > qs) ||
          (GNUNET_OK != rhc.status) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Query %s failed\n",
+                  work[i].statement);
       break;
+    }
   }
   if ( (qs < 0) ||
        (rhc.status != GNUNET_OK) )
