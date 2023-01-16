@@ -747,13 +747,14 @@ persona_initiate (void *cls,
                      (unsigned long long) ih->legitimization_uuid);
     payto_s = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                                    sizeof (ih->h_payto));
-    /* NOTE: check here that exchange_base_url ends
-       with a '/'? */
+    GNUNET_break ('/' ==
+                  pd->ps->exchange_base_url[strlen (
+                                              pd->ps->exchange_base_url) - 1]);
     GNUNET_asprintf (&proof_url,
-                     "%skyc-proof/%s/%s",
+                     "%skyc-proof/%s?state=%s",
                      pd->ps->exchange_base_url,
-                     payto_s,
-                     pd->section);
+                     pd->section,
+                     payto_s);
     body = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_object_steal (
         "data",
@@ -1345,7 +1346,6 @@ handle_proof_finished (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
- * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
  * @param process_row row in the legitimization processes table the legitimization is for
@@ -1358,7 +1358,6 @@ handle_proof_finished (void *cls,
 static struct TALER_KYCLOGIC_ProofHandle *
 persona_proof (void *cls,
                const struct TALER_KYCLOGIC_ProviderDetails *pd,
-               const char *const url_path[],
                struct MHD_Connection *connection,
                const struct TALER_PaytoHashP *account_id,
                uint64_t process_row,

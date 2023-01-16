@@ -609,8 +609,8 @@ handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
       ph->response
         = TALER_MHD_make_error (
-        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-        "Unexpected response from KYC gateway: proof error");
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway: proof error");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
       return;
@@ -677,8 +677,8 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
     ph->response
       = TALER_MHD_make_error (
-      TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-      "Unexpected response from KYC gateway: proof success must contain data and status");
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "Unexpected response from KYC gateway: proof success must contain data and status");
     ph->http_status
       = MHD_HTTP_BAD_GATEWAY;
     return;
@@ -712,8 +712,8 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
       ph->status = TALER_KYCLOGIC_STATUS_PROVIDER_FAILED;
       ph->response
         = TALER_MHD_make_error (
-        TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-        "Unexpected response from KYC gateway: data must contain id");
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway: data must contain id");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
       return;
@@ -831,8 +831,8 @@ handle_curl_login_finished (void *cls,
           GNUNET_break_op (0);
           ph->response
             = TALER_MHD_make_error (
-            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-            "Unexpected response from KYC gateway: login finished");
+                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+                "Unexpected response from KYC gateway: login finished");
           ph->http_status
             = MHD_HTTP_BAD_GATEWAY;
           break;
@@ -844,8 +844,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Unexpected token type in response from KYC gateway");
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+              "Unexpected token type in response from KYC gateway");
         ph->http_status
           = MHD_HTTP_BAD_GATEWAY;
         break;
@@ -865,8 +865,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-          "Illegal character in access token");
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+              "Illegal character in access token");
         ph->http_status
           = MHD_HTTP_BAD_GATEWAY;
         break;
@@ -878,8 +878,8 @@ handle_curl_login_finished (void *cls,
         GNUNET_break_op (0);
         ph->response
           = TALER_MHD_make_error (
-          TALER_EC_GENERIC_ALLOCATION_FAILURE,
-          "curl_easy_init");
+              TALER_EC_GENERIC_ALLOCATION_FAILURE,
+              "curl_easy_init");
         ph->http_status
           = MHD_HTTP_INTERNAL_SERVER_ERROR;
         break;
@@ -925,7 +925,6 @@ handle_curl_login_finished (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
- * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
  * @param process_row row in the legitimization processes table the legitimization is for
@@ -938,7 +937,6 @@ handle_curl_login_finished (void *cls,
 static struct TALER_KYCLOGIC_ProofHandle *
 oauth2_proof (void *cls,
               const struct TALER_KYCLOGIC_ProviderDetails *pd,
-              const char *const url_path[],
               struct MHD_Connection *connection,
               const struct TALER_PaytoHashP *account_id,
               uint64_t process_row,
@@ -951,7 +949,6 @@ oauth2_proof (void *cls,
   struct TALER_KYCLOGIC_ProofHandle *ph;
   const char *code;
 
-  (void) url_path;
   GNUNET_break (NULL == provider_user_id);
   ph = GNUNET_new (struct TALER_KYCLOGIC_ProofHandle);
   GNUNET_snprintf (ph->provider_legitimization_id,
@@ -966,6 +963,7 @@ oauth2_proof (void *cls,
     GNUNET_free (ph);
     return NULL;
   }
+
   ph->pd = pd;
   ph->connection = connection;
   ph->h_payto = *account_id;

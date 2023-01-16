@@ -1258,8 +1258,7 @@ handle_mhd_request (void *cls,
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_kyc_proof,
-      .nargs = 128,
-      .nargs_is_upper_bound = true
+      .nargs = 1
     },
     {
       .url = "kyc-wallet",

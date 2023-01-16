@@ -643,7 +643,6 @@ proof_reply (void *cls)
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param pd provider configuration details
- * @param url_path rest of the URL after `/kyc-webhook/`
  * @param connection MHD connection object (for HTTP headers)
  * @param account_id which account to trigger process for
  * @param process_row row in the legitimization processes table the legitimization is for
@@ -656,7 +655,6 @@ proof_reply (void *cls)
 static struct TALER_KYCLOGIC_ProofHandle *
 kycaid_proof (void *cls,
               const struct TALER_KYCLOGIC_ProviderDetails *pd,
-              const char *const url_path[],
               struct MHD_Connection *connection,
               const struct TALER_PaytoHashP *account_id,
               uint64_t process_row,

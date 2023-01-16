@@ -727,32 +727,42 @@ proof_cb (
  *
  * @param rc request context
  * @param args remaining URL arguments;
- *        args[0] is the 'h_payto',
- *        args[1] should be the logic plugin name
+ *        args[0] should be the logic plugin name
  */
 static MHD_RESULT
 handler_kyc_proof_get (
   struct TEKT_RequestContext *rc,
-  const char *const args[])
+  const char *const args[1])
 {
   struct TALER_PaytoHashP h_payto;
   struct TALER_KYCLOGIC_ProviderDetails *pd;
   struct TALER_KYCLOGIC_Plugin *logic;
   struct ProofRequestState *rs;
   const char *section_name;
+  const char *h_paytos;
 
-  if ( (NULL == args[0]) ||
-       (NULL == args[1]) )
+  if (NULL == args[0])
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
-                                       "'/$H_PAYTO/$LOGIC' required after '/kyc-proof'");
+                                       "'/kyc-proof/$PROVIDER_SECTION?state=$H_PAYTO' required");
+  }
+  h_paytos = MHD_lookup_connection_value (rc->connection,
+                                          MHD_GET_ARGUMENT_KIND,
+                                          "state");
+  if (NULL == h_paytos)
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MISSING,
+                                       "h_payto");
   }
   if (GNUNET_OK !=
-      GNUNET_STRINGS_string_to_data (args[0],
-                                     strlen (args[0]),
+      GNUNET_STRINGS_string_to_data (h_paytos,
+                                     strlen (h_paytos),
                                      &h_payto,
                                      sizeof (h_payto)))
   {
@@ -774,18 +784,18 @@ handler_kyc_proof_get (
   }
 
   if (GNUNET_OK !=
-      TALER_KYCLOGIC_lookup_logic (args[1],
+      TALER_KYCLOGIC_lookup_logic (args[0],
                                    &logic,
                                    &pd,
                                    &section_name))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Could not initiate KYC with provider `%s' (configuration error?)\n",
-                args[1]);
+                args[0]);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                       args[1]);
+                                       args[0]);
   }
   rs = GNUNET_new (struct ProofRequestState);
   rs->rc = rc;
@@ -796,7 +806,6 @@ handler_kyc_proof_get (
                                rs);
   rs->ph = logic->proof (logic->cls,
                          pd,
-                         &args[2],
                          rc->connection,
                          &h_payto,
                          kyc_row_id,
@@ -1032,8 +1041,7 @@ handle_mhd_request (void *cls,
       .url = "kyc-proof",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &handler_kyc_proof_get,
-      .nargs = 128,
-      .nargs_is_upper_bound = true
+      .nargs = 1
     },
     {
       .url = "kyc-webhook",
