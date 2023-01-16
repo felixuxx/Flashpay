@@ -161,7 +161,3 @@ END $$;
 
 COMMENT ON FUNCTION exchange_do_reserve_purse(BYTEA, BYTEA, INT8, INT8, INT8, BYTEA, BOOLEAN, INT8, INT4, BYTEA, BYTEA)
   IS 'Create a purse for a reserve.';
-
-
-
-

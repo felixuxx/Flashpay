@@ -704,6 +704,7 @@ TEH_RESPONSE_compile_reserve_history (
   json_t *json_history;
 
   json_history = json_array ();
+  GNUNET_assert (NULL != json_history);
   for (const struct TALER_EXCHANGEDB_ReserveHistory *pos = rh;
        NULL != pos;
        pos = pos->next)
@@ -1012,10 +1013,14 @@ reply_reserve_insufficient_funds (
 
   json_history = TEH_RESPONSE_compile_reserve_history (rh);
   if (NULL == json_history)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to compile reserve history\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_RESERVE_HISTORY_ERROR_INSUFFICIENT_FUNDS,
                                        NULL);
+  }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
@@ -1061,6 +1066,7 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
   if ( (qs < 0) ||
        (NULL == rh) )
   {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,

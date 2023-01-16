@@ -797,14 +797,14 @@ TEH_PG_get_reserve_history (void *cls,
            " FROM purse_merges pm"
            "   JOIN purse_requests pr"
            "     USING (purse_pub)"
-           "   JOIN purse_decision pdes"
+           "   LEFT JOIN purse_decision pdes"
            "     USING (purse_pub)"
            "   JOIN account_merges am"
            "     ON (am.purse_pub = pm.purse_pub AND"
            "         am.reserve_pub = pm.reserve_pub)"
            " WHERE pm.reserve_pub=$1"
            "  AND COALESCE(pm.partner_serial_id,0)=0" /* must be local! */
-           "  AND NOT pdes.refunded;");
+           "  AND NOT COALESCE (pdes.refunded, FALSE);");
   PREPARE (pg,
            "history_by_reserve",
            "SELECT"
@@ -855,7 +855,12 @@ TEH_PG_get_reserve_history (void *cls,
                                                &rhc);
     if ( (0 > qs) ||
          (GNUNET_OK != rhc.status) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to compile reserve history at `%s'\n",
+                  work[i].statement);
       break;
+    }
   }
   if ( (qs < 0) ||
        (rhc.status != GNUNET_OK) )
