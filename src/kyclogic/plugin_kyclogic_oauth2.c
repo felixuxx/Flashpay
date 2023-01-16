@@ -474,17 +474,17 @@ initiate_task (void *cls)
   hps = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                              sizeof (ih->h_payto));
   GNUNET_asprintf (&redirect_uri,
-                   "%skyc-proof/%s",
+                   "%skyc-proof/%s?state=%s",
                    ps->exchange_base_url,
-                   pd->section);
+                   pd->section,
+                   hps);
   redirect_uri_encoded = TALER_urlencode (redirect_uri);
   GNUNET_free (redirect_uri);
   GNUNET_asprintf (&url,
-                   "%s?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
+                   "%s?response_type=code&client_id=%s&redirect_uri=%s",
                    pd->login_url,
                    pd->client_id,
-                   redirect_uri_encoded,
-                   hps);
+                   redirect_uri_encoded);
   GNUNET_free (redirect_uri_encoded);
   ih->cb (ih->cb_cls,
           TALER_EC_NONE,
@@ -1012,21 +1012,19 @@ oauth2_proof (void *cls,
     char *redirect_uri;
     char *client_secret;
     char *authorization_code;
-
     char *redirect_uri_encoded;
     char *hps;
 
     hps = GNUNET_STRINGS_data_to_string_alloc (&ph->h_payto,
                                                sizeof (ph->h_payto));
-
     GNUNET_asprintf (&redirect_uri,
-                     "%skyc-proof/%s",
+                     "%skyc-proof/%s?state=%s",
                      ps->exchange_base_url,
-                     pd->section);
+                     pd->section,
+                     hps);
     redirect_uri_encoded = TALER_urlencode (redirect_uri);
     GNUNET_free (redirect_uri);
     GNUNET_assert (NULL != redirect_uri_encoded);
-
     client_id = curl_easy_escape (ph->eh,
                                   pd->client_id,
                                   0);
@@ -1047,8 +1045,8 @@ oauth2_proof (void *cls,
                      authorization_code);
     curl_free (authorization_code);
     curl_free (client_secret);
-    curl_free (redirect_uri_encoded);
-    curl_free (hps);
+    GNUNET_free (redirect_uri_encoded);
+    GNUNET_free (hps);
     curl_free (client_id);
   }
   GNUNET_assert (CURLE_OK ==
