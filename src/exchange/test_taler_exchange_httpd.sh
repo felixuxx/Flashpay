@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # This file is part of TALER
-# Copyright (C) 2015-2020 Taler Systems SA
+# Copyright (C) 2015-2020, 2023 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU Affero General Public License as published by the Free Software
@@ -23,6 +23,8 @@
 # Clear environment from variables that override config.
 unset XDG_DATA_HOME
 unset XDG_CONFIG_HOME
+
+set -eu
 #
 echo -n "Launching exchange ..."
 PREFIX=
@@ -30,7 +32,7 @@ PREFIX=
 #PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup database
-taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
+taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null || exit 77
 # Run Exchange HTTPD (in background)
 $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf 2> test-exchange.log &
 
