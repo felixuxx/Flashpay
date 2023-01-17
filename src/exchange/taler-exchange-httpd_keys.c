@@ -3232,7 +3232,8 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
     const struct KeysResponseData *krd;
 
     ksh = TEH_keys_get_state ();
-    if (NULL == ksh)
+    if ( (NULL == ksh) ||
+         (0 == ksh->krd_array_length) )
     {
       if ( ( (SKR_LIMIT == skr_size) &&
              (rc->connection == skr_connection) ) ||
