@@ -3322,7 +3322,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
  * @param signkeys keys to output
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                const json_t *signkeys)
 {
@@ -4353,6 +4353,9 @@ cmd_handler (char *const *args,
                 cmds[i].name,
                 cmds[i].help);
   }
+  json_decref (out);
+  out = NULL;
+  GNUNET_SCHEDULER_shutdown ();
 }
 
 
