@@ -301,9 +301,9 @@ function run_audit () {
         echo -n "Running taler-exchange-offline drain "
 
         taler-exchange-offline -L DEBUG -c "${CONF}" \
-                               drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
-                               upload \
-                               2> ${MY_TMP_DIR}/taler-exchange-offline-drain.log || exit_fail "offline draining failed"
+          drain TESTKUDOS:0.1 exchange-account-1 payto://iban/SANDBOXX/DE360679?receiver-name=Exchange+Drain \
+          upload \
+          2> ${MY_TMP_DIR}/taler-exchange-offline-drain.log || exit_fail "offline draining failed"
         kill -TERM $EPID
         wait $EPID || true
         unset EPID
@@ -325,11 +325,15 @@ function run_audit () {
             echo -n "Payment likely already submitted, running submit-payments without UUID anyway ..."
             libeufin-cli accounts submit-payments exchange-nexus
         else
-            echo -n "Running submitting payment ${PAIN_UUID} ..."
+            echo -n "Running payment submission for transaction ${PAIN_UUID} ..."
             libeufin-cli accounts submit-payments --payment-uuid ${PAIN_UUID} exchange-nexus
         fi
-        cd $ORIGIN
         echo " DONE"
+        echo -n "Import outgoing transactions..."
+        libeufin-cli accounts fetch-transactions \
+           --range-type since-last --level report exchange-nexus
+        echo " DONE"
+        cd $ORIGIN
     fi
     audit_only
     post_audit
