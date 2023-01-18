@@ -43,7 +43,7 @@ TEH_kyc_proof_cleanup (void);
 MHD_RESULT
 TEH_handler_kyc_proof (
   struct TEH_RequestContext *rc,
-  const char *const args[3]);
+  const char *const args[1]);
 
 
 #endif
