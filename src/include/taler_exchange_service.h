@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2022 Taler Systems SA
+   Copyright (C) 2014-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -4238,6 +4238,185 @@ TALER_EXCHANGE_management_revoke_signing_key (
 void
 TALER_EXCHANGE_management_revoke_signing_key_cancel (
   struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *rh);
+
+
+/**
+ * Function called with information about the change to
+ * an AML officer status.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementUpdateAmlOfficerCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/aml-officers/$OFFICER_PUB request.
+ */
+struct TALER_EXCHANGE_ManagementUpdateAmlOfficer;
+
+
+/**
+ * Inform the exchange that the status of an AML officer has changed.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param officer_pub the public signing key of the officer
+ * @param officer_name name of the officer
+ * @param change_date when to affect the status change
+ * @param is_active true to enable the officer
+ * @param read_only true to only allow read-only access
+ * @param master_sig signature affirming the change
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *
+TALER_EXCHANGE_management_update_aml_officer (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *officer_name,
+  struct GNUNET_TIME_Timestamp change_date,
+  bool is_active,
+  bool read_only,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementUpdateAmlOfficerCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_update_aml_officer() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_update_aml_officer_cancel (
+  struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *rh);
+
+
+/**
+ * Function called with information about storing an
+ * an AML decision.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_AddAmlDecisionCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /aml-decision/$OFFICER_PUB request.
+ */
+struct TALER_EXCHANGE_AddAmlDecision;
+
+
+/**
+ * Inform the exchange that an AML decision has been taken.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param justification human-readable justification
+ * @param decision_time when was the decision made
+ * @param new_threshold at what monthly amount threshold
+ *                      should a revision be triggered
+ * @param h_payto payto URI hash of the account the
+ *                      decision is about
+ * @param new_state updated AML state
+ * @param officer_priv private key of the deciding AML officer
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_AddAmlDecision *
+TALER_EXCHANGE_add_aml_decision (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const char *justification,
+  struct GNUNET_TIME_Timestamp decision_time,
+  const struct TALER_Amount *new_threshold,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_AmlDecisionState new_state,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  TALER_EXCHANGE_AddAmlDecisionCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_add_aml_decision() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_add_aml_decision_cancel (
+  struct TALER_EXCHANGE_AddAmlDecision *rh);
+
+
+/**
+ * Function called with information about the change to
+ * an AML officer status.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementAddPartnerCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/partners/$PARTNER_PUB request.
+ */
+struct TALER_EXCHANGE_ManagementAddPartner;
+
+
+/**
+ * Inform the exchange that the status of a partnering
+ * exchange was defined.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param partner_pub the offline signing key of the partner
+ * @param start_date validity period start
+ * @param end_date validity period end
+ * @param wad_frequency how often will we do wad transfers to this partner
+ * @param wad_fee what is the wad fee to this partner
+ * @param partner_base_url what is the base URL of the @a partner_pub exchange
+ * @param master_sig the signature the signature
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementAddPartner *
+TALER_EXCHANGE_management_add_partner (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_MasterPublicKeyP *partner_pub,
+  struct GNUNET_TIME_Timestamp start_date,
+  struct GNUNET_TIME_Timestamp end_date,
+  struct GNUNET_TIME_Relative wad_frequency,
+  const struct TALER_Amount *wad_fee,
+  const char *partner_base_url,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementAddPartnerCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_update_aml_officer() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_add_partner_cancel (
+  struct TALER_EXCHANGE_ManagementAddPartner *rh);
 
 
 /**
