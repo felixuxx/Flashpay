@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018-2022 Taler Systems SA
+  (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -2708,6 +2708,47 @@ TALER_TESTING_cmd_purse_deposit_coins (
   uint8_t min_age,
   const char *purse_ref,
   ...);
+
+
+/**
+ * Setup AML officer.
+ *
+ * @param label command label
+ * @param ref_cmd command that previously created the
+ *       officer, NULL to create one this time
+ * @param name full legal name of the officer to use
+ * @param is_active true to set the officer to active
+ * @param read_only true to restrict the officer to read-only
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_set_officer (
+  const char *label,
+  const char *ref_cmd,
+  const char *name,
+  bool is_active,
+  bool read_only);
+
+
+/**
+ * Make AML decision.
+ *
+ * @param label command label
+ * @param ref_officer command that previously created an
+ *       officer
+ * @param ref_operation command that previously created an
+ *       h_payto which to make an AML decision about
+ * @param new_threshold new threshold to set
+ * @param block set to true to block the account
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_take_aml_decision (
+  const char *label,
+  const char *ref_officer,
+  const char *ref_operation,
+  const char *new_threshold,
+  bool block);
 
 
 /* *** Generic trait logic for implementing traits ********* */
