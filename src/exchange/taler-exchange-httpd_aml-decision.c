@@ -30,7 +30,6 @@
 #include "taler-exchange-httpd_responses.h"
 
 
-
 MHD_RESULT
 TEH_handler_management_post_aml_decision (
   struct MHD_Connection *connection,
@@ -45,6 +44,7 @@ TEH_handler_management_post_aml_decision (
   struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct GNUNET_JSON_Specification spec[] = {
+    // FIXME: officer_pub is in URL path, not in JSON body!
     GNUNET_JSON_spec_fixed_auto ("officer_pub",
                                  &officer_pub),
     GNUNET_JSON_spec_fixed_auto ("officer_sig",
@@ -120,21 +120,21 @@ TEH_handler_management_post_aml_decision (
     if (invalid_officer)
     {
       return TALER_MHD_reply_with_error (
-                                         connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_EXCHANGE_AML_DECISION_INVALID_OFFICER,
-                                         NULL);
-    } 
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_AML_DECISION_INVALID_OFFICER,
+        NULL);
+    }
     if (GNUNET_TIME_timestamp_cmp (last_date,
                                    >,
                                    validity_start))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
-                                         connection,
-                                         MHD_HTTP_CONFLICT,
-                                         TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
-                                         NULL);
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
+        NULL);
     }
   }
   return TALER_MHD_reply_static (
