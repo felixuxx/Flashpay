@@ -136,7 +136,7 @@ TALER_EXCHANGE_add_aml_decision (
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
   void *cb_cls)
 {
-  struct TALER_AmlOfficerPrivateKeyP officer_pub;
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
   struct TALER_EXCHANGE_AddAmlDecision *wh;
   CURL *eh;
@@ -146,6 +146,7 @@ TALER_EXCHANGE_add_aml_decision (
                                       &officer_pub.eddsa_pub);
   TALER_officer_aml_decision_sign (justification,
                                    decision_time,
+                                   new_threshold,
                                    h_payto,
                                    new_state,
                                    officer_priv,
@@ -187,8 +188,8 @@ TALER_EXCHANGE_add_aml_decision (
                                 &officer_sig),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
-    GNUNET_JSON_pack_data_uint64 ("state",
-                                  (uint32_t) new_state),
+    GNUNET_JSON_pack_uint64 ("state",
+                             (uint32_t) new_state),
     TALER_JSON_pack_amount ("new_threshold",
                             new_threshold),
     GNUNET_JSON_pack_timestamp ("decision_time",

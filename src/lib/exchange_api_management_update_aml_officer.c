@@ -175,10 +175,10 @@ TALER_EXCHANGE_management_update_aml_officer (
                              officer_name),
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 master_sig),
-    GNUNET_JSON_pack_data_bool ("is_active",
-                                is_active),
-    GNUNET_JSON_pack_data_bool ("read_only",
-                                read_only),
+    GNUNET_JSON_pack_bool ("is_active",
+                           is_active),
+    GNUNET_JSON_pack_bool ("read_only",
+                           read_only),
     GNUNET_JSON_pack_timestamp ("change_date",
                                 change_date));
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
