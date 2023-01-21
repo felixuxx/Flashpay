@@ -144,25 +144,9 @@ TALER_EXCHANGE_management_update_aml_officer (
   wh->cb = cb;
   wh->cb_cls = cb_cls;
   wh->ctx = ctx;
-  {
-    char *path;
-    char opus[sizeof (*officer_pub) * 2];
-    char *end;
-
-    end = GNUNET_STRINGS_data_to_string (
-      officer_pub,
-      sizeof (*officer_pub),
-      opus,
-      sizeof (opus));
-    *end = '\0';
-    GNUNET_asprintf (&path,
-                     "management/aml-officers/%s",
-                     opus);
-    wh->url = TALER_url_join (url,
-                              path,
-                              NULL);
-    GNUNET_free (path);
-  }
+  wh->url = TALER_url_join (url,
+                            "management/aml-officers",
+                            NULL);
   if (NULL == wh->url)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -173,6 +157,8 @@ TALER_EXCHANGE_management_update_aml_officer (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("officer_name",
                              officer_name),
+    GNUNET_JSON_pack_data_auto ("officer_pub",
+                                officer_pub),
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 master_sig),
     GNUNET_JSON_pack_bool ("is_active",

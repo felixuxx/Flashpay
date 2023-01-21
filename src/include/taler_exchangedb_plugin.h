@@ -6602,6 +6602,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param is_active true to enable, false to set as inactive
    * @param read_only true to set read-only access
    * @param last_change when was the change made effective
+   * @param[out] previous_change when was the previous change made
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -6612,7 +6613,8 @@ struct TALER_EXCHANGEDB_Plugin
     const char *decider_name,
     bool is_active,
     bool read_only,
-    struct GNUNET_TIME_Absolute last_change);
+    struct GNUNET_TIME_Timestamp last_change,
+    struct GNUNET_TIME_Timestamp *previous_change);
 
 
   /**
@@ -6727,6 +6729,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param justification human-readable text justifying the decision
    * @param decider_pub public key of the staff member
    * @param decider_sig signature of the staff member
+   * @param[out] invalid_officer set to TRUE if @a decider_pub is not allowed to make decisions right now
+   * @param[out] last_date set to the previous decision time;
+   *   the INSERT is not performed if @a last_date is not before @a decision_time
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -6735,10 +6740,12 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_PaytoHashP *h_payto,
     const struct TALER_Amount *new_threshold,
     enum TALER_AmlDecisionState new_status,
-    struct GNUNET_TIME_Absolute decision_time,
+    struct GNUNET_TIME_Timestamp decision_time,
     const char *justification,
     const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-    const struct TALER_AmlOfficerSignatureP *decider_sig);
+    const struct TALER_AmlOfficerSignatureP *decider_sig,
+    bool *invalid_officer,
+    struct GNUNET_TIME_Timestamp *last_date);
 
 
 };

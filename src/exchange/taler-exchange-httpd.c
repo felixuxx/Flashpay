@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2022 Taler Systems SA
+   Copyright (C) 2014-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -30,6 +30,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_templating_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_aml-decision.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
@@ -317,6 +318,187 @@ handle_post_coins (struct TEH_RequestContext *rc,
       return h[i].handler (rc->connection,
                            &coin_pub,
                            root);
+  return r404 (rc->connection,
+               args[1]);
+}
+
+
+/**
+ * Signature of functions that handle operations
+ * authorized by AML officers.
+ *
+ * @param rc request context
+ * @param officer_pub the public key of the AML officer
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*AmlOpPostHandler)(struct TEH_RequestContext *rc,
+                    const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+                    const json_t *root);
+
+
+/**
+ * Handle a "/aml/$OFFICER_PUB/$OP" POST request.  Parses the "officer_pub"
+ * EdDSA key of the officer and demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_aml (struct TEH_RequestContext *rc,
+                 const json_t *root,
+                 const char *const args[2])
+{
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1])
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     */
+    AmlOpPostHandler handler;
+
+  } h[] = {
+    {
+      .op = "decision",
+      .handler = &TEH_handler_post_aml_decision
+    },
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &officer_pub,
+                                     sizeof (officer_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
+                                       args[0]);
+  }
+  for (unsigned int i = 0; NULL != h[i].op; i++)
+    if (0 == strcmp (h[i].op,
+                     args[1]))
+      return h[i].handler (rc,
+                           &officer_pub,
+                           root);
+  return r404 (rc->connection,
+               args[1]);
+}
+
+
+/**
+ * Signature of functions that handle operations
+ * authorized by AML officers.
+ *
+ * @param rc request context
+ * @param officer_pub the public key of the AML officer
+ * @param args remaining arguments
+ * @return MHD result code
+ */
+typedef MHD_RESULT
+(*AmlOpGetHandler)(struct TEH_RequestContext *rc,
+                   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+                   const char *const args[]);
+
+
+/**
+ * Handle a "/aml/$OFFICER_PUB/$OP" GET request.  Parses the "officer_pub"
+ * EdDSA key of the officer, checks the authentication signature, and
+ * demultiplexes based on $OP.
+ *
+ * @param rc request context
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_get_aml (struct TEH_RequestContext *rc,
+                const char *const args[])
+{
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
+  static const struct
+  {
+    /**
+     * Name of the operation (args[1])
+     */
+    const char *op;
+
+    /**
+     * Function to call to perform the operation.
+     */
+    AmlOpGetHandler handler;
+
+  } h[] = {
+#if FIXME_AML_GET_DECISIONS_NOT_IMPLEMENTED
+    {
+      .op = "decisions",
+      .handler = &TEH_handler_get_aml_decisions
+    },
+    {
+      .op = "decision",
+      .handler = &TEH_handler_get_aml_decision
+    },
+#endif
+    {
+      .op = NULL,
+      .handler = NULL
+    },
+  };
+
+  if (NULL == args[0])
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
+                                       "argument missing");
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &officer_pub,
+                                     sizeof (officer_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_PUB_MALFORMED,
+                                       args[0]);
+  }
+  if (NULL == args[1])
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
+                                       "AML GET operations must specify an operation identifier");
+  }
+  if (1)   // FIXME: check AML officer GET signature!
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
+                                       NULL);
+  }
+  for (unsigned int i = 0; NULL != h[i].op; i++)
+    if (0 == strcmp (h[i].op,
+                     args[1]))
+      return h[i].handler (rc,
+                           &officer_pub,
+                           &args[2]);
   return r404 (rc->connection,
                args[1]);
 }
@@ -890,6 +1072,8 @@ handle_post_management (struct TEH_RequestContext *rc,
                                                       &exchange_pub,
                                                       root);
   }
+  /* FIXME-STYLE: all of the following can likely be nicely combined
+     into an array-based dispatcher to deduplicate the logic... */
   if (0 == strcmp (args[0],
                    "keys"))
   {
@@ -966,6 +1150,30 @@ handle_post_management (struct TEH_RequestContext *rc,
     }
     return TEH_handler_management_post_drain (rc->connection,
                                               root);
+  }
+  if (0 == strcmp (args[0],
+                   "aml-officers"))
+  {
+    if (NULL != args[1])
+    {
+      GNUNET_break_op (0);
+      return r404 (rc->connection,
+                   "/management/aml-officers/*");
+    }
+    return TEH_handler_management_aml_officers (rc->connection,
+                                                root);
+  }
+  if (0 == strcmp (args[0],
+                   "partners"))
+  {
+    if (NULL != args[1])
+    {
+      GNUNET_break_op (0);
+      return r404 (rc->connection,
+                   "/management/partners/*");
+    }
+    return TEH_handler_management_partners (rc->connection,
+                                            root);
   }
   GNUNET_break_op (0);
   return r404 (rc->connection,
@@ -1289,6 +1497,22 @@ handle_mhd_request (void *cls,
       .nargs = 4,
       .nargs_is_upper_bound = true
     },
+    /* AML endpoints */
+    {
+      .url = "aml",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &handle_get_aml,
+      .nargs = 4,
+      .nargs_is_upper_bound = true
+    },
+    {
+      .url = "aml",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_aml,
+      .nargs = 2
+    },
+
+
     /* mark end of list */
     {
       .url = NULL

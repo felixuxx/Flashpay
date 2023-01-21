@@ -66,7 +66,7 @@ struct TALER_EXCHANGE_ManagementAddPartner
 
 /**
  * Function called when we're done processing the
- * HTTP POST /aml-decision/$OFFICER_PUB request.
+ * HTTP POST /management/partners request.
  *
  * @param cls the `struct TALER_EXCHANGE_ManagementAddPartner *`
  * @param response_code HTTP response code, 0 on error
@@ -145,25 +145,9 @@ TALER_EXCHANGE_management_add_partner (
   wh->cb = cb;
   wh->cb_cls = cb_cls;
   wh->ctx = ctx;
-  {
-    char *path;
-    char opus[sizeof (*partner_pub) * 2];
-    char *end;
-
-    end = GNUNET_STRINGS_data_to_string (
-      partner_pub,
-      sizeof (*partner_pub),
-      opus,
-      sizeof (opus));
-    *end = '\0';
-    GNUNET_asprintf (&path,
-                     "management/partners/%s",
-                     opus);
-    wh->url = TALER_url_join (url,
-                              path,
-                              NULL);
-    GNUNET_free (path);
-  }
+  wh->url = TALER_url_join (url,
+                            "management/partners",
+                            NULL);
   if (NULL == wh->url)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -180,6 +164,8 @@ TALER_EXCHANGE_management_add_partner (
                                 end_date),
     GNUNET_JSON_pack_time_rel ("wad_frequency",
                                wad_frequency),
+    GNUNET_JSON_pack_data_auto ("partner_pub",
+                                &partner_pub),
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 &master_sig),
     TALER_JSON_pack_amount ("wad_fee",

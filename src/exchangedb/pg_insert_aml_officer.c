@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -34,7 +34,8 @@ TEH_PG_insert_aml_officer (
   const char *decider_name,
   bool is_active,
   bool read_only,
-  struct GNUNET_TIME_Absolute last_change)
+  struct GNUNET_TIME_Timestamp last_change,
+  struct GNUNET_TIME_Timestamp *previous_change)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -43,10 +44,11 @@ TEH_PG_insert_aml_officer (
     GNUNET_PQ_query_param_string (decider_name),
     GNUNET_PQ_query_param_bool (is_active),
     GNUNET_PQ_query_param_bool (read_only),
-    GNUNET_PQ_query_param_absolute_time (&last_change),
+    GNUNET_PQ_query_param_timestamp (&last_change),
     GNUNET_PQ_query_param_end
   };
 
+  // FIXME: need to check for previous record!
   PREPARE (pg,
            "insert_aml_staff",
            "INSERT INTO aml_staff "

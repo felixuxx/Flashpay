@@ -25,6 +25,7 @@ CREATE TABLE partners
   ,wad_fee_frac INT4 NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,partner_base_url TEXT NOT NULL
+  ,PRIMARY KEY (partner_master_pub, start_date)
   );
 COMMENT ON TABLE partners
   IS 'exchanges we do wad transfers to';

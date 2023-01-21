@@ -167,7 +167,7 @@ TALER_EXCHANGE_add_aml_decision (
       sizeof (opus));
     *end = '\0';
     GNUNET_asprintf (&path,
-                     "aml-decision/%s",
+                     "aml/%s/decision",
                      opus);
     wh->url = TALER_url_join (url,
                               path,

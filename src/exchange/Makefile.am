@@ -123,6 +123,7 @@ taler_exchange_wirewatch_LDADD = \
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
   taler-exchange-httpd_auditors.c taler-exchange-httpd_auditors.h \
+  taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
   taler-exchange-httpd_batch-deposit.c taler-exchange-httpd_batch-deposit.h \
   taler-exchange-httpd_batch-withdraw.c taler-exchange-httpd_batch-withdraw.h \
   taler-exchange-httpd_common_deposit.c taler-exchange-httpd_common_deposit.h \
@@ -139,12 +140,14 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_kyc-webhook.c taler-exchange-httpd_kyc-webhook.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
   taler-exchange-httpd_management.h \
+  taler-exchange-httpd_management_aml-officers.c \
   taler-exchange-httpd_management_auditors.c \
   taler-exchange-httpd_management_auditors_AP_disable.c \
   taler-exchange-httpd_management_denominations_HDP_revoke.c \
   taler-exchange-httpd_management_drain.c \
   taler-exchange-httpd_management_extensions.c \
   taler-exchange-httpd_management_global_fees.c \
+  taler-exchange-httpd_management_partners.c \
   taler-exchange-httpd_management_post_keys.c \
   taler-exchange-httpd_management_signkey_EP_revoke.c \
   taler-exchange-httpd_management_wire_enable.c \

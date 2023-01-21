@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -32,10 +32,12 @@ TEH_PG_insert_aml_decision (
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_Amount *new_threshold,
   enum TALER_AmlDecisionState new_status,
-  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-  const struct TALER_AmlOfficerSignatureP *decider_sig)
+  const struct TALER_AmlOfficerSignatureP *decider_sig,
+  bool *invalid_officer,
+  struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
   uint32_t ns = (uint32_t) new_status;
@@ -43,13 +45,15 @@ TEH_PG_insert_aml_decision (
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     TALER_PQ_query_param_amount (new_threshold),
     GNUNET_PQ_query_param_uint32 (&ns),
-    GNUNET_PQ_query_param_absolute_time (&decision_time),
+    GNUNET_PQ_query_param_timestamp (&decision_time),
     GNUNET_PQ_query_param_string (justification),
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
     GNUNET_PQ_query_param_end
   };
 
+  // FIXME: set invalid_officer
+  // FIXME: set last_date!
   PREPARE (pg,
            "insert_aml_decision",
            "INSERT INTO aml_history "

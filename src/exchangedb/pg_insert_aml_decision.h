@@ -38,6 +38,9 @@
  * @param justification human-readable text justifying the decision
  * @param decider_pub public key of the staff member
  * @param decider_sig signature of the staff member
+ * @param[out] invalid_officer set to TRUE if @a decider_pub is not allowed to make decisions right now
+ * @param[out] last_date set to the previous decision time;
+ *   the INSERT is not performed if @a last_date is not before @a decision_time
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -46,10 +49,12 @@ TEH_PG_insert_aml_decision (
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_Amount *new_threshold,
   enum TALER_AmlDecisionState new_status,
-  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-  const struct TALER_AmlOfficerSignatureP *decider_sig);
+  const struct TALER_AmlOfficerSignatureP *decider_sig,
+  bool *invalid_officer,
+  struct GNUNET_TIME_Timestamp *last_date);
 
 
 #endif

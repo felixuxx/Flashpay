@@ -51,13 +51,14 @@ TEH_handler_management_partners (
     GNUNET_JSON_spec_string ("partner_base_url",
                              &partner_base_url),
     TALER_JSON_spec_amount ("wad_fee",
+                            TEH_currency,
                             &wad_fee),
     GNUNET_JSON_spec_timestamp ("start_date",
                                 &start_date),
     GNUNET_JSON_spec_timestamp ("end_date",
                                 &start_date),
-    GNUNET_JSON_spec_time_rel ("wad_frequency",
-                               &wad_frequency),
+    GNUNET_JSON_spec_relative_time ("wad_frequency",
+                                    &wad_frequency),
     GNUNET_JSON_spec_end ()
   };
 
@@ -94,14 +95,14 @@ TEH_handler_management_partners (
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TEH_plugin->add_partner (TEH_plugin->cls,
-                                  &partner_pub,
-                                  start_date,
-                                  end_date,
-                                  wad_frequency,
-                                  &wad_fee,
-                                  partner_base_url,
-                                  &master_sig);
+    qs = TEH_plugin->insert_partner (TEH_plugin->cls,
+                                     &partner_pub,
+                                     start_date,
+                                     end_date,
+                                     wad_frequency,
+                                     &wad_fee,
+                                     partner_base_url,
+                                     &master_sig);
     if (qs < 0)
     {
       GNUNET_break (0);
@@ -109,6 +110,14 @@ TEH_handler_management_partners (
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_DB_STORE_FAILED,
                                          "add_partner");
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      /* FIXME: check for idempotency! */
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_CONFLICT,
+                                         TALER_EC_EXCHANGE_MANAGEMENT_ADD_PARTNER_DATA_CONFLICT,
+                                         NULL);
     }
   }
   return TALER_MHD_reply_static (

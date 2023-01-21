@@ -27,7 +27,10 @@
 
 
 /**
- * Insert AML staff record.
+ * Insert AML staff record.  If the time given in
+ * @a last_change is before the previous change in the
+ * database, only @e previous_change is returned and
+ * no actual change is committed to the database.
  *
  * @param cls closure
  * @param decider_pub public key of the staff member
@@ -36,6 +39,7 @@
  * @param is_active true to enable, false to set as inactive
  * @param read_only true to set read-only access
  * @param last_change when was the change made effective
+ * @param[out] previous_change set to the time of the previous change
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -46,6 +50,7 @@ TEH_PG_insert_aml_officer (
   const char *decider_name,
   bool is_active,
   bool read_only,
-  struct GNUNET_TIME_Absolute last_change);
+  struct GNUNET_TIME_Timestamp last_change,
+  struct GNUNET_TIME_Timestamp *previous_change);
 
 #endif
