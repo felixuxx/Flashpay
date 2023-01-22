@@ -47,20 +47,20 @@ TEH_PG_insert_aml_officer (
     GNUNET_PQ_query_param_timestamp (&last_change),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_timestamp ("out_last_change",
+                                     previous_change),
+    GNUNET_PQ_result_spec_end
+  };
 
-  // FIXME: need to check for previous record!
   PREPARE (pg,
-           "insert_aml_staff",
-           "INSERT INTO aml_staff "
-           "(decider_pub"
-           ",master_sig"
-           ",decider_name"
-           ",is_active"
-           ",read_only"
-           ",last_change"
-           ") VALUES "
+           "do_insert_aml_staff",
+           "SELECT"
+           " out_last_change"
+           " FROM exchange_do_insert_aml_officer"
            "($1, $2, $3, $4, $5, $6);");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_aml_staff",
-                                             params);
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "do_insert_aml_staff",
+                                                   params,
+                                                   rs);
 }

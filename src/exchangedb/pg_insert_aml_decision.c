@@ -51,23 +51,23 @@ TEH_PG_insert_aml_decision (
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
     GNUNET_PQ_query_param_end
   };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("out_invalid_officer",
+                                invalid_officer),
+    GNUNET_PQ_result_spec_timestamp ("out_last_date",
+                                     last_date),
+    GNUNET_PQ_result_spec_end
+  };
 
-  // FIXME: set invalid_officer
-  // FIXME: set last_date!
   PREPARE (pg,
-           "insert_aml_decision",
-           "INSERT INTO aml_history "
-           "(h_payto"
-           ",new_threshold_val"
-           ",new_threshold_frac"
-           ",new_status"
-           ",decision_time"
-           ",justification"
-           ",decider_pub"
-           ",decider_sig"
-           ") VALUES "
+           "do_insert_aml_decision",
+           "SELECT"
+           " out_invalid_officer"
+           ",out_last_date"
+           " FROM exchange_do_insert_aml_decision"
            "($1, $2, $3, $4, $5, $6, $7, $8);");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_aml_decision",
-                                             params);
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "do_insert_aml_decision",
+                                                   params,
+                                                   rs);
 }
