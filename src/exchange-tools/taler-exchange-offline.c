@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020, 2021, 2022 Taler Systems SA
+   Copyright (C) 2020-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -111,6 +111,16 @@
  * Generate message to drain profits.
  */
 #define OP_DRAIN_PROFITS "exchange-drain-profits-0"
+
+/**
+ * Setup AML staff.
+ */
+#define OP_UPDATE_AML_STAFF "exchange-add-aml-staff-0"
+
+/**
+ * Setup partner exchange for wad transfers.
+ */
+#define OP_ADD_PARTNER "exchange-add-partner-0"
 
 /**
  * Our private key, initialized in #load_offline_key().
@@ -499,6 +509,62 @@ struct UploadExtensionsRequest
 
 
 /**
+ * Data structure for AML staff requests.
+ */
+struct AmlStaffRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AmlStaffRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AmlStaffRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
+ * Data structure for partner add requests.
+ */
+struct PartnerAddRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct PartnerAddRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct PartnerAddRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementAddPartner *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Next work item to perform.
  */
 static struct GNUNET_SCHEDULER_Task *nxt;
@@ -507,6 +573,27 @@ static struct GNUNET_SCHEDULER_Task *nxt;
  * Handle for #do_download.
  */
 static struct TALER_EXCHANGE_ManagementGetKeysHandle *mgkh;
+
+
+/**
+ * Active AML staff change requests.
+ */
+static struct AmlStaffRequest *asr_head;
+
+/**
+ * Active AML staff change requests.
+ */
+static struct AmlStaffRequest *asr_tail;
+
+/**
+ * Active partner add requests.
+ */
+static struct PartnerAddRequest *par_head;
+
+/**
+ * Active partner add requests.
+ */
+static struct PartnerAddRequest *par_tail;
 
 /**
  * Active denomiantion revocation requests.
@@ -629,6 +716,36 @@ do_shutdown (void *cls)
 {
   (void) cls;
 
+  {
+    struct AmlStaffRequest *asr;
+
+    while (NULL != (asr = asr_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete AML staff update #%u\n",
+                  (unsigned int) asr->idx);
+      TALER_EXCHANGE_management_update_aml_officer_cancel (asr->h);
+      GNUNET_CONTAINER_DLL_remove (asr_head,
+                                   asr_tail,
+                                   asr);
+      GNUNET_free (asr);
+    }
+  }
+  {
+    struct PartnerAddRequest *par;
+
+    while (NULL != (par = par_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete partner add request #%u\n",
+                  (unsigned int) par->idx);
+      TALER_EXCHANGE_management_add_partner_cancel (par->h);
+      GNUNET_CONTAINER_DLL_remove (par_head,
+                                   par_tail,
+                                   par);
+      GNUNET_free (par);
+    }
+  }
   {
     struct DenomRevocationRequest *drr;
 
@@ -842,6 +959,8 @@ static void
 test_shutdown (void)
 {
   if ( (NULL == drr_head) &&
+       (NULL == par_head) &&
+       (NULL == asr_head) &&
        (NULL == srr_head) &&
        (NULL == aar_head) &&
        (NULL == adr_head) &&
@@ -2215,6 +2334,221 @@ upload_extensions (const char *exchange_url,
 
 
 /**
+ * Function called with information about the add partner operation.
+ *
+ * @param cls closure with a `struct PartnerAddRequest`
+ * @param hr HTTP response data
+ */
+static void
+add_partner_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct PartnerAddRequest *par = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) par->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = EXIT_FAILURE;
+  }
+  GNUNET_CONTAINER_DLL_remove (par_head,
+                               par_tail,
+                               par);
+  GNUNET_free (par);
+  test_shutdown ();
+}
+
+
+/**
+ * Add partner action.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value arguments for add partner
+ */
+static void
+add_partner (const char *exchange_url,
+             size_t idx,
+             const json_t *value)
+{
+  struct TALER_MasterPublicKeyP partner_pub;
+  struct GNUNET_TIME_Timestamp start_date;
+  struct GNUNET_TIME_Timestamp end_date;
+  struct GNUNET_TIME_Relative wad_frequency;
+  struct TALER_Amount wad_fee;
+  const char *partner_base_url;
+  struct TALER_MasterSignatureP master_sig;
+  struct PartnerAddRequest *par;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("partner_pub",
+                                 &partner_pub),
+    TALER_JSON_spec_amount ("wad_fee",
+                            currency,
+                            &wad_fee),
+    GNUNET_JSON_spec_relative_time ("wad_frequency",
+                                    &wad_frequency),
+    GNUNET_JSON_spec_timestamp ("start_date",
+                                &start_date),
+    GNUNET_JSON_spec_timestamp ("end_date",
+                                &end_date),
+    GNUNET_JSON_spec_string ("partner_base_url",
+                             &partner_base_url),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *err_name;
+  unsigned int err_line;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to add partner: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = EXIT_FAILURE;
+    test_shutdown ();
+    return;
+  }
+  par = GNUNET_new (struct PartnerAddRequest);
+  par->idx = idx;
+  par->h =
+    TALER_EXCHANGE_management_add_partner (ctx,
+                                           exchange_url,
+                                           &partner_pub,
+                                           start_date,
+                                           end_date,
+                                           wad_frequency,
+                                           &wad_fee,
+                                           partner_base_url,
+                                           &master_sig,
+                                           &add_partner_cb,
+                                           par);
+  GNUNET_CONTAINER_DLL_insert (par_head,
+                               par_tail,
+                               par);
+}
+
+
+/**
+ * Function called with information about the AML officer update operation.
+ *
+ * @param cls closure with a `struct AmlStaffRequest`
+ * @param hr HTTP response data
+ */
+static void
+update_aml_officer_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct AmlStaffRequest *asr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) asr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = EXIT_FAILURE;
+  }
+  GNUNET_CONTAINER_DLL_remove (asr_head,
+                               asr_tail,
+                               asr);
+  GNUNET_free (asr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload AML staff action.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value arguments for AML staff change
+ */
+static void
+update_aml_staff (const char *exchange_url,
+                  size_t idx,
+                  const json_t *value)
+{
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
+  const char *officer_name;
+  struct GNUNET_TIME_Timestamp change_date;
+  bool is_active;
+  bool read_only;
+  struct TALER_MasterSignatureP master_sig;
+  struct AmlStaffRequest *asr;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("officer_pub",
+                                 &officer_pub),
+    GNUNET_JSON_spec_timestamp ("change_date",
+                                &change_date),
+    GNUNET_JSON_spec_bool ("is_active",
+                           &is_active),
+    GNUNET_JSON_spec_bool ("read_only",
+                           &read_only),
+    GNUNET_JSON_spec_string ("officer_name",
+                             &officer_name),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *err_name;
+  unsigned int err_line;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to AML staff update: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = EXIT_FAILURE;
+    test_shutdown ();
+    return;
+  }
+  asr = GNUNET_new (struct AmlStaffRequest);
+  asr->idx = idx;
+  asr->h =
+    TALER_EXCHANGE_management_update_aml_officer (ctx,
+                                                  exchange_url,
+                                                  &officer_pub,
+                                                  officer_name,
+                                                  change_date,
+                                                  is_active,
+                                                  read_only,
+                                                  &master_sig,
+                                                  &update_aml_officer_cb,
+                                                  asr);
+  GNUNET_CONTAINER_DLL_insert (asr_head,
+                               asr_tail,
+                               asr);
+}
+
+
+/**
  * Perform uploads based on the JSON in #out.
  *
  * @param exchange_url base URL of the exchange to use
@@ -2266,6 +2600,14 @@ trigger_upload (const char *exchange_url)
     {
       .key = OP_EXTENSIONS,
       .cb = &upload_extensions
+    },
+    {
+      .key = OP_UPDATE_AML_STAFF,
+      .cb = &update_aml_staff
+    },
+    {
+      .key = OP_ADD_PARTNER,
+      .cb = &add_partner
     },
     /* array termination */
     {
@@ -3037,6 +3379,261 @@ do_drain (char *const *args)
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
   next (args + 3);
+}
+
+
+/**
+ * Add partner.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the partner's master public key, args[1] the partner's
+ *        API base URL, args[2] the wad fee, args[3] the wad frequency, and
+ *        args[4] the year (including possibly 'now')
+ */
+static void
+do_add_partner (char *const *args)
+{
+  struct TALER_MasterPublicKeyP partner_pub;
+  struct GNUNET_TIME_Timestamp start_date;
+  struct GNUNET_TIME_Timestamp end_date;
+  struct GNUNET_TIME_Relative wad_frequency;
+  struct TALER_Amount wad_fee;
+  const char *partner_base_url;
+  struct TALER_MasterSignatureP master_sig;
+  char dummy;
+  unsigned int year;
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not adding partner\n");
+    test_shutdown ();
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &partner_pub,
+                                       sizeof (partner_pub))) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify the partner master public key as first argument for this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (NULL == args[1]) ||
+       (0 != strncmp ("http",
+                      args[1],
+                      strlen ("http"))) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify the partner's base URL as the 2nd argument to this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  partner_base_url = args[1];
+  if ( (NULL == args[2]) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[2],
+                                &wad_fee)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid amount `%s' specified for wad fee of partner\n",
+                args[2]);
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (NULL == args[3]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_fancy_time_to_relative (args[3],
+                                               &wad_frequency)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid wad frequency `%s' specified for add partner\n",
+                args[3]);
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (NULL == args[4]) ||
+       ( (1 != sscanf (args[4],
+                       "%u%c",
+                       &year,
+                       &dummy)) &&
+         (0 != strcasecmp ("now",
+                           args[4])) ) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid year `%s' specified for add partner\n",
+                args[4]);
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (0 == strcasecmp ("now",
+                       args[4]))
+    year = GNUNET_TIME_get_current_year ();
+  start_date = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year));
+  end_date = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year + 1));
+
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_NO))
+    return;
+  TALER_exchange_offline_partner_details_sign (&partner_pub,
+                                               start_date,
+                                               end_date,
+                                               wad_frequency,
+                                               &wad_fee,
+                                               partner_base_url,
+                                               &master_priv,
+                                               &master_sig);
+  output_operation (OP_ADD_PARTNER,
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("partner_base_url",
+                                               partner_base_url),
+                      GNUNET_JSON_pack_time_rel ("wad_frequency",
+                                                 wad_frequency),
+                      GNUNET_JSON_pack_timestamp ("start_date",
+                                                  start_date),
+                      GNUNET_JSON_pack_timestamp ("end_date",
+                                                  end_date),
+                      GNUNET_JSON_pack_data_auto ("partner_pub",
+                                                  &partner_pub),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
+  next (args + 5);
+}
+
+
+/**
+ * Enable or disable AML staff.
+ *
+ * @param is_active true to enable, false to disable
+ * @param args the array of command-line arguments to process next; args[0] must be the AML staff's public key, args[1] the AML staff's legal name, and if @a is_active then args[2] rw (read write) or ro (read only)
+ */
+static void
+do_set_aml_staff (bool is_active,
+                  char *const *args)
+{
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
+  const char *officer_name;
+  bool read_only;
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Timestamp now
+    = GNUNET_TIME_timestamp_get ();
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not updating AML staff status\n");
+    test_shutdown ();
+    global_ret = EXIT_FAILURE;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &officer_pub,
+                                       sizeof (officer_pub))) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify the AML officer's public key as first argument for this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (NULL == args[1])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify the officer's legal name as the 2nd argument to this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  officer_name = args[1];
+  if (is_active)
+  {
+    if ( (NULL == args[2]) ||
+         ( (0 != strcmp (args[2],
+                         "ro")) &&
+           (0 != strcmp (args[2],
+                         "rw")) ) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "You must specify 'ro' or 'rw' (and not `%s') for the access level\n",
+                  args[2]);
+      test_shutdown ();
+      global_ret = EXIT_INVALIDARGUMENT;
+      return;
+    }
+    read_only = (0 == strcmp (args[2],
+                              "ro"));
+  }
+  else
+  {
+    read_only = true;
+  }
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_NO))
+    return;
+  TALER_exchange_offline_aml_officer_status_sign (&officer_pub,
+                                                  officer_name,
+                                                  now,
+                                                  is_active,
+                                                  read_only,
+                                                  &master_priv,
+                                                  &master_sig);
+  output_operation (OP_UPDATE_AML_STAFF,
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("officer_name",
+                                               officer_name),
+                      GNUNET_JSON_pack_timestamp ("change_date",
+                                                  now),
+                      GNUNET_JSON_pack_bool ("is_active",
+                                             is_active),
+                      GNUNET_JSON_pack_bool ("read_only",
+                                             read_only),
+                      GNUNET_JSON_pack_data_auto ("officer_pub",
+                                                  &officer_pub),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
+  next (args + (is_active ? 3 : 2));
+}
+
+
+/**
+ * Disable AML staff.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the AML staff's public key, args[1] the AML staff's legal name, args[2] rw (read write) or ro (read only)
+ */
+static void
+disable_aml_staff (char *const *args)
+{
+  do_set_aml_staff (false,
+                    args);
+}
+
+
+/**
+ * Enable AML staff.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the AML staff's public key, args[1] the AML staff's legal name, args[2] rw (read write) or ro (read only)
+ */
+static void
+enable_aml_staff (char *const *args)
+{
+  do_set_aml_staff (true,
+                    args);
 }
 
 
@@ -4474,6 +5071,24 @@ work (void *cls)
       .help =
         "drain profits from exchange escrow account to regular exchange operator account (amount, debit account configuration section and credit account payto://-URI must be given as arguments)",
       .cb = &do_drain
+    },
+    {
+      .name = "add-partner",
+      .help =
+        "add partner exchange for P2P wad transfers (partner master public key, partner base URL, wad fee, wad frequency and validity year must be given as arguments)",
+      .cb = &do_add_partner
+    },
+    {
+      .name = "aml-enable",
+      .help =
+        "enable AML staff member (staff member public key, legal name and rw (read write) or ro (read only) must be given as arguments)",
+      .cb = &enable_aml_staff
+    },
+    {
+      .name = "aml-disable",
+      .help =
+        "disable AML staff member (staff member public key and legal name must be given as arguments)",
+      .cb = &disable_aml_staff
     },
     {
       .name = "upload",
