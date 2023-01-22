@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_aml_decision.h
+ * @file taler-exchange-httpd_aml-decision.h
  * @brief Handle /aml/$OFFICER_PUB/decision requests
  * @author Christian Grothoff
  */
@@ -27,7 +27,7 @@
 
 /**
  * Handle an "/aml/$OFFICER_PUB/decision" request.  Parses the decision
- * details, checks the signatures and if appropriately authorized excecutes
+ * details, checks the signatures and if appropriately authorized executes
  * the decision.
  *
  * @param rc request context
