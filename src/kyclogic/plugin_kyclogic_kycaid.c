@@ -632,6 +632,7 @@ proof_reply (void *cls)
           NULL, /* user id */
           NULL, /* provider legi ID */
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+          NULL, /* attributes */
           MHD_HTTP_BAD_REQUEST,
           resp);
 }

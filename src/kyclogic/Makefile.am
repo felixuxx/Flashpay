@@ -79,6 +79,7 @@ libtaler_plugin_kyclogic_oauth2_la_LIBADD = \
   $(LTLIBINTL)
 libtaler_plugin_kyclogic_oauth2_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
+  $(top_builddir)/src/templating/libtalertemplating.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

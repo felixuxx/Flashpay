@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_kyclogic_plugin.h"
 #include "taler_mhd_lib.h"
+#include "taler_templating_lib.h"
 #include "taler_json_lib.h"
 #include <regex.h>
 #include "taler_util.h"
@@ -104,6 +105,12 @@ struct TALER_KYCLOGIC_ProviderDetails
    * Web-based KYC process is done?
    */
   char *post_kyc_redirect_url;
+
+  /**
+   * Template for converting user-data returned by
+   * the provider into our KYC attribute data.
+   */
+  char *attribute_template;
 
   /**
    * Validity time for a successful KYC process.
@@ -195,6 +202,11 @@ struct TALER_KYCLOGIC_ProofHandle
   char *post_body;
 
   /**
+   * KYC attributes returned about the user by the OAuth 2.0 server.
+   */
+  json_t *attributes;
+
+  /**
    * Response to return.
    */
   struct MHD_Response *response;
@@ -277,6 +289,7 @@ oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
   GNUNET_free (pd->client_id);
   GNUNET_free (pd->client_secret);
   GNUNET_free (pd->post_kyc_redirect_url);
+  GNUNET_free (pd->attribute_template);
   GNUNET_free (pd);
 }
 
@@ -443,6 +456,21 @@ oauth2_load_configuration (void *cls,
   }
   pd->post_kyc_redirect_url = s;
 
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_OAUTH2_ATTRIBUTE_TEMPLATE",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               provider_section_name,
+                               "KYC_OAUTH2_ATTRIBUTE_TEMPLATE");
+  }
+  else
+  {
+    pd->attribute_template = s;
+  }
+
   return pd;
 }
 
@@ -566,9 +594,12 @@ return_proof_response (void *cls)
           ph->provider_user_id,
           ph->provider_legitimization_id,
           GNUNET_TIME_relative_to_absolute (ph->pd->validity),
+          ph->attributes,
           ph->http_status,
           ph->response);
   GNUNET_free (ph->provider_user_id);
+  if (NULL != ph->attributes)
+    json_decref (ph->attributes);
   GNUNET_free (ph);
 }
 
@@ -641,6 +672,57 @@ handle_proof_error (struct TALER_KYCLOGIC_ProofHandle *ph,
 
 
 /**
+ * Convert user data returned by the provider into
+ * standardized attribute data.
+ *
+ * @param pd our provider configuration
+ * @param data user-data given by the provider
+ * @return converted KYC attribute data object
+ */
+static json_t *
+data2attributes (const struct TALER_KYCLOGIC_ProviderDetails *pd,
+                 const json_t *data)
+{
+  json_t *ret;
+  void *attr_data;
+  size_t attr_size;
+  int rv;
+  json_error_t err;
+
+  if (NULL == pd->attribute_template)
+    return json_object ();
+  if (0 !=
+      (rv = TALER_TEMPLATING_fill (pd->attribute_template,
+                                   data,
+                                   &attr_data,
+                                   &attr_size)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to convert KYC provider data to attributes: %d\n",
+                rv);
+    json_dumpf (data,
+                stderr,
+                JSON_INDENT (2));
+    return NULL;
+  }
+  ret = json_loadb (attr_data,
+                    attr_size,
+                    JSON_REJECT_DUPLICATES,
+                    &err);
+  GNUNET_free (attr_data);
+  if (NULL == ret)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse converted KYC attributes as JSON: %s (at offset %d)\n",
+                err.text,
+                err.position);
+    return NULL;
+  }
+  return ret;
+}
+
+
+/**
  * The request for @a ph succeeded (presumably).
  * Call continuation with the result.
  *
@@ -689,6 +771,7 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     GNUNET_break_op (0);
     handle_proof_error (ph,
                         j);
+    GNUNET_JSON_parse_free (spec);
     return;
   }
   {
@@ -716,6 +799,7 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
             "Unexpected response from KYC gateway: data must contain id");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
+      GNUNET_JSON_parse_free (spec);
       return;
     }
     ph->status = TALER_KYCLOGIC_STATUS_SUCCESS;
@@ -731,6 +815,9 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     ph->http_status = MHD_HTTP_SEE_OTHER;
     ph->provider_user_id = GNUNET_strdup (id);
   }
+  ph->attributes = data2attributes (ph->pd,
+                                    data);
+  GNUNET_JSON_parse_free (spec);
 }
 
 

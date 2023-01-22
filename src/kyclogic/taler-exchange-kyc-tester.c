@@ -688,6 +688,7 @@ handler_kyc_webhook_post (
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param expiration until when is the KYC check valid
+ * @param attributes attributes about the user
  * @param http_status HTTP status code of @a response
  * @param[in] response to return to the HTTP client
  */
@@ -698,6 +699,7 @@ proof_cb (
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
+  const json_t *attributes,
   unsigned int http_status,
   struct MHD_Response *response)
 {
@@ -710,6 +712,10 @@ proof_cb (
               status,
               http_status,
               provider_user_id);
+  if (NULL != attributes)
+    json_dumpf (attributes,
+                stderr,
+                JSON_INDENT (2));
   MHD_resume_connection (rs->rc->connection);
   TALER_MHD_daemon_trigger ();
   rs->rc->response = response;

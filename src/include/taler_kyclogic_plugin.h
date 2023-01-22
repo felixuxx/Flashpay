@@ -158,6 +158,7 @@ typedef void
  * @param status KYC status
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
+ * @param attributes user attributes returned by the provider
  * @param expiration until when is the KYC check valid
  * @param http_status HTTP status code of @a response
  * @param[in] response to return to the HTTP client
@@ -169,6 +170,7 @@ typedef void
   const char *provider_user_id,
   const char *provider_legitimization_id,
   struct GNUNET_TIME_Absolute expiration,
+  const json_t *attributes,
   unsigned int http_status,
   struct MHD_Response *response);
 
