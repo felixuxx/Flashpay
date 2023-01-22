@@ -31,6 +31,12 @@
 #include "taler-exchange-httpd_responses.h"
 
 
+/**
+ * How often do we try the DB operation at most?
+ */
+#define MAX_RETRIES 10
+
+
 MHD_RESULT
 TEH_handler_management_aml_officers (
   struct MHD_Connection *connection,
@@ -90,9 +96,9 @@ TEH_handler_management_aml_officers (
   {
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp last_date;
+    unsigned int retries_left = MAX_RETRIES;
 
     do {
-      // FIXME: bound loop!
       qs = TEH_plugin->insert_aml_officer (TEH_plugin->cls,
                                            &officer_pub,
                                            &master_sig,
@@ -101,6 +107,8 @@ TEH_handler_management_aml_officers (
                                            read_only,
                                            change_date,
                                            &last_date);
+      if (0 == --retries_left)
+        break;
     } while (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     if (qs < 0)
     {
