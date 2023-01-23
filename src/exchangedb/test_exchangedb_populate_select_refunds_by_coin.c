@@ -24,8 +24,6 @@
 #include "taler_exchangedb_plugin.h"
 #include "math.h"
 
-#define NUM_ROWS 10000
-
 /**
  * Global result from the testcase.
  */
@@ -41,7 +39,6 @@ static int result;
     goto drop;                                  \
   } while (0)
 
-
 /**
  * Initializes @a ptr with random data.
  */
@@ -54,16 +51,13 @@ static int result;
 #define ZR_BLK(ptr) \
   memset (ptr, 0, sizeof (*ptr))
 
-
 /**
  * Currency we use.  Must match test-exchange-db-*.conf.
  */
 #define CURRENCY "EUR"
-/**
- * How big do we make the RSA keys?
- */
 #define RSA_KEY_SIZE 1024
-#define ROUNDS 1000
+#define ROUNDS 10000
+#define NUM_ROWS 1000000
 #define MELT_NEW_COINS 5
 #define MELT_NOREVEAL_INDEX 1
 /**
@@ -72,14 +66,14 @@ static int result;
 static struct TALER_EXCHANGEDB_Plugin *plugin;
 static struct TALER_DenomFeeSet fees;
 static struct TALER_MerchantWireHashP h_wire_wt;
-
+static struct DenomKeyPair **new_dkp;
+static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
 struct DenomKeyPair
 {
   struct TALER_DenominationPrivateKey priv;
   struct TALER_DenominationPublicKey pub;
 };
-static struct DenomKeyPair **new_dkp;
-static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
+
 /**
  * Destroy a denomination key pair.  The key is not necessarily removed from the DB.
  *
@@ -185,7 +179,6 @@ check_refund_cb (void *cls,
                  const struct TALER_Amount *amount_with_fee)
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
-
   if (0 != TALER_amount_cmp (amount_with_fee,
                              &refund->details.refund_amount))
   {
@@ -207,7 +200,6 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   const uint32_t num_partitions = 10;
-  struct DenomKeyPair *dkp = NULL;
   struct GNUNET_TIME_Timestamp ts;
   struct TALER_EXCHANGEDB_Deposit *depos=NULL;
   struct GNUNET_TIME_Timestamp deadline;
@@ -226,6 +218,8 @@ run (void *cls)
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
   struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
+  unsigned int count=0;
+
   ref = GNUNET_new_array (ROUNDS +1,
                           struct TALER_EXCHANGEDB_Refund);
   depos = GNUNET_new_array (ROUNDS +1,
@@ -400,18 +394,72 @@ run (void *cls)
                                       now,
                                       &depos[i]));
     }
-
-    /* 100% Refund */
     {
       bool not_found;
       bool refund_ok;
       bool gone;
       bool conflict;
-      ref[i].coin = depos[i].coin;
-      ref[i].details.merchant_pub = depos[i].merchant_pub;
+      unsigned int refund_percent=0;
+      switch (refund_percent){
+      case 2 ://100% refund
+        ref[i].coin = depos[i].coin;
+        ref[i].details.merchant_pub = depos[i].merchant_pub;
+        RND_BLK(&ref[i].details.merchant_sig);
+        ref[i].details.h_contract_terms = depos[i].h_contract_terms;
+        ref[i].coin.coin_pub = depos[i].coin.coin_pub;
+        ref[i].details.rtransaction_id = i;
+        ref[i].details.refund_amount = value;
+        ref[i].details.refund_fee = fees.refund;
+        FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                plugin->do_refund (plugin->cls,
+                                   &ref[i],
+                                   &fees.deposit,
+                                   known_coin_id,
+                                   &not_found,
+                                   &refund_ok,
+                                   &gone,
+                                   &conflict));
+        break;
+    case 1 ://10% refund
+      if (count < (NUM_ROWS/10))
+      {
+        ref[i].coin = depos[i].coin;
+        ref[i].details.merchant_pub = depos[i].merchant_pub;
+        RND_BLK(&ref[i].details.merchant_sig);
+        ref[i].details.h_contract_terms = depos[i].h_contract_terms;
+        ref[i].coin.coin_pub = depos[i].coin.coin_pub;
+        ref[i].details.rtransaction_id = i;
+        ref[i].details.refund_amount = value;
+        ref[i].details.refund_fee = fees.refund;
+      }
+      else
+      {
+        ref[i].coin = depos[i].coin;
+        RND_BLK(&ref[i].details.merchant_pub);
+        RND_BLK(&ref[i].details.merchant_sig);
+        RND_BLK(&ref[i].details.h_contract_terms);
+        RND_BLK(&ref[i].coin.coin_pub);
+        ref[i].details.rtransaction_id = i;
+        ref[i].details.refund_amount = value;
+        ref[i].details.refund_fee = fees.refund;
+      }
+      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+              plugin->do_refund (plugin->cls,
+                                 &ref[i],
+                                 &fees.deposit,
+                                 known_coin_id,
+                                 &not_found,
+                                 &refund_ok,
+                                 &gone,
+                                 &conflict));
+      count++;
+      break;
+    case 0://no refund
+      ref[i].coin=depos[i].coin;
+      RND_BLK(&ref[i].details.merchant_pub);
       RND_BLK(&ref[i].details.merchant_sig);
-      ref[i].details.h_contract_terms = depos[i].h_contract_terms;
-      ref[i].coin.coin_pub = depos[i].coin.coin_pub;
+      RND_BLK(&ref[i].details.h_contract_terms);
+      RND_BLK(&ref[i].coin.coin_pub);
       ref[i].details.rtransaction_id = i;
       ref[i].details.refund_amount = value;
       ref[i].details.refund_fee = fees.refund;
@@ -424,10 +472,8 @@ run (void *cls)
                                  &refund_ok,
                                  &gone,
                                  &conflict));
-
-      /*      FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-              plugin->insert_refund (plugin->cls,
-              &ref[i]));*/
+        break;
+      }/* END OF SWITCH CASE */
     }
     if (ROUNDS == i)
       TALER_denom_sig_free (&depos[i].coin.denom_sig);
@@ -443,7 +489,7 @@ run (void *cls)
     struct GNUNET_TIME_Relative duration;
 
     time = GNUNET_TIME_absolute_get ();
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+    FAILIF (0 >
             plugin->select_refunds_by_coin (plugin->cls,
                                             &ref[r].coin.coin_pub,
                                             &ref[r].details.merchant_pub,
@@ -476,10 +522,8 @@ run (void *cls)
   result = 0;
 drop:
   GNUNET_break (GNUNET_OK ==
-  plugin->drop_tables (plugin->cls));
+                plugin->drop_tables (plugin->cls));
 cleanup:
-  if (NULL != dkp)
-    destroy_denom_key_pair (dkp);
   if (NULL != revealed_coins)
   {
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
@@ -502,7 +546,6 @@ cleanup:
     }
   GNUNET_free(depos);
   GNUNET_free(ref);
-  dkp = NULL;
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;
 }

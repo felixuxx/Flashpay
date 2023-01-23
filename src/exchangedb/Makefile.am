@@ -296,7 +296,7 @@ check_PROGRAMS = \
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-by-j-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres\
+  test-exchangedb-populate-select-refunds-by-coin-postgres\
   test-exchangedb-populate-link-data-postgres\
   test-exchangedb-populate-ready-deposit-postgres
 
@@ -306,7 +306,7 @@ TESTS = \
   test-exchangedb-by-j-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-table-postgres\
+  test-exchangedb-populate-select-refunds-by-coin-postgres\
   test-exchangedb-populate-link-data-postgres\
   test-exchangedb-populate-ready-deposit-postgres
 test_exchangedb_postgres_SOURCES = \
@@ -369,9 +369,9 @@ test_exchangedb_batch_reserves_in_insert_postgres_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-test_exchangedb_populate_table_postgres_SOURCES = \
-  test_exchangedb_populate_table.c
-test_exchangedb_populate_table_postgres_LDADD = \
+test_exchangedb_populate_select_refunds_by_coin_postgres_SOURCES = \
+  test_exchangedb_populate_select_refunds_by_coin.c
+test_exchangedb_populate_select_refunds_by_coin_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

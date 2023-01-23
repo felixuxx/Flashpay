@@ -44,5 +44,7 @@ SET search_path TO exchange;
 #include "exchange_do_batch2_reserves_in_insert.sql"
 #include "exchange_do_batch4_reserves_in_insert.sql"
 #include "exchange_do_batch8_reserves_in_insert.sql"
+#include "exchange_do_refund_by_coin.sql"
+#include "exchange_do_get_ready_deposit.sql"
 
 COMMIT;

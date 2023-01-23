@@ -41,6 +41,7 @@ TEH_PG_get_ready_deposit (void *cls,
     GNUNET_PQ_query_param_uint64 (&end_shard_row),
     GNUNET_PQ_query_param_end
   };
+
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                           merchant_pub),
@@ -57,26 +58,180 @@ TEH_PG_get_ready_deposit (void *cls,
               "Finding ready deposits by deadline %s (%llu)\n",
               GNUNET_TIME_absolute2s (now),
               (unsigned long long) now.abs_value_us);
-  PREPARE (pg,
-           "deposits_get_ready",
-           "SELECT"
-           " payto_uri"
-           ",merchant_pub"
-           " FROM deposits_by_ready dbr"
-           "  JOIN deposits dep"
-           "    ON (dbr.coin_pub = dep.coin_pub AND"
-           "        dbr.deposit_serial_id = dep.deposit_serial_id)"
-           "  JOIN wire_targets wt"
-           "    USING (wire_target_h_payto)"
-           " WHERE dbr.wire_deadline<=$1"
-           "   AND dbr.shard >= $2"
-           "   AND dbr.shard <= $3"
-           " ORDER BY "
-           "   dbr.wire_deadline ASC"
-           "  ,dbr.shard ASC"
-           " LIMIT 1;");
+  int choose_mode =-2;
+  const char *query;
+
+  if (-2 == choose_mode)
+  {
+    const char *mode = getenv ("NEW_LOGIC");
+    char dummy;
+    if ( (NULL==mode) ||
+         (1 != sscanf (mode,
+                       "%d%c",
+                       &choose_mode,
+                       &dummy)) )
+      {
+        if (NULL != mode)
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Bad mode `%s' specified\n",
+                      mode);
+      }
+    if (NULL==mode)
+      choose_mode=0;
+
+
+  }
+  switch (choose_mode)
+  {
+  case 0:
+    query="deposits_get_ready";
+    PREPARE (pg,
+             query,
+             "SELECT"
+             " payto_uri"
+             ",merchant_pub"
+             " FROM deposits_by_ready dbr"
+             "  JOIN deposits dep"
+             "    ON (dbr.coin_pub = dep.coin_pub AND"
+             "        dbr.deposit_serial_id = dep.deposit_serial_id)"
+             "  JOIN wire_targets wt"
+             "    USING (wire_target_h_payto)"
+             " WHERE dbr.wire_deadline<=$1"
+             "   AND dbr.shard >= $2"
+             "   AND dbr.shard <= $3"
+             " ORDER BY "
+             "   dbr.wire_deadline ASC"
+             "  ,dbr.shard ASC"
+             " LIMIT 1;");
+    break;
+  case 1:
+    query="deposits_get_ready_v1";
+    PREPARE (pg,
+             query,
+             "WITH rc AS MATERIALIZED ("
+             " SELECT"
+             " coin_pub"
+             ",deposit_serial_id"
+             " FROM deposits_by_ready"
+             " WHERE"
+             " wire_deadline<=$1"
+             " AND shard >= $2"
+             " AND shard <= $3"
+             " ORDER BY "
+             "   wire_deadline ASC"
+             "  ,shard ASC"
+             "  LIMIT 1"
+             ")"
+             "SELECT"
+             " wt.payto_uri"
+             ",dep.merchant_pub"
+             " FROM ("
+             " SELECT"
+             " wire_target_h_payto"
+             ",merchant_pub"
+             " FROM deposits"
+             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
+             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
+             ") dep"
+             "  JOIN wire_targets wt"
+             "    ON (dep.wire_target_h_payto = wt.wire_target_h_payto)"
+             );
+
+    break;
+  case 2:
+    query = "stored_procedure_get_ready_deposit";
+    PREPARE (pg,
+             query,
+             "SELECT"
+             " out_payto_uri AS payto_uri"
+             ",out_merchant_pub AS merchant_pub"
+             " FROM"
+             " exchange_do_get_ready_deposit"
+             " ($1, $2, $3) ");
+    break;
+  case 3:
+    query="deposits_get_ready_v3";
+    PREPARE (pg,
+             query,
+             "WITH rc AS MATERIALIZED ("
+             " SELECT"
+             " coin_pub"
+             ",deposit_serial_id"
+             " FROM deposits_by_ready"
+             " WHERE"
+             " wire_deadline<=$1"
+             " AND shard >= $2"
+             " AND shard <= $3"
+             " ORDER BY "
+             "   wire_deadline ASC"
+             "  ,shard ASC"
+             "  LIMIT 1"
+             ")"
+             "SELECT"
+             " wt.payto_uri"
+             ",dep.merchant_pub"
+             " FROM ("
+             " SELECT"
+             " wire_target_h_payto"
+             ",merchant_pub"
+             ",coin_pub"
+             " FROM deposits"
+             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
+             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
+             ") dep"
+             "  JOIN wire_targets wt"
+             "    ON (dep.wire_target_h_payto = wt.wire_target_h_payto)"
+             "  JOIN rc"
+             "    ON (dep.coin_pub=rc.coin_pub)"
+             );
+
+    break;
+  case 4:
+    query="deposits_get_ready_v4";
+    PREPARE (pg,
+             query,
+             "WITH rc AS MATERIALIZED ("
+             " SELECT"
+             " coin_pub"
+             ",deposit_serial_id"
+             " FROM deposits_by_ready"
+             " WHERE"
+             " wire_deadline<=$1"
+             " AND shard >= $2"
+             " AND shard <= $3"
+             " ORDER BY "
+             "   wire_deadline ASC"
+             "  ,shard ASC"
+             "  LIMIT 1"
+             "),"
+             "WITH rv AS MATERIALIZED ("
+             " SELECT"
+             " payto_uri"
+             ",wire_target_h_payto"
+             " FROM wire_targets"
+             ")"
+             "SELECT"
+             " rv.payto_uri"
+             ",dep.merchant_pub"
+             " FROM ("
+             " SELECT"
+             " wire_target_h_payto"
+             ",merchant_pub"
+             " FROM deposits"
+             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
+             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
+             ") dep"
+             " JOIN rv"
+             "  ON (rv.wire_target_h_payto=dep.wire_target_h_payto)"
+             );
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "deposits_get_ready",
+                                                   query,
                                                    params,
                                                    rs);
 }

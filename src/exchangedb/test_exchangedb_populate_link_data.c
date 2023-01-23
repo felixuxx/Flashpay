@@ -24,14 +24,6 @@
 #include "taler_exchangedb_plugin.h"
 #include "math.h"
 
-
-#define NUM_ROWS 1000
-
-/**
- * Global result from the testcase.
- */
-static int result;
-
 /**
  * Report line of error if @a cond is true, and jump to label "drop".
  */
@@ -55,22 +47,10 @@ static int result;
 #define ZR_BLK(ptr) \
   memset (ptr, 0, sizeof (*ptr))
 
-
-/**
- * Currency we use.  Must match test-exchange-db-*.conf.
- */
 #define CURRENCY "EUR"
-
-/**
- * How big do we make the RSA keys?
- */
 #define RSA_KEY_SIZE 1024
-static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
-
-static struct TALER_TransferPrivateKeyP tprivs[TALER_CNC_KAPPA];
-
-static struct TALER_TransferPublicKeyP tpub;
 #define ROUNDS 10
+#define NUM_ROWS 1000
 #define MELT_NEW_COINS 5
 #define MELT_NOREVEAL_INDEX 1
 /**
@@ -82,7 +62,10 @@ static struct TALER_DenomFeeSet fees;
  * Denomination keys used for fresh coins in melt test.
  */
 static struct DenomKeyPair **new_dkp;
-
+static int result;
+static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
+static struct TALER_TransferPrivateKeyP tprivs[TALER_CNC_KAPPA];
+static struct TALER_TransferPublicKeyP tpub;
 struct DenomKeyPair
 {
   struct TALER_DenominationPrivateKey priv;
@@ -221,8 +204,6 @@ handle_link_data_cb (void *cls,
     GNUNET_assert (GNUNET_NO != found);
   }
 }
-
-
 
 /**
  * Main function that will be run by the scheduler.
