@@ -27,7 +27,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   OUT out_last_date INT8)
 LANGUAGE plpgsql
 AS $$
-
+BEGIN
 -- Check officer is eligible to make decisions.
 PERFORM
   FROM exchange.aml_staff

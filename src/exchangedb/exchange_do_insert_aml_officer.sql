@@ -24,7 +24,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_officer(
   OUT out_last_change INT8)
 LANGUAGE plpgsql
 AS $$
-
+BEGIN
 INSERT INTO exchange.aml_staff
   (decider_pub
   ,master_sig
