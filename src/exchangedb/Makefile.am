@@ -291,7 +291,9 @@ libtalerexchangedb_la_LDFLAGS = \
 
 
 check_PROGRAMS = \
-  test-exchangedb-postgres \
+  test-exchangedb-postgres
+
+noinst_PROGRAMS = \
   bench-db-postgres\
   perf-exchangedb-reserves-in-insert-postgres\
   test-exchangedb-by-j-postgres\

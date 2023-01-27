@@ -35,6 +35,17 @@ extern "C" {
 #endif
 
 /**
+ * Legal name of the business/company.
+ */
+#define TALER_ATTRIBUTE_COMPANY_NAME "company_name"
+
+/**
+ * Legal country of registration of the business/company,
+ * 2-letter country code using ISO 3166-2.
+ */
+#define TALER_ATTRIBUTE_REGISTRATION_COUNTRY "registration_country"
+
+/**
  * Full name, when known/possible using "Lastname, Firstname(s)" format,
  * but "Firstname(s) Lastname" or "Firstname M. Lastname" should also be
  * tolerated (as is "Name", especially if the person only has one name).
@@ -42,6 +53,22 @@ extern "C" {
  * NULL for not collected.
  */
 #define TALER_ATTRIBUTE_FULL_NAME "full_name"
+
+/**
+ * True/false indicator if the individual is a politically
+ * exposed person.
+ */
+#define TALER_ATTRIBUTE_PEP "pep"
+
+/**
+ * Phone number (of business or individual).
+ */
+#define TALER_ATTRIBUTE_PHONE "phone"
+
+/**
+ * Email address (of business or individual).
+ */
+#define TALER_ATTRIBUTE_EMAIL "email"
 
 /**
  * Birthdate of the person, as far as known. YYYY-MM-DD, a value
@@ -62,6 +89,15 @@ extern "C" {
  * stateless persons.  NULL for not collected.
  */
 #define TALER_ATTRIBUTE_NATIONALITIES "nationalities"
+
+/**
+ * Residence countries(s) of the person using 2-letter country codes ("US",
+ * "DE", "FR", "IT", etc.) separated by commas if multiple residences are
+ * confirmed ("EN,US,DE"). Note that in the latter case it is not guaranteed
+ * that all residences were necessarily recorded.  Empty string for
+ * international nomads.  NULL for not collected.
+ */
+#define TALER_ATTRIBUTE_RESIDENCES "residences"
 
 
 #if 0 /* keep Emacsens' auto-indent happy */

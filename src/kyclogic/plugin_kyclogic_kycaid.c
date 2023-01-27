@@ -1,6 +1,6 @@
 /*
   This file is part of GNU Taler
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022, 2023 Taler Systems SA
 
   Taler is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -19,6 +19,8 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler_attributes.h"
+#include "taler_kyclogic_lib.h"
 #include "taler_kyclogic_plugin.h"
 #include "taler_mhd_lib.h"
 #include "taler_curl_lib.h"
@@ -749,7 +751,7 @@ log_failure (json_t *verifications)
 
 /**
  * Function called when we're done processing the
- * HTTP "/verifications/{verification_id}" request.
+ * HTTP "/applicants/{verification_id}" request.
  *
  * @param cls the `struct TALER_KYCLOGIC_WebhookHandle`
  * @param response_code HTTP response code, 0 on error
@@ -769,30 +771,116 @@ handle_webhook_finished (void *cls,
   {
   case MHD_HTTP_OK:
     {
-      const char *applicant_id;
-      const char *verification_id;
-      const char *status;
-      bool verified;
-      json_t *verifications;
+      const char *type;
+      const char *profile_status;
+      const char *first_name = NULL;
+      const char *last_name = NULL;
+      const char *middle_name = NULL;
+      const char *dob = NULL;
+      const char *residence_country = NULL;
+      const char *gender = NULL;
+      bool pep = false;
+      bool no_pep = false;
+      const char *company_name = NULL;
+      const char *business_activity_id = NULL;
+      const char *registration_country = NULL;
+      const char *email = NULL;
+      const char *phone = NULL;
+      json_t *addresses = NULL;
+      json_t *documents = NULL;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("applicant_id",
-                                 &applicant_id),
-        GNUNET_JSON_spec_string ("verification_id",
-                                 &verification_id),
-        GNUNET_JSON_spec_string ("status",
-                                 &status), /* completed, pending, ... */
-        GNUNET_JSON_spec_bool ("verified",
-                               &verified),
-        GNUNET_JSON_spec_json ("verifications",
-                               &verifications),
+        GNUNET_JSON_spec_string ("type",
+                                 &type),
+        GNUNET_JSON_spec_string ("profile_status",
+                                 &profile_status), /* valid, invalid, pending */
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("email",
+                                   &email),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("phone",
+                                   &phone),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_json ("addresses",
+                                 &addresses),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_json ("documents",
+                                 &documents),
+          NULL),
         GNUNET_JSON_spec_end ()
       };
+      struct GNUNET_JSON_Specification bspec[] = {
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("company_name",
+                                   &company_name),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("business_activity_id",
+                                   &business_activity_id),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("registration_country",
+                                   &registration_country),
+          NULL),
+        GNUNET_JSON_spec_end ()
+      };
+      struct GNUNET_JSON_Specification pspec[] = {
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("first_name",
+                                   &first_name),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("middle_name",
+                                   &middle_name),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("last_name",
+                                   &last_name),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("dob",
+                                   &dob),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("residence_country",
+                                   &residence_country),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("gender",
+                                   &gender),
+          NULL),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_bool ("pep",
+                                 &pep),
+          &no_pep),
+        GNUNET_JSON_spec_end ()
+      };
+      struct GNUNET_JSON_Specification *ispec = NULL;
       struct GNUNET_TIME_Absolute expiration;
+      bool no_parse;
+      enum TALER_KYCLOGIC_KycUserType ut;
 
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (j,
-                             spec,
-                             NULL, NULL))
+      no_parse = (GNUNET_OK !=
+                  GNUNET_JSON_parse (j,
+                                     spec,
+                                     NULL, NULL));
+      if (! no_parse)
+      {
+        ut = (0 == strcasecmp ("person",
+                               type))
+          ? TALER_KYCLOGIC_KYC_UT_INDIVIDUAL
+          : TALER_KYCLOGIC_KYC_UT_BUSINESS;
+        ispec = (ut == TALER_KYCLOGIC_KYC_UT_INDIVIDUAL)
+          ? pspec
+          : bspec;
+        no_parse = (GNUNET_OK !=
+                    GNUNET_JSON_parse (j,
+                                       ispec,
+                                       NULL, NULL));
+      }
+      if (no_parse)
       {
         GNUNET_break_op (0);
         json_dumpf (j,
@@ -816,20 +904,94 @@ handle_webhook_finished (void *cls,
                 resp);
         break;
       }
-      if (! verified)
+      if (0 == strcasecmp ("valid",
+                           profile_status))
       {
-        log_failure (verifications);
+        log_failure (json_object_get (j,
+                                      "decline_reasons"));
       }
       resp = MHD_create_response_from_buffer (0,
                                               "",
                                               MHD_RESPMEM_PERSISTENT);
-      if (verified)
+      if (0 == strcasecmp ("valid",
+                           profile_status))
       {
         json_t *attr;
 
-        attr = json_object ();
-        // FIXME: initialize attributes!
-        GNUNET_assert (NULL != attr);
+        if (ut == TALER_KYCLOGIC_KYC_UT_INDIVIDUAL)
+        {
+          char *name = NULL;
+
+          if ( (NULL != last_name) ||
+               (NULL != first_name) ||
+               (NULL != middle_name) )
+          {
+            GNUNET_asprintf (&name,
+                             "%s, %s %s",
+                             (NULL != last_name)
+                             ? last_name
+                             : "",
+                             (NULL != first_name)
+                             ? first_name
+                             : "",
+                             (NULL != middle_name)
+                             ? middle_name
+                             : "");
+          }
+          attr = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_BIRTHDATE,
+                dob)),
+            GNUNET_JSON_pack_allow_null (
+              no_pep
+              ? GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_PEP,
+                NULL)
+              : GNUNET_JSON_pack_bool (
+                TALER_ATTRIBUTE_PEP,
+                pep)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_FULL_NAME,
+                name)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_PHONE,
+                phone)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_EMAIL,
+                email)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_RESIDENCES,
+                residence_country))
+            );
+          GNUNET_free (name);
+        }
+        else
+        {
+          attr = GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_COMPANY_NAME,
+                company_name)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_PHONE,
+                phone)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_EMAIL,
+                email)),
+            GNUNET_JSON_pack_allow_null (
+              GNUNET_JSON_pack_string (
+                TALER_ATTRIBUTE_REGISTRATION_COUNTRY,
+                residence_country))
+            );
+        }
+        // FIXME: do something about addresses & documents!
         expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
         wh->cb (wh->cb_cls,
                 wh->process_row,
@@ -846,18 +1008,25 @@ handle_webhook_finished (void *cls,
       }
       else
       {
+        enum TALER_KYCLOGIC_KycStatus ks;
+
+        ks = (0 == strcasecmp ("pending",
+                               profile_status))
+          ? TALER_KYCLOGIC_STATUS_PENDING
+          : TALER_KYCLOGIC_STATUS_USER_ABORTED;
         wh->cb (wh->cb_cls,
                 wh->process_row,
                 &wh->h_payto,
                 wh->pd->section,
                 wh->applicant_id,
                 wh->verification_id,
-                TALER_KYCLOGIC_STATUS_USER_ABORTED,
+                ks,
                 GNUNET_TIME_UNIT_ZERO_ABS,
                 NULL,
                 MHD_HTTP_NO_CONTENT,
                 resp);
       }
+      GNUNET_JSON_parse_free (ispec);
       GNUNET_JSON_parse_free (spec);
     }
     break;
@@ -1201,7 +1370,7 @@ kycaid_webhook (void *cls,
   }
 
   GNUNET_asprintf (&wh->url,
-                   "https://api.kycaid.com/verifications/%s",
+                   "https://api.kycaid.com/applicants/%s",
                    verification_id);
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,

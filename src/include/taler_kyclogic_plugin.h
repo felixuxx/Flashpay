@@ -77,8 +77,6 @@ enum TALER_KYCLOGIC_KycStatus
    * The provider is still checking.
    */
   TALER_KYCLOGIC_STATUS_PROVIDER_PENDING
-
-
     = TALER_KYCLOGIC_STATUS_PROVIDER
       | TALER_KYCLOGIC_STATUS_PENDING,
 
