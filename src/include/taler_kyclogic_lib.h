@@ -214,16 +214,18 @@ typedef enum GNUNET_DB_QueryStatus
  *         amounts involved in this type of operation
  *         at the given account
  * @param ai_cls closure for @a ai
- * @return NULL if no check is needed,
+ * @param[out] set to NULL if no check is needed,
  *   otherwise space-separated list of required checks
+ * @return transaction status
  */
-const char *
+enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
                                   const struct TALER_PaytoHashP *h_payto,
                                   TALER_KYCLOGIC_KycSatisfiedIterator ki,
                                   void *ki_cls,
                                   TALER_KYCLOGIC_KycAmountIterator ai,
-                                  void *ai_cls);
+                                  void *ai_cls,
+                                  const char **required);
 
 
 /**

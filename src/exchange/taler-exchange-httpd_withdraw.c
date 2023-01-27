@@ -164,13 +164,26 @@ withdraw_transaction (void *cls,
   {
     const char *kyc_required;
 
-    kyc_required = TALER_KYCLOGIC_kyc_test_required (
+    qs = TALER_KYCLOGIC_kyc_test_required (
       TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
       &wc->h_payto,
       TEH_plugin->select_satisfied_kyc_processes,
       TEH_plugin->cls,
       &withdraw_amount_cb,
-      wc);
+      wc,
+      &kyc_required);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "kyc_test_required");
+      }
+      return qs;
+    }
     if (NULL != kyc_required)
     {
       /* insert KYC requirement into DB! */
@@ -198,10 +211,13 @@ withdraw_transaction (void *cls,
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_FETCH_FAILED,
                                              "do_withdraw");
+    }
     return qs;
   }
   if (! found)

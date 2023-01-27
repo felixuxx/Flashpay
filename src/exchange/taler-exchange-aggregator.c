@@ -484,13 +484,19 @@ kyc_satisfied (struct AggregationUnit *au_active)
   const char *requirement;
   enum GNUNET_DB_QueryStatus qs;
 
-  requirement = TALER_KYCLOGIC_kyc_test_required (
+  qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT,
     &au_active->h_payto,
     db_plugin->select_satisfied_kyc_processes,
     db_plugin->cls,
     &return_relevant_amounts,
-    (void *) au_active);
+    (void *) au_active,
+    &requirement);
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return false;
+  }
   if (NULL == requirement)
     return true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

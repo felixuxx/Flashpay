@@ -282,13 +282,26 @@ merge_transaction (void *cls,
   bool no_partner = true;
   const char *required;
 
-  required = TALER_KYCLOGIC_kyc_test_required (
+  qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
     &pcc->h_payto,
     TEH_plugin->select_satisfied_kyc_processes,
     TEH_plugin->cls,
     &amount_iterator,
-    pcc);
+    pcc,
+    &required);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    GNUNET_break (0);
+    *mhd_ret =
+      TALER_MHD_reply_with_error (connection,
+                                  MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                  TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                  "kyc_test_required");
+    return qs;
+  }
   if (NULL != required)
   {
     pcc->kyc.ok = false;
@@ -314,8 +327,7 @@ merge_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
       return qs;
-    TALER_LOG_WARNING (
-      "Failed to store merge purse information in database\n");
+    GNUNET_break (0);
     *mhd_ret =
       TALER_MHD_reply_with_error (connection,
                                   MHD_HTTP_INTERNAL_SERVER_ERROR,

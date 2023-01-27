@@ -996,13 +996,14 @@ remove_satisfied (void *cls,
 }
 
 
-const char *
+enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
                                   const struct TALER_PaytoHashP *h_payto,
                                   TALER_KYCLOGIC_KycSatisfiedIterator ki,
                                   void *ki_cls,
                                   TALER_KYCLOGIC_KycAmountIterator ai,
-                                  void *ai_cls)
+                                  void *ai_cls,
+                                  const char **required)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
@@ -1035,7 +1036,10 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
         &ttc);
   }
   if (0 == needed_cnt)
-    return NULL;
+  {
+    *required = NULL;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   timeframe = GNUNET_TIME_UNIT_ZERO;
   for (unsigned int i = 0; i<num_kyc_triggers; i++)
   {
@@ -1062,7 +1066,10 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
         &ttc);
   }
   if (0 == needed_cnt)
-    return NULL;
+  {
+    *required = NULL;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   {
     struct RemoveContext rc = {
       .needed = needed,
@@ -1076,10 +1083,17 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
              h_payto,
              &remove_satisfied,
              &rc);
-    GNUNET_break (qs >= 0);  // FIXME: handle DB failure more nicely?
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
   }
   if (0 == needed_cnt)
-    return NULL;
+  {
+    *required = NULL;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   {
     struct RemoveContext rc = {
       .needed = needed,
@@ -1093,10 +1107,17 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
              h_payto,
              &remove_satisfied,
              &rc);
-    GNUNET_break (qs >= 0);  // FIXME: handle DB failure more nicely?
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return qs;
+    }
   }
   if (0 == needed_cnt)
-    return NULL;
+  {
+    *required = NULL;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   ret = NULL;
   for (unsigned int k = 0; k<needed_cnt; k++)
   {
@@ -1117,7 +1138,8 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
       GNUNET_free (tmp);
     }
   }
-  return ret;
+  *required = ret;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 

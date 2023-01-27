@@ -109,22 +109,34 @@ wallet_kyc_check (void *cls,
   struct KycRequestContext *krc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  krc->required = TALER_KYCLOGIC_kyc_test_required (
+  qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE,
     &krc->h_payto,
     TEH_plugin->select_satisfied_kyc_processes,
     TEH_plugin->cls,
     &balance_iterator,
-    krc);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC check required at %s is `%s'\n",
-              TALER_amount2s (&krc->balance),
-              krc->required);
+    krc,
+    &krc->required);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                           "kyc_test_required");
+    return qs;
+  }
   if (NULL == krc->required)
   {
     krc->kyc.ok = true;
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC check required at %s is `%s'\n",
+              TALER_amount2s (&krc->balance),
+              krc->required);
   krc->kyc.ok = false;
   qs = TEH_plugin->insert_kyc_requirement_for_account (TEH_plugin->cls,
                                                        krc->required,

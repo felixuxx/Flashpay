@@ -231,14 +231,26 @@ reserve_close_transaction (void *cls,
     TALER_payto_hash (rcc->payto_uri,
                       &rcc->kyc_payto);
     rcc->qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-    kyc_needed
-      = TALER_KYCLOGIC_kyc_test_required (
-          TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
-          &rcc->kyc_payto,
-          TEH_plugin->select_satisfied_kyc_processes,
-          TEH_plugin->cls,
-          &amount_it,
-          rcc);
+    qs = TALER_KYCLOGIC_kyc_test_required (
+      TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE,
+      &rcc->kyc_payto,
+      TEH_plugin->select_satisfied_kyc_processes,
+      TEH_plugin->cls,
+      &amount_it,
+      rcc,
+      &kyc_needed);
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      GNUNET_break (0);
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                      "iterate_reserve_close_info");
+      return qs;
+    }
     if (rcc->qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == rcc->qs)
