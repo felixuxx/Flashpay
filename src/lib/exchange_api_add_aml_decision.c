@@ -66,7 +66,7 @@ struct TALER_EXCHANGE_AddAmlDecision
 
 /**
  * Function called when we're done processing the
- * HTTP POST /aml-decision/$OFFICER_PUB request.
+ * HTTP POST /aml/$OFFICER_PUB/decision request.
  *
  * @param cls the `struct TALER_EXCHANGE_AddAmlDecision *`
  * @param response_code HTTP response code, 0 on error
@@ -166,7 +166,7 @@ TALER_EXCHANGE_add_aml_decision (
       sizeof (opus));
     *end = '\0';
     GNUNET_asprintf (&path,
-                     "aml-decision/%s",
+                     "aml/%s/decision",
                      opus);
     wh->url = TALER_url_join (url,
                               path,
