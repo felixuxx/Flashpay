@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_attributes.h"
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
@@ -200,12 +201,10 @@ proof_cb (
     const char *birthdate;
     struct GNUNET_ShortHashCode kyc_prox;
 
-    // FIXME: compute kyc_prox properly!
-    memset (&kyc_prox,
-            0,
-            sizeof (kyc_prox));
+    TALER_CRYPTO_attributes_to_kyc_prox (attributes,
+                                         &kyc_prox);
     birthdate = json_string_value (json_object_get (attributes,
-                                                    "birthdate"));
+                                                    TALER_ATTRIBUTE_BIRTHDATE));
     TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
                                          attributes,
                                          &ea,

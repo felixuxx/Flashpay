@@ -1457,6 +1457,7 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
 {
   struct MHD_Response *resp;
   struct GNUNET_TIME_Absolute expiration;
+  json_t *attr;
 
   if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
     expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
@@ -1466,6 +1467,9 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
                                           "",
                                           MHD_RESPMEM_PERSISTENT);
   TALER_MHD_add_global_headers (resp);
+  attr = json_object ();
+  // FIXME: fetch attributes!
+  GNUNET_assert (NULL != attr);
   wh->cb (wh->cb_cls,
           wh->process_row,
           &wh->h_payto,
@@ -1474,8 +1478,10 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
           inquiry_id,
           status,
           expiration,
+          attr,
           http_status,
           resp);
+  json_decref (attr);
 }
 
 
@@ -1773,6 +1779,7 @@ async_webhook_reply (void *cls)
           wh->inquiry_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+          NULL,
           wh->response_code,
           wh->resp);
   persona_webhook_cancel (wh);

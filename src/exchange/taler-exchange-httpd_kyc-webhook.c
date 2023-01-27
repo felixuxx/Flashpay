@@ -24,6 +24,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_attributes.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_kyclogic_lib.h"
@@ -140,8 +141,7 @@ TEH_kyc_webhook_cleanup (void)
 
 
 /**
- * Function called with the result of a webhook
- * operation.
+ * Function called with the result of a KYC webhook operation.
  *
  * Note that the "decref" for the @a response
  * will be done by the plugin.
@@ -154,6 +154,7 @@ TEH_kyc_webhook_cleanup (void)
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
  * @param status KYC status
  * @param expiration until when is the KYC check valid
+ * @param attributes user attributes returned by the provider
  * @param http_status HTTP status code of @a response
  * @param[in] response to return to the HTTP client
  */
@@ -167,6 +168,7 @@ webhook_finished_cb (
   const char *provider_legitimization_id,
   enum TALER_KYCLOGIC_KycStatus status,
   struct GNUNET_TIME_Absolute expiration,
+  const json_t *attributes,
   unsigned int http_status,
   struct MHD_Response *response)
 {
@@ -179,7 +181,39 @@ webhook_finished_cb (
     /* _successfully_ resumed case */
     {
       enum GNUNET_DB_QueryStatus qs;
+      size_t eas;
+      void *ea;
+      const char *birthdate;
+      struct GNUNET_ShortHashCode kyc_prox;
 
+      TALER_CRYPTO_attributes_to_kyc_prox (attributes,
+                                           &kyc_prox);
+      birthdate = json_string_value (json_object_get (attributes,
+                                                      TALER_ATTRIBUTE_BIRTHDATE));
+      TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
+                                           attributes,
+                                           &ea,
+                                           &eas);
+      qs = TEH_plugin->insert_kyc_attributes (
+        TEH_plugin->cls,
+        account_id,
+        &kyc_prox,
+        provider_section,
+        birthdate,
+        GNUNET_TIME_timestamp_get (),
+        GNUNET_TIME_absolute_to_timestamp (expiration),
+        eas,
+        ea);
+      GNUNET_free (ea);
+      if (qs < 0)
+      {
+        GNUNET_break (0);
+        kwh->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
+                                              "insert_kyc_attributes");
+        kwh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+        kwh_resume (kwh);
+        return;
+      }
       qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
                                                   process_row,
                                                   provider_section,

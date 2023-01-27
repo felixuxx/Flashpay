@@ -1211,6 +1211,7 @@ wh_return_not_found (void *cls)
           NULL,
           TALER_KYCLOGIC_STATUS_KEEP,
           GNUNET_TIME_UNIT_ZERO_ABS,
+          NULL,
           MHD_HTTP_NOT_FOUND,
           response);
   GNUNET_free (wh);

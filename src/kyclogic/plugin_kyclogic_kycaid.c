@@ -811,6 +811,7 @@ handle_webhook_finished (void *cls,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
                 GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+                NULL,
                 MHD_HTTP_BAD_GATEWAY,
                 resp);
         break;
@@ -824,6 +825,11 @@ handle_webhook_finished (void *cls,
                                               MHD_RESPMEM_PERSISTENT);
       if (verified)
       {
+        json_t *attr;
+
+        attr = json_object ();
+        // FIXME: initialize attributes!
+        GNUNET_assert (NULL != attr);
         expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
         wh->cb (wh->cb_cls,
                 wh->process_row,
@@ -833,8 +839,10 @@ handle_webhook_finished (void *cls,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_SUCCESS,
                 expiration,
+                attr,
                 MHD_HTTP_NO_CONTENT,
                 resp);
+        json_decref (attr);
       }
       else
       {
@@ -846,6 +854,7 @@ handle_webhook_finished (void *cls,
                 wh->verification_id,
                 TALER_KYCLOGIC_STATUS_USER_ABORTED,
                 GNUNET_TIME_UNIT_ZERO_ABS,
+                NULL,
                 MHD_HTTP_NO_CONTENT,
                 resp);
       }
@@ -872,6 +881,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_INTERNAL_SERVER_ERROR,
             resp);
     break;
@@ -893,6 +903,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_NETWORK_AUTHENTICATION_REQUIRED,
             resp);
     break;
@@ -910,6 +921,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_GATEWAY_TIMEOUT,
             resp);
     break;
@@ -933,6 +945,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_BAD_GATEWAY,
             resp);
     break;
@@ -950,6 +963,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_SERVICE_UNAVAILABLE,
             resp);
     break;
@@ -967,6 +981,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_BAD_GATEWAY,
             resp);
     break;
@@ -990,6 +1005,7 @@ handle_webhook_finished (void *cls,
             wh->verification_id,
             TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
             GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
             MHD_HTTP_BAD_GATEWAY,
             resp);
     break;
@@ -1018,6 +1034,7 @@ async_webhook_reply (void *cls)
           wh->verification_id, /* provider legi ID */
           TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
           GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+          NULL,
           wh->response_code,
           wh->resp);
   kycaid_webhook_cancel (wh);

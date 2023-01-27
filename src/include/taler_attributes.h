@@ -1,0 +1,74 @@
+/*
+     This file is part of GNU Taler
+     Copyright (C) 2023 Taler Systems SA
+
+     GNU Taler is free software: you can redistribute it and/or modify it
+     under the terms of the GNU Lesser General Public License as published
+     by the Free Software Foundation, either version 3 of the License,
+     or (at your option) any later version.
+
+     GNU Taler is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License for more details.
+
+     You should have received a copy of the GNU Lesser General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+     SPDX-License-Identifier: LGPL3.0-or-later
+
+     Note: the LGPL does not apply to all components of GNU Taler,
+     but it does apply to this file.
+ */
+/**
+  * @file src/include/taler_attributes.h
+  * @brief GNU Taler database event types, TO BE generated via https://gana.gnunet.org/
+  */
+#ifndef GNU_TALER_ATTRIBUTES_H
+#define GNU_TALER_ATTRIBUTES_H
+
+#ifdef __cplusplus
+extern "C" {
+#if 0 /* keep Emacsens' auto-indent happy */
+}
+#endif
+#endif
+
+/**
+ * Full name, when known/possible using "Lastname, Firstname(s)" format,
+ * but "Firstname(s) Lastname" or "Firstname M. Lastname" should also be
+ * tolerated (as is "Name", especially if the person only has one name).
+ * If the person has no name, an empty string must be given.
+ * NULL for not collected.
+ */
+#define TALER_ATTRIBUTE_FULL_NAME "full_name"
+
+/**
+ * Birthdate of the person, as far as known. YYYY-MM-DD, a value
+ * of 0 (for DD, MM or even YYYY) is to be used for 'unknown'
+ * according to official records.
+ * Thus, 1950-00-00 stands for a birthdate in 1950 with unknown
+ * day and month.  If official documents record January 1st or
+ * some other date instead, that day may also be specified.
+ * NULL for not collected.
+ */
+#define TALER_ATTRIBUTE_BIRTHDATE "birthdate"
+
+/**
+ * Citizenship(s) of the person using 2-letter country codes ("US", "DE",
+ * "FR", "IT", etc.) separated by commas if multiple citizenships are
+ * confirmed ("EN,US,DE"). Note that in the latter case it is not guaranteed
+ * that all nationalities were necessarily recorded.  Empty string for
+ * stateless persons.  NULL for not collected.
+ */
+#define TALER_ATTRIBUTE_NATIONALITIES "nationalities"
+
+
+#if 0 /* keep Emacsens' auto-indent happy */
+{
+#endif
+#ifdef __cplusplus
+}
+#endif
+
+#endif

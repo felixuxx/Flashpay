@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1833,6 +1833,20 @@ TALER_CRYPTO_kyc_attributes_decrypt (
   const struct TALER_AttributeEncryptionKeyP *key,
   const void *enc_attr,
   size_t enc_attr_size);
+
+
+/**
+ * Takes a set of KYC attributes and extracts key
+ * data that we use to detect similar / duplicate
+ * entries in the database.
+ *
+ * @param attr set of KYC attributes
+ * @param[out] kyc_prox set to the proximity hash
+ */
+void
+TALER_CRYPTO_attributes_to_kyc_prox (
+  const json_t *attr,
+  struct GNUNET_ShortHashCode *kyc_prox);
 
 
 /**

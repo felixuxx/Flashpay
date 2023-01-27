@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -19,9 +19,12 @@
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Florian Dold
  * @author Benedikt Mueller
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_attributes.h"
+#include <gnunet/gnunet_json_lib.h>
 
 
 const char *
@@ -241,6 +244,53 @@ strchrnul (const char *s,
 
 
 #endif
+
+
+void
+TALER_CRYPTO_attributes_to_kyc_prox (
+  const json_t *attr,
+  struct GNUNET_ShortHashCode *kyc_prox)
+{
+  const char *name = NULL;
+  const char *birthdate = NULL;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string (TALER_ATTRIBUTE_FULL_NAME,
+                               &name),
+      NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string (TALER_ATTRIBUTE_BIRTHDATE,
+                               &birthdate),
+      NULL),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (attr,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break (0);
+    memset (kyc_prox,
+            0,
+            sizeof (*kyc_prox));
+    return;
+  }
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (
+                   kyc_prox,
+                   sizeof (*kyc_prox),
+                   name,
+                   (NULL == name)
+                   ? 0
+                   : strlen (name),
+                   birthdate,
+                   (NULL == birthdate)
+                   ? 0
+                   : strlen (birthdate),
+                   NULL,
+                   0));
+}
 
 
 /* end of util.c */
