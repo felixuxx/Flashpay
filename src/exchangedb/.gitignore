@@ -13,3 +13,5 @@ procedures.sql
 exchange-0003.sql
 test-exchangedb-batch-reserves-in-insert-postgres
 test-exchangedb-populate-table-postgres
+test-exchangedb-populate-link-data-postgres
+test-exchangedb-populate-ready-deposit-postgres
