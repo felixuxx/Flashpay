@@ -4410,7 +4410,7 @@ TALER_EXCHANGE_management_add_partner (
 
 
 /**
- * Cancel #TALER_EXCHANGE_management_update_aml_officer() operation.
+ * Cancel #TALER_EXCHANGE_management_add_partner() operation.
  *
  * @param rh handle of the operation to cancel
  */

@@ -213,7 +213,7 @@ struct TEH_RequestHandler
      *
      * @param rc context for the request
      * @param json uploaded JSON data
-     * @param args array of arguments, needs to be of length @e args_expected
+     * @param args array of arguments, needs to be of length @e nargs
      * @return MHD result code
      */
     MHD_RESULT
@@ -225,7 +225,7 @@ struct TEH_RequestHandler
      * Function to call to handle DELETE requests.
      *
      * @param rc context for the request
-     * @param args array of arguments, needs to be of length @e args_expected
+     * @param args array of arguments, needs to be of length @e nargs
      * @return MHD result code
      */
     MHD_RESULT

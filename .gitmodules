@@ -7,4 +7,4 @@
 	branch = prebuilt
 [submodule "contrib/gana"]
 	path = contrib/gana
-	url = https://git.gnunet.org/git/gana.git
+	url = https://git.gnunet.org/gana.git

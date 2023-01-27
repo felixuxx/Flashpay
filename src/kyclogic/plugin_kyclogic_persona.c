@@ -890,6 +890,7 @@ proof_generic_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
           account_id,
           inquiry_id,
           expiration,
+          NULL, /* FIXME: return attributes! */
           http_status,
           resp);
 }
@@ -1173,6 +1174,7 @@ handle_proof_finished (void *cls,
                   account_id,
                   inquiry_id,
                   expiration,
+                  NULL, /* FIXME: return attributes! */
                   MHD_HTTP_SEE_OTHER,
                   resp);
         }

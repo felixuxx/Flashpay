@@ -24,9 +24,6 @@
 #include "taler_exchangedb_plugin.h"
 #include "math.h"
 
-
-#define NUM_ROWS 1000
-
 /**
  * Global result from the testcase.
  */
@@ -55,20 +52,13 @@ static int result;
 #define ZR_BLK(ptr) \
   memset (ptr, 0, sizeof (*ptr))
 
-
 /**
  * Currency we use.  Must match test-exchange-db-*.conf.
  */
 #define CURRENCY "EUR"
-
-/**
- * How big do we make the RSA keys?
- */
 #define RSA_KEY_SIZE 1024
-static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
-
-
-#define ROUNDS 100
+#define NUM_ROWS 1000000
+#define ROUNDS 10000
 #define MELT_NEW_COINS 5
 #define MELT_NOREVEAL_INDEX 1
 /**
@@ -81,7 +71,7 @@ static struct TALER_MerchantWireHashP h_wire_wt;
  * Denomination keys used for fresh coins in melt test.
  */
 static struct DenomKeyPair **new_dkp;
-
+static struct TALER_EXCHANGEDB_RefreshRevealedCoin *revealed_coins;
 struct DenomKeyPair
 {
   struct TALER_DenominationPrivateKey priv;
@@ -389,7 +379,6 @@ run (void *cls)
                                      &nonce_ok,
                                      &ruuid));
       }
-
       {
         /* ENSURE_COIN_KNOWN */
         uint64_t known_coin_id;
@@ -408,23 +397,23 @@ run (void *cls)
         refresh.noreveal_index = MELT_NOREVEAL_INDEX;
       }
         /*STORE INTO DEPOSIT*/
-        {
-          struct GNUNET_TIME_Timestamp now;
-          now = GNUNET_TIME_timestamp_get ();
-          FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-                  plugin->insert_deposit (plugin->cls,
-                                          now,
-                                          &depos[i]));
-        }
-        if (ROUNDS == i)
-          TALER_denom_sig_free (&depos[i].coin.denom_sig);
+      {
+        struct GNUNET_TIME_Timestamp now;
+        now = GNUNET_TIME_timestamp_get ();
+        FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+                plugin->insert_deposit (plugin->cls,
+                                        now,
+                                        &depos[i]));
+      }
+      if (ROUNDS == i)
+        TALER_denom_sig_free (&depos[i].coin.denom_sig);
     }
   /* End of benchmark setup */
   GNUNET_free(perm);
   // commit
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
-  /**** CALL GET LINK DATA ****/
+  /**** CALL GET READY DEPOSIT ****/
   for (unsigned int r=0; r< ROUNDS; r++)
   {
     struct GNUNET_TIME_Absolute time;

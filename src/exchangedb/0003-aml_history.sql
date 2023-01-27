@@ -110,7 +110,7 @@ BEGIN
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_main_index '
     'ON ' || table_name || ' '
-    '(h_payto ASC, decision_time ASC);'
+    '(h_payto, decision_time DESC);'
   );
 END $$;
 

@@ -21,6 +21,7 @@ libtalerexchange_la_LDFLAGS = \
   -version-info 5:0:0 \
   -no-undefined
 libtalerexchange_la_SOURCES = \
+  exchange_api_add_aml_decision.c \
   exchange_api_auditor_add_denomination.c \
   exchange_api_batch_deposit.c \
   exchange_api_batch_withdraw.c \
@@ -37,6 +38,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_kyc_proof.c \
   exchange_api_kyc_wallet.c \
   exchange_api_link.c \
+  exchange_api_management_add_partner.c \
   exchange_api_management_auditor_disable.c \
   exchange_api_management_auditor_enable.c \
   exchange_api_management_drain_profits.c \
@@ -47,6 +49,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_management_revoke_signing_key.c \
   exchange_api_management_set_global_fee.c \
   exchange_api_management_set_wire_fee.c \
+  exchange_api_management_update_aml_officer.c \
   exchange_api_management_wire_disable.c \
   exchange_api_management_wire_enable.c \
   exchange_api_melt.c \

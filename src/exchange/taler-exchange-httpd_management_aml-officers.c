@@ -31,6 +31,12 @@
 #include "taler-exchange-httpd_responses.h"
 
 
+/**
+ * How often do we try the DB operation at most?
+ */
+#define MAX_RETRIES 10
+
+
 MHD_RESULT
 TEH_handler_management_aml_officers (
   struct MHD_Connection *connection,
@@ -90,16 +96,19 @@ TEH_handler_management_aml_officers (
   {
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp last_date;
+    unsigned int retries_left = MAX_RETRIES;
 
     do {
-      qs = TEH_plugin->set_aml_officer (TEH_plugin->cls,
-                                        &officer_pub,
-                                        officer_name,
-                                        change_date,
-                                        is_active,
-                                        read_only,
-                                        &master_sig,
-                                        &last_date);
+      qs = TEH_plugin->insert_aml_officer (TEH_plugin->cls,
+                                           &officer_pub,
+                                           &master_sig,
+                                           officer_name,
+                                           is_active,
+                                           read_only,
+                                           change_date,
+                                           &last_date);
+      if (0 == --retries_left)
+        break;
     } while (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     if (qs < 0)
     {
@@ -107,13 +116,13 @@ TEH_handler_management_aml_officers (
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_DB_STORE_FAILED,
-                                         "XXX");
+                                         "insert_aml_officer");
     }
     if (GNUNET_TIME_timestamp_cmp (last_date,
                                    >,
                                    change_date))
     {
-      GNUNER_break_op (0);
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_CONFLICT,
