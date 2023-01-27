@@ -1166,18 +1166,22 @@ TALER_KYCLOGIC_kyc_get_details (
 }
 
 
-bool
+enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_check_satisfied (const char *requirements,
                                 const struct TALER_PaytoHashP *h_payto,
                                 json_t **kyc_details,
                                 TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                void *ki_cls)
+                                void *ki_cls,
+                                bool *satisfied)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;
 
   if (NULL == requirements)
-    return true;
+  {
+    *satisfied = true;
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
   {
     char *req = GNUNET_strdup (requirements);
 
@@ -1204,7 +1208,12 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
              h_payto,
              &remove_satisfied,
              &rc);
-    GNUNET_break (qs >= 0);  // FIXME: handle DB failure more nicely?
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      *satisfied = false;
+      return qs;
+    }
     if (0 != needed_cnt)
     {
       json_decref (rc.kyc_details);
@@ -1215,7 +1224,8 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
       *kyc_details = rc.kyc_details;
     }
   }
-  return (0 == needed_cnt);
+  *satisfied = (0 == needed_cnt);
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 

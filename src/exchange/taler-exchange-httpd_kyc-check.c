@@ -297,6 +297,7 @@ kyc_check (void *cls,
   enum GNUNET_GenericReturnValue ret;
   struct TALER_PaytoHashP h_payto;
   char *requirements;
+  bool satisfied;
 
   qs = TEH_plugin->lookup_kyc_requirement_by_row (
     TEH_plugin->cls,
@@ -330,12 +331,26 @@ kyc_check (void *cls,
     GNUNET_free (requirements);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (TALER_KYCLOGIC_check_satisfied (
-        requirements,
-        &h_payto,
-        &kyp->kyc_details,
-        TEH_plugin->select_satisfied_kyc_processes,
-        TEH_plugin->cls))
+  qs = TALER_KYCLOGIC_check_satisfied (
+    requirements,
+    &h_payto,
+    &kyp->kyc_details,
+    TEH_plugin->select_satisfied_kyc_processes,
+    TEH_plugin->cls,
+    &satisfied);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                           "kyc_test_required");
+    GNUNET_free (requirements);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (satisfied)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC requirements `%s' already satisfied\n",

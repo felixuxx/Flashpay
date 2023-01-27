@@ -214,7 +214,7 @@ typedef enum GNUNET_DB_QueryStatus
  *         amounts involved in this type of operation
  *         at the given account
  * @param ai_cls closure for @a ai
- * @param[out] set to NULL if no check is needed,
+ * @param[out] required set to NULL if no check is needed,
  *   otherwise space-separated list of required checks
  * @return transaction status
  */
@@ -238,14 +238,16 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
  *             KYC information was collected
  * @param ki iterator over satisfied providers
  * @param ki_cls closure for @a ki
- * @return true if the KYC check was satisfied
+ * @param[out] satisfied set to true if the KYC check was satisfied
+ * @return transaction status (from @a ki)
  */
-bool
+enum GNUNET_DB_QueryStatus
 TALER_KYCLOGIC_check_satisfied (const char *requirements,
                                 const struct TALER_PaytoHashP *h_payto,
                                 json_t **kyc_details,
                                 TALER_KYCLOGIC_KycSatisfiedIterator ki,
-                                void *ki_cls);
+                                void *ki_cls,
+                                bool *satisfied);
 
 
 /**
