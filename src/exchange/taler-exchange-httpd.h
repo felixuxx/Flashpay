@@ -83,6 +83,11 @@ extern bool TEH_suicide;
 extern struct TALER_MasterPublicKeyP TEH_master_public_key;
 
 /**
+ * Key used to encrypt KYC attribute data in our database.
+ */
+extern struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
+
+/**
  * Our DB plugin.
  */
 extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;

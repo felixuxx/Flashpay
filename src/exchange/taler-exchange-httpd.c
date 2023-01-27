@@ -133,6 +133,11 @@ struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 struct TALER_MasterPublicKeyP TEH_master_public_key;
 
 /**
+ * Key used to encrypt KYC attribute data in our database.
+ */
+struct TALER_AttributeEncryptionKeyP TEH_attribute_key;
+
+/**
  * Our DB plugin.  (global)
  */
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
@@ -1861,6 +1866,26 @@ exchange_serve_process_config (void)
       return GNUNET_SYSERR;
     }
     GNUNET_free (master_public_key_str);
+  }
+
+  {
+    char *attr_enc_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                               "exchange",
+                                               "ATTRIBUTE_ENCRYPTION_KEY",
+                                               &attr_enc_key_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "ATTRIBUTE_ENCRYPTION_KEY");
+      return GNUNET_SYSERR;
+    }
+    GNUNET_CRYPTO_hash (attr_enc_key_str,
+                        strlen (attr_enc_key_str),
+                        &TEH_attribute_key.hash);
+    GNUNET_free (attr_enc_key_str);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Launching exchange with public key `%s'...\n",

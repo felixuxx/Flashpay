@@ -314,27 +314,6 @@ TALER_KYCLOGIC_requirements_to_logic (const char *requirements,
 
 
 /**
- * Obtain attributes we collected about a user from a
- * provider.
- *
- * @param provider_section configuration section of a
- *    provider that triggered KYC process for a user
- * @param provider_user_id user ID of the user at the provider
- * @param legitimization_id legitimizatin ID of a process
- *    of that user at the provider
- * @param[out] attr_expiration set to when the @a attrs expire
- * @param[out] attrs attributes we have about the user
- * @return error code, #TALER_EC_NONE on success
- */
-enum TALER_ErrorCode
-TALER_KYCLOGIC_user_to_attributes (const char *provider_section,
-                                   const char *provider_user_id,
-                                   const char *legitimization_id,
-                                   struct GNUNET_TIME_Timestamp *attr_expiration,
-                                   json_t **attrs);
-
-
-/**
  * Obtain the provider logic for a given @a name.
  *
  * @param name name of the logic or provider section

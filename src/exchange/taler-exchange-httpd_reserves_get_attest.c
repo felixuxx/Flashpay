@@ -51,11 +51,6 @@ struct ReserveAttestContext
   json_t *attributes;
 
   /**
-   * Error code encountered in interaction with KYC provider.
-   */
-  enum TALER_ErrorCode ec;
-
-  /**
    * Set to true if we did not find the reserve.
    */
   bool not_found;
@@ -67,53 +62,55 @@ struct ReserveAttestContext
  * legitimization processes for the given user.
  *
  * @param cls our `struct ReserveAttestContext *`
- * @param provider_section KYC provider configuration section
- * @param provider_user_id UID at a provider (can be NULL)
- * @param legi_id legitimization process ID (can be NULL)
+ * @param h_payto account for which the attribute data is stored
+ * @param provider_section provider that must be checked
+ * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+ *        digits can be 0 if exact day, month or year are unknown
+ * @param collection_time when was the data collected
+ * @param expiration_time when does the data expire
+ * @param enc_attributes_size number of bytes in @a enc_attributes
+ * @param enc_attributes encrypted attribute data
  */
 static void
 kyc_process_cb (void *cls,
+                const struct TALER_PaytoHashP *h_payto,
                 const char *provider_section,
-                const char *provider_user_id,
-                const char *legi_id)
+                const char *birthdate,
+                struct GNUNET_TIME_Timestamp collection_time,
+                struct GNUNET_TIME_Timestamp expiration_time,
+                size_t enc_attributes_size,
+                const void *enc_attributes)
 {
   struct ReserveAttestContext *rsc = cls;
-  struct GNUNET_TIME_Timestamp etime;
   json_t *attrs;
+  json_t *val;
+  const char *name;
 
-  rsc->ec = TALER_KYCLOGIC_user_to_attributes (provider_section,
-                                               provider_user_id,
-                                               legi_id,
-                                               &etime,
-                                               &attrs);
-  if (TALER_EC_NONE != rsc->ec)
+  if (GNUNET_TIME_absolute_is_past (expiration_time.abs_time))
     return;
-
+  attrs = TALER_CRYPTO_kyc_attributes_decrypt (&TEH_attribute_key,
+                                               enc_attributes,
+                                               enc_attributes_size);
+  json_object_foreach (attrs, name, val)
   {
-    json_t *val;
-    const char *name;
+    bool duplicate = false;
+    size_t idx;
+    json_t *str;
 
-    json_object_foreach (attrs, name, val)
+    json_array_foreach (rsc->attributes, idx, str)
     {
-      bool duplicate = false;
-      size_t idx;
-      json_t *str;
-
-      json_array_foreach (rsc->attributes, idx, str)
+      if (0 == strcmp (json_string_value (str),
+                       name))
       {
-        if (0 == strcmp (json_string_value (str),
-                         name))
-        {
-          duplicate = true;
-          break;
-        }
+        duplicate = true;
+        break;
       }
-      if (duplicate)
-        continue;
-      GNUNET_assert (0 ==
-                     json_array_append (rsc->attributes,
-                                        json_string (name)));
     }
+    if (duplicate)
+      continue;
+    GNUNET_assert (0 ==
+                   json_array_append (rsc->attributes,
+                                      json_string (name)));
   }
 }
 
@@ -144,7 +141,7 @@ reserve_attest_transaction (void *cls,
 
   rsc->attributes = json_array ();
   GNUNET_assert (NULL != rsc->attributes);
-  qs = TEH_plugin->iterate_kyc_reference (TEH_plugin->cls,
+  qs = TEH_plugin->select_kyc_attributes (TEH_plugin->cls,
                                           &rsc->h_payto,
                                           &kyc_process_cb,
                                           rsc);
@@ -224,13 +221,6 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        args[0]);
-  }
-  if (TALER_EC_NONE != rsc.ec)
-  {
-    json_decref (rsc.attributes);
-    return TALER_MHD_reply_with_ec (rc->connection,
-                                    rsc.ec,
-                                    NULL);
   }
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,

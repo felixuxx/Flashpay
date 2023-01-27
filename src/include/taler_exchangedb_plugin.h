@@ -6500,8 +6500,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *kac_cls);
 
 
-  // FIXME: functions below here not yet implemented!
-
   /**
    * Store KYC attribute data.
    *

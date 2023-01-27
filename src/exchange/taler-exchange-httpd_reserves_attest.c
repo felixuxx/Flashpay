@@ -81,9 +81,9 @@ struct ReserveAttestContext
   json_t *json_attest;
 
   /**
-   * Error code encountered in interaction with KYC provider.
+   * Database error codes encountered.
    */
-  enum TALER_ErrorCode ec;
+  enum GNUNET_DB_QueryStatus qs;
 
   /**
    * Set to true if we did not find the reserve.
@@ -152,68 +152,66 @@ reply_reserve_attest_success (struct MHD_Connection *connection,
  * set based on the details requested by the client.
  *
  * @param cls our `struct ReserveAttestContext *`
- * @param provider_section KYC provider configuration section
- * @param provider_user_id UID at a provider (can be NULL)
- * @param legi_id legitimization process ID (can be NULL)
+ * @param h_payto account for which the attribute data is stored
+ * @param provider_section provider that must be checked
+ * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
+ *        digits can be 0 if exact day, month or year are unknown
+ * @param collection_time when was the data collected
+ * @param expiration_time when does the data expire
+ * @param enc_attributes_size number of bytes in @a enc_attributes
+ * @param enc_attributes encrypted attribute data
  */
 static void
 kyc_process_cb (void *cls,
+                const struct TALER_PaytoHashP *h_payto,
                 const char *provider_section,
-                const char *provider_user_id,
-                const char *legi_id)
+                const char *birthdate,
+                struct GNUNET_TIME_Timestamp collection_time,
+                struct GNUNET_TIME_Timestamp expiration_time,
+                size_t enc_attributes_size,
+                const void *enc_attributes)
 {
   struct ReserveAttestContext *rsc = cls;
-  struct GNUNET_TIME_Timestamp etime;
   json_t *attrs;
+  json_t *val;
+  const char *name;
   bool match = false;
 
-  rsc->ec = TALER_KYCLOGIC_user_to_attributes (provider_section,
-                                               provider_user_id,
-                                               legi_id,
-                                               &etime,
-                                               &attrs);
-  if (TALER_EC_NONE != rsc->ec)
+  if (GNUNET_TIME_absolute_is_past (expiration_time.abs_time))
     return;
-  if (GNUNET_TIME_absolute_is_past (etime.abs_time))
+  attrs = TALER_CRYPTO_kyc_attributes_decrypt (&TEH_attribute_key,
+                                               enc_attributes,
+                                               enc_attributes_size);
+  json_object_foreach (attrs, name, val)
   {
-    json_decref (attrs);
-    return;
-  }
-  {
-    json_t *val;
-    const char *name;
+    bool requested = false;
+    size_t idx;
+    json_t *str;
 
-    json_object_foreach (attrs, name, val)
+    if (NULL != json_object_get (rsc->json_attest,
+                                 name))
+      continue;   /* duplicate */
+    json_array_foreach (rsc->details, idx, str)
     {
-      bool requested = false;
-      size_t idx;
-      json_t *str;
-
-      if (NULL != json_object_get (rsc->json_attest,
-                                   name))
-        continue; /* duplicate */
-      json_array_foreach (rsc->details, idx, str)
+      if (0 == strcmp (json_string_value (str),
+                       name))
       {
-        if (0 == strcmp (json_string_value (str),
-                         name))
-        {
-          requested = true;
-          break;
-        }
+        requested = true;
+        break;
       }
-      if (! requested)
-        continue;
-      match = true;
-      GNUNET_assert (0 ==
-                     json_object_set (rsc->json_attest, /* NOT set_new! */
-                                      name,
-                                      val));
     }
+    if (! requested)
+      continue;
+    match = true;
+    GNUNET_assert (0 ==
+                   json_object_set (rsc->json_attest,   /* NOT set_new! */
+                                    name,
+                                    val));
   }
   json_decref (attrs);
   if (! match)
     return;
-  rsc->etime = GNUNET_TIME_timestamp_min (etime,
+  rsc->etime = GNUNET_TIME_timestamp_min (expiration_time,
                                           rsc->etime);
 }
 
@@ -243,7 +241,7 @@ reserve_attest_transaction (void *cls,
 
   rsc->json_attest = json_array ();
   GNUNET_assert (NULL != rsc->json_attest);
-  qs = TEH_plugin->iterate_kyc_reference (TEH_plugin->cls,
+  qs = TEH_plugin->select_kyc_attributes (TEH_plugin->cls,
                                           &rsc->h_payto,
                                           &kyc_process_cb,
                                           rsc);
@@ -255,7 +253,7 @@ reserve_attest_transaction (void *cls,
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                    "iterate_kyc_reference");
+                                    "select_kyc_attributes");
     return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     GNUNET_break (0);
@@ -373,16 +371,8 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                        args[0]);
   }
-  if (TALER_EC_NONE != rsc.ec)
-  {
-    json_decref (rsc.json_attest);
-    return TALER_MHD_reply_with_ec (rc->connection,
-                                    rsc.ec,
-                                    NULL);
-  }
-  mhd_ret = reply_reserve_attest_success (rc->connection,
-                                          &rsc);
-  return mhd_ret;
+  return reply_reserve_attest_success (rc->connection,
+                                       &rsc);
 }
 
 
