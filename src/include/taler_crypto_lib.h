@@ -1259,13 +1259,13 @@ struct TALER_AgeAttestation
 #endif
 };
 
+
 extern const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash;
-#define TALER_AgeCommitmentHash_isNullOrZero(ph) ((NULL == ph) || \
-                                                  (0 == memcmp (ph, \
-                                                                & \
-                                                                TALER_ZeroAgeCommitmentHash, \
-                                                                sizeof(struct \
-                                                                       TALER_AgeCommitmentHash))))
+#define TALER_AgeCommitmentHash_isNullOrZero(ph) \
+  ((NULL == ph) ||                               \
+   (0 == memcmp (ph,                             \
+                 &TALER_ZeroAgeCommitmentHash,   \
+                 sizeof(struct TALER_AgeCommitmentHash))))
 
 /**
  * @brief Type of public signing keys for verifying blindly signed coins.

@@ -195,8 +195,43 @@ proof_cb (
   if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
   {
     enum GNUNET_DB_QueryStatus qs;
+    size_t eas;
+    void *ea;
+    const char *birthdate;
+    struct GNUNET_ShortHashCode kyc_prox;
 
-    // FIXME: also store 'attributes' in DB!
+    // FIXME: compute kyc_prox properly!
+    memset (&kyc_prox,
+            0,
+            sizeof (kyc_prox));
+    birthdate = json_string_value (json_object_get (attributes,
+                                                    "birthdate"));
+    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
+                                         attributes,
+                                         &ea,
+                                         &eas);
+    qs = TEH_plugin->insert_kyc_attributes (
+      TEH_plugin->cls,
+      &kpc->h_payto,
+      &kyc_prox,
+      kpc->provider_section,
+      birthdate,
+      GNUNET_TIME_timestamp_get (),
+      GNUNET_TIME_absolute_to_timestamp (expiration),
+      eas,
+      ea);
+    GNUNET_free (ea);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      if (NULL != response)
+        MHD_destroy_response (response);
+      kpc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      kpc->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
+                                            "insert_kyc_attributes");
+      GNUNET_async_scope_restore (&old_scope);
+      return;
+    }
     qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
                                                 kpc->process_row,
                                                 kpc->provider_section,
