@@ -61,12 +61,31 @@ extern "C" {
 #define TALER_ATTRIBUTE_PEP "pep"
 
 /**
- * Phone number (of business or individual).
+ * Street-level address. Usually includes the street and the house number. May
+ * consist of multiple lines (separated by '\n'). Identifies a house in a city.  The city is not
+ * part of the street.
+ */
+#define TALER_ATTRIBUTE_ADDRESS_STREET "street"
+
+/**
+ * City including postal code.  If available, a 2-letter country-code prefixes
+ * the postal code, which is before the city (e.g. "DE-42289 Wuppertal").  If
+ * the country code is unknown, the "CC-" prefix is missing.  If the ZIP code
+ * is unknown, the hyphen is followed by a space ("DE- Wuppertal"). If only
+ * the city name is known, it is prefixed by a space (" ").
+ * If the city name is unknown, a space is at the end of the value.
+ */
+#define TALER_ATTRIBUTE_ADDRESS_CITY "city"
+
+/**
+ * Phone number (of business or individual).  Should come with the "+CC"
+ * prefix including the country code.
  */
 #define TALER_ATTRIBUTE_PHONE "phone"
 
 /**
- * Email address (of business or individual).
+ * Email address (of business or individual).  Should be
+ * in the format "user@hostname".
  */
 #define TALER_ATTRIBUTE_EMAIL "email"
 
