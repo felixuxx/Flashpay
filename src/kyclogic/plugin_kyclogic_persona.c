@@ -868,12 +868,9 @@ proof_generic_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
 {
   struct MHD_Response *resp;
   enum GNUNET_GenericReturnValue ret;
-  struct GNUNET_TIME_Absolute expiration;
 
-  if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
-    expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
-  else
-    expiration = GNUNET_TIME_UNIT_ZERO_ABS;
+  /* This API is not usable for successful replies */
+  GNUNET_assert (TALER_KYCLOGIC_STATUS_SUCCESS != status);
   ret = TALER_TEMPLATING_build (ph->connection,
                                 &http_status,
                                 template,
@@ -891,8 +888,8 @@ proof_generic_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
           status,
           account_id,
           inquiry_id,
-          expiration,
-          NULL, /* FIXME: return attributes! */
+          GNUNET_TIME_UNIT_ZERO_ABS,
+          NULL,
           http_status,
           resp);
 }
@@ -1626,6 +1623,7 @@ persona_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
  * @param status status to return
  * @param account_id account to return
  * @param inquiry_id inquiry ID to supply
+ * @param attr KYC attribute data for the client
  * @param http_status HTTP status to use
  */
 static void
@@ -1633,11 +1631,11 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
                        enum TALER_KYCLOGIC_KycStatus status,
                        const char *account_id,
                        const char *inquiry_id,
+                       const json_t *attr,
                        unsigned int http_status)
 {
   struct MHD_Response *resp;
   struct GNUNET_TIME_Absolute expiration;
-  json_t *attr;
 
   if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
     expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
@@ -1647,9 +1645,6 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
                                           "",
                                           MHD_RESPMEM_PERSISTENT);
   TALER_MHD_add_global_headers (resp);
-  attr = json_object ();
-  // FIXME: fetch attributes!
-  GNUNET_assert (NULL != attr);
   wh->cb (wh->cb_cls,
           wh->process_row,
           &wh->h_payto,
@@ -1661,7 +1656,6 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
           attr,
           http_status,
           resp);
-  json_decref (attr);
 }
 
 
@@ -1681,13 +1675,14 @@ webhook_reply_error (struct TALER_KYCLOGIC_WebhookHandle *wh,
                          TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
                          NULL, /* user id */
                          inquiry_id,
+                         NULL, /* attributes */
                          http_status);
 }
 
 
 /**
  * Function called when we're done processing the
- * HTTP "/verifications/{verification_id}" request.
+ * HTTP "/api/v1/inquiries/{inquiry_id}" request.
  *
  * @param cls the `struct TALER_KYCLOGIC_WebhookHandle`
  * @param response_code HTTP response code, 0 on error
@@ -1702,6 +1697,8 @@ handle_webhook_finished (void *cls,
   const json_t *j = response;
   const json_t *data = json_object_get (j,
                                         "data");
+  const json_t *included = json_object_get (j,
+                                            "included");
 
   wh->job = NULL;
   switch (response_code)
@@ -1755,6 +1752,7 @@ handle_webhook_finished (void *cls,
             NULL),
           GNUNET_JSON_spec_end ()
         };
+        json_t *attr;
 
         if (GNUNET_OK !=
             GNUNET_JSON_parse (attributes,
@@ -1822,6 +1820,7 @@ handle_webhook_finished (void *cls,
                                  TALER_KYCLOGIC_STATUS_FAILED,
                                  account_id,
                                  inquiry_id,
+                                 NULL,
                                  MHD_HTTP_OK);
           GNUNET_JSON_parse_free (ispec);
           GNUNET_JSON_parse_free (spec);
@@ -1840,11 +1839,14 @@ handle_webhook_finished (void *cls,
           break;
         }
 
+        attr = extract_attributes (included);
         webhook_generic_reply (wh,
                                TALER_KYCLOGIC_STATUS_SUCCESS,
                                account_id,
                                inquiry_id,
+                               attr,
                                MHD_HTTP_OK);
+        json_decref (attr);
         GNUNET_JSON_parse_free (ispec);
       }
       GNUNET_JSON_parse_free (spec);
