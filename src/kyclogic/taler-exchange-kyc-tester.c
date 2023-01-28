@@ -459,7 +459,6 @@ webhook_finished_cb (
   (void) expiration;
   (void) provider_section;
   kwh->wh = NULL;
-  GNUNET_break (NULL != attributes);
   GNUNET_break (0 == GNUNET_memcmp (account_id,
                                     &cmd_line_h_payto));
   GNUNET_break (0 == strcmp (provider_user_id,
@@ -474,6 +473,12 @@ webhook_finished_cb (
                 "KYC successful for user `%s' (legi: %s)\n",
                 provider_user_id,
                 provider_legitimization_id);
+    GNUNET_break (NULL != attributes);
+    fprintf (stderr,
+             "Extracted attributes:\n");
+    json_dumpf (attributes,
+                stderr,
+                JSON_INDENT (2));
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -563,6 +568,9 @@ handler_kyc_webhook_generic (
 {
   struct KycWebhookContext *kwh = rc->rh_ctx;
 
+  json_dumpf (root,
+              stderr,
+              JSON_INDENT (2));
   if (NULL == kwh)
   { /* first time */
     kwh = GNUNET_new (struct KycWebhookContext);
@@ -570,11 +578,12 @@ handler_kyc_webhook_generic (
     rc->rh_ctx = kwh;
     rc->rh_cleaner = &clean_kwh;
 
-    if (GNUNET_OK !=
-        TALER_KYCLOGIC_lookup_logic (args[0],
-                                     &kwh->plugin,
-                                     &kwh->pd,
-                                     &kwh->section_name))
+    if ( (NULL == args[0]) ||
+         (GNUNET_OK !=
+          TALER_KYCLOGIC_lookup_logic (args[0],
+                                       &kwh->plugin,
+                                       &kwh->pd,
+                                       &kwh->section_name)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
@@ -583,14 +592,6 @@ handler_kyc_webhook_generic (
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
                                          args[0]);
-    }
-    if (0 != strcmp (args[0],
-                     kwh->section_name))
-    {
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "$PROVIDER_SECTION");
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Calling KYC provider specific webhook\n");
@@ -652,6 +653,8 @@ handler_kyc_webhook_get (
   struct TEKT_RequestContext *rc,
   const char *const args[])
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Webhook GET triggered\n");
   return handler_kyc_webhook_generic (rc,
                                       MHD_HTTP_METHOD_GET,
                                       NULL,
@@ -673,6 +676,8 @@ handler_kyc_webhook_post (
   const json_t *root,
   const char *const args[])
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Webhook POST triggered\n");
   return handler_kyc_webhook_generic (rc,
                                       MHD_HTTP_METHOD_POST,
                                       root,
@@ -715,17 +720,26 @@ proof_cb (
               status,
               http_status,
               provider_user_id);
-  if (NULL != attributes)
+  if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
+  {
+    GNUNET_break (NULL != attributes);
+    fprintf (stderr,
+             "Extracted attributes:\n");
     json_dumpf (attributes,
                 stderr,
                 JSON_INDENT (2));
-  MHD_resume_connection (rs->rc->connection);
-  TALER_MHD_daemon_trigger ();
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Returning response %p with status %u\n",
+              response,
+              http_status);
   rs->rc->response = response;
   rs->rc->http_status = http_status;
   GNUNET_CONTAINER_DLL_remove (rs_head,
                                rs_tail,
                                rs);
+  MHD_resume_connection (rs->rc->connection);
+  TALER_MHD_daemon_trigger ();
   GNUNET_free (rs);
 }
 
@@ -750,6 +764,8 @@ handler_kyc_proof_get (
   const char *section_name;
   const char *h_paytos;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "GET /kyc-proof triggered\n");
   if (NULL == args[0])
   {
     GNUNET_break_op (0);
@@ -1162,14 +1178,14 @@ handle_mhd_request (void *cls,
       }
       /* cache to avoid the loop next time */
       rc->rh = rh;
-      /* run handler */
-      return proceed_with_handler (rc,
-                                   url + tok_size + 1,
-                                   upload_data,
-                                   upload_data_size);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Handler found for %s '%s'\n",
+                  method,
+                  url);
+      return MHD_YES;
     }
 
-    if (found) /* FIXME: this can never be true right now */
+    if (found)
     {
       /* we found a matching address, but the method is wrong */
       struct MHD_Response *reply;
@@ -1348,7 +1364,7 @@ initiate_cb (
     return;
   }
   fprintf (stdout,
-           "Visit `%s' to begin KYC process (-u: '%s', -U: '%s')\n",
+           "Visit `%s' to begin KYC process.\nAlso use: taler-exchange-kyc-tester -w -u '%s' -U '%s'\n",
            redirect_url,
            provider_user_id,
            provider_legitimization_id);

@@ -942,35 +942,35 @@ convert_attributes (const json_t *attr)
   const char *birthdate = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("country_code",
+      GNUNET_JSON_spec_string ("country-code",
                                &country_code),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name_first",
+      GNUNET_JSON_spec_string ("name-first",
                                &name_first),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name_middle",
+      GNUNET_JSON_spec_string ("name-middle",
                                &name_middle),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name_last",
+      GNUNET_JSON_spec_string ("name-last",
                                &name_last),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address_street_1",
+      GNUNET_JSON_spec_string ("address-street-1",
                                &address_street_1),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address_street_2",
+      GNUNET_JSON_spec_string ("address-street-2",
                                &address_street_2),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address_city",
+      GNUNET_JSON_spec_string ("address-city",
                                &address_city),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address_postal_code",
+      GNUNET_JSON_spec_string ("address-postal-code",
                                &address_postal_code),
       NULL),
     GNUNET_JSON_spec_mark_optional (
@@ -991,8 +991,8 @@ convert_attributes (const json_t *attr)
   }
   {
     char *name = NULL;
-    char *address_street = NULL;
-    char *address_city = NULL;
+    char *street = NULL;
+    char *city = NULL;
 
     if ( (NULL != name_last) ||
          (NULL != name_first) ||
@@ -1013,7 +1013,7 @@ convert_attributes (const json_t *attr)
     if ( (NULL != address_city) ||
          (NULL != address_postal_code) )
     {
-      GNUNET_asprintf (&address_city,
+      GNUNET_asprintf (&city,
                        "%s%s%s %s",
                        (NULL != country_code)
                        ? country_code
@@ -1031,7 +1031,7 @@ convert_attributes (const json_t *attr)
     if ( (NULL != address_street_1) ||
          (NULL != address_street_2) )
     {
-      GNUNET_asprintf (&address_street,
+      GNUNET_asprintf (&street,
                        "%s%s%s",
                        (NULL != address_street_1)
                        ? address_street_1
@@ -1056,16 +1056,18 @@ convert_attributes (const json_t *attr)
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string (
           TALER_ATTRIBUTE_ADDRESS_STREET,
-          address_street)),
+          street)),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string (
           TALER_ATTRIBUTE_ADDRESS_CITY,
-          address_city)),
+          city)),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string (
           TALER_ATTRIBUTE_RESIDENCES,
           country_code))
       );
+    GNUNET_free (street);
+    GNUNET_free (city);
     GNUNET_free (name);
   }
   return ret;
@@ -1170,7 +1172,6 @@ handle_proof_finished (void *cls,
       const char *type = NULL;
       json_t *attributes;
       json_t *relationships;
-      json_t *included;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("type",
                                  &type),
@@ -1180,8 +1181,6 @@ handle_proof_finished (void *cls,
                                &attributes),
         GNUNET_JSON_spec_json ("relationships",
                                &relationships),
-        GNUNET_JSON_spec_json ("included",
-                               &included),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1210,10 +1209,10 @@ handle_proof_finished (void *cls,
         struct GNUNET_JSON_Specification ispec[] = {
           GNUNET_JSON_spec_string ("status",
                                    &status),
-          GNUNET_JSON_spec_string ("reference_id",
+          GNUNET_JSON_spec_string ("reference-id",
                                    &reference_id),
           GNUNET_JSON_spec_mark_optional (
-            GNUNET_JSON_spec_string ("expired_at",
+            GNUNET_JSON_spec_string ("expired-at",
                                      &expired_at),
             NULL),
           GNUNET_JSON_spec_end ()
@@ -1319,7 +1318,7 @@ handle_proof_finished (void *cls,
           struct GNUNET_TIME_Absolute expiration;
           json_t *attr;
 
-          attr = extract_attributes (included);
+          attr = convert_attributes (attributes);
           if (NULL == attr)
           {
             GNUNET_break_op (0);
@@ -1744,10 +1743,10 @@ handle_webhook_finished (void *cls,
         struct GNUNET_JSON_Specification ispec[] = {
           GNUNET_JSON_spec_string ("status",
                                    &status),
-          GNUNET_JSON_spec_string ("reference_id",
+          GNUNET_JSON_spec_string ("reference-id",
                                    &reference_id),
           GNUNET_JSON_spec_mark_optional (
-            GNUNET_JSON_spec_string ("expired_at",
+            GNUNET_JSON_spec_string ("expired-at",
                                      &expired_at),
             NULL),
           GNUNET_JSON_spec_end ()
@@ -2081,7 +2080,7 @@ persona_webhook (void *cls,
                     "payload"),
                   "data"),
                 "relationships"),
-              "inquiry_template"),
+              "inquiry-template"),
             "data"),
           "id"));
   if (NULL == wh->template_id)
@@ -2123,7 +2122,6 @@ persona_webhook (void *cls,
                                          wh);
     return wh;
   }
-
 
   persona_inquiry_id
     = json_string_value (

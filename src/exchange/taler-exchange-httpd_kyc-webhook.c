@@ -296,11 +296,12 @@ handler_kyc_webhook_generic (
     rc->rh_ctx = kwh;
     rc->rh_cleaner = &clean_kwh;
 
-    if (GNUNET_OK !=
-        TALER_KYCLOGIC_lookup_logic (args[0],
-                                     &kwh->plugin,
-                                     &kwh->pd,
-                                     &kwh->provider_section))
+    if ( (NULL == args[0]) ||
+         (GNUNET_OK !=
+          TALER_KYCLOGIC_lookup_logic (args[0],
+                                       &kwh->plugin,
+                                       &kwh->pd,
+                                       &kwh->provider_section)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "KYC logic `%s' unknown (check KYC provider configuration)\n",
@@ -308,7 +309,7 @@ handler_kyc_webhook_generic (
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_NOT_FOUND,
                                          TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_UNKNOWN,
-                                         "$NAME");
+                                         args[0]);
     }
     kwh->wh = kwh->plugin->webhook (kwh->plugin->cls,
                                     kwh->pd,
