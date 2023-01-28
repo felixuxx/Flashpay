@@ -588,6 +588,7 @@ kycaid_initiate (void *cls,
     json_decref (body);
     return NULL;
   }
+  json_decref (body);
   ih->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
                                   eh,
                                   ih->ctx.headers,
@@ -1382,7 +1383,7 @@ kycaid_webhook (void *cls,
 
   GNUNET_asprintf (&wh->url,
                    "https://api.kycaid.com/applicants/%s",
-                   verification_id);
+                   applicant_id);
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_VERBOSE,
