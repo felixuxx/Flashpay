@@ -987,6 +987,9 @@ convert_attributes (const json_t *attr)
                          NULL, NULL))
   {
     GNUNET_break (0);
+    json_dumpf (attr,
+                stderr,
+                JSON_INDENT (2));
     return NULL;
   }
   {
@@ -1075,35 +1078,6 @@ convert_attributes (const json_t *attr)
 
 
 /**
- * Extract and convert KYC attribute data from
- * Persona response.
- *
- * @param included json array with various data
- * @return KYC attribute data
- */
-static json_t *
-extract_attributes (const json_t *included)
-{
-  size_t idx;
-  json_t *obj;
-
-  json_array_foreach (included, idx, obj)
-  {
-    const char *type = json_string_value (json_object_get (obj,
-                                                           "type"));
-    json_t *attr;
-    if (0 != strcmp (type,
-                     "verification/database"))
-      continue;
-    attr = json_object_get (obj,
-                            "attributes");
-    return convert_attributes (attr);
-  }
-  return NULL;
-}
-
-
-/**
  * Return a response for the @a ph request indicating a
  * protocol violation by the Persona server.
  *
@@ -1120,9 +1094,6 @@ return_invalid_response (struct TALER_KYCLOGIC_ProofHandle *ph,
                          const char *detail,
                          const json_t *data)
 {
-  json_dumpf (data,
-              stderr,
-              JSON_INDENT (2));
   proof_reply_error (
     ph,
     inquiry_id,
@@ -1647,8 +1618,8 @@ webhook_generic_reply (struct TALER_KYCLOGIC_WebhookHandle *wh,
   wh->cb (wh->cb_cls,
           wh->process_row,
           &wh->h_payto,
-          account_id,
           wh->pd->section,
+          account_id,
           inquiry_id,
           status,
           expiration,
@@ -1696,8 +1667,6 @@ handle_webhook_finished (void *cls,
   const json_t *j = response;
   const json_t *data = json_object_get (j,
                                         "data");
-  const json_t *included = json_object_get (j,
-                                            "included");
 
   wh->job = NULL;
   switch (response_code)
@@ -1708,6 +1677,7 @@ handle_webhook_finished (void *cls,
       const char *account_id;
       const char *type = NULL;
       json_t *attributes;
+      json_t *relationships;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("type",
                                  &type),
@@ -1715,6 +1685,8 @@ handle_webhook_finished (void *cls,
                                  &inquiry_id),
         GNUNET_JSON_spec_json ("attributes",
                                &attributes),
+        GNUNET_JSON_spec_json ("relationships",
+                               &relationships),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1805,9 +1777,7 @@ handle_webhook_finished (void *cls,
           json_object_get (
             json_object_get (
               json_object_get (
-                json_object_get (
-                  data,
-                  "relationships"),
+                relationships,
                 "account"),
               "data"),
             "id"));
@@ -1838,7 +1808,7 @@ handle_webhook_finished (void *cls,
           break;
         }
 
-        attr = extract_attributes (included);
+        attr = convert_attributes (attributes);
         webhook_generic_reply (wh,
                                TALER_KYCLOGIC_STATUS_SUCCESS,
                                account_id,
@@ -2042,13 +2012,13 @@ persona_webhook (void *cls,
   wh->ps = ps;
   wh->connection = connection;
   wh->pd = pd;
-
   auth_header = MHD_lookup_connection_value (connection,
                                              MHD_HEADER_KIND,
                                              MHD_HTTP_HEADER_AUTHORIZATION);
   if ( (NULL != ps->webhook_token) &&
-       (0 != strcmp (ps->webhook_token,
-                     auth_header)) )
+       ( (NULL == auth_header) ||
+         (0 != strcmp (ps->webhook_token,
+                       auth_header)) ) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Invalid authorization header `%s' received for Persona webhook\n",
