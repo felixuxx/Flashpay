@@ -459,21 +459,26 @@ webhook_finished_cb (
   (void) expiration;
   (void) provider_section;
   kwh->wh = NULL;
-  if (0 != GNUNET_memcmp (account_id,
-                          &cmd_line_h_payto))
+  if ( (NULL != account_id) &&
+       (0 != GNUNET_memcmp (account_id,
+                            &cmd_line_h_payto)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Received webhook for unexpected account\n");
   }
-  if (0 != strcmp (provider_user_id,
-                   cmd_provider_user_id))
+  if ( (NULL != provider_user_id) &&
+       (NULL != cmd_provider_user_id) &&
+       (0 != strcmp (provider_user_id,
+                     cmd_provider_user_id)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Received webhook for unexpected provider user ID (%s)\n",
                 provider_user_id);
   }
-  if (0 != strcmp (provider_legitimization_id,
-                   cmd_provider_legitimization_id))
+  if ( (NULL != provider_legitimization_id) &&
+       (NULL != cmd_provider_legitimization_id) &&
+       (0 != strcmp (provider_legitimization_id,
+                     cmd_provider_legitimization_id)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Received webhook for unexpected provider legitimization ID (%s)\n",
@@ -1379,13 +1384,23 @@ initiate_cb (
 
     s = GNUNET_STRINGS_data_to_string_alloc (&cmd_line_h_payto,
                                              sizeof (cmd_line_h_payto));
-
-    fprintf (stdout,
-             "Visit `%s' to begin KYC process.\nAlso use: taler-exchange-kyc-tester -w -u '%s' -U '%s' -p %s\n",
-             redirect_url,
-             provider_user_id,
-             provider_legitimization_id,
-             s);
+    if (NULL != provider_user_id)
+    {
+      fprintf (stdout,
+               "Visit `%s' to begin KYC process.\nAlso use: taler-exchange-kyc-tester -w -u '%s' -U '%s' -p %s\n",
+               redirect_url,
+               provider_user_id,
+               provider_legitimization_id,
+               s);
+    }
+    else
+    {
+      fprintf (stdout,
+               "Visit `%s' to begin KYC process.\nAlso use: taler-exchange-kyc-tester -w -U '%s' -p %s\n",
+               redirect_url,
+               provider_legitimization_id,
+               s);
+    }
     GNUNET_free (s);
   }
   GNUNET_free (cmd_provider_user_id);

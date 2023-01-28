@@ -1193,6 +1193,7 @@ async_webhook_reply (void *cls)
 {
   struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
 
+  wh->task = NULL;
   wh->cb (wh->cb_cls,
           wh->process_row,
           (0 == wh->process_row)
@@ -1248,9 +1249,10 @@ kycaid_webhook (void *cls,
   const char *type;
   const char *verification_id;
   const char *applicant_id;
-  const char *status;
-  bool verified;
-  json_t *verifications;
+  const char *status = NULL;
+  bool verified = false;
+  bool no_verified = true;
+  json_t *verifications = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("request_id",
                              &request_id),
@@ -1260,12 +1262,18 @@ kycaid_webhook (void *cls,
                              &verification_id),
     GNUNET_JSON_spec_string ("applicant_id",
                              &applicant_id),
-    GNUNET_JSON_spec_string ("status",
-                             &status),
-    GNUNET_JSON_spec_bool ("verified",
-                           &verified),
-    GNUNET_JSON_spec_json ("verifications",
-                           &verifications),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("status",
+                               &status),
+      NULL),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_bool ("verified",
+                             &verified),
+      &no_verified),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_json ("verifications",
+                             &verifications),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -1340,7 +1348,10 @@ kycaid_webhook (void *cls,
   }
   wh->verification_id = GNUNET_strdup (verification_id);
   wh->applicant_id = GNUNET_strdup (applicant_id);
-  if (! verified)
+  if ( (0 != strcasecmp (type,
+                         "VERIFICATION_COMPLETED")) ||
+       (no_verified) ||
+       (! verified) )
   {
     /* We don't need to re-confirm the failure by
        asking the API again. */
