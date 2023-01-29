@@ -71,6 +71,28 @@ struct AttestState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
+
+  /* TODO: expose fields below as traits... */
+
+  /**
+   * Attested attributes returned by the exchange.
+   */
+  json_t *attributes;
+
+  /**
+   * Expiration time of the attested attributes.
+   */
+  struct GNUNET_TIME_Timestamp expiration_time;
+
+  /**
+   * Signature by the exchange affirming the attributes.
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * Online signing key used by the exchange.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
 };
 
 
@@ -108,7 +130,10 @@ reserve_attest_cb (
     TALER_TESTING_interpreter_next (is);
     return;
   }
-  /* FIXME: persist attestation... */
+  ss->attributes = json_incref ((json_t*) rs->details.ok.attributes);
+  ss->expiration_time = rs->details.ok.expiration_time;
+  ss->exchange_pub = rs->details.ok.exchange_pub;
+  ss->exchange_sig = rs->details.ok.exchange_sig;
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -181,6 +206,7 @@ attest_cleanup (void *cls,
     TALER_EXCHANGE_reserves_attest_cancel (ss->rsh);
     ss->rsh = NULL;
   }
+  json_decref (ss->attributes);
   GNUNET_free (ss->attrs);
   GNUNET_free (ss);
 }
