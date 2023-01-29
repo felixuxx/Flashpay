@@ -23,6 +23,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_attributes.h"
 #include "taler_signatures.h"
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
@@ -91,15 +92,14 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  /**
-   * Test withdraw.
-   */
   struct TALER_TESTING_Command withdraw[] = {
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
                               "EUR:15.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "check-create-reserve-1",
-      "EUR:15.02", bc.user42_payto, bc.exchange_payto,
+      "EUR:15.02",
+      bc.user42_payto,
+      bc.exchange_payto,
       "create-reserve-1"),
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-no-kyc",
@@ -137,6 +137,12 @@ run (void *cls,
                                        "EUR:5",
                                        0, /* age restriction off */
                                        MHD_HTTP_OK),
+    /* Attestations above are bound to the originating *bank* account,
+       not to the reserve (!). Hence, they are NOT found here! */
+    TALER_TESTING_cmd_reserve_get_attestable ("reserve-get-attestable",
+                                              "create-reserve-1",
+                                              MHD_HTTP_NOT_FOUND,
+                                              NULL),
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command spend[] = {
@@ -216,6 +222,16 @@ run (void *cls,
     TALER_TESTING_cmd_check_kyc_get ("wallet-kyc-check",
                                      "wallet-kyc-fail",
                                      MHD_HTTP_NO_CONTENT),
+    TALER_TESTING_cmd_reserve_get_attestable ("wallet-get-attestable",
+                                              "wallet-kyc-fail",
+                                              MHD_HTTP_OK,
+                                              TALER_ATTRIBUTE_FULL_NAME,
+                                              NULL),
+    TALER_TESTING_cmd_reserve_attest ("wallet-get-attestable",
+                                      "wallet-kyc-fail",
+                                      MHD_HTTP_OK,
+                                      TALER_ATTRIBUTE_FULL_NAME,
+                                      NULL),
     TALER_TESTING_cmd_end ()
   };
 

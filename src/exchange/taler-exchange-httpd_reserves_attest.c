@@ -76,7 +76,7 @@ struct ReserveAttestContext
   struct TALER_ReserveSignatureP reserve_sig;
 
   /**
-   * Attributes we are affirming.
+   * Attributes we are affirming. JSON object.
    */
   json_t *json_attest;
 
@@ -140,8 +140,12 @@ reply_reserve_attest_success (struct MHD_Connection *connection,
                                 &exchange_sig),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &exchange_pub),
-    GNUNET_JSON_pack_array_steal ("attest",
-                                  rhc->json_attest));
+    GNUNET_JSON_pack_timestamp ("exchange_timestamp",
+                                now),
+    GNUNET_JSON_pack_timestamp ("expiration_time",
+                                rhc->etime),
+    GNUNET_JSON_pack_object_steal ("attributes",
+                                   rhc->json_attest));
 }
 
 
@@ -201,7 +205,12 @@ kyc_process_cb (void *cls,
       }
     }
     if (! requested)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Skipping attribute `%s': not requested\n",
+                  name);
       continue;
+    }
     match = true;
     GNUNET_assert (0 ==
                    json_object_set (rsc->json_attest,   /* NOT set_new! */
@@ -239,7 +248,7 @@ reserve_attest_transaction (void *cls,
   struct ReserveAttestContext *rsc = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  rsc->json_attest = json_array ();
+  rsc->json_attest = json_object ();
   GNUNET_assert (NULL != rsc->json_attest);
   qs = TEH_plugin->select_kyc_attributes (TEH_plugin->cls,
                                           &rsc->h_payto,

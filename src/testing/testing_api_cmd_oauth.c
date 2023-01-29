@@ -188,7 +188,12 @@ handler_cb (void *cls,
         "data",
         GNUNET_JSON_PACK (
           GNUNET_JSON_pack_string ("id",
-                                   "XXXID12345678"))));
+                                   "XXXID12345678"),
+          GNUNET_JSON_pack_string ("first_name",
+                                   "Bob"),
+          GNUNET_JSON_pack_string ("last_name",
+                                   "Builder")
+          )));
     return TALER_MHD_reply_json_steal (connection,
                                        body,
                                        MHD_HTTP_OK);

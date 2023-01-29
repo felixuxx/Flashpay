@@ -75,7 +75,6 @@ get_attributes_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    struct TALER_PaytoHashP h_payto;
     struct GNUNET_TIME_Timestamp collection_time;
     struct GNUNET_TIME_Timestamp expiration_time;
     size_t enc_attributes_size;
@@ -83,8 +82,6 @@ get_attributes_cb (void *cls,
     char *provider;
     char *birthdate = NULL;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("h_payto",
-                                            &h_payto),
       GNUNET_PQ_result_spec_string ("provider",
                                     &provider),
       GNUNET_PQ_result_spec_allow_null (

@@ -210,6 +210,7 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
                                 &rsc))
     {
       json_decref (rsc.attributes);
+      rsc.attributes = NULL;
       return mhd_ret;
     }
   }
@@ -217,6 +218,7 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
   if (rsc.not_found)
   {
     json_decref (rsc.attributes);
+    rsc.attributes = NULL;
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
@@ -225,8 +227,8 @@ TEH_handler_reserves_get_attest (struct TEH_RequestContext *rc,
   return TALER_MHD_REPLY_JSON_PACK (
     rc->connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_object_steal ("attributes",
-                                   rsc.attributes));
+    GNUNET_JSON_pack_array_steal ("details",
+                                  rsc.attributes));
 }
 
 

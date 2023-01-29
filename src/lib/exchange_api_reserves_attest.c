@@ -97,7 +97,7 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                 &rs.details.ok.exchange_time),
-    GNUNET_JSON_spec_timestamp ("exchange_timestamp",
+    GNUNET_JSON_spec_timestamp ("expiration_time",
                                 &rs.details.ok.expiration_time),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                  &rs.details.ok.exchange_sig),
@@ -311,8 +311,8 @@ TALER_EXCHANGE_reserves_attest (
                                   &reserve_sig),
       GNUNET_JSON_pack_timestamp ("request_timestamp",
                                   ts),
-      GNUNET_JSON_pack_object_steal ("details",
-                                     details));
+      GNUNET_JSON_pack_array_steal ("details",
+                                    details));
 
     if (GNUNET_OK !=
         TALER_curl_easy_post (&rsh->post_ctx,

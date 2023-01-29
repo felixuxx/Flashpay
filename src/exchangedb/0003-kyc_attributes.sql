@@ -32,7 +32,7 @@ BEGIN
       ',birthdate VARCHAR'
       ',collection_time INT8 NOT NULL'
       ',expiration_time INT8 NOT NULL'
-      ',encrypted_attributes VARCHAR NOT NULL'
+      ',encrypted_attributes BYTEA NOT NULL'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (h_payto)'

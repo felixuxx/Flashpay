@@ -5774,7 +5774,7 @@ struct TALER_EXCHANGE_ReservePostAttestResult
       struct GNUNET_TIME_Timestamp exchange_time;
 
       /**
-       * Current expiration time of the reserve.
+       * Expiration time of the attested attributes.
        */
       struct GNUNET_TIME_Timestamp expiration_time;
 

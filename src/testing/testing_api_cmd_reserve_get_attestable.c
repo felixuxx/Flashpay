@@ -122,23 +122,23 @@ get_attestable_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   struct GetAttestableState *ss = cls;
-  const struct TALER_TESTING_Command *create_reserve;
+  const struct TALER_TESTING_Command *ref_reserve;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
   ss->is = is;
-  create_reserve
+  ref_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->reserve_reference);
 
-  if (NULL == create_reserve)
+  if (NULL == ref_reserve)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
   if (GNUNET_OK ==
-      TALER_TESTING_get_trait_reserve_priv (create_reserve,
+      TALER_TESTING_get_trait_reserve_priv (ref_reserve,
                                             &reserve_priv))
   {
     GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
@@ -147,7 +147,7 @@ get_attestable_run (void *cls,
   else
   {
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_reserve_pub (create_reserve,
+        TALER_TESTING_get_trait_reserve_pub (ref_reserve,
                                              &reserve_pub))
     {
       GNUNET_break (0);
