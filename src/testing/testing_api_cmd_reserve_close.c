@@ -67,6 +67,18 @@ struct CloseState
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
+
+  /**
+   * Set to the KYC requirement payto hash *if* the exchange replied with a
+   * request for KYC.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Set to the KYC requirement row *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t requirement_row;
 };
 
 
@@ -98,10 +110,19 @@ reserve_close_cb (void *cls,
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
-  if (MHD_HTTP_OK != rs->hr.http_status)
+  switch (rs->hr.http_status)
   {
-    TALER_TESTING_interpreter_next (is);
-    return;
+  case MHD_HTTP_OK:
+    break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    /* nothing to check */
+    ss->requirement_row
+      = rs->details.unavailable_for_legal_reasons.requirement_row;
+    ss->h_payto
+      = rs->details.unavailable_for_legal_reasons.h_payto;
+    break;
+  default:
+    break;
   }
   TALER_TESTING_interpreter_next (is);
 }
@@ -178,6 +199,40 @@ close_cleanup (void *cls,
 }
 
 
+/**
+ * Offer internal data to a "close" CMD state to other
+ * commands.
+ *
+ * @param cls closure
+ * @param[out] ret result (could be anything)
+ * @param trait name of the trait
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+close_traits (void *cls,
+              const void **ret,
+              const char *trait,
+              unsigned int index)
+{
+  struct CloseState *cs = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_legi_requirement_row (
+      &cs->requirement_row),
+    TALER_TESTING_make_trait_h_payto (
+      &cs->h_payto),
+    TALER_TESTING_trait_end ()
+  };
+
+  if (cs->expected_response_code != MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS)
+    return GNUNET_NO;
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_reserve_close (const char *label,
                                  const char *reserve_reference,
@@ -196,7 +251,8 @@ TALER_TESTING_cmd_reserve_close (const char *label,
       .cls = ss,
       .label = label,
       .run = &close_run,
-      .cleanup = &close_cleanup
+      .cleanup = &close_cleanup,
+      .traits = &close_traits
     };
 
     return cmd;

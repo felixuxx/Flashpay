@@ -178,14 +178,13 @@ reserve_close_transaction (void *cls,
 {
   struct ReserveCloseContext *rcc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_Amount balance;
   char *payto_uri = NULL;
   const struct TALER_WireFeeSet *wf;
 
   qs = TEH_plugin->select_reserve_close_info (
     TEH_plugin->cls,
     rcc->reserve_pub,
-    &balance,
+    &rcc->balance,
     &payto_uri);
   switch (qs)
   {
@@ -226,6 +225,9 @@ reserve_close_transaction (void *cls,
          (0 != strcmp (payto_uri,
                        rcc->payto_uri)) ) )
   {
+    /* KYC check may be needed: we're not returning
+       the money to the account that funded the reserve
+       in the first place. */
     const char *kyc_needed;
 
     TALER_payto_hash (rcc->payto_uri,
@@ -263,12 +265,15 @@ reserve_close_transaction (void *cls,
                                       "iterate_reserve_close_info");
       return qs;
     }
-    rcc->kyc.ok = false;
-    return TEH_plugin->insert_kyc_requirement_for_account (
-      TEH_plugin->cls,
-      kyc_needed,
-      &rcc->kyc_payto,
-      &rcc->kyc.requirement_row);
+    if (NULL != kyc_needed)
+    {
+      rcc->kyc.ok = false;
+      return TEH_plugin->insert_kyc_requirement_for_account (
+        TEH_plugin->cls,
+        kyc_needed,
+        &rcc->kyc_payto,
+        &rcc->kyc.requirement_row);
+    }
   }
 
   rcc->kyc.ok = true;
@@ -296,7 +301,7 @@ reserve_close_transaction (void *cls,
 
   if (0 >
       TALER_amount_subtract (&rcc->wire_amount,
-                             &balance,
+                             &rcc->balance,
                              &wf->closing))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -314,7 +319,7 @@ reserve_close_transaction (void *cls,
                                          payto_uri,
                                          &rcc->reserve_sig,
                                          rcc->timestamp,
-                                         &balance,
+                                         &rcc->balance,
                                          &wf->closing);
   GNUNET_free (payto_uri);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)

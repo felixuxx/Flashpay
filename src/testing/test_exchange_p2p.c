@@ -20,11 +20,9 @@
  * @file testing/test_exchange_p2p.c
  * @brief testcase to test exchange's P2P payments
  * @author Christian Grothoff
- *
- * TODO:
- * - enable reserve close test once implementation is complete!
  */
 #include "platform.h"
+#include "taler_attributes.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_exchange_service.h"
@@ -454,10 +452,30 @@ run (void *cls,
                                               MHD_HTTP_NOT_FOUND,
                                               "nx-attribute-name",
                                               NULL),
-    /* FIXME: do KYC for reserve, then get actual attributes attested */
+    TALER_TESTING_cmd_oauth ("start-oauth-service",
+                             6666),
+    TALER_TESTING_cmd_reserve_close ("reserve-101-close-kyc",
+                                     "create-reserve-101",
+                                     /* 42b => not to origin */
+                                     "payto://x-taler-bank/localhost/42?receiver-name=42b",
+                                     MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+
+    TALER_TESTING_cmd_check_kyc_get ("check-kyc-close-pending",
+                                     "reserve-101-close-kyc",
+                                     MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_proof_kyc_oauth2 ("proof-close-kyc",
+                                        "reserve-101-close-kyc",
+                                        "kyc-provider-test-oauth2",
+                                        "pass",
+                                        MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_check_kyc_get ("check-kyc-close-ok",
+                                     "reserve-101-close-kyc",
+                                     MHD_HTTP_NO_CONTENT),
+    /* Now it should pass */
     TALER_TESTING_cmd_reserve_close ("reserve-101-close",
                                      "create-reserve-101",
-                                     NULL, /* to origin */
+                                     /* 42b => not to origin */
+                                     "payto://x-taler-bank/localhost/42?receiver-name=42b",
                                      MHD_HTTP_OK),
     TALER_TESTING_cmd_exec_closer ("close-reserves-101",
                                    config_file,
