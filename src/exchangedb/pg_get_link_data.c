@@ -177,11 +177,35 @@ TEH_PG_get_link_data (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
   struct LinkDataContext ldctx;
+  static int percent_refund = -2;
+  const char *query;
 
-  if (NULL == getenv ("NEW_LOGIC"))
+  if (-2 == percent_refund)
   {
+    const char *mode = getenv ("NEW_LOGIC");
+    char dummy;
+
+    if ( (NULL==mode) ||
+         (1 != sscanf (mode,
+                       "%d%c",
+                       &percent_refund,
+                       &dummy)) )
+      {
+        if (NULL != mode)
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Bad mode `%s' specified\n",
+                      mode);
+      }
+      if (NULL==mode)
+        percent_refund=0;
+  }
+
+  switch (percent_refund)
+  {
+  case 0:
+    query="get_link";
     PREPARE (pg,
-             "get_link",
+             query,
              "SELECT "
              " tp.transfer_pub"
              ",denoms.denom_pub"
@@ -199,15 +223,15 @@ TEH_PG_get_link_data (void *cls,
              "       ON (rrc.denominations_serial = denoms.denominations_serial)"
              " WHERE old_coin_pub=$1"
              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
-  }
-
-  else
-  {
+    break;
+  case 1:
+    query="get_link_v1";
     PREPARE (pg,
-             "get_link",
+             query,
              "WITH rc AS MATERIALIZED ("
              "SELECT"
-             "* FROM refresh_commitments"
+             " melt_serial_id"
+             " FROM refresh_commitments"
              " WHERE old_coin_pub=$1"
              ")"
              "SELECT "
@@ -217,13 +241,37 @@ TEH_PG_get_link_data (void *cls,
              ",rrc.ewv"
              ",rrc.link_sig"
              ",rrc.freshcoin_index"
-             ",rrc.coin_ev"
-             " FROM refresh_revealed_coins rrc"
+             ",rrc.coin_ev "
+             "FROM "
+             "refresh_revealed_coins rrc"
              "  JOIN refresh_transfer_keys tp"
              "   USING (melt_serial_id)"
              "  JOIN denominations denoms"
              "   USING (denominations_serial)"
+             " WHERE rrc.melt_serial_id = (SELECT melt_serial_id FROM rc)"
              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
+    break;
+  case 2:
+    query="get_link_v2";
+    PREPARE (pg,
+             query,
+             "SELECT"
+             " *"
+             " FROM"
+             " exchange_do_get_link_data"
+             " ($1) "
+             " AS "
+             " (transfer_pub BYTEA"
+             " ,denom_pub BYTEA"
+             " ,ev_sig BYTEA"
+             " ,ewv BYTEA"
+             " ,link_sig BYTEA"
+             " ,freshcoin_index INT4"
+             " ,coin_ev BYTEA);");
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   ldctx.ldc = ldc;
@@ -231,7 +279,7 @@ TEH_PG_get_link_data (void *cls,
   ldctx.last = NULL;
   ldctx.status = GNUNET_OK;
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
-                                             "get_link",
+                                             query,
                                              params,
                                              &add_ldl,
                                              &ldctx);
