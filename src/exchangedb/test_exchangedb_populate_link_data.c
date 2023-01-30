@@ -408,7 +408,7 @@ run (void *cls)
         
         FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
                 plugin->get_old_coin_by_h_blind (plugin->cls,
-                                                 &revealed_coins[0].coin_envelope_hash,
+                                                 &revealed_coins->coin_envelope_hash,
                                                  &ocp,
                                                  &rrc_serial));
       }
