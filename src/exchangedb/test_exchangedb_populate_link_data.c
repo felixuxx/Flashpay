@@ -49,8 +49,8 @@
 
 #define CURRENCY "EUR"
 #define RSA_KEY_SIZE 1024
-#define ROUNDS 2
-#define NUM_ROWS 10
+#define ROUNDS 100
+#define NUM_ROWS 1000
 #define MELT_NEW_COINS 5
 #define DENOMINATIONS 5
 #define MELT_NOREVEAL_INDEX 1
@@ -402,7 +402,7 @@ run (void *cls)
           TALER_blinded_planchet_free (&revealed_coins[cnt].blinded_planchet);
       }
     
-      {
+      /*      {
         struct TALER_CoinSpendPublicKeyP ocp;
         uint64_t rrc_serial;
         
@@ -411,7 +411,7 @@ run (void *cls)
                                                  &revealed_coins->coin_envelope_hash,
                                                  &ocp,
                                                  &rrc_serial));
-      }
+                                                 }*/
     }
     if (ROUNDS == i)
       TALER_denom_sig_free (&depos[i].coin.denom_sig);
