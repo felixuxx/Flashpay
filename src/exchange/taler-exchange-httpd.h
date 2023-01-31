@@ -247,17 +247,6 @@ struct TEH_RequestHandler
   } handler;
 
   /**
-   * Number of arguments this handler expects in the @a args array.
-   */
-  unsigned int nargs;
-
-  /**
-   * Is the number of arguments given in @e nargs only an upper bound,
-   * and calling with fewer arguments could be OK?
-   */
-  bool nargs_is_upper_bound;
-
-  /**
    * Mime type to use in reply (hint, can be NULL).
    */
   const char *mime_type;
@@ -276,6 +265,17 @@ struct TEH_RequestHandler
    * Default response code. 0 for none provided.
    */
   unsigned int response_code;
+
+  /**
+   * Number of arguments this handler expects in the @a args array.
+   */
+  unsigned int nargs;
+
+  /**
+   * Is the number of arguments given in @e nargs only an upper bound,
+   * and calling with fewer arguments could be OK?
+   */
+  bool nargs_is_upper_bound;
 };
 
 
