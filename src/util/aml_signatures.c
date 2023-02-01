@@ -26,8 +26,7 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * @brief Format used to generate the signature on a request to deposit
- * a coin into the account of a merchant.
+ * @brief Format used to generate the signature on an AML decision.
  */
 struct TALER_AmlDecisionPS
 {
@@ -119,6 +118,65 @@ TALER_officer_aml_decision_verify (
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
     &ad,
+    &officer_sig->eddsa_signature,
+    &officer_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief Format used to generate the signature on any AML query.
+ */
+struct TALER_AmlQueryPS
+{
+  /**
+   * Purpose must be #TALER_SIGNATURE_AML_QUERY.
+   * Used for an EdDSA signature with the `struct TALER_AmlOfficerPublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_officer_aml_query_sign (
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  struct TALER_AmlOfficerSignatureP *officer_sig)
+{
+  struct TALER_AmlQueryPS aq = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_AML_QUERY),
+    .purpose.size = htonl (sizeof (aq))
+  };
+
+  GNUNET_CRYPTO_eddsa_sign (&officer_priv->eddsa_priv,
+                            &aq,
+                            &officer_sig->eddsa_signature);
+}
+
+
+/**
+ * Verify AML query authorization.
+ *
+ * @param officer_pub public key of AML officer
+ * @param officer_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_officer_aml_query_verify (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const struct TALER_AmlOfficerSignatureP *officer_sig)
+{
+  struct TALER_AmlQueryPS aq = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_AML_QUERY),
+    .purpose.size = htonl (sizeof (aq))
+  };
+
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_AML_QUERY,
+    &aq,
     &officer_sig->eddsa_signature,
     &officer_pub->eddsa_pub);
 }

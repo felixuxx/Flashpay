@@ -2370,6 +2370,31 @@ TALER_CRYPTO_contract_decrypt_for_deposit (
 
 /* **************** AML officer signatures **************** */
 
+/**
+ * Sign AML query. Simple authentication, doesn't actually
+ * sign anything.
+ *
+ * @param officer_priv private key of AML officer
+ * @param[out] officer_sig where to write the signature
+ */
+void
+TALER_officer_aml_query_sign (
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  struct TALER_AmlOfficerSignatureP *officer_sig);
+
+
+/**
+ * Verify AML query authorization.
+ *
+ * @param officer_pub public key of AML officer
+ * @param officer_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_officer_aml_query_verify (
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const struct TALER_AmlOfficerSignatureP *officer_sig);
+
 
 /**
  * Sign AML decision.
