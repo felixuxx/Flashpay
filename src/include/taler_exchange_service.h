@@ -4299,6 +4299,272 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
 
 
 /**
+ * Summary data about an AML decision.
+ */
+struct TALER_EXCHANGE_AmlDecisionSummary
+{
+  /**
+   * When was the last decision made.
+   */
+  struct GNUNET_TIME_Timestamp last_decision_time;
+
+  /**
+   * Account the decision was made for.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * Current decision state.
+   */
+  enum TALER_AmlDecisionState current_state;
+};
+
+
+/**
+ * Information about AML decisions returned by the exchange.
+ */
+struct TALER_EXCHANGE_AmlDecisionsResponse
+{
+  /**
+   * HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on the HTTP response code.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success (#MHD_HTTP_OK).
+     */
+    struct
+    {
+
+      /**
+       * Array of AML decision summaries returned by the exchange.
+       */
+      const struct TALER_EXCHANGE_AmlDecisionSummary *decisions;
+
+      /**
+       * Length of the @e decisions array.
+       */
+      unsigned int decisions_length;
+
+    } success;
+
+  } details;
+};
+
+
+/**
+ * Function called with summary information about
+ * AML decisions.
+ *
+ * @param cls closure
+ * @param adr response data
+ */
+typedef void
+(*TALER_EXCHANGE_LookupAmlDecisionsCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_AmlDecisionsResponse *adr);
+
+
+/**
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decisions request.
+ */
+struct TALER_EXCHANGE_LookupAmlDecisions;
+
+
+/**
+ * Inform the exchange that an AML decision has been taken.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param start row number starting point (exclusive rowid)
+ * @param delta number of records to return, negative for descending, positive for ascending from start
+ * @param filter_frozen true to only return frozen accounts
+ * @param filter_pending true to only return accounts with pending decisions
+ * @param filter_normal true to only return accounts where transactions are allowed
+ * @param officer_priv private key of the deciding AML officer
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_LookupAmlDecisions *
+TALER_EXCHANGE_lookup_aml_decisions (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  uint64_t start,
+  int delta,
+  bool filter_frozen,
+  bool filter_pending,
+  bool filter_normal,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_lookup_aml_decisions() operation.
+ *
+ * @param lh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_lookup_aml_decisions_cancel (
+  struct TALER_EXCHANGE_LookupAmlDecisions *lh);
+
+
+/**
+ * Detailed data about an AML decision.
+ */
+struct TALER_EXCHANGE_AmlDecisionDetail
+{
+  /**
+   * When was the decision made.
+   */
+  struct GNUNET_TIME_Timestamp decision_time;
+
+  /**
+   * Justification given for the decision.
+   */
+  const char *justification;
+
+  /**
+   * New decision state.
+   */
+  enum TALER_AmlDecisionState new_state;
+};
+
+
+/**
+ * Detailed data collected during a KYC process for the account.
+ */
+struct TALER_EXCHANGE_KycHistoryDetail
+{
+  /**
+   * Configuration section name of the KYC provider that contributed the data.
+   */
+  const char *provider_section;
+
+  /**
+   * The collected KYC data.
+   */
+  const json_t *attributes;
+
+  /**
+   * When was the data collection made.
+   */
+  struct GNUNET_TIME_Timestamp collection_time;
+
+};
+
+
+/**
+ * Information about AML decision details returned by the exchange.
+ */
+struct TALER_EXCHANGE_AmlDecisionResponse
+{
+  /**
+   * HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on the HTTP response code.
+   */
+  union
+  {
+
+    /**
+     * Information returned on success (#MHD_HTTP_OK).
+     */
+    struct
+    {
+
+      /**
+       * Array of AML decision summaries returned by the exchange.
+       */
+      const struct TALER_EXCHANGE_AmlDecisionDetail *aml_history;
+
+      /**
+       * Length of the @e aml_history array.
+       */
+      unsigned int aml_history_length;
+
+      /**
+       * Array of KYC data collections returned by the exchange.
+       */
+      const struct TALER_EXCHANGE_KycHistoryDetail *kyc_history;
+
+      /**
+       * Length of the @e kyc_history array.
+       */
+      unsigned int kyc_history_length;
+
+    } success;
+
+  } details;
+};
+
+
+/**
+ * Function called with summary information about
+ * AML decisions.
+ *
+ * @param cls closure
+ * @param adr response data
+ */
+typedef void
+(*TALER_EXCHANGE_LookupAmlDecisionCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_AmlDecisionResponse *adr);
+
+
+/**
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decisions request.
+ */
+struct TALER_EXCHANGE_LookupAmlDecision;
+
+
+/**
+ * Inform the exchange that an AML decision has been taken.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param h_payto which account to return the decision history for
+ * @param officer_priv private key of the deciding AML officer
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_LookupAmlDecision *
+TALER_EXCHANGE_lookup_aml_decision (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PaytoHashP *h_payto,
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_add_aml_decision() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_lookup_aml_decision_cancel (
+  struct TALER_EXCHANGE_LookupAmlDecision *rh);
+
+
+/**
+ * @brief Handle for a POST /aml-decision/$OFFICER_PUB request.
+ */
+struct TALER_EXCHANGE_AddAmlDecision;
+
+/**
  * Function called with information about storing an
  * an AML decision.
  *
@@ -4309,13 +4575,6 @@ typedef void
 (*TALER_EXCHANGE_AddAmlDecisionCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr);
-
-
-/**
- * @brief Handle for a POST /aml-decision/$OFFICER_PUB request.
- */
-struct TALER_EXCHANGE_AddAmlDecision;
-
 
 /**
  * Inform the exchange that an AML decision has been taken.
