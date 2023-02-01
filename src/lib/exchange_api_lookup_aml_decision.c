@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_lookup_aml_decisions.c
- * @brief Implementation of the /aml/$OFFICER_PUB/decisions request
+ * @file lib/exchange_api_lookup_aml_decision.c
+ * @brief Implementation of the /aml/$OFFICER_PUB/decision request
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -33,7 +33,7 @@
 /**
  * @brief A /coins/$COIN_PUB/link Handle
  */
-struct TALER_EXCHANGE_LookupAmlDecisions
+struct TALER_EXCHANGE_LookupAmlDecision
 {
 
   /**
@@ -49,12 +49,12 @@ struct TALER_EXCHANGE_LookupAmlDecisions
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_LookupAmlDecisionsCallback decisions_cb;
+  TALER_EXCHANGE_LookupAmlDecisionCallback decision_cb;
 
   /**
    * Closure for @e cb.
    */
-  void *decisions_cb_cls;
+  void *decision_cb_cls;
 
 };
 
@@ -67,10 +67,10 @@ struct TALER_EXCHANGE_LookupAmlDecisions
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static enum GNUNET_GenericReturnValue
-parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
-                    const json_t *json)
+parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
+                   const json_t *json)
 {
-  struct TALER_EXCHANGE_AmlDecisionsResponse lr = {
+  struct TALER_EXCHANGE_AmlDecisionResponse lr = {
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
   };
@@ -83,9 +83,9 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
 
 /**
  * Function called when we're done processing the
- * HTTP /aml/$OFFICER_PUB/decisions request.
+ * HTTP /aml/$OFFICER_PUB/decision request.
  *
- * @param cls the `struct TALER_EXCHANGE_LookupAmlDecisions`
+ * @param cls the `struct TALER_EXCHANGE_LookupAmlDecision`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
@@ -94,9 +94,9 @@ handle_lookup_finished (void *cls,
                         long response_code,
                         const void *response)
 {
-  struct TALER_EXCHANGE_LookupAmlDecisions *lh = cls;
+  struct TALER_EXCHANGE_LookupAmlDecision *lh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_AmlDecisionsResponse lr = {
+  struct TALER_EXCHANGE_AmlDecisionResponse lr = {
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
@@ -109,15 +109,15 @@ handle_lookup_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        parse_decisions_ok (lh,
-                            j))
+        parse_decision_ok (lh,
+                           j))
     {
       GNUNET_break_op (0);
       lr.hr.http_status = 0;
       lr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
-    GNUNET_assert (NULL == lh->decisions_cb);
+    GNUNET_assert (NULL == lh->decision_cb);
     TALER_EXCHANGE_link_cancel (lh);
     return;
   case MHD_HTTP_BAD_REQUEST:
@@ -149,38 +149,36 @@ handle_lookup_finished (void *cls,
                 (int) lr.hr.ec);
     break;
   }
-  if (NULL != lh->decisions_cb)
-    lh->decisions_cb (lh->decisions_cb_cls,
-                      &lr);
+  if (NULL != lh->decision_cb)
+    lh->decision_cb (lh->decision_cb_cls,
+                     &lr);
   TALER_EXCHANGE_link_cancel (lh);
 }
 
 
-struct TALER_EXCHANGE_LookupAmlDecisions *
-TALER_EXCHANGE_lookup_aml_decisions (
+struct TALER_EXCHANGE_LookupAmlDecision *
+TALER_EXCHANGE_lookup_aml_decision (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  uint64_t start,
-  int delta,
-  bool filter_frozen,
-  bool filter_pending,
-  bool filter_normal,
+  const struct TALER_PaytoHashP *h_payto,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
-  TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
+  TALER_EXCHANGE_LookupAmlDecisionCallback cb,
   void *cb_cls)
 {
-  struct TALER_EXCHANGE_LookupAmlDecisions *lh;
+  struct TALER_EXCHANGE_LookupAmlDecision *lh;
   CURL *eh;
   struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
-  char arg_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2 + 32];
+  char arg_str[sizeof (officer_pub) * 2
+               + sizeof (*h_payto) * 2 + 32];
 
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,
                                       &officer_pub.eddsa_pub);
   TALER_officer_aml_query_sign (officer_priv,
                                 &officer_sig);
   {
-    char pub_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2];
+    char pub_str[sizeof (officer_pub) * 2];
+    char pt_str[sizeof (*h_payto) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
@@ -189,22 +187,23 @@ TALER_EXCHANGE_lookup_aml_decisions (
       pub_str,
       sizeof (pub_str));
     *end = '\0';
+    end = GNUNET_STRINGS_data_to_string (
+      h_payto,
+      sizeof (*h_payto),
+      pt_str,
+      sizeof (pt_str));
+    *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/aml/%s/decisions",
-                     pub_str);
+                     "/aml/%s/decision/%s",
+                     pub_str,
+                     pt_str);
   }
-  lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecisions);
-  lh->decisions_cb = cb;
-  lh->decisions_cb_cls = cb_cls;
+  lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecision);
+  lh->decision_cb = cb;
+  lh->decision_cb_cls = cb_cls;
   lh->url = TALER_URL_join (exchange_url,
                             arg_str,
-                            "frozen",
-                            filter_fozen ? "yes" : NULL,
-                            "pending",
-                            filter_pending ? "yes" : NULL,
-                            "normal",
-                            filter_normal ? "yes" : NULL,
                             NULL);
   if (NULL == lh->url)
   {
@@ -229,8 +228,8 @@ TALER_EXCHANGE_lookup_aml_decisions (
 
 
 void
-TALER_EXCHANGE_lookup_aml_decisions_cancel (
-  struct TALER_EXCHANGE_LookupAmlDecisions *lh)
+TALER_EXCHANGE_lookup_aml_decision_cancel (
+  struct TALER_EXCHANGE_LookupAmlDecision *lh)
 {
   if (NULL != lh->job)
   {
@@ -242,4 +241,4 @@ TALER_EXCHANGE_lookup_aml_decisions_cancel (
 }
 
 
-/* end of exchange_api_lookup_aml_decisions.c */
+/* end of exchange_api_lookup_aml_decision.c */
