@@ -32,6 +32,7 @@
  * @param cls closure
  * @param decision which decision states to filter by
  * @param row_off offset to start from
+ * @param limit how many rows to return at most
  * @param forward true to go forward in time, false to go backwards
  * @param cb callback to invoke on each match
  * @param cb_cls closure for @a cb
@@ -42,6 +43,7 @@ TEH_PG_select_aml_process (
   void *cls,
   enum TALER_AmlDecisionState decision,
   uint64_t row_off,
+  uint64_t limit,
   bool forward,
   TALER_EXCHANGEDB_AmlStatusCallback cb,
   void *cb_cls);

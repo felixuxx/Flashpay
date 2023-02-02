@@ -4381,7 +4381,7 @@ struct TALER_EXCHANGE_LookupAmlDecisions;
  * Inform the exchange that an AML decision has been taken.
  *
  * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange_url HTTP base URL for the exchange
  * @param start row number starting point (exclusive rowid)
  * @param delta number of records to return, negative for descending, positive for ascending from start
  * @param filter_frozen true to only return frozen accounts
@@ -4395,7 +4395,7 @@ struct TALER_EXCHANGE_LookupAmlDecisions;
 struct TALER_EXCHANGE_LookupAmlDecisions *
 TALER_EXCHANGE_lookup_aml_decisions (
   struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  const char *exchange_url,
   uint64_t start,
   int delta,
   bool filter_frozen,
@@ -4532,7 +4532,7 @@ struct TALER_EXCHANGE_LookupAmlDecision;
  * Inform the exchange that an AML decision has been taken.
  *
  * @param ctx the context
- * @param url HTTP base URL for the exchange
+ * @param exchange_url HTTP base URL for the exchange
  * @param h_payto which account to return the decision history for
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
@@ -4542,10 +4542,10 @@ struct TALER_EXCHANGE_LookupAmlDecision;
 struct TALER_EXCHANGE_LookupAmlDecision *
 TALER_EXCHANGE_lookup_aml_decision (
   struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  const char *exchange_url,
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
-  TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
+  TALER_EXCHANGE_LookupAmlDecisionCallback cb,
   void *cb_cls);
 
 

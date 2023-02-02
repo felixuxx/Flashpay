@@ -32,7 +32,7 @@
  * Version of the Taler API, in hex.
  * Thus 0.8.4-1 = 0x00080401.
  */
-#define TALER_API_VERSION 0x00080401
+#define TALER_API_VERSION 0x00090200
 
 /**
  * Stringify operator.
@@ -79,6 +79,12 @@
     abort ();                                                    \
   } while (0)
 
+
+/**
+ * HTTP header with an AML officer signature to approve the inquiry.
+ * Used only in GET Requests.
+ */
+#define TALER_AML_OFFICER_SIGNATURE_HEADER "Taler-AML-Officer-Signature"
 
 /**
  * Log an error message at log-level 'level' that indicates

@@ -6693,6 +6693,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     enum TALER_AmlDecisionState decision,
     uint64_t row_off,
+    uint64_t limit,
     bool forward,
     TALER_EXCHANGEDB_AmlStatusCallback cb,
     void *cb_cls);

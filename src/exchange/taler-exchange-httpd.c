@@ -446,14 +446,14 @@ handle_get_aml (struct TEH_RequestContext *rc,
     AmlOpGetHandler handler;
 
   } h[] = {
-#if FIXME_AML_GET_DECISIONS_NOT_IMPLEMENTED
     {
       .op = "decisions",
-      .handler = &TEH_handler_get_aml_decisions
+      .handler = &TEH_handler_aml_decisions_get
     },
+#if FIXME_AML_GET_DECISIONS_NOT_IMPLEMENTED
     {
       .op = "decision",
-      .handler = &TEH_handler_get_aml_decision
+      .handler = &TEH_handler_aml_decision_get
     },
 #endif
     {

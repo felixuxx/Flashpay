@@ -56,6 +56,10 @@ struct TALER_EXCHANGE_LookupAmlDecisions
    */
   void *decisions_cb_cls;
 
+  /**
+   * HTTP headers for the job.
+   */
+  struct curl_slist *job_headers;
 };
 
 
@@ -118,7 +122,7 @@ handle_lookup_finished (void *cls,
       break;
     }
     GNUNET_assert (NULL == lh->decisions_cb);
-    TALER_EXCHANGE_link_cancel (lh);
+    TALER_EXCHANGE_lookup_aml_decisions_cancel (lh);
     return;
   case MHD_HTTP_BAD_REQUEST:
     lr.hr.ec = TALER_JSON_get_error_code (j);
@@ -152,14 +156,14 @@ handle_lookup_finished (void *cls,
   if (NULL != lh->decisions_cb)
     lh->decisions_cb (lh->decisions_cb_cls,
                       &lr);
-  TALER_EXCHANGE_link_cancel (lh);
+  TALER_EXCHANGE_lookup_aml_decisions_cancel (lh);
 }
 
 
 struct TALER_EXCHANGE_LookupAmlDecisions *
 TALER_EXCHANGE_lookup_aml_decisions (
   struct GNUNET_CURL_Context *ctx,
-  const char *url,
+  const char *exchange_url,
   uint64_t start,
   int delta,
   bool filter_frozen,
@@ -180,7 +184,7 @@ TALER_EXCHANGE_lookup_aml_decisions (
   TALER_officer_aml_query_sign (officer_priv,
                                 &officer_sig);
   {
-    char pub_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2];
+    char pub_str[sizeof (officer_pub) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
@@ -197,10 +201,10 @@ TALER_EXCHANGE_lookup_aml_decisions (
   lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecisions);
   lh->decisions_cb = cb;
   lh->decisions_cb_cls = cb_cls;
-  lh->url = TALER_URL_join (exchange_url,
+  lh->url = TALER_url_join (exchange_url,
                             arg_str,
                             "frozen",
-                            filter_fozen ? "yes" : NULL,
+                            filter_frozen ? "yes" : NULL,
                             "pending",
                             filter_pending ? "yes" : NULL,
                             "normal",
@@ -219,11 +223,33 @@ TALER_EXCHANGE_lookup_aml_decisions (
     GNUNET_free (lh);
     return NULL;
   }
-  // FIXME: add authorization header to 'eh' based on officer_sig!
-  lh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
-                                              eh,
-                                              &handle_lookup_finished,
-                                              lh);
+  {
+    char *hdr;
+    char sig_str[sizeof (officer_sig) * 2];
+    char *end;
+
+    end = GNUNET_STRINGS_data_to_string (
+      &officer_sig,
+      sizeof (officer_sig),
+      sig_str,
+      sizeof (sig_str));
+    *end = '\0';
+
+    GNUNET_asprintf (&hdr,
+                     "%s: %s",
+                     TALER_AML_OFFICER_SIGNATURE_HEADER,
+                     sig_str);
+    lh->job_headers = curl_slist_append (NULL,
+                                         hdr);
+    GNUNET_free (hdr);
+    lh->job_headers = curl_slist_append (lh->job_headers,
+                                         "Content-type: application/json");
+    lh->job = GNUNET_CURL_job_add2 (ctx,
+                                    eh,
+                                    lh->job_headers,
+                                    &handle_lookup_finished,
+                                    lh);
+  }
   return lh;
 }
 
@@ -237,6 +263,7 @@ TALER_EXCHANGE_lookup_aml_decisions_cancel (
     GNUNET_CURL_job_cancel (lh->job);
     lh->job = NULL;
   }
+  curl_slist_free_all (lh->job_headers);
   GNUNET_free (lh->url);
   GNUNET_free (lh);
 }

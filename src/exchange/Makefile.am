@@ -124,6 +124,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
   taler-exchange-httpd_auditors.c taler-exchange-httpd_auditors.h \
   taler-exchange-httpd_aml-decision.c taler-exchange-httpd_aml-decision.h \
+  taler-exchange-httpd_aml-decisions-get.c \
   taler-exchange-httpd_batch-deposit.c taler-exchange-httpd_batch-deposit.h \
   taler-exchange-httpd_batch-withdraw.c taler-exchange-httpd_batch-withdraw.h \
   taler-exchange-httpd_common_deposit.c taler-exchange-httpd_common_deposit.h \

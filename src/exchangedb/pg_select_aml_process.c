@@ -112,6 +112,7 @@ TEH_PG_select_aml_process (
   void *cls,
   enum TALER_AmlDecisionState decision,
   uint64_t row_off,
+  uint64_t limit,
   bool forward,
   TALER_EXCHANGEDB_AmlStatusCallback cb,
   void *cb_cls)
@@ -120,6 +121,7 @@ TEH_PG_select_aml_process (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint32 (&decision),
     GNUNET_PQ_query_param_uint64 (&row_off),
+    GNUNET_PQ_query_param_uint64 (&limit),
     GNUNET_PQ_query_param_end
   };
   struct AmlProcessResultContext ctx = {
@@ -144,7 +146,8 @@ TEH_PG_select_aml_process (
            " FROM aml_status"
            " WHERE aml_status_serial_id > $2"
            "   AND $1 = status & $1"
-           " ORDER BY aml_status_serial_id INC");
+           " ORDER BY aml_status_serial_id INC"
+           " LIMIT $3");
   PREPARE (pg,
            "select_aml_process_dec",
            "SELECT"
@@ -156,7 +159,8 @@ TEH_PG_select_aml_process (
            " FROM aml_status"
            " WHERE aml_status_serial_id < $2"
            "   AND $1 = status & $1"
-           " ORDER BY aml_status_serial_id DESC");
+           " ORDER BY aml_status_serial_id DESC"
+           " LIMIT $3");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              stmt,
                                              params,

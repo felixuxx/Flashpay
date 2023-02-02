@@ -26,7 +26,7 @@
 
 
 /**
- * Handle an "/aml/$OFFICER_PUB/decision" request.  Parses the decision
+ * Handle a POST "/aml/$OFFICER_PUB/decision" request.  Parses the decision
  * details, checks the signatures and if appropriately authorized executes
  * the decision.
  *
@@ -41,5 +41,21 @@ TEH_handler_post_aml_decision (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const json_t *root);
 
+
+/**
+ * Handle a GET "/aml/$OFFICER_PUB/decisions" request.  Parses the request
+ * details, checks the signatures and if appropriately authorized returns
+ * the matching decisions.
+ *
+ * @param rc request context
+ * @param officer_pub public key of the AML officer who made the request
+ * @param args GET arguments (should be none)
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_aml_decisions_get (
+  struct TEH_RequestContext *rc,
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *const args[]);
 
 #endif
