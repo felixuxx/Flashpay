@@ -64,6 +64,93 @@ struct TALER_EXCHANGE_LookupAmlDecision
 
 
 /**
+ * Parse AML decision history.
+ *
+ * @param aml_history JSON array with AML history
+ * @param[out] aml_history_ar where to write the result
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_aml_history (const json_t *aml_history,
+                   struct TALER_EXCHANGE_AmlDecisionDetail *aml_history_ar)
+{
+  json_t *obj;
+  size_t idx;
+
+  json_array_foreach (aml_history, idx, obj)
+  {
+    struct TALER_EXCHANGE_AmlDecisionDetail *aml = &aml_history_ar[idx];
+    uint32_t state32;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_timestamp ("decision_time",
+                                  &aml->decision_time),
+      GNUNET_JSON_spec_string ("justification",
+                               &aml->justification),
+      GNUNET_JSON_spec_uint32 ("new_state",
+                               &state32),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL,
+                           NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    aml->new_state = (enum TALER_AmlDecisionState) state32;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse KYC response array.
+ *
+ * @param kyc_attributes JSON array with KYC details
+ * @param[out] kyc_attributes_ar where to write the result
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_kyc_attributes (const json_t *kyc_attributes,
+                      struct TALER_EXCHANGE_KycHistoryDetail *kyc_attributes_ar)
+{
+  json_t *obj;
+  size_t idx;
+
+  json_array_foreach (kyc_attributes, idx, obj)
+  {
+    struct TALER_EXCHANGE_KycHistoryDetail *kyc = &kyc_attributes_ar[idx];
+    json_t *attributes;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_timestamp ("collection_time",
+                                  &kyc->collection_time),
+      GNUNET_JSON_spec_json ("attributes",
+                             &attributes),
+      GNUNET_JSON_spec_string ("provider_section",
+                               &kyc->provider_section),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL,
+                           NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    kyc->attributes = attributes;
+    json_decref (attributes); /* this is OK, RC preserved via 'kyc_attributes' as long as needed! */
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Parse the provided decision data from the "200 OK" response.
  *
  * @param[in,out] lh handle (callback may be zero'ed out)
@@ -78,10 +165,49 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
   };
-  int ret = GNUNET_SYSERR;
+  json_t *aml_history;
+  json_t *kyc_attributes;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("aml_history",
+                           &aml_history),
+    GNUNET_JSON_spec_json ("kyc_attributes",
+                           &kyc_attributes),
+    GNUNET_JSON_spec_end ()
+  };
 
-  GNUNET_break (0); // FIXME: parse response!
-  return ret;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL,
+                         NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  lr.details.success.aml_history_length = json_array_size (aml_history);
+  lr.details.success.kyc_attributes_length = json_array_size (kyc_attributes);
+  {
+    struct TALER_EXCHANGE_AmlDecisionDetail aml_history_ar
+    [GNUNET_NZL (lr.details.success.aml_history_length)];
+    struct TALER_EXCHANGE_KycHistoryDetail kyc_attributes_ar
+    [lr.details.success.kyc_attributes_length];
+    enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+
+    lr.details.success.aml_history = aml_history_ar;
+    lr.details.success.kyc_attributes = kyc_attributes_ar;
+    ret = parse_aml_history (aml_history,
+                             aml_history_ar);
+    if (GNUNET_OK == ret)
+      ret = parse_kyc_attributes (kyc_attributes,
+                                  kyc_attributes_ar);
+    if (GNUNET_OK == ret)
+    {
+      lh->decision_cb (lh->decision_cb_cls,
+                       &lr);
+      lh->decision_cb = NULL;
+    }
+    return ret;
+  }
 }
 
 
@@ -166,6 +292,7 @@ TALER_EXCHANGE_lookup_aml_decision (
   const char *exchange_url,
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  bool history,
   TALER_EXCHANGE_LookupAmlDecisionCallback cb,
   void *cb_cls)
 {
@@ -208,6 +335,10 @@ TALER_EXCHANGE_lookup_aml_decision (
   lh->decision_cb_cls = cb_cls;
   lh->url = TALER_url_join (exchange_url,
                             arg_str,
+                            "history",
+                            history
+                            ? "true"
+                            : NULL,
                             NULL);
   if (NULL == lh->url)
   {

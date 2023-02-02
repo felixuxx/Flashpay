@@ -4492,12 +4492,12 @@ struct TALER_EXCHANGE_AmlDecisionResponse
       /**
        * Array of KYC data collections returned by the exchange.
        */
-      const struct TALER_EXCHANGE_KycHistoryDetail *kyc_history;
+      const struct TALER_EXCHANGE_KycHistoryDetail *kyc_attributes;
 
       /**
-       * Length of the @e kyc_history array.
+       * Length of the @e kyc_attributes array.
        */
-      unsigned int kyc_history_length;
+      unsigned int kyc_attributes_length;
 
     } success;
 
@@ -4531,6 +4531,7 @@ struct TALER_EXCHANGE_LookupAmlDecision;
  * @param exchange_url HTTP base URL for the exchange
  * @param h_payto which account to return the decision history for
  * @param officer_priv private key of the deciding AML officer
+ * @param history true to return the full history, otherwise only the last decision
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -4541,6 +4542,7 @@ TALER_EXCHANGE_lookup_aml_decision (
   const char *exchange_url,
   const struct TALER_PaytoHashP *h_payto,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
+  bool history,
   TALER_EXCHANGE_LookupAmlDecisionCallback cb,
   void *cb_cls);
 
