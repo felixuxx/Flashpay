@@ -3159,7 +3159,7 @@ typedef void
   void *cls,
   const struct TALER_Amount *new_threshold,
   enum TALER_AmlDecisionState new_status,
-  struct GNUNET_TIME_Absolute decision_time,
+  struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig);

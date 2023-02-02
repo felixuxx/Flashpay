@@ -79,8 +79,6 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[])
 {
-  enum GNUNET_GenericReturnValue res;
-  const char *sig_hdr;
   struct TALER_AmlOfficerSignatureP officer_sig;
   bool frozen = false;
   bool pending = false;
@@ -96,26 +94,30 @@ TEH_handler_aml_decisions_get (
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                        args[0]);
   }
-  sig_hdr = MHD_lookup_connection_value (rc->connection,
-                                         MHD_HEADER_KIND,
-                                         TALER_AML_OFFICER_SIGNATURE_HEADER);
-  if ( (NULL == sig_hdr) ||
-       (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (sig_hdr,
-                                       strlen (sig_hdr),
-                                       &officer_sig,
-                                       sizeof (officer_sig))) ||
-       (GNUNET_OK !=
-        TALER_officer_aml_query_verify (officer_pub,
-                                        &officer_sig)) )
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
-                                       sig_hdr);
+    const char *sig_hdr;
+
+    sig_hdr = MHD_lookup_connection_value (rc->connection,
+                                           MHD_HEADER_KIND,
+                                           TALER_AML_OFFICER_SIGNATURE_HEADER);
+    if ( (NULL == sig_hdr) ||
+         (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (sig_hdr,
+                                         strlen (sig_hdr),
+                                         &officer_sig,
+                                         sizeof (officer_sig))) ||
+         (GNUNET_OK !=
+          TALER_officer_aml_query_verify (officer_pub,
+                                          &officer_sig)) )
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
+                                         sig_hdr);
+    }
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   }
-  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
 
   {
     const char *p;
@@ -225,4 +227,4 @@ TEH_handler_aml_decisions_get (
 }
 
 
-/* end of taler-exchange-httpd_deposits_get.c */
+/* end of taler-exchange-httpd_aml-decisions_get.c */

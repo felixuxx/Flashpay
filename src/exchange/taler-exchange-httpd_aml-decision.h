@@ -58,4 +58,22 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[]);
 
+
+/**
+ * Handle a GET "/aml/$OFFICER_PUB/decision/$H_PAYTO" request.  Parses the request
+ * details, checks the signatures and if appropriately authorized returns
+ * the AML history and KYC attributes for the account.
+ *
+ * @param rc request context
+ * @param officer_pub public key of the AML officer who made the request
+ * @param args GET arguments (should be one)
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_aml_decision_get (
+  struct TEH_RequestContext *rc,
+  const struct TALER_AmlOfficerPublicKeyP *officer_pub,
+  const char *const args[]);
+
+
 #endif

@@ -74,7 +74,7 @@ handle_aml_result (void *cls,
   {
     struct TALER_Amount new_threshold;
     uint32_t ns;
-    struct GNUNET_TIME_Absolute decision_time;
+    struct GNUNET_TIME_Timestamp decision_time;
     char *justification;
     struct TALER_AmlOfficerPublicKeyP decider_pub;
     struct TALER_AmlOfficerSignatureP decider_sig;
@@ -83,8 +83,8 @@ handle_aml_result (void *cls,
                                    &new_threshold),
       GNUNET_PQ_result_spec_uint32 ("new_status",
                                     &ns),
-      GNUNET_PQ_result_spec_absolute_time ("decision_time",
-                                           &decision_time),
+      GNUNET_PQ_result_spec_timestamp ("decision_time",
+                                       &decision_time),
       GNUNET_PQ_result_spec_string ("justification",
                                     &justification),
       GNUNET_PQ_result_spec_auto_from_type ("decider_pub",
