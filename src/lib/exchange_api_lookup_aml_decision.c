@@ -123,12 +123,14 @@ parse_kyc_attributes (const json_t *kyc_attributes,
   json_array_foreach (kyc_attributes, idx, obj)
   {
     struct TALER_EXCHANGE_KycHistoryDetail *kyc = &kyc_attributes_ar[idx];
-    json_t *attributes;
+    json_t *attributes = NULL;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_timestamp ("collection_time",
                                   &kyc->collection_time),
-      GNUNET_JSON_spec_json ("attributes",
-                             &attributes),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_json ("attributes",
+                               &attributes),
+        NULL),
       GNUNET_JSON_spec_string ("provider_section",
                                &kyc->provider_section),
       GNUNET_JSON_spec_end ()
@@ -187,10 +189,10 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
   lr.details.success.aml_history_length = json_array_size (aml_history);
   lr.details.success.kyc_attributes_length = json_array_size (kyc_attributes);
   {
-    struct TALER_EXCHANGE_AmlDecisionDetail aml_history_ar
-    [GNUNET_NZL (lr.details.success.aml_history_length)];
-    struct TALER_EXCHANGE_KycHistoryDetail kyc_attributes_ar
-    [lr.details.success.kyc_attributes_length];
+    struct TALER_EXCHANGE_AmlDecisionDetail aml_history_ar[
+      GNUNET_NZL (lr.details.success.aml_history_length)];
+    struct TALER_EXCHANGE_KycHistoryDetail kyc_attributes_ar[
+      lr.details.success.kyc_attributes_length];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
     lr.details.success.aml_history = aml_history_ar;

@@ -64,6 +64,49 @@ struct TALER_EXCHANGE_LookupAmlDecisions
 
 
 /**
+ * Parse AML decision summary array.
+ *
+ * @param decisions JSON array with AML decision summaries
+ * @param[out] decision_ar where to write the result
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_aml_decisions (const json_t *decisions,
+                     struct TALER_EXCHANGE_AmlDecisionSummary *decision_ar)
+{
+  json_t *obj;
+  size_t idx;
+
+  json_array_foreach (decisions, idx, obj)
+  {
+    struct TALER_EXCHANGE_AmlDecisionSummary *decision = &decision_ar[idx];
+    uint32_t state32;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_timestamp ("last_decision_time",
+                                  &decision->last_decision_time),
+      GNUNET_JSON_spec_fixed_auto ("h_payto",
+                                   &decision->h_payto),
+      GNUNET_JSON_spec_uint32 ("current_state",
+                               &state32),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (obj,
+                           spec,
+                           NULL,
+                           NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    decision->current_state = (enum TALER_AmlDecisionState) state32;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Parse the provided decision data from the "200 OK" response.
  *
  * @param[in,out] lh handle (callback may be zero'ed out)
@@ -78,10 +121,39 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
   };
-  int ret = GNUNET_SYSERR;
+  json_t *records;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("records",
+                           &records),
+    GNUNET_JSON_spec_end ()
+  };
 
-  GNUNET_break (0); // FIXME: parse response!
-  return ret;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL,
+                         NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  lr.details.success.decisions_length = json_array_size (records);
+  {
+    struct TALER_EXCHANGE_AmlDecisionSummary decisions[
+      GNUNET_NZL (lr.details.success.decisions_length)];
+    enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+
+    lr.details.success.decisions = decisions;
+    ret = parse_aml_decisions (records,
+                               decisions);
+    if (GNUNET_OK == ret)
+    {
+      lh->decisions_cb (lh->decisions_cb_cls,
+                        &lr);
+      lh->decisions_cb = NULL;
+    }
+    return ret;
+  }
 }
 
 
