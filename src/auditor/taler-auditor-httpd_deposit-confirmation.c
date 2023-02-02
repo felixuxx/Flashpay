@@ -271,7 +271,9 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   const char *upload_data,
                                   size_t *upload_data_size)
 {
-  struct TALER_AUDITORDB_DepositConfirmation dc;
+  struct TALER_AUDITORDB_DepositConfirmation dc = {
+    .refund_deadline = GNUNET_TIME_UNIT_ZERO_TS
+  };
   struct TALER_AUDITORDB_ExchangeSigningKey es;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
@@ -282,8 +284,10 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                  &dc.h_wire),
     GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                 &dc.exchange_timestamp),
-    GNUNET_JSON_spec_timestamp ("refund_deadline",
-                                &dc.refund_deadline),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                  &dc.refund_deadline),
+      NULL),
     GNUNET_JSON_spec_timestamp ("wire_deadline",
                                 &dc.wire_deadline),
     TALER_JSON_spec_amount ("amount_without_fee",

@@ -296,8 +296,9 @@ TALER_AUDITOR_deposit_confirmation (
                                     h_contract_terms),
         GNUNET_JSON_pack_timestamp ("exchange_timestamp",
                                     exchange_timestamp),
-        GNUNET_JSON_pack_timestamp ("refund_deadline",
-                                    refund_deadline),
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                      refund_deadline)),
         GNUNET_JSON_pack_timestamp ("wire_deadline",
                                     wire_deadline),
         TALER_JSON_pack_amount ("amount_without_fee",
