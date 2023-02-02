@@ -549,7 +549,7 @@ struct TALER_AmlOfficerSignatureP
 
 
 /**
- * Bitmask with possible AML decision states.
+ * Possible AML decision states.
  */
 enum TALER_AmlDecisionState
 {
@@ -557,7 +557,7 @@ enum TALER_AmlDecisionState
   /**
    * All AML requirements are currently satisfied.
    */
-  TALER_AML_NONE = 0,
+  TALER_AML_NORMAL = 0,
 
   /**
    * An AML investigation is pending.

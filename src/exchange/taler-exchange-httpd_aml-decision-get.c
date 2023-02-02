@@ -64,8 +64,10 @@ kyc_attribute_cb (
   json_t *kyc_attributes = cls;
   json_t *attributes;
 
-  attributes = NULL; // FIXME
-
+  attributes = TALER_CRYPTO_kyc_attributes_decrypt (&TEH_attribute_key,
+                                                    enc_attributes,
+                                                    enc_attributes_size);
+  GNUNET_break (NULL != attributes);
   GNUNET_assert (
     0 ==
     json_array_append (
@@ -77,8 +79,9 @@ kyc_attribute_cb (
                                     collection_time),
         GNUNET_JSON_pack_timestamp ("expiration_time",
                                     expiration_time),
-        GNUNET_JSON_pack_object_steal ("attributes",
-                                       attributes)
+        GNUNET_JSON_pack_allow_null (
+          GNUNET_JSON_pack_object_steal ("attributes",
+                                         attributes))
         )));
 }
 

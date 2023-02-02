@@ -145,7 +145,7 @@ TEH_PG_select_aml_process (
            ",status"
            " FROM aml_status"
            " WHERE aml_status_serial_id > $2"
-           "   AND $1 = status & $1"
+           "   AND status = $1"
            " ORDER BY aml_status_serial_id INC"
            " LIMIT $3");
   PREPARE (pg,

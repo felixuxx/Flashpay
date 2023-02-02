@@ -43,13 +43,13 @@ TEH_handler_post_aml_decision (
 
 
 /**
- * Handle a GET "/aml/$OFFICER_PUB/decisions" request.  Parses the request
+ * Handle a GET "/aml/$OFFICER_PUB/decisions/$STATE" request.  Parses the request
  * details, checks the signatures and if appropriately authorized returns
  * the matching decisions.
  *
  * @param rc request context
  * @param officer_pub public key of the AML officer who made the request
- * @param args GET arguments (should be none)
+ * @param args GET arguments (should be the state)
  * @return MHD result code
  */
 MHD_RESULT

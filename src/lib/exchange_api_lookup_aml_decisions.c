@@ -166,9 +166,7 @@ TALER_EXCHANGE_lookup_aml_decisions (
   const char *exchange_url,
   uint64_t start,
   int delta,
-  bool filter_frozen,
-  bool filter_pending,
-  bool filter_normal,
+  enum TALER_AmlDecisionState state,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
   void *cb_cls)
@@ -178,7 +176,21 @@ TALER_EXCHANGE_lookup_aml_decisions (
   struct TALER_AmlOfficerPublicKeyP officer_pub;
   struct TALER_AmlOfficerSignatureP officer_sig;
   char arg_str[sizeof (struct TALER_AmlOfficerPublicKeyP) * 2 + 32];
+  const char *state_str = NULL;
 
+  switch (state)
+  {
+  case TALER_AML_NORMAL:
+    state_str = "normal";
+    break;
+  case TALER_AML_PENDING:
+    state_str = "pending";
+    break;
+  case TALER_AML_FROZEN:
+    state_str = "frozen";
+    break;
+  }
+  GNUNET_assert (NULL != state_str);
   GNUNET_CRYPTO_eddsa_key_get_public (&officer_priv->eddsa_priv,
                                       &officer_pub.eddsa_pub);
   TALER_officer_aml_query_sign (officer_priv,
@@ -195,20 +207,15 @@ TALER_EXCHANGE_lookup_aml_decisions (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/aml/%s/decisions",
-                     pub_str);
+                     "/aml/%s/decisions/%s",
+                     pub_str,
+                     state_str);
   }
   lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecisions);
   lh->decisions_cb = cb;
   lh->decisions_cb_cls = cb_cls;
   lh->url = TALER_url_join (exchange_url,
                             arg_str,
-                            "frozen",
-                            filter_frozen ? "yes" : NULL,
-                            "pending",
-                            filter_pending ? "yes" : NULL,
-                            "normal",
-                            filter_normal ? "yes" : NULL,
                             NULL);
   if (NULL == lh->url)
   {

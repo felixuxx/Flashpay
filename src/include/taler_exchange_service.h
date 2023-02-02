@@ -4384,9 +4384,7 @@ struct TALER_EXCHANGE_LookupAmlDecisions;
  * @param exchange_url HTTP base URL for the exchange
  * @param start row number starting point (exclusive rowid)
  * @param delta number of records to return, negative for descending, positive for ascending from start
- * @param filter_frozen true to only return frozen accounts
- * @param filter_pending true to only return accounts with pending decisions
- * @param filter_normal true to only return accounts where transactions are allowed
+ * @param state type of AML decisions to return
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4398,9 +4396,7 @@ TALER_EXCHANGE_lookup_aml_decisions (
   const char *exchange_url,
   uint64_t start,
   int delta,
-  bool filter_frozen,
-  bool filter_pending,
-  bool filter_normal,
+  enum TALER_AmlDecisionState state,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_LookupAmlDecisionsCallback cb,
   void *cb_cls);

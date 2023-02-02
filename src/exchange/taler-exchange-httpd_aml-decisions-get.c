@@ -80,19 +80,43 @@ TEH_handler_aml_decisions_get (
   const char *const args[])
 {
   struct TALER_AmlOfficerSignatureP officer_sig;
-  bool frozen = false;
-  bool pending = false;
-  bool normal = false;
+  enum TALER_AmlDecisionState decision;
   int delta = -20;
   unsigned long long start = INT64_MAX;
+  const char *state_str = args[0];
 
-  if (NULL != args[0])
+  if (NULL == state_str)
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                        args[0]);
+  }
+  if (0 == strcmp (state_str,
+                   "pending"))
+    decision = TALER_AML_PENDING;
+  else if (0 == strcmp (state_str,
+                        "frozen"))
+    decision = TALER_AML_FROZEN;
+  if (0 == strcmp (state_str,
+                   "normal"))
+    decision = TALER_AML_NORMAL;
+  else
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                       state_str);
+  }
+  if (NULL != args[1])
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
+                                       args[1]);
   }
   {
     const char *sig_hdr;
@@ -122,24 +146,6 @@ TEH_handler_aml_decisions_get (
   {
     const char *p;
 
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "frozen");
-    if (NULL != p)
-      frozen = (0 == strcasecmp (p,
-                                 "yes"));
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "pending");
-    if (NULL != p)
-      pending = (0 == strcasecmp (p,
-                                  "yes"));
-    p = MHD_lookup_connection_value (rc->connection,
-                                     MHD_GET_ARGUMENT_KIND,
-                                     "normal");
-    if (NULL != p)
-      normal = (0 == strcasecmp (p,
-                                 "yes"));
     p = MHD_lookup_connection_value (rc->connection,
                                      MHD_GET_ARGUMENT_KIND,
                                      "start");
@@ -183,7 +189,6 @@ TEH_handler_aml_decisions_get (
   {
     json_t *records;
     enum GNUNET_DB_QueryStatus qs;
-    enum TALER_AmlDecisionState decision = 42; // FIXME!
 
     records = json_array ();
     GNUNET_assert (NULL != records);
