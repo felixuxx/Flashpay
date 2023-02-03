@@ -86,8 +86,12 @@ parse_aml_history (const json_t *aml_history,
                                   &aml->decision_time),
       GNUNET_JSON_spec_string ("justification",
                                &aml->justification),
+      TALER_JSON_spec_amount_any ("new_threshold",
+                                  &aml->new_threshold),
       GNUNET_JSON_spec_uint32 ("new_state",
                                &state32),
+      GNUNET_JSON_spec_fixed_auto ("decider_pub",
+                                   &aml->decider_pub),
       GNUNET_JSON_spec_end ()
     };
 

@@ -4373,7 +4373,7 @@ typedef void
 
 
 /**
- * @brief Handle for a POST /aml/$OFFICER_PUB/decisions request.
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decisions/$STATUS request.
  */
 struct TALER_EXCHANGE_LookupAmlDecisions;
 
@@ -4422,6 +4422,16 @@ struct TALER_EXCHANGE_AmlDecisionDetail
    * When was the decision made.
    */
   struct GNUNET_TIME_Timestamp decision_time;
+
+  /**
+   * New threshold set by this decision.
+   */
+  struct TALER_Amount new_threshold;
+
+  /**
+   * Who made the decision?
+   */
+  struct TALER_AmlOfficerPublicKeyP decider_pub;
 
   /**
    * Justification given for the decision.
@@ -4481,7 +4491,7 @@ struct TALER_EXCHANGE_AmlDecisionResponse
     {
 
       /**
-       * Array of AML decision summaries returned by the exchange.
+       * Array of AML decision details returned by the exchange.
        */
       const struct TALER_EXCHANGE_AmlDecisionDetail *aml_history;
 
@@ -4520,7 +4530,7 @@ typedef void
 
 
 /**
- * @brief Handle for a POST /aml/$OFFICER_PUB/decisions request.
+ * @brief Handle for a POST /aml/$OFFICER_PUB/decision/$H_PAYTO request.
  */
 struct TALER_EXCHANGE_LookupAmlDecision;
 

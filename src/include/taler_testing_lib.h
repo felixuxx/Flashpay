@@ -2933,6 +2933,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
   op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
   op (officer_name, const char *)                                  \
+  op (aml_decision, enum TALER_AmlDecisionState)                   \
+  op (aml_justification, const char *)                             \
   op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
   op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
   op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \

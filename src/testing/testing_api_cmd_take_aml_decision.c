@@ -58,6 +58,11 @@ struct AmlDecisionState
   const char *account_ref_cmd;
 
   /**
+   * Payto hash of the account we are manipulating the AML settings for.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
    * New AML state to use.
    */
   enum TALER_AmlDecisionState new_state;
@@ -70,7 +75,7 @@ struct AmlDecisionState
   /**
    * Threshold transaction amount.
    */
-  const char *new_threshold;
+  struct TALER_Amount new_threshold;
 
   /**
    * Expected response code.
@@ -125,22 +130,11 @@ take_aml_decision_run (void *cls,
 {
   struct AmlDecisionState *ds = cls;
   struct GNUNET_TIME_Timestamp now;
-  struct TALER_Amount threshold;
   const struct TALER_PaytoHashP *h_payto;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
 
   (void) cmd;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (ds->new_threshold,
-                              &threshold))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                ds->new_threshold,
-                cmd->label);
-    GNUNET_assert (0);
-  }
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (is,
@@ -165,13 +159,13 @@ take_aml_decision_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_officer_priv (ref,
                                                        &officer_priv));
-
+  ds->h_payto = *h_payto;
   ds->dh = TALER_EXCHANGE_add_aml_decision (
     is->ctx,
     is->exchange_url,
     ds->justification,
     now,
-    &threshold,
+    &ds->new_threshold,
     h_payto,
     ds->new_state,
     officer_priv,
@@ -212,6 +206,38 @@ take_aml_decision_cleanup (void *cls,
 }
 
 
+/**
+ * Offer internal data of a "AML decision" CMD state to other
+ * commands.
+ *
+ * @param cls closure
+ * @param[out] ret result (could be anything)
+ * @param trait name of the trait
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+take_aml_decision_traits (void *cls,
+                          const void **ret,
+                          const char *trait,
+                          unsigned int index)
+{
+  struct AmlDecisionState *ws = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_aml_justification (&ws->justification),
+    TALER_TESTING_make_trait_aml_decision (&ws->new_state),
+    TALER_TESTING_make_trait_amount (&ws->new_threshold),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
+}
+
+
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_take_aml_decision (
   const char *label,
@@ -227,7 +253,16 @@ TALER_TESTING_cmd_take_aml_decision (
   ds = GNUNET_new (struct AmlDecisionState);
   ds->officer_ref_cmd = ref_officer;
   ds->account_ref_cmd = ref_operation;
-  ds->new_threshold = new_threshold;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (new_threshold,
+                              &ds->new_threshold))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                new_threshold,
+                label);
+    GNUNET_assert (0);
+  }
   ds->new_state = new_state;
   ds->justification = justification;
   ds->expected_response = expected_response;
@@ -236,7 +271,8 @@ TALER_TESTING_cmd_take_aml_decision (
       .cls = ds,
       .label = label,
       .run = &take_aml_decision_run,
-      .cleanup = &take_aml_decision_cleanup
+      .cleanup = &take_aml_decision_cleanup,
+      .traits = &take_aml_decision_traits
     };
 
     return cmd;

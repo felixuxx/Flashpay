@@ -36,9 +36,9 @@ struct AmlCheckState
 {
 
   /**
-   * Auditor enable handle while operation is running.
+   * Handle while operation is running.
    */
-  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *dh;
+  struct TALER_EXCHANGE_LookupAmlDecision *dh;
 
   /**
    * Our interpreter.
@@ -46,56 +46,105 @@ struct AmlCheckState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Reference to command to previous set officer
-   * to update, or NULL.
+   * Reference to command to previous set officer.
    */
-  const char *ref_cmd;
+  const char *ref_officer;
 
   /**
-   * Name to use for the officer.
+   * Reference to command to the previous set AML status operation.
    */
-  const char *name;
+  const char *ref_operation;
 
   /**
-   * Is the officer supposed to be enabled?
+   * Expected HTTP status.
    */
-  bool is_active;
-
-  /**
-   * Is access supposed to be read-only?
-   */
-  bool read_only;
+  unsigned int expected_http_status;
 
 };
 
 
 /**
- * Callback to analyze the /management/XXX response, just used to check
+ * Callback to analyze the /aml/$OFFICER_PUB/$decision/$H_PAYTO response, just used to check
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param adr response details
  */
 static void
 check_aml_decision_cb (void *cls,
-                       const struct TALER_EXCHANGE_HttpResponse *hr)
+                       const struct TALER_EXCHANGE_AmlDecisionResponse *adr)
 {
   struct AmlCheckState *ds = cls;
 
   ds->dh = NULL;
-  if (MHD_HTTP_NO_CONTENT != hr->response_code)
+  if (ds->expected_http_status != adr->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
+                adr->hr.http_status,
                 ds->is->commands[ds->is->ip].label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (hr->reply,
+    json_dumpf (adr->hr.reply,
                 stderr,
                 0);
     TALER_TESTING_interpreter_fail (ds->is);
     return;
+  }
+  if (MHD_HTTP_OK == adr->hr.http_status)
+  {
+    const struct TALER_TESTING_Command *ref;
+    const char **justification;
+    enum TALER_AmlDecisionState *new_state;
+    const struct TALER_Amount *amount;
+    const struct TALER_EXCHANGE_AmlDecisionDetail *oldest = NULL;
+
+    ref = TALER_TESTING_interpreter_lookup_command (ds->is,
+                                                    ds->ref_operation);
+    if (NULL == ref)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    // FIXME: check returned details...
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_aml_justification (ref,
+                                                              &justification));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_aml_decision (ref,
+                                                         &new_state));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_amount (ref,
+                                                   &amount));
+    for (unsigned int i = 1; i<adr->details.success.aml_history_length; i++)
+    {
+      const struct TALER_EXCHANGE_AmlDecisionDetail *aml_history
+        = &adr->details.success.aml_history[i];
+
+      if ( (NULL == oldest) ||
+           (0 !=
+            TALER_amount_cmp (amount,
+                              &oldest->new_threshold)) ||
+           (GNUNET_TIME_timestamp_cmp (oldest->decision_time,
+                                       >,
+                                       aml_history->decision_time)) )
+        oldest = aml_history;
+    }
+    if (NULL == oldest)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
+    if ( (oldest->new_state != *new_state) ||
+         (0 != strcmp (oldest->justification,
+                       *justification) ) )
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (ds->is);
+      return;
+    }
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -114,25 +163,40 @@ check_aml_decision_run (void *cls,
                         struct TALER_TESTING_Interpreter *is)
 {
   struct AmlCheckState *ds = cls;
-  struct GNUNET_TIME_Timestamp now;
-  struct TALER_MasterSignatureP master_sig;
+  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
+  const struct TALER_TESTING_Command *ref;
 
   (void) cmd;
-  now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
-  TALER_exchange_offline_check_aml_decision_sign (&is->auditor_pub,
-                                                  is->auditor_url,
-                                                  now,
-                                                  &is->master_priv,
-                                                  &master_sig);
-  ds->dh = TALER_EXCHANGE_management_enable_auditor (
+  ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ds->ref_operation);
+  if (NULL == ref)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_h_payto (ref,
+                                                  &h_payto));
+  ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ds->ref_officer);
+  if (NULL == ref)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_officer_priv (ref,
+                                                       &officer_priv));
+  ds->dh = TALER_EXCHANGE_lookup_aml_decision (
     is->ctx,
     is->exchange_url,
-    &is->auditor_pub,
-    is->auditor_url,
-    "test-case auditor", /* human-readable auditor name */
-    now,
-    &master_sig,
+    h_payto,
+    officer_priv,
+    true, /* history */
     &check_aml_decision_cb,
     ds);
   if (NULL == ds->dh)
@@ -163,7 +227,7 @@ check_aml_decision_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 ds->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_management_enable_auditor_cancel (ds->dh);
+    TALER_EXCHANGE_lookup_aml_decision_cancel (ds->dh);
     ds->dh = NULL;
   }
   GNUNET_free (ds);
@@ -180,10 +244,9 @@ TALER_TESTING_cmd_check_aml_decision (
   struct AmlCheckState *ds;
 
   ds = GNUNET_new (struct AmlCheckState);
-  ds->ref_cmd = ref_cmd;
-  ds->name = name;
-  ds->is_active = is_active;
-  ds->read_only = read_only;
+  ds->ref_officer = ref_officer;
+  ds->ref_operation = ref_operation;
+  ds->expected_http_status = expected_http_status;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,

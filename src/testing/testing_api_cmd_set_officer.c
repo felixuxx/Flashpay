@@ -213,7 +213,7 @@ set_officer_cleanup (void *cls,
 
 
 /**
- * Offer internal data to a "set officer" CMD state to other
+ * Offer internal data of a "set officer" CMD state to other
  * commands.
  *
  * @param cls closure
