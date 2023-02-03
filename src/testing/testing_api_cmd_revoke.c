@@ -141,14 +141,12 @@ revoke_run (void *cls,
   /* Get denom pub from trait */
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        rs->coin_reference);
-
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_denom_pub (coin_cmd,
                                                     0,

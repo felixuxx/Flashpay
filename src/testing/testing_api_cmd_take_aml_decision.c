@@ -18,7 +18,7 @@
 */
 /**
  * @file testing/testing_api_cmd_take_aml_decision.c
- * @brief command for testing /management/XXX
+ * @brief command for testing /aml/$OFFICER_PUB/decision
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -38,7 +38,7 @@ struct AmlDecisionState
   /**
    * Auditor enable handle while operation is running.
    */
-  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *dh;
+  struct TALER_EXCHANGE_AddAmlDecision *dh;
 
   /**
    * Our interpreter.
@@ -46,26 +46,36 @@ struct AmlDecisionState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Reference to command to previous set officer
-   * to update, or NULL.
+   * Reference to command to previous set officer command that gives
+   * us an officer_priv trait.
    */
-  const char *ref_cmd;
+  const char *officer_ref_cmd;
 
   /**
-   * Name to use for the officer.
+   * Reference to command to previous AML-triggering event that gives
+   * us a payto-hash trait.
    */
-  const char *name;
+  const char *account_ref_cmd;
 
   /**
-   * Is the officer supposed to be enabled?
+   * New AML state to use.
    */
-  bool is_active;
+  enum TALER_AmlDecisionState new_state;
 
   /**
-   * Is access supposed to be read-only?
+   * Justification given.
    */
-  bool read_only;
+  const char *justification;
 
+  /**
+   * Threshold transaction amount.
+   */
+  const char *new_threshold;
+
+  /**
+   * Expected response code.
+   */
+  unsigned int expected_response;
 };
 
 
@@ -83,7 +93,7 @@ take_aml_decision_cb (void *cls,
   struct AmlDecisionState *ds = cls;
 
   ds->dh = NULL;
-  if (MHD_HTTP_NO_CONTENT != hr->response_code)
+  if (ds->expected_response != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Unexpected response code %u to command %s in %s:%u\n",
@@ -115,24 +125,56 @@ take_aml_decision_run (void *cls,
 {
   struct AmlDecisionState *ds = cls;
   struct GNUNET_TIME_Timestamp now;
-  struct TALER_MasterSignatureP master_sig;
+  struct TALER_Amount threshold;
+  const struct TALER_PaytoHashP *h_payto;
+  const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
+  const struct TALER_TESTING_Command *ref;
 
   (void) cmd;
+  if (GNUNET_OK !=
+      TALER_string_to_amount (ds->new_threshold,
+                              &threshold))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                ds->new_threshold,
+                cmd->label);
+    GNUNET_assert (0);
+  }
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
-  TALER_exchange_offline_take_aml_decision_sign (&is->auditor_pub,
-                                                 is->auditor_url,
-                                                 now,
-                                                 &is->master_priv,
-                                                 &master_sig);
-  ds->dh = TALER_EXCHANGE_management_enable_auditor (
+  ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ds->account_ref_cmd);
+  if (NULL == ref)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_h_payto (ref,
+                                                  &h_payto));
+  ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ds->officer_ref_cmd);
+  if (NULL == ref)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_officer_priv (ref,
+                                                       &officer_priv));
+
+  ds->dh = TALER_EXCHANGE_add_aml_decision (
     is->ctx,
     is->exchange_url,
-    &is->auditor_pub,
-    is->auditor_url,
-    "test-case auditor", /* human-readable auditor name */
+    ds->justification,
     now,
-    &master_sig,
+    &threshold,
+    h_payto,
+    ds->new_state,
+    officer_priv,
     &take_aml_decision_cb,
     ds);
   if (NULL == ds->dh)
@@ -163,7 +205,7 @@ take_aml_decision_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 ds->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_management_enable_auditor_cancel (ds->dh);
+    TALER_EXCHANGE_add_aml_decision_cancel (ds->dh);
     ds->dh = NULL;
   }
   GNUNET_free (ds);
@@ -176,22 +218,25 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *ref_officer,
   const char *ref_operation,
   const char *new_threshold,
-  bool block)
+  const char *justification,
+  enum TALER_AmlDecisionState new_state,
+  unsigned int expected_response)
 {
   struct AmlDecisionState *ds;
 
   ds = GNUNET_new (struct AmlDecisionState);
-  ds->ref_cmd = ref_cmd;
-  ds->name = name;
-  ds->is_active = is_active;
-  ds->read_only = read_only;
+  ds->officer_ref_cmd = ref_officer;
+  ds->account_ref_cmd = ref_operation;
+  ds->new_threshold = new_threshold;
+  ds->new_state = new_state;
+  ds->justification = justification;
+  ds->expected_response = expected_response;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,
       .label = label,
       .run = &take_aml_decision_run,
       .cleanup = &take_aml_decision_cleanup
-                 // FIXME: expose trait with officer-priv here!
     };
 
     return cmd;

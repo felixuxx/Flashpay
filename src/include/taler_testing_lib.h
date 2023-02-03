@@ -2739,7 +2739,9 @@ TALER_TESTING_cmd_set_officer (
  * @param ref_operation command that previously created an
  *       h_payto which to make an AML decision about
  * @param new_threshold new threshold to set
- * @param block set to true to block the account
+ * @param justification justification given for the decision
+ * @param new_state new AML state for the account
+ * @param expected_response expected HTTP return status
  * @return the command
  */
 struct TALER_TESTING_Command
@@ -2748,7 +2750,9 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *ref_officer,
   const char *ref_operation,
   const char *new_threshold,
-  bool block);
+  const char *justification,
+  enum TALER_AmlDecisionState new_state,
+  unsigned int expected_response);
 
 
 /**

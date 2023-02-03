@@ -1578,7 +1578,10 @@ handle_mhd_request (void *cls,
           return MHD_NO;
         }
         if (cv > TALER_MHD_REQUEST_BUFFER_MAX)
+        {
+          GNUNET_break_op (0);
           return TALER_MHD_reply_request_too_large (connection);
+        }
       }
     }
   }
