@@ -56,8 +56,6 @@ struct AmlDecisionState
    */
   const char *name;
 
-  // FIXME: add trait with officer-priv here!
-
   /**
    * Is the officer supposed to be enabled?
    */

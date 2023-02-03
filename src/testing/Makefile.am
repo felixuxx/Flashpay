@@ -99,6 +99,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_revoke_sign_key.c \
   testing_api_cmd_rewind.c \
   testing_api_cmd_serialize_keys.c \
+  testing_api_cmd_set_officer.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_sleep.c \
   testing_api_cmd_stat.c \

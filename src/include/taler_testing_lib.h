@@ -2751,6 +2751,25 @@ TALER_TESTING_cmd_take_aml_decision (
   bool block);
 
 
+/**
+ * Fetch AML decision.
+ *
+ * @param label command label
+ * @param ref_officer command that previously created an
+ *       officer
+ * @param ref_operation command that previously created an
+ *       h_payto which to make an AML decision about
+ * @param expected_http_status expected HTTP response status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_aml_decision (
+  const char *label,
+  const char *ref_officer,
+  const char *ref_operation,
+  unsigned int expected_http_status);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 
@@ -2907,6 +2926,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
   op (bank_row, const uint64_t)                                    \
+  op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
+  op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
+  op (officer_name, const char *)                                  \
   op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
   op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
   op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
@@ -2932,7 +2954,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (kyc_url, const char *)                                       \
   op (web_url, const char *)                                       \
   op (row, const uint64_t)                                         \
-  op (legi_requirement_row, const uint64_t)                         \
+  op (legi_requirement_row, const uint64_t)                        \
   op (array_length, const unsigned int)                            \
   op (credit_payto_uri, const char *)                              \
   op (debit_payto_uri, const char *)                               \
@@ -2950,26 +2972,26 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 /**
  * Call #op on all indexed traits.
  */
-#define TALER_TESTING_INDEXED_TRAITS(op)                               \
-  op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
-  op (denom_sig, const struct TALER_DenominationSignature)             \
-  op (amounts, const struct TALER_Amount)                           \
-  op (deposit_amount, const struct TALER_Amount)                   \
-  op (deposit_fee_amount, const struct TALER_Amount)               \
-  op (age_commitment, const struct TALER_AgeCommitment)              \
-  op (age_commitment_proof, const struct TALER_AgeCommitmentProof)     \
-  op (h_age_commitment, const struct TALER_AgeCommitmentHash)          \
+#define TALER_TESTING_INDEXED_TRAITS(op)                                \
+  op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)            \
+  op (denom_sig, const struct TALER_DenominationSignature)              \
+  op (amounts, const struct TALER_Amount)                               \
+  op (deposit_amount, const struct TALER_Amount)                        \
+  op (deposit_fee_amount, const struct TALER_Amount)                    \
+  op (age_commitment, const struct TALER_AgeCommitment)                 \
+  op (age_commitment_proof, const struct TALER_AgeCommitmentProof)      \
+  op (h_age_commitment, const struct TALER_AgeCommitmentHash)           \
   op (reserve_history, const struct TALER_EXCHANGE_ReserveHistoryEntry) \
-  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)      \
-  op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \
-  op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
-  op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
-  op (absolute_time, const struct GNUNET_TIME_Absolute)                \
-  op (timestamp, const struct GNUNET_TIME_Timestamp)                   \
-  op (wire_deadline, const struct GNUNET_TIME_Timestamp)               \
-  op (refund_deadline, const struct GNUNET_TIME_Timestamp)             \
-  op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
-  op (exchange_sig, const struct TALER_ExchangeSignatureP)             \
+  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)       \
+  op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)     \
+  op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)               \
+  op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                 \
+  op (absolute_time, const struct GNUNET_TIME_Absolute)                 \
+  op (timestamp, const struct GNUNET_TIME_Timestamp)                    \
+  op (wire_deadline, const struct GNUNET_TIME_Timestamp)                \
+  op (refund_deadline, const struct GNUNET_TIME_Timestamp)              \
+  op (exchange_pub, const struct TALER_ExchangePublicKeyP)              \
+  op (exchange_sig, const struct TALER_ExchangeSignatureP)              \
   op (blinding_key, const union TALER_DenominationBlindingKeyP)
 
 

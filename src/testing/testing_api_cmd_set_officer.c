@@ -18,7 +18,7 @@
 */
 /**
  * @file testing/testing_api_cmd_set_officer.c
- * @brief command for testing /management/XXX
+ * @brief command for testing /management/aml-officers
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -36,9 +36,9 @@ struct SetOfficerState
 {
 
   /**
-   * Auditor enable handle while operation is running.
+   * Update AML officer handle while operation is running.
    */
-  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *dh;
+  struct TALER_EXCHANGE_ManagementUpdateAmlOfficer *dh;
 
   /**
    * Our interpreter.
@@ -56,7 +56,15 @@ struct SetOfficerState
    */
   const char *name;
 
-  // FIXME: add trait with officer-priv here!
+  /**
+   * Private key of the AML officer.
+   */
+  struct TALER_AmlOfficerPrivateKeyP officer_priv;
+
+  /**
+   * Public key of the AML officer.
+   */
+  struct TALER_AmlOfficerPublicKeyP officer_pub;
 
   /**
    * Is the officer supposed to be enabled?
@@ -85,7 +93,7 @@ set_officer_cb (void *cls,
   struct SetOfficerState *ds = cls;
 
   ds->dh = NULL;
-  if (MHD_HTTP_NO_CONTENT != hr->response_code)
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Unexpected response code %u to command %s in %s:%u\n",
@@ -122,18 +130,50 @@ set_officer_run (void *cls,
   (void) cmd;
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
-  TALER_exchange_offline_set_officer_sign (&is->auditor_pub,
-                                           is->auditor_url,
-                                           now,
-                                           &is->master_priv,
-                                           &master_sig);
-  ds->dh = TALER_EXCHANGE_management_enable_auditor (
+  if (NULL == ds->ref_cmd)
+  {
+    GNUNET_CRYPTO_eddsa_key_create (&ds->officer_priv.eddsa_priv);
+    GNUNET_CRYPTO_eddsa_key_get_public (&ds->officer_priv.eddsa_priv,
+                                        &ds->officer_pub.eddsa_pub);
+  }
+  else
+  {
+    const struct TALER_TESTING_Command *ref;
+    const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
+    const struct TALER_AmlOfficerPublicKeyP *officer_pub;
+
+    ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                    ds->ref_cmd);
+    if (NULL == ref)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_officer_pub (ref,
+                                                        &officer_pub));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_officer_priv (ref,
+                                                         &officer_priv));
+    ds->officer_pub = *officer_pub;
+    ds->officer_priv = *officer_priv;
+  }
+  TALER_exchange_offline_aml_officer_status_sign (&ds->officer_pub,
+                                                  ds->name,
+                                                  now,
+                                                  ds->is_active,
+                                                  ds->read_only,
+                                                  &is->master_priv,
+                                                  &master_sig);
+  ds->dh = TALER_EXCHANGE_management_update_aml_officer (
     is->ctx,
     is->exchange_url,
-    &is->auditor_pub,
-    is->auditor_url,
-    "test-case auditor", /* human-readable auditor name */
+    &ds->officer_pub,
+    ds->name,
     now,
+    ds->is_active,
+    ds->read_only,
     &master_sig,
     &set_officer_cb,
     ds);
@@ -165,10 +205,41 @@ set_officer_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 ds->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_management_enable_auditor_cancel (ds->dh);
+    TALER_EXCHANGE_management_update_aml_officer_cancel (ds->dh);
     ds->dh = NULL;
   }
   GNUNET_free (ds);
+}
+
+
+/**
+ * Offer internal data to a "set officer" CMD state to other
+ * commands.
+ *
+ * @param cls closure
+ * @param[out] ret result (could be anything)
+ * @param trait name of the trait
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+set_officer_traits (void *cls,
+                    const void **ret,
+                    const char *trait,
+                    unsigned int index)
+{
+  struct SetOfficerState *ws = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    TALER_TESTING_make_trait_officer_pub (&ws->officer_pub),
+    TALER_TESTING_make_trait_officer_priv (&ws->officer_priv),
+    TALER_TESTING_make_trait_officer_name (&ws->name),
+    TALER_TESTING_trait_end ()
+  };
+
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
 }
 
 
@@ -192,8 +263,8 @@ TALER_TESTING_cmd_set_officer (
       .cls = ds,
       .label = label,
       .run = &set_officer_run,
-      .cleanup = &set_officer_cleanup
-                 // FIXME: expose trait with officer-priv here!
+      .cleanup = &set_officer_cleanup,
+      .traits = &set_officer_traits
     };
 
     return cmd;
