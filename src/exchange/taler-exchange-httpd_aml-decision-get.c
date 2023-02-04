@@ -91,7 +91,7 @@ kyc_attribute_cb (
  *
  * @param[in,out] cls closure with a `json_t *` array to update
  * @param new_threshold new monthly threshold that would trigger an AML check
- * @param new_status AML decision status
+ * @param new_state AML decision status
  * @param decision_time when was the decision made
  * @param justification human-readable text justifying the decision
  * @param decider_pub public key of the staff member

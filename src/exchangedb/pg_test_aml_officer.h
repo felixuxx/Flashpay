@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_update_aml_officer.h
- * @brief implementation of the update_aml_officer function for Postgres
+ * @file exchangedb/pg_test_aml_officer.h
+ * @brief implementation of the test_aml_officer function for Postgres
  * @author Christian Grothoff
  */
-#ifndef PG_UPDATE_AML_OFFICER_H
-#define PG_UPDATE_AML_OFFICER_H
+#ifndef PG_TEST_AML_OFFICER_H
+#define PG_TEST_AML_OFFICER_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
