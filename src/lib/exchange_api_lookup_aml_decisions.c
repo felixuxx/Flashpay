@@ -82,12 +82,14 @@ parse_aml_decisions (const json_t *decisions,
     struct TALER_EXCHANGE_AmlDecisionSummary *decision = &decision_ar[idx];
     uint32_t state32;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_timestamp ("last_decision_time",
-                                  &decision->last_decision_time),
       GNUNET_JSON_spec_fixed_auto ("h_payto",
                                    &decision->h_payto),
       GNUNET_JSON_spec_uint32 ("current_state",
                                &state32),
+      TALER_JSON_spec_amount_any ("threshold",
+                                  &decision->threshold),
+      GNUNET_JSON_spec_uint64 ("rowid",
+                               &decision->rowid),
       GNUNET_JSON_spec_end ()
     };
 
@@ -196,6 +198,8 @@ handle_lookup_finished (void *cls,
     GNUNET_assert (NULL == lh->decisions_cb);
     TALER_EXCHANGE_lookup_aml_decisions_cancel (lh);
     return;
+  case MHD_HTTP_NO_CONTENT:
+    break;
   case MHD_HTTP_BAD_REQUEST:
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
@@ -292,9 +296,26 @@ TALER_EXCHANGE_lookup_aml_decisions (
   lh = GNUNET_new (struct TALER_EXCHANGE_LookupAmlDecisions);
   lh->decisions_cb = cb;
   lh->decisions_cb_cls = cb_cls;
-  lh->url = TALER_url_join (exchange_url,
-                            arg_str,
-                            NULL);
+  {
+    char delta_s[24];
+    char start_s[24];
+
+    GNUNET_snprintf (delta_s,
+                     sizeof (delta_s),
+                     "%d",
+                     delta);
+    GNUNET_snprintf (start_s,
+                     sizeof (start_s),
+                     "%llu",
+                     (unsigned long long) start);
+    lh->url = TALER_url_join (exchange_url,
+                              arg_str,
+                              "delta",
+                              delta_s,
+                              "start",
+                              start_s,
+                              NULL);
+  }
   if (NULL == lh->url)
   {
     GNUNET_free (lh);

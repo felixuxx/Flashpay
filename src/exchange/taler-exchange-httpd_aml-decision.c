@@ -119,7 +119,7 @@ TEH_handler_post_aml_decision (
       if (0 == --retries_left)
         break;
     } while (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (qs < 0)
+    if (qs <= 0)
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (connection,
@@ -129,6 +129,7 @@ TEH_handler_post_aml_decision (
     }
     if (invalid_officer)
     {
+      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
@@ -136,7 +137,7 @@ TEH_handler_post_aml_decision (
         NULL);
     }
     if (GNUNET_TIME_timestamp_cmp (last_date,
-                                   >,
+                                   >=,
                                    decision_time))
     {
       GNUNET_break_op (0);

@@ -140,25 +140,25 @@ TEH_PG_select_aml_process (
            "SELECT"
            " aml_status_serial_id"
            ",h_payto"
-           ",threshold_var"
+           ",threshold_val"
            ",threshold_frac"
            ",status"
            " FROM aml_status"
            " WHERE aml_status_serial_id > $2"
            "   AND status = $1"
-           " ORDER BY aml_status_serial_id INC"
+           " ORDER BY aml_status_serial_id ASC"
            " LIMIT $3");
   PREPARE (pg,
            "select_aml_process_dec",
            "SELECT"
            " aml_status_serial_id"
            ",h_payto"
-           ",threshold_var"
+           ",threshold_val"
            ",threshold_frac"
            ",status"
            " FROM aml_status"
            " WHERE aml_status_serial_id < $2"
-           "   AND $1 = status & $1"
+           "   AND status = $1"
            " ORDER BY aml_status_serial_id DESC"
            " LIMIT $3");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

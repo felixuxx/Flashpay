@@ -2774,6 +2774,24 @@ TALER_TESTING_cmd_check_aml_decision (
   unsigned int expected_http_status);
 
 
+/**
+ * Fetch AML decisions.
+ *
+ * @param label command label
+ * @param ref_officer command that previously created an
+ *       officer
+ * @param filter AML state to filter by
+ * @param expected_http_status expected HTTP response status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_aml_decisions (
+  const char *label,
+  const char *ref_officer,
+  enum TALER_AmlDecisionState filter,
+  unsigned int expected_http_status);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 

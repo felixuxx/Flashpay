@@ -4305,14 +4305,19 @@ TALER_EXCHANGE_management_update_aml_officer_cancel (
 struct TALER_EXCHANGE_AmlDecisionSummary
 {
   /**
-   * When was the last decision made.
+   * What is the current monthly threshold.
    */
-  struct GNUNET_TIME_Timestamp last_decision_time;
+  struct TALER_Amount threshold;
 
   /**
    * Account the decision was made for.
    */
   struct TALER_PaytoHashP h_payto;
+
+  /**
+   * RowID of this decision.
+   */
+  uint64_t rowid;
 
   /**
    * Current decision state.

@@ -63,10 +63,10 @@ record_cb (
       GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("h_payto",
                                     h_payto),
-        TALER_JSON_pack_amount ("threshold",
-                                threshold),
         GNUNET_JSON_pack_int64 ("current_state",
                                 status),
+        TALER_JSON_pack_amount ("threshold",
+                                threshold),
         GNUNET_JSON_pack_int64 ("rowid",
                                 row_id)
         )));
@@ -98,8 +98,8 @@ TEH_handler_aml_decisions_get (
   else if (0 == strcmp (state_str,
                         "frozen"))
     decision = TALER_AML_FROZEN;
-  if (0 == strcmp (state_str,
-                   "normal"))
+  else if (0 == strcmp (state_str,
+                        "normal"))
     decision = TALER_AML_NORMAL;
   else
   {
@@ -172,10 +172,11 @@ TEH_handler_aml_decisions_get (
     qs = TEH_plugin->select_aml_process (TEH_plugin->cls,
                                          decision,
                                          start,
-                                         delta > 0,
                                          GNUNET_MIN (MAX_RECORDS,
-                                                     delta > 0 ? delta :
-                                                     -delta),
+                                                     delta > 0
+                                                     ? delta
+                                                     : -delta),
+                                         delta > 0,
                                          &record_cb,
                                          records);
     switch (qs)
