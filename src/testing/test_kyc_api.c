@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -410,7 +410,72 @@ run (void *cls,
       MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
-
+  struct TALER_TESTING_Command aml[] = {
+    /* Trigger something upon which an AML officer could act */
+    TALER_TESTING_cmd_wallet_kyc_get ("wallet-trigger-kyc-for-aml",
+                                      NULL,
+                                      "EUR:1000",
+                                      MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
+    TALER_TESTING_cmd_set_officer ("create-aml-officer-1",
+                                   NULL,
+                                   "Peter Falk",
+                                   true,
+                                   false),
+    TALER_TESTING_cmd_sleep ("sleep-1a",
+                             1),
+    TALER_TESTING_cmd_set_officer ("create-aml-officer-1-disable",
+                                   "create-aml-officer-1",
+                                   "Peter Falk",
+                                   true,
+                                   true),
+    /* Test that we are not allowed to take AML decisions as our
+       AML staff account is on read-only */
+    TALER_TESTING_cmd_take_aml_decision ("aml-decide-while-disabled",
+                                         "create-aml-officer-1",
+                                         "wallet-trigger-kyc-for-aml",
+                                         "EUR:10000",
+                                         "party time",
+                                         TALER_AML_NORMAL,
+                                         MHD_HTTP_FORBIDDEN),
+    /* Check that no decision was taken, but that we are allowed
+       to read this information */
+    TALER_TESTING_cmd_check_aml_decision ("check-aml-decision-empty",
+                                          "create-aml-officer-1",
+                                          "aml-decide-while-disabled",
+                                          MHD_HTTP_NO_CONTENT),
+    TALER_TESTING_cmd_sleep ("sleep-1b",
+                             1),
+    TALER_TESTING_cmd_set_officer ("create-aml-officer-1-enable",
+                                   "create-aml-officer-1",
+                                   "Peter Falk",
+                                   true,
+                                   false),
+    TALER_TESTING_cmd_take_aml_decision ("aml-decide",
+                                         "create-aml-officer-1",
+                                         "wallet-trigger-kyc-for-aml",
+                                         "EUR:10000",
+                                         "party time",
+                                         TALER_AML_NORMAL,
+                                         MHD_HTTP_NO_CONTENT),
+    TALER_TESTING_cmd_check_aml_decision ("check-aml-decision",
+                                          "create-aml-officer-1",
+                                          "aml-decide",
+                                          MHD_HTTP_OK),
+    TALER_TESTING_cmd_sleep ("sleep-1c",
+                             1),
+    TALER_TESTING_cmd_set_officer ("create-aml-officer-1-disable",
+                                   "create-aml-officer-1",
+                                   "Peter Falk",
+                                   false,
+                                   true),
+    /* Test that we are NOT allowed to read AML decisions now that
+       our AML staff account is disabled */
+    TALER_TESTING_cmd_check_aml_decision ("check-aml-decision-disabled",
+                                          "create-aml-officer-1",
+                                          "aml-decide",
+                                          MHD_HTTP_FORBIDDEN),
+    TALER_TESTING_cmd_end ()
+  };
 
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
@@ -452,6 +517,8 @@ run (void *cls,
                              push),
     TALER_TESTING_cmd_batch ("pull",
                              pull),
+    TALER_TESTING_cmd_batch ("aml",
+                             aml),
     TALER_TESTING_cmd_end ()
   };
 

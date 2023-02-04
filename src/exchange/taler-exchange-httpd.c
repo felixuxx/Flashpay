@@ -488,13 +488,55 @@ handle_get_aml (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
                                        "AML GET operations must specify an operation identifier");
   }
-  if (1)   // FIXME: check AML officer GET signature!
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
-                                       NULL);
+    const char *sig_hdr;
+    struct TALER_AmlOfficerSignatureP officer_sig;
+
+    sig_hdr = MHD_lookup_connection_value (rc->connection,
+                                           MHD_HEADER_KIND,
+                                           TALER_AML_OFFICER_SIGNATURE_HEADER);
+    if ( (NULL == sig_hdr) ||
+         (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (sig_hdr,
+                                         strlen (sig_hdr),
+                                         &officer_sig,
+                                         sizeof (officer_sig))) ||
+         (GNUNET_OK !=
+          TALER_officer_aml_query_verify (&officer_pub,
+                                          &officer_sig)) )
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
+                                         sig_hdr);
+    }
+    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+  }
+
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->test_aml_officer (TEH_plugin->cls,
+                                       &officer_pub);
+    switch (qs)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         NULL);
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_ACCESS_DENIED,
+                                         NULL);
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      break;
+    }
   }
   for (unsigned int i = 0; NULL != h[i].op; i++)
     if (0 == strcmp (h[i].op,

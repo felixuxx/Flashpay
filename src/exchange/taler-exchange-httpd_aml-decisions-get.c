@@ -79,7 +79,6 @@ TEH_handler_aml_decisions_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[])
 {
-  struct TALER_AmlOfficerSignatureP officer_sig;
   enum TALER_AmlDecisionState decision;
   int delta = -20;
   unsigned long long start = INT64_MAX;
@@ -117,30 +116,6 @@ TEH_handler_aml_decisions_get (
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                        args[1]);
-  }
-  {
-    const char *sig_hdr;
-
-    sig_hdr = MHD_lookup_connection_value (rc->connection,
-                                           MHD_HEADER_KIND,
-                                           TALER_AML_OFFICER_SIGNATURE_HEADER);
-    if ( (NULL == sig_hdr) ||
-         (GNUNET_OK !=
-          GNUNET_STRINGS_string_to_data (sig_hdr,
-                                         strlen (sig_hdr),
-                                         &officer_sig,
-                                         sizeof (officer_sig))) ||
-         (GNUNET_OK !=
-          TALER_officer_aml_query_verify (officer_pub,
-                                          &officer_sig)) )
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
-                                         sig_hdr);
-    }
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   }
 
   {

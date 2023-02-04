@@ -76,7 +76,10 @@ TEH_handler_post_aml_decision (
     if (GNUNET_SYSERR == res)
       return MHD_NO; /* hard failure */
     if (GNUNET_NO == res)
+    {
+      GNUNET_break_op (0);
       return MHD_YES; /* failure */
+    }
   }
   new_state = (enum TALER_AmlDecisionState) new_state32;
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;

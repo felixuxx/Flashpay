@@ -136,7 +136,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_similar_kyc_attributes.h pg_select_similar_kyc_attributes.c \
   pg_select_kyc_attributes.h pg_select_kyc_attributes.c \
   pg_insert_aml_officer.h pg_insert_aml_officer.c \
-  pg_update_aml_officer.h pg_update_aml_officer.c \
+  pg_test_aml_officer.h pg_test_aml_officer.c \
   pg_lookup_aml_officer.h pg_lookup_aml_officer.c \
   pg_trigger_aml_process.h pg_trigger_aml_process.c \
   pg_select_aml_process.h pg_select_aml_process.c \

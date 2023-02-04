@@ -210,7 +210,7 @@
 #include "pg_select_similar_kyc_attributes.h"
 #include "pg_select_kyc_attributes.h"
 #include "pg_insert_aml_officer.h"
-#include "pg_update_aml_officer.h"
+#include "pg_test_aml_officer.h"
 #include "pg_lookup_aml_officer.h"
 #include "pg_trigger_aml_process.h"
 #include "pg_select_aml_process.h"
@@ -761,8 +761,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_kyc_attributes;
   plugin->insert_aml_officer
     = &TEH_PG_insert_aml_officer;
-  plugin->update_aml_officer
-    = &TEH_PG_update_aml_officer;
+  plugin->test_aml_officer
+    = &TEH_PG_test_aml_officer;
   plugin->lookup_aml_officer
     = &TEH_PG_lookup_aml_officer;
   plugin->trigger_aml_process

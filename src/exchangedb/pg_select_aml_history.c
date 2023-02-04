@@ -138,18 +138,13 @@ TEH_PG_select_aml_history (
   PREPARE (pg,
            "lookup_aml_history",
            "SELECT"
-           " aggregation_serial_id"
-           ",deposits.h_contract_terms"
-           ",payto_uri"
-           ",wire_targets.wire_target_h_payto"
-           ",kc.coin_pub"
-           ",deposits.merchant_pub"
-           ",wire_out.execution_date"
-           ",deposits.amount_with_fee_val"
-           ",deposits.amount_with_fee_frac"
-           ",denom.fee_deposit_val"
-           ",denom.fee_deposit_frac"
-           ",denom.denom_pub"
+           " new_threshold_val"
+           ",new_threshold_frac"
+           ",new_status"
+           ",decision_time"
+           ",justification"
+           ",decider_pub"
+           ",decider_sig"
            " FROM aml_history"
            " WHERE h_payto=$1;");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

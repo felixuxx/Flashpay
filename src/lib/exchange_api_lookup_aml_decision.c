@@ -262,6 +262,12 @@ handle_lookup_finished (void *cls,
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
+  case MHD_HTTP_FORBIDDEN:
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
+    /* Nothing really to verify, exchange says this coin was not melted; we
+       should pass the JSON reply to the application */
+    break;
   case MHD_HTTP_NOT_FOUND:
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
@@ -280,7 +286,7 @@ handle_lookup_finished (void *cls,
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d for exchange link\n",
+                "Unexpected response code %u/%d for exchange lookup AML decision\n",
                 (unsigned int) response_code,
                 (int) lr.hr.ec);
     break;
@@ -332,7 +338,7 @@ TALER_EXCHANGE_lookup_aml_decision (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/aml/%s/decision/%s",
+                     "aml/%s/decision/%s",
                      pub_str,
                      pt_str);
   }

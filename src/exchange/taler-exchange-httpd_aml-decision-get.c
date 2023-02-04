@@ -101,7 +101,7 @@ static void
 aml_history_cb (
   void *cls,
   const struct TALER_Amount *new_threshold,
-  enum TALER_AmlDecisionState new_status,
+  enum TALER_AmlDecisionState new_state,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
@@ -120,8 +120,8 @@ aml_history_cb (
                                  justification),
         TALER_JSON_pack_amount ("new_threshold",
                                 new_threshold),
-        GNUNET_JSON_pack_int64 ("new_status",
-                                new_status),
+        GNUNET_JSON_pack_int64 ("new_state",
+                                new_state),
         GNUNET_JSON_pack_timestamp ("decision_time",
                                     decision_time)
         )));
@@ -134,7 +134,6 @@ TEH_handler_aml_decision_get (
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const char *const args[])
 {
-  struct TALER_AmlOfficerSignatureP officer_sig;
   struct TALER_PaytoHashP h_payto;
 
   if ( (NULL == args[0]) ||
@@ -158,30 +157,6 @@ TEH_handler_aml_decision_get (
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                        args[1]);
-  }
-  {
-    const char *sig_hdr;
-
-    sig_hdr = MHD_lookup_connection_value (rc->connection,
-                                           MHD_HEADER_KIND,
-                                           TALER_AML_OFFICER_SIGNATURE_HEADER);
-    if ( (NULL == sig_hdr) ||
-         (GNUNET_OK !=
-          GNUNET_STRINGS_string_to_data (sig_hdr,
-                                         strlen (sig_hdr),
-                                         &officer_sig,
-                                         sizeof (officer_sig))) ||
-         (GNUNET_OK !=
-          TALER_officer_aml_query_verify (officer_pub,
-                                          &officer_sig)) )
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_GET_SIGNATURE_INVALID,
-                                         sig_hdr);
-    }
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   }
 
   {

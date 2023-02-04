@@ -56,8 +56,8 @@ THEN
     RETURN;
   END IF;
   UPDATE exchange.aml_status
-    SET threshold_val=in_threshold_val
-       ,threshold_frac=in_threshold_frac
+    SET threshold_val=in_new_threshold_val
+       ,threshold_frac=in_new_threshold_frac
        ,status=in_new_status
    WHERE h_payto=in_h_payto;
   ASSERT FOUND, 'cannot have AML decision history but no AML status';
@@ -70,8 +70,8 @@ ELSE
     ,status)
     VALUES
     (in_h_payto
-    ,in_threshold_val
-    ,in_threshold_frac
+    ,in_new_threshold_val
+    ,in_new_threshold_frac
     ,in_new_status);
 END IF;
 

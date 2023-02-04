@@ -188,7 +188,7 @@ TALER_EXCHANGE_add_aml_decision (
                                 &officer_sig),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 h_payto),
-    GNUNET_JSON_pack_uint64 ("state",
+    GNUNET_JSON_pack_uint64 ("new_state",
                              (uint32_t) new_state),
     TALER_JSON_pack_amount ("new_threshold",
                             new_threshold),

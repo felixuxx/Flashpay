@@ -14,49 +14,35 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_update_aml_officer.c
- * @brief Implementation of the update_aml_officer function for Postgres
+ * @file exchangedb/pg_test_aml_officer.c
+ * @brief Implementation of the test_aml_officer function for Postgres
  * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_update_aml_officer.h"
+#include "pg_test_aml_officer.h"
 #include "pg_helper.h"
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_update_aml_officer (
+TEH_PG_test_aml_officer (
   void *cls,
-  const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-  const struct TALER_MasterSignatureP *master_sig,
-  const char *decider_name,
-  bool is_active,
-  bool read_only,
-  struct GNUNET_TIME_Absolute last_change)
+  const struct TALER_AmlOfficerPublicKeyP *decider_pub)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
-    GNUNET_PQ_query_param_auto_from_type (master_sig),
-    GNUNET_PQ_query_param_string (decider_name),
-    GNUNET_PQ_query_param_bool (is_active),
-    GNUNET_PQ_query_param_bool (read_only),
-    GNUNET_PQ_query_param_absolute_time (&last_change),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "update_aml_staff",
-           "UPDATE aml_staff SET "
-           " master_sig=$2"
-           ",decider_name=$3"
-           ",is_active=$4"
-           ",read_only=$5"
-           ",last_change=$6"
-           " WHERE decider_pub=$1 AND last_change < $6;");
+           "test_aml_staff",
+           "SELECT 1 FROM aml_staff"
+           " WHERE decider_pub=$1"
+           "   AND is_active;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "update_aml_staff",
+                                             "test_aml_staff",
                                              params);
 }

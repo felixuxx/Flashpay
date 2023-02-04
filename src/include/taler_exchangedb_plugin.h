@@ -6616,26 +6616,17 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Update AML staff record.
+   * Test if the given AML staff member is active
+   * (at least read-only).
    *
    * @param cls closure
    * @param decider_pub public key of the staff member
-   * @param master_sig offline signature affirming the AML officer
-   * @param decider_name full name of the staff member
-   * @param is_active true to enable, false to set as inactive
-   * @param read_only true to set read-only access
-   * @param last_change when was the change made effective
-   * @return database transaction status
+   * @return database transaction status, if member is unknown or not active, 1 if member is active
    */
   enum GNUNET_DB_QueryStatus
-  (*update_aml_officer)(
+  (*test_aml_officer)(
     void *cls,
-    const struct TALER_AmlOfficerPublicKeyP *decider_pub,
-    const struct TALER_MasterSignatureP *master_sig,
-    const char *decider_name,
-    bool is_active,
-    bool read_only,
-    struct GNUNET_TIME_Absolute last_change);
+    const struct TALER_AmlOfficerPublicKeyP *decider_pub);
 
 
   /**
