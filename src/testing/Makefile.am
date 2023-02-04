@@ -552,6 +552,7 @@ EXTRA_DIST = \
   test_exchange_api_keys_cherry_picking_home/.config/taler/x-taler-bank.json \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/master.priv \
+  test_exchange_api.conf \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \
   test_exchange_api_twisted-cs.conf \
