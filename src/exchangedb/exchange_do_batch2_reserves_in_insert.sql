@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in_credit_val INT8,
   IN in_credit_frac INT4,
   IN in_exchange_account_name VARCHAR,
-  IN in_exectution_date INT8,
+  IN in_execution_date INT8,
   IN in_wire_source_h_payto BYTEA,    ---h_payto
   IN in_payto_uri VARCHAR,
   IN in_reserve_expiration INT8,
@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in2_credit_val INT8,
   IN in2_credit_frac INT4,
   IN in2_exchange_account_name VARCHAR,
-  IN in2_exectution_date INT8,
+  IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,    ---h_payto
   IN in2_payto_uri VARCHAR,
   IN in2_reserve_expiration INT8,
@@ -116,6 +116,7 @@ BEGIN
   END LOOP;
   CLOSE curs_reserve_exist;
 
+-- FIXME: must be changed to EXECUTE FORMAT!
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);
 
@@ -136,14 +137,14 @@ BEGIN
     ,in_credit_frac
     ,in_exchange_account_name
     ,in_wire_source_h_payto
-    ,in_expiration_date),
+    ,in_execution_date),
     (in2_reserve_pub
     ,in2_wire_ref
     ,in2_credit_val
     ,in2_credit_frac
     ,in2_exchange_account_name
     ,in2_wire_source_h_payto
-    ,in_expiration_date)
+    ,in_execution_date)
     ON CONFLICT DO NOTHING
     RETURNING reserve_pub)
   SELECT * FROM reserve_in_exist;
@@ -181,4 +182,3 @@ BEGIN
   CLOSE curs_transaction_exist;
   RETURN;
 END $$;
-

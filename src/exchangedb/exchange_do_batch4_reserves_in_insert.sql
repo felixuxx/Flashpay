@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in_credit_val INT8,
   IN in_credit_frac INT4,
   IN in_exchange_account_name VARCHAR,
-  IN in_exectution_date INT8,
+  IN in_execution_date INT8,
   IN in_wire_source_h_payto BYTEA,    ---h_payto
   IN in_payto_uri VARCHAR,
   IN in_reserve_expiration INT8,
@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in2_credit_val INT8,
   IN in2_credit_frac INT4,
   IN in2_exchange_account_name VARCHAR,
-  IN in2_exectution_date INT8,
+  IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,    ---h_payto
   IN in2_payto_uri VARCHAR,
   IN in2_reserve_expiration INT8,
@@ -43,7 +43,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in3_credit_val INT8,
   IN in3_credit_frac INT4,
   IN in3_exchange_account_name VARCHAR,
-  IN in3_exectution_date INT8,
+  IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,    ---h_payto
   IN in3_payto_uri VARCHAR,
   IN in3_reserve_expiration INT8,
@@ -52,7 +52,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in4_credit_val INT8,
   IN in4_credit_frac INT4,
   IN in4_exchange_account_name VARCHAR,
-  IN in4_exectution_date INT8,
+  IN in4_execution_date INT8,
   IN in4_wire_source_h_payto BYTEA,    ---h_payto
   IN in4_payto_uri VARCHAR,
   IN in4_reserve_expiration INT8,
@@ -196,6 +196,7 @@ BEGIN
   CLOSE curs_reserve_exist;
 
 
+-- FIXME: must be changed to EXECUTE FORMAT!
   PERFORM pg_notify(in_notify, NULL);
   PERFORM pg_notify(in2_notify, NULL);
   PERFORM pg_notify(in3_notify, NULL);
@@ -219,28 +220,28 @@ BEGIN
     ,in_credit_frac
     ,in_exchange_account_name
     ,in_wire_source_h_payto
-    ,in_expiration_date),
+    ,in_execution_date),
     (in2_reserve_pub
     ,in2_wire_ref
     ,in2_credit_val
     ,in2_credit_frac
     ,in2_exchange_account_name
     ,in2_wire_source_h_payto
-    ,in_expiration_date),
+    ,in_execution_date),
     (in3_reserve_pub
     ,in3_wire_ref
     ,in3_credit_val
     ,in3_credit_frac
     ,in3_exchange_account_name
     ,in3_wire_source_h_payto
-    ,in_expiration_date),
+    ,in_execution_date),
     (in4_reserve_pub
     ,in4_wire_ref
     ,in4_credit_val
     ,in4_credit_frac
     ,in4_exchange_account_name
     ,in4_wire_source_h_payto
-    ,in_expiration_date)
+    ,in_execution_date)
      ON CONFLICT DO NOTHING
      RETURNING reserve_pub)
     SELECT * FROM reserve_in_changes;
