@@ -55,7 +55,7 @@ struct LinkDataContext
   /**
    * Status, set to #GNUNET_SYSERR on errors,
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -190,20 +190,18 @@ TEH_PG_get_link_data (void *cls,
                        "%d%c",
                        &percent_refund,
                        &dummy)) )
-      {
-        if (NULL != mode)
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Bad mode `%s' specified\n",
-                      mode);
-      }
-      if (NULL==mode)
-        percent_refund=0;
+    {
+      if (NULL != mode)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Bad mode `%s' specified\n",
+                    mode);
+      percent_refund = 0;
+    }
   }
-
   switch (percent_refund)
   {
   case 0:
-    query="get_link";
+    query = "get_link";
     PREPARE (pg,
              query,
              "SELECT "
@@ -225,7 +223,7 @@ TEH_PG_get_link_data (void *cls,
              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
     break;
   case 1:
-    query="get_link_v1";
+    query = "get_link_v1";
     PREPARE (pg,
              query,
              "WITH rc AS MATERIALIZED ("
@@ -252,7 +250,7 @@ TEH_PG_get_link_data (void *cls,
              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC");
     break;
   case 2:
-    query="get_link_v2";
+    query = "get_link_v2";
     PREPARE (pg,
              query,
              "SELECT"
@@ -300,5 +298,3 @@ TEH_PG_get_link_data (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
 }
-
-

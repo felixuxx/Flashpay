@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -72,26 +72,16 @@ TEH_PG_aggregate (
   now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
                                          pg->aggregator_shift);
 
-    /* Used in #postgres_aggregate() */
+  /* Used in #postgres_aggregate() */
   PREPARE (pg,
            "aggregate",
-           "WITH rdy AS (" /* find deposits ready by merchant */
-           "  SELECT"
-           "    coin_pub"
-           "    FROM deposits_for_matching"
-           "    WHERE refund_deadline<$1" /* filter by shard, only actually executable deposits */
-           "      AND merchant_pub=$2" /* filter by target merchant */
-           "    ORDER BY refund_deadline ASC" /* ordering is not critical */
-           "    LIMIT "
-           TALER_QUOTE (TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) /* limits transaction size */
-           " )"
-           " ,dep AS (" /* restrict to our merchant and account and mark as done */
+           "WITH dep AS (" /* restrict to our merchant and account and mark as done */
            "  UPDATE deposits"
            "     SET done=TRUE"
-           "   WHERE coin_pub IN (SELECT coin_pub FROM rdy)"
-           "     AND merchant_pub=$2" /* theoretically, same coin could be spent at another merchant */
+           "   WHERE NOT (done OR policy_blocked)" /* only actually executable deposits */
+           "     AND refund_deadline<$1" /* filter by shard */
+           "     AND merchant_pub=$2" /* filter by target merchant */
            "     AND wire_target_h_payto=$3" /* merchant could have a 2nd bank account */
-           "     AND done=FALSE" /* theoretically, same coin could be spend at the same merchant a 2nd time */
            "   RETURNING"
            "     deposit_serial_id"
            "    ,coin_pub"

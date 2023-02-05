@@ -129,7 +129,7 @@ TEH_PG_select_refunds_by_coin (
 
   if (-2 == percent_refund)
   {
-    const char *mode = getenv ("NEW_LOGIC");
+    const char *mode = getenv ("TALER_POSTGRES_SELECT_REFUNDS_BY_COIN_LOGIC");
     char dummy;
 
     if ( (NULL==mode) ||
@@ -137,14 +137,13 @@ TEH_PG_select_refunds_by_coin (
                        "%d%c",
                        &percent_refund,
                        &dummy)) )
-      {
-        if (NULL != mode)
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Bad mode `%s' specified\n",
-                      mode);
-      }
-      if (NULL==mode)
-        percent_refund=0;
+    {
+      if (NULL != mode)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Bad mode `%s' specified\n",
+                    mode);
+      percent_refund = 0;
+    }
   }
 
   switch (percent_refund)

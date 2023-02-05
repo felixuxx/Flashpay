@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -33,15 +33,16 @@ TEH_PG_get_ready_deposit (void *cls,
                           struct TALER_MerchantPublicKeyP *merchant_pub,
                           char **payto_uri)
 {
+  static int choose_mode = -2;
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now = {0};
+  struct GNUNET_TIME_Absolute now
+    = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_uint64 (&start_shard_row),
     GNUNET_PQ_query_param_uint64 (&end_shard_row),
     GNUNET_PQ_query_param_end
   };
-
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                           merchant_pub),
@@ -49,181 +50,70 @@ TEH_PG_get_ready_deposit (void *cls,
                                   payto_uri),
     GNUNET_PQ_result_spec_end
   };
-
-  now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
-                                         pg->aggregator_shift);
-  GNUNET_assert (start_shard_row < end_shard_row);
-  GNUNET_assert (end_shard_row <= INT32_MAX);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Finding ready deposits by deadline %s (%llu)\n",
-              GNUNET_TIME_absolute2s (now),
-              (unsigned long long) now.abs_value_us);
-  int choose_mode =-2;
   const char *query;
 
   if (-2 == choose_mode)
   {
-    const char *mode = getenv ("NEW_LOGIC");
+    const char *mode = getenv ("TALER_POSTGRES_GET_READY_LOGIC");
     char dummy;
+
     if ( (NULL==mode) ||
          (1 != sscanf (mode,
                        "%d%c",
                        &choose_mode,
                        &dummy)) )
-      {
-        if (NULL != mode)
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Bad mode `%s' specified\n",
-                      mode);
-      }
-    if (NULL==mode)
-      choose_mode=0;
-
-
+    {
+      if (NULL != mode)
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Bad mode `%s' specified\n",
+                    mode);
+      choose_mode = 0;
+    }
   }
   switch (choose_mode)
   {
   case 0:
-    query="deposits_get_ready";
+    query = "deposits_get_ready-v5";
     PREPARE (pg,
              query,
              "SELECT"
              " payto_uri"
              ",merchant_pub"
-             " FROM deposits_by_ready dbr"
-             "  JOIN deposits dep"
-             "    ON (dbr.coin_pub = dep.coin_pub AND"
-             "        dbr.deposit_serial_id = dep.deposit_serial_id)"
-             "  JOIN wire_targets wt"
-             "    USING (wire_target_h_payto)"
-             " WHERE dbr.wire_deadline<=$1"
-             "   AND dbr.shard >= $2"
-             "   AND dbr.shard <= $3"
+             " FROM deposits dep"
+             " JOIN wire_targets wt"
+             "   USING (wire_target_h_payto)"
+             " WHERE NOT (done OR policy_blocked)"
+             "   AND dep.wire_deadline<=$1"
+             "   AND dep.shard >= $2"
+             "   AND dep.shard <= $3"
              " ORDER BY "
-             "   dbr.wire_deadline ASC"
-             "  ,dbr.shard ASC"
+             "   dep.wire_deadline ASC"
+             "  ,dep.shard ASC"
              " LIMIT 1;");
     break;
   case 1:
-    query="deposits_get_ready_v1";
+    query = "deposits_get_ready-v6";
     PREPARE (pg,
              query,
              "WITH rc AS MATERIALIZED ("
              " SELECT"
-             " coin_pub"
-             ",deposit_serial_id"
-             " FROM deposits_by_ready"
-             " WHERE"
-             " wire_deadline<=$1"
-             " AND shard >= $2"
-             " AND shard <= $3"
-             " ORDER BY "
-             "   wire_deadline ASC"
-             "  ,shard ASC"
-             "  LIMIT 1"
-             ")"
-             "SELECT"
-             " wt.payto_uri"
-             ",dep.merchant_pub"
-             " FROM ("
-             " SELECT"
-             " wire_target_h_payto"
-             ",merchant_pub"
-             " FROM deposits"
-             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
-             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
-             ") dep"
-             "  JOIN wire_targets wt"
-             "    ON (dep.wire_target_h_payto = wt.wire_target_h_payto)"
-             );
-
-    break;
-  case 2:
-    query = "stored_procedure_get_ready_deposit";
-    PREPARE (pg,
-             query,
-             "SELECT"
-             " out_payto_uri AS payto_uri"
-             ",out_merchant_pub AS merchant_pub"
-             " FROM"
-             " exchange_do_get_ready_deposit"
-             " ($1, $2, $3) ");
-    break;
-  case 3:
-    query="deposits_get_ready_v3";
-    PREPARE (pg,
-             query,
-             "WITH rc AS MATERIALIZED ("
-             " SELECT"
-             " coin_pub"
-             ",deposit_serial_id"
-             " FROM deposits_by_ready"
-             " WHERE"
-             " wire_deadline<=$1"
-             " AND shard >= $2"
-             " AND shard <= $3"
-             " ORDER BY "
-             "   wire_deadline ASC"
-             "  ,shard ASC"
-             "  LIMIT 1"
-             ")"
-             "SELECT"
-             " wt.payto_uri"
-             ",dep.merchant_pub"
-             " FROM ("
-             " SELECT"
-             " wire_target_h_payto"
-             ",merchant_pub"
-             ",coin_pub"
-             " FROM deposits"
-             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
-             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
-             ") dep"
-             "  JOIN wire_targets wt"
-             "    ON (dep.wire_target_h_payto = wt.wire_target_h_payto)"
-             "  JOIN rc"
-             "    ON (dep.coin_pub=rc.coin_pub)"
-             );
-
-    break;
-  case 4:
-    query="deposits_get_ready_v4";
-    PREPARE (pg,
-             query,
-             "WITH rc AS MATERIALIZED ("
-             " SELECT"
-             " coin_pub"
-             ",deposit_serial_id"
-             " FROM deposits_by_ready"
-             " WHERE"
-             " wire_deadline<=$1"
-             " AND shard >= $2"
-             " AND shard <= $3"
-             " ORDER BY "
-             "   wire_deadline ASC"
-             "  ,shard ASC"
-             "  LIMIT 1"
-             "),"
-             "WITH rv AS MATERIALIZED ("
-             " SELECT"
-             " payto_uri"
+             " merchant_pub"
              ",wire_target_h_payto"
-             " FROM wire_targets"
+             " FROM deposits"
+             " WHERE NOT (done OR policy_blocked)"
+             "   AND wire_deadline<=$1"
+             "   AND shard >= $2"
+             "   AND shard <= $3"
+             " ORDER BY wire_deadline ASC"
+             "  ,shard ASC"
+             "  LIMIT 1"
              ")"
              "SELECT"
-             " rv.payto_uri"
-             ",dep.merchant_pub"
-             " FROM ("
-             " SELECT"
-             " wire_target_h_payto"
-             ",merchant_pub"
-             " FROM deposits"
-             " WHERE coin_pub=(SELECT coin_pub FROM rc)"
-             " AND deposit_serial_id=(SELECT deposit_serial_id FROM rc)"
-             ") dep"
-             " JOIN rv"
-             "  ON (rv.wire_target_h_payto=dep.wire_target_h_payto)"
-             );
+             " wt.payto_uri"
+             ",rc.merchant_pub"
+             " FROM wire_targets wt"
+             " JOIN rc"
+             "   USING (wire_target_h_payto);");
     break;
   default:
     GNUNET_break (0);

@@ -3480,28 +3480,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Insert a incoming transaction into reserves.  New reserves are
-   * also created through this function.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserve_pub public key of the reserve
-   * @param balance the amount that has to be added to the reserve
-   * @param execution_time when was the amount added
-   * @param sender_account_details information about the sender's bank account, in payto://-format
-   * @param wire_reference unique reference identifying the wire transfer
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*reserves_in_insert)(void *cls,
-                        const struct TALER_ReservePublicKeyP *reserve_pub,
-                        const struct TALER_Amount *balance,
-                        struct GNUNET_TIME_Timestamp execution_time,
-                        const char *sender_account_details,
-                        const char *exchange_account_name,
-                        uint64_t wire_reference);
-
-
-  /**
    * Insert a batch of incoming transaction into reserves.  New reserves are
    * also created through this function.
    *
@@ -3512,25 +3490,7 @@ struct TALER_EXCHANGEDB_Plugin
    *             set to the status of the
    */
   enum GNUNET_DB_QueryStatus
-  (*batch_reserves_in_insert)(
-    void *cls,
-    const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
-    unsigned int reserves_length,
-    enum GNUNET_DB_QueryStatus *results);
-
-
-  /**
-   * Insert a batch of incoming transaction into reserves.  New reserves are
-   * also created through this function.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param reserves
-   * @param reserves_length length of the @a reserves array
-   * @param[out] results array of transaction status codes of length @a reserves_length,
-   *             set to the status of the
-   */
-  enum GNUNET_DB_QueryStatus
-  (*batch2_reserves_in_insert)(
+  (*reserves_in_insert)(
     void *cls,
     const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
     unsigned int reserves_length,
@@ -4101,13 +4061,6 @@ struct TALER_EXCHANGEDB_Plugin
                        struct TALER_MerchantPublicKeyP *merchant_pub,
                        char **payto_uri);
 
-
-/**
- * Maximum number of results we return from iterate_matching_deposits().
- *
- * Limit on the number of transactions we aggregate at once.
- */
-#define TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT 10000
 
   /**
    * Aggregate all matching deposits for @a h_payto and

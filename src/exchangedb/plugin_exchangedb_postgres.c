@@ -203,8 +203,6 @@
 #include "pg_reserves_update.h"
 #include "pg_setup_wire_target.h"
 #include "pg_compute_shard.h"
-#include "pg_batch_reserves_in_insert.h"
-#include "pg_batch2_reserves_in_insert.h"
 #include "pg_insert_kyc_attributes.h"
 #include "pg_update_kyc_attributes.h"
 #include "pg_select_similar_kyc_attributes.h"
@@ -747,10 +745,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_purse_by_merge_pub;
   plugin->set_purse_balance
     = &TEH_PG_set_purse_balance;
-  plugin->batch_reserves_in_insert
-    = &TEH_PG_batch_reserves_in_insert;
-  plugin->batch2_reserves_in_insert
-    = &TEH_PG_batch2_reserves_in_insert;
   plugin->insert_kyc_attributes
     = &TEH_PG_insert_kyc_attributes;
   plugin->update_kyc_attributes

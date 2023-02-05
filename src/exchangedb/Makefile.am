@@ -255,8 +255,6 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_purse_deposits_above_serial_id.h pg_select_purse_deposits_above_serial_id.c \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
-  pg_batch_reserves_in_insert.h pg_batch_reserves_in_insert.c \
-  pg_batch2_reserves_in_insert.h pg_batch2_reserves_in_insert.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
@@ -295,51 +293,17 @@ check_PROGRAMS = \
 
 noinst_PROGRAMS = \
   bench-db-postgres\
-  perf-exchangedb-reserves-in-insert-postgres\
-  test-exchangedb-by-j-postgres\
-  test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-select-refunds-by-coin-postgres\
-  test-exchangedb-populate-link-data-postgres\
-  test-exchangedb-populate-ready-deposit-postgres
+  perf_get_link_data-postgres\
+  perf_select_refunds_by_coin-postgres\
+  perf_reserves_in_insert-postgres \
+  perf_deposits_get_ready-postgres
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
-  test-exchangedb-postgres\
-  test-exchangedb-by-j-postgres\
-  perf-exchangedb-reserves-in-insert-postgres\
-  test-exchangedb-batch-reserves-in-insert-postgres\
-  test-exchangedb-populate-select-refunds-by-coin-postgres\
-  test-exchangedb-populate-link-data-postgres\
-  test-exchangedb-populate-ready-deposit-postgres
+  (check_PROGRAMS)
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetjson \
-  -lgnunetutil \
-  $(XLIB)
-
-test_exchangedb_by_j_postgres_SOURCES = \
-  test_exchangedb_by_j.c
-test_exchangedb_by_j_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetjson \
-  -lgnunetutil \
-  -lm \
-  $(XLIB)
-
-
-perf_exchangedb_reserves_in_insert_postgres_SOURCES = \
-  perf_exchangedb_reserves_in_insert.c
-perf_exchangedb_reserves_in_insert_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -359,21 +323,9 @@ bench_db_postgres_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-test_exchangedb_batch_reserves_in_insert_postgres_SOURCES = \
-  test_exchangedb_batch_reserves_in_insert.c
-test_exchangedb_batch_reserves_in_insert_postgres_LDADD = \
-  libtalerexchangedb.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  -ljansson \
-  -lgnunetjson \
-  -lgnunetutil \
-  $(XLIB)
-
-test_exchangedb_populate_select_refunds_by_coin_postgres_SOURCES = \
-  test_exchangedb_populate_select_refunds_by_coin.c
-test_exchangedb_populate_select_refunds_by_coin_postgres_LDADD = \
+perf_reserves_in_insert_postgres_SOURCES = \
+  perf_reserves_in_insert.c
+perf_reserves_in_insert_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -384,9 +336,9 @@ test_exchangedb_populate_select_refunds_by_coin_postgres_LDADD = \
   -lm \
   $(XLIB)
 
-test_exchangedb_populate_link_data_postgres_SOURCES = \
-  test_exchangedb_populate_link_data.c
-test_exchangedb_populate_link_data_postgres_LDADD = \
+perf_select_refunds_by_coin_postgres_SOURCES = \
+  perf_select_refunds_by_coin.c
+perf_select_refunds_by_coin_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -397,9 +349,22 @@ test_exchangedb_populate_link_data_postgres_LDADD = \
   -lm \
   $(XLIB)
 
-test_exchangedb_populate_ready_deposit_postgres_SOURCES = \
-  test_exchangedb_populate_ready_deposit.c
-test_exchangedb_populate_ready_deposit_postgres_LDADD = \
+perf_get_link_data_postgres_SOURCES = \
+  perf_get_link_data.c
+perf_get_link_data_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil \
+  -lm \
+  $(XLIB)
+
+perf_deposits_get_ready_postgres_SOURCES = \
+  perf_deposits_get_ready.c
+perf_deposits_get_ready_postgres_LDADD = \
   libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2022 Taler Systems SA
+-- Copyright (C) 2014--2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -115,6 +115,22 @@ BEGIN
     ' PRIMARY KEY (deposit_serial_id) '
     ',ADD CONSTRAINT ' || table_name || '_coin_pub_merchant_pub_h_contract_terms_key'
     ' UNIQUE (coin_pub, merchant_pub, h_contract_terms)'
+  );
+  EXECUTE FORMAT (
+    'CREATE INDEX ' || table_name || '_by_ready '
+    'ON ' || table_name || ' '
+    '(wire_deadline ASC'
+    ',shard ASC'
+    ',coin_pub'
+    ') WHERE NOT (done OR policy_blocked);'
+  );
+  EXECUTE FORMAT (
+    'CREATE INDEX ' || table_name || '_for_matching '
+    'ON ' || table_name || ' '
+    '(refund_deadline ASC'
+    ',merchant_pub'
+    ',coin_pub'
+    ') WHERE NOT (done OR policy_blocked);'
   );
 END
 $$;
@@ -399,29 +415,5 @@ INSERT INTO exchange_tables
     ,'exchange-0002'
     ,'foreign'
     ,TRUE
-    ,FALSE),
-    ('deposits_by_ready'
-    ,'exchange-0002'
-    ,'create'
-    ,TRUE
-    ,TRUE),
-    ('deposits_by_ready'
-    ,'exchange-0002'
-    ,'constrain'
-    ,TRUE
-    ,TRUE),
-    ('deposits_for_matching'
-    ,'exchange-0002'
-    ,'create'
-    ,TRUE
-    ,TRUE),
-    ('deposits_for_matching'
-    ,'exchange-0002'
-    ,'constrain'
-    ,TRUE
-    ,TRUE),
-    ('deposits'
-    ,'exchange-0002'
-    ,'master'
-    ,TRUE
-    ,FALSE);
+    ,FALSE)
+    ;

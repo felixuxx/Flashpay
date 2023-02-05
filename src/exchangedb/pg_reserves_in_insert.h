@@ -24,28 +24,26 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Insert an incoming transaction into reserves.  New reserves are also
- * created through this function. Started within the scope of an ongoing
- * transaction.
+ * created through this function. Runs its own transaction(s).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param reserve_pub public key of the reserve
- * @param balance the amount that has to be added to the reserve
- * @param execution_time when was the amount added
- * @param sender_account_details account information for the sender (payto://-URL)
- * @param exchange_account_section name of the section in the configuration for the exchange's
- *                       account into which the deposit was made
- * @param wire_ref unique reference identifying the wire transfer
+ * @param reserves array of reserves to insert
+ * @param reserves_length length of the @a reserves array
+ * @param batch_size how many inserts to do in one go
+ * @param[out] results set to query status per reserve, must be of length @a reserves_length
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TEH_PG_reserves_in_insert (void *cls,
-                             const struct TALER_ReservePublicKeyP *reserve_pub,
-                             const struct TALER_Amount *balance,
-                             struct GNUNET_TIME_Timestamp execution_time,
-                             const char *sender_account_details,
-                             const char *exchange_account_section,
-                           uint64_t wire_ref);
+TEH_PG_reserves_in_insert (
+  void *cls,
+  const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+  unsigned int reserves_length,
+  unsigned int batch_size,
+  enum GNUNET_DB_QueryStatus *results);
+
 
 #endif
