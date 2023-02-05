@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1288,6 +1288,8 @@ run (void *cls)
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &amount_with_fee));
   result = 4;
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          plugin->commit (plugin->cls));
   now = GNUNET_TIME_timestamp_get ();
   {
     struct TALER_EXCHANGEDB_ReserveInInfo reserve = {
@@ -1336,6 +1338,9 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             qsr);
   }
+  FAILIF (GNUNET_OK !=
+          plugin->start (plugin->cls,
+                         "test-2"));
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          value.value,
