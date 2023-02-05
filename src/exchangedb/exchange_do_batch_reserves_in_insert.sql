@@ -80,7 +80,6 @@ transaction_duplicate= TRUE;
   END IF;
   CLOSE curs;
 
-  PERFORM pg_notify(in_notify, NULL);
   OPEN curs_trans FOR
   WITH reserve_transaction AS(
   INSERT INTO reserves_in
@@ -109,6 +108,7 @@ transaction_duplicate= TRUE;
     THEN
     -- HAPPY PATH THERE IS NO DUPLICATE TRANS
        transaction_duplicate = FALSE;
+       PERFORM pg_notify(in_notify, NULL);
     END IF;
   END IF;
   CLOSE curs_trans;

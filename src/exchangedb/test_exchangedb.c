@@ -1289,15 +1289,26 @@ run (void *cls)
                                          &amount_with_fee));
   result = 4;
   now = GNUNET_TIME_timestamp_get ();
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->reserves_in_insert (plugin->cls,
-                                      &reserve_pub,
-                                      &value,
-                                      now,
-                                      sndr,
-                                      "exchange-account-1",
-                                      4));
+  {
+    struct TALER_EXCHANGEDB_ReserveInInfo reserve = {
+      .reserve_pub = &reserve_pub,
+      .balance = &value,
+      .execution_time = now,
+      .sender_account_details = sndr,
+      .exchange_account_name = "exchange-account-1",
+      .wire_reference = 4
+    };
+    enum GNUNET_DB_QueryStatus qsr;
 
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->reserves_in_insert (plugin->cls,
+                                        &reserve,
+                                        1,
+                                        1,
+                                        &qsr));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            qsr);
+  }
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          value.value,
@@ -1305,14 +1316,26 @@ run (void *cls)
                          value.currency));
   now = GNUNET_TIME_timestamp_get ();
   RND_BLK (&reserve_pub2);
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->reserves_in_insert (plugin->cls,
-                                      &reserve_pub2,
-                                      &value,
-                                      now,
-                                      sndr,
-                                      "exchange-account-1",
-                                      5));
+  {
+    struct TALER_EXCHANGEDB_ReserveInInfo reserve = {
+      .reserve_pub = &reserve_pub2,
+      .balance = &value,
+      .execution_time = now,
+      .sender_account_details = sndr,
+      .exchange_account_name = "exchange-account-1",
+      .wire_reference = 5
+    };
+    enum GNUNET_DB_QueryStatus qsr;
+
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->reserves_in_insert (plugin->cls,
+                                        &reserve,
+                                        1,
+                                        1,
+                                        &qsr));
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            qsr);
+  }
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          value.value,

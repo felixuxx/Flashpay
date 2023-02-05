@@ -67,7 +67,7 @@ insert1 (struct PostgresClosure *pg,
          uint64_t *reserve_uuid,
          enum GNUNET_DB_QueryStatus results[1])
 {
-  enum GNUNET_DB_QueryStatus qs2;
+  enum GNUNET_DB_QueryStatus qs;
   PREPARE (pg,
            "batch1_reserve_create",
            "SELECT "
@@ -91,7 +91,6 @@ insert1 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_end
   };
-
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("conflicted",
                                 &conflict[0]),
@@ -102,24 +101,21 @@ insert1 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
-
   TALER_payto_hash (reserves[0].sender_account_details,
                     &h_payto);
-
-  qs2 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                  "batch1_reserve_create",
-                                                  params,
-                                                  rs);
-
-  if (qs2 < 0)
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "batch1_reserve_create",
+                                                 params,
+                                                 rs);
+  if (qs < 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to create reserves 1(%d)\n",
-                qs2);
-    results[0] = qs2;
-    return qs2;
+                qs);
+    results[0] = qs;
+    return qs;
   }
-  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs2);
+  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
   if ((! conflict[0]) && transaction_duplicate[0])
   {
     GNUNET_break (0);
@@ -128,7 +124,7 @@ insert1 (struct PostgresClosure *pg,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  return qs2;
+  return qs;
 }
 
 

@@ -300,7 +300,7 @@ noinst_PROGRAMS = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
-  (check_PROGRAMS)
+  $(check_PROGRAMS)
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
