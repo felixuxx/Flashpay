@@ -60,12 +60,12 @@ TEH_PG_ensure_coin_known (void *cls,
       &is_age_hash_null),
     GNUNET_PQ_result_spec_end
   };
-    /* Used in #postgres_insert_known_coin() to store the denomination public
-       key and signature for a coin known to the exchange.
+  /* Used in #postgres_insert_known_coin() to store the denomination public
+     key and signature for a coin known to the exchange.
 
-       See also:
-       https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql/37543015#37543015
-     */
+     See also:
+     https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql/37543015#37543015
+  */
   PREPARE (pg,
            "insert_known_coin",
            "WITH dd"

@@ -28,37 +28,42 @@ DECLARE
  var_coin_pub BYTEA;
 DECLARE
  var_deposit_serial_id INT8;
-BEGIN
-
-SELECT
+DECLARE
+ curs CURSOR
+ FOR
+ SELECT
    coin_pub
   ,deposit_serial_id
+  ,wire_deadline
+  ,shard
+ FROM deposits_by_ready
+ WHERE wire_deadline <= in_now
+ AND shard >=in_start_shard_now
+ AND shard <=in_end_shard_now
+ LIMIT 1;
+DECLARE
+ i RECORD;
+BEGIN
+OPEN curs;
+FETCH FROM curs INTO i;
+IF NOT FOUND
+THEN
+  RETURN;
+END IF;
+SELECT
+   payto_uri
+  ,merchant_pub
   INTO
-   var_coin_pub
-  ,var_deposit_serial_id
-  FROM deposits_by_ready
-  WHERE wire_deadline <= in_now
-  AND shard >= in_start_shard_now
-  AND shard <=in_end_shard_now
+   out_payto_uri
+  ,out_merchant_pub
+  FROM deposits dep
+  JOIN wire_targets wt
+  ON (wt.wire_target_h_payto=dep.wire_target_h_payto)
+  WHERE dep.coin_pub=i.coin_pub
+  AND dep.deposit_serial_id=i.deposit_serial_id
   ORDER BY
-   wire_deadline ASC
-  ,shard ASC;
-
-SELECT
-  merchant_pub
- ,wire_target_h_payto
- INTO
-  out_merchant_pub
- ,var_wire_target_h_payto
- FROM deposits
- WHERE coin_pub=var_coin_pub
-   AND deposit_serial_id=var_deposit_serial_id;
-
-SELECT
- payto_uri
- INTO out_payto_uri
- FROM wire_targets
- WHERE wire_target_h_payto=var_wire_target_h_payto;
+   i.wire_deadline ASC
+  ,i.shard ASC;
 
 RETURN;
 END $$;

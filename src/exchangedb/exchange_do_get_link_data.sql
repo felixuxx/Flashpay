@@ -13,11 +13,7 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
-/*DROP FUNCTION exchange_do_refund_by_coin(
-  IN in_coin_pub BYTEA,
-  IN in_merchant_pub BYTEA,
-  IN in_h_contract BYTEA
-);*/
+
 CREATE OR REPLACE FUNCTION exchange_do_get_link_data(
   IN in_coin_pub BYTEA
 )
@@ -53,7 +49,11 @@ LOOP
          ON (tp.melt_serial_id=rrc.melt_serial_id)
        JOIN denominations denoms
          ON (rrc.denominations_serial=denoms.denominations_serial)
-       WHERE rrc.melt_serial_id =i.melt_serial_id;
+       WHERE rrc.melt_serial_id =i.melt_serial_id
+/*       GROUP BY tp.transfer_pub, denoms.denom_pub, rrc.ev_sig,rrc.ewv,rrc.link_sig,rrc.freshcoin_index, rrc.coin_ev*/
+       ORDER BY tp.transfer_pub,
+       rrc.freshcoin_index ASC
+       ;
 END LOOP;
 CLOSE curs;
 END $$;

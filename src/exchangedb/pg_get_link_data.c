@@ -58,7 +58,10 @@ struct LinkDataContext
   enum GNUNET_GenericReturnValue status;
 };
 
-
+struct Results {
+    struct TALER_EXCHANGEDB_LinkList *pos;
+    struct TALER_TransferPublicKeyP transfer_pub;
+  };
 /**
  * Free memory of the link data list.
  *
@@ -82,6 +85,16 @@ free_link_data_list (void *cls,
   }
 }
 
+static int
+transfer_pub_cmp (const void *a,
+                  const void *b)
+{
+  const struct Results *ra = a;
+  const struct Results *rb = b;
+
+  return GNUNET_memcmp (&ra->transfer_pub,
+                        &rb->transfer_pub);
+}
 
 /**
  * Function to be called with the results of a SELECT statement
@@ -97,6 +110,10 @@ add_ldl (void *cls,
          unsigned int num_results)
 {
   struct LinkDataContext *ldctx = cls;
+  struct Results *temp= GNUNET_new_array (num_results,
+                                          struct Results);;
+  unsigned int temp_off = 0;
+
 
   for (int i = num_results - 1; i >= 0; i--)
   {
@@ -141,9 +158,48 @@ add_ldl (void *cls,
       }
       TALER_blinded_planchet_free (&bp);
     }
-    if ( (NULL != ldctx->last) &&
-         (0 == GNUNET_memcmp (&transfer_pub,
-                              &ldctx->transfer_pub)) )
+      temp[temp_off].pos = pos;
+      temp[temp_off].transfer_pub = transfer_pub;
+      temp_off++;
+  }
+  qsort (temp,
+         temp_off,
+         sizeof (struct Results),
+         transfer_pub_cmp);
+  for (unsigned int i = 0; i < temp_off; i++)
+  {
+    struct TALER_EXCHANGEDB_LinkList *pos;
+    struct Results *r = &temp[i];
+
+    pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
+    pos->orig_coin_link_sig = r->pos->orig_coin_link_sig;
+    pos->ev_sig = r->pos->ev_sig;
+    pos->coin_refresh_offset = r->pos->coin_refresh_offset;
+    pos->alg_values = r->pos->alg_values;
+    pos->denom_pub = r->pos->denom_pub;
+    pos->nonce = r->pos->nonce;
+    pos->have_nonce = r->pos->have_nonce;
+
+    pos->next = ldctx->last;
+    ldctx->last = pos;
+  }
+
+  if (NULL != ldctx->last)
+  {
+    ldctx->ldc (ldctx->ldc_cls,
+                &ldctx->transfer_pub,
+                ldctx->last);
+    free_link_data_list (ldctx,
+                         ldctx->last);
+  }
+
+ ldctx->last = NULL;
+
+ GNUNET_free(temp);
+  /*
+ if ( (NULL != ldctx->last) &&
+       (0 == GNUNET_memcmp (&transfer_pub,
+                            &ldctx->transfer_pub)) )
     {
       pos->next = ldctx->last;
     }
@@ -161,6 +217,7 @@ add_ldl (void *cls,
     }
     ldctx->last = pos;
   }
+  GNUNET_free(temp);*/
 }
 
 
@@ -266,6 +323,54 @@ TEH_PG_get_link_data (void *cls,
              " ,link_sig BYTEA"
              " ,freshcoin_index INT4"
              " ,coin_ev BYTEA);");
+    break;
+  case 3:
+    query="get_link_v3";
+    PREPARE (pg,
+             query,
+             "SELECT "
+             " tp.transfer_pub"
+             ",denoms.denom_pub"
+             ",rrc.ev_sig"
+             ",rrc.ewv"
+             ",rrc.link_sig"
+             ",rrc.freshcoin_index"
+             ",rrc.coin_ev"
+             " FROM refresh_commitments"
+             "     JOIN refresh_revealed_coins rrc"
+             "       USING (melt_serial_id)"
+             "     JOIN refresh_transfer_keys tp"
+             "       USING (melt_serial_id)"
+             "     JOIN denominations denoms"
+             "       ON (rrc.denominations_serial = denoms.denominations_serial)"
+             " WHERE old_coin_pub=$1");
+    break;
+  case 4:
+    query="get_link_v4";
+    PREPARE (pg,
+             query,
+             "WITH rc AS MATERIALIZED ("
+             "SELECT"
+             " melt_serial_id"
+             " FROM refresh_commitments"
+             " WHERE old_coin_pub=$1"
+             ")"
+             "SELECT "
+             " tp.transfer_pub"
+             ",denoms.denom_pub"
+             ",rrc.ev_sig"
+             ",rrc.ewv"
+             ",rrc.link_sig"
+             ",rrc.freshcoin_index"
+             ",rrc.coin_ev "
+             "FROM "
+             "refresh_revealed_coins rrc"
+             "  JOIN refresh_transfer_keys tp"
+             "   USING (melt_serial_id)"
+             "  JOIN denominations denoms"
+             "   USING (denominations_serial)"
+             " WHERE rrc.melt_serial_id = (SELECT melt_serial_id FROM rc)"
+            );
     break;
   default:
     GNUNET_break (0);

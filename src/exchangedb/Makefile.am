@@ -301,6 +301,7 @@ noinst_PROGRAMS = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
   $(check_PROGRAMS)
+
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
 test_exchangedb_postgres_LDADD = \
@@ -374,6 +375,7 @@ perf_deposits_get_ready_postgres_LDADD = \
   -lgnunetutil \
   -lm \
   $(XLIB)
+
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la
