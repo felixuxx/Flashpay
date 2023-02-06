@@ -96,7 +96,7 @@ function cleanup()
 function exit_cleanup()
 {
     echo "Running exit-cleanup"
-    if test -z "${POSTGRES_PATH:-}"
+    if test ! -z "${POSTGRES_PATH:-}"
     then
         echo "Stopping Postgres at ${POSTGRES_PATH}"
         ${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null stop &> /dev/null || true
