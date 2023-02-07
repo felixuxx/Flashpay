@@ -48,33 +48,22 @@ struct LinkDataContext
   struct TALER_TransferPublicKeyP transfer_pub;
 
   /**
-   * Link data for @e transfer_pub
-   */
-  struct TALER_EXCHANGEDB_LinkList *last;
-
-  /**
    * Status, set to #GNUNET_SYSERR on errors,
    */
   enum GNUNET_GenericReturnValue status;
 };
 
-struct Results {
-    struct TALER_EXCHANGEDB_LinkList *pos;
-    struct TALER_TransferPublicKeyP transfer_pub;
-  };
+
 /**
  * Free memory of the link data list.
  *
- * @param cls the @e cls of this struct with the plugin-specific state (unused)
  * @param ldl link data list to release
  */
 static void
-free_link_data_list (void *cls,
-                     struct TALER_EXCHANGEDB_LinkList *ldl)
+free_link_data_list (struct TALER_EXCHANGEDB_LinkList *ldl)
 {
   struct TALER_EXCHANGEDB_LinkList *next;
 
-  (void) cls;
   while (NULL != ldl)
   {
     next = ldl->next;
@@ -84,6 +73,14 @@ free_link_data_list (void *cls,
     ldl = next;
   }
 }
+
+
+struct Results
+{
+  struct TALER_EXCHANGEDB_LinkList *pos;
+  struct TALER_TransferPublicKeyP transfer_pub;
+};
+
 
 static int
 transfer_pub_cmp (const void *a,
@@ -95,6 +92,7 @@ transfer_pub_cmp (const void *a,
   return GNUNET_memcmp (&ra->transfer_pub,
                         &rb->transfer_pub);
 }
+
 
 /**
  * Function to be called with the results of a SELECT statement
@@ -110,22 +108,20 @@ add_ldl (void *cls,
          unsigned int num_results)
 {
   struct LinkDataContext *ldctx = cls;
-  struct Results *temp= GNUNET_new_array (num_results,
-                                          struct Results);;
+  struct Results *temp = GNUNET_new_array (num_results,
+                                           struct Results);
   unsigned int temp_off = 0;
-
 
   for (int i = num_results - 1; i >= 0; i--)
   {
     struct TALER_EXCHANGEDB_LinkList *pos;
-    struct TALER_TransferPublicKeyP transfer_pub;
 
     pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
     {
       struct TALER_BlindedPlanchet bp;
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
-                                              &transfer_pub),
+                                              &temp[temp_off].transfer_pub),
         GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                               &pos->orig_coin_link_sig),
         TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
@@ -158,66 +154,44 @@ add_ldl (void *cls,
       }
       TALER_blinded_planchet_free (&bp);
     }
-      temp[temp_off].pos = pos;
-      temp[temp_off].transfer_pub = transfer_pub;
-      temp_off++;
+    temp[temp_off].pos = pos;
+    temp_off++;
   }
   qsort (temp,
          temp_off,
          sizeof (struct Results),
-         transfer_pub_cmp);
-  for (unsigned int i = 0; i < temp_off; i++)
+         &transfer_pub_cmp);
+  if (temp_off > 0)
   {
-    struct TALER_EXCHANGEDB_LinkList *pos;
-    struct Results *r = &temp[i];
+    struct TALER_EXCHANGEDB_LinkList *head = NULL;
 
-    pos = GNUNET_new (struct TALER_EXCHANGEDB_LinkList);
-    pos->orig_coin_link_sig = r->pos->orig_coin_link_sig;
-    pos->ev_sig = r->pos->ev_sig;
-    pos->coin_refresh_offset = r->pos->coin_refresh_offset;
-    pos->alg_values = r->pos->alg_values;
-    pos->denom_pub = r->pos->denom_pub;
-    pos->nonce = r->pos->nonce;
-    pos->have_nonce = r->pos->have_nonce;
-
-    pos->next = ldctx->last;
-    ldctx->last = pos;
-  }
-
-  if (NULL != ldctx->last)
-  {
-    ldctx->ldc (ldctx->ldc_cls,
-                &ldctx->transfer_pub,
-                ldctx->last);
-    free_link_data_list (ldctx,
-                         ldctx->last);
-  }
-
- ldctx->last = NULL;
-
- GNUNET_free(temp);
-  /*
- if ( (NULL != ldctx->last) &&
-       (0 == GNUNET_memcmp (&transfer_pub,
-                            &ldctx->transfer_pub)) )
+    head = temp[0].pos;
+    for (unsigned int i = 1; i < temp_off; i++)
     {
-      pos->next = ldctx->last;
-    }
-    else
-    {
-      if (NULL != ldctx->last)
+      struct TALER_EXCHANGEDB_LinkList *pos = temp[i].pos;
+      const struct TALER_TransferPublicKeyP *tp = &temp[i].transfer_pub;
+
+      if (0 == GNUNET_memcmp (tp,
+                              &temp[i - 1].transfer_pub))
+      {
+        pos->next = head;
+        head = pos;
+      }
+      else
       {
         ldctx->ldc (ldctx->ldc_cls,
-                    &ldctx->transfer_pub,
-                    ldctx->last);
-        free_link_data_list (cls,
-                             ldctx->last);
+                    &temp[i - 1].transfer_pub,
+                    head);
+        free_link_data_list (head);
+        head = pos;
       }
-      ldctx->transfer_pub = transfer_pub;
     }
-    ldctx->last = pos;
+    ldctx->ldc (ldctx->ldc_cls,
+                &temp[temp_off - 1].transfer_pub,
+                head);
+    free_link_data_list (head);
   }
-  GNUNET_free(temp);*/
+  GNUNET_free (temp);
 }
 
 
@@ -239,7 +213,7 @@ TEH_PG_get_link_data (void *cls,
 
   if (-2 == percent_refund)
   {
-    const char *mode = getenv ("NEW_LOGIC");
+    const char *mode = getenv ("TALER_POSTGRES_GET_LINK_DATA_LOGIC");
     char dummy;
 
     if ( (NULL==mode) ||
@@ -252,7 +226,7 @@ TEH_PG_get_link_data (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Bad mode `%s' specified\n",
                     mode);
-      percent_refund = 0;
+      percent_refund = 4; /* Fastest known */
     }
   }
   switch (percent_refund)
@@ -325,7 +299,7 @@ TEH_PG_get_link_data (void *cls,
              " ,coin_ev BYTEA);");
     break;
   case 3:
-    query="get_link_v3";
+    query = "get_link_v3";
     PREPARE (pg,
              query,
              "SELECT "
@@ -346,7 +320,7 @@ TEH_PG_get_link_data (void *cls,
              " WHERE old_coin_pub=$1");
     break;
   case 4:
-    query="get_link_v4";
+    query = "get_link_v4";
     PREPARE (pg,
              query,
              "WITH rc AS MATERIALIZED ("
@@ -370,7 +344,7 @@ TEH_PG_get_link_data (void *cls,
              "  JOIN denominations denoms"
              "   USING (denominations_serial)"
              " WHERE rrc.melt_serial_id = (SELECT melt_serial_id FROM rc)"
-            );
+             );
     break;
   default:
     GNUNET_break (0);
@@ -379,26 +353,12 @@ TEH_PG_get_link_data (void *cls,
 
   ldctx.ldc = ldc;
   ldctx.ldc_cls = ldc_cls;
-  ldctx.last = NULL;
   ldctx.status = GNUNET_OK;
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              query,
                                              params,
                                              &add_ldl,
                                              &ldctx);
-  if (NULL != ldctx.last)
-  {
-    if (GNUNET_OK == ldctx.status)
-    {
-      /* call callback one more time! */
-      ldc (ldc_cls,
-           &ldctx.transfer_pub,
-           ldctx.last);
-    }
-    free_link_data_list (cls,
-                         ldctx.last);
-    ldctx.last = NULL;
-  }
   if (GNUNET_OK != ldctx.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
