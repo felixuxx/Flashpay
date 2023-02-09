@@ -233,9 +233,8 @@ again:
     MHD_HTTP_OK,
     GNUNET_JSON_pack_timestamp ("exchange_timestamp",
                                 bdc->exchange_timestamp),
-    GNUNET_JSON_pack_data_auto (
-      "exchange_pub",
-      &pub),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub),
     GNUNET_JSON_pack_array_steal ("exchange_sigs",
                                   arr));
 }
@@ -268,13 +267,12 @@ batch_deposit_transaction (void *cls,
    * insert or update the record. */
   if (dc->has_policy)
   {
-    qs = TEH_plugin->persist_policy_details (TEH_plugin->cls,
-                                             &dc->policy_details,
-                                             &dc->policy_details_serial_id,
-                                             &dc->policy_details.
-                                             accumulated_total,
-                                             &dc->policy_details.
-                                             fulfillment_state);
+    qs = TEH_plugin->persist_policy_details (
+      TEH_plugin->cls,
+      &dc->policy_details,
+      &dc->policy_details_serial_id,
+      &dc->policy_details.accumulated_total,
+      &dc->policy_details.fulfillment_state);
     if (qs < 0)
       return qs;
   }
@@ -295,9 +293,9 @@ batch_deposit_transaction (void *cls,
       deposit,
       known_coin_id,
       &dc->h_payto,
-      (dc->has_policy)
-         ?  &dc->policy_details_serial_id
-         : NULL,
+      dc->has_policy
+      ?  &dc->policy_details_serial_id
+      : NULL,
       &dc->exchange_timestamp,
       &balance_ok,
       &in_conflict);

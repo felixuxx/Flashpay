@@ -149,6 +149,12 @@ struct Shard
 static struct TALER_Amount currency_round_unit;
 
 /**
+ * What is the largest amount we transfer before triggering
+ * an AML check?
+ */
+static struct TALER_Amount aml_threshold;
+
+/**
  * What is the base URL of this exchange?  Used in the
  * wire transfer subjects so that merchants and governments
  * can ask for the list of aggregated deposits.
@@ -294,11 +300,20 @@ parse_aggregator_config (void)
                                  "taler",
                                  "CURRENCY_ROUND_UNIT",
                                  &currency_round_unit)) ||
-       ( (0 != currency_round_unit.fraction) &&
-         (0 != currency_round_unit.value) ) )
+       (TALER_amount_is_zero (&currency_round_unit)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need non-zero value in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
+                "Need non-zero amount in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (cfg,
+                               "taler",
+                               "AML_THRESHOLD",
+                               &aml_threshold))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need amount in section `TALER' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
 
@@ -525,6 +540,81 @@ kyc_satisfied (struct AggregationUnit *au_active)
 
 
 /**
+ * Function called on each @a amount that was found to
+ * be relevant for an AML check.
+ *
+ * @param cls closure with the `struct TALER_Amount *` where we store the sum
+ * @param amount encountered transaction amount
+ * @param date when was the amount encountered
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_NO to abort iteration
+ *         #GNUNET_SYSERR on internal error (also abort itaration)
+ */
+static enum GNUNET_GenericReturnValue
+sum_for_aml (
+  void *cls,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Absolute date)
+{
+  struct TALER_Amount *sum = cls;
+
+  (void) date;
+  if (0 >
+      TALER_amount_add (sum,
+                        sum,
+                        amount))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Test if AML is required for a transfer to @a h_payto.
+ *
+ * @param[in,out] au_active aggregation unit to check for
+ * @return true if AML checks are satisfied
+ */
+static bool
+aml_satisfied (struct AggregationUnit *au_active)
+{
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount total;
+
+  total = au_active->final_amount;
+  qs = db_plugin->select_aggregation_amounts_for_kyc_check (
+    db_plugin->cls,
+    &au_active->h_payto,
+    GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
+                                   GNUNET_TIME_UNIT_MONTHS),
+    &sum_for_aml,
+    &total);
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return false;
+  }
+  if (0 >= TALER_amount_cmp (&total,
+                             &aml_threshold))
+  {
+    /* total <= aml_threshold, do nothing */
+    return true;
+  }
+  qs = db_plugin->trigger_aml_process (db_plugin->cls,
+                                       &au_active->h_payto,
+                                       &total);
+  if (qs < 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return false;
+  }
+  return false;
+}
+
+
+/**
  * Perform the main aggregation work for @a au.  Expects to be in
  * a working transaction, which the caller must also ultimately commit
  * (or rollback) depending on our return value.
@@ -649,7 +739,8 @@ do_aggregate (struct AggregationUnit *au)
         TALER_amount_round_down (&au->final_amount,
                                  &currency_round_unit)) ||
        (TALER_amount_is_zero (&au->final_amount)) ||
-       (! kyc_satisfied (au)) )
+       (! kyc_satisfied (au)) ||
+       (! aml_satisfied (au)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Not ready for wire transfer (%d/%s)\n",

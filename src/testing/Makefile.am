@@ -556,8 +556,10 @@ EXTRA_DIST = \
   test_exchange_api.conf \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \
+  test_exchange_api_twisted.conf \
   test_exchange_api_twisted-cs.conf \
   test_exchange_api_twisted-rsa.conf \
+  test_exchange_api_keys_cherry_picking.conf \
   test_exchange_api_keys_cherry_picking-cs.conf \
   test_exchange_api_keys_cherry_picking-rsa.conf \
   test_exchange_api_expire_reserve_now-cs.conf \
