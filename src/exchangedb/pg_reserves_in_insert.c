@@ -54,25 +54,6 @@ compute_notify_on_reserve (const struct TALER_ReservePublicKeyP *reserve_pub)
 }
 
 
-static void
-notify_on_reserve (struct PostgresClosure *pg,
-                   const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  struct TALER_ReserveEventP rep = {
-    .header.size = htons (sizeof (rep)),
-    .header.type = htons (TALER_DBEVENT_EXCHANGE_RESERVE_INCOMING),
-    .reserve_pub = *reserve_pub
-  };
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Notifying on reserve!\n");
-  TEH_PG_event_notify (pg,
-                       &rep.header,
-                       NULL,
-                       0);
-}
-
-
 static enum GNUNET_DB_QueryStatus
 insert1 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[1],

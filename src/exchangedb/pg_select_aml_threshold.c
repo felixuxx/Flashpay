@@ -41,7 +41,7 @@ TEH_PG_select_aml_threshold (
   uint32_t status32 = TALER_AML_NORMAL;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("threshold",
-                                 &threshold),
+                                 threshold),
     GNUNET_PQ_result_spec_uint32 ("status",
                                   &status32),
     GNUNET_PQ_result_spec_end

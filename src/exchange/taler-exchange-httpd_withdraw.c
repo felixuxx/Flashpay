@@ -61,15 +61,20 @@ struct WithdrawContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
-   * Hash of the payto-URI representing the reserve
-   * from which we are withdrawing.
+   * Hash of the payto-URI representing the account
+   * from which the money was put into the reserve.
    */
-  struct TALER_PaytoHashP h_payto;
+  struct TALER_PaytoHashP h_account_payto;
 
   /**
    * Current time for the DB transaction.
    */
   struct GNUNET_TIME_Timestamp now;
+
+  /**
+   * AML decision, #TALER_AML_NORMAL if we may proceed.
+   */
+  enum TALER_AmlDecisionState aml_decision;
 
 };
 
@@ -108,7 +113,7 @@ withdraw_amount_cb (void *cls,
     return;
   qs = TEH_plugin->select_withdraw_amounts_for_kyc_check (
     TEH_plugin->cls,
-    &wc->h_payto,
+    &wc->h_account_payto,
     limit,
     cb,
     cb_cls);
@@ -117,6 +122,34 @@ withdraw_amount_cb (void *cls,
               qs,
               (unsigned long long) limit.abs_value_us);
   GNUNET_break (qs >= 0);
+}
+
+
+/**
+ * Function called on each @a amount that was found to
+ * be relevant for the AML check as it was merged into
+ * the reserve.
+ *
+ * @param cls `struct TALER_Amount *` to total up the amounts
+ * @param amount encountered transaction amount
+ * @param date when was the amount encountered
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_NO to abort iteration
+ *         #GNUNET_SYSERR on internal error (also abort itaration)
+ */
+static enum GNUNET_GenericReturnValue
+aml_amount_cb (
+  void *cls,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Absolute date)
+{
+  struct TALER_Amount *total = cls;
+
+  GNUNET_assert (0 <=
+                 TALER_amount_add (total,
+                                   total,
+                                   amount));
+  return GNUNET_OK;
 }
 
 
@@ -150,23 +183,116 @@ withdraw_transaction (void *cls,
   uint64_t ruuid;
   const struct TALER_CsNonce *nonce;
   const struct TALER_BlindedPlanchet *bp;
+  struct TALER_PaytoHashP reserve_h_payto;
 
   wc->now = GNUNET_TIME_timestamp_get ();
+  /* Do AML check: compute total merged amount and check
+     against applicable AML threshold */
+  {
+    char *reserve_payto;
+
+    reserve_payto = TALER_reserve_make_payto (TEH_base_url,
+                                              &wc->collectable.reserve_pub);
+    TALER_payto_hash (reserve_payto,
+                      &reserve_h_payto);
+    GNUNET_free (reserve_payto);
+  }
+  {
+    struct TALER_Amount merge_amount;
+    struct TALER_Amount threshold;
+    struct GNUNET_TIME_Absolute now_minus_one_month;
+
+    now_minus_one_month
+      = GNUNET_TIME_absolute_subtract (wc->now.abs_time,
+                                       GNUNET_TIME_UNIT_MONTHS);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TEH_currency,
+                                          &merge_amount));
+    qs = TEH_plugin->select_merge_amounts_for_kyc_check (TEH_plugin->cls,
+                                                         &reserve_h_payto,
+                                                         now_minus_one_month,
+                                                         &aml_amount_cb,
+                                                         &merge_amount);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select_merge_amounts_for_kyc_check");
+      return qs;
+    }
+    qs = TEH_plugin->select_aml_threshold (TEH_plugin->cls,
+                                           &reserve_h_payto,
+                                           &wc->aml_decision,
+                                           &threshold);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select_aml_threshold");
+      return qs;
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      threshold = TEH_aml_threshold; /* use default */
+      wc->aml_decision = TALER_AML_NORMAL;
+    }
+
+    switch (wc->aml_decision)
+    {
+    case TALER_AML_NORMAL:
+      if (0 >= TALER_amount_cmp (&merge_amount,
+                                 &threshold))
+      {
+        /* merge_amount <= threshold, continue withdraw below */
+        break;
+      }
+      wc->aml_decision = TALER_AML_PENDING;
+      qs = TEH_plugin->trigger_aml_process (TEH_plugin->cls,
+                                            &reserve_h_payto,
+                                            &merge_amount);
+      if (qs <= 0)
+      {
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+        if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+          *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 TALER_EC_GENERIC_DB_STORE_FAILED,
+                                                 "trigger_aml_process");
+        return qs;
+      }
+      return qs;
+    case TALER_AML_PENDING:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "AML already pending, doing nothing\n");
+      return qs;
+    case TALER_AML_FROZEN:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Account frozen, doing nothing\n");
+      return qs;
+    }
+  }
+
+  /* Check if the money came from a wire transfer */
   qs = TEH_plugin->reserves_get_origin (TEH_plugin->cls,
                                         &wc->collectable.reserve_pub,
-                                        &wc->h_payto);
+                                        &wc->h_account_payto);
   if (qs < 0)
     return qs;
-  /* If no results, reserve was created by merge,
-     in which case no KYC check is required as the
-     merge already did that. */
+  /* If no results, reserve was created by merge, in which case no KYC check
+     is required as the merge already did that. */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     const char *kyc_required;
 
     qs = TALER_KYCLOGIC_kyc_test_required (
       TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
-      &wc->h_payto,
+      &wc->h_account_payto,
       TEH_plugin->select_satisfied_kyc_processes,
       TEH_plugin->cls,
       &withdraw_amount_cb,
@@ -191,7 +317,7 @@ withdraw_transaction (void *cls,
       return TEH_plugin->insert_kyc_requirement_for_account (
         TEH_plugin->cls,
         kyc_required,
-        &wc->h_payto,
+        &wc->h_account_payto,
         &wc->kyc.requirement_row);
     }
   }
@@ -515,8 +641,13 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   if (! wc.kyc.ok)
     return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                            &wc.h_payto,
+                                            &wc.h_account_payto,
                                             &wc.kyc);
+
+  if (TALER_AML_NORMAL != wc.aml_decision)
+    return TEH_RESPONSE_reply_aml_blocked (rc->connection,
+                                           wc.aml_decision);
+
   {
     MHD_RESULT ret;
 

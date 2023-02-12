@@ -148,6 +148,13 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 char *TEH_currency;
 
 /**
+ * What is the largest amount we allow a peer to
+ * merge into a reserve before always triggering
+ * an AML check?
+ */
+struct TALER_Amount TEH_aml_threshold;
+
+/**
  * Our base URL.
  */
 char *TEH_base_url;
@@ -1858,6 +1865,16 @@ exchange_serve_process_config (void)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "taler",
                                "CURRENCY");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               "taler",
+                               "AML_THRESHOLD",
+                               &TEH_aml_threshold))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need amount in section `TALER' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=

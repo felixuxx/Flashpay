@@ -98,6 +98,13 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 extern char *TEH_currency;
 
 /**
+ * What is the largest amount we allow a peer to
+ * merge into a reserve before always triggering
+ * an AML check?
+ */
+extern struct TALER_Amount TEH_aml_threshold;
+
+/**
  * Our (externally visible) base URL.
  */
 extern char *TEH_base_url;
