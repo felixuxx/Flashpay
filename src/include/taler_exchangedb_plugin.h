@@ -6606,6 +6606,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain the current AML threshold set for an account.
+   *
+   * @param cls closure
+   * @param h_payto account for which the AML threshold is stored
+   * @param[out] decision set to current AML decision
+   * @param[out] threshold set to the existing threshold
+   * @return database transaction status, 0 if no threshold was set
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_aml_threshold)(
+    void *cls,
+    const struct TALER_PaytoHashP *h_payto,
+    enum TALER_AmlDecisionState *decision,
+    struct TALER_Amount *threshold);
+
+
+  /**
    * Trigger AML process, an account has crossed the threshold. Inserts or
    * updates the AML status.
    *

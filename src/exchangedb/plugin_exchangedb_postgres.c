@@ -51,6 +51,7 @@
 #include "pg_lookup_records_by_table.h"
 #include "pg_lookup_serial_by_table.h"
 #include "pg_select_account_merges_above_serial_id.h"
+#include "pg_select_aml_threshold.h"
 #include "pg_select_all_purse_decisions_above_serial_id.h"
 #include "pg_select_purse.h"
 #include "pg_select_purse_deposits_above_serial_id.h"
@@ -451,6 +452,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_account_merges_above_serial_id;
   plugin->select_all_purse_decisions_above_serial_id
     = &TEH_PG_select_all_purse_decisions_above_serial_id;
+  plugin->select_aml_threshold
+    = &TEH_PG_select_aml_threshold;
   plugin->select_purse
     = &TEH_PG_select_purse;
   plugin->select_purse_deposits_above_serial_id

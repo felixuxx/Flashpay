@@ -582,6 +582,8 @@ aml_satisfied (struct AggregationUnit *au_active)
 {
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount total;
+  struct TALER_Amount threshold;
+  enum TALER_AmlDecisionState decision;
 
   total = au_active->final_amount;
   qs = db_plugin->select_aggregation_amounts_for_kyc_check (
@@ -596,20 +598,48 @@ aml_satisfied (struct AggregationUnit *au_active)
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return false;
   }
-  if (0 >= TALER_amount_cmp (&total,
-                             &aml_threshold))
-  {
-    /* total <= aml_threshold, do nothing */
-    return true;
-  }
-  qs = db_plugin->trigger_aml_process (db_plugin->cls,
-                                       &au_active->h_payto,
-                                       &total);
+  qs = db_plugin->select_aml_threshold (db_plugin->cls,
+                                        &au_active->h_payto,
+                                        &decision,
+                                        &threshold);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return false;
   }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    threshold = aml_threshold; /* use default */
+    decision = TALER_AML_NORMAL;
+  }
+  switch (decision)
+  {
+  case TALER_AML_NORMAL:
+    if (0 >= TALER_amount_cmp (&total,
+                               &threshold))
+    {
+      /* total <= threshold, do nothing */
+      return true;
+    }
+    qs = db_plugin->trigger_aml_process (db_plugin->cls,
+                                         &au_active->h_payto,
+                                         &total);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      return false;
+    }
+    return false;
+  case TALER_AML_PENDING:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "AML already pending, doing nothing\n");
+    return false;
+  case TALER_AML_FROZEN:
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Account frozen, doing nothing\n");
+    return false;
+  }
+  GNUNET_assert (0);
   return false;
 }
 

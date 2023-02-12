@@ -96,6 +96,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_get_drain_profit.h pg_get_drain_profit.c \
   pg_get_purse_deposit.h pg_get_purse_deposit.c \
   pg_insert_contract.h pg_insert_contract.c \
+  pg_select_aml_threshold.h pg_select_aml_threshold.c \
   pg_select_contract.h pg_select_contract.c \
   pg_select_purse_merge.h pg_select_purse_merge.c \
   pg_select_contract_by_purse.h pg_select_contract_by_purse.c \
