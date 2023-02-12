@@ -233,7 +233,7 @@ initiate_cb (
   kyp->ih = NULL;
   kyp->ih_done = true;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC initiation completed with status %d (%s)\n",
+              "KYC initiation completed with ec=%d (%s)\n",
               ec,
               (TALER_EC_NONE == ec)
               ? redirect_url
