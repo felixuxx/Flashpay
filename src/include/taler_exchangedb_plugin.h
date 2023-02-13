@@ -4319,6 +4319,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] execution_time when was the transaction done, or
    *         when we expect it to be done (if @a pending is false)
    * @param[out] kyc set to the kyc status of the receiver (if @a pending)
+   * @param[out] aml_decision set to the current AML status for the target account
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -4333,7 +4334,8 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp *exec_time,
     struct TALER_Amount *amount_with_fee,
     struct TALER_Amount *deposit_fee,
-    struct TALER_EXCHANGEDB_KycStatus *kyc);
+    struct TALER_EXCHANGEDB_KycStatus *kyc,
+    enum TALER_AmlDecisionState *aml_decision);
 
 
   /**

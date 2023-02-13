@@ -3183,6 +3183,12 @@ struct TALER_EXCHANGE_GetDepositResponse
       uint64_t requirement_row;
 
       /**
+       * Current AML state for the account. May explain why transfers are
+       * not happening.
+       */
+      enum TALER_AmlDecisionState aml_decision;
+
+      /**
        * Set to 'true' if the KYC check is already finished and
        * the exchange is merely waiting for the @e execution_time.
        */

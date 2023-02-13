@@ -24,6 +24,7 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_aml_decision.h"
 #include "pg_helper.h"
+#include <gnunet/gnunet_pq_lib.h>
 
 
 enum GNUNET_DB_QueryStatus
@@ -41,6 +42,12 @@ TEH_PG_insert_aml_decision (
 {
   struct PostgresClosure *pg = cls;
   uint32_t ns = (uint32_t) new_status;
+  struct TALER_KycCompletedEventP rep = {
+    .header.size = htons (sizeof (rep)),
+    .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+    .h_payto = *h_payto
+  };
+  char *notify_s = GNUNET_PG_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     TALER_PQ_query_param_amount (new_threshold),
@@ -49,6 +56,7 @@ TEH_PG_insert_aml_decision (
     GNUNET_PQ_query_param_string (justification),
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
+    GNUNET_PQ_query_param_string (notify_s),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -58,6 +66,7 @@ TEH_PG_insert_aml_decision (
                                      last_date),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
            "do_insert_aml_decision",
@@ -66,8 +75,10 @@ TEH_PG_insert_aml_decision (
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
            "($1, $2, $3, $4, $5, $6, $7, $8);");
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "do_insert_aml_decision",
-                                                   params,
-                                                   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "do_insert_aml_decision",
+                                                 params,
+                                                 rs);
+  GNUNET_free (notify_s);
+  return qs;
 }

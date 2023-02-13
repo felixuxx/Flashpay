@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_transfer_by_deposit (
   void *cls,
@@ -39,7 +38,8 @@ TEH_PG_lookup_transfer_by_deposit (
   struct GNUNET_TIME_Timestamp *exec_time,
   struct TALER_Amount *amount_with_fee,
   struct TALER_Amount *deposit_fee,
-  struct TALER_EXCHANGEDB_KycStatus *kyc)
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  enum TALER_AmlDecisionState *aml_decision)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -71,8 +71,6 @@ TEH_PG_lookup_transfer_by_deposit (
           0,
           sizeof (*kyc));
   /* check if the aggregation record exists and get it */
-
-    /* Used in #postgres_lookup_transfer_by_deposit */
   PREPARE (pg,
            "lookup_deposit_wtid",
            "SELECT"
@@ -117,6 +115,7 @@ TEH_PG_lookup_transfer_by_deposit (
     {
       *pending = false;
       kyc->ok = true;
+      *aml_decision = TALER_AML_NORMAL;
       return qs;
     }
     qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
@@ -134,6 +133,7 @@ TEH_PG_lookup_transfer_by_deposit (
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet. In that case, return without wtid
        (by setting 'pending' true). */
+    uint32_t status32 = TALER_AML_NORMAL;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
@@ -149,11 +149,13 @@ TEH_PG_lookup_transfer_by_deposit (
                                    deposit_fee),
       GNUNET_PQ_result_spec_timestamp ("wire_deadline",
                                        exec_time),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint32 ("status",
+                                      &status32),
+        NULL),
       GNUNET_PQ_result_spec_end
     };
 
-        /* Fetch an existing deposit request.
-       Used in #postgres_lookup_transfer_by_deposit(). */
     PREPARE (pg,
              "get_deposit_without_wtid",
              "SELECT"
@@ -165,6 +167,7 @@ TEH_PG_lookup_transfer_by_deposit (
              ",denom.fee_deposit_val"
              ",denom.fee_deposit_frac"
              ",dep.wire_deadline"
+             ",aml.status"
              " FROM deposits dep"
              " JOIN wire_targets wt"
              "   USING (wire_target_h_payto)"
@@ -175,6 +178,8 @@ TEH_PG_lookup_transfer_by_deposit (
              " LEFT JOIN aggregation_transient agt "
              "   ON ( (dep.wire_target_h_payto = agt.wire_target_h_payto) AND"
              "        (dep.merchant_pub = agt.merchant_pub) )"
+             " LEFT JOIN aml_status aml"
+             "   ON (wt.wire_target_h_payto = aml.h_payto)"
              " WHERE dep.coin_pub=$1"
              "   AND dep.merchant_pub=$3"
              "   AND dep.h_contract_terms=$2"
@@ -187,6 +192,7 @@ TEH_PG_lookup_transfer_by_deposit (
     {
       struct TALER_MerchantWireHashP wh;
 
+      *aml_decision = (enum TALER_AmlDecisionState) status32;
       if (0 == kyc->requirement_row)
         kyc->ok = true; /* technically: unknown */
       TALER_merchant_wire_signature_hash (payto_uri,
@@ -198,6 +204,7 @@ TEH_PG_lookup_transfer_by_deposit (
                          h_wire))
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     }
+    *aml_decision = TALER_AML_NORMAL;
     return qs;
   }
 }

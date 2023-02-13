@@ -91,6 +91,11 @@ struct DepositWtidContext
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
   /**
+   * AML status information for the receiving account.
+   */
+  enum TALER_AmlDecisionState aml_decision;
+
+  /**
    * Set to #GNUNET_YES by #handle_wtid if the wire transfer is still pending
    * (and the above were not set).
    * Set to #GNUNET_SYSERR if there was a serious error.
@@ -128,6 +133,7 @@ reply_deposit_details (
          &pub,
          &sig)))
   {
+    GNUNET_break (0);
     return TALER_MHD_reply_with_ec (connection,
                                     ec,
                                     NULL);
@@ -184,7 +190,8 @@ deposits_get_transaction (void *cls,
                                                &ctx->execution_time,
                                                &ctx->coin_contribution,
                                                &fee,
-                                               &ctx->kyc);
+                                               &ctx->kyc,
+                                               &ctx->aml_decision);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -257,6 +264,8 @@ handle_track_transaction_request (
                                    NULL)
         : GNUNET_JSON_pack_uint64 ("requirement_row",
                                    ctx->kyc.requirement_row)),
+      GNUNET_JSON_pack_uint64 ("aml_decision",
+                               (uint32_t) ctx->aml_decision),
       GNUNET_JSON_pack_bool ("kyc_ok",
                              ctx->kyc.ok),
       GNUNET_JSON_pack_timestamp ("execution_time",

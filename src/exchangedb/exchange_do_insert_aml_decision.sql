@@ -23,6 +23,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_justification VARCHAR,
   IN in_decider_pub BYTEA,
   IN in_decider_sig BYTEA,
+  IN in_notify_s VARCHAR,
   OUT out_invalid_officer BOOLEAN,
   OUT out_last_date INT8)
 LANGUAGE plpgsql
@@ -95,8 +96,25 @@ INSERT INTO exchange.aml_history
   ,in_decider_pub
   ,in_decider_sig);
 
+
+-- wake up taler-exchange-aggregator
+IF 0 = in_new_status
+THEN
+  INSERT INTO kyc_alerts
+    (h_payto
+    ,trigger_type)
+    VALUES
+    (in_h_payto,1);
+    
+   EXECUTE FORMAT (
+     'NOTIFY %s'
+    ,in_notify_s);
+
+END IF;
+
+
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT4, INT4, INT8, VARCHAR, BYTEA, BYTEA)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT4, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';
