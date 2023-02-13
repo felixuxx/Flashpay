@@ -74,7 +74,7 @@ TEH_PG_insert_aml_decision (
            " out_invalid_officer"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,
