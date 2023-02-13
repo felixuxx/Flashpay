@@ -97,8 +97,9 @@ batch_cleanup (void *cls,
   for (unsigned int i = 0;
        NULL != bs->batch[i].label;
        i++)
-    bs->batch[i].cleanup (bs->batch[i].cls,
-                          &bs->batch[i]);
+    if (NULL != bs->batch[i].cleanup)
+      bs->batch[i].cleanup (bs->batch[i].cls,
+                            &bs->batch[i]);
   GNUNET_free (bs->batch);
   GNUNET_free (bs);
 }
