@@ -2741,6 +2741,7 @@ TALER_TESTING_cmd_set_officer (
  * @param new_threshold new threshold to set
  * @param justification justification given for the decision
  * @param new_state new AML state for the account
+ * @param kyc_requirement KYC requirement to impose
  * @param expected_response expected HTTP return status
  * @return the command
  */
@@ -2752,6 +2753,7 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *new_threshold,
   const char *justification,
   enum TALER_AmlDecisionState new_state,
+  const char *kyc_requirement,
   unsigned int expected_response);
 
 

@@ -57,6 +57,12 @@ struct TALER_AmlDecisionPS
   struct TALER_PaytoHashP h_payto GNUNET_PACKED;
 
   /**
+   * Hash over JSON array with KYC requirements that were imposed. All zeros
+   * for none.
+   */
+  struct GNUNET_HashCode h_kyc_requirements;
+
+  /**
    * What is the new AML status?
    */
   uint32_t new_state GNUNET_PACKED;
@@ -72,6 +78,7 @@ TALER_officer_aml_decision_sign (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -87,6 +94,9 @@ TALER_officer_aml_decision_sign (
                       &ad.h_justification);
   TALER_amount_hton (&ad.new_threshold,
                      new_threshold);
+  if (NULL != kyc_requirements)
+    TALER_json_hash (kyc_requirements,
+                     &ad.h_kyc_requirements);
   GNUNET_CRYPTO_eddsa_sign (&officer_priv->eddsa_priv,
                             &ad,
                             &officer_sig->eddsa_signature);
@@ -100,6 +110,7 @@ TALER_officer_aml_decision_verify (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig)
 {
@@ -115,6 +126,9 @@ TALER_officer_aml_decision_verify (
                       &ad.h_justification);
   TALER_amount_hton (&ad.new_threshold,
                      new_threshold);
+  if (NULL != kyc_requirements)
+    TALER_json_hash (kyc_requirements,
+                     &ad.h_kyc_requirements);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_AML_DECISION,
     &ad,

@@ -35,6 +35,7 @@ TEH_PG_insert_aml_decision (
   enum TALER_AmlDecisionState new_status,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
@@ -48,6 +49,9 @@ TEH_PG_insert_aml_decision (
     .h_payto = *h_payto
   };
   char *notify_s = GNUNET_PG_get_event_notify_channel (&rep.header);
+  char *kyc_s = (NULL != kyc_requirements)
+    ? json_dumps (kyc_requirements, JSON_COMPACT)
+    : NULL;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     TALER_PQ_query_param_amount (new_threshold),
@@ -57,6 +61,9 @@ TEH_PG_insert_aml_decision (
     GNUNET_PQ_query_param_auto_from_type (decider_pub),
     GNUNET_PQ_query_param_auto_from_type (decider_sig),
     GNUNET_PQ_query_param_string (notify_s),
+    NULL != kyc_requirements
+    ? GNUNET_PQ_query_param_string (kyc_s)
+    : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -74,11 +81,13 @@ TEH_PG_insert_aml_decision (
            " out_invalid_officer"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,
                                                  rs);
   GNUNET_free (notify_s);
+  if (NULL != kyc_s)
+    free (kyc_s);
   return qs;
 }

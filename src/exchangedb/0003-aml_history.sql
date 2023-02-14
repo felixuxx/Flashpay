@@ -32,6 +32,7 @@ BEGIN
       ',new_status INT4 NOT NULL DEFAULT(0)'
       ',decision_time INT8 NOT NULL DEFAULT(0)'
       ',justification VARCHAR NOT NULL'
+      ',kyc_requirements VARCHAR'
       ',decider_pub BYTEA CHECK (LENGTH(decider_pub)=32)'
       ',decider_sig BYTEA CHECK (LENGTH(decider_sig)=64)'
     ') %s ;'
@@ -81,6 +82,12 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
+     'Additional KYC requirements imposed by the AML staff member. Serialized JSON array of strings.'
+    ,'kyc_requirements'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
      'Signature key of the staff member affirming the AML decision; of type AML_DECISION'
     ,'decider_sig'
     ,table_name
@@ -114,7 +121,6 @@ BEGIN
   );
 END $$;
 
--- FIXME: also have INSERT on AML decisions to update AML status!
 
 INSERT INTO exchange_tables
     (name

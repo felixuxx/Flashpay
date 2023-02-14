@@ -73,6 +73,11 @@ struct AmlDecisionState
   const char *justification;
 
   /**
+   * KYC requirement to add.
+   */
+  const char *kyc_requirement;
+
+  /**
    * Threshold transaction amount.
    */
   struct TALER_Amount new_threshold;
@@ -133,6 +138,7 @@ take_aml_decision_run (void *cls,
   const struct TALER_PaytoHashP *h_payto;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
+  json_t *kyc_requirements = NULL;
 
   (void) cmd;
   now = GNUNET_TIME_timestamp_get ();
@@ -160,6 +166,15 @@ take_aml_decision_run (void *cls,
                  TALER_TESTING_get_trait_officer_priv (ref,
                                                        &officer_priv));
   ds->h_payto = *h_payto;
+  if (NULL != ds->kyc_requirement)
+  {
+    kyc_requirements = json_array ();
+    GNUNET_assert (NULL != kyc_requirements);
+    GNUNET_assert (0 ==
+                   json_array_append (kyc_requirements,
+                                      json_string (ds->kyc_requirement)));
+  }
+
   ds->dh = TALER_EXCHANGE_add_aml_decision (
     is->ctx,
     is->exchange_url,
@@ -168,9 +183,11 @@ take_aml_decision_run (void *cls,
     &ds->new_threshold,
     h_payto,
     ds->new_state,
+    kyc_requirements,
     officer_priv,
     &take_aml_decision_cb,
     ds);
+  json_decref (kyc_requirements);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);
@@ -246,6 +263,7 @@ TALER_TESTING_cmd_take_aml_decision (
   const char *new_threshold,
   const char *justification,
   enum TALER_AmlDecisionState new_state,
+  const char *kyc_requirement,
   unsigned int expected_response)
 {
   struct AmlDecisionState *ds;
@@ -253,6 +271,7 @@ TALER_TESTING_cmd_take_aml_decision (
   ds = GNUNET_new (struct AmlDecisionState);
   ds->officer_ref_cmd = ref_officer;
   ds->account_ref_cmd = ref_operation;
+  ds->kyc_requirement = kyc_requirement;
   if (GNUNET_OK !=
       TALER_string_to_amount (new_threshold,
                               &ds->new_threshold))

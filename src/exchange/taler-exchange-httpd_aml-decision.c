@@ -50,6 +50,7 @@ TEH_handler_post_aml_decision (
   uint32_t new_state32;
   enum TALER_AmlDecisionState new_state;
   struct TALER_AmlOfficerSignatureP officer_sig;
+  json_t *kyc_requirements = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("officer_sig",
                                  &officer_sig),
@@ -64,6 +65,10 @@ TEH_handler_post_aml_decision (
                                 &decision_time),
     GNUNET_JSON_spec_uint32 ("new_state",
                              &new_state32),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_json ("kyc_requirements",
+                             &kyc_requirements),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
 
@@ -89,6 +94,7 @@ TEH_handler_post_aml_decision (
                                          &new_threshold,
                                          &h_payto,
                                          new_state,
+                                         kyc_requirements,
                                          officer_pub,
                                          &officer_sig))
   {
@@ -99,6 +105,8 @@ TEH_handler_post_aml_decision (
       TALER_EC_EXCHANGE_AML_DECISION_ADD_SIGNATURE_INVALID,
       NULL);
   }
+
+  // FIXME: check kyc_requirements is well-formed!
   {
     enum GNUNET_DB_QueryStatus qs;
     struct GNUNET_TIME_Timestamp last_date;
@@ -112,6 +120,7 @@ TEH_handler_post_aml_decision (
                                             new_state,
                                             decision_time,
                                             justification,
+                                            kyc_requirements,
                                             officer_pub,
                                             &officer_sig,
                                             &invalid_officer,
@@ -127,6 +136,11 @@ TEH_handler_post_aml_decision (
                                          TALER_EC_GENERIC_DB_STORE_FAILED,
                                          "add aml_decision");
     }
+    if (NULL != kyc_requirements)
+    {
+      // FIXME: act on these!
+    }
+
     if (invalid_officer)
     {
       GNUNET_break_op (0);

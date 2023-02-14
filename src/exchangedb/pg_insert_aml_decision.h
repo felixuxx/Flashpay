@@ -36,6 +36,7 @@
  * @param new_status AML decision status
  * @param decision_time when was the decision made
  * @param justification human-readable text justifying the decision
+ * @param kyc_requirements JSON array with KYC requirements
  * @param decider_pub public key of the staff member
  * @param decider_sig signature of the staff member
  * @param[out] invalid_officer set to TRUE if @a decider_pub is not allowed to make decisions right now
@@ -51,6 +52,7 @@ TEH_PG_insert_aml_decision (
   enum TALER_AmlDecisionState new_status,
   struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,

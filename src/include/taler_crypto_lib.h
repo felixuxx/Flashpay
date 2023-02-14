@@ -2406,6 +2406,8 @@ TALER_officer_aml_query_verify (
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param new_state updated AML state
+ * @param kyc_requirements additional KYC requirements to
+ *           impose, can be NULL
  * @param officer_priv private key of AML officer
  * @param[out] officer_sig where to write the signature
  */
@@ -2416,6 +2418,7 @@ TALER_officer_aml_decision_sign (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   struct TALER_AmlOfficerSignatureP *officer_sig);
 
@@ -2430,6 +2433,8 @@ TALER_officer_aml_decision_sign (
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param new_state updated AML state
+ * @param kyc_requirements additional KYC requirements to
+ *           impose, can be NULL
  * @param officer_pub public key of AML officer
  * @param officer_sig signature to verify
  * @return #GNUNET_OK if the signature is valid
@@ -2441,6 +2446,7 @@ TALER_officer_aml_decision_verify (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPublicKeyP *officer_pub,
   const struct TALER_AmlOfficerSignatureP *officer_sig);
 

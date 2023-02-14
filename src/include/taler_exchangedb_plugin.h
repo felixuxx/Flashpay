@@ -6704,6 +6704,7 @@ struct TALER_EXCHANGEDB_Plugin
     enum TALER_AmlDecisionState new_status,
     struct GNUNET_TIME_Timestamp decision_time,
     const char *justification,
+    const json_t *kyc_requirements,
     const struct TALER_AmlOfficerPublicKeyP *decider_pub,
     const struct TALER_AmlOfficerSignatureP *decider_sig,
     bool *invalid_officer,

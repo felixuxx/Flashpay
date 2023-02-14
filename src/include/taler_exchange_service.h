@@ -4608,6 +4608,7 @@ typedef void
  * @param h_payto payto URI hash of the account the
  *                      decision is about
  * @param new_state updated AML state
+ * @param kyc_requirements JSON array of KYC requirements being imposed, NULL for none
  * @param officer_priv private key of the deciding AML officer
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -4622,6 +4623,7 @@ TALER_EXCHANGE_add_aml_decision (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
   void *cb_cls);

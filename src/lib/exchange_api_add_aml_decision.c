@@ -132,6 +132,7 @@ TALER_EXCHANGE_add_aml_decision (
   const struct TALER_Amount *new_threshold,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState new_state,
+  const json_t *kyc_requirements,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv,
   TALER_EXCHANGE_AddAmlDecisionCallback cb,
   void *cb_cls)
@@ -149,6 +150,7 @@ TALER_EXCHANGE_add_aml_decision (
                                    new_threshold,
                                    h_payto,
                                    new_state,
+                                   kyc_requirements,
                                    officer_priv,
                                    &officer_sig);
   wh = GNUNET_new (struct TALER_EXCHANGE_AddAmlDecision);
@@ -190,6 +192,9 @@ TALER_EXCHANGE_add_aml_decision (
                                 h_payto),
     GNUNET_JSON_pack_uint64 ("new_state",
                              (uint32_t) new_state),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_array_incref ("kyc_requirements",
+                                     (json_t *) kyc_requirements)),
     TALER_JSON_pack_amount ("new_threshold",
                             new_threshold),
     GNUNET_JSON_pack_timestamp ("decision_time",
