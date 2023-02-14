@@ -980,6 +980,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
     struct TALER_Amount coin_fee2;
     struct GNUNET_TIME_Timestamp execution_time2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
+    enum TALER_AmlDecisionState aml;
 
     h_contract_terms_wt2.hash.bits[0]++;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
@@ -993,7 +994,8 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                                 &execution_time2,
                                                 &coin_contribution2,
                                                 &coin_fee2,
-                                                &kyc));
+                                                &kyc,
+                                                &aml));
   }
   {
     struct TALER_ReservePublicKeyP rpub;
@@ -1025,6 +1027,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
     struct TALER_Amount coin_fee2;
     struct GNUNET_TIME_Timestamp execution_time2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
+    enum TALER_AmlDecisionState aml = TALER_AML_FROZEN;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->lookup_transfer_by_deposit (plugin->cls,
@@ -1037,7 +1040,9 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                                 &execution_time2,
                                                 &coin_contribution2,
                                                 &coin_fee2,
-                                                &kyc));
+                                                &kyc,
+                                                &aml));
+    FAILIF (TALER_AML_NORMAL != aml);
     GNUNET_assert (0 == GNUNET_memcmp (&wtid2,
                                        &wire_out_wtid));
     GNUNET_assert (GNUNET_TIME_timestamp_cmp (execution_time2,
