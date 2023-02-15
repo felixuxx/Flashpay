@@ -15,8 +15,7 @@ endif
 bin_PROGRAMS = \
   taler-auditor-offline \
   taler-exchange-offline \
-  taler-exchange-dbinit \
-  taler-crypto-worker
+  taler-exchange-dbinit
 
 taler_exchange_offline_SOURCES = \
   taler-exchange-offline.c
@@ -59,19 +58,6 @@ taler_exchange_dbinit_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \
   $(POSTGRESQL_CPPFLAGS)
-
-taler_crypto_worker_SOURCES = \
-  taler-crypto-worker.c
-taler_crypto_worker_LDADD = \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  -lgnunetutil \
-  -lgnunetjson \
-  -ljansson \
-  $(LIBGCRYPT_LIBS) \
-  $(XLIB)
-
-
 
 
 # Testcases
