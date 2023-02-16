@@ -22,6 +22,12 @@
 #include "taler_kyclogic_lib.h"
 
 /**
+ * Name of the KYC check that may never be passed. Useful if some
+ * operations/amounts are categorically forbidden.
+ */
+#define KYC_CHECK_IMPOSSIBLE "impossible"
+
+/**
  * Information about a KYC provider.
  */
 struct TALER_KYCLOGIC_KycProvider;
@@ -265,6 +271,21 @@ TALER_KYCLOGIC_kyc_user_type2s (enum TALER_KYCLOGIC_KycUserType ut)
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_KYCLOGIC_check_satisfiable (
+  const char *check_name)
+{
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    if (0 == strcmp (check_name,
+                     kyc_checks[i]->name))
+      return GNUNET_OK;
+  if (0 == strcmp (check_name,
+                   KYC_CHECK_IMPOSSIBLE))
+    return GNUNET_NO;
+  return GNUNET_SYSERR;
+}
+
+
 /**
  * Load KYC logic plugin.
  *
@@ -331,9 +352,8 @@ add_check (const char *check)
 
 
 /**
- * Parse list of checks from @a checks and build an
- * array of aliases into the global checks array
- * in @a provided_checks.
+ * Parse list of checks from @a checks and build an array of aliases into the
+ * global checks array in @a provided_checks.
  *
  * @param[in,out] checks list of checks; clobbered
  * @param[out] p_checks where to put array of aliases
@@ -585,6 +605,29 @@ add_trigger (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_array_append (kyc_triggers,
                          num_kyc_triggers,
                          kt);
+    for (unsigned int i = 0; i<kt->num_checks; i++)
+    {
+      const struct TALER_KYCLOGIC_KycCheck *ck = kt->required_checks[i];
+
+      if (0 != ck->num_providers)
+        continue;
+      if (0 == strcmp (ck->name,
+                       KYC_CHECK_IMPOSSIBLE))
+        continue;
+      {
+        char *msg;
+
+        GNUNET_asprintf (&msg,
+                         "Required check `%s' cannot be satisfied: not provided by any provider",
+                         ck->name);
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "REQUIRED_CHECKS",
+                                   msg);
+        GNUNET_free (msg);
+      }
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -614,8 +657,8 @@ struct SectionContext
  * @param section name of the section
  */
 static void
-handle_section (void *cls,
-                const char *section)
+handle_provider_section (void *cls,
+                         const char *section)
 {
   struct SectionContext *sc = cls;
 
@@ -629,6 +672,21 @@ handle_section (void *cls,
       sc->result = false;
     return;
   }
+}
+
+
+/**
+ * Function to iterate over configuration sections.
+ *
+ * @param cls a `struct SectionContext *`
+ * @param section name of the section
+ */
+static void
+handle_trigger_section (void *cls,
+                        const char *section)
+{
+  struct SectionContext *sc = cls;
+
   if (0 == strncasecmp (section,
                         "kyc-legitimization-",
                         strlen ("kyc-legitimization-")))
@@ -680,7 +738,10 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
   };
 
   GNUNET_CONFIGURATION_iterate_sections (cfg,
-                                         &handle_section,
+                                         &handle_provider_section,
+                                         &sc);
+  GNUNET_CONFIGURATION_iterate_sections (cfg,
+                                         &handle_trigger_section,
                                          &sc);
   if (! sc.result)
   {
