@@ -103,6 +103,85 @@ make_aml_decision (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp last_date;
   bool invalid_officer;
+  uint64_t requirement_row = 0;
+
+  if ( (NULL != dc->kyc_requirements) &&
+       (0 != json_array_size (dc->kyc_requirements)) )
+  {
+    char *res = NULL;
+    size_t idx;
+    json_t *req;
+    bool satisfied;
+
+    json_array_foreach (dc->kyc_requirements, idx, req)
+    {
+      const char *r = json_string_value (req);
+
+      if (NULL == res)
+      {
+        res = GNUNET_strdup (r);
+      }
+      else
+      {
+        char *tmp;
+
+        GNUNET_asprintf (&tmp,
+                         "%s %s",
+                         res,
+                         r);
+        GNUNET_free (res);
+        res = tmp;
+      }
+    }
+
+    {
+      json_t *kyc_details = NULL;
+
+      qs = TALER_KYCLOGIC_check_satisfied (
+        &res,
+        &dc->h_payto,
+        &kyc_details,
+        TEH_plugin->select_satisfied_kyc_processes,
+        TEH_plugin->cls,
+        &satisfied);
+      json_decref (kyc_details);
+    }
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "select_satisfied_kyc_processes");
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      return qs;
+    }
+    if (! satisfied)
+    {
+      qs = TEH_plugin->insert_kyc_requirement_for_account (
+        TEH_plugin->cls,
+        res,
+        &dc->h_payto,
+        &requirement_row);
+      if (qs < 0)
+      {
+        if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
+        {
+          GNUNET_break (0);
+          *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 TALER_EC_GENERIC_DB_STORE_FAILED,
+                                                 "insert_kyc_requirement_for_account");
+          return GNUNET_DB_STATUS_HARD_ERROR;
+        }
+        return qs;
+      }
+    }
+    GNUNET_free (res);
+  }
 
   qs = TEH_plugin->insert_aml_decision (TEH_plugin->cls,
                                         &dc->h_payto,
@@ -111,6 +190,7 @@ make_aml_decision (void *cls,
                                         dc->decision_time,
                                         dc->justification,
                                         dc->kyc_requirements,
+                                        requirement_row,
                                         dc->officer_pub,
                                         &dc->officer_sig,
                                         &invalid_officer,
@@ -149,11 +229,6 @@ make_aml_decision (void *cls,
       TALER_EC_EXCHANGE_AML_DECISION_MORE_RECENT_PRESENT,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  if (NULL != dc->kyc_requirements)
-  {
-    // FIXME: act on these!
   }
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;

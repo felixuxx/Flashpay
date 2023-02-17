@@ -1228,7 +1228,7 @@ TALER_KYCLOGIC_kyc_get_details (
 
 
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (const char *requirements,
+TALER_KYCLOGIC_check_satisfied (char **requirements,
                                 const struct TALER_PaytoHashP *h_payto,
                                 json_t **kyc_details,
                                 TALER_KYCLOGIC_KycSatisfiedIterator ki,
@@ -1244,13 +1244,14 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   {
-    char *req = GNUNET_strdup (requirements);
+    char *req = *requirements;
 
     for (const char *tok = strtok (req, " ");
          NULL != tok;
          tok = strtok (NULL, " "))
       needed[needed_cnt++] = add_check (tok);
     GNUNET_free (req);
+    *requirements = NULL;
   }
 
   {
@@ -1286,6 +1287,32 @@ TALER_KYCLOGIC_check_satisfied (const char *requirements,
     }
   }
   *satisfied = (0 == needed_cnt);
+
+  {
+    char *res = NULL;
+
+    for (unsigned int i = 0; i<needed_cnt; i++)
+    {
+      const struct TALER_KYCLOGIC_KycCheck *need = needed[i];
+
+      if (NULL == res)
+      {
+        res = GNUNET_strdup (need->name);
+      }
+      else
+      {
+        char *tmp;
+
+        GNUNET_asprintf (&tmp,
+                         "%s %s",
+                         res,
+                         need->name);
+        GNUNET_free (res);
+        res = tmp;
+      }
+    }
+    *requirements = res;
+  }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 

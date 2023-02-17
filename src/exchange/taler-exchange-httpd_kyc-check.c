@@ -332,7 +332,7 @@ kyc_check (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TALER_KYCLOGIC_check_satisfied (
-    requirements,
+    &requirements,
     &h_payto,
     &kyp->kyc_details,
     TEH_plugin->select_satisfied_kyc_processes,
@@ -389,6 +389,17 @@ kyc_check (void *cls,
     NULL,
     NULL,
     &kyp->process_row);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_STORE_FAILED,
+                                           "insert_kyc_requirement_process");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Initiating KYC check with logic %s\n",
               kyp->ih_logic->name);

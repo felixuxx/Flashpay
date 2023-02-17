@@ -210,7 +210,7 @@ batch_withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   bool balance_ok = false;
   bool found = false;
-  const char *kyc_required;
+  char *kyc_required;
   struct TALER_PaytoHashP reserve_h_payto;
 
   wc->now = GNUNET_TIME_timestamp_get ();
@@ -349,11 +349,22 @@ batch_withdraw_transaction (void *cls,
   {
     /* insert KYC requirement into DB! */
     wc->kyc.ok = false;
-    return TEH_plugin->insert_kyc_requirement_for_account (
+    qs = TEH_plugin->insert_kyc_requirement_for_account (
       TEH_plugin->cls,
       kyc_required,
       &wc->h_payto,
       &wc->kyc.requirement_row);
+    GNUNET_free (kyc_required);
+    if (qs < 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_STORE_FAILED,
+                                               "insert_kyc_requirement_for_account");
+    }
+    return qs;
   }
   wc->kyc.ok = true;
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,

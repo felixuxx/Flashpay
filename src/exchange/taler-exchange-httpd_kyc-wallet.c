@@ -237,7 +237,7 @@ TEH_handler_kyc_wallet (
       NULL,
       0);
   }
-  GNUNET_free (kyc.required);
+  GNUNET_free (krc.required);
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
                                           &krc.h_payto,
                                           &krc.kyc);

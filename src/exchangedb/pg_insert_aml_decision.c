@@ -36,6 +36,7 @@ TEH_PG_insert_aml_decision (
   struct GNUNET_TIME_Timestamp decision_time,
   const char *justification,
   const json_t *kyc_requirements,
+  uint64_t requirements_row,
   const struct TALER_AmlOfficerPublicKeyP *decider_pub,
   const struct TALER_AmlOfficerSignatureP *decider_sig,
   bool *invalid_officer,
@@ -64,6 +65,7 @@ TEH_PG_insert_aml_decision (
     NULL != kyc_requirements
     ? GNUNET_PQ_query_param_string (kyc_s)
     : GNUNET_PQ_query_param_null (),
+    GNUNET_PQ_query_param_uint64 (&requirements_row),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -81,7 +83,7 @@ TEH_PG_insert_aml_decision (
            " out_invalid_officer"
            ",out_last_date"
            " FROM exchange_do_insert_aml_decision"
-           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);");
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "do_insert_aml_decision",
                                                  params,

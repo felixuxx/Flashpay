@@ -232,7 +232,8 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
  * Check if the @a requirements are now satsified for
  * @a h_payto account.
  *
- * @param requirements space-spearated list of requirements
+ * @param[in,out] requirements space-spearated list of requirements,
+ *       already satisfied requirements are removed from the list
  * @param h_payto hash over the account
  * @param[out] kyc_details if satisfied, set to what kind of
  *             KYC information was collected
@@ -242,7 +243,7 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
  * @return transaction status (from @a ki)
  */
 enum GNUNET_DB_QueryStatus
-TALER_KYCLOGIC_check_satisfied (const char *requirements,
+TALER_KYCLOGIC_check_satisfied (char **requirements,
                                 const struct TALER_PaytoHashP *h_payto,
                                 json_t **kyc_details,
                                 TALER_KYCLOGIC_KycSatisfiedIterator ki,

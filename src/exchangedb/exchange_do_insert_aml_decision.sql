@@ -25,6 +25,7 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_aml_decision(
   IN in_decider_sig BYTEA,
   IN in_notify_s VARCHAR,
   IN in_kyc_requirements VARCHAR,
+  IN in_requirement_row INT8,
   OUT out_invalid_officer BOOLEAN,
   OUT out_last_date INT8)
 LANGUAGE plpgsql
@@ -86,6 +87,7 @@ INSERT INTO exchange.aml_history
   ,decision_time
   ,justification
   ,kyc_requirements
+  ,kyc_req_row
   ,decider_pub
   ,decider_sig
   ) VALUES
@@ -96,6 +98,7 @@ INSERT INTO exchange.aml_history
   ,in_decision_time
   ,in_justification
   ,in_kyc_requirements
+  ,in_requirement_row
   ,in_decider_pub
   ,in_decider_sig);
 
@@ -119,5 +122,5 @@ END IF;
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT4, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR, VARCHAR)
+COMMENT ON FUNCTION exchange_do_insert_aml_decision(BYTEA, INT8, INT4, INT4, INT8, VARCHAR, BYTEA, BYTEA, VARCHAR, VARCHAR, INT8)
   IS 'Checks whether the AML officer is eligible to make AML decisions and if so inserts the decision into the table';

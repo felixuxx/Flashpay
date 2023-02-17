@@ -33,6 +33,7 @@ BEGIN
       ',decision_time INT8 NOT NULL DEFAULT(0)'
       ',justification VARCHAR NOT NULL'
       ',kyc_requirements VARCHAR'
+      ',kyc_req_row INT8 NOT NULL DEFAULT(0)'
       ',decider_pub BYTEA CHECK (LENGTH(decider_pub)=32)'
       ',decider_sig BYTEA CHECK (LENGTH(decider_sig)=64)'
     ') %s ;'
@@ -84,6 +85,12 @@ BEGIN
   PERFORM comment_partitioned_column(
      'Additional KYC requirements imposed by the AML staff member. Serialized JSON array of strings.'
     ,'kyc_requirements'
+    ,table_name
+    ,partition_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'Row in the KYC table for this KYC requirement, 0 for none.'
+    ,'kyc_req_row'
     ,table_name
     ,partition_suffix
   );
