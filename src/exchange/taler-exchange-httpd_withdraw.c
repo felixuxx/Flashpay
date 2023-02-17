@@ -288,7 +288,7 @@ withdraw_transaction (void *cls,
      is required as the merge already did that. */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    const char *kyc_required;
+    char *kyc_required;
 
     qs = TALER_KYCLOGIC_kyc_test_required (
       TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW,
@@ -314,11 +314,21 @@ withdraw_transaction (void *cls,
     {
       /* insert KYC requirement into DB! */
       wc->kyc.ok = false;
-      return TEH_plugin->insert_kyc_requirement_for_account (
+      qs = TEH_plugin->insert_kyc_requirement_for_account (
         TEH_plugin->cls,
         kyc_required,
         &wc->h_account_payto,
         &wc->kyc.requirement_row);
+      GNUNET_free (kyc_required);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_STORE_FAILED,
+                                               "insert_kyc_requirement_for_account");
+      }
+      return qs;
     }
   }
   wc->kyc.ok = true;

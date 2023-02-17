@@ -189,8 +189,7 @@ purse_transaction (void *cls,
 {
   struct ReservePurseContext *rpc = cls;
   enum GNUNET_DB_QueryStatus qs;
-
-  const char *required;
+  char *required;
 
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
@@ -215,11 +214,22 @@ purse_transaction (void *cls,
   if (NULL != required)
   {
     rpc->kyc.ok = false;
-    return TEH_plugin->insert_kyc_requirement_for_account (
+    qs = TEH_plugin->insert_kyc_requirement_for_account (
       TEH_plugin->cls,
       required,
       &rpc->h_payto,
       &rpc->kyc.requirement_row);
+    GNUNET_free (required);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_STORE_FAILED,
+                                      "insert_kyc_requirement_for_account");
+    }
+    return qs;
   }
   rpc->kyc.ok = true;
 

@@ -496,7 +496,7 @@ return_relevant_amounts (void *cls,
 static bool
 kyc_satisfied (struct AggregationUnit *au_active)
 {
-  const char *requirement;
+  char *requirement;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TALER_KYCLOGIC_kyc_test_required (
@@ -535,6 +535,7 @@ kyc_satisfied (struct AggregationUnit *au_active)
                 "Legitimization process %llu started\n",
                 (unsigned long long) au_active->requirement_row);
   }
+  GNUNET_free (requirement);
   return false;
 }
 

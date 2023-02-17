@@ -1064,7 +1064,7 @@ TALER_KYCLOGIC_kyc_test_required (enum TALER_KYCLOGIC_KycTriggerEvent event,
                                   void *ki_cls,
                                   TALER_KYCLOGIC_KycAmountIterator ai,
                                   void *ai_cls,
-                                  const char **required)
+                                  char **required)
 {
   struct TALER_KYCLOGIC_KycCheck *needed[num_kyc_checks];
   unsigned int needed_cnt = 0;

@@ -280,7 +280,7 @@ merge_transaction (void *cls,
   bool in_conflict = true;
   bool no_balance = true;
   bool no_partner = true;
-  const char *required;
+  char *required;
 
   qs = TALER_KYCLOGIC_kyc_test_required (
     TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE,
@@ -305,11 +305,22 @@ merge_transaction (void *cls,
   if (NULL != required)
   {
     pcc->kyc.ok = false;
-    return TEH_plugin->insert_kyc_requirement_for_account (
+    qs = TEH_plugin->insert_kyc_requirement_for_account (
       TEH_plugin->cls,
       required,
       &pcc->h_payto,
       &pcc->kyc.requirement_row);
+    GNUNET_free (required);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_STORE_FAILED,
+                                      "insert_kyc_requirement_for_account");
+    }
+    return qs;
   }
   pcc->kyc.ok = true;
   qs = TEH_plugin->do_purse_merge (

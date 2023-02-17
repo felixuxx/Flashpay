@@ -54,7 +54,7 @@ struct KycRequestContext
   /**
    * Name of the required check.
    */
-  const char *required;
+  char *required;
 
 };
 
@@ -237,6 +237,7 @@ TEH_handler_kyc_wallet (
       NULL,
       0);
   }
+  GNUNET_free (kyc.required);
   return TEH_RESPONSE_reply_kyc_required (rc->connection,
                                           &krc.h_payto,
                                           &krc.kyc);

@@ -228,7 +228,7 @@ reserve_close_transaction (void *cls,
     /* KYC check may be needed: we're not returning
        the money to the account that funded the reserve
        in the first place. */
-    const char *kyc_needed;
+    char *kyc_needed;
 
     TALER_payto_hash (rcc->payto_uri,
                       &rcc->kyc_payto);
@@ -268,11 +268,22 @@ reserve_close_transaction (void *cls,
     if (NULL != kyc_needed)
     {
       rcc->kyc.ok = false;
-      return TEH_plugin->insert_kyc_requirement_for_account (
+      qs = TEH_plugin->insert_kyc_requirement_for_account (
         TEH_plugin->cls,
         kyc_needed,
         &rcc->kyc_payto,
         &rcc->kyc.requirement_row);
+      GNUNET_free (kyc_needed);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        GNUNET_break (0);
+        *mhd_ret
+          = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "insert_kyc_requirement_for_account");
+      }
+      return qs;
     }
   }
 
