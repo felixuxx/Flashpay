@@ -5192,6 +5192,7 @@ struct TALER_EXCHANGE_PurseGetResponse
      */
     struct
     {
+
       /**
        * Time when the purse was merged (or zero if it
        * was not merged).
@@ -5210,6 +5211,11 @@ struct TALER_EXCHANGE_PurseGetResponse
        * total into the reserve, minus deposit fees).
        */
       struct TALER_Amount balance;
+
+      /**
+       * Time when the purse will expire.
+       */
+      struct GNUNET_TIME_Timestamp purse_expiration;
 
     } success;
 
