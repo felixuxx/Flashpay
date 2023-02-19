@@ -134,6 +134,7 @@ TEH_PG_lookup_transfer_by_deposit (
        do not have a WTID yet. In that case, return without wtid
        (by setting 'pending' true). */
     uint32_t status32 = TALER_AML_NORMAL;
+    uint64_t aml_kyc_row = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
@@ -142,6 +143,10 @@ TEH_PG_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_allow_null (
         GNUNET_PQ_result_spec_uint64 ("legitimization_requirement_serial_id",
                                       &kyc->requirement_row),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_uint64 ("kyc_requirement",
+                                      &aml_kyc_row),
         NULL),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
@@ -168,6 +173,7 @@ TEH_PG_lookup_transfer_by_deposit (
              ",denom.fee_deposit_frac"
              ",dep.wire_deadline"
              ",aml.status"
+             ",aml.kyc_requirement"
              " FROM deposits dep"
              " JOIN wire_targets wt"
              "   USING (wire_target_h_payto)"
@@ -195,6 +201,14 @@ TEH_PG_lookup_transfer_by_deposit (
       *aml_decision = (enum TALER_AmlDecisionState) status32;
       if (0 == kyc->requirement_row)
         kyc->ok = true; /* technically: unknown */
+      if ( (kyc->ok) &&
+           (TALER_AML_FROZEN == *aml_decision) &&
+           (0 != aml_kyc_row) )
+      {
+        /* KYC required via AML */
+        kyc->ok = false;
+        kyc->requirement_row = aml_kyc_row;
+      }
       TALER_merchant_wire_signature_hash (payto_uri,
                                           &wire_salt,
                                           &wh);
