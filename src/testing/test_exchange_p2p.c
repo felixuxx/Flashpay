@@ -250,14 +250,6 @@ run (void *cls,
       "withdraw-coin-1",
       "EUR:1.01",
       NULL),
-    TALER_TESTING_cmd_purse_deposit_coins (
-      "purse-deposit-coins-idempotent-but-gone",
-      MHD_HTTP_GONE,
-      0 /* min age */,
-      "purse-create-with-reserve",
-      "withdraw-coin-1",
-      "EUR:1.01",
-      NULL),
     TALER_TESTING_cmd_purse_poll_finish (
       "pull-deposit-purse-poll-finish",
       GNUNET_TIME_relative_multiply (
@@ -274,6 +266,14 @@ run (void *cls,
       "create-reserve-1",
       "EUR:2.01",
       MHD_HTTP_OK),
+    TALER_TESTING_cmd_purse_deposit_coins (
+      "purse-deposit-coins-idempotent",
+      MHD_HTTP_OK,
+      0 /* min age */,
+      "purse-create-with-reserve",
+      "withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
     /* create 2nd purse for a deposit conflict */
     TALER_TESTING_cmd_purse_create_with_reserve (
       "purse-create-with-reserve-2",
