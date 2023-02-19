@@ -2401,6 +2401,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                   "Failed to generate key response data for %s\n",
                   GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
+      json_decref (grouped_denominations);
       json_decref (sctx.signkeys);
       json_decref (recoup);
       return GNUNET_SYSERR;
@@ -2413,6 +2414,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                 "No denomination keys available. Refusing to generate /keys response.\n");
     GNUNET_CRYPTO_hash_context_abort (hash_context);
   }
+  json_decref (grouped_denominations);
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
