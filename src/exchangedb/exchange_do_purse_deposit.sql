@@ -71,7 +71,7 @@ THEN
   FROM exchange.purse_deposits
   WHERE coin_pub = in_coin_pub
     AND purse_pub = in_purse_pub
-    AND coin_sig = in_cion_sig;
+    AND coin_sig = in_coin_sig;
   IF NOT FOUND
   THEN
     -- Deposit exists, but with differences. Not allowed.
