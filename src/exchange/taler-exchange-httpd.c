@@ -1884,6 +1884,13 @@ exchange_serve_process_config (void)
                 "Need amount in section `TALER' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
+  if (0 != strcmp (TEH_currency,
+                   TEH_aml_threshold.currency))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Amount in section `TALER' under `AML_THRESHOLD' uses the wrong currency!\n");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                              "exchange",
