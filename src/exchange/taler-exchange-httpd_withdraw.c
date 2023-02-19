@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -226,6 +226,7 @@ withdraw_transaction (void *cls,
     qs = TEH_plugin->select_aml_threshold (TEH_plugin->cls,
                                            &reserve_h_payto,
                                            &wc->aml_decision,
+                                           &wc->kyc,
                                            &threshold);
     if (qs < 0)
     {

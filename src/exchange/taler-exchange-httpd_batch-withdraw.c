@@ -254,6 +254,7 @@ batch_withdraw_transaction (void *cls,
     qs = TEH_plugin->select_aml_threshold (TEH_plugin->cls,
                                            &reserve_h_payto,
                                            &wc->aml_decision,
+                                           &wc->kyc,
                                            &threshold);
     if (qs < 0)
     {

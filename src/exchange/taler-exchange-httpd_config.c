@@ -1,0 +1,55 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2015-2021 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file taler-exchange-httpd_config.c
+ * @brief Handle /config requests
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_dbevents.h"
+#include "taler-exchange-httpd_config.h"
+#include "taler_json_lib.h"
+#include "taler_kyclogic_lib.h"
+#include "taler_mhd_lib.h"
+#include <jansson.h>
+
+
+MHD_RESULT
+TEH_handler_config (struct TEH_RequestContext *rc,
+                    const char *const args[])
+{
+  static struct MHD_Response *resp;
+
+  if (NULL == resp)
+  {
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("supported_kyc_requirements",
+                                    TALER_KYCLOGIC_get_satisfiable ()),
+      GNUNET_JSON_pack_string ("currency",
+                               TEH_currency),
+      GNUNET_JSON_pack_string ("name",
+                               "taler-exchange"),
+      GNUNET_JSON_pack_string ("version",
+                               EXCHANGE_PROTOCOL_VERSION));
+  }
+  return MHD_queue_response (rc->connection,
+                             MHD_HTTP_OK,
+                             resp);
+}
+
+
+/* end of taler-exchange-httpd_config.c */

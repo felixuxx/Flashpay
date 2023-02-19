@@ -31,6 +31,7 @@ TEH_PG_select_aml_threshold (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState *decision,
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
   struct TALER_Amount *threshold)
 {
   struct PostgresClosure *pg = cls;
@@ -44,6 +45,8 @@ TEH_PG_select_aml_threshold (
                                  threshold),
     GNUNET_PQ_result_spec_uint32 ("status",
                                   &status32),
+    GNUNET_PQ_result_spec_uint64 ("kyc_requirement",
+                                  &kyc->requirement_row),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -53,6 +56,7 @@ TEH_PG_select_aml_threshold (
            "SELECT"
            " threshold_val"
            ",threshold_frac"
+           ",kyc_requirement"
            " FROM aml_status"
            " WHERE h_payto=$1;");
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
@@ -60,5 +64,7 @@ TEH_PG_select_aml_threshold (
                                                  params,
                                                  rs);
   *decision = (enum TALER_AmlDecisionState) status32;
+  kyc->ok = (TALER_AML_FROZEN != *decision)
+            || (0 != kyc->requirement_row);
   return qs;
 }

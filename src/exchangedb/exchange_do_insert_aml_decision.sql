@@ -62,6 +62,7 @@ THEN
     SET threshold_val=in_new_threshold_val
        ,threshold_frac=in_new_threshold_frac
        ,status=in_new_status
+       ,kyc_requirement=in_requirement_row
    WHERE h_payto=in_h_payto;
   ASSERT FOUND, 'cannot have AML decision history but no AML status';
 ELSE
@@ -70,12 +71,14 @@ ELSE
     (h_payto
     ,threshold_val
     ,threshold_frac
-    ,status)
+    ,status
+    ,kyc_requirement)
     VALUES
     (in_h_payto
     ,in_new_threshold_val
     ,in_new_threshold_frac
-    ,in_new_status);
+    ,in_new_status
+    ,in_requirement_row);
 END IF;
 
 

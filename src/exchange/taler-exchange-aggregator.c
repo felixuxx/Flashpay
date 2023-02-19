@@ -585,6 +585,7 @@ aml_satisfied (struct AggregationUnit *au_active)
   struct TALER_Amount total;
   struct TALER_Amount threshold;
   enum TALER_AmlDecisionState decision;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
 
   total = au_active->final_amount;
   qs = db_plugin->select_aggregation_amounts_for_kyc_check (
@@ -602,6 +603,7 @@ aml_satisfied (struct AggregationUnit *au_active)
   qs = db_plugin->select_aml_threshold (db_plugin->cls,
                                         &au_active->h_payto,
                                         &decision,
+                                        &kyc,
                                         &threshold);
   if (qs < 0)
   {

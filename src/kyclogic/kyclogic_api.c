@@ -286,6 +286,23 @@ TALER_KYCLOGIC_check_satisfiable (
 }
 
 
+json_t *
+TALER_KYCLOGIC_get_satisfiable ()
+{
+  json_t *requirements;
+
+  requirements = json_array ();
+  GNUNET_assert (NULL != requirements);
+  for (unsigned int i = 0; i<num_kyc_checks; i++)
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        requirements,
+        json_string (kyc_checks[i]->name)));
+  return requirements;
+}
+
+
 /**
  * Load KYC logic plugin.
  *

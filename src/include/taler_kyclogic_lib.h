@@ -312,6 +312,15 @@ TALER_KYCLOGIC_check_satisfiable (
 
 
 /**
+ * Return list of all KYC checks that are possible.
+ *
+ * @return JSON array of strings with the allowed KYC checks
+ */
+json_t *
+TALER_KYCLOGIC_get_satisfiable (void);
+
+
+/**
  * Obtain the provider logic for a given set of @a requirements.
  *
  * @param requirements space-separated list of required checks

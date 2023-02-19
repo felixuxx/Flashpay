@@ -129,6 +129,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_batch-deposit.c taler-exchange-httpd_batch-deposit.h \
   taler-exchange-httpd_batch-withdraw.c taler-exchange-httpd_batch-withdraw.h \
   taler-exchange-httpd_common_deposit.c taler-exchange-httpd_common_deposit.h \
+  taler-exchange-httpd_config.c taler-exchange-httpd_config.h \
   taler-exchange-httpd_contract.c taler-exchange-httpd_contract.h \
   taler-exchange-httpd_csr.c taler-exchange-httpd_csr.h \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \

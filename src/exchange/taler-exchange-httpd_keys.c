@@ -25,6 +25,7 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd.h"
+#include "taler-exchange-httpd_config.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_plugin.h"
@@ -42,24 +43,6 @@
  * When do we forcefully timeout a /keys request?
  */
 #define KEYS_TIMEOUT GNUNET_TIME_UNIT_MINUTES
-
-
-/**
- * Taler protocol version in the format CURRENT:REVISION:AGE
- * as used by GNU libtool.  See
- * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
- *
- * Please be very careful when updating and follow
- * https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html#Updating-version-info
- * precisely.  Note that this version has NOTHING to do with the
- * release version, and the format is NOT the same that semantic
- * versioning uses either.
- *
- * When changing this version, you likely want to also update
- * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
- * exchange_api_handle.c!
- */
-#define EXCHANGE_PROTOCOL_VERSION "14:0:2"
 
 
 /**

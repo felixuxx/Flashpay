@@ -32,6 +32,7 @@
  * @param cls closure
  * @param h_payto account for which the AML threshold is stored
  * @param[out] decision set to current AML decision
+ * @param[out] kyc set to KYC requirements imposed by AML, if any
  * @param[out] threshold set to the existing threshold
  * @return database transaction status, 0 if no threshold was set
  */
@@ -40,6 +41,7 @@ TEH_PG_select_aml_threshold (
   void *cls,
   const struct TALER_PaytoHashP *h_payto,
   enum TALER_AmlDecisionState *decision,
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
   struct TALER_Amount *threshold);
 
 

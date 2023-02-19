@@ -6621,6 +6621,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_PaytoHashP *h_payto,
     enum TALER_AmlDecisionState *decision,
+    struct TALER_EXCHANGEDB_KycStatus *kyc,
     struct TALER_Amount *threshold);
 
 

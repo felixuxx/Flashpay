@@ -34,6 +34,7 @@
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
+#include "taler-exchange-httpd_config.h"
 #include "taler-exchange-httpd_contract.h"
 #include "taler-exchange-httpd_csr.h"
 #include "taler-exchange-httpd_deposit.h"
@@ -1370,6 +1371,12 @@ handle_mhd_request (void *cls,
       .url = "seed",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &handler_seed
+    },
+    /* Configuration */
+    {
+      .url = "config",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_config
     },
     /* Performance metrics */
     {

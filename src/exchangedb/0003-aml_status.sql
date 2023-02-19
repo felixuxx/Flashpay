@@ -30,6 +30,7 @@ BEGIN
       ',threshold_val INT8 NOT NULL DEFAULT(0)'
       ',threshold_frac INT4 NOT NULL DEFAULT(0)'
       ',status INT4 NOT NULL DEFAULT(0)'
+      ',kyc_requirement INT8 NOT NULL DEFAULT(0)'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (h_payto)'
