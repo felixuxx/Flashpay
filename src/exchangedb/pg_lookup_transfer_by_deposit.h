@@ -42,7 +42,7 @@
  * @param[out] amount_with_fee set to the total deposited amount
  * @param[out] deposit_fee set to how much the exchange did charge for the deposit
  * @param[out] kyc set to the kyc status of the receiver (if @a pending)
- * @param[out[ aml_decision set to the AML status of the receiver
+ * @param[out] aml_decision set to the AML status of the receiver
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus

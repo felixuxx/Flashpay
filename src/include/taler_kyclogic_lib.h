@@ -301,7 +301,7 @@ TALER_KYCLOGIC_kyc_get_details (
  * Check if a given @a check_name is a legal name (properly
  * configured) and can be satisfied in principle.
  *
- * @param logic_name name of the logic to match
+ * @param check_name name of the check to see if it is configured
  * @return #GNUNET_OK if the check can be satisfied,
  *         #GNUNET_NO if the check can never be satisfied,
  *         #GNUNET_SYSERR if the type of the check is unknown
