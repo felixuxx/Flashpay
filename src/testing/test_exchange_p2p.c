@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2022 Taler Systems SA
+  Copyright (C) 2014--2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -245,6 +245,14 @@ run (void *cls,
     TALER_TESTING_cmd_purse_deposit_coins (
       "purse-deposit-coins",
       MHD_HTTP_OK,
+      0 /* min age */,
+      "purse-create-with-reserve",
+      "withdraw-coin-1",
+      "EUR:1.01",
+      NULL),
+    TALER_TESTING_cmd_purse_deposit_coins (
+      "purse-deposit-coins-idempotent-but-gone",
+      MHD_HTTP_GONE,
       0 /* min age */,
       "purse-create-with-reserve",
       "withdraw-coin-1",

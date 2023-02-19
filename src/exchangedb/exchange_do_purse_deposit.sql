@@ -67,6 +67,7 @@ IF NOT FOUND
 THEN
   -- Idempotency check: check if coin_sig is the same,
   -- if so, success, otherwise conflict!
+
   PERFORM
   FROM exchange.purse_deposits
   WHERE coin_pub = in_coin_pub
@@ -78,6 +79,12 @@ THEN
     out_balance_ok=FALSE;
     out_late=FALSE;
     out_conflict=TRUE;
+    RETURN;
+  ELSE
+    -- Deposit exists, do not count for balance. Allow.
+    out_late=FALSE;
+    out_balance_ok=TRUE;
+    out_conflict=FALSE;
     RETURN;
   END IF;
 END IF;
