@@ -1905,6 +1905,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     json_t *extensions = json_object ();
     bool has_extensions = false;
 
+    GNUNET_assert (NULL != extensions);
     /* Fill in the configurations of the enabled extensions */
     for (const struct TALER_Extensions *iter = TALER_extensions_get_head ();
          NULL != iter && NULL != iter->extension;
@@ -1938,7 +1939,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       json_t *sig;
       int r;
 
-      r = json_object_set (
+      r = json_object_set_new (
         keys,
         "extensions",
         extensions);
@@ -2258,9 +2259,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
           if (age_restricted)
           {
-            int r = json_object_set (group->json,
-                                     "age_mask",
-                                     json_integer (meta.age_mask.bits));
+            int r = json_object_set_new (group->json,
+                                         "age_mask",
+                                         json_integer (meta.age_mask.bits));
             GNUNET_assert (0 == r);
           }
 
@@ -2268,8 +2269,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           list = json_array ();
           GNUNET_assert (NULL != list);
           GNUNET_assert (0 ==
-                         json_object_set (group->json, denoms_key, list));
-
+                         json_object_set_new (group->json,
+                                              denoms_key,
+                                              list));
           GNUNET_assert (
             GNUNET_OK ==
             GNUNET_CONTAINER_multihashmap_put (denominations_by_group,
@@ -2353,7 +2355,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       {
         /* Add the XOR over all hashes of denominations in this group to the group */
         GNUNET_assert (0 ==
-                       json_object_set (
+                       json_object_set_new (
                          group->json,
                          "hash",
                          GNUNET_JSON_PACK (
