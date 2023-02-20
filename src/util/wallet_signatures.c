@@ -1564,7 +1564,7 @@ TALER_wallet_reserve_close_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Message signed by
+ * Message signed by reserve private key.
  */
 struct TALER_ReserveAttestRequestPS
 {
