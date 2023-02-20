@@ -44,5 +44,6 @@ SET search_path TO exchange;
 #include "exchange_do_refund_by_coin.sql"
 #include "exchange_do_get_ready_deposit.sql"
 #include "exchange_do_get_link_data.sql"
+#include "exchange_do_batch_coin_known.sql"
 
 COMMIT;

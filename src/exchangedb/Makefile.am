@@ -257,6 +257,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_select_purse_deposits_above_serial_id.h pg_select_purse_deposits_above_serial_id.c \
   pg_select_account_merges_above_serial_id.h pg_select_account_merges_above_serial_id.c \
   pg_select_all_purse_decisions_above_serial_id.h pg_select_all_purse_decisions_above_serial_id.c \
+  pg_batch_ensure_coin_known.h pg_batch_ensure_coin_known.c \
   pg_select_reserve_open_above_serial_id.c pg_select_reserve_open_above_serial_id.h
 libtaler_plugin_exchangedb_postgres_la_LIBADD = \
   $(LTLIBINTL)
