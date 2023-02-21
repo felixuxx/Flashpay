@@ -885,8 +885,9 @@ handle_purse_decision (
     report_row_inconsistency ("purse-request",
                               rowid,
                               "purse fee higher than balance");
-    TALER_amount_set_zero (TALER_ARL_currency,
-                           &balance_without_purse_fee);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_set_zero (TALER_ARL_currency,
+                                          &balance_without_purse_fee));
   }
 
   if (refunded)
@@ -1021,8 +1022,9 @@ verify_purse_balance (void *cls,
       report_row_inconsistency ("purse",
                                 0,
                                 "purse fee higher than balance");
-      TALER_amount_set_zero (TALER_ARL_currency,
-                             &balance_without_purse_fee);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_set_zero (TALER_ARL_currency,
+                                            &balance_without_purse_fee));
     }
 
     if (0 != TALER_amount_cmp (&ps->exchange_balance,

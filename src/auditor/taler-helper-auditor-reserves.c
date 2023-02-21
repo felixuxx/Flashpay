@@ -1081,8 +1081,9 @@ handle_reserve_closed (
     }
     if (NULL == payto_uri)
     {
-      if (0 != strcmp (rs->sender_account,
-                       receiver_account))
+      if ( (NULL == rs->sender_account) ||
+           (0 != strcmp (rs->sender_account,
+                         receiver_account)) )
       {
         report_row_inconsistency ("reserves_close",
                                   rowid,
@@ -1110,8 +1111,8 @@ handle_reserve_closed (
                                 rowid,
                                 "target account not verified, auditor does not know reserve");
     }
-    if (0 != strcmp (rs->sender_account,
-                     receiver_account))
+    else if (0 != strcmp (rs->sender_account,
+                          receiver_account))
     {
       report_row_inconsistency ("reserves_close",
                                 rowid,

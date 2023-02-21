@@ -603,6 +603,7 @@ test_batch_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
     case TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN:
       for (unsigned int i = 0; i<batch_size; i++)
         TALER_blinded_denom_sig_free (&ds[i]);
+      break;
     default:
       /* unexpected error */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

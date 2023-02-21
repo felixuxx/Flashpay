@@ -56,7 +56,7 @@ TEH_handler_management_partners (
     GNUNET_JSON_spec_timestamp ("start_date",
                                 &start_date),
     GNUNET_JSON_spec_timestamp ("end_date",
-                                &start_date),
+                                &end_date),
     GNUNET_JSON_spec_relative_time ("wad_frequency",
                                     &wad_frequency),
     GNUNET_JSON_spec_end ()

@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file exchangedb/pg_reserves_in_insert.c
  * @brief Implementation of the reserves_in_insert function for Postgres
  * @author Christian Grothoff
+ * @author Joseph Xu
  */
 #include "platform.h"
 #include "taler_error_codes.h"
@@ -689,7 +690,6 @@ TEH_PG_reserves_in_insert (void *cls,
   {
     unsigned int bs = GNUNET_MIN (batch_size,
                                   reserves_length - i);
-    bs = 1; // FIXME-JOSEPH: for now, until pg_notify is gone!
     if (bs >= 8)
     {
       qs1 = insert8 (pg,
@@ -763,7 +763,6 @@ TEH_PG_reserves_in_insert (void *cls,
       t_duplicate |= transaction_duplicate[i + 1];
       t_duplicate |= transaction_duplicate[i + 2];
       t_duplicate |= transaction_duplicate[i + 3];
-      //  fprintf(stdout, "reserve_uuid : %ld %ld %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1], reserve_uuid[i+2], reserve_uuid[i+3]);
       i += 4;
       break;
     case 3:
@@ -793,7 +792,6 @@ TEH_PG_reserves_in_insert (void *cls,
       results[i] = (t_duplicate)
       ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
       : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-      //   fprintf(stdout, "reserve_uuid : %ld %ld\n", reserve_uuid[i], reserve_uuid[i+1]);
       i += 2;
       break;
     case 1:
@@ -817,7 +815,6 @@ TEH_PG_reserves_in_insert (void *cls,
       }
       need_update |= conflicts[i];
       t_duplicate |= transaction_duplicate[i];
-      //  fprintf(stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
       i += 1;
       break;
     case 0:

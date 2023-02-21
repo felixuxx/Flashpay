@@ -150,12 +150,11 @@ extension_update_event_cb (void *cls,
     {
       TEH_age_restriction_enabled = true;
       TEH_age_restriction_config = *conf;
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "[age restriction] DB event has changed the config to %s with mask: %s\n",
+                  TEH_age_restriction_enabled ? "enabled": "DISABLED",
+                  TALER_age_mask_to_string (&conf->mask));
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "[age restriction] DB event has changed the config to %s with mask: %s\n",
-                TEH_age_restriction_enabled ? "enabled": "DISABLED",
-                TALER_age_mask_to_string (&conf->mask));
-
   }
 
   // Finally, call TEH_keys_update_states in order to refresh the cached

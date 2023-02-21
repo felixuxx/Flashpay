@@ -208,6 +208,14 @@ TALER_EXCHANGE_purse_delete (
     GNUNET_free (xhdr);
   }
   eh = TALER_EXCHANGE_curl_easy_get_ (pdh->url);
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    curl_slist_free_all (pdh->xhdr);
+    GNUNET_free (pdh->url);
+    GNUNET_free (pdh);
+    return NULL;
+  }
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_CUSTOMREQUEST,

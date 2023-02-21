@@ -2198,7 +2198,14 @@ run (void *cls,
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   if (0 == max_workers)
-    max_workers = sysconf (_SC_NPROCESSORS_CONF);
+  {
+    long lret;
+
+    lret = sysconf (_SC_NPROCESSORS_CONF);
+    if (lret <= 0)
+      lret = 1;
+    max_workers = (unsigned int) lret;
+  }
   for (unsigned int i = 0; i<max_workers; i++)
     if (GNUNET_OK !=
         start_worker ())

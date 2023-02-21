@@ -63,7 +63,11 @@ run_queries (sqlite3 *db)
   TALER_amount_hton (&namount,
                      &hamount);
   json = json_object ();
-  json_object_set_new (json, "foo", json_integer (42));
+  GNUNET_assert (NULL != json);
+  GNUNET_assert (0 ==
+                 json_object_set_new (json,
+                                      "foo",
+                                      json_integer (42)));
   GNUNET_assert (NULL != json);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_SQ_prepare (db,
