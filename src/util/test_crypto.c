@@ -125,11 +125,11 @@ test_planchets_rsa (uint8_t age)
   struct TALER_FreshCoin coin;
   struct TALER_CoinPubHashP c_hash;
   struct TALER_AgeCommitmentHash *ach = NULL;
+  struct TALER_AgeCommitmentHash ah = {0};
 
   if (0 < age)
   {
     struct TALER_AgeCommitmentProof acp;
-    struct TALER_AgeCommitmentHash ah = {0};
     struct GNUNET_HashCode seed;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
