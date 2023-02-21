@@ -573,6 +573,20 @@ enum TALER_AmlDecisionState
 
 
 /**
+ * Possible algorithms for confirmation code generation.
+ */
+enum TALER_MerchantConfirmationAlgorithm
+{
+
+  /**
+   * No purchase confirmation.
+   */
+  TALER_MCA_NONE = 0
+
+};
+
+
+/**
  * @brief Type of blinding keys for Taler.
  * must be 32 bytes (DB)
  */
@@ -912,6 +926,16 @@ struct TALER_GlobalFeeSetNBOP
 
 
 GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * FIXME.
+ */
+char *
+TALER_build_pos_confirmation (const char *pos_key,
+                              enum TALER_MerchantConfirmationAlgorithm pos_alg,
+                              const struct TALER_Amount *total,
+                              struct GNUNET_TIME_Timestamp ts);
 
 
 /**
