@@ -362,6 +362,63 @@ TALER_exchange_online_melt_confirmation_verify (
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
+ * @brief Format of the block signed by the Exchange in response to a
+ * successful "/reserves/$RESERVE_PUB/age-withdraw" request.  Hereby the
+ * exchange affirms that the commitment along with the maximum age group and
+ * the amount were accepted.  This also commits the exchange to a particular
+ * index to not be revealed during the reveal.
+ */
+struct TALER_AgeWithdrawConfirmationPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_CONFIRM_AGE_WITHDRAW.   Signed by a
+   * `struct TALER_ExchangePublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Commitment made in the /reserves/$RESERVE_PUB/age-withdraw.
+   */
+  struct TALER_AgeWithdrawCommitmentHashP h_commitment GNUNET_PACKED;
+
+  /**
+   * Index that the client will not have to reveal, in NBO.
+   * Must be smaller than #TALER_CNC_KAPPA.
+   */
+  uint32_t noreveal_index GNUNET_PACKED;
+
+};
+
+GNUNET_NETWORK_STRUCT_END
+
+enum TALER_ErrorCode
+TALER_exchange_online_age_withdraw_confirmation_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint32_t noreveal_index,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+
+  struct TALER_AgeWithdrawConfirmationPS confirm = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_AGE_WITHDRAW),
+    .purpose.size = htonl (sizeof (confirm)),
+    .h_commitment = *h_commitment,
+    .noreveal_index = htonl (noreveal_index)
+  };
+
+  return scb (&confirm.purpose,
+              pub,
+              sig);
+}
+
+
+/* TODO:oec: add signature for age-withdraw, age-reveal */
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
  * @brief Signature made by the exchange over the full set of keys, used
  * to detect cheating exchanges that give out different sets to
  * different users.

@@ -116,6 +116,7 @@
 #include "pg_drain_kyc_alert.h"
 #include "pg_reserves_in_insert.h"
 #include "pg_get_withdraw_info.h"
+#include "pg_get_age_withdraw_info.h"
 #include "pg_do_batch_withdraw.h"
 #include "pg_get_policy_details.h"
 #include "pg_persist_policy_details.h"
@@ -580,6 +581,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_get_withdraw_info;
   plugin->do_batch_withdraw
     = &TEH_PG_do_batch_withdraw;
+  plugin->get_age_withdraw_info
+    = &TEH_PG_get_age_withdraw_info;
   plugin->get_policy_details
     = &TEH_PG_get_policy_details;
   plugin->persist_policy_details

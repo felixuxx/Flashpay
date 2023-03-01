@@ -186,6 +186,7 @@ TALER_KYCLOGIC_kyc_trigger_from_string (const char *trigger_s,
     enum TALER_KYCLOGIC_KycTriggerEvent out;
   } map [] = {
     { "withdraw", TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW },
+    { "age-withdraw", TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW },
     { "deposit", TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT  },
     { "merge", TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE },
     { "balance", TALER_KYCLOGIC_KYC_TRIGGER_WALLET_BALANCE },
@@ -214,6 +215,8 @@ TALER_KYCLOGIC_kyc_trigger2s (enum TALER_KYCLOGIC_KycTriggerEvent trigger)
   {
   case TALER_KYCLOGIC_KYC_TRIGGER_WITHDRAW:
     return "withdraw";
+  case TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW:
+    return "age-withdraw";
   case TALER_KYCLOGIC_KYC_TRIGGER_DEPOSIT:
     return "deposit";
   case TALER_KYCLOGIC_KYC_TRIGGER_P2P_RECEIVE:

@@ -1052,6 +1052,58 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 
 
 /**
+ * @brief Information we keep for an age-withdraw commitment
+ * to reproduce the /age-withdraw operation if neede, and to have proof
+ * that a reserve was drained by this amount.
+ */
+struct TALER_EXCHANGEDB_AgeWithdrawCommitment
+{
+  /**
+   * Total amount (with fee) committed to withdraw
+   */
+  struct TALER_Amount amount_with_fee;
+
+  /**
+   * Maximum age group that the coins are restricted to.
+   */
+  uint32_t max_age_group;
+
+  /**
+   * The hash of the commitment of all n*kappa coins
+   */
+  struct TALER_AgeWithdrawCommitmentHashP h_commitment;
+
+  /**
+   * Index (smaller #TALER_CNC_KAPPA) which the exchange has chosen to not have
+   * revealed during cut and choose.  This value applies to all n coins in the
+   * commitment.
+   */
+  uint32_t noreveal_index;
+
+  /**
+   * Public key of the reserve that was drained.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Signature confirming the age withdrawal, matching @e reserve_pub, @e
+   * maximum_age_group and @e h_commitment and @e total_amount_with_fee.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /**
+   * The exchange's signature of the response.
+   */
+  struct TALER_ExchangeSignatureP sig;
+
+  /**
+   * Timestamp of the request beeing made
+   */
+  struct GNUNET_TIME_Timestamp timestamp;
+};
+
+
+/**
  * Information the exchange records about a recoup request
  * in a reserve history.
  */
@@ -3606,6 +3658,46 @@ struct TALER_EXCHANGEDB_Plugin
     bool *denom_unknown,
     bool *conflict,
     bool *nonce_reuse);
+
+  /**
+   * Locate the response for a age-withdraw request under a hash that uniquely
+   * identifies the age-withdraw operation.  Used to ensure idempotency of the
+   * request.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the reserve for which the age-withdraw request is made
+   * @param ach hash that uniquely identifies the age-withdraw operation
+   * @param[out] awc corresponding details of the previous age-withdraw request if an entry was found
+   * @return statement execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_age_withdraw_info)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    const struct TALER_AgeWithdrawCommitmentHashP *ach,
+    struct TALER_EXCHANGEDB_AgeWithdrawCommitment *awc);
+
+  /**
+   * Perform an age-withdraw operation, checking for sufficient balance
+   * and possibly persisting the withdrawal details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param commitment corresponding commitment for the age-withdraw
+   * @param now current time (rounded)
+   * @param[out] found set to true if the reserve was found
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] ruuid set to the reserve's UUID (reserves table row)
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_age_withdraw)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_AgeWithdrawCommitment *commitment,
+    struct GNUNET_TIME_Timestamp now,
+    bool *found,
+    bool *balance_ok,
+    uint64_t *ruuid);
+
 
   /**
    * Retrieve the details to a policy given by its hash_code

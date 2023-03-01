@@ -73,8 +73,12 @@ enum TALER_KYCLOGIC_KycTriggerEvent
   /**
    * Reserve is being closed by force.
    */
-  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 4
+  TALER_KYCLOGIC_KYC_TRIGGER_RESERVE_CLOSE = 4,
 
+  /**
+   * Customer withdraws coins via age-withdraw.
+   */
+  TALER_KYCLOGIC_KYC_TRIGGER_AGE_WITHDRAW = 5,
 };
 
 

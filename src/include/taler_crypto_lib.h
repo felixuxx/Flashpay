@@ -46,6 +46,7 @@
  * fixed and part of the protocol.
  */
 #define TALER_CNC_KAPPA 3
+#define TALER_CNC_KAPPA_MINUS_ONE_STR "2"
 
 
 /* ****************** Coin crypto primitives ************* */
@@ -433,6 +434,15 @@ struct TALER_AgeCommitmentPublicKeyP
    */
   struct GNUNET_CRYPTO_Edx25519PublicKey pub;
 #endif
+};
+
+
+/*
+ * @brief Hash to represent the commitment to n*kappa blinded keys during a age-withdrawal.
+ */
+struct TALER_AgeWithdrawCommitmentHashP
+{
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -3701,6 +3711,42 @@ TALER_wallet_withdraw_verify (
 
 
 /**
+ * Sign age-withdraw request.
+ *
+ * @param h_commitment hash all n*kappa blinded coins in the commitment for the age-withdraw
+ * @param amount_with_fee amount to debit the reserve for
+ * @param max_age_group maximum age group that the withdrawn coins must be restricted to
+ * @param reserve_priv private key to sign with
+ * @param[out] reserve_sig resulting signature
+ */
+void
+TALER_wallet_age_withdraw_sign (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t max_age_group,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+/**
+ * Verify an age-withdraw request.
+ *
+ * @param h_commitment hash all n*kappa blinded coins in the commitment for the age-withdraw
+ * @param amount_with_fee amount to debit the reserve for
+ * @param max_age_group maximum age group that the withdrawn coins must be restricted to
+ * @param reserve_pub public key of the reserve
+ * @param reserve_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_age_withdraw_verify (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t max_age_group,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
  * Verify exchange melt confirmation.
  *
  * @param rc refresh session this is about
@@ -4787,6 +4833,25 @@ TALER_exchange_online_purse_status_verify (
   const struct TALER_Amount *balance,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig);
+
+
+/**
+ * Create age-withdraw confirmation signature.
+ *
+ * @param scb function to call to create the signature
+ * @param awch age-withdraw commitment that identifies the n*kappa blinded coins
+ * @param noreveal_index gamma cut-and-choose value chosen by the exchange
+ * @param[out] pub where to write the exchange public key
+ * @param[out] sig where to write the exchange signature
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TALER_exchange_online_age_withdraw_confirmation_sign (
+  TALER_ExchangeSignCallback scb,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint32_t noreveal_index,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
 
 
 /* ********************* offline signing ************************** */

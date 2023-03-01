@@ -163,7 +163,7 @@ TEH_handler_aml_decision_get (
     json_t *aml_history;
     json_t *kyc_attributes;
     enum GNUNET_DB_QueryStatus qs;
-    bool none;
+    bool none = false;
 
     aml_history = json_array ();
     GNUNET_assert (NULL != aml_history);

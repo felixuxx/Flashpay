@@ -606,6 +606,92 @@ TALER_wallet_withdraw_verify (
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
+/**
+ * @brief Format used for to generate the signature on a request to
+ * age-withdraw from a reserve.
+ */
+struct TALER_AgeWithdrawRequestPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW.
+   * Used with an EdDSA signature of a `struct TALER_ReservePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the commitment of n*kappa coins
+   */
+  struct TALER_AgeWithdrawCommitmentHashP h_commitment GNUNET_PACKED;
+
+  /**
+   * Value of the coin being exchanged (matching the denomination key)
+   * plus the transaction fee.  We include this in what is being
+   * signed so that we can verify a reserve's remaining total balance
+   * without needing to access the respective denomination key
+   * information each time.
+   */
+  struct TALER_AmountNBO amount_with_fee;
+
+  /**
+   * Maximum age group that the coins are going to be restricted to.
+   */
+  uint32_t max_age_group;
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
+void
+TALER_wallet_age_withdraw_sign (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t max_age_group,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_AgeWithdrawRequestPS req = {
+    .purpose.size = htonl (sizeof (req)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW),
+    .h_commitment = *h_commitment,
+    .max_age_group = max_age_group
+  };
+
+  TALER_amount_hton (&req.amount_with_fee,
+                     amount_with_fee);
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &req,
+                            &reserve_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_age_withdraw_verify (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_Amount *amount_with_fee,
+  uint32_t max_age_group,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_AgeWithdrawRequestPS awsrd = {
+    .purpose.size = htonl (sizeof (awsrd)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW),
+    .h_commitment = *h_commitment,
+    .max_age_group = max_age_group
+  };
+
+  TALER_amount_hton (&awsrd.amount_with_fee,
+                     amount_with_fee);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW,
+    &awsrd,
+    &reserve_sig->eddsa_signature,
+    &reserve_pub->eddsa_pub);
+}
+
+
+GNUNET_NETWORK_STRUCT_BEGIN
+
 
 /**
  * @brief Format used for to generate the signature on a request to withdraw
