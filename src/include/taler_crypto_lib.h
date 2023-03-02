@@ -591,7 +591,17 @@ enum TALER_MerchantConfirmationAlgorithm
   /**
    * No purchase confirmation.
    */
-  TALER_MCA_NONE = 0
+  TALER_MCA_NONE = 0,
+
+  /**
+   * Purchase confirmation without payment
+   */
+  TALER_MCA_WITHOUT_PRICE = 1,
+
+  /**
+   * Purchase confirmation with payment
+   */
+  TALER_MCA_WITH_PRICE = 2
 
 };
 
@@ -939,7 +949,13 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * FIXME.
+ * It is build pos confirmation to verify paiement.
+ *
+ * @param pos_key encoded key for verification payment
+ * @param pos_alg algorithm to compute the payment verification
+ * @param total of the order paid
+ * @parmam ts is the time given
+ *
  */
 char *
 TALER_build_pos_confirmation (const char *pos_key,
