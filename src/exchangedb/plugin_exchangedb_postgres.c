@@ -216,7 +216,7 @@
 #include "pg_select_aml_process.h"
 #include "pg_select_aml_history.h"
 #include "pg_insert_aml_decision.h"
-#include "pg_batch_ensure_coin_known.h"
+
 
 /**
  * Set to 1 to enable Postgres auto_explain module. This will
@@ -773,8 +773,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &TEH_PG_select_aml_history;
   plugin->insert_aml_decision
     = &TEH_PG_insert_aml_decision;
-  plugin->batch_ensure_coin_known
-    = &TEH_PG_batch_ensure_coin_known;
+
   return plugin;
 }
 
