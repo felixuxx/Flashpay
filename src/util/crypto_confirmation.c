@@ -168,6 +168,44 @@ base32decode (const char *val,
 }
 
 
+static char *
+executive_totp (void *h_key,
+                size_t h_key_len,
+                struct GNUNET_TIME_Timestamp ts)
+{
+  uint64_t code; /* totp code */
+  char *ret;
+  ret = NULL;
+
+  for (int i = -TIME_INTERVAL_RANGE; i<= TIME_INTERVAL_RANGE; i++)
+    {
+      code = compute_totp (ts,
+                           i,
+                           h_key,
+                           h_key_len);
+      if (NULL == ret)
+      {
+        GNUNET_asprintf (&ret,
+                         "%llu",
+                         (unsigned long long) code);
+      }
+      else
+      {
+        char *tmp;
+
+        GNUNET_asprintf (&tmp,
+                         "%s\n%llu",
+                         ret,
+                         (unsigned long long) code);
+        GNUNET_free (ret);
+        ret = tmp;
+      }
+    }
+  return ret;
+
+}
+
+
 /**
  * It is build pos confirmation to verify payment.
  *
@@ -185,7 +223,6 @@ TALER_build_pos_confirmation (const char *pos_key,
   size_t pos_key_length = strlen (pos_key);
   void *key; /* pos_key in binary */
   size_t key_len; /* lengh of the key */
-  uint64_t code; /* totp code */
   char *ret;
   int dret;
 
@@ -212,7 +249,6 @@ TALER_build_pos_confirmation (const char *pos_key,
     GNUNET_free (key);
     return NULL;
   case TALER_MCA_WITHOUT_PRICE: /* and 30s */
-    ret = NULL;
     /* Return all T-OTP codes in range separated by new lines, e.g.
        "12345678
         24522552
@@ -220,42 +256,20 @@ TALER_build_pos_confirmation (const char *pos_key,
         42543525
         25253552"
     */
-    for (int i = -TIME_INTERVAL_RANGE; i<= TIME_INTERVAL_RANGE; i++)
-    {
-      code = compute_totp (ts,
-                           i,
-                           key,
-                           key_len);
-      if (NULL == ret)
-      {
-        GNUNET_asprintf (&ret,
-                         "%llu",
-                         (unsigned long long) code);
-      }
-      else
-      {
-        char *tmp;
-
-        GNUNET_asprintf (&tmp,
-                         "%s\n%llu",
-                         ret,
-                         (unsigned long long) code);
-        GNUNET_free (ret);
-        ret = tmp;
-      }
-    }
+    ret = executive_totp (key,
+                          key_len,
+                          ts);
     GNUNET_free (key);
     return ret;
   case TALER_MCA_WITH_PRICE:
     {
-      struct GNUNET_HashCode hkey;
+      struct GNUNET_HashCode *hkey;
       struct TALER_AmountNBO ntotal;
-      ret = NULL;
 
       TALER_amount_hton (&ntotal,
                          total);
       GNUNET_assert (GNUNET_YES ==
-                     GNUNET_CRYPTO_kdf (&hkey,
+                     GNUNET_CRYPTO_kdf (hkey,
                                         sizeof (hkey),
                                         &ntotal,
                                         sizeof (ntotal),
@@ -264,31 +278,9 @@ TALER_build_pos_confirmation (const char *pos_key,
                                         NULL,
                                         0));
       GNUNET_free (key);
-
-      for (int i = -TIME_INTERVAL_RANGE; i<= TIME_INTERVAL_RANGE; i++)
-    {
-      code = compute_totp (ts,
-                           i,
-                           &hkey,
-                           sizeof (hkey));
-      if (NULL == ret)
-      {
-        GNUNET_asprintf (&ret,
-                         "%llu",
-                         (unsigned long long) code);
-      }
-      else
-      {
-        char *tmp;
-
-        GNUNET_asprintf (&tmp,
-                         "%s\n%llu",
-                         ret,
-                         (unsigned long long) code);
-        GNUNET_free (ret);
-        ret = tmp;
-      }
-    }
+      ret = executive_totp (hkey,
+                            sizeof(hkey),
+                            ts);
       GNUNET_free (key);
       return ret;
     }
