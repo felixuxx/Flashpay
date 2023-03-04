@@ -14,6 +14,7 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
+DROP FUNCTION IF EXISTS exchange_do_batch_reserves_in_insert;
 CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
   IN in_reserve_pub BYTEA,
   IN in_expiration_date INT8,

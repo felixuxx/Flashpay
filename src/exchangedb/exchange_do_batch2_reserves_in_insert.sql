@@ -13,6 +13,8 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
+
+DROP FUNCTION IF EXISTS exchange_do_batch2_reserves_insert;
 CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in_reserve_pub BYTEA,
   IN in_expiration_date INT8,
