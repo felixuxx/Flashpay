@@ -14,7 +14,8 @@ configure)
   if ! getent passwd taler-exchange-offline >/dev/null; then
     adduser --quiet \
       --disabled-password \
-      --comment "exchange offline key management" \
+      --system \
+      --shell /bin/bash \
       --ingroup taler-exchange-offline \
       taler-exchange-offline
   fi
