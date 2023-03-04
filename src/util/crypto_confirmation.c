@@ -21,7 +21,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-#include <taler/taler_mhd_lib.h>
+#include "taler_mhd_lib.h"
 #include <gnunet/gnunet_db_lib.h>
 #include <gcrypt.h>
 
@@ -29,13 +29,12 @@
  * How long is a TOTP code valid?
  */
 #define TOTP_VALIDITY_PERIOD GNUNET_TIME_relative_multiply ( \
-   GNUNET_TIME_UNIT_SECONDS, 30)
+    GNUNET_TIME_UNIT_SECONDS, 30)
 
 /**
  * Range of time we allow (plus-minus).
  */
 #define TIME_INTERVAL_RANGE 2
-
 
 
 /**
@@ -131,26 +130,22 @@ base32decode (const char *val,
    * 32 characters for decoding, using RFC 3548.
    */
   static const char *decTable__ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  unsigned int wpos;
-  unsigned int rpos;
-  unsigned int bits;
-  unsigned int vbit;
-  unsigned char *udata;
+  unsigned char *udata = key;
+  unsigned int wpos = 0;
+  unsigned int rpos = 0;
+  unsigned int bits = 0;
+  unsigned int vbit = 0;
 
-  udata = val;
-  vbit = 0;
-  wpos = 0;
-  rpos = 0;
-  bits = 0;
   while ((rpos < val_size) || (vbit >= 8))
   {
     if ((rpos < val_size) && (vbit < 8))
     {
       char c = val[rpos++];
-      if (c == '=') { // padding character
+      if (c == '=')   // padding character
+      {
         break;
       }
-      const char *p = strchr(decTable__, toupper(c));
+      const char *p = strchr (decTable__, toupper (c));
       if (! p)
       { // invalid character
         return -1;
@@ -178,29 +173,29 @@ executive_totp (void *h_key,
   ret = NULL;
 
   for (int i = -TIME_INTERVAL_RANGE; i<= TIME_INTERVAL_RANGE; i++)
+  {
+    code = compute_totp (ts,
+                         i,
+                         h_key,
+                         h_key_len);
+    if (NULL == ret)
     {
-      code = compute_totp (ts,
-                           i,
-                           h_key,
-                           h_key_len);
-      if (NULL == ret)
-      {
-        GNUNET_asprintf (&ret,
-                         "%llu",
-                         (unsigned long long) code);
-      }
-      else
-      {
-        char *tmp;
-
-        GNUNET_asprintf (&tmp,
-                         "%s\n%llu",
-                         ret,
-                         (unsigned long long) code);
-        GNUNET_free (ret);
-        ret = tmp;
-      }
+      GNUNET_asprintf (&ret,
+                       "%llu",
+                       (unsigned long long) code);
     }
+    else
+    {
+      char *tmp;
+
+      GNUNET_asprintf (&tmp,
+                       "%s\n%llu",
+                       ret,
+                       (unsigned long long) code);
+      GNUNET_free (ret);
+      ret = tmp;
+    }
+  }
   return ret;
 
 }
@@ -263,13 +258,13 @@ TALER_build_pos_confirmation (const char *pos_key,
     return ret;
   case TALER_MCA_WITH_PRICE:
     {
-      struct GNUNET_HashCode *hkey;
+      struct GNUNET_HashCode hkey;
       struct TALER_AmountNBO ntotal;
 
       TALER_amount_hton (&ntotal,
                          total);
       GNUNET_assert (GNUNET_YES ==
-                     GNUNET_CRYPTO_kdf (hkey,
+                     GNUNET_CRYPTO_kdf (&hkey,
                                         sizeof (hkey),
                                         &ntotal,
                                         sizeof (ntotal),
@@ -278,7 +273,7 @@ TALER_build_pos_confirmation (const char *pos_key,
                                         NULL,
                                         0));
       GNUNET_free (key);
-      ret = executive_totp (hkey,
+      ret = executive_totp (&hkey,
                             sizeof(hkey),
                             ts);
       GNUNET_free (key);
