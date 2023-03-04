@@ -1,3 +1,9 @@
+taler-exchange (0.9.2-2) unstable; urgency=low
+
+  * Further improvements to Debian package.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sat, 3 Mar 2023 23:50:12 +0200
+
 taler-exchange (0.9.2-1) unstable; urgency=low
 
   * Minor improvements to Debian package, also adds age-withdraw REST APIs.
