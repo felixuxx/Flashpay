@@ -30,6 +30,7 @@ configure)
   if ! getent passwd ${_EUSERNAME} >/dev/null; then
     adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_EUSERNAME}
     adduser --quiet ${_EUSERNAME} ${_DBGROUPNAME}
+    adduser --quiet ${_EUSERNAME} ${_GROUPNAME}
   fi
   if ! getent passwd ${_RSECUSERNAME} >/dev/null; then
     adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_RSECUSERNAME}

@@ -1939,6 +1939,9 @@ exchange_serve_process_config (void)
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Launching exchange with public key `%s'...\n",
+                master_public_key_str);
     GNUNET_free (master_public_key_str);
   }
 
@@ -1961,9 +1964,6 @@ exchange_serve_process_config (void)
                         &TEH_attribute_key.hash);
     GNUNET_free (attr_enc_key_str);
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Launching exchange with public key `%s'...\n",
-              GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
 
   if (NULL ==
       (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
