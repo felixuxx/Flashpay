@@ -260,7 +260,7 @@ EXIT:
 
 /**
  * Check if the request belongs to an existing age-withdraw request.
- * If so, sets the age_withdraw object with the request data.
+ * If so, sets the commitment object with the request data.
  * Otherwise, it queues an appropriate MHD response.
  *
  * @param connection The HTTP connection to the client
@@ -272,7 +272,7 @@ EXIT:
  *   GNUNET_SYSERROR if we did not find the request in the DB
  */
 static enum GNUNET_GenericReturnValue
-retrieve_original_commitment (
+find_original_commitment (
   struct MHD_Connection *connection,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -319,7 +319,15 @@ retrieve_original_commitment (
 
 
 /**
- * TODO
+ * Check if the given denomination is still or already valid, has not been
+ * revoked and supports age restriction.
+ *
+ * @param connection HTTP-connection to the client
+ * @param ksh The handle to the current state of (denomination) keys in the exchange
+ * @param denom_h Hash of the denomination key to check
+ * @param[out] dks On success, will contain the denomination key details
+ * @param[out] result On failure, an MHD-response will be qeued and result will be set to accordingly
+ * @return true on success (denomination valid), false otherwise
  */
 static bool
 denomination_is_valid (
@@ -379,20 +387,21 @@ denomination_is_valid (
     return false;
   }
 
-  /* Does the denomation support age restriction ? */
   if (0 == dks->denom_pub.age_mask.bits)
   {
+    /* This denomation does not support age restriction */
     char msg[256] = {0};
     GNUNET_snprintf (msg,
                      sizeof(msg),
                      "denomination %s does not support age restriction",
                      GNUNET_h2s (&denom_h->hash));
 
-    *result = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_BAD_REQUEST,
-                                          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-                                          msg);
-    return GNUNET_SYSERR;
+    *result = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+      msg);
+    return false;
   }
 
   return true;
@@ -415,7 +424,7 @@ denomination_is_valid (
  *   GNUNET_SYSERR otherwise
  */
 static enum GNUNET_GenericReturnValue
-all_denominations_valid (
+are_denominations_valid (
   struct MHD_Connection *connection,
   uint32_t len,
   const struct TALER_DenominationHashP *denoms_h,
@@ -544,24 +553,26 @@ TEH_handler_age_withdraw_reveal (
 
   do {
     /* Extract denominations, blinded and disclosed coins */
-    if (GNUNET_OK != parse_age_withdraw_reveal_json (rc->connection,
-                                                     j_denoms_h,
-                                                     j_coin_evs,
-                                                     j_disclosed_coins,
-                                                     &actx,
-                                                     &result))
+    if (GNUNET_OK != parse_age_withdraw_reveal_json (
+          rc->connection,
+          j_denoms_h,
+          j_coin_evs,
+          j_disclosed_coins,
+          &actx,
+          &result))
       break;
 
     /* Find original commitment */
-    if (GNUNET_OK != retrieve_original_commitment (rc->connection,
-                                                   &actx.ach,
-                                                   &actx.reserve_pub,
-                                                   &actx.commitment,
-                                                   &result))
+    if (GNUNET_OK != find_original_commitment (
+          rc->connection,
+          &actx.ach,
+          &actx.reserve_pub,
+          &actx.commitment,
+          &result))
       break;
 
     /* Ensure validity of denoms and the sum of amounts and fees */
-    if (GNUNET_OK != all_denominations_valid (
+    if (GNUNET_OK != are_denominations_valid (
           rc->connection,
           actx.num_coins,
           actx.denoms_h,
