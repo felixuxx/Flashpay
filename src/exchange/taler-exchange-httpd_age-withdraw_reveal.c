@@ -319,6 +319,87 @@ retrieve_original_commitment (
 
 
 /**
+ * TODO
+ */
+static bool
+denomination_is_valid (
+  struct MHD_Connection *connection,
+  struct TEH_KeyStateHandle *ksh,
+  const struct TALER_DenominationHashP *denom_h,
+  struct TEH_DenominationKey *dks,
+  MHD_RESULT *result)
+{
+  dks = TEH_keys_denomination_by_hash2 (
+    ksh,
+    denom_h,
+    connection,
+    result);
+
+  /* Does the denomination exist? */
+  if (NULL == dks)
+  {
+    GNUNET_assert (result != NULL);
+    /* Note: a HTTP-response has been queued and result has been set by
+     * TEH_keys_denominations_by_hash2 */
+    return false;
+  }
+
+  /* Is the denomation still and already valid? */
+
+  if (GNUNET_TIME_absolute_is_past (dks->meta.expire_withdraw.abs_time))
+  {
+    /* This denomination is past the expiration time for withdraws */
+    *result = TEH_RESPONSE_reply_expired_denom_pub_hash (
+      connection,
+      denom_h,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+      "age-withdraw_reveal");
+    return false;
+  }
+
+  if (GNUNET_TIME_absolute_is_future (dks->meta.start.abs_time))
+  {
+    /* This denomination is not yet valid */
+    *result = TEH_RESPONSE_reply_expired_denom_pub_hash (
+      connection,
+      denom_h,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+      "age-withdraw_reveal");
+    return false;
+  }
+
+  if (dks->recoup_possible)
+  {
+    /* This denomination has been revoked */
+    *result = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_GONE,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+      NULL);
+    return false;
+  }
+
+  /* Does the denomation support age restriction ? */
+  if (0 == dks->denom_pub.age_mask.bits)
+  {
+    char msg[256] = {0};
+    GNUNET_snprintf (msg,
+                     sizeof(msg),
+                     "denomination %s does not support age restriction",
+                     GNUNET_h2s (&denom_h->hash));
+
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_BAD_REQUEST,
+                                          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+                                          msg);
+    return GNUNET_SYSERR;
+  }
+
+  return true;
+}
+
+
+/**
  * Check if the given array of hashes of denomination_keys a) belong
  * to valid denominations and b) those are marked as age restricted.
  *
@@ -364,34 +445,12 @@ all_denominations_valid (
 
   for (uint32_t i = 0; i < len; i++)
   {
-    dks[i] = TEH_keys_denomination_by_hash2 (
-      ksh,
-      &denoms_h[i],
-      connection,
-      result);
-
-    /* Does the denomination exist? */
-    if (NULL == dks[i])
+    if (! denomination_is_valid (connection,
+                                 ksh,
+                                 &denoms_h[i],
+                                 dks[i],
+                                 result))
     {
-      GNUNET_assert (result != NULL);
-      /* Note: a HTTP-response has been queued and result has been set by
-       * TEH_keys_denominations_by_hash2 */
-      return GNUNET_SYSERR;
-    }
-
-    /* Does the denomation support age restriction ? */
-    if (0 == dks[i]->denom_pub.age_mask.bits)
-    {
-      char msg[256] = {0};
-      GNUNET_snprintf (msg,
-                       sizeof(msg),
-                       "denomination key no. %d does not support age restriction",
-                       i + 1);
-
-      *result = TALER_MHD_reply_with_error (connection,
-                                            MHD_HTTP_BAD_REQUEST,
-                                            TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-                                            msg);
       return GNUNET_SYSERR;
     }
 
