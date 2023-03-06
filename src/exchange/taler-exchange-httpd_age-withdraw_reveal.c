@@ -116,17 +116,17 @@ handle_age_withdraw_reveal_json (
       error = "denoms_h must not be empty";
     else if (actx->num_coins != json_array_size (j_coin_evs))
       error = "denoms_h and coins_evs must be arrays of the same size";
+    else if (actx->num_coins > TALER_MAX_FRESH_COINS)
+      /**
+       * The wallet had committed to more than the maximum coins allowed, the
+       * reserve has been charged, but now the user can not withdraw any money
+       * from it.  Note that the user can't get their money back in this case!
+       **/
+      error = "maximum number of coins that can be withdrawn has been exceeded";
     else if (actx->num_coins * (TALER_CNC_KAPPA - 1)
              != json_array_size (j_disclosed_coins))
       error = "the size of array disclosed_coins must be "
-              TALER_CNC_KAPPA_MINUS_ONE_STR " times of the size of denoms_h";
-    else if (actx->num_coins > TALER_MAX_FRESH_COINS)
-      /**
-       * FIXME?: If the user had commited to more than the maximum coins allowed,
-       * the reserve has been charged, but now the user can not withdraw any money
-       * from it. How can the user get their money back?
-       **/
-      error = "maximum number of coins that can be withdrawn has been exceeded";
+              TALER_CNC_KAPPA_MINUS_ONE_STR " times the size of denoms_h";
 
     if (NULL != error)
       return TALER_MHD_reply_with_error (connection,
@@ -135,22 +135,23 @@ handle_age_withdraw_reveal_json (
                                          error);
   }
 
-  /* Parse denomination keys */
+  /* Continue parsing the parts */
   {
-    unsigned int idx;
-    json_t *jh;
+    unsigned int idx = 0;
+    json_t *value = NULL;
 
+    /* Parse denomination keys */
     actx->denoms_h = GNUNET_new_array (actx->num_coins,
                                        struct TALER_DenominationHashP);
 
-    json_array_foreach (j_denoms_h, idx, jh) {
+    json_array_foreach (j_denoms_h, idx, value) {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL, &actx->denoms_h[idx]),
         GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (jh, spec, NULL, NULL))
+          GNUNET_JSON_parse (value, spec, NULL, NULL))
       {
         char msg[256] = {0};
         GNUNET_snprintf (msg,
@@ -161,28 +162,22 @@ handle_age_withdraw_reveal_json (
                                               MHD_HTTP_BAD_REQUEST,
                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                               msg);
-        goto EXIT;
+        goto CLEANUP;
       }
-
     };
-  }
 
-  /* Parse blinded envelopes */
-  {
-    unsigned int idx;
-    json_t *ce;
-
+    /* Parse blinded envelopes */
     actx->coin_evs = GNUNET_new_array (actx->num_coins,
                                        struct TALER_BlindedCoinHashP);
 
-    json_array_foreach (j_coin_evs, idx, ce) {
+    json_array_foreach (j_coin_evs, idx, value) {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL, &actx->coin_evs[idx]),
         GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (ce, spec, NULL, NULL))
+          GNUNET_JSON_parse (value, spec, NULL, NULL))
       {
         char msg[256] = {0};
         GNUNET_snprintf (msg,
@@ -193,28 +188,23 @@ handle_age_withdraw_reveal_json (
                                               MHD_HTTP_BAD_REQUEST,
                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                               msg);
-        goto EXIT;
+        goto CLEANUP;
       }
     };
-  }
 
-  /* Parse diclosed keys */
-  {
-    unsigned int idx;
-    json_t *dc;
-
+    /* Parse diclosed keys */
     actx->disclosed_coins = GNUNET_new_array (
-      actx->num_coins * (TALER_CNC_KAPPA),
+      actx->num_coins * (TALER_CNC_KAPPA - 1),
       struct GNUNET_CRYPTO_EddsaPrivateKey);
 
-    json_array_foreach (j_coin_evs, idx, dc) {
+    json_array_foreach (j_disclosed_coins, idx, value) {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL, &actx->disclosed_coins[idx]),
         GNUNET_JSON_spec_end ()
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (dc, spec, NULL, NULL))
+          GNUNET_JSON_parse (value, spec, NULL, NULL))
       {
         char msg[256] = {0};
         GNUNET_snprintf (msg,
@@ -225,10 +215,9 @@ handle_age_withdraw_reveal_json (
                                               MHD_HTTP_BAD_REQUEST,
                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                               msg);
-        goto EXIT;
+        goto CLEANUP;
       }
     };
-
   }
 
   /* TODO:oec: find commitment */
@@ -241,8 +230,7 @@ handle_age_withdraw_reveal_json (
   /* TODO:oec: send response */
 
 
-  /* TODO */
-EXIT:
+CLEANUP:
   age_reveal_context_free (actx);
   return mhd_ret;
 }
