@@ -42,7 +42,7 @@ struct AgeRevealContext
   /**
    * Public key of the reserve for with the age-withdraw commitment was
    * originally made.  This parameter is provided by the client again
-   * during the call to reveal in order to save a database-lookup .
+   * during the call to reveal in order to save a database-lookup.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
 
@@ -52,20 +52,41 @@ struct AgeRevealContext
   uint32_t num_coins;
 
   /**
-   * TODO:oec num_coins denoms
+   * #num_coins hashes of the denominations from which the coins are withdrawn.
+   * Those must support age restriction.
    */
   struct TALER_DenominationHashP *denoms_h;
 
   /**
-   * TODO:oec num_coins blinded coins
+   * #num_coins denomination keys, found in the system, according to denoms_h;
+   */
+  struct TEH_DenominationKey *denom_keys;
+
+  /**
+   * #num_coins hases of blinded coins.
    */
   struct TALER_BlindedCoinHashP *coin_evs;
 
   /**
-   * TODO:oec num_coins*(kappa - 1) disclosed coins
+   * Total sum of all denominations' values
+   **/
+  struct TALER_Amount total_amount;
+
+  /**
+   * Total sum of all denominations' fees
+   */
+  struct TALER_Amount total_fee;
+
+  /**
+   * #num_coins*(kappa - 1) disclosed coins.
    */
   struct GNUNET_CRYPTO_EddsaPrivateKey *disclosed_coins;
 
+  /**
+   * The data from the original age-withdraw.  Will be retrieved from
+   * the DB via @a ach.
+   */
+  struct TALER_EXCHANGEDB_AgeWithdrawCommitment commitment;
 };
 
 /**
@@ -75,30 +96,35 @@ void
 age_reveal_context_free (struct AgeRevealContext *actx)
 {
   GNUNET_free (actx->denoms_h);
+  GNUNET_free (actx->denom_keys);
   GNUNET_free (actx->coin_evs);
   GNUNET_free (actx->disclosed_coins);
 }
 
 
 /**
- * Handle a "/age-withdraw/$ACH/reveal request.  Parses the given JSON
- * ... TODO:oec:description
+ * Parse the json body of an '/age-withdraw/$ACH/reveal' request.  It extracts
+ * the denomination hashes, blinded coins and disclosed coins and allocates
+ * memory for those.
  *
  * @param connection The MHD connection to handle
- * @param actx The context of the operation, only partially built at call time
  * @param j_denoms_h Array of hashes of the denominations for the withdrawal, in JSON format
  * @param j_coin_evs The blinded envelopes in JSON format for the coins that are not revealed and will be signed on success
  * @param j_disclosed_coins The n*(kappa-1) disclosed coins' private keys in JSON format, from which all other attributes (age restriction, blinding, nonce) will be derived from
+ * @param[out] actx The context of the operation, only partially built at call time
+ * @param[out] mhd_mret The result if a reply is queued for MHD
+ * @return true on success, false on failure, with a reply already queued for MHD.
  */
-MHD_RESULT
-handle_age_withdraw_reveal_json (
+static enum GNUNET_GenericReturnValue
+parse_age_withdraw_reveal_json (
   struct MHD_Connection *connection,
-  struct AgeRevealContext *actx,
   const json_t *j_denoms_h,
   const json_t *j_coin_evs,
-  const json_t *j_disclosed_coins)
+  const json_t *j_disclosed_coins,
+  struct AgeRevealContext *actx,
+  MHD_RESULT *mhd_ret)
 {
-  MHD_RESULT mhd_ret = MHD_NO;
+  enum GNUNET_GenericReturnValue result = GNUNET_SYSERR;
 
   /* Verify JSON-structure consistency */
   {
@@ -129,10 +155,13 @@ handle_age_withdraw_reveal_json (
               TALER_CNC_KAPPA_MINUS_ONE_STR " times the size of denoms_h";
 
     if (NULL != error)
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         error);
+    {
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                             error);
+      return GNUNET_SYSERR;
+    }
   }
 
   /* Continue parsing the parts */
@@ -158,11 +187,11 @@ handle_age_withdraw_reveal_json (
                          sizeof(msg),
                          "couldn't parse entry no. %d in array denoms_h",
                          idx + 1);
-        mhd_ret = TALER_MHD_reply_with_error (connection,
-                                              MHD_HTTP_BAD_REQUEST,
-                                              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                              msg);
-        goto CLEANUP;
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                               msg);
+        goto EXIT;
       }
     };
 
@@ -184,11 +213,11 @@ handle_age_withdraw_reveal_json (
                          sizeof(msg),
                          "couldn't parse entry no. %d in array coin_evs",
                          idx + 1);
-        mhd_ret = TALER_MHD_reply_with_error (connection,
-                                              MHD_HTTP_BAD_REQUEST,
-                                              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                              msg);
-        goto CLEANUP;
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                               msg);
+        goto EXIT;
       }
     };
 
@@ -211,28 +240,211 @@ handle_age_withdraw_reveal_json (
                          sizeof(msg),
                          "couldn't parse entry no. %d in array disclosed_coins",
                          idx + 1);
-        mhd_ret = TALER_MHD_reply_with_error (connection,
-                                              MHD_HTTP_BAD_REQUEST,
-                                              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                              msg);
-        goto CLEANUP;
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_BAD_REQUEST,
+                                               TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                               msg);
+        goto EXIT;
       }
     };
   }
 
-  /* TODO:oec: find commitment */
-  /* TODO:oec: check validity of denoms */
-  /* TODO:oec: check amount total against denoms */
-  /* TODO:oec: compute the disclosed blinded coins */
-  /* TODO:oec: generate h_commitment_comp */
-  /* TODO:oec: compare h_commitment_comp against h_commitment */
-  /* TODO:oec: sign the coins */
-  /* TODO:oec: send response */
+  result = GNUNET_OK;
+  *mhd_ret = MHD_YES;
 
 
-CLEANUP:
-  age_reveal_context_free (actx);
-  return mhd_ret;
+EXIT:
+  return result;
+}
+
+
+/**
+ * Check if the request belongs to an existing age-withdraw request.
+ * If so, sets the age_withdraw object with the request data.
+ * Otherwise, it queues an appropriate MHD response.
+ *
+ * @param connection The HTTP connection to the client
+ * @param h_commitment Original commitment value sent with the age-withdraw request
+ * @param reserve_pub Reserve public key used in the original age-withdraw request
+ * @param[out] commitment Data from the original age-withdraw request
+ * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
+ * @return GNUNET_OK if the withdraw request has been found,
+ *   GNUNET_SYSERROR if we did not find the request in the DB
+ */
+static enum GNUNET_GenericReturnValue
+retrieve_original_commitment (
+  struct MHD_Connection *connection,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_EXCHANGEDB_AgeWithdrawCommitment *commitment,
+  MHD_RESULT *result)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->get_age_withdraw_info (TEH_plugin->cls,
+                                          reserve_pub,
+                                          h_commitment,
+                                          commitment);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    return GNUNET_OK; /* Only happy case */
+
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_NOT_FOUND,
+                                          TALER_EC_EXCHANGE_AGE_WITHDRAW_COMMITMENT_UNKNOWN,
+                                          NULL);
+    break;
+
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "get_age_withdraw_info");
+    break;
+
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+  /* FIXME: Do we queue a result in this case or retry? */
+  default:
+    GNUNET_break (0);       /* should be impossible */
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                          NULL);
+  }
+
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Check if the given array of hashes of denomination_keys a) belong
+ * to valid denominations and b) those are marked as age restricted.
+ *
+ * @param connection The HTTP connection to the client
+ * @param len The lengths of the array @a denoms_h
+ * @param denoms_h array of hashes of denomination public keys
+ * @param[out] dks On success, will be filled with the denomination keys.  Caller must deallocate.
+ * @param amount_with_fee The commited amount including fees
+ * @param[out] total_sum On success, will contain the total sum of all denominations
+ * @param[out] total_fee On success, will contain the total sum of all fees
+ * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
+ * @return GNUNET_OK if the denominations are valid and support age-restriction
+ *   GNUNET_SYSERR otherwise
+ */
+static enum GNUNET_GenericReturnValue
+all_denominations_valid (
+  struct MHD_Connection *connection,
+  uint32_t len,
+  const struct TALER_DenominationHashP *denoms_h,
+  struct TEH_DenominationKey **dks,
+  const struct TALER_Amount *amount_with_fee,
+  struct TALER_Amount *total_amount,
+  struct TALER_Amount *total_fee,
+  MHD_RESULT *result)
+{
+  struct TEH_KeyStateHandle *ksh;
+
+  GNUNET_assert (*dks == NULL);
+
+  ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+  {
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                          NULL);
+    return GNUNET_SYSERR;
+  }
+
+  *dks = GNUNET_new_array (len, struct TEH_DenominationKey);
+  TALER_amount_set_zero (TEH_currency, total_amount);
+  TALER_amount_set_zero (TEH_currency, total_fee);
+
+  for (uint32_t i = 0; i < len; i++)
+  {
+    dks[i] = TEH_keys_denomination_by_hash2 (
+      ksh,
+      &denoms_h[i],
+      connection,
+      result);
+
+    /* Does the denomination exist? */
+    if (NULL == dks[i])
+    {
+      GNUNET_assert (result != NULL);
+      /* Note: a HTTP-response has been queued and result has been set by
+       * TEH_keys_denominations_by_hash2 */
+      return GNUNET_SYSERR;
+    }
+
+    /* Does the denomation support age restriction ? */
+    if (0 == dks[i]->denom_pub.age_mask.bits)
+    {
+      char msg[256] = {0};
+      GNUNET_snprintf (msg,
+                       sizeof(msg),
+                       "denomination key no. %d does not support age restriction",
+                       i + 1);
+
+      *result = TALER_MHD_reply_with_error (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+                                            msg);
+      return GNUNET_SYSERR;
+    }
+
+    /* Accumulate the values */
+    if (0 > TALER_amount_add (
+          total_amount,
+          total_amount,
+          &dks[i]->meta.value))
+    {
+      GNUNET_break (0);
+      *result = TALER_MHD_reply_with_error (connection,
+                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                            TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
+                                            "amount");
+      return GNUNET_SYSERR;
+    }
+
+    /* Accumulate the withdraw fees */
+    if (0 > TALER_amount_add (
+          total_fee,
+          total_fee,
+          &dks[i]->meta.fees.withdraw))
+    {
+      GNUNET_break (0);
+      *result = TALER_MHD_reply_with_error (connection,
+                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                            TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
+                                            "fee");
+      return GNUNET_SYSERR;
+    }
+  }
+
+  /* Compare the commited amount against the totals */
+  {
+    struct TALER_Amount sum;
+    TALER_amount_set_zero (TEH_currency, &sum);
+
+    GNUNET_assert (0 < TALER_amount_add (
+                     &sum,
+                     total_amount,
+                     total_fee));
+
+    if (0 != TALER_amount_cmp (&sum, amount_with_fee))
+    {
+      GNUNET_break (0);
+      *result = TALER_MHD_reply_with_ec (connection,
+                                         TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_INCORRECT,
+                                         NULL);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  return GNUNET_OK;
 }
 
 
@@ -242,6 +454,8 @@ TEH_handler_age_withdraw_reveal (
   const struct TALER_AgeWithdrawCommitmentHashP *ach,
   const json_t *root)
 {
+  MHD_RESULT result = MHD_NO;
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   struct AgeRevealContext actx = {0};
   json_t *j_denoms_h;
   json_t *j_coin_evs;
@@ -258,33 +472,59 @@ TEH_handler_age_withdraw_reveal (
 
   /* Parse JSON body*/
   {
-    enum GNUNET_GenericReturnValue res;
-
-    res = TALER_MHD_parse_json_data (rc->connection,
+    ret = TALER_MHD_parse_json_data (rc->connection,
                                      root,
                                      spec);
-    if (GNUNET_OK != res)
+    if (GNUNET_OK != ret)
     {
       GNUNET_break_op (0);
-      return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+      return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
     }
   }
 
 
-  /* handle reveal request */
-  {
-    MHD_RESULT res;
+  do {
+    /* Extract denominations, blinded and disclosed coins */
+    if (GNUNET_OK != parse_age_withdraw_reveal_json (rc->connection,
+                                                     j_denoms_h,
+                                                     j_coin_evs,
+                                                     j_disclosed_coins,
+                                                     &actx,
+                                                     &result))
+      break;
 
-    res = handle_age_withdraw_reveal_json (rc->connection,
-                                           &actx,
-                                           j_denoms_h,
-                                           j_coin_evs,
-                                           j_disclosed_coins);
+    /* Find original commitment */
+    if (GNUNET_OK != retrieve_original_commitment (rc->connection,
+                                                   &actx.ach,
+                                                   &actx.reserve_pub,
+                                                   &actx.commitment,
+                                                   &result))
+      break;
 
-    GNUNET_JSON_parse_free (spec);
-    return res;
-  }
+    /* Ensure validity of denoms and the sum of amounts and fees */
+    if (GNUNET_OK != all_denominations_valid (
+          rc->connection,
+          actx.num_coins,
+          actx.denoms_h,
+          &actx.denom_keys,
+          &actx.commitment.amount_with_fee,
+          &actx.total_amount,
+          &actx.total_fee,
+          &result))
+      break;
 
+
+  } while(0);
+
+  /* TODO:oec: compute the disclosed blinded coins */
+  /* TODO:oec: generate h_commitment_comp */
+  /* TODO:oec: compare h_commitment_comp against h_commitment */
+  /* TODO:oec: sign the coins */
+  /* TODO:oec: send response */
+
+  age_reveal_context_free (&actx);
+  GNUNET_JSON_parse_free (spec);
+  return result;
 }
 
 
