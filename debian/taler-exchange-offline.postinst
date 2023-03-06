@@ -16,6 +16,7 @@ configure)
       --disabled-password \
       --system \
       --shell /bin/bash \
+      --home /home/taler-exchange-offline \
       --ingroup taler-exchange-offline \
       taler-exchange-offline
   fi
