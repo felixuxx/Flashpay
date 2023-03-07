@@ -27,11 +27,6 @@
 #include <gcrypt.h>
 
 /**
- * Used in TALER_AgeCommitmentHash_isNullOrZero for comparison
- */
-const struct TALER_AgeCommitmentHash TALER_ZeroAgeCommitmentHash = {0};
-
-/**
  * Function called by libgcrypt on serious errors.
  * Prints an error message and aborts the process.
  *
