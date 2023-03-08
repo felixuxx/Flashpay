@@ -234,12 +234,10 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
     .cipher = TALER_DENOMINATION_CS
   };
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed ("nonce",
-                            &nonce,
-                            sizeof (struct TALER_CsNonce)),
-    GNUNET_JSON_spec_fixed ("denom_pub_hash",
-                            &denom_pub_hash,
-                            sizeof (struct TALER_DenominationHashP)),
+    GNUNET_JSON_spec_fixed_auto ("nonce",
+                                 &nonce),
+    GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
+                                 &denom_pub_hash),
     GNUNET_JSON_spec_end ()
   };
   struct TEH_DenominationKey *dk;
@@ -333,17 +331,11 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
     }
   }
 
-  {
-    json_t *csr_obj;
-
-    csr_obj = GNUNET_JSON_PACK (
-      TALER_JSON_pack_exchange_withdraw_values ("ewv",
-                                                &ewv));
-    GNUNET_assert (NULL != csr_obj);
-    return TALER_MHD_reply_json_steal (rc->connection,
-                                       csr_obj,
-                                       MHD_HTTP_OK);
-  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                              &ewv));
 }
 
 

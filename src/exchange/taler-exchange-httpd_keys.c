@@ -738,7 +738,7 @@ free_denom_cb (void *cls,
  * @param value the `struct HelperSignkey` to release
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 free_esign_cb (void *cls,
                const struct GNUNET_PeerIdentity *pid,
                void *value)
