@@ -81,6 +81,11 @@
 #define UNIX_BACKLOG 50
 
 /**
+ * How often will we try to connect to the database before giving up?
+ */
+#define MAX_DB_RETRIES 5
+
+/**
  * Above what request latency do we start to log?
  */
 #define WARN_LATENCY GNUNET_TIME_relative_multiply ( \
@@ -1965,11 +1970,20 @@ exchange_serve_process_config (void)
     GNUNET_free (attr_enc_key_str);
   }
 
-  if (NULL ==
-      (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
+  for (unsigned int i = 0; i<MAX_DB_RETRIES; i++)
+  {
+    TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg);
+    if (NULL != TEH_plugin)
+      break;
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to connect to DB, will try again %u times\n",
+                MAX_DB_RETRIES - i);
+    sleep (1);
+  }
+  if (NULL == TEH_plugin)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
+                "Failed to initialize DB subsystem. Giving up.\n");
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
