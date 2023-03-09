@@ -11,7 +11,7 @@ Type=simple
 # Depending on the configuration, the service suicides and then
 # needs to be restarted.
 Restart=always
-# Do not dally on restarts.
+# No significant delay on restarts.
 RestartSec=1ms
 ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/taler.conf
 StandardOutput=journal
