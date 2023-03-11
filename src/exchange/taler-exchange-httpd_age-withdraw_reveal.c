@@ -29,13 +29,30 @@
 #include "taler-exchange-httpd_keys.h"
 
 /**
+ * Clients have to prove that the public keys for all age groups larger than
+ * the allowed maximum age group are derived by scalar multiplication from this
+ * Edx25519 public key (in Crockford Base32 encoding):
+ *
+ *       DZJRF6HXN520505XDAWM8NMH36QV9J3VH77265WQ09EBQ76QSKCG
+ *
+ * The private key was chosen randomly and then deleted.
+ */
+static struct GNUNET_CRYPTO_Edx25519PublicKey publishedBaseKey = {
+  .q_y = { 0x6f, 0xe5, 0x87, 0x9a, 0x3d, 0xa9, 0x44, 0x20,
+           0x80, 0xbd, 0x6a, 0xb9, 0x44, 0x56, 0x91, 0x19,
+           0xaf, 0xb4, 0xc8, 0x7b, 0x89, 0xce, 0x23, 0x17,
+           0x97, 0x20, 0x5c, 0xbb, 0x9c, 0xd7, 0xcc, 0xd9},
+};
+
+/**
  * State for an /age-withdraw/$ACH/reveal operation.
  */
 struct AgeRevealContext
 {
 
   /**
-   * Commitment for the age-withdraw operation.
+   * Commitment for the age-withdraw operation, previously called by the
+   * client.
    */
   struct TALER_AgeWithdrawCommitmentHashP ach;
 
@@ -63,11 +80,6 @@ struct AgeRevealContext
   struct TEH_DenominationKey *denom_keys;
 
   /**
-   * #num_coins hases of blinded coins.
-   */
-  struct TALER_BlindedCoinHashP *coin_evs;
-
-  /**
    * Total sum of all denominations' values
    **/
   struct TALER_Amount total_amount;
@@ -76,6 +88,11 @@ struct AgeRevealContext
    * Total sum of all denominations' fees
    */
   struct TALER_Amount total_fee;
+
+  /**
+   * #num_coins hashes of blinded coins.
+   */
+  struct TALER_BlindedCoinHashP *coin_evs;
 
   /**
    * #num_coins*(kappa - 1) disclosed coins.
@@ -504,7 +521,7 @@ are_denominations_valid (
 
     if (0 != TALER_amount_cmp (&sum, amount_with_fee))
     {
-      GNUNET_break (0);
+      GNUNET_break_op (0);
       *result = TALER_MHD_reply_with_ec (connection,
                                          TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_INCORRECT,
                                          NULL);
@@ -513,6 +530,61 @@ are_denominations_valid (
   }
 
   return GNUNET_OK;
+}
+
+
+/**
+ * Checks the validity of the disclosed coins as follows:
+ * - Derives and calculates the disclosed coins'
+ *    - public keys,
+ *    - nonces (if applicable),
+ *    - age commitments,
+ *    - blindings
+ *    - blinded hashes
+ * - Computes h_commitment with those calculated and the undisclosed hashes
+ * - Compares h_commitment with the value from the original commitment
+ * - Verifies that all public keys in indices larger than max_age_group are
+ *   derived from the constant public key.
+ *
+ * The derivation of the blindings, (potential) nonces and age-commitment from
+ * a coin's private keys is defined in
+ * https://docs.taler.net/design-documents/024-age-restriction.html#withdraw
+ *
+ * @param connection HTTP-connection to the client
+ * @param h_commitment_orig Original commitment
+ * @param max_age_group Maximum age group allowed for the age restriction
+ * @param noreveal_idx Index that was given to the client in response to the age-withdraw request
+ * @param num_coins Number of coins
+ * @param coin_evs The Hashes of the undisclosed, blinded coins
+ * @param discloded_coins The private keys of the disclosed coins
+ * @param denom_keys The array of denomination keys. Needed to detect Clause-Schnorr-based denominations
+ * @param[out] result On error, a HTTP-response will be queued and result set accordingly
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+static enum GNUNET_GenericReturnValue
+verify_commitment_and_max_age (
+  struct MHD_Connection *connection,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment_orig,
+  uint32_t max_age_group,
+  uint32_t noreveal_idx,
+  uint32_t num_coins,
+  const struct TALER_BlindedCoinHashP *coin_evs,
+  const struct GNUNET_CRYPTO_EddsaPrivateKey *disclosed_coins,
+  const struct TEH_DenominationKey *denom_keys,
+  MHD_RESULT *result)
+{
+  struct TALER_BlindedCoinHashP *disclosed_evs; /* Will contain all calculated hashes */
+
+  disclosed_evs = GNUNET_new_array (
+    num_coins * (TALER_CNC_KAPPA - 1),
+    struct TALER_BlindedCoinHashP);
+
+  for (uint32_t i = 0; i < num_coins; i++)
+  {
+    /* FIXME:oec:  Calculate new coins and blinded hashes */
+  }
+
+  return GNUNET_SYSERR;
 }
 
 
@@ -583,14 +655,23 @@ TEH_handler_age_withdraw_reveal (
           &result))
       break;
 
+    /* Verify the computed h_commitment equals the committed one and that
+     * coins have a maximum age group of max_age_group */
+    if (GNUNET_OK != verify_commitment_and_max_age (
+          rc->connection,
+          &actx.commitment.h_commitment,
+          actx.commitment.max_age_group,
+          actx.commitment.noreveal_index,
+          actx.num_coins,
+          actx.coin_evs,
+          actx.disclosed_coins,
+          actx.denom_keys,
+          &result))
+      break;
+
+    /* TODO:oec: sign the coins */
 
   } while(0);
-
-  /* TODO:oec: compute the disclosed blinded coins */
-  /* TODO:oec: generate h_commitment_comp */
-  /* TODO:oec: compare h_commitment_comp against h_commitment */
-  /* TODO:oec: sign the coins */
-  /* TODO:oec: send response */
 
   age_reveal_context_free (&actx);
   GNUNET_JSON_parse_free (spec);
