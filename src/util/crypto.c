@@ -421,19 +421,23 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   {
     /* Coin comes with age commitment.  Take the hash of the age commitment
      * into account */
-    const size_t key_s = sizeof(struct GNUNET_CRYPTO_EcdsaPublicKey);
-    const size_t age_s = sizeof(struct TALER_AgeCommitmentHash);
-    char data[key_s + age_s];
+    struct GNUNET_HashContext *hash_context;
 
-    GNUNET_memcpy (&data[0],
-                   &coin_pub->eddsa_pub,
-                   key_s);
-    GNUNET_memcpy (&data[key_s],
-                   ach,
-                   age_s);
-    GNUNET_CRYPTO_hash (&data,
-                        key_s + age_s,
-                        &coin_h->hash);
+    hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      &coin_pub->eddsa_pub,
+      sizeof(struct GNUNET_CRYPTO_EcdsaPublicKey));
+
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      ach,
+      sizeof(struct TALER_AgeCommitmentHash));
+
+    GNUNET_CRYPTO_hash_context_finish (
+      hash_context,
+      &coin_h->hash);
   }
 }
 
