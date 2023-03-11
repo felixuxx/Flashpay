@@ -738,7 +738,7 @@ free_denom_cb (void *cls,
  * @param value the `struct HelperSignkey` to release
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 free_esign_cb (void *cls,
                const struct GNUNET_PeerIdentity *pid,
                void *value)
@@ -3616,6 +3616,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
     if ( (GNUNET_is_zero (&denom_rsa_sm_pub)) &&
          (GNUNET_is_zero (&denom_cs_sm_pub)) )
     {
+      /* Either IPC failed, or neither helper had any denominations configured. */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_GATEWAY,
                                          TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE,
@@ -3628,7 +3629,6 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
                                          TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE,
                                          NULL);
     }
-    // then a secmod helper is not yet running and we should return an MHD_HTTP_BAD_GATEWAY!
     GNUNET_assert (NULL != fbc.denoms);
     GNUNET_assert (NULL != fbc.signkeys);
     GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers->denom_keys,

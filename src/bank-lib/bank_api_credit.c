@@ -248,12 +248,15 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
   {
     if ( (0 < num_results) &&
          (! GNUNET_TIME_relative_is_zero (timeout)) )
+      /* 0 == start_row is implied, go with timeout into future */
       GNUNET_snprintf (url,
                        sizeof (url),
                        "history/incoming?delta=%lld&long_poll_ms=%llu",
                        (long long) num_results,
                        tms);
     else
+      /* Going back from current transaction or have no timeout;
+         hence timeout makes no sense */
       GNUNET_snprintf (url,
                        sizeof (url),
                        "history/incoming?delta=%lld",
@@ -263,6 +266,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
   {
     if ( (0 < num_results) &&
          (! GNUNET_TIME_relative_is_zero (timeout)) )
+      /* going forward from num_result */
       GNUNET_snprintf (url,
                        sizeof (url),
                        "history/incoming?delta=%lld&start=%llu&long_poll_ms=%llu",
@@ -270,6 +274,8 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                        (unsigned long long) start_row,
                        tms);
     else
+      /* going backwards or have no timeout;
+         hence timeout makes no sense */
       GNUNET_snprintf (url,
                        sizeof (url),
                        "history/incoming?delta=%lld&start=%llu",

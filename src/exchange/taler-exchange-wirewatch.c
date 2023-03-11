@@ -757,7 +757,7 @@ continue_with_shard (void *cls)
                       shard_end - latest_row_off);
   GNUNET_assert (NULL == hh);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Requesting credit history staring from %llu\n",
+              "Requesting credit history starting from %llu\n",
               (unsigned long long) latest_row_off);
   hh_start_time = GNUNET_TIME_absolute_get ();
   hh_returned_data = false;

@@ -168,9 +168,10 @@ handle_reserves_get_finished (void *cls,
     rs.hr.ec = TALER_JSON_get_error_code (j);
     rs.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d for reserves get\n",
+                "Unexpected response code %u/%d for GET %s\n",
                 (unsigned int) response_code,
-                (int) rs.hr.ec);
+                (int) rs.hr.ec,
+                rgh->url);
     break;
   }
   if (NULL != rgh->cb)
