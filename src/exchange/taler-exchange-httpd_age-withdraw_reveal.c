@@ -79,9 +79,9 @@ struct AgeRevealContext
   struct TALER_BlindedCoinHashP *coin_evs;
 
   /**
-   * #num_coins*(kappa - 1) disclosed coins.
+   * secrets for #num_coins*(kappa - 1) disclosed coins.
    */
-  struct GNUNET_CRYPTO_EddsaPrivateKey *disclosed_coins;
+  struct TALER_PlanchetMasterSecretP *disclosed_coin_secrets;
 
   /**
    * The data from the original age-withdraw.  Will be retrieved from
@@ -99,7 +99,7 @@ age_reveal_context_free (struct AgeRevealContext *actx)
   GNUNET_free (actx->denoms_h);
   GNUNET_free (actx->denom_keys);
   GNUNET_free (actx->coin_evs);
-  GNUNET_free (actx->disclosed_coins);
+  GNUNET_free (actx->disclosed_coin_secrets);
 }
 
 
@@ -111,7 +111,7 @@ age_reveal_context_free (struct AgeRevealContext *actx)
  * @param connection The MHD connection to handle
  * @param j_denoms_h Array of hashes of the denominations for the withdrawal, in JSON format
  * @param j_coin_evs The blinded envelopes in JSON format for the coins that are not revealed and will be signed on success
- * @param j_disclosed_coins The n*(kappa-1) disclosed coins' private keys in JSON format, from which all other attributes (age restriction, blinding, nonce) will be derived from
+ * @param j_disclosed_coin_secrets The n*(kappa-1) disclosed coins' private keys in JSON format, from which all other attributes (age restriction, blinding, nonce) will be derived from
  * @param[out] actx The context of the operation, only partially built at call time
  * @param[out] mhd_mret The result if a reply is queued for MHD
  * @return true on success, false on failure, with a reply already queued for MHD.
@@ -121,7 +121,7 @@ parse_age_withdraw_reveal_json (
   struct MHD_Connection *connection,
   const json_t *j_denoms_h,
   const json_t *j_coin_evs,
-  const json_t *j_disclosed_coins,
+  const json_t *j_disclosed_coin_secrets,
   struct AgeRevealContext *actx,
   MHD_RESULT *mhd_ret)
 {
@@ -137,8 +137,8 @@ parse_age_withdraw_reveal_json (
       error = "denoms_h must be an array";
     else if (! json_is_array (j_coin_evs))
       error = "coin_evs must be an array";
-    else if (! json_is_array (j_disclosed_coins))
-      error = "disclosed_coins must be an array";
+    else if (! json_is_array (j_disclosed_coin_secrets))
+      error = "disclosed_coin_secrets must be an array";
     else if (actx->num_coins == 0)
       error = "denoms_h must not be empty";
     else if (actx->num_coins != json_array_size (j_coin_evs))
@@ -151,8 +151,8 @@ parse_age_withdraw_reveal_json (
        **/
       error = "maximum number of coins that can be withdrawn has been exceeded";
     else if (actx->num_coins * (TALER_CNC_KAPPA - 1)
-             != json_array_size (j_disclosed_coins))
-      error = "the size of array disclosed_coins must be "
+             != json_array_size (j_disclosed_coin_secrets))
+      error = "the size of array disclosed_coin_secrets must be "
               TALER_CNC_KAPPA_MINUS_ONE_STR " times the size of denoms_h";
 
     if (NULL != error)
@@ -223,13 +223,13 @@ parse_age_withdraw_reveal_json (
     };
 
     /* Parse diclosed keys */
-    actx->disclosed_coins = GNUNET_new_array (
+    actx->disclosed_coin_secrets = GNUNET_new_array (
       actx->num_coins * (TALER_CNC_KAPPA - 1),
-      struct GNUNET_CRYPTO_EddsaPrivateKey);
+      struct TALER_PlanchetMasterSecretP);
 
-    json_array_foreach (j_disclosed_coins, idx, value) {
+    json_array_foreach (j_disclosed_coin_secrets, idx, value) {
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL, &actx->disclosed_coins[idx]),
+        GNUNET_JSON_spec_fixed_auto (NULL, &actx->disclosed_coin_secrets[idx]),
         GNUNET_JSON_spec_end ()
       };
 
@@ -239,7 +239,7 @@ parse_age_withdraw_reveal_json (
         char msg[256] = {0};
         GNUNET_snprintf (msg,
                          sizeof(msg),
-                         "couldn't parse entry no. %d in array disclosed_coins",
+                         "couldn't parse entry no. %d in array disclosed_coin_secrets",
                          idx + 1);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_BAD_REQUEST,
@@ -306,7 +306,7 @@ find_original_commitment (
     break;
 
   case GNUNET_DB_STATUS_SOFT_ERROR:
-  /* FIXME: Do we queue a result in this case or retry? */
+  /* FIXME:oec: Do we queue a result in this case or retry? */
   default:
     GNUNET_break (0);       /* should be impossible */
     *result = TALER_MHD_reply_with_error (connection,
@@ -525,8 +525,8 @@ are_denominations_valid (
  *    - blinded hashes
  * - Computes h_commitment with those calculated and the undisclosed hashes
  * - Compares h_commitment with the value from the original commitment
- * - Verifies that all public keys in indices larger than max_age_group are
- *   derived from the constant public key.
+ * - Verifies that all public keys in indices larger than the age group
+ *   corresponding to max_age are derived from the constant public key.
  *
  * The derivation of the blindings, (potential) nonces and age-commitment from
  * a coin's private keys is defined in
@@ -534,12 +534,12 @@ are_denominations_valid (
  *
  * @param connection HTTP-connection to the client
  * @param h_commitment_orig Original commitment
- * @param max_age_group Maximum age group allowed for the age restriction
+ * @param max_age Maximum age allowed for the age restriction
  * @param noreveal_idx Index that was given to the client in response to the age-withdraw request
  * @param num_coins Number of coins
- * @param coin_evs The Hashes of the undisclosed, blinded coins
- * @param discloded_coins The private keys of the disclosed coins
- * @param denom_keys The array of denomination keys. Needed to detect Clause-Schnorr-based denominations
+ * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
+ * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
+ * @param discloded_coin_secrets The secrets of the disclosed coins, (TALER_CNC_KAPPA - 1)*num_coins many
  * @param[out] result On error, a HTTP-response will be queued and result set accordingly
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
@@ -547,27 +547,178 @@ static enum GNUNET_GenericReturnValue
 verify_commitment_and_max_age (
   struct MHD_Connection *connection,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment_orig,
-  uint32_t max_age_group,
-  uint32_t noreveal_idx,
-  uint32_t num_coins,
+  const uint32_t max_age,
+  const uint32_t noreveal_idx,
+  const uint32_t num_coins,
   const struct TALER_BlindedCoinHashP *coin_evs,
-  const struct GNUNET_CRYPTO_EddsaPrivateKey *disclosed_coins,
   const struct TEH_DenominationKey *denom_keys,
+  const struct TALER_PlanchetMasterSecretP *disclosed_coin_secrets,
   MHD_RESULT *result)
 {
-  struct TALER_BlindedCoinHashP *disclosed_evs; /* Will contain all calculated hashes */
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+  struct GNUNET_HashContext *hash_context;
 
-  disclosed_evs = GNUNET_new_array (
-    num_coins * (TALER_CNC_KAPPA - 1),
-    struct TALER_BlindedCoinHashP);
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
 
-  for (uint32_t i = 0; i < num_coins; i++)
+  for (size_t c = 0; c < num_coins; c++)
   {
-    /* FIXME:oec:  Calculate new coins and blinded hashes */
-    /*TALER_age_restriction_commit_from_base(); */
+    size_t k = 0; /* either 0 or 1, to index into coin_evs */
+
+    for (size_t idx = 0; idx<3; idx++)
+    {
+      if (idx == (size_t) noreveal_idx)
+      {
+        GNUNET_CRYPTO_hash_context_read (hash_context,
+                                         &coin_evs[c],
+                                         sizeof(coin_evs[c]));
+      }
+      else
+      {
+        /* FIXME:oec: Refactor this block out into its own function */
+
+        size_t j = 2 * c + k; /* Index into disclosed_coin_secrets[] */
+        const struct TALER_PlanchetMasterSecretP *secret;
+        struct TALER_AgeCommitmentHash ach;
+
+        GNUNET_assert (k<2);
+        GNUNET_assert (num_coins * (TALER_CNC_KAPPA - 1) > j);
+
+        secret = &disclosed_coin_secrets[j];
+        k++;
+
+        /* First: calculate age commitment hash */
+        {
+          struct TALER_AgeCommitmentProof acp;
+          ret = TALER_age_restriction_from_secret (
+            secret,
+            &denom_keys[c].denom_pub.age_mask,
+            max_age,
+            &acp);
+
+          if (GNUNET_OK != ret)
+          {
+            GNUNET_break (0);
+            *result = TALER_MHD_reply_json_pack (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 "{sssi}",
+                                                 "failed to derive age restriction from base key",
+                                                 "index",
+                                                 j);
+            return ret;
+          }
+
+          TALER_age_commitment_hash (&acp.commitment, &ach);
+        }
+
+        /* Next: calculate planchet */
+        {
+          struct TALER_CoinPubHashP c_hash;
+          struct TALER_PlanchetDetail detail;
+          struct TALER_BlindedCoinHashP bch;
+          struct TALER_CoinSpendPrivateKeyP coin_priv;
+          union TALER_DenominationBlindingKeyP bks;
+          struct TALER_ExchangeWithdrawValues alg_values = {
+            .cipher = denom_keys[c].denom_pub.cipher,
+          };
+
+          if (TALER_DENOMINATION_CS == alg_values.cipher)
+          {
+            struct TALER_CsNonce nonce;
+
+            TALER_cs_withdraw_nonce_derive (
+              secret,
+              &nonce);
+
+            {
+              enum TALER_ErrorCode ec;
+              struct TEH_CsDeriveData cdd = {
+                .h_denom_pub = &denom_keys[c].h_denom_pub,
+                .nonce = &nonce,
+              };
+
+              ec = TEH_keys_denomination_cs_r_pub (&cdd,
+                                                   false,
+                                                   &alg_values.details.
+                                                   cs_values);
+
+#pragma message ("FIXME:oec: return value of needs handling!")
+              /* FIXME:oec: Handle error */
+              GNUNET_assert (TALER_EC_NONE == ec);
+            }
+          }
+
+          TALER_planchet_blinding_secret_create (secret,
+                                                 &alg_values,
+                                                 &bks);
+
+          TALER_planchet_setup_coin_priv (secret,
+                                          &alg_values,
+                                          &coin_priv);
+
+          ret = TALER_planchet_prepare (&denom_keys[c].denom_pub,
+                                        &alg_values,
+                                        &bks,
+                                        &coin_priv,
+                                        &ach,
+                                        &c_hash,
+                                        &detail);
+
+          if (GNUNET_OK != ret)
+          {
+            GNUNET_break (0);
+            *result = TALER_MHD_reply_json_pack (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 "{sssi}",
+                                                 "details",
+                                                 "failed to prepare planchet from base key",
+                                                 "index",
+                                                 j);
+            return ret;
+          }
+
+          ret = TALER_coin_ev_hash (&detail.blinded_planchet,
+                                    &denom_keys[c].h_denom_pub,
+                                    &bch);
+          if (GNUNET_OK != ret)
+          {
+            GNUNET_break (0);
+            *result = TALER_MHD_reply_json_pack (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 "{sssi}",
+                                                 "details",
+                                                 "failed to hash planchet from base key",
+                                                 "index",
+                                                 j);
+            return ret;
+          }
+
+          GNUNET_CRYPTO_hash_context_read (hash_context,
+                                           &detail.blinded_planchet,
+                                           sizeof(detail.blinded_planchet));
+        }
+      }
+    }
   }
 
-  return GNUNET_SYSERR;
+  /* Finally, compare the calculated hash with the original commitment */
+  {
+    struct GNUNET_HashCode calc_hash;
+    GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                       &calc_hash);
+
+    if (0 != GNUNET_CRYPTO_hash_cmp (&h_commitment_orig->hash,
+                                     &calc_hash))
+    {
+      GNUNET_break_op (0);
+      *result = TALER_MHD_reply_with_ec (connection,
+                                         TALER_EC_EXCHANGE_AGE_WITHDRAW_REVEAL_INVALID_HASH,
+                                         NULL);
+      return GNUNET_SYSERR;
+    }
+
+  }
+
+  return ret;
 }
 
 
@@ -582,12 +733,12 @@ TEH_handler_age_withdraw_reveal (
   struct AgeRevealContext actx = {0};
   json_t *j_denoms_h;
   json_t *j_coin_evs;
-  json_t *j_disclosed_coins;
+  json_t *j_disclosed_coin_secrets;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_pub", &actx.reserve_pub),
     GNUNET_JSON_spec_json ("denoms_h", &j_denoms_h),
     GNUNET_JSON_spec_json ("coin_evs", &j_coin_evs),
-    GNUNET_JSON_spec_json ("disclosed_coins", &j_disclosed_coins),
+    GNUNET_JSON_spec_json ("disclosed_coin_secrets", &j_disclosed_coin_secrets),
     GNUNET_JSON_spec_end ()
   };
 
@@ -612,7 +763,7 @@ TEH_handler_age_withdraw_reveal (
           rc->connection,
           j_denoms_h,
           j_coin_evs,
-          j_disclosed_coins,
+          j_disclosed_coin_secrets,
           &actx,
           &result))
       break;
@@ -639,16 +790,16 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Verify the computed h_commitment equals the committed one and that
-     * coins have a maximum age group of max_age_group */
+     * coins have a maximum age group corresponding max_age (age-mask dependend) */
     if (GNUNET_OK != verify_commitment_and_max_age (
           rc->connection,
           &actx.commitment.h_commitment,
-          actx.commitment.max_age_group,
+          actx.commitment.max_age,
           actx.commitment.noreveal_index,
           actx.num_coins,
           actx.coin_evs,
-          actx.disclosed_coins,
           actx.denom_keys,
+          actx.disclosed_coin_secrets,
           &result))
       break;
 

@@ -5952,16 +5952,16 @@ TALER_age_commitment_base_public_key;
  *
  * See https://docs.taler.net/core/api-exchange.html#withdraw-with-age-restriction
  *
+ * @param secret The master secret of the coin from which we derive the age restriction
  * @param mask The age mask, defining the age groups
  * @param max_age The maximum age for this coin.
- * @param coin_priv The private key of the coin from which we derive the age restriction
  * @param[out] comm_proof The commitment and proof for age restriction for age @a max_age
  */
 enum GNUNET_GenericReturnValue
-TALER_age_restriction_commit_from_base (
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+TALER_age_restriction_from_secret (
+  const struct TALER_PlanchetMasterSecretP *secret,
   const struct TALER_AgeMask *mask,
-  uint8_t max_age,
+  const uint8_t max_age,
   struct TALER_AgeCommitmentProof *comm_proof);
 
 

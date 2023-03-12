@@ -585,10 +585,10 @@ TALER_age_mask_to_string (
 
 
 enum GNUNET_GenericReturnValue
-TALER_age_restriction_commit_from_base (
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+TALER_age_restriction_from_secret (
+  const struct TALER_PlanchetMasterSecretP *secret,
   const struct TALER_AgeMask *mask,
-  uint8_t max_age,
+  const uint8_t max_age,
   struct TALER_AgeCommitmentProof *ncp)
 {
   struct GNUNET_HashCode seed_i = {0};
@@ -596,7 +596,7 @@ TALER_age_restriction_commit_from_base (
   uint8_t num_priv;
 
   GNUNET_assert (NULL != mask);
-  GNUNET_assert (NULL != coin_priv);
+  GNUNET_assert (NULL != secret);
   GNUNET_assert (NULL != ncp);
   GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
 
@@ -629,7 +629,7 @@ TALER_age_restriction_commit_from_base (
     const char *label = i < num_priv ? "age-commitment" : "age-factor";
 
     ret = GNUNET_CRYPTO_kdf (&seed_i, sizeof(seed_i),
-                             coin_priv, sizeof(*coin_priv),
+                             secret, sizeof(*secret),
                              label, strlen (label),
                              &i, sizeof(i),
                              NULL, 0);

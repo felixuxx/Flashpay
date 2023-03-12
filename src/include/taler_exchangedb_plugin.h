@@ -1064,9 +1064,9 @@ struct TALER_EXCHANGEDB_AgeWithdrawCommitment
   struct TALER_Amount amount_with_fee;
 
   /**
-   * Maximum age group that the coins are restricted to.
+   * Maximum age that the coins are restricted to.
    */
-  uint32_t max_age_group;
+  uint32_t max_age;
 
   /**
    * The hash of the commitment of all n*kappa coins

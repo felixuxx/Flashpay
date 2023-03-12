@@ -29,7 +29,7 @@ BEGIN
       ',h_commitment BYTEA PRIMARY KEY CHECK (LENGTH(h_commitment)=64)'
       ',amount_with_fee_val INT8 NOT NULL'
       ',amount_with_fee_frac INT4 NOT NULL'
-      ',max_age_group INT2 NOT NULL'
+      ',max_age INT2 NOT NULL'
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',reserve_sig BYTEA CHECK (LENGTH(reserve_sig)=64)'
       ',noreveal_index INT4 NOT NULL'
@@ -51,8 +51,8 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'The maximum age group that the client commits to with this request'
-    ,'max_age_group'
+     'The maximum age that the client commits to with this request'
+    ,'max_age'
     ,table_name
     ,partition_suffix
   );

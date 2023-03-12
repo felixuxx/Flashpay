@@ -321,8 +321,8 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
     TALER_JSON_spec_amount ("amount",
                             TEH_currency,
                             &awc.commitment.amount_with_fee),
-    GNUNET_JSON_spec_uint32 ("max_age_group",
-                             &awc.commitment.max_age_group),
+    GNUNET_JSON_spec_uint32 ("max_age",
+                             &awc.commitment.max_age),
     GNUNET_JSON_spec_end ()
   };
 
@@ -353,7 +353,7 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
     if (GNUNET_OK !=
         TALER_wallet_age_withdraw_verify (&awc.commitment.h_commitment,
                                           &awc.commitment.amount_with_fee,
-                                          awc.commitment.max_age_group,
+                                          awc.commitment.max_age,
                                           &awc.commitment.reserve_pub,
                                           &awc.commitment.reserve_sig))
     {

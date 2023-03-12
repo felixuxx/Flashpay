@@ -45,8 +45,8 @@ TEH_PG_get_age_withdraw_info (
                                           &awc->reserve_sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                           &awc->reserve_pub),
-    GNUNET_PQ_result_spec_uint32 ("max_age_group",
-                                  &awc->max_age_group),
+    GNUNET_PQ_result_spec_uint32 ("max_age",
+                                  &awc->max_age),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &awc->amount_with_fee),
     GNUNET_PQ_result_spec_uint32 ("noreveal_index",
@@ -66,7 +66,7 @@ TEH_PG_get_age_withdraw_info (
            " h_commitment"
            ",reserve_sig"
            ",reserve_pub"
-           ",max_age_group"
+           ",max_age"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",noreveal_index"
