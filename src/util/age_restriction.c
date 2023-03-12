@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,19 @@
 #include "taler_signatures.h"
 #include <gnunet/gnunet_json_lib.h>
 #include <gcrypt.h>
+
+struct
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+GNUNET_CRYPTO_Edx25519PublicKey
+#else
+GNUNET_CRYPTO_EcdsaPublicKey
+#endif
+TALER_age_commitment_base_public_key = {
+  .q_y = { 0x6f, 0xe5, 0x87, 0x9a, 0x3d, 0xa9, 0x44, 0x20,
+           0x80, 0xbd, 0x6a, 0xb9, 0x44, 0x56, 0x91, 0x19,
+           0xaf, 0xb4, 0xc8, 0x7b, 0x89, 0xce, 0x23, 0x17,
+           0x97, 0x20, 0x5c, 0xbb, 0x9c, 0xd7, 0xcc, 0xd9},
+};
 
 void
 TALER_age_commitment_hash (
@@ -82,36 +95,78 @@ get_age_group (
 }
 
 
+#ifdef AGE_RESTRICTION_WITH_ECDSA
+/* @brief Helper function to generate a ECDSA private key
+ *
+ * @param seed Input seed
+ * @param size Size of the seed in bytes
+ * @param[out] pkey ECDSA private key
+ * @return GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+ecdsa_create_from_seed (
+  const void *seed,
+  size_t seed_size,
+  struct GNUNET_CRYPTO_EcdsaPrivateKey *key)
+{
+  enum GNUNET_GenericReturnValue ret;
+  ret = GNUNET_CRYPTO_kdf (key,
+                           sizeof (*key),
+                           &seed,
+                           seed_size,
+                           "age commitment",
+                           sizeof ("age commitment") - 1,
+                           NULL, 0);
+  if (GNUNET_OK != ret)
+    return ret;
+
+  /* See GNUNET_CRYPTO_ecdsa_key_create */
+  key->d[0] &= 248;
+  key->d[31] &= 127;
+  key->d[31] |= 64;
+
+  return GNUNET_OK;
+}
+
+
+#endif
+
+
 enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
   const uint8_t age,
   const struct GNUNET_HashCode *seed,
-  struct TALER_AgeCommitmentProof *new)
+  struct TALER_AgeCommitmentProof *ncp)
 {
   struct GNUNET_HashCode seed_i;
-  uint8_t num_pub = __builtin_popcount (mask->bits) - 1;
-  uint8_t num_priv = get_age_group (mask, age);
+  uint8_t num_pub;
+  uint8_t num_priv;
   size_t i;
 
+  GNUNET_assert (NULL != mask);
   GNUNET_assert (NULL != seed);
-  GNUNET_assert (NULL != new);
+  GNUNET_assert (NULL != ncp);
   GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
+
+  num_pub = __builtin_popcount (mask->bits) - 1;
+  num_priv = get_age_group (mask, age);
+
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
 
   seed_i = *seed;
-  new->commitment.mask.bits = mask->bits;
-  new->commitment.num = num_pub;
-  new->proof.num = num_priv;
-  new->proof.keys = NULL;
+  ncp->commitment.mask.bits = mask->bits;
+  ncp->commitment.num = num_pub;
+  ncp->proof.num = num_priv;
+  ncp->proof.keys = NULL;
 
-  new->commitment.keys = GNUNET_new_array (
+  ncp->commitment.keys = GNUNET_new_array (
     num_pub,
     struct TALER_AgeCommitmentPublicKeyP);
 
   if (0 < num_priv)
-    new->proof.keys = GNUNET_new_array (
+    ncp->proof.keys = GNUNET_new_array (
       num_priv,
       struct TALER_AgeCommitmentPrivateKeyP);
 
@@ -126,47 +181,33 @@ TALER_age_restriction_commit (
 
     /* Only save the private keys for age groups less than num_priv */
     if (i < num_priv)
-      pkey = &new->proof.keys[i];
+      pkey = &ncp->proof.keys[i];
 
 #ifndef AGE_RESTRICTION_WITH_ECDSA
     GNUNET_CRYPTO_edx25519_key_create_from_seed (&seed_i,
                                                  sizeof(seed_i),
                                                  &pkey->priv);
     GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
-                                           &new->commitment.keys[i].pub);
+                                           &ncp->commitment.keys[i].pub);
+#else
+    if (GNUNET_OK !=
+        ecdsa_create_from_seed (&seed_i,
+                                sizeof(seed_i),
+                                &pkey->priv))
+    {
+      GNUNET_free (ncp->commitment.keys);
+      GNUNET_free (ncp->proof.keys);
+      return GNUNET_SYSERR;
+    }
+
+    GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
+                                        &ncp->commitment.keys[i].pub);
+#endif
+
     seed_i.bits[0] += 1;
   }
 
   return GNUNET_OK;
-#else
-    if  (GNUNET_OK !=
-         GNUNET_CRYPTO_kdf (pkey,
-                            sizeof (*pkey),
-                            &salti,
-                            sizeof (salti),
-                            "age commitment",
-                            strlen ("age commitment"),
-                            NULL, 0))
-      goto FAIL;
-
-    /* See GNUNET_CRYPTO_ecdsa_key_create */
-    pkey->priv.d[0] &= 248;
-    pkey->priv.d[31] &= 127;
-    pkey->priv.d[31] |= 64;
-
-    GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
-                                        &new->commitment.keys[i].pub);
-
-  }
-
-  return GNUNET_OK;
-
-FAIL:
-  GNUNET_free (new->commitment.keys);
-  if (NULL != new->proof.keys)
-    GNUNET_free (new->proof.keys);
-  return GNUNET_SYSERR;
-#endif
 }
 
 
@@ -216,33 +257,30 @@ TALER_age_commitment_derive (
       &newacp->proof.keys[i].priv);
   }
 #else
-  char label[sizeof(uint64_t) + 1] = {0};
-
-  /* Because GNUNET_CRYPTO_ecdsa_public_key_derive expects char * (and calls
-   * strlen on it), we must avoid 0's in the label.  */
-  uint64_t nz_salt = salt | 0x8040201008040201;
-  memcpy (label, &nz_salt, sizeof(nz_salt));
-
-  /* 1. Derive the public keys */
-  for (size_t i = 0; i < orig->commitment.num; i++)
   {
-    GNUNET_CRYPTO_ecdsa_public_key_derive (
-      &orig->commitment.keys[i].pub,
-      label,
-      "age commitment derive",
-      &newacp->commitment.keys[i].pub);
-  }
+    const char *label = GNUNET_h2s (salt);
 
-  /* 2. Derive the private keys */
-  for (size_t i = 0; i < orig->proof.num; i++)
-  {
-    struct GNUNET_CRYPTO_EcdsaPrivateKey *priv;
-    priv = GNUNET_CRYPTO_ecdsa_private_key_derive (
-      &orig->proof.keys[i].priv,
-      label,
-      "age commitment derive");
-    newacp->proof.keys[i].priv = *priv;
-    GNUNET_free (priv);
+    /* 1. Derive the public keys */
+    for (size_t i = 0; i < orig->commitment.num; i++)
+    {
+      GNUNET_CRYPTO_ecdsa_public_key_derive (
+        &orig->commitment.keys[i].pub,
+        label,
+        "age commitment derive",
+        &newacp->commitment.keys[i].pub);
+    }
+
+    /* 2. Derive the private keys */
+    for (size_t i = 0; i < orig->proof.num; i++)
+    {
+      struct GNUNET_CRYPTO_EcdsaPrivateKey *priv;
+      priv = GNUNET_CRYPTO_ecdsa_private_key_derive (
+        &orig->proof.keys[i].priv,
+        label,
+        "age commitment derive");
+      newacp->proof.keys[i].priv = *priv;
+      GNUNET_free (priv);
+    }
   }
 #endif
 
@@ -543,6 +581,108 @@ TALER_age_mask_to_string (
     }
   }
   return buf;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_age_restriction_commit_from_base (
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
+  struct TALER_AgeCommitmentProof *ncp)
+{
+  struct GNUNET_HashCode seed_i = {0};
+  uint8_t num_pub;
+  uint8_t num_priv;
+
+  GNUNET_assert (NULL != mask);
+  GNUNET_assert (NULL != coin_priv);
+  GNUNET_assert (NULL != ncp);
+  GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
+
+  num_pub = __builtin_popcount (mask->bits) - 1;
+  num_priv = get_age_group (mask, max_age);
+
+  GNUNET_assert (31 > num_priv);
+  GNUNET_assert (num_priv <= num_pub);
+
+  ncp->commitment.mask.bits = mask->bits;
+  ncp->commitment.num = num_pub;
+  ncp->proof.num = num_priv;
+  ncp->proof.keys = NULL;
+
+  ncp->commitment.keys = GNUNET_new_array (
+    num_pub,
+    struct TALER_AgeCommitmentPublicKeyP);
+
+  if (0 < num_priv)
+    ncp->proof.keys = GNUNET_new_array (
+      num_priv,
+      struct TALER_AgeCommitmentPrivateKeyP);
+
+  /* Create as many private keys as allow with max_age and derive the
+   * corresponding public keys.  The rest of the needed public keys are created
+   * by scalar mulitplication with the TALER_age_commitment_base_public_key. */
+  for (size_t i = 0; i < num_pub; i++)
+  {
+    enum GNUNET_GenericReturnValue ret;
+    const char *label = i < num_priv ? "age-commitment" : "age-factor";
+
+    ret = GNUNET_CRYPTO_kdf (&seed_i, sizeof(seed_i),
+                             coin_priv, sizeof(*coin_priv),
+                             label, strlen (label),
+                             &i, sizeof(i),
+                             NULL, 0);
+    GNUNET_assert (GNUNET_OK == ret);
+
+    /* Only generate and save the private keys and public keys for age groups
+     * less than num_priv */
+    if (i < num_priv)
+    {
+      struct TALER_AgeCommitmentPrivateKeyP *pkey = &ncp->proof.keys[i];
+
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+      GNUNET_CRYPTO_edx25519_key_create_from_seed (&seed_i,
+                                                   sizeof(seed_i),
+                                                   &pkey->priv);
+      GNUNET_CRYPTO_edx25519_key_get_public (&pkey->priv,
+                                             &ncp->commitment.keys[i].pub);
+#else
+      if (GNUNET_OK != ecdsa_create_from_seed (&seed_i,
+                                               sizeof(seed_i),
+                                               &pkey->priv))
+      {
+        GNUNET_free (ncp->commitment.keys);
+        GNUNET_free (ncp->proof.keys);
+        return GNUNET_SYSERR;
+      }
+      GNUNET_CRYPTO_ecdsa_key_get_public (&pkey->priv,
+                                          &ncp->commitment.keys[i].pub);
+#endif
+    }
+    else
+    {
+      /* For all indices larger than num_priv, derive a public key from
+       * TALER_age_commitment_base_public_key by scalar multiplication */
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+      GNUNET_CRYPTO_edx25519_public_key_derive (
+        &TALER_age_commitment_base_public_key,
+        &seed_i,
+        sizeof(seed_i),
+        &ncp->commitment.keys[i].pub);
+#else
+
+      GNUNET_CRYPTO_ecdsa_public_key_derive (
+        &TALER_age_commitment_base_public_key,
+        GNUNET_h2s (&seed_i),
+        "age withdraw",
+        &ncp->commitment.keys[i].pub);
+#endif
+    }
+  }
+
+  return GNUNET_OK;
+
 }
 
 

@@ -18,6 +18,7 @@
  * @brief taler-specific crypto functions
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff <christian@grothoff.org>
+ * @author Özgür Kesim <oec-taler@kesim.org>
  */
 #if ! defined (__TALER_UTIL_LIB_H_INSIDE__)
 #error "Only <taler_util.h> can be included directly."
@@ -5925,5 +5926,43 @@ TALER_age_proof_free (
 void
 TALER_age_commitment_proof_free (
   struct TALER_AgeCommitmentProof *p);
+
+
+/**
+ * @brief For age-withdraw, clients have to prove that the public keys for all
+ * age groups larger than the allowed maximum age group are derived by scalar
+ * multiplication from this Edx25519 public key (in Crockford Base32 encoding):
+ *
+ *       DZJRF6HXN520505XDAWM8NMH36QV9J3VH77265WQ09EBQ76QSKCG
+ *
+ * Its private key was chosen randomly and then deleted.
+ */
+extern struct
+#ifndef AGE_RESTRICTION_WITH_ECDSA
+GNUNET_CRYPTO_Edx25519PublicKey
+#else
+GNUNET_CRYPTO_EcdsaPublicKey
+#endif
+TALER_age_commitment_base_public_key;
+
+/**
+ * @brief Similiar to TALER_age_restriction_commit, but takes the coin's
+ * private key as seed input and calculates the public keys in the slots larger
+ * than the given age as derived from TALER_age_commitment_base_public_key.
+ *
+ * See https://docs.taler.net/core/api-exchange.html#withdraw-with-age-restriction
+ *
+ * @param mask The age mask, defining the age groups
+ * @param max_age The maximum age for this coin.
+ * @param coin_priv The private key of the coin from which we derive the age restriction
+ * @param[out] comm_proof The commitment and proof for age restriction for age @a max_age
+ */
+enum GNUNET_GenericReturnValue
+TALER_age_restriction_commit_from_base (
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
+  struct TALER_AgeCommitmentProof *comm_proof);
+
 
 #endif

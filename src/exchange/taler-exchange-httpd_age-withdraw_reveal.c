@@ -29,22 +29,6 @@
 #include "taler-exchange-httpd_keys.h"
 
 /**
- * Clients have to prove that the public keys for all age groups larger than
- * the allowed maximum age group are derived by scalar multiplication from this
- * Edx25519 public key (in Crockford Base32 encoding):
- *
- *       DZJRF6HXN520505XDAWM8NMH36QV9J3VH77265WQ09EBQ76QSKCG
- *
- * The private key was chosen randomly and then deleted.
- */
-static struct GNUNET_CRYPTO_Edx25519PublicKey publishedBaseKey = {
-  .q_y = { 0x6f, 0xe5, 0x87, 0x9a, 0x3d, 0xa9, 0x44, 0x20,
-           0x80, 0xbd, 0x6a, 0xb9, 0x44, 0x56, 0x91, 0x19,
-           0xaf, 0xb4, 0xc8, 0x7b, 0x89, 0xce, 0x23, 0x17,
-           0x97, 0x20, 0x5c, 0xbb, 0x9c, 0xd7, 0xcc, 0xd9},
-};
-
-/**
  * State for an /age-withdraw/$ACH/reveal operation.
  */
 struct AgeRevealContext
@@ -360,16 +344,14 @@ denomination_is_valid (
     connection,
     result);
 
-  /* Does the denomination exist? */
   if (NULL == dks)
   {
+    /* The denomination doesn't exist */
     GNUNET_assert (result != NULL);
     /* Note: a HTTP-response has been queued and result has been set by
      * TEH_keys_denominations_by_hash2 */
     return false;
   }
-
-  /* Is the denomation still and already valid? */
 
   if (GNUNET_TIME_absolute_is_past (dks->meta.expire_withdraw.abs_time))
   {
@@ -582,6 +564,7 @@ verify_commitment_and_max_age (
   for (uint32_t i = 0; i < num_coins; i++)
   {
     /* FIXME:oec:  Calculate new coins and blinded hashes */
+    /*TALER_age_restriction_commit_from_base(); */
   }
 
   return GNUNET_SYSERR;
