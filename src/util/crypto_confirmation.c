@@ -163,6 +163,14 @@ base32decode (const char *val,
 }
 
 
+/**
+ * @brief Builds POS confirmation to verify payment.
+ *
+ * @param h_key opaque key for the totp operation
+ * @param h_key_len size of h_key in bytes
+ * @param ts current time
+ * @return Token on success, NULL of failure
+ */
 static char *
 executive_totp (void *h_key,
                 size_t h_key_len,
@@ -201,15 +209,6 @@ executive_totp (void *h_key,
 }
 
 
-/**
- * @brief Builds POS confirmation to verify payment.
- *
- * @param pos_key base32 (RFC 3548, not Crockford!) encoded key for verification payment
- * @param pos_alg algorithm to compute the payment verification
- * @param total of the order paid
- * @param ts is the current time given
- * @return Token on success, NULL of failure
- */
 char *
 TALER_build_pos_confirmation (const char *pos_key,
                               enum TALER_MerchantConfirmationAlgorithm pos_alg,

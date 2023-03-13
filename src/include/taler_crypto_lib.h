@@ -950,13 +950,13 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * @brief It is build pos confirmation to verify payment.
+ * @brief Builds POS confirmation token to verify payment.
  *
  * @param pos_key encoded key for verification payment
  * @param pos_alg algorithm to compute the payment verification
  * @param total of the order paid
  * @param ts is the time given
- *
+ * @return POS token on success, NULL otherwise
  */
 char *
 TALER_build_pos_confirmation (const char *pos_key,
