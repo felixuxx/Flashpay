@@ -1053,7 +1053,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
 
 /**
  * @brief Information we keep for an age-withdraw commitment
- * to reproduce the /age-withdraw operation if neede, and to have proof
+ * to reproduce the /age-withdraw operation if needed, and to have proof
  * that a reserve was drained by this amount.
  */
 struct TALER_EXCHANGEDB_AgeWithdrawCommitment
@@ -1097,7 +1097,7 @@ struct TALER_EXCHANGEDB_AgeWithdrawCommitment
   struct TALER_ExchangeSignatureP sig;
 
   /**
-   * Timestamp of the request beeing made
+   * Timestamp of the request being made
    */
   struct GNUNET_TIME_Timestamp timestamp;
 };

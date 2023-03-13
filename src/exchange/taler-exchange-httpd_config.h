@@ -48,7 +48,7 @@
  * Manages a /config call.
  *
  * @param rc context of the handler
- * @param[in,out] args remaining arguments (ingored)
+ * @param[in,out] args remaining arguments (ignored)
  * @return MHD result code
  */
 MHD_RESULT

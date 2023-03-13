@@ -5946,7 +5946,7 @@ GNUNET_CRYPTO_EcdsaPublicKey
 TALER_age_commitment_base_public_key;
 
 /**
- * @brief Similiar to TALER_age_restriction_commit, but takes the coin's
+ * @brief Similar to TALER_age_restriction_commit, but takes the coin's
  * private key as seed input and calculates the public keys in the slots larger
  * than the given age as derived from TALER_age_commitment_base_public_key.
  *

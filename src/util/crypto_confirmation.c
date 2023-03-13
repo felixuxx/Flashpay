@@ -217,7 +217,7 @@ TALER_build_pos_confirmation (const char *pos_key,
 {
   size_t pos_key_length = strlen (pos_key);
   void *key; /* pos_key in binary */
-  size_t key_len; /* lengh of the key */
+  size_t key_len; /* length of the key */
   char *ret;
   int dret;
 
