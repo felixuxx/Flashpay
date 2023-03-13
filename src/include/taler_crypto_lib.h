@@ -950,12 +950,12 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * It is build pos confirmation to verify paiement.
+ * @brief It is build pos confirmation to verify payment.
  *
  * @param pos_key encoded key for verification payment
  * @param pos_alg algorithm to compute the payment verification
  * @param total of the order paid
- * @parmam ts is the time given
+ * @param ts is the time given
  *
  */
 char *
