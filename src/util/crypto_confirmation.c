@@ -202,12 +202,13 @@ executive_totp (void *h_key,
 
 
 /**
- * It is build pos confirmation to verify payment.
+ * @brief Builds POS confirmation to verify payment.
  *
  * @param pos_key base32 (RFC 3548, not Crockford!) encoded key for verification payment
  * @param pos_alg algorithm to compute the payment verification
  * @param total of the order paid
  * @param ts is the current time given
+ * @return Token on success, NULL of failure
  */
 char *
 TALER_build_pos_confirmation (const char *pos_key,
