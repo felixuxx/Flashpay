@@ -4851,7 +4851,7 @@ TALER_exchange_online_purse_status_verify (
  * Create age-withdraw confirmation signature.
  *
  * @param scb function to call to create the signature
- * @param awch age-withdraw commitment that identifies the n*kappa blinded coins
+ * @param h_commitment age-withdraw commitment that identifies the n*kappa blinded coins
  * @param noreveal_index gamma cut-and-choose value chosen by the exchange
  * @param[out] pub where to write the exchange public key
  * @param[out] sig where to write the exchange signature

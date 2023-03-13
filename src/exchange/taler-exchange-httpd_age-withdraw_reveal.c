@@ -113,7 +113,7 @@ age_reveal_context_free (struct AgeRevealContext *actx)
  * @param j_coin_evs The blinded envelopes in JSON format for the coins that are not revealed and will be signed on success
  * @param j_disclosed_coin_secrets The n*(kappa-1) disclosed coins' private keys in JSON format, from which all other attributes (age restriction, blinding, nonce) will be derived from
  * @param[out] actx The context of the operation, only partially built at call time
- * @param[out] mhd_mret The result if a reply is queued for MHD
+ * @param[out] mhd_ret The result if a reply is queued for MHD
  * @return true on success, false on failure, with a reply already queued for MHD.
  */
 static enum GNUNET_GenericReturnValue
@@ -416,7 +416,7 @@ denomination_is_valid (
  * @param denoms_h array of hashes of denomination public keys
  * @param[out] dks On success, will be filled with the denomination keys.  Caller must deallocate.
  * @param amount_with_fee The committed amount including fees
- * @param[out] total_sum On success, will contain the total sum of all denominations
+ * @param[out] total_amount On success, will contain the total sum of all denominations
  * @param[out] total_fee On success, will contain the total sum of all fees
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
  * @return GNUNET_OK if the denominations are valid and support age-restriction
@@ -539,7 +539,7 @@ are_denominations_valid (
  * @param num_coins Number of coins
  * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
  * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
- * @param discloded_coin_secrets The secrets of the disclosed coins, (TALER_CNC_KAPPA - 1)*num_coins many
+ * @param disclosed_coin_secrets The secrets of the disclosed coins, (TALER_CNC_KAPPA - 1)*num_coins many
  * @param[out] result On error, a HTTP-response will be queued and result set accordingly
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
