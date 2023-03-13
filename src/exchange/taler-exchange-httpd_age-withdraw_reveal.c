@@ -415,7 +415,7 @@ denomination_is_valid (
  * @param len The lengths of the array @a denoms_h
  * @param denoms_h array of hashes of denomination public keys
  * @param[out] dks On success, will be filled with the denomination keys.  Caller must deallocate.
- * @param amount_with_fee The commited amount including fees
+ * @param amount_with_fee The committed amount including fees
  * @param[out] total_sum On success, will contain the total sum of all denominations
  * @param[out] total_fee On success, will contain the total sum of all fees
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
@@ -491,7 +491,7 @@ are_denominations_valid (
     }
   }
 
-  /* Compare the commited amount against the totals */
+  /* Compare the committed amount against the totals */
   {
     struct TALER_Amount sum;
     TALER_amount_set_zero (TEH_currency, &sum);
@@ -790,7 +790,7 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Verify the computed h_commitment equals the committed one and that
-     * coins have a maximum age group corresponding max_age (age-mask dependend) */
+     * coins have a maximum age group corresponding max_age (age-mask dependent) */
     if (GNUNET_OK != verify_commitment_and_max_age (
           rc->connection,
           &actx.commitment.h_commitment,
