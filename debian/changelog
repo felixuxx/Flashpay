@@ -1,3 +1,9 @@
+taler-exchange (0.9.2-3) unstable; urgency=low
+
+  * Improvements to timeout handling when DB is not available yet.
+
+ -- Florian Dold <dold@taler.net>  Tue, 14 Mar 2023 12:30:15 +0100
+
 taler-exchange (0.9.2-2) unstable; urgency=low
 
   * Further improvements to Debian package.
