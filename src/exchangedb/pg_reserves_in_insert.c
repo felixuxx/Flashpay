@@ -58,7 +58,6 @@ compute_notify_on_reserve (const struct TALER_ReservePublicKeyP *reserve_pub)
 static enum GNUNET_DB_QueryStatus
 insert1 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[1],
-         struct GNUNET_TIME_Timestamp expiry,
          struct GNUNET_TIME_Timestamp gc,
          struct TALER_PaytoHashP h_payto,
          char *const *notify_s,
@@ -76,19 +75,18 @@ insert1 (struct PostgresClosure *pg,
            ",transaction_duplicate"
            ",ruuid AS reserve_uuid"
            " FROM exchange_do_batch_reserves_in_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
-    GNUNET_PQ_query_param_timestamp (&expiry),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_end
   };
@@ -132,7 +130,6 @@ insert1 (struct PostgresClosure *pg,
 static enum GNUNET_DB_QueryStatus
 insert2 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[2],
-         struct GNUNET_TIME_Timestamp expiry,
          struct GNUNET_TIME_Timestamp gc,
          struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
@@ -153,20 +150,19 @@ insert2 (struct PostgresClosure *pg,
            ",ruuid AS reserve_uuid"
            ",ruuid2 AS reserve_uuid2"
            " FROM exchange_do_batch2_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20);");
 
   struct GNUNET_PQ_QueryParam params[] = {
-
-    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
-    GNUNET_PQ_query_param_timestamp (&expiry),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_string (notify_s[1]),
 
@@ -177,7 +173,6 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -238,7 +233,6 @@ insert2 (struct PostgresClosure *pg,
 static enum GNUNET_DB_QueryStatus
 insert4 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[4],
-         struct GNUNET_TIME_Timestamp expiry,
          struct GNUNET_TIME_Timestamp gc,
          struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
@@ -265,19 +259,19 @@ insert4 (struct PostgresClosure *pg,
            ",ruuid3 AS reserve_uuid3"
            ",ruuid4 AS reserve_uuid4"
            " FROM exchange_do_batch4_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38);");
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
-    GNUNET_PQ_query_param_timestamp (&expiry),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_string (notify_s[1]),
     GNUNET_PQ_query_param_string (notify_s[2]),
@@ -290,7 +284,6 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[2].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[2].wire_reference),
@@ -299,7 +292,6 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[2].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[2].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[3].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[3].wire_reference),
@@ -308,7 +300,6 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[3].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[3].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_end
   };
@@ -385,7 +376,6 @@ insert4 (struct PostgresClosure *pg,
 static enum GNUNET_DB_QueryStatus
 insert8 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[8],
-         struct GNUNET_TIME_Timestamp expiry,
          struct GNUNET_TIME_Timestamp gc,
          struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
@@ -398,8 +388,8 @@ insert8 (struct PostgresClosure *pg,
   enum GNUNET_DB_QueryStatus qs3;
   PREPARE (pg,
            "batch8_reserve_create",
-           "SELECT "
-           "out_reserve_found AS conflicted"
+           "SELECT"
+           " out_reserve_found AS conflicted"
            ",out_reserve_found2 AS conflicted2"
            ",out_reserve_found3 AS conflicted3"
            ",out_reserve_found4 AS conflicted4"
@@ -424,19 +414,18 @@ insert8 (struct PostgresClosure *pg,
            ",ruuid7 AS reserve_uuid7"
            ",ruuid8 AS reserve_uuid8"
            " FROM exchange_do_batch8_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$80,$81,$82);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74);");
 
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
-    GNUNET_PQ_query_param_timestamp (&expiry),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+    GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_string (notify_s[1]),
     GNUNET_PQ_query_param_string (notify_s[2]),
@@ -453,7 +442,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[2].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[2].wire_reference),
@@ -462,7 +450,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[2].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[2].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[3].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[3].wire_reference),
@@ -471,7 +458,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[3].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[3].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[4].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[4].wire_reference),
@@ -489,7 +475,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[5].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[5].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[6].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[6].wire_reference),
@@ -498,7 +483,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[6].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[6].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[7].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[7].wire_reference),
@@ -507,7 +491,6 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (&reserves[7].execution_time),
     GNUNET_PQ_query_param_auto_from_type (&h_payto),
     GNUNET_PQ_query_param_string (reserves[7].sender_account_details),
-    GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
     GNUNET_PQ_query_param_end
   };
@@ -633,8 +616,6 @@ TEH_PG_reserves_in_insert (void *cls,
   enum GNUNET_DB_QueryStatus qs2;
   enum GNUNET_DB_QueryStatus qs4;
   enum GNUNET_DB_QueryStatus qs5;
-  struct GNUNET_TIME_Timestamp expiry;
-  struct GNUNET_TIME_Timestamp gc;
   struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid[reserves_length];
   bool transaction_duplicate[reserves_length];
@@ -642,6 +623,8 @@ TEH_PG_reserves_in_insert (void *cls,
   bool t_duplicate = false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
+  struct GNUNET_TIME_Timestamp gc
+    = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
   bool conflicts[reserves_length];
   char *notify_s[reserves_length];
 
@@ -652,12 +635,6 @@ TEH_PG_reserves_in_insert (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  expiry = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_absolute_add (reserves->execution_time.abs_time,
-                              pg->idle_reserve_expiration_time));
-  gc = GNUNET_TIME_absolute_to_timestamp (
-    GNUNET_TIME_absolute_add (GNUNET_TIME_absolute_get (),
-                              pg->legal_reserve_expiration_time));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating reserve %s with expiration in %s\n",
               TALER_B2S (&(reserves->reserve_pub)),
@@ -694,7 +671,6 @@ TEH_PG_reserves_in_insert (void *cls,
     {
       qs1 = insert8 (pg,
                      &reserves[i],
-                     expiry,
                      gc,
                      h_payto,
                      &notify_s[i],
@@ -738,7 +714,6 @@ TEH_PG_reserves_in_insert (void *cls,
     case 4:
       qs4 = insert4 (pg,
                      &reserves[i],
-                     expiry,
                      gc,
                      h_payto,
                      &notify_s[i],
@@ -769,7 +744,6 @@ TEH_PG_reserves_in_insert (void *cls,
     case 2:
       qs5 = insert2 (pg,
                      &reserves[i],
-                     expiry,
                      gc,
                      h_payto,
                      &notify_s[i],
@@ -797,7 +771,6 @@ TEH_PG_reserves_in_insert (void *cls,
     case 1:
       qs2 = insert1 (pg,
                      &reserves[i],
-                     expiry,
                      gc,
                      h_payto,
                      &notify_s[i],
@@ -806,6 +779,7 @@ TEH_PG_reserves_in_insert (void *cls,
                      &conflicts[i],
                      &reserve_uuid[i],
                      &results[i]);
+            fprintf(stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
       if (qs2<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -815,6 +789,7 @@ TEH_PG_reserves_in_insert (void *cls,
       }
       need_update |= conflicts[i];
       t_duplicate |= transaction_duplicate[i];
+
       i += 1;
       break;
     case 0:
@@ -864,7 +839,7 @@ TEH_PG_reserves_in_insert (void *cls,
       bool duplicate;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
-        GNUNET_PQ_query_param_timestamp (&expiry),
+        GNUNET_PQ_query_param_timestamp (&reserve_expiration),
         GNUNET_PQ_query_param_uint64 (&reserves[i].wire_reference),
         TALER_PQ_query_param_amount (reserves[i].balance),
         GNUNET_PQ_query_param_string (reserves[i].exchange_account_name),
