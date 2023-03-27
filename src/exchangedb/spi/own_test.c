@@ -530,6 +530,11 @@ pg_spi_update_y(PG_FUNCTION_ARGS)
   PG_RETURN_VOID();
 }
 
+
+
+
+
+
 Datum
 pg_spi_prepare_update(PG_FUNCTION_ARGS)
 {
@@ -579,6 +584,9 @@ void _PG_fini(void)
 /*
 
 */
+
+
+
 
 Datum
 pg_spi_get_dep_ref_fees (PG_FUNCTION_ARGS) {

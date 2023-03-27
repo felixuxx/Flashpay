@@ -137,7 +137,7 @@ CREATE OR REPLACE FUNCTION pg_spi_get_dep_ref_fees(
  ,IN wtid BYTEA
 )
   RETURNS VOID
-  LANGUAGE c COST 100
+  LANGUAGE c VOLATILE COST 100
 AS '$libdir/own_test', 'pg_spi_get_dep_ref_fees';
 
 CREATE OR REPLACE FUNCTION update_pg_spi_get_dep_ref_fees(

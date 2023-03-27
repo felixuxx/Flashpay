@@ -7,3 +7,9 @@ perf_select_refunds_by_coin-postgres
 exchange-0002.sql
 procedures.sql
 exchange-0003.sql
+perf-exchangedb-reserves-in-insert-postgres
+test-exchangedb-batch-reserves-in-insert-postgres
+test-exchangedb-by-j-postgres
+test-exchangedb-populate-link-data-postgres
+test-exchangedb-populate-ready-deposit-postgres
+test-exchangedb-populate-select-refunds-by-coin-postgres
