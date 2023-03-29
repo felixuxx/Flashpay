@@ -29,6 +29,19 @@
 #include "taler_extensions_policy.h"
 
 
+
+
+struct TALER_EXCHANGEDB_CoinInfo
+{
+  uint64_t *known_coin_id;
+  struct TALER_DenominationHashP *denom_hash;
+  struct TALER_AgeCommitmentHash *h_age_commitment;
+  bool *existed;
+};
+
+
+
+
 /**
  * Information about a denomination key.
  */
@@ -885,6 +898,21 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
    */
   struct TALER_AgeMask age_mask;
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /**
@@ -4027,7 +4055,13 @@ struct TALER_EXCHANGEDB_Plugin
                        struct TALER_DenominationHashP *denom_pub_hash,
                        struct TALER_AgeCommitmentHash *age_hash);
 
-
+  enum TALER_EXCHANGEDB_CoinKnownStatus
+  (*batch_ensure_coin_known)(void *cls,
+                             const struct TALER_CoinPublicInfo *coin,
+                             const struct
+                             TALER_EXCHANGEDB_CoinInfo *result,
+                             unsigned int coin_length,
+                             unsigned int batch_size);
   /**
    * Retrieve information about the given @a coin from the database.
    *
