@@ -28,7 +28,7 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_refund (void *cls,
-                        const struct TALER_EXCHANGEDB_Refund *refund)
+                      const struct TALER_EXCHANGEDB_Refund *refund)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -45,7 +45,7 @@ TEH_PG_insert_refund (void *cls,
                  TALER_amount_cmp_currency (&refund->details.refund_amount,
                                             &refund->details.refund_fee));
 
-    /* Used in #postgres_insert_refund() to store refund information */
+  /* Used in #postgres_insert_refund() to store refund information */
   PREPARE (pg,
            "insert_refund",
            "INSERT INTO refunds "

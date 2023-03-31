@@ -28,9 +28,9 @@
 
 void
 TEH_PG_event_notify (void *cls,
-                       const struct GNUNET_DB_EventHeaderP *es,
-                       const void *extra,
-                       size_t extra_size)
+                     const struct GNUNET_DB_EventHeaderP *es,
+                     const void *extra,
+                     size_t extra_size)
 {
   struct PostgresClosure *pg = cls;
 

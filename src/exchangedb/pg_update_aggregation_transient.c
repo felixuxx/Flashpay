@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_aggregation_transient (
   void *cls,
@@ -45,7 +44,7 @@ TEH_PG_update_aggregation_transient (
   };
 
 
-    /* Used in #postgres_update_aggregation_transient() */
+  /* Used in #postgres_update_aggregation_transient() */
   PREPARE (pg,
            "update_aggregation_transient",
            "UPDATE aggregation_transient"

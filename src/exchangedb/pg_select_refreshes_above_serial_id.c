@@ -130,10 +130,6 @@ refreshs_serial_helper_cb (void *cls,
 }
 
 
-
-
-
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_refreshes_above_serial_id (
   void *cls,
@@ -153,8 +149,8 @@ TEH_PG_select_refreshes_above_serial_id (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-    /* Used in #postgres_select_refreshes_above_serial_id() to fetch
-       refresh session with id '\geq' the given parameter */
+  /* Used in #postgres_select_refreshes_above_serial_id() to fetch
+     refresh session with id '\geq' the given parameter */
   PREPARE (pg,
            "audit_get_refresh_commitments_incr",
            "SELECT"

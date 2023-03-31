@@ -113,8 +113,6 @@ history_request_serial_helper_cb (void *cls,
 }
 
 
-
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_history_requests_above_serial_id (
   void *cls,

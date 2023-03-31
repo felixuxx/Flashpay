@@ -28,13 +28,13 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_global_fee (void *cls,
-                            struct GNUNET_TIME_Timestamp start_date,
-                            struct GNUNET_TIME_Timestamp end_date,
-                            const struct TALER_GlobalFeeSet *fees,
-                            struct GNUNET_TIME_Relative purse_timeout,
-                            struct GNUNET_TIME_Relative history_expiration,
-                            uint32_t purse_account_limit,
-                            const struct TALER_MasterSignatureP *master_sig)
+                          struct GNUNET_TIME_Timestamp start_date,
+                          struct GNUNET_TIME_Timestamp end_date,
+                          const struct TALER_GlobalFeeSet *fees,
+                          struct GNUNET_TIME_Relative purse_timeout,
+                          struct GNUNET_TIME_Relative history_expiration,
+                          uint32_t purse_account_limit,
+                          const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -59,14 +59,14 @@ TEH_PG_insert_global_fee (void *cls,
   uint32_t pal;
 
   qs = TEH_PG_get_global_fee (pg,
-                                start_date,
-                                &sd,
-                                &ed,
-                                &wx,
-                                &pt,
-                                &he,
-                                &pal,
-                                &sig);
+                              start_date,
+                              &sd,
+                              &ed,
+                              &wx,
+                              &pt,
+                              &he,
+                              &pal,
+                              &sig);
   if (qs < 0)
     return qs;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -113,7 +113,7 @@ TEH_PG_insert_global_fee (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
-      /* Used in #postgres_insert_global_fee */
+  /* Used in #postgres_insert_global_fee */
   PREPARE (pg,
            "insert_global_fee",
            "INSERT INTO global_fee "

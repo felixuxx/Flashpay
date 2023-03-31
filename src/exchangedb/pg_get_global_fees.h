@@ -35,6 +35,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_global_fees (void *cls,
-                          TALER_EXCHANGEDB_GlobalFeeCallback cb,
+                        TALER_EXCHANGEDB_GlobalFeeCallback cb,
                         void *cb_cls);
+
 #endif

@@ -48,5 +48,3 @@ TEH_PG_delete_aggregation_transient (
                                              "delete_aggregation_transient",
                                              params);
 }
-
-

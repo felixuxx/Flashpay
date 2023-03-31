@@ -40,11 +40,11 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_global_fee (void *cls,
-                            struct GNUNET_TIME_Timestamp start_date,
-                            struct GNUNET_TIME_Timestamp end_date,
-                            const struct TALER_GlobalFeeSet *fees,
-                            struct GNUNET_TIME_Relative purse_timeout,
-                            struct GNUNET_TIME_Relative history_expiration,
-                            uint32_t purse_account_limit,
+                          struct GNUNET_TIME_Timestamp start_date,
+                          struct GNUNET_TIME_Timestamp end_date,
+                          const struct TALER_GlobalFeeSet *fees,
+                          struct GNUNET_TIME_Relative purse_timeout,
+                          struct GNUNET_TIME_Relative history_expiration,
+                          uint32_t purse_account_limit,
                           const struct TALER_MasterSignatureP *master_sig);
 #endif

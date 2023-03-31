@@ -51,4 +51,3 @@ TEH_PG_insert_aggregation_tracking (
                                              "insert_aggregation_tracking",
                                              params);
 }
-

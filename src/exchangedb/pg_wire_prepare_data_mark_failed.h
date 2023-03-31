@@ -36,4 +36,5 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_wire_prepare_data_mark_failed (
   void *cls,
   uint64_t rowid);
+
 #endif

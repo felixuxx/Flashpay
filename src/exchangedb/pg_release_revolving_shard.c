@@ -27,9 +27,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_release_revolving_shard (void *cls,
-                                  const char *job_name,
-                                  uint32_t start_row,
-                                  uint32_t end_row)
+                                const char *job_name,
+                                uint32_t start_row,
+                                uint32_t end_row)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

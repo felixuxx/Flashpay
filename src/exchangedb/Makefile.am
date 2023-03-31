@@ -116,6 +116,7 @@ libtaler_plugin_exchangedb_postgres_la_SOURCES = \
   pg_reserves_in_insert.h pg_reserves_in_insert.c \
   pg_get_withdraw_info.h pg_get_withdraw_info.c \
   pg_get_age_withdraw_info.c pg_get_age_withdraw_info.h \
+  pg_batch_ensure_coin_known.h pg_batch_ensure_coin_known.c \
   pg_do_batch_withdraw.h pg_do_batch_withdraw.c \
   pg_get_policy_details.h pg_get_policy_details.c \
   pg_persist_policy_details.h pg_persist_policy_details.c \

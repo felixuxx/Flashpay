@@ -138,8 +138,8 @@ TEH_PG_select_reserves_in_above_serial_id_by_account (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
-       transactions for reserves with serial id '\geq' the given parameter */
+  /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
+     transactions for reserves with serial id '\geq' the given parameter */
   PREPARE (pg,
            "audit_reserves_in_get_transactions_incr_by_account",
            "SELECT"

@@ -38,9 +38,9 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_ready_deposit (void *cls,
-                            uint64_t start_shard_row,
-                            uint64_t end_shard_row,
-                            struct TALER_MerchantPublicKeyP *merchant_pub,
+                          uint64_t start_shard_row,
+                          uint64_t end_shard_row,
+                          struct TALER_MerchantPublicKeyP *merchant_pub,
                           char **payto_uri);
 
 #endif

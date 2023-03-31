@@ -44,7 +44,7 @@ TEH_PG_store_wire_transfer_out (
     GNUNET_PQ_query_param_end
   };
 
-      /* Used in #postgres_store_wire_transfer_out */
+  /* Used in #postgres_store_wire_transfer_out */
   PREPARE (pg,
            "insert_wire_out",
            "INSERT INTO wire_out "

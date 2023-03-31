@@ -45,7 +45,7 @@ TEH_PG_insert_drain_profit (
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
- /* Used in #postgres_insert_drain_profit() */
+  /* Used in #postgres_insert_drain_profit() */
   PREPARE (pg,
            "drain_profit_insert",
            "INSERT INTO profit_drains "

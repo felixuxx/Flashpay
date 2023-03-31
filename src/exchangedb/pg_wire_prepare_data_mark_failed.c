@@ -37,7 +37,7 @@ TEH_PG_wire_prepare_data_mark_failed (
     GNUNET_PQ_query_param_end
   };
 
-      /* Used in #postgres_wire_prepare_data_mark_failed() */
+  /* Used in #postgres_wire_prepare_data_mark_failed() */
 
   PREPARE (pg,
            "wire_prepare_data_mark_failed",

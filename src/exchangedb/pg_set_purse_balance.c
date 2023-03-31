@@ -50,6 +50,3 @@ TEH_PG_set_purse_balance (
                                              "set_purse_balance",
                                              params);
 }
-
-
-

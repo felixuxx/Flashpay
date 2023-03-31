@@ -36,7 +36,8 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_wire_prepare_data_insert (void *cls,
-                                   const char *type,
-                                   const char *buf,
+                                 const char *type,
+                                 const char *buf,
                                  size_t buf_size);
+
 #endif

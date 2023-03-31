@@ -39,7 +39,7 @@ TEH_PG_insert_denomination_revocation (
     GNUNET_PQ_query_param_end
   };
 
-      /* Used in #postgres_insert_denomination_revocation() */
+  /* Used in #postgres_insert_denomination_revocation() */
   PREPARE (pg,
            "denomination_revocation_insert",
            "INSERT INTO denomination_revocations "

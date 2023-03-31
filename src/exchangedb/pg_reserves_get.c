@@ -27,7 +27,7 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_get (void *cls,
-                       struct TALER_EXCHANGEDB_Reserve *reserve)
+                     struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -43,7 +43,7 @@ TEH_PG_reserves_get (void *cls,
                                      &reserve->gc),
     GNUNET_PQ_result_spec_end
   };
-    /* Used in #postgres_reserves_get() */
+  /* Used in #postgres_reserves_get() */
   PREPARE (pg,
            "reserves_get",
            "SELECT"

@@ -128,7 +128,7 @@ TEH_PG_find_aggregation_transient (
     .pg = pg,
     .status = GNUNET_OK
   };
-    /* Used in #postgres_find_aggregation_transient() */
+  /* Used in #postgres_find_aggregation_transient() */
   PREPARE (pg,
            "find_transient_aggregations",
            "SELECT"

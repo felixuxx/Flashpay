@@ -47,4 +47,5 @@ TEH_PG_lookup_kyc_process_by_account (
   struct GNUNET_TIME_Absolute *expiration,
   char **provider_account_id,
   char **provider_legitimization_id);
+
 #endif

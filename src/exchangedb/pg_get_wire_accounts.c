@@ -92,12 +92,10 @@ get_wire_accounts_cb (void *cls,
 }
 
 
-
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_wire_accounts (void *cls,
-                            TALER_EXCHANGEDB_WireAccountCallback cb,
-                            void *cb_cls)
+                          TALER_EXCHANGEDB_WireAccountCallback cb,
+                          void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GetWireAccountsContext ctx = {
@@ -111,12 +109,12 @@ TEH_PG_get_wire_accounts (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
-      "get_wire_accounts",
-      "SELECT"
-      " payto_uri"
-      ",master_sig"
-      " FROM wire_accounts"
-      " WHERE is_active");
+           "get_wire_accounts",
+           "SELECT"
+           " payto_uri"
+           ",master_sig"
+           " FROM wire_accounts"
+           " WHERE is_active");
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_wire_accounts",
                                              params,

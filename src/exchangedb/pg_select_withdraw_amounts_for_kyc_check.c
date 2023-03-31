@@ -131,21 +131,21 @@ TEH_PG_select_withdraw_amounts_for_kyc_check (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
- /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
-() */
+  /* Used in #postgres_select_withdraw_amounts_for_kyc_check (
+ () */
   PREPARE (pg,
-             "select_kyc_relevant_withdraw_events",
-             "SELECT"
-             " ro.amount_with_fee_val AS amount_val"
-             ",ro.amount_with_fee_frac AS amount_frac"
-             ",ro.execution_date AS date"
-             " FROM reserves_out ro"
-             " JOIN reserves_out_by_reserve USING (h_blind_ev)"
-             " JOIN reserves res ON (ro.reserve_uuid = res.reserve_uuid)"
-             " JOIN reserves_in ri ON (res.reserve_pub = ri.reserve_pub)"
-             " WHERE wire_source_h_payto=$1"
-             "   AND ro.execution_date >= $2"
-             " ORDER BY ro.execution_date DESC");
+           "select_kyc_relevant_withdraw_events",
+           "SELECT"
+           " ro.amount_with_fee_val AS amount_val"
+           ",ro.amount_with_fee_frac AS amount_frac"
+           ",ro.execution_date AS date"
+           " FROM reserves_out ro"
+           " JOIN reserves_out_by_reserve USING (h_blind_ev)"
+           " JOIN reserves res ON (ro.reserve_uuid = res.reserve_uuid)"
+           " JOIN reserves_in ri ON (res.reserve_pub = ri.reserve_pub)"
+           " WHERE wire_source_h_payto=$1"
+           "   AND ro.execution_date >= $2"
+           " ORDER BY ro.execution_date DESC");
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
     "select_kyc_relevant_withdraw_events",

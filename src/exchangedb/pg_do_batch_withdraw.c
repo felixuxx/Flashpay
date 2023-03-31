@@ -60,8 +60,8 @@ TEH_PG_do_batch_withdraw (
                               pg->legal_reserve_expiration_time));
 
 
- /* Used in #postgres_do_batch_withdraw() to
-       update the reserve balance and check its status */
+  /* Used in #postgres_do_batch_withdraw() to
+        update the reserve balance and check its status */
   PREPARE (pg,
            "call_batch_withdraw",
            "SELECT "
@@ -75,4 +75,3 @@ TEH_PG_do_batch_withdraw (
                                                    params,
                                                    rs);
 }
-

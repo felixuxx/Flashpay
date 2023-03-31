@@ -60,7 +60,7 @@ TEH_PG_lookup_denomination_key (
     GNUNET_PQ_result_spec_end
   };
 
-      /* used in #postgres_lookup_denomination_key() */
+  /* used in #postgres_lookup_denomination_key() */
   PREPARE (pg,
            "lookup_denomination_key",
            "SELECT"

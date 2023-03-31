@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 /**
  * Closure for #recoup_serial_helper_cb().
  */
@@ -137,6 +136,7 @@ recoup_serial_helper_cb (void *cls,
   }
 }
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_recoup_above_serial_id (
   void *cls,
@@ -157,7 +157,7 @@ TEH_PG_select_recoup_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
+  /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
   PREPARE (pg,
            "recoup_get_incr",
            "SELECT"

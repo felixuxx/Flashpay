@@ -43,4 +43,5 @@ TEH_PG_select_wire_out_above_serial_id_by_account (
   uint64_t serial_id,
   TALER_EXCHANGEDB_WireTransferOutCallback cb,
   void *cb_cls);
+
 #endif

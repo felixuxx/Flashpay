@@ -28,11 +28,11 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire_fee (void *cls,
-                          const char *type,
-                          struct GNUNET_TIME_Timestamp start_date,
-                          struct GNUNET_TIME_Timestamp end_date,
-                          const struct TALER_WireFeeSet *fees,
-                          const struct TALER_MasterSignatureP *master_sig)
+                        const char *type,
+                        struct GNUNET_TIME_Timestamp start_date,
+                        struct GNUNET_TIME_Timestamp end_date,
+                        const struct TALER_WireFeeSet *fees,
+                        const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -51,12 +51,12 @@ TEH_PG_insert_wire_fee (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_PG_get_wire_fee (pg,
-                              type,
-                              start_date,
-                              &sd,
-                              &ed,
-                              &wx,
-                              &sig);
+                            type,
+                            start_date,
+                            &sd,
+                            &ed,
+                            &wx,
+                            &sig);
   if (qs < 0)
     return qs;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -88,7 +88,7 @@ TEH_PG_insert_wire_fee (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
-      /* Used in #postgres_insert_wire_fee */
+  /* Used in #postgres_insert_wire_fee */
   PREPARE (pg,
            "insert_wire_fee",
            "INSERT INTO wire_fee "

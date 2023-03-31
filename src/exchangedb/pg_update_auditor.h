@@ -38,10 +38,10 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_auditor (void *cls,
-                         const struct TALER_AuditorPublicKeyP *auditor_pub,
-                         const char *auditor_url,
-                         const char *auditor_name,
-                         struct GNUNET_TIME_Timestamp change_date,
+                       const struct TALER_AuditorPublicKeyP *auditor_pub,
+                       const char *auditor_url,
+                       const char *auditor_name,
+                       struct GNUNET_TIME_Timestamp change_date,
                        bool enabled);
 
 #endif

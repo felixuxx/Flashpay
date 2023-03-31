@@ -27,7 +27,7 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_reserves_update (void *cls,
-                 const struct TALER_EXCHANGEDB_Reserve *reserve)
+                        const struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

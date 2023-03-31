@@ -72,7 +72,7 @@ TEH_PG_do_refund (
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-    /* Used in #postgres_do_refund() to refund a deposit. */
+  /* Used in #postgres_do_refund() to refund a deposit. */
   PREPARE (pg,
            "call_refund",
            "SELECT "

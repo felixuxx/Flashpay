@@ -27,9 +27,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_wire_prepare_data_insert (void *cls,
-                                   const char *type,
-                                   const char *buf,
-                                   size_t buf_size)
+                                 const char *type,
+                                 const char *buf,
+                                 size_t buf_size)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -39,15 +39,15 @@ TEH_PG_wire_prepare_data_insert (void *cls,
   };
 
 
-      /* Used in #postgres_wire_prepare_data_insert() to store
-       wire transfer information before actually committing it with the bank */
+  /* Used in #postgres_wire_prepare_data_insert() to store
+     wire transfer information before actually committing it with the bank */
   PREPARE (pg,
-      "wire_prepare_data_insert",
-      "INSERT INTO prewire "
-      "(wire_method"
-      ",buf"
-      ") VALUES "
-      "($1, $2);");
+           "wire_prepare_data_insert",
+           "INSERT INTO prewire "
+           "(wire_method"
+           ",buf"
+           ") VALUES "
+           "($1, $2);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_prepare_data_insert",
                                              params);

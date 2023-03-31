@@ -46,15 +46,15 @@ TEH_PG_get_denomination_revocation (
   };
 
   PREPARE (pg,
-      "denomination_revocation_get",
-      "SELECT"
-      " master_sig"
-      ",denom_revocations_serial_id"
-      " FROM denomination_revocations"
-      " WHERE denominations_serial="
-      "  (SELECT denominations_serial"
-      "    FROM denominations"
-      "    WHERE denom_pub_hash=$1);");
+           "denomination_revocation_get",
+           "SELECT"
+           " master_sig"
+           ",denom_revocations_serial_id"
+           " FROM denomination_revocations"
+           " WHERE denominations_serial="
+           "  (SELECT denominations_serial"
+           "    FROM denominations"
+           "    WHERE denom_pub_hash=$1);");
 
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "denomination_revocation_get",

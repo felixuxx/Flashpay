@@ -24,12 +24,14 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
-enum TALER_EXCHANGEDB_CoinKnownStatus
-TEH_PG_batch_ensure_coin_known (void *cls,
-                                const struct
-                                TALER_CoinPublicInfo *coin,
-                                const struct
-                                TALER_EXCHANGEDB_CoinInfo *result,
-                                unsigned int coin_length,
-                                unsigned int batch_size);
+
+
+enum GNUNET_DB_QueryStatus
+TEH_PG_batch_ensure_coin_known (
+  void *cls,
+  const struct TALER_CoinPublicInfo *coin,
+  struct TALER_EXCHANGEDB_CoinInfo *result,
+  unsigned int coin_length,
+  unsigned int batch_size);
+
 #endif

@@ -82,5 +82,3 @@ TEH_PG_do_withdraw (
                                                    params,
                                                    rs);
 }
-
-

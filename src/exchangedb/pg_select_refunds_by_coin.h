@@ -44,4 +44,5 @@ TEH_PG_select_refunds_by_coin (
   const struct TALER_PrivateContractHashP *h_contract,
   TALER_EXCHANGEDB_RefundCoinCallback cb,
   void *cb_cls);
+
 #endif

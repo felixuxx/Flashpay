@@ -37,8 +37,8 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_refresh_reveal (void *cls,
-                             const struct TALER_RefreshCommitmentP *rc,
-                             TALER_EXCHANGEDB_RefreshCallback cb,
+                           const struct TALER_RefreshCommitmentP *rc,
+                           TALER_EXCHANGEDB_RefreshCallback cb,
                            void *cb_cls);
 
 #endif

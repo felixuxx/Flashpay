@@ -51,7 +51,7 @@ TEH_PG_insert_history_request (
                                 idempotent),
     GNUNET_PQ_result_spec_end
   };
-    /* Used in #postgres_insert_history_request() */
+  /* Used in #postgres_insert_history_request() */
   PREPARE (pg,
            "call_history_request",
            "SELECT"

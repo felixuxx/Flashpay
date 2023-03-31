@@ -112,7 +112,6 @@ purse_decision_serial_helper_cb (void *cls,
 }
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_purse_decisions_above_serial_id (
   void *cls,

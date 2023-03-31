@@ -28,9 +28,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
-                      const char *payto_uri,
-                      struct GNUNET_TIME_Timestamp change_date,
-                      bool enabled)
+                    const char *payto_uri,
+                    struct GNUNET_TIME_Timestamp change_date,
+                    bool enabled)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -40,7 +40,7 @@ TEH_PG_update_wire (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-      /* used in #postgres_update_wire() */
+  /* used in #postgres_update_wire() */
   PREPARE (pg,
            "update_wire",
            "UPDATE wire_accounts"

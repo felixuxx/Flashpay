@@ -37,9 +37,9 @@
  */
 enum TALER_EXCHANGEDB_CoinKnownStatus
 TEH_PG_ensure_coin_known (void *cls,
-                            const struct TALER_CoinPublicInfo *coin,
-                            uint64_t *known_coin_id,
-                            struct TALER_DenominationHashP *denom_hash,
+                          const struct TALER_CoinPublicInfo *coin,
+                          uint64_t *known_coin_id,
+                          struct TALER_DenominationHashP *denom_hash,
                           struct TALER_AgeCommitmentHash *h_age_commitment);
 
 #endif

@@ -36,8 +36,8 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
-                      const char *payto_uri,
-                      struct GNUNET_TIME_Timestamp change_date,
+                    const char *payto_uri,
+                    struct GNUNET_TIME_Timestamp change_date,
                     bool enabled);
 
 #endif

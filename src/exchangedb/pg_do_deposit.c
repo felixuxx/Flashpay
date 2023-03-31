@@ -69,8 +69,8 @@ TEH_PG_do_deposit (
     GNUNET_PQ_result_spec_end
   };
 
-      /* Used in #postgres_do_deposit() to execute a deposit,
-       checking the coin's balance in the process as needed. */
+  /* Used in #postgres_do_deposit() to execute a deposit,
+     checking the coin's balance in the process as needed. */
   PREPARE (pg,
            "call_deposit",
            "SELECT "

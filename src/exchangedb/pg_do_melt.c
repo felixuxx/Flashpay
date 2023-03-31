@@ -63,7 +63,7 @@ TEH_PG_do_melt (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Used in #postgres_do_melt() to melt a coin. */
+  /* Used in #postgres_do_melt() to melt a coin. */
   PREPARE (pg,
            "call_melt",
            "SELECT "

@@ -53,4 +53,5 @@ TEH_PG_do_recoup_refresh (
   struct GNUNET_TIME_Timestamp *recoup_timestamp,
   bool *recoup_ok,
   bool *internal_failure);
+
 #endif

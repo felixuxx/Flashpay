@@ -121,11 +121,10 @@ global_fees_cb (void *cls,
 }
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_global_fees (void *cls,
-                          TALER_EXCHANGEDB_GlobalFeeCallback cb,
-                          void *cb_cls)
+                        TALER_EXCHANGEDB_GlobalFeeCallback cb,
+                        void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp date
@@ -144,7 +143,7 @@ TEH_PG_get_global_fees (void *cls,
     .status = GNUNET_OK
   };
 
-      /* Used in #postgres_get_global_fees() */
+  /* Used in #postgres_get_global_fees() */
   PREPARE (pg,
            "get_global_fees",
            "SELECT "
@@ -169,7 +168,3 @@ TEH_PG_get_global_fees (void *cls,
                                                &global_fees_cb,
                                                &gctx);
 }
-
-
-
-

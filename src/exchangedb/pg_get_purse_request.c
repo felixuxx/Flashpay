@@ -59,7 +59,7 @@ TEH_PG_get_purse_request (
                                           purse_sig),
     GNUNET_PQ_result_spec_end
   };
-  
+
   PREPARE (pg,
            "get_purse_request",
            "SELECT "
@@ -80,4 +80,3 @@ TEH_PG_get_purse_request (
                                                    params,
                                                    rs);
 }
-

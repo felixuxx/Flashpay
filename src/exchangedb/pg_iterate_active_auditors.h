@@ -36,6 +36,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_active_auditors (void *cls,
-                                  TALER_EXCHANGEDB_AuditorsCallback cb,
+                                TALER_EXCHANGEDB_AuditorsCallback cb,
                                 void *cb_cls);
+
 #endif

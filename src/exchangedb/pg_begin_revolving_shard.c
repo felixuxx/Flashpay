@@ -30,11 +30,11 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_begin_revolving_shard (void *cls,
-                                const char *job_name,
-                                uint32_t shard_size,
-                                uint32_t shard_limit,
-                                uint32_t *start_row,
-                                uint32_t *end_row)
+                              const char *job_name,
+                              uint32_t shard_size,
+                              uint32_t shard_limit,
+                              uint32_t *start_row,
+                              uint32_t *end_row)
 {
   struct PostgresClosure *pg = cls;
 
@@ -45,7 +45,7 @@ TEH_PG_begin_revolving_shard (void *cls,
   {
     if (GNUNET_OK !=
         TEH_PG_start (pg,
-                        "begin_revolving_shard"))
+                      "begin_revolving_shard"))
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -64,15 +64,15 @@ TEH_PG_begin_revolving_shard (void *cls,
                                       &last_end),
         GNUNET_PQ_result_spec_end
       };
-          /* Used in #postgres_begin_revolving_shard() */
-      PREPARE(pg,
-              "get_last_revolving_shard",
-              "SELECT"
-              " end_row"
-              " FROM revolving_work_shards"
-              " WHERE job_name=$1"
-              " ORDER BY end_row DESC"
-              " LIMIT 1;");
+      /* Used in #postgres_begin_revolving_shard() */
+      PREPARE (pg,
+               "get_last_revolving_shard",
+               "SELECT"
+               " end_row"
+               " FROM revolving_work_shards"
+               " WHERE job_name=$1"
+               " ORDER BY end_row DESC"
+               " LIMIT 1;");
       qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                      "get_last_revolving_shard",
                                                      params,
@@ -116,7 +116,7 @@ TEH_PG_begin_revolving_shard (void *cls,
                   (unsigned long long) *start_row,
                   (unsigned long long) *end_row);
 
-    /* Used in #postgres_claim_revolving_shard() */
+      /* Used in #postgres_claim_revolving_shard() */
       PREPARE (pg,
                "create_revolving_shard",
                "INSERT INTO revolving_work_shards"
@@ -164,7 +164,7 @@ TEH_PG_begin_revolving_shard (void *cls,
                                       end_row),
         GNUNET_PQ_result_spec_end
       };
-    /* Used in #postgres_begin_revolving_shard() */
+      /* Used in #postgres_begin_revolving_shard() */
       PREPARE (pg,
                "get_open_revolving_shard",
                "SELECT"
@@ -206,7 +206,7 @@ TEH_PG_begin_revolving_shard (void *cls,
 
           now = GNUNET_TIME_timestamp_get ();
 
-              /* Used in #postgres_begin_revolving_shard() */
+          /* Used in #postgres_begin_revolving_shard() */
           PREPARE (pg,
                    "reclaim_revolving_shard",
                    "UPDATE revolving_work_shards"

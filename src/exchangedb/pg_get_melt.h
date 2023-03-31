@@ -37,8 +37,8 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_melt (void *cls,
-                   const struct TALER_RefreshCommitmentP *rc,
-                   struct TALER_EXCHANGEDB_Melt *melt,
+                 const struct TALER_RefreshCommitmentP *rc,
+                 struct TALER_EXCHANGEDB_Melt *melt,
                  uint64_t *melt_serial_id);
 
 #endif

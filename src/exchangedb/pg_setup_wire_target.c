@@ -26,7 +26,7 @@
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_setup_wire_target(
+TEH_PG_setup_wire_target (
   struct PostgresClosure *pg,
   const char *payto_uri,
   struct TALER_PaytoHashP *h_payto)

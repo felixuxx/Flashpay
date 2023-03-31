@@ -28,9 +28,9 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_melt (void *cls,
-                   const struct TALER_RefreshCommitmentP *rc,
-                   struct TALER_EXCHANGEDB_Melt *melt,
-                   uint64_t *melt_serial_id)
+                 const struct TALER_RefreshCommitmentP *rc,
+                 struct TALER_EXCHANGEDB_Melt *melt,
+                 uint64_t *melt_serial_id)
 {
   struct PostgresClosure *pg = cls;
   bool h_age_commitment_is_null;
@@ -66,8 +66,8 @@ TEH_PG_get_melt (void *cls,
           0,
           sizeof (melt->session.coin.denom_sig));
 
-    /* Used in #postgres_get_melt() to fetch
-       high-level information about a melt operation */
+  /* Used in #postgres_get_melt() to fetch
+     high-level information about a melt operation */
   PREPARE (pg,
            "get_melt",
            /* "SELECT"

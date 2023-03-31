@@ -57,7 +57,7 @@ TEH_PG_profit_drains_get_pending (
                                           master_sig),
     GNUNET_PQ_result_spec_end
   };
- /* Used in #postgres_profit_drains_get_pending() */
+  /* Used in #postgres_profit_drains_get_pending() */
   PREPARE (pg,
            "get_ready_profit_drain",
            "SELECT"

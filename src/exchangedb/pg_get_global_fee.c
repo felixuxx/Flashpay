@@ -28,14 +28,14 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_global_fee (void *cls,
-                         struct GNUNET_TIME_Timestamp date,
-                         struct GNUNET_TIME_Timestamp *start_date,
-                         struct GNUNET_TIME_Timestamp *end_date,
-                         struct TALER_GlobalFeeSet *fees,
-                         struct GNUNET_TIME_Relative *purse_timeout,
-                         struct GNUNET_TIME_Relative *history_expiration,
-                         uint32_t *purse_account_limit,
-                         struct TALER_MasterSignatureP *master_sig)
+                       struct GNUNET_TIME_Timestamp date,
+                       struct GNUNET_TIME_Timestamp *start_date,
+                       struct GNUNET_TIME_Timestamp *end_date,
+                       struct TALER_GlobalFeeSet *fees,
+                       struct GNUNET_TIME_Relative *purse_timeout,
+                       struct GNUNET_TIME_Relative *history_expiration,
+                       uint32_t *purse_account_limit,
+                       struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -65,25 +65,25 @@ TEH_PG_get_global_fee (void *cls,
   };
 
 
-      /* Used in #postgres_get_global_fee() */
-  PREPARE(pg,
-          "get_global_fee",
-          "SELECT "
-          " start_date"
-          ",end_date"
-          ",history_fee_val"
-          ",history_fee_frac"
-          ",account_fee_val"
-          ",account_fee_frac"
-          ",purse_fee_val"
-          ",purse_fee_frac"
-          ",purse_timeout"
-          ",history_expiration"
-          ",purse_account_limit"
-          ",master_sig"
-          " FROM global_fee"
-          " WHERE start_date <= $1"
-          "   AND end_date > $1;");
+  /* Used in #postgres_get_global_fee() */
+  PREPARE (pg,
+           "get_global_fee",
+           "SELECT "
+           " start_date"
+           ",end_date"
+           ",history_fee_val"
+           ",history_fee_frac"
+           ",account_fee_val"
+           ",account_fee_frac"
+           ",purse_fee_val"
+           ",purse_fee_frac"
+           ",purse_timeout"
+           ",history_expiration"
+           ",purse_account_limit"
+           ",master_sig"
+           " FROM global_fee"
+           " WHERE start_date <= $1"
+           "   AND end_date > $1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_global_fee",
                                                    params,

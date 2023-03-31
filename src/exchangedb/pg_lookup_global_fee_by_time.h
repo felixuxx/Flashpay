@@ -48,4 +48,5 @@ TEH_PG_lookup_global_fee_by_time (
   struct GNUNET_TIME_Relative *purse_timeout,
   struct GNUNET_TIME_Relative *history_expiration,
   uint32_t *purse_account_limit);
+
 #endif

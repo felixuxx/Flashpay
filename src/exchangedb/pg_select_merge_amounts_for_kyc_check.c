@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 /**
  * Closure for #get_kyc_amounts_cb().
  */
@@ -132,7 +131,7 @@ TEH_PG_select_merge_amounts_for_kyc_check (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  
+
   PREPARE (pg,
            "select_kyc_relevant_merge_events",
            "SELECT"
@@ -157,4 +156,3 @@ TEH_PG_select_merge_amounts_for_kyc_check (
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
 }
-

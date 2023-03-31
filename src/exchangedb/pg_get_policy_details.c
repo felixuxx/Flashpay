@@ -57,7 +57,6 @@ TEH_PG_get_policy_details (
   };
 
 
-
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_policy_details",
                                                    params,

@@ -56,7 +56,7 @@ TEH_PG_select_purse_merge (
   };
 
   *partner_url = NULL;
- /* Used in #postgres_select_purse_merge */
+  /* Used in #postgres_select_purse_merge */
   PREPARE (pg,
            "select_purse_merge",
            "SELECT "

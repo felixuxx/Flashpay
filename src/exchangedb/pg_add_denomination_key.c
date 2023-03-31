@@ -56,8 +56,8 @@ TEH_PG_add_denomination_key (
   GNUNET_assert (GNUNET_YES ==
                  TALER_denom_fee_check_currency (meta->value.currency,
                                                  &meta->fees));
-    /* Used in #postgres_insert_denomination_info() and
-     #postgres_add_denomination_key() */
+  /* Used in #postgres_insert_denomination_info() and
+   #postgres_add_denomination_key() */
   PREPARE (pg,
            "denomination_insert",
            "INSERT INTO denominations "
@@ -86,4 +86,3 @@ TEH_PG_add_denomination_key (
                                              "denomination_insert",
                                              iparams);
 }
-

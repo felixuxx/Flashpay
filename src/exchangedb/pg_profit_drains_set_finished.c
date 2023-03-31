@@ -38,18 +38,12 @@ TEH_PG_profit_drains_set_finished (
   };
 
   PREPARE (pg,
-            "drain_profit_set_finished",
-            "UPDATE profit_drains"
-            " SET"
-            " executed=TRUE"
-            " WHERE profit_drain_serial_id=$1;");
+           "drain_profit_set_finished",
+           "UPDATE profit_drains"
+           " SET"
+           " executed=TRUE"
+           " WHERE profit_drain_serial_id=$1;");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "drain_profit_set_finished",
                                              params);
 }
-
-
-
-
-
-

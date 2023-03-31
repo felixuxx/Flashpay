@@ -43,7 +43,7 @@ TEH_PG_insert_kyc_requirement_for_account (
                                   requirement_row),
     GNUNET_PQ_result_spec_end
   };
- /* Used in #postgres_insert_kyc_requirement_for_account() */
+  /* Used in #postgres_insert_kyc_requirement_for_account() */
   PREPARE (pg,
            "insert_legitimization_requirement",
            "INSERT INTO legitimization_requirements"

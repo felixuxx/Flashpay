@@ -39,4 +39,3 @@ TEH_PG_delete_shard_locks (void *cls)
   return GNUNET_PQ_exec_statements (pg->conn,
                                     es);
 }
-

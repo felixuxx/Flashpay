@@ -52,7 +52,7 @@ TEH_PG_insert_kyc_requirement_process (
     GNUNET_PQ_result_spec_end
   };
 
-    /* Used in #postgres_insert_kyc_requirement_process() */
+  /* Used in #postgres_insert_kyc_requirement_process() */
   PREPARE (pg,
            "insert_legitimization_process",
            "INSERT INTO legitimization_processes"

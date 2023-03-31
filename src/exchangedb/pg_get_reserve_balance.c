@@ -27,8 +27,8 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_reserve_balance (void *cls,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
-                              struct TALER_Amount *balance)
+                            const struct TALER_ReservePublicKeyP *reserve_pub,
+                            struct TALER_Amount *balance)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

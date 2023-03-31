@@ -28,8 +28,8 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_lookup_wire_timestamp (void *cls,
-                                const char *payto_uri,
-                                struct GNUNET_TIME_Timestamp *last_date)
+                              const char *payto_uri,
+                              struct GNUNET_TIME_Timestamp *last_date)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

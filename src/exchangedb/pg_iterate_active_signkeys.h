@@ -37,7 +37,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_active_signkeys (void *cls,
-                                  TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
+                                TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
                                 void *cb_cls);
 
 #endif

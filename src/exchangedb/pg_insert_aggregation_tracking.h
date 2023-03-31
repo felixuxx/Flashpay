@@ -40,4 +40,3 @@ TEH_PG_insert_aggregation_tracking (
   unsigned long long deposit_serial_id);
 
 #endif
-

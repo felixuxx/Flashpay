@@ -28,8 +28,8 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_drain_kyc_alert (void *cls,
-                          uint32_t trigger_type,
-                          struct TALER_PaytoHashP *h_payto)
+                        uint32_t trigger_type,
+                        struct TALER_PaytoHashP *h_payto)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

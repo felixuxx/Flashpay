@@ -114,10 +114,10 @@ missing_wire_cb (void *cls,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_deposits_missing_wire (void *cls,
-                                       struct GNUNET_TIME_Timestamp start_date,
-                                       struct GNUNET_TIME_Timestamp end_date,
-                                       TALER_EXCHANGEDB_WireMissingCallback cb,
-                                       void *cb_cls)
+                                     struct GNUNET_TIME_Timestamp start_date,
+                                     struct GNUNET_TIME_Timestamp end_date,
+                                     TALER_EXCHANGEDB_WireMissingCallback cb,
+                                     void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -133,11 +133,11 @@ TEH_PG_select_deposits_missing_wire (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-      /* Used in #postgres_select_deposits_missing_wire */
-    // FIXME: used by the auditor; can probably be done
-    // smarter by checking if 'done' or 'blocked'
-    // are set correctly when going over deposits, instead
-    // of JOINing with refunds.
+  /* Used in #postgres_select_deposits_missing_wire */
+  // FIXME: used by the auditor; can probably be done
+  // smarter by checking if 'done' or 'blocked'
+  // are set correctly when going over deposits, instead
+  // of JOINing with refunds.
   PREPARE (pg,
            "deposits_get_overdue",
            "SELECT"
@@ -162,7 +162,6 @@ TEH_PG_select_deposits_missing_wire (void *cls,
            "            FROM aggregation_tracking"
            "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
            " ORDER BY wire_deadline ASC");
-
 
 
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,

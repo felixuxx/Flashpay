@@ -27,12 +27,12 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_wire_fee (void *cls,
-                       const char *type,
-                       struct GNUNET_TIME_Timestamp date,
-                       struct GNUNET_TIME_Timestamp *start_date,
-                       struct GNUNET_TIME_Timestamp *end_date,
-                       struct TALER_WireFeeSet *fees,
-                       struct TALER_MasterSignatureP *master_sig)
+                     const char *type,
+                     struct GNUNET_TIME_Timestamp date,
+                     struct GNUNET_TIME_Timestamp *start_date,
+                     struct GNUNET_TIME_Timestamp *end_date,
+                     struct TALER_WireFeeSet *fees,
+                     struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -55,22 +55,21 @@ TEH_PG_get_wire_fee (void *cls,
   };
 
 
-
-      /* Used in #postgres_get_wire_fee() */
-  PREPARE(pg,
-          "get_wire_fee",
-          "SELECT "
-          " start_date"
-          ",end_date"
-          ",wire_fee_val"
-          ",wire_fee_frac"
-          ",closing_fee_val"
-          ",closing_fee_frac"
-          ",master_sig"
-          " FROM wire_fee"
-          " WHERE wire_method=$1"
-          "   AND start_date <= $2"
-          "   AND end_date > $2;");
+  /* Used in #postgres_get_wire_fee() */
+  PREPARE (pg,
+           "get_wire_fee",
+           "SELECT "
+           " start_date"
+           ",end_date"
+           ",wire_fee_val"
+           ",wire_fee_frac"
+           ",closing_fee_val"
+           ",closing_fee_frac"
+           ",master_sig"
+           " FROM wire_fee"
+           " WHERE wire_method=$1"
+           "   AND start_date <= $2"
+           "   AND end_date > $2;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_wire_fee",
                                                    params,

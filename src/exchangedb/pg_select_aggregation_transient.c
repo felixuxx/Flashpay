@@ -49,7 +49,7 @@ TEH_PG_select_aggregation_transient (
                                           wtid),
     GNUNET_PQ_result_spec_end
   };
-    /* Used in #postgres_select_aggregation_transient() */
+  /* Used in #postgres_select_aggregation_transient() */
   PREPARE (pg,
            "select_aggregation_transient",
            "SELECT"

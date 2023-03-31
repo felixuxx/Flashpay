@@ -38,10 +38,10 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_contract (void *cls,
-                          const struct TALER_ContractDiffiePublicP *pub_ckey,
-                          struct TALER_PurseContractPublicKeyP *purse_pub,
-                          struct TALER_PurseContractSignatureP *econtract_sig,
-                          size_t *econtract_size,
+                        const struct TALER_ContractDiffiePublicP *pub_ckey,
+                        struct TALER_PurseContractPublicKeyP *purse_pub,
+                        struct TALER_PurseContractSignatureP *econtract_sig,
+                        size_t *econtract_size,
                         void **econtract);
 
 #endif

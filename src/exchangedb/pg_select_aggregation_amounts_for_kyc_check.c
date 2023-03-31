@@ -26,8 +26,6 @@
 #include "pg_helper.h"
 
 
-
-
 /**
  * Closure for #get_kyc_amounts_cb().
  */
@@ -110,7 +108,6 @@ get_kyc_amounts_cb (void *cls,
     break;
   }
 }
-
 
 
 enum GNUNET_DB_QueryStatus

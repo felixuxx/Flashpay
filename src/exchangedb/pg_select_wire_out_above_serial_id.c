@@ -113,7 +113,6 @@ wire_out_serial_helper_cb (void *cls,
 }
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_wire_out_above_serial_id (
   void *cls,
@@ -133,7 +132,7 @@ TEH_PG_select_wire_out_above_serial_id (
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-    /* Used in #postgres_select_wire_out_above_serial_id() */
+  /* Used in #postgres_select_wire_out_above_serial_id() */
   PREPARE (pg,
            "audit_get_wire_incr",
            "SELECT"

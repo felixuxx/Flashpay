@@ -28,11 +28,11 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_auditor (void *cls,
-                         const struct TALER_AuditorPublicKeyP *auditor_pub,
-                         const char *auditor_url,
-                         const char *auditor_name,
-                         struct GNUNET_TIME_Timestamp change_date,
-                         bool enabled)
+                       const struct TALER_AuditorPublicKeyP *auditor_pub,
+                       const char *auditor_url,
+                       const char *auditor_name,
+                       struct GNUNET_TIME_Timestamp change_date,
+                       bool enabled)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -43,16 +43,16 @@ TEH_PG_update_auditor (void *cls,
     GNUNET_PQ_query_param_timestamp (&change_date),
     GNUNET_PQ_query_param_end
   };
-    /* used in #postgres_update_auditor() */
-  PREPARE(pg,
-          "update_auditor",
-          "UPDATE auditors"
-          " SET"
-          "  auditor_url=$2"
-          " ,auditor_name=$3"
-          " ,is_active=$4"
-          " ,last_change=$5"
-          " WHERE auditor_pub=$1");
+  /* used in #postgres_update_auditor() */
+  PREPARE (pg,
+           "update_auditor",
+           "UPDATE auditors"
+           " SET"
+           "  auditor_url=$2"
+           " ,auditor_name=$3"
+           " ,is_active=$4"
+           " ,last_change=$5"
+           " WHERE auditor_pub=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_auditor",
                                              params);

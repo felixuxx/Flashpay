@@ -38,9 +38,9 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire_fee (void *cls,
-                          const char *type,
-                          struct GNUNET_TIME_Timestamp start_date,
-                          struct GNUNET_TIME_Timestamp end_date,
-                          const struct TALER_WireFeeSet *fees,
+                        const char *type,
+                        struct GNUNET_TIME_Timestamp start_date,
+                        struct GNUNET_TIME_Timestamp end_date,
+                        const struct TALER_WireFeeSet *fees,
                         const struct TALER_MasterSignatureP *master_sig);
 #endif

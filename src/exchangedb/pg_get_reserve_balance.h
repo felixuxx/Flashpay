@@ -34,7 +34,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_reserve_balance (void *cls,
-                              const struct TALER_ReservePublicKeyP *reserve_pub,
+                            const struct TALER_ReservePublicKeyP *reserve_pub,
                             struct TALER_Amount *balance);
 
 #endif

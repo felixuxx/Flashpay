@@ -71,29 +71,29 @@ TEH_PG_have_deposit2 (
               "Getting deposits for coin %s\n",
               TALER_B2S (coin_pub));
 
-    /* Fetch an existing deposit request, used to ensure idempotency
-       during /deposit processing. Used in #postgres_have_deposit(). */
+  /* Fetch an existing deposit request, used to ensure idempotency
+     during /deposit processing. Used in #postgres_have_deposit(). */
   PREPARE (pg,
-      "get_deposit",
-      "SELECT"
-      " dep.amount_with_fee_val"
-      ",dep.amount_with_fee_frac"
-      ",denominations.fee_deposit_val"
-      ",denominations.fee_deposit_frac"
-      ",dep.wallet_timestamp"
-      ",dep.exchange_timestamp"
-      ",dep.refund_deadline"
-      ",dep.wire_deadline"
-      ",dep.h_contract_terms"
-      ",dep.wire_salt"
-      ",wt.payto_uri AS receiver_wire_account"
-      " FROM deposits dep"
-      " JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
-      " JOIN denominations USING (denominations_serial)"
-      " JOIN wire_targets wt USING (wire_target_h_payto)"
-      " WHERE dep.coin_pub=$1"
-      "   AND dep.merchant_pub=$3"
-      "   AND dep.h_contract_terms=$2;");
+           "get_deposit",
+           "SELECT"
+           " dep.amount_with_fee_val"
+           ",dep.amount_with_fee_frac"
+           ",denominations.fee_deposit_val"
+           ",denominations.fee_deposit_frac"
+           ",dep.wallet_timestamp"
+           ",dep.exchange_timestamp"
+           ",dep.refund_deadline"
+           ",dep.wire_deadline"
+           ",dep.h_contract_terms"
+           ",dep.wire_salt"
+           ",wt.payto_uri AS receiver_wire_account"
+           " FROM deposits dep"
+           " JOIN known_coins kc ON (kc.coin_pub = dep.coin_pub)"
+           " JOIN denominations USING (denominations_serial)"
+           " JOIN wire_targets wt USING (wire_target_h_payto)"
+           " WHERE dep.coin_pub=$1"
+           "   AND dep.merchant_pub=$3"
+           "   AND dep.h_contract_terms=$2;");
 
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_deposit",

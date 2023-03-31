@@ -45,4 +45,5 @@ TEH_PG_insert_kyc_requirement_process (
   const char *provider_account_id,
   const char *provider_legitimization_id,
   uint64_t *process_row);
+
 #endif

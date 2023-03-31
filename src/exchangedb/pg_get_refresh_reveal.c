@@ -133,14 +133,11 @@ add_revealed_coins (void *cls,
 }
 
 
-
-
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_refresh_reveal (void *cls,
-                             const struct TALER_RefreshCommitmentP *rc,
-                             TALER_EXCHANGEDB_RefreshCallback cb,
-                             void *cb_cls)
+                           const struct TALER_RefreshCommitmentP *rc,
+                           TALER_EXCHANGEDB_RefreshCallback cb,
+                           void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GetRevealContext grctx;
@@ -154,8 +151,8 @@ TEH_PG_get_refresh_reveal (void *cls,
           0,
           sizeof (grctx));
 
-    /* Obtain information about the coins created in a refresh
-       operation, used in #postgres_get_refresh_reveal() */
+  /* Obtain information about the coins created in a refresh
+     operation, used in #postgres_get_refresh_reveal() */
   PREPARE (pg,
            "get_refresh_revealed_coins",
            "SELECT "

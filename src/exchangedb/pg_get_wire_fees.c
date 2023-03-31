@@ -109,9 +109,9 @@ get_wire_fees_cb (void *cls,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_wire_fees (void *cls,
-                        const char *wire_method,
-                        TALER_EXCHANGEDB_WireFeeCallback cb,
-                        void *cb_cls)
+                      const char *wire_method,
+                      TALER_EXCHANGEDB_WireFeeCallback cb,
+                      void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {

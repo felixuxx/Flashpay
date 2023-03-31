@@ -40,9 +40,10 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_begin_revolving_shard (void *cls,
-                                const char *job_name,
-                                uint32_t shard_size,
-                                uint32_t shard_limit,
-                                uint32_t *start_row,
+                              const char *job_name,
+                              uint32_t shard_size,
+                              uint32_t shard_limit,
+                              uint32_t *start_row,
                               uint32_t *end_row);
+
 #endif

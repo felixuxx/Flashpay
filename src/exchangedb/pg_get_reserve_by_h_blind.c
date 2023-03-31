@@ -45,7 +45,7 @@ TEH_PG_get_reserve_by_h_blind (
                                   reserve_out_serial_id),
     GNUNET_PQ_result_spec_end
   };
-    /* Used in #postgres_get_reserve_by_h_blind() */
+  /* Used in #postgres_get_reserve_by_h_blind() */
   PREPARE (pg,
            "reserve_by_h_blind",
            "SELECT"

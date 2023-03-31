@@ -27,8 +27,8 @@
 
 long long
 TEH_PG_count_known_coins (void *cls,
-                            const struct
-                            TALER_DenominationHashP *denom_pub_hash)
+                          const struct
+                          TALER_DenominationHashP *denom_pub_hash)
 {
   struct PostgresClosure *pg = cls;
   uint64_t count;

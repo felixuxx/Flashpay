@@ -37,7 +37,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_set_extension_manifest (void *cls,
-                                 const char *extension_name,
+                               const char *extension_name,
                                const char *manifest);
 
 #endif

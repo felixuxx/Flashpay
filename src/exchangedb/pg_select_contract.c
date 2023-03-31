@@ -27,11 +27,11 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_select_contract (void *cls,
-                          const struct TALER_ContractDiffiePublicP *pub_ckey,
-                          struct TALER_PurseContractPublicKeyP *purse_pub,
-                          struct TALER_PurseContractSignatureP *econtract_sig,
-                          size_t *econtract_size,
-                          void **econtract)
+                        const struct TALER_ContractDiffiePublicP *pub_ckey,
+                        struct TALER_PurseContractPublicKeyP *purse_pub,
+                        struct TALER_PurseContractSignatureP *econtract_sig,
+                        size_t *econtract_size,
+                        void **econtract)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -49,15 +49,15 @@ TEH_PG_select_contract (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-    /* Used in #postgres_select_contract */
+  /* Used in #postgres_select_contract */
   PREPARE (pg,
-      "select_contract",
-      "SELECT "
-      " purse_pub"
-      ",e_contract"
-      ",contract_sig"
-      " FROM contracts"
-      "   WHERE pub_ckey=$1;");
+           "select_contract",
+           "SELECT "
+           " purse_pub"
+           ",e_contract"
+           ",contract_sig"
+           " FROM contracts"
+           "   WHERE pub_ckey=$1;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_contract",
                                                    params,

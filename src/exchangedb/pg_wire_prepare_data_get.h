@@ -38,8 +38,9 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_wire_prepare_data_get (void *cls,
-                                uint64_t start_row,
-                                uint64_t limit,
-                                TALER_EXCHANGEDB_WirePreparationIterator cb,
+                              uint64_t start_row,
+                              uint64_t limit,
+                              TALER_EXCHANGEDB_WirePreparationIterator cb,
                               void *cb_cls);
+
 #endif

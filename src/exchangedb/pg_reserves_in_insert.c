@@ -779,7 +779,8 @@ TEH_PG_reserves_in_insert (void *cls,
                      &conflicts[i],
                      &reserve_uuid[i],
                      &results[i]);
-      fprintf(stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i], conflicts[i], transaction_duplicate[i]);
+      fprintf (stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i],
+               conflicts[i], transaction_duplicate[i]);
       if (qs2<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

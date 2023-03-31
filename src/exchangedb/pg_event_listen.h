@@ -37,9 +37,9 @@
  */
 struct GNUNET_DB_EventHandler *
 TEH_PG_event_listen (void *cls,
-                       struct GNUNET_TIME_Relative timeout,
-                       const struct GNUNET_DB_EventHeaderP *es,
-                       GNUNET_DB_EventCallback cb,
+                     struct GNUNET_TIME_Relative timeout,
+                     const struct GNUNET_DB_EventHeaderP *es,
+                     GNUNET_DB_EventCallback cb,
                      void *cb_cls);
 
 #endif

@@ -44,4 +44,5 @@ TEH_PG_select_aggregation_amounts_for_kyc_check (
   struct GNUNET_TIME_Absolute time_limit,
   TALER_EXCHANGEDB_KycAmountCallback kac,
   void *kac_cls);
+
 #endif

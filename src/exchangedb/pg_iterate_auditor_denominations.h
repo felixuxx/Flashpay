@@ -41,4 +41,5 @@ TEH_PG_iterate_auditor_denominations (
   void *cls,
   TALER_EXCHANGEDB_AuditorDenominationsCallback cb,
   void *cb_cls);
+
 #endif

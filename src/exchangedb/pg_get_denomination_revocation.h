@@ -41,4 +41,5 @@ TEH_PG_get_denomination_revocation (
   const struct TALER_DenominationHashP *denom_pub_hash,
   struct TALER_MasterSignatureP *master_sig,
   uint64_t *rowid);
+
 #endif

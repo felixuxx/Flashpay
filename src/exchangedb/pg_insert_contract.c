@@ -45,20 +45,20 @@ TEH_PG_insert_contract (
   };
 
   *in_conflict = false;
-   /* Used in #postgres_insert_contract() */
+  /* Used in #postgres_insert_contract() */
   PREPARE (pg,
-      "insert_contract",
-      "INSERT INTO contracts"
-      "  (purse_pub"
-      "  ,pub_ckey"
-      "  ,e_contract"
-      "  ,contract_sig"
-      "  ,purse_expiration"
-      "  ) SELECT "
-      "  $1, $2, $3, $4, purse_expiration"
-      "  FROM purse_requests"
-      "  WHERE purse_pub=$1"
-      "  ON CONFLICT DO NOTHING;");
+           "insert_contract",
+           "INSERT INTO contracts"
+           "  (purse_pub"
+           "  ,pub_ckey"
+           "  ,e_contract"
+           "  ,contract_sig"
+           "  ,purse_expiration"
+           "  ) SELECT "
+           "  $1, $2, $3, $4, purse_expiration"
+           "  FROM purse_requests"
+           "  WHERE purse_pub=$1"
+           "  ON CONFLICT DO NOTHING;");
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_contract",
                                            params);
@@ -68,8 +68,8 @@ TEH_PG_insert_contract (
     struct TALER_EncryptedContract econtract2;
 
     qs = TEH_PG_select_contract_by_purse (pg,
-                                            purse_pub,
-                                            &econtract2);
+                                          purse_pub,
+                                          &econtract2);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (0);

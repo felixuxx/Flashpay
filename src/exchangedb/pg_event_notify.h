@@ -35,8 +35,8 @@
  */
 void
 TEH_PG_event_notify (void *cls,
-                       const struct GNUNET_DB_EventHeaderP *es,
-                       const void *extra,
+                     const struct GNUNET_DB_EventHeaderP *es,
+                     const void *extra,
                      size_t extra_size);
 
 #endif

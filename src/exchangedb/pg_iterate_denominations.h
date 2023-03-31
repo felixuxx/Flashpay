@@ -38,7 +38,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_denominations (void *cls,
-                                TALER_EXCHANGEDB_DenominationsCallback cb,
+                              TALER_EXCHANGEDB_DenominationsCallback cb,
                               void *cb_cls);
 
 #endif

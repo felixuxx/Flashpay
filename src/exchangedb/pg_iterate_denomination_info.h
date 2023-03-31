@@ -35,7 +35,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_iterate_denomination_info (void *cls,
-                                    TALER_EXCHANGEDB_DenominationCallback cb,
+                                  TALER_EXCHANGEDB_DenominationCallback cb,
                                   void *cb_cls);
 
 #endif

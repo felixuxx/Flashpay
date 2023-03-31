@@ -26,7 +26,6 @@
 #include "pg_helper.h"
 
 
-
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_old_coin_by_h_blind (
   void *cls,
@@ -47,7 +46,7 @@ TEH_PG_get_old_coin_by_h_blind (
     GNUNET_PQ_result_spec_end
   };
 
-      /* Used in #postgres_get_old_coin_by_h_blind() */
+  /* Used in #postgres_get_old_coin_by_h_blind() */
   PREPARE (pg,
            "old_coin_by_h_blind",
            "SELECT"

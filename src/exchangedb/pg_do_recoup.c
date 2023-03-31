@@ -70,7 +70,6 @@ TEH_PG_do_recoup (
   };
 
 
-
   PREPARE (pg,
            "call_recoup",
            "SELECT "

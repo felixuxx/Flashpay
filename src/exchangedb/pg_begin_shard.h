@@ -38,10 +38,10 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_begin_shard (void *cls,
-                      const char *job_name,
-                      struct GNUNET_TIME_Relative delay,
-                      uint64_t shard_size,
-                      uint64_t *start_row,
+                    const char *job_name,
+                    struct GNUNET_TIME_Relative delay,
+                    uint64_t shard_size,
+                    uint64_t *start_row,
                     uint64_t *end_row);
 
 #endif

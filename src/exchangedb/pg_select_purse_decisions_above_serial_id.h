@@ -43,4 +43,5 @@ TEH_PG_select_purse_decisions_above_serial_id (
   bool refunded,
   TALER_EXCHANGEDB_PurseDecisionCallback cb,
   void *cb_cls);
+
 #endif

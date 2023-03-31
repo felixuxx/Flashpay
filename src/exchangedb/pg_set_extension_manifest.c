@@ -28,8 +28,8 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_set_extension_manifest (void *cls,
-                                 const char *extension_name,
-                                 const char *manifest)
+                               const char *extension_name,
+                               const char *manifest)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam pcfg =

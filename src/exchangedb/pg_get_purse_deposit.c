@@ -61,7 +61,7 @@ TEH_PG_get_purse_deposit (
 
 
   *partner_url = NULL;
- /* Used in #postgres_get_purse_deposit */
+  /* Used in #postgres_get_purse_deposit */
   PREPARE (pg,
            "select_purse_deposit_by_coin_pub",
            "SELECT "

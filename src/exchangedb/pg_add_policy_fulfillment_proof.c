@@ -94,7 +94,7 @@ TEH_PG_add_policy_fulfillment_proof (
       GNUNET_PQ_result_spec_end
     };
 
-    
+
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "insert_proof_into_policy_fulfillments",
                                                    params,

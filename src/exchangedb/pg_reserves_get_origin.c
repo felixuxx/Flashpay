@@ -50,7 +50,7 @@ TEH_PG_reserves_get_origin (
            " wire_source_h_payto"
            " FROM reserves_in"
            " WHERE reserve_pub=$1");
-    return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_h_wire_source_of_reserve",
                                                    params,
                                                    rs);

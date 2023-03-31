@@ -41,4 +41,5 @@ TEH_PG_insert_kyc_requirement_for_account (
   const char *provider_section,
   const struct TALER_PaytoHashP *h_payto,
   uint64_t *requirement_row);
+
 #endif

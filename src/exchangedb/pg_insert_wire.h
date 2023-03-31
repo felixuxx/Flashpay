@@ -37,8 +37,8 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire (void *cls,
-                      const char *payto_uri,
-                      struct GNUNET_TIME_Timestamp start_date,
+                    const char *payto_uri,
+                    struct GNUNET_TIME_Timestamp start_date,
                     const struct TALER_MasterSignatureP *master_sig);
 
 #endif

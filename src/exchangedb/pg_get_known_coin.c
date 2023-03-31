@@ -27,8 +27,8 @@
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_known_coin (void *cls,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                         struct TALER_CoinPublicInfo *coin_info)
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       struct TALER_CoinPublicInfo *coin_info)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -51,9 +51,9 @@ TEH_PG_get_known_coin (void *cls,
               "Getting known coin data for coin %s\n",
               TALER_B2S (coin_pub));
   coin_info->coin_pub = *coin_pub;
-    /* Used in #postgres_get_known_coin() to fetch
-       the denomination public key and signature for
-       a coin known to the exchange. */
+  /* Used in #postgres_get_known_coin() to fetch
+     the denomination public key and signature for
+     a coin known to the exchange. */
   PREPARE (pg,
            "get_known_coin",
            "SELECT"

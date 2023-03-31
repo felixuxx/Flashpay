@@ -99,10 +99,10 @@ prewire_cb (void *cls,
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_wire_prepare_data_get (void *cls,
-                                uint64_t start_row,
-                                uint64_t limit,
-                                TALER_EXCHANGEDB_WirePreparationIterator cb,
-                                void *cb_cls)
+                              uint64_t start_row,
+                              uint64_t limit,
+                              TALER_EXCHANGEDB_WirePreparationIterator cb,
+                              void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -118,7 +118,7 @@ TEH_PG_wire_prepare_data_get (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
 
-      /* Used in #postgres_wire_prepare_data_get() */
+  /* Used in #postgres_wire_prepare_data_get() */
   PREPARE (pg,
            "wire_prepare_data_get",
            "SELECT"

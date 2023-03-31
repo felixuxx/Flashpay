@@ -26,10 +26,9 @@
 #include "pg_helper.h"
 
 
-
 void
 TEH_PG_event_listen_cancel (void *cls,
-                              struct GNUNET_DB_EventHandler *eh)
+                            struct GNUNET_DB_EventHandler *eh)
 
 {
   (void) cls;

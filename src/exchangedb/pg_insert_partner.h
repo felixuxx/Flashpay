@@ -40,12 +40,12 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_partner (void *cls,
-                         const struct TALER_MasterPublicKeyP *master_pub,
-                         struct GNUNET_TIME_Timestamp start_date,
-                         struct GNUNET_TIME_Timestamp end_date,
-                         struct GNUNET_TIME_Relative wad_frequency,
-                         const struct TALER_Amount *wad_fee,
-                         const char *partner_base_url,
+                       const struct TALER_MasterPublicKeyP *master_pub,
+                       struct GNUNET_TIME_Timestamp start_date,
+                       struct GNUNET_TIME_Timestamp end_date,
+                       struct GNUNET_TIME_Relative wad_frequency,
+                       const struct TALER_Amount *wad_fee,
+                       const char *partner_base_url,
                        const struct TALER_MasterSignatureP *master_sig);
 
 #endif

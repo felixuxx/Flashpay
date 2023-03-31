@@ -34,7 +34,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_known_coin (void *cls,
-                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        struct TALER_CoinPublicInfo *coin_info);
 
 #endif

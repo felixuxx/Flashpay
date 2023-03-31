@@ -35,4 +35,5 @@
  */
 enum GNUNET_GenericReturnValue
 TEH_PG_gc (void *cls);
+
 #endif

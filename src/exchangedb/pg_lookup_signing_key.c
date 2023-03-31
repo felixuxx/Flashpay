@@ -62,4 +62,3 @@ TEH_PG_lookup_signing_key (
                                                    params,
                                                    rs);
 }
-

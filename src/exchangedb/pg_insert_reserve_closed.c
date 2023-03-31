@@ -57,20 +57,20 @@ TEH_PG_insert_reserve_closed (
       GNUNET_PQ_query_param_end
     };
 
-        /* Used in #postgres_insert_reserve_closed() */
+    /* Used in #postgres_insert_reserve_closed() */
     PREPARE (pg,
-      "reserves_close_insert",
-      "INSERT INTO reserves_close "
-      "(reserve_pub"
-      ",execution_date"
-      ",wtid"
-      ",wire_target_h_payto"
-      ",amount_val"
-      ",amount_frac"
-      ",closing_fee_val"
-      ",closing_fee_frac"
-      ",close_request_row"
-      ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+             "reserves_close_insert",
+             "INSERT INTO reserves_close "
+             "(reserve_pub"
+             ",execution_date"
+             ",wtid"
+             ",wire_target_h_payto"
+             ",amount_val"
+             ",amount_frac"
+             ",closing_fee_val"
+             ",closing_fee_frac"
+             ",close_request_row"
+             ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);");
 
     qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "reserves_close_insert",
@@ -83,7 +83,7 @@ TEH_PG_insert_reserve_closed (
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       (qs = TEH_PG_reserves_get (cls,
-                                   &reserve)))
+                                 &reserve)))
   {
     /* Existence should have been checked before we got here... */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -110,5 +110,5 @@ TEH_PG_insert_reserve_closed (
     GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   }
   return TEH_PG_reserves_update (cls,
-                          &reserve);
+                                 &reserve);
 }

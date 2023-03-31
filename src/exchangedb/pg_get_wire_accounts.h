@@ -36,7 +36,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_get_wire_accounts (void *cls,
-                            TALER_EXCHANGEDB_WireAccountCallback cb,
+                          TALER_EXCHANGEDB_WireAccountCallback cb,
                           void *cb_cls);
 
 #endif

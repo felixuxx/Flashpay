@@ -49,9 +49,9 @@ TEH_PG_get_coin_denomination (
               "Getting coin denomination of coin %s\n",
               TALER_B2S (coin_pub));
 
-    /* Used in #postgres_get_coin_denomination() to fetch
-       the denomination public key hash for
-       a coin known to the exchange. */
+  /* Used in #postgres_get_coin_denomination() to fetch
+     the denomination public key hash for
+     a coin known to the exchange. */
   PREPARE (pg,
            "get_coin_denomination",
            "SELECT"
@@ -67,5 +67,3 @@ TEH_PG_get_coin_denomination (
                                                    params,
                                                    rs);
 }
-
-

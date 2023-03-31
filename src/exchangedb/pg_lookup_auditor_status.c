@@ -46,7 +46,7 @@ TEH_PG_lookup_auditor_status (
     GNUNET_PQ_result_spec_end
   };
 
-      /* Used in #postgres_lookup_auditor_status() */
+  /* Used in #postgres_lookup_auditor_status() */
   PREPARE (pg,
            "lookup_auditor_status",
            "SELECT"

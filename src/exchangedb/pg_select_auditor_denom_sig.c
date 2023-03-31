@@ -64,4 +64,3 @@ TEH_PG_select_auditor_denom_sig (
                                                    params,
                                                    rs);
 }
-

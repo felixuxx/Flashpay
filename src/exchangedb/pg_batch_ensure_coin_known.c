@@ -26,14 +26,10 @@
 #include "pg_helper.h"
 
 
-
-
-
-
-static enum TALER_EXCHANGEDB_CoinKnownStatus
-insert1 (struct PosgresClosure *pg,
-         const struct TALER_CoinPublicInfo *coin[1],
-         const struct TALER_EXCHANGEDB_CoinInfo *result[1])
+static enum GNUNET_DB_QueryStatus
+insert1 (struct PostgresClosure *pg,
+         const struct TALER_CoinPublicInfo coin[1],
+         struct TALER_EXCHANGEDB_CoinInfo result[1])
 {
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null = false;
@@ -57,16 +53,16 @@ insert1 (struct PosgresClosure *pg,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("existed",
-                                result[0].existed),
+                                &result[0].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id",
-                                  result[0].known_coin_id),
+                                  &result[0].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                            result[0].denom_hash),
+                                            &result[0].denom_hash),
       &is_denom_pub_hash_null),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                            result[0].h_age_commitment),
+                                            &result[0].h_age_commitment),
       &is_age_hash_null),
     GNUNET_PQ_result_spec_end
   };
@@ -79,47 +75,47 @@ insert1 (struct PosgresClosure *pg,
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0); /* should be impossible */
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    if (! existed)
-      return TALER_EXCHANGEDB_CKS_ADDED;
     break; /* continued below */
   }
 
   if ( (! is_denom_pub_hash_null) &&
-       (0 != GNUNET_memcmp (&denom_hash->hash,
-                            &coin->denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[0].denom_hash,
+                            &coin->denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[0].denom_conflict = true;
   }
 
   if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (h_age_commitment,
+       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
                             &coin->h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment));
+    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[0].age_conflict = true;
   }
-  return TALER_EXCHANGEDB_CKS_PRESENT;
+  return qs;
 }
 
-static enum TALER_EXCHANGEDB_CoinKnownStatus
-insert2 (struct PosgresClosure *pg,
-         const struct TALER_CoinPublicInfo *coin[2],
-         const struct TALER_EXCHANGEDB_CoinInfo *result[2])
+
+static enum GNUNET_DB_QueryStatus
+insert2 (struct PostgresClosure *pg,
+         const struct TALER_CoinPublicInfo coin[2],
+         struct TALER_EXCHANGEDB_CoinInfo result[2])
 {
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null = false;
   bool is_age_hash_null = false;
   bool is_denom_pub_hash_null2 = false;
   bool is_age_hash_null2 = false;
+
   PREPARE (pg,
            "batch2_known_coin",
            "SELECT"
@@ -148,21 +144,21 @@ insert2 (struct PosgresClosure *pg,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("existed",
-                                result[0].existed),
+                                &result[0].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id",
-                                  result[0].known_coin_id),
+                                  &result[0].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                            result[0].denom_hash),
+                                            &result[0].denom_hash),
       &is_denom_pub_hash_null),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                            result[0].h_age_commitment[0]),
+                                            &result[0].h_age_commitment),
       &is_age_hash_null),
     GNUNET_PQ_result_spec_bool ("existed2",
-                                result[1].existed),
+                                &result[1].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id2",
-                                  result[1].known_coin_id),
+                                  &result[1].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash2",
                                             &result[1].denom_hash),
@@ -182,57 +178,56 @@ insert2 (struct PosgresClosure *pg,
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0); /* should be impossible */
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    if (! existed)
-      return TALER_EXCHANGEDB_CKS_ADDED;
     break; /* continued below */
   }
 
   if ( (! is_denom_pub_hash_null) &&
-       (0 != GNUNET_memcmp (&denom_hash[0].hash,
-                            &coin[0].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[0].denom_hash,
+                            &coin[0].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[0].denom_conflict = true;
   }
 
   if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (h_age_commitment[0],
+       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
                             &coin[0].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[0]));
+    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[0].age_conflict = true;
   }
   if ( (! is_denom_pub_hash_null2) &&
-       (0 != GNUNET_memcmp (&denom_hash[1].hash,
-                            &coin[1].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[1].denom_hash,
+                            &coin[1].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[1].denom_conflict = true;
   }
 
   if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (h_age_commitment[1],
+       (0 != GNUNET_memcmp (&result[1].h_age_commitment,
                             &coin[1].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[1]));
+    GNUNET_break (GNUNET_is_zero (&result[1].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[1].age_conflict = true;
   }
-  return TALER_EXCHANGEDB_CKS_PRESENT;
+  return qs;
 }
 
-static enum TALER_EXCHANGEDB_CoinKnownStatus
-insert4 (struct PosgresClosure *pg,
-         const struct TALER_CoinPublicInfo *coin[4],
-         const struct TALER_EXCHANGEDB_CoinInfo *result[4])
+
+static enum GNUNET_DB_QueryStatus
+insert4 (struct PostgresClosure *pg,
+         const struct TALER_CoinPublicInfo coin[4],
+         struct TALER_EXCHANGEDB_CoinInfo result[4])
 {
   enum GNUNET_DB_QueryStatus qs;
   bool is_denom_pub_hash_null = false;
@@ -289,52 +284,52 @@ insert4 (struct PosgresClosure *pg,
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_bool ("existed",
-                                result[0].existed),
+                                &result[0].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id",
-                                  result[0].known_coin_id),
+                                  &result[0].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
-                                            result[0].denom_hash),
+                                            &result[0].denom_hash),
       &is_denom_pub_hash_null),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash",
-                                            result[0].h_age_commitment),
+                                            &result[0].h_age_commitment),
       &is_age_hash_null),
     GNUNET_PQ_result_spec_bool ("existed2",
-                                result[1].existed),
+                                &result[1].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id2",
-                                  result[1].known_coin_id),
+                                  &result[1].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash2",
-                                            result[1].denom_hash),
+                                            &result[1].denom_hash),
       &is_denom_pub_hash_null2),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash2",
-                                            result[1].h_age_commitment),
+                                            &result[1].h_age_commitment),
       &is_age_hash_null2),
     GNUNET_PQ_result_spec_bool ("existed3",
-                                result[2].existed),
+                                &result[2].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id3",
-                                  result[2].known_coin_id),
+                                  &result[2].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash3",
-                                            result[2].denom_hash),
+                                            &result[2].denom_hash),
       &is_denom_pub_hash_null3),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash3",
-                                            result[2].h_age_commitment),
+                                            &result[2].h_age_commitment),
       &is_age_hash_null3),
     GNUNET_PQ_result_spec_bool ("existed4",
-                                result[3].existed),
+                                &result[3].existed),
     GNUNET_PQ_result_spec_uint64 ("known_coin_id4",
-                                  result[3].known_coin_id),
+                                  &result[3].known_coin_id),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash4",
-                                            result[3].denom_hash),
+                                            &result[3].denom_hash),
       &is_denom_pub_hash_null4),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_auto_from_type ("age_commitment_hash4",
-                                            result[3].h_age_commitment),
+                                            &result[3].h_age_commitment),
       &is_age_hash_null4),
     GNUNET_PQ_result_spec_end
   };
@@ -347,113 +342,105 @@ insert4 (struct PosgresClosure *pg,
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SOFT_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+    return qs;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0); /* should be impossible */
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    if (! existed)
-      return TALER_EXCHANGEDB_CKS_ADDED;
     break; /* continued below */
   }
 
   if ( (! is_denom_pub_hash_null) &&
-       (0 != GNUNET_memcmp (result[0].denom_hash.hash,
-                            &coin[0].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[0].denom_hash,
+                            &coin[0].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[0].denom_conflict = true;
   }
   if ( (! is_age_hash_null) &&
-       (0 != GNUNET_memcmp (h_age_commitment[0],
+       (0 != GNUNET_memcmp (&result[0].h_age_commitment,
                             &coin[0].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[0]));
+    GNUNET_break (GNUNET_is_zero (&result[0].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[0].age_conflict = true;
   }
 
   if ( (! is_denom_pub_hash_null2) &&
-       (0 != GNUNET_memcmp (&denom_hash[1].hash,
-                            &coin[1].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[1].denom_hash,
+                            &coin[1].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[1].denom_conflict = true;
   }
   if ( (! is_age_hash_null2) &&
-       (0 != GNUNET_memcmp (h_age_commitment[1],
+       (0 != GNUNET_memcmp (&result[1].h_age_commitment,
                             &coin[1].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[1]));
+    GNUNET_break (GNUNET_is_zero (&result[1].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[1].age_conflict = true;
   }
 
   if ( (! is_denom_pub_hash_null3) &&
-       (0 != GNUNET_memcmp (&denom_hash[2].hash,
-                            &coin[2].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[2].denom_hash,
+                            &coin[2].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[2].denom_conflict = true;
   }
   if ( (! is_age_hash_null3) &&
-       (0 != GNUNET_memcmp (h_age_commitment[2],
+       (0 != GNUNET_memcmp (&result[2].h_age_commitment,
                             &coin[2].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[2]));
+    GNUNET_break (GNUNET_is_zero (&result[2].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[2].age_conflict = true;
   }
 
   if ( (! is_denom_pub_hash_null4) &&
-       (0 != GNUNET_memcmp (&denom_hash[3].hash,
-                            &coin[3].denom_pub_hash.hash)) )
+       (0 != GNUNET_memcmp (&result[3].denom_hash,
+                            &coin[3].denom_pub_hash)) )
   {
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_DENOM_CONFLICT;
+    result[3].denom_conflict = true;
   }
   if ( (! is_age_hash_null4) &&
-       (0 != GNUNET_memcmp (h_age_commitment[3],
+       (0 != GNUNET_memcmp (&result[3].h_age_commitment,
                             &coin[3].h_age_commitment)) )
   {
-    GNUNET_break (GNUNET_is_zero (h_age_commitment[3]));
+    GNUNET_break (GNUNET_is_zero (&result[3].h_age_commitment));
     GNUNET_break_op (0);
-    return TALER_EXCHANGEDB_CKS_AGE_CONFLICT;
+    result[3].age_conflict = true;
   }
-
-  return TALER_EXCHANGEDB_CKS_PRESENT;
+  return qs;
 }
 
 
-
-enum TALER_EXCHANGEDB_CoinKnownStatus
-TEH_PG_batch_ensure_coin_known (void *cls,
-                                const struct
-                                TALER_CoinPublicInfo *coin,
-                                const struct
-                                TALER_EXCHANGEDB_CoinInfo *result,
-                                unsigned int coin_length,
-                                unsigned int batch_size)
+enum GNUNET_DB_QueryStatus
+TEH_PG_batch_ensure_coin_known (
+  void *cls,
+  const struct TALER_CoinPublicInfo *coin,
+  struct TALER_EXCHANGEDB_CoinInfo *result,
+  unsigned int coin_length,
+  unsigned int batch_size)
 {
   struct PostgresClosure *pg = cls;
-  enum TALER_EXCHANGEDB_CoinKnownStatus qs1;
-  enum TALER_EXCHANGEDB_CoinKnownStatus qs2;
-  enum TALER_EXCHANGEDB_CoinKnownStatus qs4;
+  enum GNUNET_DB_QueryStatus qs = 0;
   unsigned int i = 0;
 
-  while (i < coin_length)
+  while ( (qs >= 0) &&
+          (i < coin_length) )
   {
     unsigned int bs = GNUNET_MIN (batch_size,
                                   coin_length - i);
-    bs = 1;
     if (bs >= 4)
     {
-      qs4 = insert4 (pg,
-                     &coin[i],
-                     &result[i]
-                     );
+      qs = insert4 (pg,
+                    &coin[i],
+                    &result[i]);
       i += 4;
       continue;
     }
@@ -461,17 +448,15 @@ TEH_PG_batch_ensure_coin_known (void *cls,
     {
     case 3:
     case 2:
-      qs2 = insert2 (pg,
-                     &coin[i],
-                     &result[i]
-                     );
+      qs = insert2 (pg,
+                    &coin[i],
+                    &result[i]);
       i += 2;
       break;
     case 1:
-      qs1 = insert1 (pg,
-                     &coin[i],
-                     &result[i]
-                     );
+      qs = insert1 (pg,
+                    &coin[i],
+                    &result[i]);
       i += 1;
       break;
     case 0:
@@ -479,5 +464,7 @@ TEH_PG_batch_ensure_coin_known (void *cls,
       break;
     }
   } /* end while */
-  return TALER_EXCHANGEDB_CKS_PRESENT;
+  if (qs < 0)
+    return qs;
+  return i;
 }

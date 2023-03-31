@@ -41,4 +41,5 @@ TEH_PG_get_old_coin_by_h_blind (
   const struct TALER_BlindedCoinHashP *h_blind_ev,
   struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   uint64_t *rrc_serial);
+
 #endif

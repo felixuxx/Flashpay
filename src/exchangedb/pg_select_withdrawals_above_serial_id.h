@@ -41,4 +41,5 @@ TEH_PG_select_withdrawals_above_serial_id (
   uint64_t serial_id,
   TALER_EXCHANGEDB_WithdrawCallback cb,
   void *cb_cls);
+
 #endif

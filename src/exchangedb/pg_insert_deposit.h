@@ -34,7 +34,7 @@
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_deposit (void *cls,
-                         struct GNUNET_TIME_Timestamp exchange_timestamp,
+                       struct GNUNET_TIME_Timestamp exchange_timestamp,
                        const struct TALER_EXCHANGEDB_Deposit *deposit);
 
 #endif
