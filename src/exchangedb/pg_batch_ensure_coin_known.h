@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -26,6 +26,16 @@
 #include "taler_exchangedb_plugin.h"
 
 
+/**
+ * Make sure the array of given @a coin is known to the database.
+ *
+ * @param cls database connection plugin state
+ * @param coin array of coins that must be made known
+ * @param[out] result array where to store information about each coin
+ * @param coin_length length of the @a coin and @a result arraysf
+ * @param batch_size desired (maximum) batch size
+ * @return database transaction status, non-negative on success
+ */
 enum GNUNET_DB_QueryStatus
 TEH_PG_batch_ensure_coin_known (
   void *cls,
