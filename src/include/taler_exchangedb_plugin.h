@@ -29,13 +29,43 @@
 #include "taler_extensions_policy.h"
 
 
+/**
+ * Per-coin information returned when doing a batch insert.
+ */
 struct TALER_EXCHANGEDB_CoinInfo
 {
+  /**
+   * Row of the coin in the known_coins table.
+   */
   uint64_t known_coin_id;
+
+  /**
+   * Hash of the denomination, relevant on @e denom_conflict.
+   */
   struct TALER_DenominationHashP denom_hash;
+
+  /**
+   * Hash of the age commitment, relevant on @e age_conflict.
+   */
   struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
+   * True if the coin was known previously.
+   */
   bool existed;
+
+  /**
+   * True if the known coin has a different denomination;
+   * application will find denomination of the already
+   * known coin in @e denom_hash.
+   */
   bool denom_conflict;
+
+  /**
+   * True if the known coin has a different age restriction;
+   * application will find age commitment of the already
+   * known coin in @e h_age_commitment.
+   */
   bool age_conflict;
 };
 
@@ -4038,13 +4068,26 @@ struct TALER_EXCHANGEDB_Plugin
                        struct TALER_DenominationHashP *denom_pub_hash,
                        struct TALER_AgeCommitmentHash *age_hash);
 
+
+  /**
+   * Make sure the array of given @a coin is known to the database.
+   *
+   * @param cls database connection plugin state
+   * @param coin array of coins that must be made known
+   * @param[out] result array where to store information about each coin
+   * @param coin_length length of the @a coin and @a result arraysf
+   * @param batch_size desired (maximum) batch size
+   * @return database transaction status, non-negative on success
+   */
   enum GNUNET_DB_QueryStatus
-  (*batch_ensure_coin_known)(void *cls,
-                             const struct TALER_CoinPublicInfo *coin,
-                             struct
-                             TALER_EXCHANGEDB_CoinInfo *result,
-                             unsigned int coin_length,
-                             unsigned int batch_size);
+  (*batch_ensure_coin_known)(
+    void *cls,
+    const struct TALER_CoinPublicInfo *coin,
+    struct TALER_EXCHANGEDB_CoinInfo *result,
+    unsigned int coin_length,
+    unsigned int batch_size);
+
+
   /**
    * Retrieve information about the given @a coin from the database.
    *
