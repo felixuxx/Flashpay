@@ -189,7 +189,7 @@ executive_totp (void *h_key,
     if (NULL == ret)
     {
       GNUNET_asprintf (&ret,
-                       "%llu",
+                       "%08llu",
                        (unsigned long long) code);
     }
     else
@@ -197,7 +197,7 @@ executive_totp (void *h_key,
       char *tmp;
 
       GNUNET_asprintf (&tmp,
-                       "%s\n%llu",
+                       "%s\n%08llu",
                        ret,
                        (unsigned long long) code);
       GNUNET_free (ret);
