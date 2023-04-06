@@ -257,7 +257,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
           char *tmp = langs;
 
           GNUNET_asprintf (&langs,
-                           "%s %s",
+                           "%s,%s",
                            tmp,
                            p->language);
           GNUNET_free (tmp);
@@ -327,7 +327,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   {
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
-                                           "Acceptable-Languages",
+                                           "Avail-Languages",
                                            langs));
     GNUNET_free (langs);
   }
