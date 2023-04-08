@@ -232,7 +232,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                                         MHD_HEADER_KIND,
                                         MHD_HTTP_HEADER_ACCEPT);
     if (NULL == mime)
-      mime = "text/html";
+      mime = "text/plain";
     lang = MHD_lookup_connection_value (conn,
                                         MHD_HEADER_KIND,
                                         MHD_HTTP_HEADER_ACCEPT_LANGUAGE);
@@ -385,9 +385,9 @@ load_terms (struct TALER_MHD_Legal *legal,
     const char *mime;
     unsigned int priority;
   } mm[] = {
+    { .ext = ".txt", .mime = "text/plain", .priority = 150 },
     { .ext = ".html", .mime = "text/html", .priority = 100 },
     { .ext = ".htm", .mime = "text/html", .priority = 99 },
-    { .ext = ".txt", .mime = "text/plain", .priority = 50 },
     { .ext = ".md", .mime = "text/markdown", .priority = 50 },
     { .ext = ".pdf", .mime = "application/pdf", .priority = 25 },
     { .ext = ".jpg", .mime = "image/jpeg" },
