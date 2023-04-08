@@ -123,7 +123,7 @@ THEN
     -- Deposit exists, but with differences. Not allowed.
     out_balance_ok=FALSE;
     out_conflict=TRUE;
-    -- FIXME: out_exchange_timestamp not set on this path?
+    out_exchange_timestamp=0;
     RETURN;
   END IF;
 
