@@ -25,6 +25,8 @@
 #include "pg_do_deposit.h"
 #include "pg_helper.h"
 #include "pg_compute_shard.h"
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_do_deposit (
   void *cls,
@@ -69,8 +71,6 @@ TEH_PG_do_deposit (
     GNUNET_PQ_result_spec_end
   };
 
-  /* Used in #postgres_do_deposit() to execute a deposit,
-     checking the coin's balance in the process as needed. */
   PREPARE (pg,
            "call_deposit",
            "SELECT "
