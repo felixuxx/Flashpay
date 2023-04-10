@@ -1947,6 +1947,7 @@ void
 TALER_payto_hash (const char *payto,
                   struct TALER_PaytoHashP *h_payto);
 
+
 /**
  * Details about a planchet that the customer wants to obtain
  * a withdrawal authorization.  This is the information that

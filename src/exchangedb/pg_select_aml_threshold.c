@@ -56,6 +56,7 @@ TEH_PG_select_aml_threshold (
            "SELECT"
            " threshold_val"
            ",threshold_frac"
+           ",status"
            ",kyc_requirement"
            " FROM aml_status"
            " WHERE h_payto=$1;");
