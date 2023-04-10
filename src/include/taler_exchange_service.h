@@ -3490,8 +3490,16 @@ struct TALER_EXCHANGE_KycStatus
        */
       struct TALER_ExchangeSignatureP exchange_sig;
 
+      /**
+       * AML status for the account.
+       */
+      enum TALER_AmlDecisionState aml_status;
+
     } success;
 
+    /**
+     * KYC is required.
+     */
     struct
     {
 
@@ -3502,7 +3510,25 @@ struct TALER_EXCHANGE_KycStatus
        */
       const char *kyc_url;
 
+      /**
+       * AML status for the account.
+       */
+      enum TALER_AmlDecisionState aml_status;
+
     } accepted;
+
+    /**
+     * KYC is OK, but account needs positive AML decision.
+     */
+    struct
+    {
+
+      /**
+       * AML status for the account.
+       */
+      enum TALER_AmlDecisionState aml_status;
+
+    } unavailable_for_legal_reasons;
 
   } details;
 

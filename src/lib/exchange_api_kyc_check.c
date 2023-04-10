@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -97,6 +97,7 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_OK:
     {
       json_t *kyc_details;
+      uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &ks.details.success.exchange_sig),
@@ -106,6 +107,8 @@ handle_kyc_check_finished (void *cls,
                                     &ks.details.success.timestamp),
         GNUNET_JSON_spec_json ("kyc_details",
                                &kyc_details),
+        GNUNET_JSON_spec_uint32 ("aml_status",
+                                 &status),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -121,6 +124,8 @@ handle_kyc_check_finished (void *cls,
         break;
       }
       ks.details.success.kyc_details = kyc_details;
+      ks.details.success.aml_status
+        = (enum TALER_AmlDecisionState) status;
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
@@ -155,9 +160,12 @@ handle_kyc_check_finished (void *cls,
     }
   case MHD_HTTP_ACCEPTED:
     {
+      uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("kyc_url",
                                  &ks.details.accepted.kyc_url),
+        GNUNET_JSON_spec_uint32 ("aml_status",
+                                 &status),
         GNUNET_JSON_spec_end ()
       };
 
@@ -171,6 +179,8 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
+      ks.details.accepted.aml_status
+        = (enum TALER_AmlDecisionState) status;
       kch->cb (kch->cb_cls,
                &ks);
       GNUNET_JSON_parse_free (spec);
@@ -190,6 +200,33 @@ handle_kyc_check_finished (void *cls,
   case MHD_HTTP_NOT_FOUND:
     ks.ec = TALER_JSON_get_error_code (j);
     break;
+  case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
+    {
+      uint32_t status;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_uint32 ("aml_status",
+                                 &status),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        ks.http_status = 0;
+        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        break;
+      }
+      ks.details.unavailable_for_legal_reasons.aml_status
+        = (enum TALER_AmlDecisionState) status;
+      kch->cb (kch->cb_cls,
+               &ks);
+      GNUNET_JSON_parse_free (spec);
+      TALER_EXCHANGE_kyc_check_cancel (kch);
+      return;
+    }
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     ks.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API

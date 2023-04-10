@@ -6457,6 +6457,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param legi_row identifies requirement to look up
    * @param[out] requirements space-separated list of requirements
+   * @param[out] aml_status set to the AML status of the account
    * @param[out] h_payto account that must be KYC'ed
    * @return database transaction status
    */
@@ -6465,6 +6466,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     uint64_t requirement_row,
     char **requirements,
+    enum TALER_AmlDecisionState *aml_status,
     struct TALER_PaytoHashP *h_payto);
 
 

@@ -113,6 +113,11 @@ struct KycPoller
   const char *section_name;
 
   /**
+   * Set to AML status of the account.
+   */
+  enum TALER_AmlDecisionState aml_status;
+
+  /**
    * Set to error encountered with KYC logic, if any.
    */
   enum TALER_ErrorCode ec;
@@ -303,6 +308,7 @@ kyc_check (void *cls,
     TEH_plugin->cls,
     kyp->requirement_row,
     &requirements,
+    &kyp->aml_status,
     &h_payto);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
@@ -580,6 +586,17 @@ TEH_handler_kyc_check (
   if ( (NULL == kyp->ih) &&
        (! kyp->kyc_required) )
   {
+    if (TALER_AML_NORMAL != kyp->aml_status)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "KYC is OK, but AML active: %d\n",
+                  (int) kyp->aml_status);
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS,
+        GNUNET_JSON_pack_uint64 ("aml_status",
+                                 kyp->aml_status));
+    }
     /* KYC not required */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC not required %llu\n",
@@ -628,6 +645,8 @@ TEH_handler_kyc_check (
     return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("aml_status",
+                               kyp->aml_status),
       GNUNET_JSON_pack_string ("kyc_url",
                                kyp->kyc_url));
   }
@@ -665,6 +684,8 @@ TEH_handler_kyc_check (
                                   &sig),
       GNUNET_JSON_pack_data_auto ("exchange_pub",
                                   &pub),
+      GNUNET_JSON_pack_uint64 ("aml_status",
+                               kyp->aml_status),
       GNUNET_JSON_pack_object_incref ("kyc_details",
                                       kyp->kyc_details),
       GNUNET_JSON_pack_timestamp ("now",
