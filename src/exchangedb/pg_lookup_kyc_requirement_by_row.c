@@ -34,7 +34,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
   struct TALER_PaytoHashP *h_payto)
 {
   struct PostgresClosure *pg = cls;
-  uint32_t status;
+  uint32_t status = TALER_AML_NORMAL;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&requirement_row),
     GNUNET_PQ_query_param_end
@@ -44,8 +44,10 @@ TEH_PG_lookup_kyc_requirement_by_row (
                                   requirements),
     GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                           h_payto),
-    GNUNET_PQ_result_spec_uint32 ("status",
-                                  &status),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_uint32 ("status",
+                                    &status),
+      NULL),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -57,7 +59,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
            ",lr.h_payto"
            ",aml.status"
            " FROM legitimization_requirements lr"
-           " JOIN aml_status aml USING (h_payto)"
+           " LEFT JOIN aml_status aml USING (h_payto)"
            " WHERE legitimization_requirement_serial_id=$1;");
   qs = GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,
