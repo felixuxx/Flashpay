@@ -151,9 +151,14 @@ take_aml_decision_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_h_payto (ref,
-                                                  &h_payto));
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_h_payto (ref,
+                                       &h_payto))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   ref = TALER_TESTING_interpreter_lookup_command (is,
                                                   ds->officer_ref_cmd);
   if (NULL == ref)
@@ -162,9 +167,14 @@ take_aml_decision_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_officer_priv (ref,
-                                                       &officer_priv));
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_officer_priv (ref,
+                                            &officer_priv))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   ds->h_payto = *h_payto;
   if (NULL != ds->kyc_requirement)
   {
