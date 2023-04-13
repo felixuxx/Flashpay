@@ -111,11 +111,13 @@ free_fees (struct FeeMap *fm)
 /**
  * Parse wire @a fees and return map.
  *
+ * @param master_pub master public key to use to check signatures
  * @param fees json AggregateTransferFee to parse
  * @return NULL on error
  */
 static struct FeeMap *
-parse_fees (json_t *fees)
+parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
+            json_t *fees)
 {
   struct FeeMap *fm = NULL;
   const char *key;
@@ -159,6 +161,19 @@ parse_fees (json_t *fees)
                              spec,
                              NULL,
                              NULL))
+      {
+        GNUNET_break_op (0);
+        free_fees (fm);
+        return NULL;
+      }
+      if (GNUNET_OK !=
+          TALER_exchange_offline_wire_fee_verify (
+            key,
+            wa->start_date,
+            wa->end_date,
+            &wa->fees,
+            master_pub,
+            &wa->master_sig))
       {
         GNUNET_break_op (0);
         free_fees (fm);
@@ -227,8 +242,10 @@ handle_wire_finished (void *cls,
       json_t *fees;
       unsigned int num_accounts;
       struct FeeMap *fm;
-      const struct TALER_EXCHANGE_Keys *key_state;
+      struct TALER_MasterPublicKeyP master_pub;
       struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("master_public_key",
+                                     &master_pub),
         GNUNET_JSON_spec_json ("accounts",
                                &accounts),
         GNUNET_JSON_spec_json ("fees",
@@ -249,6 +266,21 @@ handle_wire_finished (void *cls,
         hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      {
+        const struct TALER_EXCHANGE_Keys *key_state;
+
+        key_state = TALER_EXCHANGE_get_keys (wh->exchange);
+        if (0 != GNUNET_memcmp (&key_state->master_pub,
+                                &master_pub))
+        {
+          /* bogus reply: master public key in /wire differs from that in /keys */
+          GNUNET_break_op (0);
+          hr.http_status = 0;
+          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          break;
+        }
+      }
+
       if (0 == (num_accounts = json_array_size (accounts)))
       {
         /* bogus reply */
@@ -258,7 +290,8 @@ handle_wire_finished (void *cls,
         hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      if (NULL == (fm = parse_fees (fees)))
+      if (NULL == (fm = parse_fees (&master_pub,
+                                    fees)))
       {
         /* bogus reply */
         GNUNET_break_op (0);
@@ -268,7 +301,6 @@ handle_wire_finished (void *cls,
         break;
       }
 
-      key_state = TALER_EXCHANGE_get_keys (wh->exchange);
       /* parse accounts */
       {
         struct TALER_EXCHANGE_WireAccount was[num_accounts];
@@ -290,7 +322,7 @@ handle_wire_finished (void *cls,
                                     i);
           if (GNUNET_OK !=
               TALER_JSON_exchange_wire_signature_check (account,
-                                                        &key_state->master_pub))
+                                                        &master_pub))
           {
             /* bogus reply */
             GNUNET_break_op (0);
