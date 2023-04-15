@@ -78,6 +78,11 @@ struct BatchWithdrawContext
   const struct TALER_ReservePublicKeyP *reserve_pub;
 
   /**
+   * request context
+   */
+  const struct TEH_RequestContext *rc;
+
+  /**
    * KYC status of the reserve used for the operation.
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
@@ -180,6 +185,99 @@ aml_amount_cb (
                                    total,
                                    amount));
   return GNUNET_OK;
+}
+
+
+/**
+ * Generates our final (successful) response.
+ *
+ * @param rc request context
+ * @param wc operation context
+ * @return MHD queue status
+ */
+static MHD_RESULT
+generate_reply_success (const struct TEH_RequestContext *rc,
+                        const struct BatchWithdrawContext *wc)
+{
+  json_t *sigs;
+
+  if (! wc->kyc.ok)
+  {
+    /* KYC required */
+    return TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                            &wc->h_payto,
+                                            &wc->kyc);
+  }
+  if (TALER_AML_NORMAL != wc->aml_decision)
+    return TEH_RESPONSE_reply_aml_blocked (rc->connection,
+                                           wc->aml_decision);
+
+  sigs = json_array ();
+  GNUNET_assert (NULL != sigs);
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
+  {
+    struct PlanchetContext *pc = &wc->planchets[i];
+
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        sigs,
+        GNUNET_JSON_PACK (
+          TALER_JSON_pack_blinded_denom_sig (
+            "ev_sig",
+            &pc->collectable.sig))));
+  }
+  TEH_METRICS_batch_withdraw_num_coins += wc->planchets_length;
+  return TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("ev_sigs",
+                                  sigs));
+}
+
+
+/**
+ * Check if the @a wc is replayed and we already have an
+ * answer. If so, replay the existing answer and return the
+ * HTTP response.
+ *
+ * @param wc parsed request data
+ * @param[out] mret HTTP status, set if we return true
+ * @return true if the request is idempotent with an existing request
+ *    false if we did not find the request in the DB and did not set @a mret
+ */
+static bool
+check_request_idempotent (const struct BatchWithdrawContext *wc,
+                          MHD_RESULT *mret)
+{
+  const struct TEH_RequestContext *rc = wc->rc;
+
+  for (unsigned int i = 0; i<wc->planchets_length; i++)
+  {
+    struct PlanchetContext *pc = &wc->planchets[i];
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
+                                        &pc->h_coin_envelope,
+                                        &pc->collectable);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mret = TALER_MHD_reply_with_error (rc->connection,
+                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "get_withdraw_info");
+      return true; /* well, kind-of */
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      return false;
+  }
+  /* generate idempotent reply */
+  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
+  *mret = generate_reply_success (rc,
+                                  wc);
+  return true;
 }
 
 
@@ -448,12 +546,18 @@ batch_withdraw_transaction (void *cls,
     if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
          (conflict) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Idempotent coin in batch, not allowed. Aborting.\n");
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_CONFLICT,
-                                             TALER_EC_EXCHANGE_WITHDRAW_BATCH_IDEMPOTENT_PLANCHET,
-                                             NULL);
+      if (! check_request_idempotent (wc,
+                                      mhd_ret))
+      {
+        /* We do not support *some* of the coins of the request being
+           idempotent while others being fresh. */
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Idempotent coin in batch, not allowed. Aborting.\n");
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_CONFLICT,
+                                               TALER_EC_EXCHANGE_WITHDRAW_BATCH_IDEMPOTENT_PLANCHET,
+                                               NULL);
+      }
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (nonce_reuse)
@@ -468,99 +572,6 @@ batch_withdraw_transaction (void *cls,
   }
   TEH_METRICS_num_success[TEH_MT_SUCCESS_BATCH_WITHDRAW]++;
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
-
-
-/**
- * Generates our final (successful) response.
- *
- * @param rc request context
- * @param wc operation context
- * @return MHD queue status
- */
-static MHD_RESULT
-generate_reply_success (const struct TEH_RequestContext *rc,
-                        const struct BatchWithdrawContext *wc)
-{
-  json_t *sigs;
-
-  if (! wc->kyc.ok)
-  {
-    /* KYC required */
-    return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                            &wc->h_payto,
-                                            &wc->kyc);
-  }
-  if (TALER_AML_NORMAL != wc->aml_decision)
-    return TEH_RESPONSE_reply_aml_blocked (rc->connection,
-                                           wc->aml_decision);
-
-  sigs = json_array ();
-  GNUNET_assert (NULL != sigs);
-  for (unsigned int i = 0; i<wc->planchets_length; i++)
-  {
-    struct PlanchetContext *pc = &wc->planchets[i];
-
-    GNUNET_assert (
-      0 ==
-      json_array_append_new (
-        sigs,
-        GNUNET_JSON_PACK (
-          TALER_JSON_pack_blinded_denom_sig (
-            "ev_sig",
-            &pc->collectable.sig))));
-  }
-  TEH_METRICS_batch_withdraw_num_coins += wc->planchets_length;
-  return TALER_MHD_REPLY_JSON_PACK (
-    rc->connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_array_steal ("ev_sigs",
-                                  sigs));
-}
-
-
-/**
- * Check if the @a rc is replayed and we already have an
- * answer. If so, replay the existing answer and return the
- * HTTP response.
- *
- * @param rc request context
- * @param wc parsed request data
- * @param[out] mret HTTP status, set if we return true
- * @return true if the request is idempotent with an existing request
- *    false if we did not find the request in the DB and did not set @a mret
- */
-static bool
-check_request_idempotent (const struct TEH_RequestContext *rc,
-                          const struct BatchWithdrawContext *wc,
-                          MHD_RESULT *mret)
-{
-  for (unsigned int i = 0; i<wc->planchets_length; i++)
-  {
-    struct PlanchetContext *pc = &wc->planchets[i];
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                        &pc->h_coin_envelope,
-                                        &pc->collectable);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mret = TALER_MHD_reply_with_error (rc->connection,
-                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                            "get_withdraw_info");
-      return true; /* well, kind-of */
-    }
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      return false;
-  }
-  /* generate idempotent reply */
-  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_BATCH_WITHDRAW]++;
-  *mret = generate_reply_success (rc,
-                                  wc);
-  return true;
 }
 
 
@@ -691,8 +702,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
-    if (! check_request_idempotent (rc,
-                                    wc,
+    if (! check_request_idempotent (wc,
                                     &mret))
     {
       return TALER_MHD_reply_with_error (rc->connection,
@@ -713,8 +723,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
                                          NULL);
     if (NULL == dk)
     {
-      if (! check_request_idempotent (rc,
-                                      wc,
+      if (! check_request_idempotent (wc,
                                       &mret))
       {
         return TEH_RESPONSE_reply_unknown_denom_pub_hash (
@@ -726,8 +735,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
     {
       /* This denomination is past the expiration time for withdraws */
-      if (! check_request_idempotent (rc,
-                                      wc,
+      if (! check_request_idempotent (wc,
                                       &mret))
       {
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
@@ -751,8 +759,7 @@ parse_planchets (const struct TEH_RequestContext *rc,
     if (dk->recoup_possible)
     {
       /* This denomination has been revoked */
-      if (! check_request_idempotent (rc,
-                                      wc,
+      if (! check_request_idempotent (wc,
                                       &mret))
       {
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
@@ -832,7 +839,10 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
                             const struct TALER_ReservePublicKeyP *reserve_pub,
                             const json_t *root)
 {
-  struct BatchWithdrawContext wc;
+  struct BatchWithdrawContext wc = {
+    .reserve_pub = reserve_pub,
+    .rc = rc
+  };
   json_t *planchets;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("planchets",
@@ -840,13 +850,9 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
     GNUNET_JSON_spec_end ()
   };
 
-  memset (&wc,
-          0,
-          sizeof (wc));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TEH_currency,
                                         &wc.batch_total));
-  wc.reserve_pub = reserve_pub;
   {
     enum GNUNET_GenericReturnValue res;
 
