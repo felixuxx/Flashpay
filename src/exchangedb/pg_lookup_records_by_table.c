@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020, 2021, 2022 Taler Systems SA
+   Copyright (C) 2020-2023 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -2321,8 +2321,8 @@ TEH_PG_lookup_records_by_table (void *cls,
     .cb = cb,
     .cb_cls = cb_cls
   };
-  GNUNET_PQ_PostgresResultHandler rh;
-  const char *statement;
+  GNUNET_PQ_PostgresResultHandler rh = NULL;
+  const char *statement = NULL;
   enum GNUNET_DB_QueryStatus qs;
 
   switch (table)
@@ -2885,7 +2885,9 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY profit_drain_serial_id ASC;");
     rh = &lrbt_cb_table_profit_drains;
     break;
-  default:
+  }
+  if (NULL == rh)
+  {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

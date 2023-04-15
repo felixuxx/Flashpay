@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -234,6 +234,7 @@ struct TALER_EXCHANGEDB_SignkeyMetaData
  */
 enum TALER_EXCHANGEDB_ReplicatedTable
 {
+  /* From exchange-0002.sql: */
   TALER_EXCHANGEDB_RT_DENOMINATIONS,
   TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS,
   TALER_EXCHANGEDB_RT_WIRE_TARGETS,
@@ -276,6 +277,13 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_WADS_IN,
   TALER_EXCHANGEDB_RT_WADS_IN_ENTRIES,
   TALER_EXCHANGEDB_RT_PROFIT_DRAINS,
+  /* From exchange-0003.sql: */
+  TALER_EXCHAGNEDB_RT_AML_STAFF,
+  TALER_EXCHAGNEDB_RT_AML_HISTORY,
+  TALER_EXCHAGNEDB_RT_KYC_ATTRIBUTES,
+  TALER_EXCHANGEDB_RT_PURSE_DELETION,
+  TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS,
+  TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS,
 };
 
 
@@ -701,6 +709,67 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_MasterSignatureP master_sig;
     } profit_drains;
 
+    struct
+    {
+      struct TALER_AmlOfficerPublicKeyP decider_pub;
+      struct TALER_MasterSignatureP master_sig;
+      char *decider_name;
+      bool is_active;
+      bool read_only;
+      struct GNUNET_TIME_Timestamp last_change;
+    } aml_staff;
+
+    struct
+    {
+      struct TALER_PaytoHashP h_payto;
+      struct TALER_Amount new_threshold;
+      enum TALER_AmlDecisionState new_status;
+      struct GNUNET_TIME_Timestamp decision_time;
+      char *justification;
+      char *kyc_requirements; /* NULL allowed! */
+      uint64_t kyc_req_row;
+      struct TALER_AmlOfficerPublicKeyP decider_pub;
+      struct TALER_AmlOfficerSignatureP decider_sig;
+    } aml_history;
+
+    struct
+    {
+      struct TALER_PaytoHashP h_payto;
+      struct GNUNET_ShortHashCode kyc_prox;
+      char *provider;
+      char *birthdate; /* NULL allowed! */
+      struct GNUNET_TIME_Timestamp collection_time;
+      struct GNUNET_TIME_Timestamp expiration_time;
+      void *encrypted_attributes;
+      size_t encrypted_attributes_size;
+    } kyc_attributes;
+
+    struct
+    {
+      struct TALER_PurseContractPublicKeyP purse_pub;
+      struct TALER_PurseContractSignatureP purse_sig;
+    } purse_deletion;
+
+    struct
+    {
+      struct TALER_AgeWithdrawCommitmentHashP h_commitment;
+      struct TALER_Amount amount_with_fee;
+      uint16_t max_age;
+      struct TALER_ReservePublicKeyP reserve_pub;
+      struct TALER_ReserveSignatureP reserve_sig;
+      uint32_t noreveal_index;
+      struct GNUNET_TIME_Absolute timestamp;
+    } withdraw_age_commitments;
+
+    struct
+    {
+      struct TALER_AgeWithdrawCommitmentHashP h_commitment;
+      // FIXME-Oec: h_commitment --- schema says it is 32 byte, but it was 64 above??!?
+      uint32_t freshcoin_index;
+      uint64_t denominations_serial;
+      // FIXME-Oec: h_coin_ev --- schema says it is 32 byte!?
+    } withdraw_age_reveals;
+
   } details;
 
 };
@@ -1106,6 +1175,7 @@ struct TALER_EXCHANGEDB_AgeWithdrawCommitment
 
   /**
    * Maximum age that the coins are restricted to.
+   * FIXME-Oec: use 16-bit integer (see DB schema!)
    */
   uint32_t max_age;
 

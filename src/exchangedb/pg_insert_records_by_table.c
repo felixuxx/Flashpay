@@ -1877,7 +1877,7 @@ TEH_PG_insert_records_by_table (void *cls,
                                 const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct PostgresClosure *pg = cls;
-  InsertRecordCallback rh;
+  InsertRecordCallback rh = NULL;
 
   switch (td->table)
   {
@@ -2007,7 +2007,10 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
     rh = &irbt_cb_table_profit_drains;
     break;
-  default:
+  }
+
+  if (NULL == rh)
+  {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -2016,4 +2019,4 @@ TEH_PG_insert_records_by_table (void *cls,
 }
 
 
-/* end of irbt_callbacks.c */
+/* end of pg_insert_records_by_table.c */
