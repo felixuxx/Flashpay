@@ -2296,6 +2296,374 @@ lrbt_cb_table_profit_drains (void *cls,
 
 
 /**
+ * Function called with aml_staff table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_aml_staff (void *cls,
+                         PGresult *result,
+                         unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_AML_STAFF
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "aml_staff_uuid",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "decider_pub",
+        &td.details.aml_staff.decider_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "master_sig",
+        &td.details.aml_staff.master_sig),
+      GNUNET_PQ_result_spec_string (
+        "decider_name",
+        &td.details.aml_staff.decider_name),
+      GNUNET_PQ_result_spec_bool (
+        "is_active",
+        &td.details.aml_staff.is_active),
+      GNUNET_PQ_result_spec_bool (
+        "read_only",
+        &td.details.aml_staff.read_only),
+      GNUNET_PQ_result_spec_timestamp (
+        "last_change",
+        &td.details.aml_staff.last_change),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with aml_history table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_aml_history (void *cls,
+                           PGresult *result,
+                           unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_AML_HISTORY
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    uint32_t status32;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "aml_history_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.aml_history.h_payto),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "new_threshold",
+        &td.details.aml_history.new_threshold),
+      GNUNET_PQ_result_spec_uint32 (
+        "new_status",
+        &status32),
+      GNUNET_PQ_result_spec_timestamp (
+        "decision_time",
+        &td.details.aml_history.decision_time),
+      GNUNET_PQ_result_spec_string (
+        "justification",
+        &td.details.aml_history.justification),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string (
+          "kyc_requirements",
+          &td.details.aml_history.kyc_requirements),
+        NULL),
+      GNUNET_PQ_result_spec_uint64 (
+        "kyc_req_row",
+        &td.details.aml_history.kyc_req_row),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "decider_pub",
+        &td.details.aml_history.decider_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "decider_sig",
+        &td.details.aml_history.decider_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    td.details.aml_history.kyc_requirements = NULL;
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    td.details.aml_history.new_status
+      = (enum TALER_AmlDecisionState) status32;
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with kyc_attributes table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_kyc_attributes (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "kyc_attributes_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.kyc_attributes.h_payto),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "kyc_prox",
+        &td.details.kyc_attributes.kyc_prox),
+      GNUNET_PQ_result_spec_string (
+        "provider",
+        &td.details.kyc_attributes.provider),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string (
+          "birthdate",
+          &td.details.kyc_attributes.birthdate),
+        NULL),
+      GNUNET_PQ_result_spec_timestamp (
+        "collection_time",
+        &td.details.kyc_attributes.collection_time),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_time",
+        &td.details.kyc_attributes.expiration_time),
+      GNUNET_PQ_result_spec_variable_size (
+        "encrypted_attributes",
+        &td.details.kyc_attributes.encrypted_attributes,
+        &td.details.kyc_attributes.encrypted_attributes_size),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with purse_deletion table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_purse_deletion (void *cls,
+                              PGresult *result,
+                              unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_PURSE_DELETION
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "purse_deletion_serial_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_sig",
+        &td.details.purse_deletion.purse_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "purse_pub",
+        &td.details.purse_deletion.purse_pub),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with withdraw_age_commitments table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_withdraw_age_commitments (void *cls,
+                                        PGresult *result,
+                                        unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "withdraw_age_commitment_id",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_commitment",
+        &td.details.withdraw_age_commitments.h_commitment),
+      GNUNET_PQ_result_spec_uint16 (
+        "max_age",
+        &td.details.withdraw_age_commitments.max_age),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.withdraw_age_commitments.amount_with_fee),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.withdraw_age_commitments.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.withdraw_age_commitments.reserve_sig),
+      GNUNET_PQ_result_spec_uint32 (
+        "noreveal_index",
+        &td.details.withdraw_age_commitments.noreveal_index),
+      GNUNET_PQ_result_spec_absolute_time (
+        "timestamp",
+        &td.details.withdraw_age_commitments.timestamp),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with withdraw_age_reveals table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_withdraw_age_reveals (void *cls,
+                                    PGresult *result,
+                                    unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 (
+        "withdraw_age_reveals_serial_id",
+        &td.serial),
+#if FIXME_OEC
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_commitment",
+        &td.details.withdraw_age_reveals.h_commitment),
+#endif
+      GNUNET_PQ_result_spec_uint32 (
+        "freshcoin_index",
+        &td.details.withdraw_age_reveals.freshcoin_index),
+      GNUNET_PQ_result_spec_uint64 (
+        "denominations_serial",
+        &td.details.withdraw_age_reveals.denominations_serial),
+      /* FIXME-Oec; h_coin_ev, or coin_ev? */
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
  * Assign statement to @a n and PREPARE
  * @a sql under name @a n.
  */
@@ -2885,6 +3253,86 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY profit_drain_serial_id ASC;");
     rh = &lrbt_cb_table_profit_drains;
     break;
+
+  case TALER_EXCHANGEDB_RT_AML_STAFF:
+    XPREPARE ("select_above_serial_by_table_aml_staff",
+              "SELECT"
+              " aml_staff_uuid"
+              ",decider_pub"
+              ",master_sig"
+              ",decider_name"
+              ",is_active"
+              ",read_only"
+              ",last_change"
+              " FROM aml_staff"
+              " WHERE aml_staff_uuid > $1"
+              " ORDER BY aml_staff_uuid ASC;");
+    rh = &lrbt_cb_table_aml_staff;
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    XPREPARE ("select_above_serial_by_table_aml_history",
+              "SELECT"
+              " aml_history_serial_id"
+              ",h_payto"
+              ",new_threshold_val"
+              ",new_threshold_frac"
+              ",new_status"
+              ",decision_time"
+              ",justification"
+              ",kyc_requirements"
+              ",kyc_req_row"
+              ",decider_pub"
+              ",decider_sig"
+              " FROM aml_history"
+              " WHERE aml_history_serial_id > $1"
+              " ORDER BY aml_history_serial_id ASC;");
+    rh = &lrbt_cb_table_aml_history;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    XPREPARE ("select_above_serial_by_table_kyc_attributes",
+              "SELECT"
+              " kyc_attributes_serial_id"
+              ",h_payto"
+              ",kyc_prox"
+              ",provider"
+              ",birthdate"
+              ",collection_time"
+              ",expiration_time"
+              ",encrypted_attributes"
+              " FROM kyc_attributes"
+              " WHERE kyc_attributes_serial_id > $1"
+              " ORDER BY kyc_attributes_serial_id ASC;");
+    rh = &lrbt_cb_table_kyc_attributes;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DELETION:
+    XPREPARE ("select_above_serial_by_table_purse_deletion",
+              "SELECT"
+              " purse_deletion_serial_id"
+              ",purse_pub"
+              ",purse_sig"
+              " FROM purse_deletion"
+              " WHERE purse_deletion_serial_id > $1"
+              " ORDER BY purse_deletion_serial_id ASC;");
+    rh = &lrbt_cb_table_purse_deletion;
+    break;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
+    XPREPARE ("select_above_serial_by_table_withdraw_age_commitments",
+              "SELECT"
+              " withdraw_age_commitment_id"
+              ",h_commitment"
+              ",amount_with_fee_val"
+              ",amount_with_fee_frac"
+              ",max_age"
+              ",reserve_pub"
+              ",reserve_sig"
+              ",noreveal_index"
+              ",timestamp"
+              " FROM withdraw_age_commitments"
+              " WHERE withdraw_age_commitment_id > $1"
+              " ORDER BY withdraw_age_commitment_id ASC;");
+    rh = &lrbt_cb_table_withdraw_age_commitments;
+    break;
+
   }
   if (NULL == rh)
   {

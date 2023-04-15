@@ -390,6 +390,60 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " LIMIT 1;");
     statement = "select_serial_by_table_profit_drains";
     break;
+  case TALER_EXCHANGEDB_RT_AML_STAFF:
+    XPREPARE ("select_serial_by_table_aml_staff",
+              "SELECT"
+              " aml_staff_uuid AS serial"
+              " FROM aml_staff"
+              " ORDER BY aml_staff_uuid DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_aml_staff";
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    XPREPARE ("select_serial_by_table_aml_history",
+              "SELECT"
+              " aml_history_serial_id AS serial"
+              " FROM aml_history"
+              " ORDER BY aml_history_serial_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_aml_history";
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    XPREPARE ("select_serial_by_table_kyc_attributes",
+              "SELECT"
+              " kyc_attributes_serial_id AS serial"
+              " FROM kyc_attributes"
+              " ORDER BY kyc_attributes_serial_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_kyc_attributes";
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DELETION:
+    XPREPARE ("select_serial_by_table_purse_deletion",
+              "SELECT"
+              " purse_deletion_serial_id AS serial"
+              " FROM purse_deletion"
+              " ORDER BY purse_deletion_serial_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_purse_deletion";
+    break;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
+    XPREPARE ("select_serial_by_table_withdraw_age_commitments",
+              "SELECT"
+              " withdraw_age_commitment_id AS serial"
+              " FROM withdraw_age_commitments"
+              " ORDER BY withdraw_age_commitment_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_withdraw_age_commitments";
+    break;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS:
+    XPREPARE ("select_serial_by_table_withdraw_age_reveals",
+              "SELECT"
+              " withdraw_age_reveals_id AS serial"
+              " FROM withdraw_age_reveals"
+              " ORDER BY withdraw_age_reveals_id DESC"
+              " LIMIT 1;");
+    statement = "select_serial_by_table_withdraw_age_reveals";
+    break;
   }
   if (NULL == statement)
   {
