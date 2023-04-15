@@ -390,7 +390,7 @@ FROM exists;
 RETURN;
 END $$;
 
-/*** THIS SQL CODE WORKS ***/
+/*** Experiment using a loop ***/
 /*
 CREATE OR REPLACE FUNCTION exchange_do_batch2_known_coin(
   IN in_coin_pub1 BYTEA,
