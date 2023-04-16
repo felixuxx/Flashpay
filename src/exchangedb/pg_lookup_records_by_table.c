@@ -232,6 +232,109 @@ lrbt_cb_table_wire_targets (void *cls,
 
 
 /**
+ * Function called with legitimization_processes table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_legitimization_processes (void *cls,
+                                        PGresult *result,
+                                        unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.legitimization_processes.h_payto),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_time",
+        &td.details.legitimization_processes.expiration_time),
+      GNUNET_PQ_result_spec_string (
+        "provider_section",
+        &td.details.legitimization_processes.provider_section),
+      GNUNET_PQ_result_spec_string (
+        "provider_user_id",
+        &td.details.legitimization_processes.provider_user_id),
+      GNUNET_PQ_result_spec_string (
+        "provider_legitimization_id",
+        &td.details.legitimization_processes.provider_legitimization_id),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with legitimization_requirements table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_legitimization_requirements (void *cls,
+                                           PGresult *result,
+                                           unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_payto",
+        &td.details.legitimization_requirements.h_payto),
+      GNUNET_PQ_result_spec_string (
+        "required_checks",
+        &td.details.legitimization_requirements.required_checks),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
  * Function called with reserves table entries.
  *
  * @param cls closure
@@ -381,6 +484,123 @@ lrbt_cb_table_reserves_close (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "closing_fee",
         &td.details.reserves_close.closing_fee),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with reserves_open_requests table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_reserves_open_requests (void *cls,
+                                      PGresult *result,
+                                      unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.reserves_open_requests.reserve_pub),
+      GNUNET_PQ_result_spec_timestamp (
+        "request_timestamp",
+        &td.details.reserves_open_requests.request_timestamp),
+      GNUNET_PQ_result_spec_timestamp (
+        "expiration_date",
+        &td.details.reserves_open_requests.expiration_date),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.reserves_open_requests.reserve_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "reserve_payment",
+        &td.details.reserves_open_requests.reserve_payment),
+      GNUNET_PQ_result_spec_uint32 (
+        "requested_purse_limit",
+        &td.details.reserves_open_requests.requested_purse_limit),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with reserves_open_deposits table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_reserves_open_deposits (void *cls,
+                                      PGresult *result,
+                                      unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_sig",
+        &td.details.reserves_open_deposits.reserve_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.reserves_open_deposits.reserve_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.reserves_open_deposits.coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_sig",
+        &td.details.reserves_open_deposits.coin_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "contribution",
+        &td.details.reserves_open_deposits.contribution),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2743,6 +2963,31 @@ TEH_PG_lookup_records_by_table (void *cls,
               " ORDER BY wire_target_serial_id ASC;");
     rh = &lrbt_cb_table_wire_targets;
     break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_PROCESSES:
+    XPREPARE ("select_above_serial_by_table_legitimization_processes",
+              "SELECT"
+              " legitimization_process_serial_id AS serial"
+              ",h_payto"
+              ",expiration_time"
+              ",provider_section"
+              ",provider_user_id"
+              ",provider_legitimization_id"
+              " FROM legitimization_processes"
+              " WHERE legitimization_process_serial_id > $1"
+              " ORDER BY legitimization_process_serial_id ASC;");
+    rh = &lrbt_cb_table_legitimization_processes;
+    break;
+  case TALER_EXCHANGEDB_RT_LEGITIMIZATION_REQUIREMENTS:
+    XPREPARE ("select_above_serial_by_table_legitimization_requirements",
+              "SELECT"
+              " legitimization_requirement_serial_id AS serial"
+              ",h_payto"
+              ",required_checks"
+              " FROM legitimization_requirements"
+              " WHERE legitimization_requirement_serial_id > $1"
+              " ORDER BY legitimization_requirement_serial_id ASC;");
+    rh = &lrbt_cb_table_legitimization_requirements;
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     XPREPARE ("select_above_serial_by_table_reserves",
               "SELECT"
@@ -2787,6 +3032,37 @@ TEH_PG_lookup_records_by_table (void *cls,
               " WHERE close_uuid > $1"
               " ORDER BY close_uuid ASC;");
     rh = &lrbt_cb_table_reserves_close;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_REQUESTS:
+    XPREPARE ("select_above_serial_by_table_reserves_open_requests",
+              "SELECT"
+              " open_request_uuid AS serial"
+              ",reserve_pub"
+              ",request_timestamp"
+              ",expiration_date"
+              ",reserve_sig"
+              ",reserve_payment_val"
+              ",reserve_payment_frac"
+              ",requested_purse_limit"
+              " FROM reserves_open_requests"
+              " WHERE open_request_uuid > $1"
+              " ORDER BY open_request_uuid ASC;");
+    rh = &lrbt_cb_table_reserves_open_requests;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OPEN_DEPOSITS:
+    XPREPARE ("select_above_serial_by_table_reserves_open_deposits",
+              "SELECT"
+              " reserves_open_deposit_uuid AS serial"
+              ",reserve_sig"
+              ",reserve_pub"
+              ",coin_pub"
+              ",coin_sig"
+              ",contribution_val"
+              ",contribution_frac"
+              " FROM reserves_open_deposits"
+              " WHERE reserves_open_deposit_uuid > $1"
+              " ORDER BY reserves_open_deposit_uuid ASC;");
+    rh = &lrbt_cb_table_reserves_open_deposits;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES_OUT:
     XPREPARE ("select_above_serial_by_table_reserves_out",
