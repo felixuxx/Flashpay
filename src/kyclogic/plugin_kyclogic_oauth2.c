@@ -514,6 +514,11 @@ initiate_task (void *cls)
                    pd->client_id,
                    redirect_uri_encoded);
   GNUNET_free (redirect_uri_encoded);
+  /* FIXME-API: why do we *redirect* the client here,
+     instead of making the HTTP request *ourselves*
+     and forwarding the response? This prevents us
+     from using authentication on initiation,
+     (which is desirable for challenger!) */
   ih->cb (ih->cb_cls,
           TALER_EC_NONE,
           url,
