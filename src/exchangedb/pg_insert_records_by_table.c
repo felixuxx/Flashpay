@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020, 2021, 2022 Taler Systems SA
+   Copyright (C) 2020-2023 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -1872,6 +1872,282 @@ irbt_cb_table_profit_drains (struct PostgresClosure *pg,
 }
 
 
+/**
+ * Function called with aml_staff records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_aml_staff (struct PostgresClosure *pg,
+                         const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_staff.decider_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_staff.master_sig),
+    GNUNET_PQ_query_param_string (
+      td->details.aml_staff.decider_name),
+    GNUNET_PQ_query_param_bool (
+      td->details.aml_staff.is_active),
+    GNUNET_PQ_query_param_bool (
+      td->details.aml_staff.read_only),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.aml_staff.last_change),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_aml_staff",
+           "INSERT INTO aml_staff"
+           "(aml_staff_uuid"
+           ",decider_pub"
+           ",master_sig"
+           ",decider_name"
+           ",is_active"
+           ",read_only"
+           ",last_change"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_aml_staff",
+                                             params);
+}
+
+
+/**
+ * Function called with aml_history records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_aml_history (struct PostgresClosure *pg,
+                           const struct TALER_EXCHANGEDB_TableData *td)
+{
+  uint32_t status32 = td->details.aml_history.new_status;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.h_payto),
+    TALER_PQ_query_param_amount (
+      &td->details.aml_history.new_threshold),
+    GNUNET_PQ_query_param_uint32 (
+      &status32),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.aml_history.decision_time),
+    GNUNET_PQ_query_param_string (
+      td->details.aml_history.justification),
+    (NULL == td->details.aml_history.kyc_requirements)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (
+      td->details.aml_history.kyc_requirements),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.aml_history.kyc_req_row),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.decider_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aml_history.decider_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_aml_history",
+           "INSERT INTO aml_history"
+           "(aml_history_serial_id"
+           ",h_payto"
+           ",new_threshold_val"
+           ",new_threshold_frac"
+           ",new_status"
+           ",decision_time"
+           ",justification"
+           ",kyc_requirements"
+           ",kyc_req_row"
+           ",decider_pub"
+           ",decider_sig"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_aml_history",
+                                             params);
+}
+
+
+/**
+ * Function called with kyc_attributes records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.kyc_attributes.h_payto),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.kyc_attributes.kyc_prox),
+    GNUNET_PQ_query_param_string (
+      td->details.kyc_attributes.provider),
+    (NULL == td->details.kyc_attributes.birthdate)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (
+      td->details.kyc_attributes.birthdate),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.kyc_attributes.collection_time),
+    GNUNET_PQ_query_param_timestamp (
+      &td->details.kyc_attributes.expiration_time),
+    GNUNET_PQ_query_param_fixed_size (
+      &td->details.kyc_attributes.encrypted_attributes,
+      td->details.kyc_attributes.encrypted_attributes_size),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_kyc_attributes",
+           "INSERT INTO kyc_attributes"
+           "(kyc_attributes_serial_id"
+           ",h_payto"
+           ",kyc_prox"
+           ",provider"
+           ",birthdate"
+           ",collection_time"
+           ",expiration_time"
+           ",encrypted_attributes"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_kyc_attributes",
+                                             params);
+}
+
+
+/**
+ * Function called with purse_deletion records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_purse_deletion (struct PostgresClosure *pg,
+                              const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_deletion.purse_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.purse_deletion.purse_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_purse_deletion",
+           "INSERT INTO purse_deletion"
+           "(purse_deletion_serial_id"
+           ",purse_pub"
+           ",purse_sig"
+           ") VALUES "
+           "($1, $2, $3);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_purse_deletion",
+                                             params);
+}
+
+
+/**
+ * Function called with withdraw_age_commitments records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_withdraw_age_commitments (struct PostgresClosure *pg,
+                                        const struct
+                                        TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.withdraw_age_commitments.h_commitment),
+    TALER_PQ_query_param_amount (
+      &td->details.withdraw_age_commitments.amount_with_fee),
+    GNUNET_PQ_query_param_uint16 (
+      &td->details.withdraw_age_commitments.max_age),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.withdraw_age_commitments.reserve_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.withdraw_age_commitments.reserve_sig),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.withdraw_age_commitments.noreveal_index),
+    GNUNET_PQ_query_param_absolute_time (
+      &td->details.withdraw_age_commitments.timestamp),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_withdraw_age_commitments",
+           "INSERT INTO withdraw_age_commitments"
+           "(withdraw_age_commitment_id"
+           ",h_commitment"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
+           ",max_age"
+           ",reserve_pub"
+           ",reserve_sig"
+           ",noreveal_index"
+           ",timestamp"
+           ") VALUES "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_withdraw_age_commitments",
+                                             params);
+}
+
+
+/**
+ * Function called with withdraw_age_reveals records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_withdraw_age_reveals (struct PostgresClosure *pg,
+                                    const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+#if FIXME_OEC
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.withdraw_age_reveals.h_commitment),
+#endif
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.withdraw_age_reveals.freshcoin_index),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.withdraw_age_reveals.denominations_serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  PREPARE (pg,
+           "insert_into_table_withdraw_age_reveals",
+           "INSERT INTO withdraw_age_reveals"
+           "(withdraw_age_reveals_id"
+           ",FIXME_OEC"
+           ",freshcoin_index"
+           ",denominations_serial"
+           ",FIXME_OEC"
+           ") VALUES "
+           "($1, $2, $3, $4, $5);");
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_withdraw_age_reveals",
+                                             params);
+}
+
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_records_by_table (void *cls,
                                 const struct TALER_EXCHANGEDB_TableData *td)
@@ -2007,8 +2283,25 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_PROFIT_DRAINS:
     rh = &irbt_cb_table_profit_drains;
     break;
+  case TALER_EXCHANGEDB_RT_AML_STAFF:
+    rh = &irbt_cb_table_aml_staff;
+    break;
+  case TALER_EXCHANGEDB_RT_AML_HISTORY:
+    rh = &irbt_cb_table_aml_history;
+    break;
+  case TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES:
+    rh = &irbt_cb_table_kyc_attributes;
+    break;
+  case TALER_EXCHANGEDB_RT_PURSE_DELETION:
+    rh = &irbt_cb_table_purse_deletion;
+    break;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
+    rh = &irbt_cb_table_withdraw_age_commitments;
+    break;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS:
+    rh = &irbt_cb_table_withdraw_age_reveals;
+    break;
   }
-
   if (NULL == rh)
   {
     GNUNET_break (0);
