@@ -2,17 +2,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <libpq-fe.h>
-#include <internal/libpq-int.h>
+#include <postgresql/libpq-fe.h>
+#include <libpq-int.h>
 #include <catalog/pg_type.h>
 #include <executor/spi.h>
 #include <funcapi.h>
 #include <fmgr.h>
 #include <utils/builtins.h>
-#include "utils/array.h"
+#include <utils/array.h>
 #include <sys/time.h>
-#include "utils/numeric.h"
-#include "utils/timestamp.h"
+#include <utils/numeric.h>
+#include <utils/timestamp.h>
 #include <utils/bytea.h>
 
 #ifdef PG_MODULE_MAGIC
@@ -66,7 +66,7 @@ pg_spi_prepare_example (PG_FUNCTION_ARGS)
   {
     if (prepared_plan == NULL)
     {
-      new_plan = SPI_prepare ("SELECT 1 FROM joseph_test.X", 0, NULL);
+      new_plan = SPI_prepare ("SELECT 1 FROM X", 0, NULL);
       prepared_plan = SPI_saveplan (new_plan);
 
       if (prepared_plan == NULL)
@@ -112,7 +112,7 @@ pg_spi_prepare_example_without_saveplan (PG_FUNCTION_ARGS)
   }
 
   {
-    new_plan = SPI_prepare ("SELECT 1 FROM joseph_test.X", 0, NULL);
+    new_plan = SPI_prepare ("SELECT 1 FROM X", 0, NULL);
     ret = SPI_execute_plan (new_plan, NULL, 0,false, 0);
     if (ret != SPI_OK_SELECT)
     {
@@ -142,7 +142,7 @@ Datum
 pg_spi_select_from_x (PG_FUNCTION_ARGS)
 {
   int ret;
-  char *query = "SELECT 1 FROM joseph_test.X";
+  char *query = "SELECT 1 FROM X";
   uint64 proc;
   ret = SPI_connect ();
 
@@ -172,7 +172,7 @@ pg_spi_insert_int (PG_FUNCTION_ARGS)
   int nargs;
   Oid argtypes[1];
   Datum values[1];
-  char *query = "INSERT INTO joseph_test.X (a) VALUES ($1)";
+  char *query = "INSERT INTO X (a) VALUES ($1)";
 
   ret = SPI_connect ();
   if (ret != SPI_OK_CONNECT)
@@ -204,7 +204,7 @@ pg_spi_prepare_insert (PG_FUNCTION_ARGS)
   int nargs;
   Oid argtypes[1];
   Datum values[1];
-  char *query = "INSERT INTO joseph_test.X (a) VALUES ($1)";
+  const char *query = "INSERT INTO X (a) VALUES ($1)";
   SPIPlanPtr new_plan;
   ret = SPI_connect ();
   if (ret != SPI_OK_CONNECT)
@@ -252,7 +252,7 @@ pg_spi_prepare_insert_bytea(PG_FUNCTION_ARGS)
   Datum values[1];
   Oid argtypes2[1];
   Datum val[1];
-  char *query = "INSERT INTO joseph_test.X (a) VALUES ($1)";
+  char *query = "INSERT INTO X (a) VALUES ($1)";
   SPIPlanPtr new_plan;
   ret = SPI_connect();
   if (ret != SPI_OK_CONNECT)
@@ -296,7 +296,7 @@ pg_spi_prepare_insert_without_saveplan (PG_FUNCTION_ARGS)
   int nargs;
   Oid argtypes[1];
   Datum values[1];
-  char *query = "INSERT INTO joseph_test.X (a) VALUES ($1)";
+  const char *query = "INSERT INTO X (a) VALUES ($1)";
   SPIPlanPtr new_plan;
   ret = SPI_connect ();
   if (ret != SPI_OK_CONNECT)
@@ -333,7 +333,7 @@ pg_spi_select_pair_from_y(PG_FUNCTION_ARGS)
   int ret;
   valuest result;
   bool isnull;
-  char *query = "SELECT 1,1 FROM joseph_test.Y";
+  char *query = "SELECT 1,1 FROM Y";
   result.col1 = 0;
   result.col2 = 0;
 
@@ -368,7 +368,7 @@ pg_spi_select_with_cond(PG_FUNCTION_ARGS)
     Oid argtypes[1];
     Datum values[1];
     uint64 proc;
-    query = "SELECT col1 FROM joseph_test.Y WHERE col2 = $1";
+    query = "SELECT col1 FROM Y WHERE col2 = $1";
 
     ret = SPI_connect();
     if (ret != SPI_OK_CONNECT) {
@@ -401,7 +401,7 @@ Datum pg_spi_prepare_select_with_cond(PG_FUNCTION_ARGS) {
   uint64 proc;
   int nargs;
   Oid argtypes[1];
-  char *query = "SELECT col1 FROM joseph_test.Y WHERE col1 = $1";
+  char *query = "SELECT col1 FROM Y WHERE col1 = $1";
   int result = 0;
 
   ret = SPI_connect();
@@ -461,7 +461,7 @@ pg_spi_prepare_select_with_cond_without_saveplan (PG_FUNCTION_ARGS)
   uint64 proc;
   int nargs;
   Oid argtypes[1];
-  char *query = "SELECT col1 FROM joseph_test.Y WHERE col2 = $1";
+  char *query = "SELECT col1 FROM Y WHERE col2 = $1";
   int result = 0;
 
   ret = SPI_connect ();
@@ -519,7 +519,7 @@ pg_spi_update_y (PG_FUNCTION_ARGS)
   int nargs;
   Oid argtypes[1];
   Datum values[1];
-  char *query = "UPDATE joseph_test.Y SET col1 = 4 WHERE (col2 = $1)";
+  const char *query = "UPDATE Y SET col1 = 4 WHERE (col2 = $1)";
 
   ret = SPI_connect ();
   if (ret != SPI_OK_CONNECT)
@@ -552,7 +552,7 @@ pg_spi_prepare_update (PG_FUNCTION_ARGS)
   int nargs;
   Oid argtypes[1];
   Datum values[1];
-  char *query = "UPDATE joseph_test.Y SET col1 = 4 WHERE (col2 = $1)";
+  const char *query = "UPDATE Y SET col1 = 4 WHERE (col2 = $1)";
 
   ret = SPI_connect ();
   if (ret != SPI_OK_CONNECT)

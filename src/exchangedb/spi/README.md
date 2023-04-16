@@ -1,41 +1,37 @@
-                           Server Programming Interface (SPI)
+                Server Programming Interface (SPI)
 
 
-Dependencies:
-=============
-
-These are the direct dependencies for running SPI functions :
-
-
-
-Step 1:
-"postgresql-server-dev-<depends on your postgresql version>"
--- sudo apt-get install libpq-dev postgresql-server-dev-13
-
-Step 2:
-To solve gssapi/gssapi.h, use the following command:
-apt-get install libkrb5-dev
-
-Step 3:
-apt-cache search openssl | grep -- -dev
-apt-get install libssl-dev
-
-Compile:
+Overview
 ========
-gcc -shared -o <file_name>.so <file_name>.c
 
-CALL FUNCTIONS:
-===============
+This folder contains results from an experiment by Joseph Xu
+to use the Postgres SPI. They are not currently used at all
+by the GNU Taler exchange.
 
-psql -c "SELECT <function_name>();" db_name
 
-Structure:
-==========
+Dependencies
+============
 
-usr/include/postgres/
+These are the direct dependencies for compiling the code:
 
-usr/include/postgres/13/server/
+# apt-get install libpq-dev postgresql-server-dev-13
+# apt-get install libkrb5-dev
+# apt-get install libssl-dev
 
-make
-make install
-psql
+
+Compilation
+===========
+
+$ make
+
+Loading functions
+=================
+
+# make install
+$ psql "$DB_NAME" < own_test.sql
+
+
+Calling functions
+==================
+
+$ psql -c "SELECT $FUNCTION_NAME($ARGS);" "$DB_NAME"
