@@ -59,34 +59,26 @@ static enum GNUNET_DB_QueryStatus
 insert1 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[1],
          struct GNUNET_TIME_Timestamp gc,
-         struct TALER_PaytoHashP h_payto,
          char *const *notify_s,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid,
-         enum GNUNET_DB_QueryStatus results[1])
+         uint64_t *reserve_uuid)
 {
   enum GNUNET_DB_QueryStatus qs;
-  PREPARE (pg,
-           "batch1_reserve_create",
-           "SELECT "
-           " out_reserve_found AS conflicted"
-           ",transaction_duplicate"
-           ",ruuid AS reserve_uuid"
-           " FROM exchange_do_batch_reserves_in_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
-
+  struct TALER_PaytoHashP h_payto0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto0),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
+
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_end
   };
@@ -100,8 +92,16 @@ insert1 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
+  PREPARE (pg,
+           "batch1_reserve_create",
+           "SELECT "
+           " out_reserve_found AS conflicted"
+           ",transaction_duplicate"
+           ",ruuid AS reserve_uuid"
+           " FROM exchange_do_batch_reserves_in_insert"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   TALER_payto_hash (reserves[0].sender_account_details,
-                    &h_payto);
+                    &h_payto0);
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "batch1_reserve_create",
                                                  params,
@@ -111,7 +111,6 @@ insert1 (struct PostgresClosure *pg,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to create reserves 1(%d)\n",
                 qs);
-    results[0] = qs;
     return qs;
   }
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs);
@@ -119,10 +118,8 @@ insert1 (struct PostgresClosure *pg,
   {
     GNUNET_break (0);
     TEH_PG_rollback (pg);
-    results[0] = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   return qs;
 }
 
@@ -131,36 +128,24 @@ static enum GNUNET_DB_QueryStatus
 insert2 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[2],
          struct GNUNET_TIME_Timestamp gc,
-         struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid,
-         enum GNUNET_DB_QueryStatus results[1])
+         uint64_t *reserve_uuid)
 {
   enum GNUNET_DB_QueryStatus qs1;
-  PREPARE (pg,
-           "batch2_reserve_create",
-           "SELECT "
-           "out_reserve_found AS conflicted"
-           ",out_reserve_found2 AS conflicted2"
-           ",transaction_duplicate"
-           ",transaction_duplicate2"
-           ",ruuid AS reserve_uuid"
-           ",ruuid2 AS reserve_uuid2"
-           " FROM exchange_do_batch2_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20);");
-
+  struct TALER_PaytoHashP h_payto[2];
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[0]),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
 
     GNUNET_PQ_query_param_string (notify_s[0]),
@@ -171,7 +156,7 @@ insert2 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[1].balance),
     GNUNET_PQ_query_param_string (reserves[1].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[1]),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
     GNUNET_PQ_query_param_end
   };
@@ -191,12 +176,21 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
+  PREPARE (pg,
+           "batch2_reserve_create",
+           "SELECT "
+           "out_reserve_found AS conflicted"
+           ",out_reserve_found2 AS conflicted2"
+           ",transaction_duplicate"
+           ",transaction_duplicate2"
+           ",ruuid AS reserve_uuid"
+           ",ruuid2 AS reserve_uuid2"
+           " FROM exchange_do_batch2_reserves_insert"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20);");
   TALER_payto_hash (reserves[0].sender_account_details,
-                    &h_payto);
+                    &h_payto[0]);
   TALER_payto_hash (reserves[1].sender_account_details,
-                    &h_payto);
-
-
+                    &h_payto[1]);
   qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                   "batch2_reserve_create",
                                                   params,
@@ -206,26 +200,17 @@ insert2 (struct PostgresClosure *pg,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to create reserves 2(%d)\n",
                 qs1);
-    results[0] = qs1;
     return qs1;
   }
 
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1);
-  /*   results[i] = (transaction_duplicate)
-    ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
-    : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;*/
-
-  if (
-    ((! conflict[0]) && (transaction_duplicate[0]))
-    || ((! conflict[1]) && (transaction_duplicate[1]))
-    )
+  if ( ((! conflict[0]) && (transaction_duplicate[0])) ||
+       ((! conflict[1]) && (transaction_duplicate[1])) )
   {
     GNUNET_break (0);
-    TEH_PG_rollback (pg);  // ROLLBACK
-    results[0] = GNUNET_DB_STATUS_HARD_ERROR;
+    TEH_PG_rollback (pg);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   return qs1;
 }
 
@@ -234,42 +219,24 @@ static enum GNUNET_DB_QueryStatus
 insert4 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[4],
          struct GNUNET_TIME_Timestamp gc,
-         struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid,
-         enum GNUNET_DB_QueryStatus results[1])
+         uint64_t *reserve_uuid)
 {
   enum GNUNET_DB_QueryStatus qs3;
-  PREPARE (pg,
-           "batch4_reserve_create",
-           "SELECT "
-           "out_reserve_found AS conflicted"
-           ",out_reserve_found2 AS conflicted2"
-           ",out_reserve_found3 AS conflicted3"
-           ",out_reserve_found4 AS conflicted4"
-           ",transaction_duplicate"
-           ",transaction_duplicate2"
-           ",transaction_duplicate3"
-           ",transaction_duplicate4"
-           ",ruuid AS reserve_uuid"
-           ",ruuid2 AS reserve_uuid2"
-           ",ruuid3 AS reserve_uuid3"
-           ",ruuid4 AS reserve_uuid4"
-           " FROM exchange_do_batch4_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38);");
-
+  struct TALER_PaytoHashP h_payto[4];
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[0]),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
 
     GNUNET_PQ_query_param_string (notify_s[0]),
@@ -282,7 +249,7 @@ insert4 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[1].balance),
     GNUNET_PQ_query_param_string (reserves[1].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[1]),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[2].reserve_pub),
@@ -290,7 +257,7 @@ insert4 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[2].balance),
     GNUNET_PQ_query_param_string (reserves[2].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[2].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[2]),
     GNUNET_PQ_query_param_string (reserves[2].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[3].reserve_pub),
@@ -298,7 +265,7 @@ insert4 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[3].balance),
     GNUNET_PQ_query_param_string (reserves[3].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[3].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[3]),
     GNUNET_PQ_query_param_string (reserves[3].sender_account_details),
 
     GNUNET_PQ_query_param_end
@@ -332,15 +299,27 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
-  TALER_payto_hash (reserves[0].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[1].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[2].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[3].sender_account_details,
-                    &h_payto);
+  PREPARE (pg,
+           "batch4_reserve_create",
+           "SELECT "
+           "out_reserve_found AS conflicted"
+           ",out_reserve_found2 AS conflicted2"
+           ",out_reserve_found3 AS conflicted3"
+           ",out_reserve_found4 AS conflicted4"
+           ",transaction_duplicate"
+           ",transaction_duplicate2"
+           ",transaction_duplicate3"
+           ",transaction_duplicate4"
+           ",ruuid AS reserve_uuid"
+           ",ruuid2 AS reserve_uuid2"
+           ",ruuid3 AS reserve_uuid3"
+           ",ruuid4 AS reserve_uuid4"
+           " FROM exchange_do_batch4_reserves_insert"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38);");
 
+  for (unsigned int i = 0; i<4; i++)
+    TALER_payto_hash (reserves[i].sender_account_details,
+                      &h_payto[i]);
   qs3 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                   "batch4_reserve_create",
                                                   params,
@@ -350,7 +329,6 @@ insert4 (struct PostgresClosure *pg,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to create reserves4 (%d)\n",
                 qs3);
-    results[0] = qs3;
     return qs3;
   }
 
@@ -365,10 +343,8 @@ insert4 (struct PostgresClosure *pg,
   {
     GNUNET_break (0);
     TEH_PG_rollback (pg);
-    results[0] = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   return qs3;
 }
 
@@ -377,55 +353,26 @@ static enum GNUNET_DB_QueryStatus
 insert8 (struct PostgresClosure *pg,
          const struct TALER_EXCHANGEDB_ReserveInInfo reserves[8],
          struct GNUNET_TIME_Timestamp gc,
-         struct TALER_PaytoHashP h_payto,
          char *const*notify_s,
          struct GNUNET_TIME_Timestamp reserve_expiration,
          bool *transaction_duplicate,
          bool *conflict,
-         uint64_t *reserve_uuid,
-         enum GNUNET_DB_QueryStatus results[1])
+         uint64_t *reserve_uuid)
 {
   enum GNUNET_DB_QueryStatus qs3;
-  PREPARE (pg,
-           "batch8_reserve_create",
-           "SELECT"
-           " out_reserve_found AS conflicted"
-           ",out_reserve_found2 AS conflicted2"
-           ",out_reserve_found3 AS conflicted3"
-           ",out_reserve_found4 AS conflicted4"
-           ",out_reserve_found5 AS conflicted5"
-           ",out_reserve_found6 AS conflicted6"
-           ",out_reserve_found7 AS conflicted7"
-           ",out_reserve_found8 AS conflicted8"
-           ",transaction_duplicate"
-           ",transaction_duplicate2"
-           ",transaction_duplicate3"
-           ",transaction_duplicate4"
-           ",transaction_duplicate5"
-           ",transaction_duplicate6"
-           ",transaction_duplicate7"
-           ",transaction_duplicate8"
-           ",ruuid AS reserve_uuid"
-           ",ruuid2 AS reserve_uuid2"
-           ",ruuid3 AS reserve_uuid3"
-           ",ruuid4 AS reserve_uuid4"
-           ",ruuid5 AS reserve_uuid5"
-           ",ruuid6 AS reserve_uuid6"
-           ",ruuid7 AS reserve_uuid7"
-           ",ruuid8 AS reserve_uuid8"
-           " FROM exchange_do_batch8_reserves_insert"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74);");
-
+  struct TALER_PaytoHashP h_payto[8];
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_timestamp (&gc),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
+
     GNUNET_PQ_query_param_auto_from_type (reserves[0].reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserves[0].wire_reference),
     TALER_PQ_query_param_amount (reserves[0].balance),
     GNUNET_PQ_query_param_string (reserves[0].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[0].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[0]),
     GNUNET_PQ_query_param_string (reserves[0].sender_account_details),
+
     GNUNET_PQ_query_param_string (notify_s[0]),
     GNUNET_PQ_query_param_string (notify_s[1]),
     GNUNET_PQ_query_param_string (notify_s[2]),
@@ -440,7 +387,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[1].balance),
     GNUNET_PQ_query_param_string (reserves[1].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[1].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[1]),
     GNUNET_PQ_query_param_string (reserves[1].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[2].reserve_pub),
@@ -448,7 +395,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[2].balance),
     GNUNET_PQ_query_param_string (reserves[2].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[2].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[2]),
     GNUNET_PQ_query_param_string (reserves[2].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[3].reserve_pub),
@@ -456,7 +403,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[3].balance),
     GNUNET_PQ_query_param_string (reserves[3].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[3].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[3]),
     GNUNET_PQ_query_param_string (reserves[3].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[4].reserve_pub),
@@ -464,7 +411,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[4].balance),
     GNUNET_PQ_query_param_string (reserves[4].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[4].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[4]),
     GNUNET_PQ_query_param_string (reserves[4].sender_account_details),
     GNUNET_PQ_query_param_timestamp (&reserve_expiration),
 
@@ -473,7 +420,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[5].balance),
     GNUNET_PQ_query_param_string (reserves[5].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[5].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[5]),
     GNUNET_PQ_query_param_string (reserves[5].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[6].reserve_pub),
@@ -481,7 +428,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[6].balance),
     GNUNET_PQ_query_param_string (reserves[6].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[6].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[6]),
     GNUNET_PQ_query_param_string (reserves[6].sender_account_details),
 
     GNUNET_PQ_query_param_auto_from_type (reserves[7].reserve_pub),
@@ -489,7 +436,7 @@ insert8 (struct PostgresClosure *pg,
     TALER_PQ_query_param_amount (reserves[7].balance),
     GNUNET_PQ_query_param_string (reserves[7].exchange_account_name),
     GNUNET_PQ_query_param_timestamp (&reserves[7].execution_time),
-    GNUNET_PQ_query_param_auto_from_type (&h_payto),
+    GNUNET_PQ_query_param_auto_from_type (&h_payto[7]),
     GNUNET_PQ_query_param_string (reserves[7].sender_account_details),
 
     GNUNET_PQ_query_param_end
@@ -547,23 +494,39 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_PQ_result_spec_end
   };
 
-  TALER_payto_hash (reserves[0].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[1].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[2].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[3].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[4].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[5].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[6].sender_account_details,
-                    &h_payto);
-  TALER_payto_hash (reserves[7].sender_account_details,
-                    &h_payto);
+  PREPARE (pg,
+           "batch8_reserve_create",
+           "SELECT"
+           " out_reserve_found AS conflicted"
+           ",out_reserve_found2 AS conflicted2"
+           ",out_reserve_found3 AS conflicted3"
+           ",out_reserve_found4 AS conflicted4"
+           ",out_reserve_found5 AS conflicted5"
+           ",out_reserve_found6 AS conflicted6"
+           ",out_reserve_found7 AS conflicted7"
+           ",out_reserve_found8 AS conflicted8"
+           ",transaction_duplicate"
+           ",transaction_duplicate2"
+           ",transaction_duplicate3"
+           ",transaction_duplicate4"
+           ",transaction_duplicate5"
+           ",transaction_duplicate6"
+           ",transaction_duplicate7"
+           ",transaction_duplicate8"
+           ",ruuid AS reserve_uuid"
+           ",ruuid2 AS reserve_uuid2"
+           ",ruuid3 AS reserve_uuid3"
+           ",ruuid4 AS reserve_uuid4"
+           ",ruuid5 AS reserve_uuid5"
+           ",ruuid6 AS reserve_uuid6"
+           ",ruuid7 AS reserve_uuid7"
+           ",ruuid8 AS reserve_uuid8"
+           " FROM exchange_do_batch8_reserves_insert"
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39, $40, $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74);");
 
+  for (unsigned int i = 0; i<8; i++)
+    TALER_payto_hash (reserves[i].sender_account_details,
+                      &h_payto[i]);
   qs3 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                   "batch8_reserve_create",
                                                   params,
@@ -573,15 +536,10 @@ insert8 (struct PostgresClosure *pg,
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to create reserves8 (%d)\n",
                 qs3);
-    results[0] = qs3;
     return qs3;
   }
 
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs3);
-  /*   results[i] = (transaction_duplicate)
-     ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
-     : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;*/
-
   if (
     ((! conflict[0]) && (transaction_duplicate[0]))
     || ((! conflict[1]) && (transaction_duplicate[1]))
@@ -595,32 +553,28 @@ insert8 (struct PostgresClosure *pg,
   {
     GNUNET_break (0);
     TEH_PG_rollback (pg);
-    results[0] = GNUNET_DB_STATUS_HARD_ERROR;
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  results[0] = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   return qs3;
 }
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_reserves_in_insert (void *cls,
-                           const struct
-                           TALER_EXCHANGEDB_ReserveInInfo *reserves,
-                           unsigned int reserves_length,
-                           unsigned int batch_size,
-                           enum GNUNET_DB_QueryStatus *results)
+TEH_PG_reserves_in_insert (
+  void *cls,
+  const struct TALER_EXCHANGEDB_ReserveInInfo *reserves,
+  unsigned int reserves_length,
+  unsigned int batch_size,
+  enum GNUNET_DB_QueryStatus *results)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs1;
   enum GNUNET_DB_QueryStatus qs2;
   enum GNUNET_DB_QueryStatus qs4;
   enum GNUNET_DB_QueryStatus qs5;
-  struct TALER_PaytoHashP h_payto;
   uint64_t reserve_uuid[reserves_length];
   bool transaction_duplicate[reserves_length];
   bool need_update = false;
-  bool t_duplicate = false;
   struct GNUNET_TIME_Timestamp reserve_expiration
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   struct GNUNET_TIME_Timestamp gc
@@ -672,19 +626,18 @@ TEH_PG_reserves_in_insert (void *cls,
       qs1 = insert8 (pg,
                      &reserves[i],
                      gc,
-                     h_payto,
                      &notify_s[i],
                      reserve_expiration,
                      &transaction_duplicate[i],
                      &conflicts[i],
-                     &reserve_uuid[i],
-                     &results[i]);
+                     &reserve_uuid[i]);
 
       if (qs1<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to create reserve batch_8 (%d)\n",
                     qs1);
+        results[i] = qs1;
         return qs1;
       }
       need_update |= conflicts[i];
@@ -695,14 +648,10 @@ TEH_PG_reserves_in_insert (void *cls,
       need_update |= conflicts[i + 5];
       need_update |= conflicts[i + 6];
       need_update |= conflicts[i + 7];
-      t_duplicate |= transaction_duplicate[i];
-      t_duplicate |= transaction_duplicate[i + 1];
-      t_duplicate |= transaction_duplicate[i + 2];
-      t_duplicate |= transaction_duplicate[i + 3];
-      t_duplicate |= transaction_duplicate[i + 4];
-      t_duplicate |= transaction_duplicate[i + 5];
-      t_duplicate |= transaction_duplicate[i + 6];
-      t_duplicate |= transaction_duplicate[i + 7];
+      for (unsigned int j = 0; j<8; j++)
+        results[i + j] = transaction_duplicate[i + j]
+          ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+          : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       i += 8;
       continue;
     }
@@ -715,29 +664,27 @@ TEH_PG_reserves_in_insert (void *cls,
       qs4 = insert4 (pg,
                      &reserves[i],
                      gc,
-                     h_payto,
                      &notify_s[i],
                      reserve_expiration,
                      &transaction_duplicate[i],
                      &conflicts[i],
-                     &reserve_uuid[i],
-                     &results[i]);
-
+                     &reserve_uuid[i]);
       if (qs4<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to create reserve batch_4 (%d)\n",
                     qs4);
+        results[i] = qs4;
         return qs4;
       }
       need_update |= conflicts[i];
       need_update |= conflicts[i + 1];
       need_update |= conflicts[i + 2];
       need_update |= conflicts[i + 3];
-      t_duplicate |= transaction_duplicate[i];
-      t_duplicate |= transaction_duplicate[i + 1];
-      t_duplicate |= transaction_duplicate[i + 2];
-      t_duplicate |= transaction_duplicate[i + 3];
+      for (unsigned int j = 0; j<4; j++)
+        results[i + j] = transaction_duplicate[i + j]
+          ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+          : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       i += 4;
       break;
     case 3:
@@ -745,52 +692,50 @@ TEH_PG_reserves_in_insert (void *cls,
       qs5 = insert2 (pg,
                      &reserves[i],
                      gc,
-                     h_payto,
                      &notify_s[i],
                      reserve_expiration,
                      &transaction_duplicate[i],
                      &conflicts[i],
-                     &reserve_uuid[i],
-                     &results[i]);
+                     &reserve_uuid[i]);
       if (qs5<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Failed to create reserve batch_2 (%d)\n",
                     qs5);
+        results[i] = qs5;
         return qs5;
       }
       need_update |= conflicts[i];
       need_update |= conflicts[i + 1];
-      t_duplicate |= transaction_duplicate[i];
-      t_duplicate |= transaction_duplicate[i + 1];
-      results[i] = (t_duplicate)
-      ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
-      : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+      for (unsigned int j = 0; j<2; j++)
+        results[i + j] = transaction_duplicate[i + j]
+          ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+          : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       i += 2;
       break;
     case 1:
       qs2 = insert1 (pg,
                      &reserves[i],
                      gc,
-                     h_payto,
                      &notify_s[i],
                      reserve_expiration,
                      &transaction_duplicate[i],
                      &conflicts[i],
-                     &reserve_uuid[i],
-                     &results[i]);
+                     &reserve_uuid[i]);
       fprintf (stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i],
                conflicts[i], transaction_duplicate[i]);
       if (qs2<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                    "Failed to create reserve batch_1 (%d)\n)"
-                    ,qs2);
+                    "Failed to create reserve batch_1 (%d)\n)",
+                    qs2);
+        results[i] = qs2;
         return qs2;
       }
       need_update |= conflicts[i];
-      t_duplicate |= transaction_duplicate[i];
-
+      results[i] = (transaction_duplicate[i])
+        ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+        : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
       i += 1;
       break;
     case 0:
@@ -825,7 +770,6 @@ TEH_PG_reserves_in_insert (void *cls,
     }
   }
 
-  enum GNUNET_DB_QueryStatus qs3;
   PREPARE (pg,
            "reserves_update",
            "SELECT"
@@ -838,6 +782,7 @@ TEH_PG_reserves_in_insert (void *cls,
       continue;
     {
       bool duplicate;
+      struct TALER_PaytoHashP h_payto;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (reserves[i].reserve_pub),
         GNUNET_PQ_query_param_timestamp (&reserve_expiration),
@@ -853,6 +798,10 @@ TEH_PG_reserves_in_insert (void *cls,
                                     &duplicate),
         GNUNET_PQ_result_spec_end
       };
+      enum GNUNET_DB_QueryStatus qs3;
+
+      TALER_payto_hash (reserves[i].sender_account_details,
+                        &h_payto);
       qs3 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                       "reserves_update",
                                                       params,
