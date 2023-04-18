@@ -495,12 +495,12 @@ transaction_completed (void)
  * We got incoming transaction details from the bank. Add them
  * to the database.
  *
- * @param batch_size desired batch size
+ * @param wrap_size desired bulk insert size
  * @param details array of transaction details
  * @param details_length length of the @a details array
  */
 static void
-process_reply (unsigned int batch_size,
+process_reply (unsigned int wrap_size,
                const struct TALER_BANK_CreditDetails *details,
                unsigned int details_length)
 {
@@ -570,7 +570,7 @@ process_reply (unsigned int batch_size,
     qs = db_plugin->reserves_in_insert (db_plugin->cls,
                                         reserves,
                                         details_length,
-                                        batch_size,
+                                        wrap_size,
                                         qss);
     switch (qs)
     {
@@ -581,7 +581,7 @@ process_reply (unsigned int batch_size,
     case GNUNET_DB_STATUS_SOFT_ERROR:
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Got DB soft error for batch2_reserves_in_insert (%u). Rolling back.\n",
-                  batch_size);
+                  wrap_size);
       handle_soft_error ();
       return;
     default:
@@ -686,25 +686,25 @@ static void
 history_cb (void *cls,
             const struct TALER_BANK_CreditHistoryResponse *reply)
 {
-  static int batch_mode = -2;
+  static int wrap_size = -2;
 
   (void) cls;
-  if (-2 == batch_mode)
+  if (-2 == wrap_size)
   {
-    const char *mode = getenv ("TALER_WIREWATCH_BATCH_SIZE");
+    const char *mode = getenv ("TALER_WIREWATCH_WARP_SIZE");
     char dummy;
 
     if ( (NULL == mode) ||
          (1 != sscanf (mode,
                        "%d%c",
-                       &batch_mode,
+                       &wrap_size,
                        &dummy)) )
     {
       if (NULL != mode)
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Bad batch mode `%s' specified\n",
                     mode);
-      batch_mode = 8; /* maximum supported is currently 8 */
+      wrap_size = 8; /* maximum supported is currently 8 */
     }
   }
   GNUNET_assert (NULL == task);
@@ -715,7 +715,7 @@ history_cb (void *cls,
   switch (reply->http_status)
   {
   case MHD_HTTP_OK:
-    process_reply (batch_mode,
+    process_reply (wrap_size,
                    reply->details.success.details,
                    reply->details.success.details_length);
     return;
