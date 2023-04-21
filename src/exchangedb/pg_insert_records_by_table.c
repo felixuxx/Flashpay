@@ -1407,7 +1407,7 @@ irbt_cb_table_purse_decision (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_timestamp (
       &td->details.purse_decision.action_timestamp),
     GNUNET_PQ_query_param_bool (
-      &td->details.purse_decision.refunded),
+      td->details.purse_decision.refunded),
     GNUNET_PQ_query_param_end
   };
 
