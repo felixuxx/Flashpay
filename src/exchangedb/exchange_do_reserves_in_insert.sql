@@ -786,8 +786,13 @@ BEGIN
       ,in_reserve_expiration
       ,in_gc_date)
     ON CONFLICT DO NOTHING
-    RETURNING reserve_uuid,reserve_pub)
-  SELECT reserve_uuid, reserve_pub FROM reserve_changes;
+    RETURNING
+       reserve_uuid
+      ,reserve_pub)
+  SELECT
+     reserve_uuid
+    ,reserve_pub
+  FROM reserve_changes;
 
   k=0;
   <<loop_reserve>> LOOP
@@ -1016,7 +1021,7 @@ BEGIN
           k = k + 1;
           IF in5_reserve_pub = i.reserve_pub
           THEN
-            transaction_duplicate2 = FALSE;
+            transaction_duplicate5 = FALSE;
             EXECUTE FORMAT (
                'NOTIFY %s'
               ,in5_notify);
