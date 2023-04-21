@@ -32,11 +32,11 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  curs refcursor;
+  curs REFCURSOR;
 DECLARE
   i RECORD;
 DECLARE
-  curs_trans refcursor;
+  curs_trans REFCURSOR;
 BEGIN
   ruuid0 = 0;
   out_reserve_found0 = TRUE;
@@ -228,7 +228,7 @@ BEGIN
   CLOSE curs_reserve_exist;
 
   OPEN curs_transaction_exist FOR
-  WITH reserve_in_exist AS (
+  WITH reserve_transaction AS (
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -254,7 +254,7 @@ BEGIN
     ,in1_execution_date)
     ON CONFLICT DO NOTHING
     RETURNING reserve_pub)
-  SELECT reserve_pub FROM reserve_in_exist;
+  SELECT reserve_pub FROM reserve_transaction;
 
   FETCH FROM curs_transaction_exist INTO r;
 
@@ -270,7 +270,7 @@ BEGIN
       CASE k
         WHEN 0 THEN
           k = k + 1;
-          IF in0_reserve_pub = r.reserve_pub
+          IF in0_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate0 = FALSE;
             EXECUTE FORMAT (
@@ -280,7 +280,7 @@ BEGIN
           END IF;
           CONTINUE loop2_k;
         WHEN 1 THEN
-          IF in0_reserve_pub = r.reserve_pub
+          IF in0_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate1 = FALSE;
             EXECUTE FORMAT (
@@ -324,7 +324,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in2_credit_val INT8,
   IN in2_credit_frac INT4,
   IN in2_exchange_account_name VARCHAR,
-  IN in2_execute_date INT8,
+  IN in2_execution_date INT8,
   IN in2_wire_source_h_payto BYTEA,
   IN in2_payto_uri VARCHAR,
   IN in2_notify TEXT,
@@ -333,7 +333,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in3_credit_val INT8,
   IN in3_credit_frac INT4,
   IN in3_exchange_account_name VARCHAR,
-  IN in3_execute_date INT8,
+  IN in3_execution_date INT8,
   IN in3_wire_source_h_payto BYTEA,
   IN in3_payto_uri VARCHAR,
   IN in3_notify TEXT,
@@ -472,7 +472,7 @@ BEGIN
   CLOSE curs_reserve_exist;
 
   OPEN curs_transaction_exist FOR
-  WITH reserve_changes AS (
+  WITH reserve_transaction AS (
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
@@ -512,7 +512,7 @@ BEGIN
       ,in3_execution_date)
     ON CONFLICT DO NOTHING
     RETURNING reserve_pub)
-  SELECT reserve_uuid, reserve_pub FROM reserve_changes;
+  SELECT reserve_pub FROM reserve_transaction;
 
   k=0;
   <<loop_transaction>> LOOP
@@ -526,7 +526,7 @@ BEGIN
       CASE k
         WHEN 0 THEN
           k = k + 1;
-          IF in0_reserve_pub = r.reserve_pub
+          IF in0_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate0 = FALSE;
             EXECUTE FORMAT (
@@ -537,7 +537,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 1 THEN
           k = k + 1;
-          IF in1_reserve_pub = r.reserve_pub
+          IF in1_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate1 = FALSE;
             EXECUTE FORMAT (
@@ -548,7 +548,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 2 THEN
           k = k + 1;
-          IF in2_reserve_pub = r.reserve_pub
+          IF in2_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate2 = FALSE;
             EXECUTE FORMAT (
@@ -558,7 +558,7 @@ BEGIN
           END IF;
           CONTINUE loop2_k;
         WHEN 3 THEN
-          IF in3_reserve_pub = r.reserve_pub
+          IF in3_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate3 = FALSE;
             EXECUTE FORMAT (
@@ -877,7 +877,7 @@ BEGIN
   CLOSE curs_reserve_exist;
 
   OPEN curs_transaction_exist FOR
-  WITH reserve_changes AS (
+  WITH reserve_transaction AS (
     INSERT INTO reserves_in
       (reserve_pub
       ,wire_reference
@@ -945,7 +945,7 @@ BEGIN
       ,in7_execution_date)
     ON CONFLICT DO NOTHING
     RETURNING reserve_pub)
-  SELECT reserve_pub FROM reserve_changes;
+  SELECT reserve_pub FROM reserve_transaction;
 
   k=0;
   <<loop_transaction>> LOOP
@@ -959,7 +959,7 @@ BEGIN
       CASE k
         WHEN 0 THEN
           k = k + 1;
-          IF in0_reserve_pub = r.reserve_pub
+          IF in0_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate0 = FALSE;
             EXECUTE FORMAT (
@@ -970,7 +970,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 1 THEN
           k = k + 1;
-          IF in1_reserve_pub = r.reserve_pub
+          IF in1_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate1 = FALSE;
             EXECUTE FORMAT (
@@ -981,7 +981,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 2 THEN
           k = k + 1;
-          IF in2_reserve_pub = r.reserve_pub
+          IF in2_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate2 = FALSE;
             EXECUTE FORMAT (
@@ -992,7 +992,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 3 THEN
           k = k + 1;
-          IF in3_reserve_pub = r.reserve_pub
+          IF in3_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate3 = FALSE;
             EXECUTE FORMAT (
@@ -1003,7 +1003,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 4 THEN
           k = k + 1;
-          IF in4_reserve_pub = r.reserve_pub
+          IF in4_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate4 = FALSE;
             EXECUTE FORMAT (
@@ -1014,7 +1014,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 5 THEN
           k = k + 1;
-          IF in5_reserve_pub = r.reserve_pub
+          IF in5_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate2 = FALSE;
             EXECUTE FORMAT (
@@ -1025,7 +1025,7 @@ BEGIN
           CONTINUE loop2_k;
         WHEN 6 THEN
           k = k + 1;
-          IF in6_reserve_pub = r.reserve_pub
+          IF in6_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate6 = FALSE;
             EXECUTE FORMAT (
@@ -1035,7 +1035,7 @@ BEGIN
           END IF;
           CONTINUE loop2_k;
         WHEN 7 THEN
-          IF in7_reserve_pub = r.reserve_pub
+          IF in7_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate7 = FALSE;
             EXECUTE FORMAT (
