@@ -48,6 +48,12 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>MHD_HTTP_CONTENT_TOO_LARGE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>MHD_HTTP_REQUEST_TIMEOUT</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
