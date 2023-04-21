@@ -34,7 +34,6 @@
  */
 struct WirewatchState
 {
-
   /**
    * Process for the wirewatcher.
    */

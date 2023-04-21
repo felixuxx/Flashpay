@@ -147,18 +147,13 @@ db_event_cb (void *cls,
              const void *extra,
              size_t extra_size)
 {
-  struct TEH_RequestContext *rc = cls;
-  struct ReservePoller *rp = rc->rh_ctx;
+  struct ReservePoller *rp = cls;
   struct GNUNET_AsyncScopeSave old_scope;
 
   (void) extra;
   (void) extra_size;
   if (! rp->suspended)
     return; /* might get multiple wake-up events */
-  GNUNET_async_scope_enter (&rc->async_scope_id,
-                            &old_scope);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Resuming from long-polling on reserve\n");
   TEH_check_invariants ();
   rp->suspended = false;
   MHD_resume_connection (rp->connection);
@@ -238,7 +233,8 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     };
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Starting DB event listening\n");
+                "Starting DB event listening until %s\n",
+                GNUNET_TIME_absolute2s (rp->timeout));
     rp->eh = TEH_plugin->event_listen (
       TEH_plugin->cls,
       GNUNET_TIME_absolute_get_remaining (rp->timeout),
@@ -256,49 +252,27 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     {
     case GNUNET_DB_STATUS_SOFT_ERROR:
       GNUNET_break (0); /* single-shot query should never have soft-errors */
-      if (NULL != rp->eh)
-      {
-        TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                         rp->eh);
-        rp->eh = NULL;
-      }
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_DB_SOFT_FAILURE,
                                          "get_reserve_balance");
     case GNUNET_DB_STATUS_HARD_ERROR:
       GNUNET_break (0);
-      if (NULL != rp->eh)
-      {
-        TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                         rp->eh);
-        rp->eh = NULL;
-      }
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          "get_reserve_balance");
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      if (NULL != rp->eh)
-      {
-        TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                         rp->eh);
-        rp->eh = NULL;
-      }
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Got reserve balance of %s\n",
+                  TALER_amount2s (&rp->balance));
       return TALER_MHD_REPLY_JSON_PACK (rc->connection,
                                         MHD_HTTP_OK,
                                         TALER_JSON_pack_amount ("balance",
                                                                 &rp->balance));
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      if ( (NULL != rp) ||
-           (GNUNET_TIME_absolute_is_future (rp->timeout)) )
+      if (! GNUNET_TIME_absolute_is_future (rp->timeout))
       {
-        if (NULL != rp->eh)
-        {
-          TEH_plugin->event_listen_cancel (TEH_plugin->cls,
-                                           rp->eh);
-          rp->eh = NULL;
-        }
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_EXCHANGE_RESERVES_STATUS_UNKNOWN,
