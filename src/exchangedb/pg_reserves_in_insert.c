@@ -722,8 +722,6 @@ TEH_PG_reserves_in_insert (
                      &transaction_duplicate[i],
                      &conflicts[i],
                      &reserve_uuid[i]);
-      fprintf (stdout, "reserve uuid : %ld c :%d t:%d\n", reserve_uuid[i],
-               conflicts[i], transaction_duplicate[i]);
       if (qs2<0)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -825,7 +823,11 @@ TEH_PG_reserves_in_insert (
 
     cs = TEH_PG_commit (pg);
     if (cs < 0)
+    {
+      for (unsigned int i = 0; i<reserves_length; i++)
+        GNUNET_free (notify_s[i]);
       return cs;
+    }
   }
 
 exit:
