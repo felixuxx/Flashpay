@@ -353,7 +353,7 @@ maint_child_death (void *cls)
 
   while (TALER_TESTING_cmd_is_batch (cmd))
     cmd = TALER_TESTING_cmd_batch_get_current (cmd);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Got SIGCHLD for `%s'.\n",
               cmd->label);
   is->child_death_task = NULL;

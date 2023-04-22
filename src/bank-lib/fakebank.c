@@ -401,6 +401,148 @@ struct Transaction
 
 
 /**
+ * Function called to clean up context of a connection.
+ *
+ * @param ctx context to clean up
+ */
+typedef void
+(*ConnectionCleaner)(void *ctx);
+
+/**
+ * Universal context we keep per connection.
+ */
+struct ConnectionContext
+{
+  /**
+   * Function we call upon completion to clean up.
+   */
+  ConnectionCleaner ctx_cleaner;
+
+  /**
+   * Request-handler specific context.
+   */
+  void *ctx;
+};
+
+
+/**
+ * This is the "base" structure for both the /history and the
+ * /history-range API calls.
+ */
+struct HistoryArgs
+{
+
+  /**
+   * Bank account number of the requesting client.
+   */
+  uint64_t account_number;
+
+  /**
+   * Index of the starting transaction, exclusive (!).
+   */
+  uint64_t start_idx;
+
+  /**
+   * Requested number of results and order
+   * (positive: ascending, negative: descending)
+   */
+  int64_t delta;
+
+  /**
+   * Timeout for long polling.
+   */
+  struct GNUNET_TIME_Relative lp_timeout;
+
+  /**
+   * true if starting point was given.
+   */
+  bool have_start;
+
+};
+
+
+/**
+ * Context we keep per history request.
+ */
+struct HistoryContext
+{
+  /**
+   * When does this request time out.
+   */
+  struct GNUNET_TIME_Absolute timeout;
+
+  /**
+   * Client arguments for this request.
+   */
+  struct HistoryArgs ha;
+
+  /**
+   * Account the request is about.
+   */
+  struct Account *acc;
+
+  /**
+   * Payto URI of the account.
+   */
+  char *payto_uri;
+
+  /**
+   * JSON object we are building to return.
+   */
+  json_t *history;
+
+};
+
+
+/**
+ * Function called to clean up a history context.
+ *
+ * @param cls a `struct HistoryContext *`
+ */
+static void
+history_cleanup (void *cls)
+{
+  struct HistoryContext *hc = cls;
+
+  GNUNET_free (hc->payto_uri);
+  json_decref (hc->history);
+  GNUNET_free (hc);
+}
+
+
+/**
+ * Context we keep per get withdrawal operation request.
+ */
+struct WithdrawContext
+{
+  /**
+   * When does this request time out.
+   */
+  struct GNUNET_TIME_Absolute timeout;
+
+  /**
+   * The withdrawal operation this is about.
+   */
+  struct WithdrawalOperation *wo;
+
+};
+
+
+/**
+ * Function called to clean up a withdraw context.
+ *
+ * @param cls a `struct WithdrawContext *`
+ */
+static void
+withdraw_cleanup (void *cls)
+{
+  struct WithdrawContext *wc = cls;
+
+  GNUNET_free (wc);
+}
+
+
+/**
  * Handle for the fake bank.
  */
 struct TALER_FAKEBANK_Handle
@@ -567,13 +709,6 @@ struct TALER_FAKEBANK_Handle
   int mhd_fd;
 #endif
 };
-
-
-/**
- * Special address "con_cls" can point to to indicate that the handler has
- * been called more than once already (was previously suspended).
- */
-static int special_ptr;
 
 
 /**
@@ -1583,15 +1718,14 @@ handle_mhd_completion_callback (void *cls,
                                 enum MHD_RequestTerminationCode toe)
 {
   /*  struct TALER_FAKEBANK_Handle *h = cls; */
+  struct ConnectionContext *cc = *con_cls;
   (void) cls;
   (void) connection;
   (void) toe;
-  if (NULL == *con_cls)
+  if (NULL == cc)
     return;
-  if (&special_ptr == *con_cls)
-    return;
-  GNUNET_JSON_post_parser_cleanup (*con_cls);
-  *con_cls = NULL;
+  cc->ctx_cleaner (cc->ctx);
+  GNUNET_free (cc);
 }
 
 
@@ -1603,7 +1737,7 @@ handle_mhd_completion_callback (void *cls,
  * @param account account into which to deposit the funds (credit)
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request (a `struct Buffer *`)
+ * @param con_cls closure for request (a `struct ConnectionContext *`)
  * @return MHD result code
  */
 static MHD_RESULT
@@ -1614,14 +1748,21 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                            size_t *upload_data_size,
                            void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
   struct GNUNET_TIME_Timestamp timestamp;
 
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
-                                con_cls,
+                                &cc->ctx,
                                 upload_data,
                                 upload_data_size,
                                 &json);
@@ -1736,7 +1877,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
  * @param account account making the transfer
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request (a `struct Buffer *`)
+ * @param con_cls closure for request (a `struct ConnectionContext *`)
  * @return MHD result code
  */
 static MHD_RESULT
@@ -1747,14 +1888,21 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                  size_t *upload_data_size,
                  void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
   struct GNUNET_TIME_Timestamp ts;
 
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
-                                con_cls,
+                                &cc->ctx,
                                 upload_data,
                                 upload_data_size,
                                 &json);
@@ -1893,42 +2041,6 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
   MHD_destroy_response (resp);
   return ret;
 }
-
-
-/**
- * This is the "base" structure for both the /history and the
- * /history-range API calls.
- */
-struct HistoryArgs
-{
-
-  /**
-   * Bank account number of the requesting client.
-   */
-  uint64_t account_number;
-
-  /**
-   * Index of the starting transaction, exclusive (!).
-   */
-  uint64_t start_idx;
-
-  /**
-   * Requested number of results and order
-   * (positive: ascending, negative: descending)
-   */
-  int64_t delta;
-
-  /**
-   * Timeout for long polling.
-   */
-  struct GNUNET_TIME_Relative lp_timeout;
-
-  /**
-   * true if starting point was given.
-   */
-  bool have_start;
-
-};
 
 
 /**
@@ -2176,7 +2288,7 @@ start_lp (struct TALER_FAKEBANK_Handle *h,
  * @param h the fakebank handle
  * @param connection the connection
  * @param account which account the request is about
- * @param con_cls closure for request (NULL or &special_ptr)
+ * @param con_cls closure for request
  */
 static MHD_RESULT
 handle_debit_history (struct TALER_FAKEBANK_Handle *h,
@@ -2184,87 +2296,106 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                       const char *account,
                       void **con_cls)
 {
-  struct HistoryArgs ha;
-  struct Account *acc;
+  struct ConnectionContext *cc = *con_cls;
+  struct HistoryContext *hc;
   struct Transaction *pos;
-  json_t *history;
-  char *debit_payto;
   enum GNUNET_GenericReturnValue ret;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling /history/outgoing connection %p\n",
-              connection);
-  if (GNUNET_OK !=
-      (ret = parse_history_common_args (h,
-                                        connection,
-                                        &ha)))
+  if (NULL == cc)
   {
-    GNUNET_break_op (0);
-    return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
-  }
-  if (&special_ptr == *con_cls)
-    ha.lp_timeout = GNUNET_TIME_UNIT_ZERO;
-  acc = lookup_account (h,
-                        account,
-                        NULL);
-  if (NULL == acc)
-  {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
-                                       account);
-  }
-  GNUNET_asprintf (&debit_payto,
-                   "payto://x-taler-bank/localhost/%s?receiver-name=%s",
-                   account,
-                   acc->receiver_name);
-  history = json_array ();
-  if (NULL == history)
-  {
-    GNUNET_break (0);
-    GNUNET_free (debit_payto);
-    return MHD_NO;
-  }
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->big_lock));
-  if (! ha.have_start)
-  {
-    pos = (0 > ha.delta)
-          ? acc->out_tail
-          : acc->out_head;
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &history_cleanup;
+    *con_cls = cc;
+    hc = GNUNET_new (struct HistoryContext);
+    cc->ctx = hc;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling /history/outgoing connection %p\n",
+                connection);
+    if (GNUNET_OK !=
+        (ret = parse_history_common_args (h,
+                                          connection,
+                                          &hc->ha)))
+    {
+      GNUNET_break_op (0);
+      return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
+    }
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+    hc->acc = lookup_account (h,
+                              account,
+                              NULL);
+    if (NULL == hc->acc)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                         account);
+    }
+    GNUNET_asprintf (&hc->payto_uri,
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     account,
+                     hc->acc->receiver_name);
+    /* New invariant: */
+    GNUNET_assert (0 == strcmp (hc->payto_uri,
+                                hc->acc->payto_uri));
+    hc->history = json_array ();
+    if (NULL == hc->history)
+    {
+      GNUNET_break (0);
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return MHD_NO;
+    }
+    hc->timeout = GNUNET_TIME_relative_to_absolute (hc->ha.lp_timeout);
   }
   else
   {
-    struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
+    hc = cc->ctx;
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+  }
+
+  if (! hc->ha.have_start)
+  {
+    pos = (0 > hc->ha.delta)
+      ? hc->acc->out_tail
+      : hc->acc->out_head;
+  }
+  else
+  {
+    struct Transaction *t = h->transactions[hc->ha.start_idx % h->ram_limit];
     bool overflow;
     uint64_t dir;
     bool skip = true;
 
-    dir = (0 > ha.delta) ? (h->ram_limit - 1) : 1;
-    overflow = (t->row_id != ha.start_idx);
+    dir = (0 > hc->ha.delta) ? (h->ram_limit - 1) : 1;
+    overflow = (t->row_id != hc->ha.start_idx);
     /* If account does not match, linear scan for
        first matching account. */
     while ( (! overflow) &&
-             (NULL != t) &&
-            (t->debit_account != acc) )
+            (NULL != t) &&
+            (t->debit_account != hc->acc) )
     {
       skip = false;
       t = h->transactions[(t->row_id + dir) % h->ram_limit];
       if ( (NULL != t) &&
-           (t->row_id == ha.start_idx) )
+           (t->row_id == hc->ha.start_idx) )
         overflow = true; /* full circle, give up! */
     }
     if ( (NULL == t) ||
          overflow)
     {
-      if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
-          (0 < ha.delta))
+      /* FIXME: these conditions are unclear to me. */
+      if ( (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout)) &&
+           (0 < hc->ha.delta))
       {
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
         if (overflow)
         {
-          GNUNET_free (debit_payto);
           return TALER_MHD_reply_with_ec (
             connection,
             TALER_EC_BANK_ANCIENT_TRANSACTION_GONE,
@@ -2272,35 +2403,36 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
         }
         goto finish;
       }
-      *con_cls = &special_ptr;
+      if (h->in_shutdown)
+      {
+        GNUNET_assert (0 ==
+                       pthread_mutex_unlock (&h->big_lock));
+        goto finish;
+      }
       start_lp (h,
                 connection,
-                acc,
-                ha.lp_timeout,
+                hc->acc,
+                GNUNET_TIME_absolute_get_remaining (hc->timeout),
                 LP_DEBIT,
                 NULL);
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
-      json_decref (history);
-      GNUNET_free (debit_payto);
       return MHD_YES;
     }
-    if (t->debit_account != acc)
+    if (t->debit_account != hc->acc)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid start specified, transaction %llu not with account %s!\n",
-                  (unsigned long long) ha.start_idx,
+                  (unsigned long long) hc->ha.start_idx,
                   account);
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
-      GNUNET_free (debit_payto);
-      json_decref (history);
       return MHD_NO;
     }
     if (skip)
     {
       /* range is exclusive, skip the matching entry */
-      if (0 > ha.delta)
+      if (0 > hc->ha.delta)
         pos = t->prev_out;
       else
         pos = t->next_out;
@@ -2313,9 +2445,9 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   if (NULL != pos)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning %lld debit transactions starting (inclusive) from %llu\n",
-                (long long) ha.delta,
+                (long long) hc->ha.delta,
                 (unsigned long long) pos->row_id);
-  while ( (0 != ha.delta) &&
+  while ( (0 != hc->ha.delta) &&
           (NULL != pos) )
   {
     json_t *trans;
@@ -2327,9 +2459,9 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                   "Unexpected CREDIT transaction #%llu for account `%s'\n",
                   (unsigned long long) pos->row_id,
                   account);
-      if (0 > ha.delta)
+      if (0 > hc->ha.delta)
         pos = pos->prev_in;
-      if (0 < ha.delta)
+      if (0 < hc->ha.delta)
         pos = pos->next_in;
       continue;
     }
@@ -2348,7 +2480,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       GNUNET_JSON_pack_string ("credit_account",
                                credit_payto),
       GNUNET_JSON_pack_string ("debit_account",
-                               debit_payto),          // FIXME #7275: inefficient to return this here always!
+                               hc->payto_uri),          // FIXME #7275: inefficient to return this here always!
       GNUNET_JSON_pack_string ("exchange_base_url",
                                pos->subject.debit.exchange_base_url),
       GNUNET_JSON_pack_data_auto ("wtid",
@@ -2356,51 +2488,55 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_assert (NULL != trans);
     GNUNET_free (credit_payto);
     GNUNET_assert (0 ==
-                   json_array_append_new (history,
+                   json_array_append_new (hc->history,
                                           trans));
-    if (ha.delta > 0)
-      ha.delta--;
+    if (hc->ha.delta > 0)
+      hc->ha.delta--;
     else
-      ha.delta++;
-    if (0 > ha.delta)
+      hc->ha.delta++;
+    if (0 > hc->ha.delta)
       pos = pos->prev_out;
-    if (0 < ha.delta)
+    if (0 < hc->ha.delta)
       pos = pos->next_out;
   }
-  if ( (0 == json_array_size (history)) &&
-       (! GNUNET_TIME_relative_is_zero (ha.lp_timeout)) &&
-       (0 < ha.delta))
+  if ( (0 == json_array_size (hc->history)) &&
+       (! h->in_shutdown) &&
+       (GNUNET_TIME_absolute_is_future (hc->timeout)) &&
+       (0 < hc->ha.delta))
   {
-    *con_cls = &special_ptr;
     start_lp (h,
               connection,
-              acc,
-              ha.lp_timeout,
+              hc->acc,
+              GNUNET_TIME_absolute_get_remaining (hc->timeout),
               LP_DEBIT,
               NULL);
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
-    json_decref (history);
     return MHD_YES;
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
 finish:
-  if (0 == json_array_size (history))
+  if (0 == json_array_size (hc->history))
   {
-    json_decref (history);
+    GNUNET_break (h->in_shutdown ||
+                  (! GNUNET_TIME_absolute_is_future (hc->timeout)));
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
                                    NULL,
                                    NULL,
                                    0);
   }
-  GNUNET_free (debit_payto);
-  return TALER_MHD_REPLY_JSON_PACK (connection,
-                                    MHD_HTTP_OK,
-                                    GNUNET_JSON_pack_array_steal (
-                                      "outgoing_transactions",
-                                      history));
+  {
+    json_t *h = hc->history;
+
+    hc->history = NULL;
+    return TALER_MHD_REPLY_JSON_PACK (connection,
+                                      MHD_HTTP_OK,
+                                      GNUNET_JSON_pack_array_steal (
+                                        "outgoing_transactions",
+                                        h));
+  }
 }
 
 
@@ -2419,77 +2555,101 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                        const char *account,
                        void **con_cls)
 {
-  struct HistoryArgs ha;
-  struct Account *acc;
+  struct ConnectionContext *cc = *con_cls;
+  struct HistoryContext *hc;
   const struct Transaction *pos;
-  json_t *history;
-  const char *credit_payto;
   enum GNUNET_GenericReturnValue ret;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling /history/incoming connection %p (%d)\n",
-              connection,
-              (*con_cls == &special_ptr));
-  if (GNUNET_OK !=
-      (ret = parse_history_common_args (h,
-                                        connection,
-                                        &ha)))
+  if (NULL == cc)
   {
-    GNUNET_break_op (0);
-    return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
-  }
-  if (&special_ptr == *con_cls)
-    ha.lp_timeout = GNUNET_TIME_UNIT_ZERO;
-  *con_cls = &special_ptr;
-  acc = lookup_account (h,
-                        account,
-                        NULL);
-  if (NULL == acc)
-  {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_UNKNOWN_ACCOUNT,
-                                       account);
-  }
-  history = json_array ();
-  GNUNET_assert (NULL != history);
-  credit_payto = acc->payto_uri;
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->big_lock));
-  if (! ha.have_start)
-  {
-    pos = (0 > ha.delta)
-          ? acc->in_tail
-          : acc->in_head;
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &history_cleanup;
+    *con_cls = cc;
+    hc = GNUNET_new (struct HistoryContext);
+    cc->ctx = hc;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Handling /history/incoming connection %p\n",
+                connection);
+    if (GNUNET_OK !=
+        (ret = parse_history_common_args (h,
+                                          connection,
+                                          &hc->ha)))
+    {
+      GNUNET_break_op (0);
+      return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
+    }
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+    hc->acc = lookup_account (h,
+                              account,
+                              NULL);
+    if (NULL == hc->acc)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_BANK_UNKNOWN_ACCOUNT,
+                                         account);
+    }
+    /* FIXME: was simply: acc->payto_uri -- same!? */
+    GNUNET_asprintf (&hc->payto_uri,
+                     "payto://x-taler-bank/localhost/%s?receiver-name=%s",
+                     account,
+                     hc->acc->receiver_name);
+    GNUNET_assert (0 == strcmp (hc->payto_uri,
+                                hc->acc->payto_uri));
+    hc->history = json_array ();
+    if (NULL == hc->history)
+    {
+      GNUNET_break (0);
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return MHD_NO;
+    }
+    hc->timeout = GNUNET_TIME_relative_to_absolute (hc->ha.lp_timeout);
   }
   else
   {
-    struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
+    hc = cc->ctx;
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->big_lock));
+  }
+
+  if (! hc->ha.have_start)
+  {
+    pos = (0 > hc->ha.delta)
+          ? hc->acc->in_tail
+          : hc->acc->in_head;
+  }
+  else
+  {
+    struct Transaction *t = h->transactions[hc->ha.start_idx % h->ram_limit];
     bool overflow;
     uint64_t dir;
     bool skip = true;
 
-    overflow = ( (NULL != t) && (t->row_id != ha.start_idx) );
-    dir = (0 > ha.delta) ? (h->ram_limit - 1) : 1;
+    overflow = ( (NULL != t) && (t->row_id != hc->ha.start_idx) );
+    dir = (0 > hc->ha.delta) ? (h->ram_limit - 1) : 1;
     /* If account does not match, linear scan for
        first matching account. */
     while ( (! overflow) &&
             (NULL != t) &&
-            (t->credit_account != acc) )
+            (t->credit_account != hc->acc) )
     {
       skip = false;
       t = h->transactions[(t->row_id + dir) % h->ram_limit];
       if ( (NULL != t) &&
-           (t->row_id == ha.start_idx) )
+           (t->row_id == hc->ha.start_idx) )
         overflow = true; /* full circle, give up! */
     }
     if ( (NULL == t) ||
          overflow)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "No transactions available, suspending request\n");
-      if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
-          (0 < ha.delta))
+      /* FIXME: these conditions are unclear to me. */
+      if (GNUNET_TIME_relative_is_zero (hc->ha.lp_timeout) &&
+          (0 < hc->ha.delta))
       {
         GNUNET_assert (0 ==
                        pthread_mutex_unlock (&h->big_lock));
@@ -2500,23 +2660,27 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
             NULL);
         goto finish;
       }
-      *con_cls = &special_ptr;
+      if (h->in_shutdown)
+      {
+        GNUNET_assert (0 ==
+                       pthread_mutex_unlock (&h->big_lock));
+        goto finish;
+      }
       start_lp (h,
                 connection,
-                acc,
-                ha.lp_timeout,
+                hc->acc,
+                GNUNET_TIME_absolute_get_remaining (hc->timeout),
                 LP_CREDIT,
                 NULL);
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
-      json_decref (history);
       return MHD_YES;
     }
     if (skip)
     {
       /* range from application is exclusive, skip the
   matching entry */
-      if (0 > ha.delta)
+      if (0 > hc->ha.delta)
         pos = t->prev_in;
       else
         pos = t->next_in;
@@ -2529,9 +2693,9 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   if (NULL != pos)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning %lld credit transactions starting (inclusive) from %llu\n",
-                (long long) ha.delta,
+                (long long) hc->ha.delta,
                 (unsigned long long) pos->row_id);
-  while ( (0 != ha.delta) &&
+  while ( (0 != hc->ha.delta) &&
           (NULL != pos) )
   {
     json_t *trans;
@@ -2542,9 +2706,9 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                   "Unexpected DEBIT transaction #%llu for account `%s'\n",
                   (unsigned long long) pos->row_id,
                   account);
-      if (0 > ha.delta)
+      if (0 > hc->ha.delta)
         pos = pos->prev_in;
-      if (0 < ha.delta)
+      if (0 < hc->ha.delta)
         pos = pos->next_in;
       continue;
     }
@@ -2556,57 +2720,62 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
       GNUNET_JSON_pack_string ("credit_account",
-                               credit_payto),   // FIXME #7275: inefficient to repeat this always here!
+                               hc->payto_uri),   // FIXME #7275: inefficient to repeat this always here!
       GNUNET_JSON_pack_string ("debit_account",
                                pos->debit_account->payto_uri),
       GNUNET_JSON_pack_data_auto ("reserve_pub",
                                   &pos->subject.credit.reserve_pub));
     GNUNET_assert (NULL != trans);
     GNUNET_assert (0 ==
-                   json_array_append_new (history,
+                   json_array_append_new (hc->history,
                                           trans));
-    if (ha.delta > 0)
-      ha.delta--;
+    if (hc->ha.delta > 0)
+      hc->ha.delta--;
     else
-      ha.delta++;
-    if (0 > ha.delta)
+      hc->ha.delta++;
+    if (0 > hc->ha.delta)
       pos = pos->prev_in;
-    if (0 < ha.delta)
+    if (0 < hc->ha.delta)
       pos = pos->next_in;
   }
-  if ( (0 == json_array_size (history)) &&
-       (! GNUNET_TIME_relative_is_zero (ha.lp_timeout)) &&
-       (0 < ha.delta))
+  if ( (0 == json_array_size (hc->history)) &&
+       (! h->in_shutdown) &&
+       (GNUNET_TIME_absolute_is_future (hc->timeout)) &&
+       (0 < hc->ha.delta))
   {
-    *con_cls = &special_ptr;
     start_lp (h,
               connection,
-              acc,
-              ha.lp_timeout,
+              hc->acc,
+              GNUNET_TIME_absolute_get_remaining (hc->timeout),
               LP_CREDIT,
               NULL);
     GNUNET_assert (0 ==
                    pthread_mutex_unlock (&h->big_lock));
-    json_decref (history);
     return MHD_YES;
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
 finish:
-  if (0 == json_array_size (history))
+  if (0 == json_array_size (hc->history))
   {
-    json_decref (history);
+    GNUNET_break (h->in_shutdown ||
+                  (! GNUNET_TIME_absolute_is_future (hc->timeout)));
     return TALER_MHD_reply_static (connection,
                                    MHD_HTTP_NO_CONTENT,
                                    NULL,
                                    NULL,
                                    0);
   }
-  return TALER_MHD_REPLY_JSON_PACK (connection,
-                                    MHD_HTTP_OK,
-                                    GNUNET_JSON_pack_array_steal (
-                                      "incoming_transactions",
-                                      history));
+  {
+    json_t *h = hc->history;
+
+    hc->history = NULL;
+    return TALER_MHD_REPLY_JSON_PACK (connection,
+                                      MHD_HTTP_OK,
+                                      GNUNET_JSON_pack_array_steal (
+                                        "incoming_transactions",
+                                        h));
+  }
 }
 
 
@@ -2711,25 +2880,39 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
                           struct GNUNET_TIME_Relative lp,
                           void **con_cls)
 {
-  struct WithdrawalOperation *wo;
+  struct ConnectionContext *cc = *con_cls;
+  struct WithdrawContext *wc;
 
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->big_lock));
-  wo = lookup_withdrawal_operation (h,
-                                    wopid);
-  if (NULL == wo)
+  if (NULL == cc)
   {
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->big_lock));
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_BANK_TRANSACTION_NOT_FOUND,
-                                       wopid);
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &withdraw_cleanup;
+    *con_cls = cc;
+    wc = GNUNET_new (struct WithdrawContext);
+    cc->ctx = wc;
+    wc->wo = lookup_withdrawal_operation (h,
+                                          wopid);
+    if (NULL == wc->wo)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_NOT_FOUND,
+                                         TALER_EC_BANK_TRANSACTION_NOT_FOUND,
+                                         wopid);
+    }
+    wc->timeout = GNUNET_TIME_relative_to_absolute (lp);
   }
-  if ( (NULL != *con_cls) ||
-       (GNUNET_TIME_relative_is_zero (lp)) ||
-       wo->confirmation_done ||
-       wo->aborted)
+  else
+  {
+    wc = cc->ctx;
+  }
+  if (GNUNET_TIME_absolute_is_past (wc->timeout) ||
+      h->in_shutdown ||
+      wc->wo->confirmation_done ||
+      wc->wo->aborted)
   {
     json_t *wt;
 
@@ -2744,27 +2927,26 @@ get_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
       connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_bool ("aborted",
-                             wo->aborted),
+                             wc->wo->aborted),
       GNUNET_JSON_pack_bool ("selection_done",
-                             wo->selection_done),
+                             wc->wo->selection_done),
       GNUNET_JSON_pack_bool ("transfer_done",
-                             wo->confirmation_done),
+                             wc->wo->confirmation_done),
       GNUNET_JSON_pack_allow_null (
         GNUNET_JSON_pack_string ("suggested_exchange",
                                  h->exchange_url)),
       TALER_JSON_pack_amount ("amount",
-                              &wo->amount),
+                              &wc->wo->amount),
       GNUNET_JSON_pack_array_steal ("wire_types",
                                     wt));
   }
 
-  *con_cls = &special_ptr;
   start_lp (h,
             connection,
-            wo->debit_account,
-            lp,
+            wc->wo->debit_account,
+            GNUNET_TIME_absolute_get_remaining (wc->timeout),
             LP_WITHDRAW,
-            wo);
+            wc->wo);
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
   return MHD_YES;
@@ -2903,13 +3085,20 @@ post_withdrawal_operation (struct TALER_FAKEBANK_Handle *h,
                            size_t *upload_data_size,
                            void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   MHD_RESULT res;
 
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
-                                con_cls,
+                                &cc->ctx,
                                 upload_data,
                                 upload_data_size,
                                 &json);
@@ -3294,13 +3483,20 @@ post_account_withdrawals_access (struct TALER_FAKEBANK_Handle *h,
                                  size_t *upload_data_size,
                                  void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   MHD_RESULT res;
 
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
-                                con_cls,
+                                &cc->ctx,
                                 upload_data,
                                 upload_data_size,
                                 &json);
@@ -3367,13 +3563,20 @@ post_testing_register (struct TALER_FAKEBANK_Handle *h,
                        size_t *upload_data_size,
                        void **con_cls)
 {
+  struct ConnectionContext *cc = *con_cls;
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   MHD_RESULT res;
 
+  if (NULL == cc)
+  {
+    cc = GNUNET_new (struct ConnectionContext);
+    cc->ctx_cleaner = &GNUNET_JSON_post_parser_cleanup;
+    *con_cls = cc;
+  }
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
-                                con_cls,
+                                &cc->ctx,
                                 upload_data,
                                 upload_data_size,
                                 &json);

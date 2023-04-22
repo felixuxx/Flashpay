@@ -58,6 +58,12 @@ static struct TALER_BANK_CreditHistoryHandle *hh;
 static bool hh_returned_data;
 
 /**
+ * Set to true if the request for history did not
+ * succeed because the account was unknown.
+ */
+static bool hh_account_404;
+
+/**
  * When did we start the last @e hh request?
  */
 static struct GNUNET_TIME_Absolute hh_start_time;
@@ -472,9 +478,9 @@ transaction_completed (void)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  if (! hh_returned_data)
+  if (! (hh_returned_data || hh_account_404) )
   {
-    /* Enforce long polling delay even if the server ignored it
+    /* Enforce long-polling delay even if the server ignored it
        and returned earlier */
     struct GNUNET_TIME_Relative latency;
     struct GNUNET_TIME_Relative left;
@@ -482,8 +488,17 @@ transaction_completed (void)
     latency = GNUNET_TIME_absolute_get_duration (hh_start_time);
     left = GNUNET_TIME_relative_subtract (longpoll_timeout,
                                           latency);
+    if (! (test_mode ||
+           GNUNET_TIME_relative_is_zero (left)) )
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR, // WARNING,
+                  "Server did not respect long-polling, enforcing client-side by sleeping for %s\n",
+                  GNUNET_TIME_relative2s (left,
+                                          true));
     delayed_until = GNUNET_TIME_relative_to_absolute (left);
   }
+  if (hh_account_404)
+    delayed_until = GNUNET_TIME_relative_to_absolute (
+      GNUNET_TIME_UNIT_MILLISECONDS);
   if (test_mode)
     delayed_until = GNUNET_TIME_UNIT_ZERO_ABS;
   GNUNET_assert (NULL == task);
@@ -709,7 +724,7 @@ history_cb (void *cls,
   }
   GNUNET_assert (NULL == task);
   hh = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "History request returned with HTTP status %u\n",
               reply->http_status);
   switch (reply->http_status)
@@ -723,6 +738,7 @@ history_cb (void *cls,
     transaction_completed ();
     return;
   case MHD_HTTP_NOT_FOUND:
+    hh_account_404 = true;
     if (ignore_account_404)
     {
       transaction_completed ();
@@ -761,6 +777,7 @@ continue_with_shard (void *cls)
               (unsigned long long) latest_row_off);
   hh_start_time = GNUNET_TIME_absolute_get ();
   hh_returned_data = false;
+  hh_account_404 = false;
   hh = TALER_BANK_credit_history (ctx,
                                   ai->auth,
                                   latest_row_off,
@@ -857,6 +874,17 @@ lock_shard (void *cls)
                   job_name,
                   GNUNET_STRINGS_relative_time_to_string (rdelay,
                                                           true));
+#if 1
+      if (GNUNET_TIME_relative_cmp (rdelay,
+                                    >,
+                                    GNUNET_TIME_UNIT_SECONDS))
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Delay would have been for %s\n",
+                    GNUNET_TIME_relative2s (rdelay,
+                                            true));
+      rdelay = GNUNET_TIME_relative_min (rdelay,
+                                         GNUNET_TIME_UNIT_SECONDS);
+#endif
       delayed_until = GNUNET_TIME_relative_to_absolute (rdelay);
     }
     GNUNET_assert (NULL == task);
@@ -869,7 +897,7 @@ lock_shard (void *cls)
                 job_name,
                 GNUNET_STRINGS_relative_time_to_string (
                   wirewatch_idle_sleep_interval,
-                  GNUNET_YES));
+                  true));
     delayed_until = GNUNET_TIME_relative_to_absolute (
       wirewatch_idle_sleep_interval);
     shard_open = false;
