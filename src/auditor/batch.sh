@@ -214,7 +214,7 @@ bash
 #    {
 #      amountToSpend: "TESTKUDOS:4",
 #      amountToWithdraw: "TESTKUDOS:10",
-#      bankBaseUrl: $BANK_URL,
+#      bankAccessApiBaseUrl: $BANK_URL,
 #      exchangeBaseUrl: $EXCHANGE_URL,
 #      merchantBaseUrl: $MERCHANT_URL,
 #    }' \

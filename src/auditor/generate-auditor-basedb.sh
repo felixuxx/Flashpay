@@ -411,7 +411,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api --expect-success 'runI
     {
       amountToSpend: "TESTKUDOS:4",
       amountToWithdraw: "TESTKUDOS:10",
-      bankBaseUrl: $BANK_URL,
+      bankAccessApiBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
       merchantBaseUrl: $MERCHANT_URL,
     }' \
