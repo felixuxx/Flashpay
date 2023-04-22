@@ -280,7 +280,7 @@ BEGIN
           END IF;
           CONTINUE loop2_k;
         WHEN 1 THEN
-          IF in0_reserve_pub = i.reserve_pub
+          IF in1_reserve_pub = i.reserve_pub
           THEN
             transaction_duplicate1 = FALSE;
             EXECUTE FORMAT (
