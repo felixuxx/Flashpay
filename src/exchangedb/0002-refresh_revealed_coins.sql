@@ -62,6 +62,9 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
+  --
+  -- FIXME: Add comment for link_sig
+  --
   PERFORM comment_partitioned_column(
      'envelope of the new coin to be signed'
     ,'coin_ev'
