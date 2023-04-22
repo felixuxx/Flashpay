@@ -3805,6 +3805,37 @@ struct TALER_EXCHANGEDB_Plugin
     bool *balance_ok,
     uint64_t *ruuid);
 
+  /**
+   * Store in the database which coin(s) the wallet wanted to withdraw with
+   * age restriction enabled in a given age-withdraw operation and the relevant
+   * information we learned or created in the reveal steop
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param h_commitment The hash of the original age-withdraw commitment, which is a key into the withdraw_age_commitments table
+   * @param num_coins number of coins to generate, size of the @a coin_evs array
+   * TODO: oec
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_age_withdraw_reveal)(
+    void *cls,
+    uint64_t h_commitment,
+    uint32_t num_coins
+    /* TODO: oec */
+    );
+
+  /**
+   * Lookup in the database for the fresh coins with age-restriction that
+   * we created in the given age-withdraw operation.
+   *
+   * TODO: oec
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_age_withdraw_reveal)(
+    void *cls,
+    uint64_t h_commitment
+    /* TODO: oec */
+    );
 
   /**
    * Retrieve the details to a policy given by its hash_code
