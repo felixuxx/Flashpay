@@ -689,6 +689,8 @@ parallel_benchmark (void)
       }
 
       /* But be extra sure we did finish all shards by doing one more */
+      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                  "Shard check phase\n");
       wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                               NULL, NULL, NULL,
                                               "taler-exchange-wirewatch",

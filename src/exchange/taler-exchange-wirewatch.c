@@ -482,6 +482,10 @@ transaction_completed (void)
     latency = GNUNET_TIME_absolute_get_duration (hh_start_time);
     left = GNUNET_TIME_relative_subtract (longpoll_timeout,
                                           latency);
+#if 1
+    left = GNUNET_TIME_relative_min (left,
+                                     GNUNET_TIME_UNIT_SECONDS);
+#endif
     delayed_until = GNUNET_TIME_relative_to_absolute (left);
   }
   if (test_mode)
@@ -857,6 +861,10 @@ lock_shard (void *cls)
                   job_name,
                   GNUNET_STRINGS_relative_time_to_string (rdelay,
                                                           true));
+#if 1
+      rdelay = GNUNET_TIME_relative_min (rdelay,
+                                         GNUNET_TIME_UNIT_SECONDS);
+#endif
       delayed_until = GNUNET_TIME_relative_to_absolute (rdelay);
     }
     GNUNET_assert (NULL == task);
@@ -869,7 +877,7 @@ lock_shard (void *cls)
                 job_name,
                 GNUNET_STRINGS_relative_time_to_string (
                   wirewatch_idle_sleep_interval,
-                  GNUNET_YES));
+                  true));
     delayed_until = GNUNET_TIME_relative_to_absolute (
       wirewatch_idle_sleep_interval);
     shard_open = false;

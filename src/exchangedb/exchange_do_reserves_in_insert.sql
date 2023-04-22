@@ -286,8 +286,8 @@ BEGIN
             EXECUTE FORMAT (
               'NOTIFY %s'
               ,in1_notify);
-            EXIT loop_transaction;
           END IF;
+          EXIT loop_transaction;
       END CASE;
     END LOOP loop2_k;
   END LOOP loop_transaction;
@@ -564,8 +564,8 @@ BEGIN
             EXECUTE FORMAT (
               'NOTIFY %s'
               ,in3_notify);
-            EXIT loop_transaction;
           END IF;
+          EXIT loop_transaction;
       END CASE;
     END LOOP loop2_k;
   END LOOP loop_transaction;
@@ -1046,8 +1046,8 @@ BEGIN
             EXECUTE FORMAT (
               'NOTIFY %s'
               ,in7_notify);
-            EXIT loop_transaction;
           END IF;
+          EXIT loop_transaction;
       END CASE;
     END LOOP loop2_k;
   END LOOP loop_transaction;
