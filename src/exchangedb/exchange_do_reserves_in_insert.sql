@@ -218,9 +218,8 @@ BEGIN
           THEN
             ruuid1 = i.reserve_uuid;
             out_reserve_found1 = FALSE;
-            EXIT loop_reserve;
           END IF;
-          EXIT loop_k;
+          EXIT loop_reserve;
       END CASE;
     END LOOP loop_k;
   END LOOP loop_reserve;
@@ -462,9 +461,8 @@ BEGIN
           THEN
             ruuid3 = i.reserve_uuid;
             out_reserve_found3 = FALSE;
-            EXIT loop_reserve;
           END IF;
-          EXIT loop_k;
+          EXIT loop_reserve;
       END CASE;
     END LOOP loop_k;
   END LOOP loop_reserve;
@@ -872,9 +870,8 @@ BEGIN
           THEN
             ruuid7 = i.reserve_uuid;
             out_reserve_found7 = FALSE;
-            EXIT loop_reserve;
           END IF;
-          EXIT loop_k;
+          EXIT loop_reserve;
       END CASE;
     END LOOP loop_k;
   END LOOP loop_reserve;
