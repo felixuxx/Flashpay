@@ -26,21 +26,11 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_reserves_in_insert(
   IN in_wire_source_h_payto BYTEA,
   IN in_payto_uri VARCHAR,
   IN in_notify TEXT,
-  OUT out_reserve_found0 BOOLEAN,
   OUT transaction_duplicate0 BOOLEAN,
   OUT ruuid0 INT8)
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  curs REFCURSOR;
-DECLARE
-  i RECORD;
-DECLARE
-  curs_trans REFCURSOR;
 BEGIN
-  ruuid0 = 0;
-  out_reserve_found0 = TRUE;
-  transaction_duplicate0 = TRUE;
 
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -50,35 +40,22 @@ BEGIN
     ,in_payto_uri)
   ON CONFLICT DO NOTHING;
 
-  OPEN curs FOR
-  WITH reserve_changes AS (
-    INSERT INTO reserves
-      (reserve_pub
-      ,current_balance_val
-      ,current_balance_frac
-      ,expiration_date
-      ,gc_date)
-      VALUES
-      (in_reserve_pub
-      ,in_credit_val
-      ,in_credit_frac
-      ,in_reserve_expiration
-      ,in_gc_date)
-    ON CONFLICT DO NOTHING
-    RETURNING reserve_uuid, reserve_pub)
-  SELECT reserve_uuid, reserve_pub FROM reserve_changes;
+  INSERT INTO reserves
+    (reserve_pub
+    ,current_balance_val
+    ,current_balance_frac
+    ,expiration_date
+    ,gc_date)
+    VALUES
+    (in_reserve_pub
+    ,in_credit_val
+    ,in_credit_frac
+    ,in_reserve_expiration
+    ,in_gc_date)
+  ON CONFLICT DO NOTHING
+  RETURNING reserve_uuid
+  INTO ruuid0;
 
-  FETCH FROM curs INTO i;
-  IF FOUND
-  THEN
-    -- We made a change, so the reserve did not previously exist.
-    out_reserve_found0 = FALSE;
-    ruuid0 = i.reserve_uuid;
-  END IF;
-  CLOSE curs;
-
-  OPEN curs_trans FOR
-  WITH reserve_transaction AS(
   INSERT INTO reserves_in
     (reserve_pub
     ,wire_reference
@@ -95,21 +72,15 @@ BEGIN
     ,in_exchange_account_name
     ,in_wire_source_h_payto
     ,in_execution_date)
-    ON CONFLICT DO NOTHING
-    RETURNING reserve_pub)
-  SELECT reserve_pub FROM reserve_transaction;
+    ON CONFLICT DO NOTHING;
 
-  FETCH FROM curs_trans INTO i;
+  transaction_duplicate0 = NOT FOUND;
   IF FOUND
   THEN
-    transaction_duplicate0 = FALSE;
     EXECUTE FORMAT (
          'NOTIFY %s'
          ,in_notify);
   END IF;
-
-  CLOSE curs_trans;
-
   RETURN;
 END $$;
 
@@ -135,8 +106,6 @@ CREATE OR REPLACE FUNCTION exchange_do_batch2_reserves_insert(
   IN in1_wire_source_h_payto BYTEA,
   IN in1_payto_uri VARCHAR,
   IN in1_notify TEXT,
-  OUT out_reserve_found0 BOOLEAN,
-  OUT out_reserve_found1 BOOLEAN,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
   OUT ruuid0 INT8,
@@ -154,10 +123,6 @@ DECLARE
 BEGIN
   transaction_duplicate0 = TRUE;
   transaction_duplicate1 = TRUE;
-  out_reserve_found0 = TRUE;
-  out_reserve_found1 = TRUE;
-  ruuid0=0;
-  ruuid1=0;
 
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -207,7 +172,6 @@ BEGIN
           IF in0_reserve_pub = i.reserve_pub
           THEN
             ruuid0 = i.reserve_uuid;
-            out_reserve_found0 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -215,7 +179,6 @@ BEGIN
           IF in1_reserve_pub = i.reserve_pub
           THEN
             ruuid1 = i.reserve_uuid;
-            out_reserve_found1 = FALSE;
           END IF;
           EXIT loop_reserve;
       END CASE;
@@ -332,10 +295,6 @@ CREATE OR REPLACE FUNCTION exchange_do_batch4_reserves_insert(
   IN in3_wire_source_h_payto BYTEA,
   IN in3_payto_uri VARCHAR,
   IN in3_notify TEXT,
-  OUT out_reserve_found0 BOOLEAN,
-  OUT out_reserve_found1 BOOLEAN,
-  OUT out_reserve_found2 BOOLEAN,
-  OUT out_reserve_found3 BOOLEAN,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
   OUT transaction_duplicate2 BOOLEAN,
@@ -359,14 +318,6 @@ BEGIN
   transaction_duplicate1=TRUE;
   transaction_duplicate2=TRUE;
   transaction_duplicate3=TRUE;
-  out_reserve_found0 = TRUE;
-  out_reserve_found1 = TRUE;
-  out_reserve_found2 = TRUE;
-  out_reserve_found3 = TRUE;
-  ruuid0=0;
-  ruuid1=0;
-  ruuid2=0;
-  ruuid3=0;
 
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -430,7 +381,6 @@ BEGIN
           IF in0_reserve_pub = i.reserve_pub
           THEN
             ruuid0 = i.reserve_uuid;
-            out_reserve_found0 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -439,7 +389,6 @@ BEGIN
           IF in1_reserve_pub = i.reserve_pub
           THEN
             ruuid1 = i.reserve_uuid;
-            out_reserve_found1 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -448,7 +397,6 @@ BEGIN
           IF in2_reserve_pub = i.reserve_pub
           THEN
             ruuid2 = i.reserve_uuid;
-            out_reserve_found2 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -456,7 +404,6 @@ BEGIN
           IF in3_reserve_pub = i.reserve_pub
           THEN
             ruuid3 = i.reserve_uuid;
-            out_reserve_found3 = FALSE;
           END IF;
           EXIT loop_reserve;
       END CASE;
@@ -645,14 +592,6 @@ CREATE OR REPLACE FUNCTION exchange_do_batch8_reserves_insert(
   IN in7_wire_source_h_payto BYTEA,
   IN in7_payto_uri VARCHAR,
   IN in7_notify TEXT,
-  OUT out_reserve_found0 BOOLEAN,
-  OUT out_reserve_found1 BOOLEAN,
-  OUT out_reserve_found2 BOOLEAN,
-  OUT out_reserve_found3 BOOLEAN,
-  OUT out_reserve_found4 BOOLEAN,
-  OUT out_reserve_found5 BOOLEAN,
-  OUT out_reserve_found6 BOOLEAN,
-  OUT out_reserve_found7 BOOLEAN,
   OUT transaction_duplicate0 BOOLEAN,
   OUT transaction_duplicate1 BOOLEAN,
   OUT transaction_duplicate2 BOOLEAN,
@@ -691,22 +630,6 @@ BEGIN
   transaction_duplicate5=TRUE;
   transaction_duplicate6=TRUE;
   transaction_duplicate7=TRUE;
-  out_reserve_found0 = TRUE;
-  out_reserve_found1 = TRUE;
-  out_reserve_found2 = TRUE;
-  out_reserve_found3 = TRUE;
-  out_reserve_found4 = TRUE;
-  out_reserve_found5 = TRUE;
-  out_reserve_found6 = TRUE;
-  out_reserve_found7 = TRUE;
-  ruuid0=0;
-  ruuid1=0;
-  ruuid2=0;
-  ruuid3=0;
-  ruuid4=0;
-  ruuid5=0;
-  ruuid6=0;
-  ruuid7=0;
 
   INSERT INTO wire_targets
     (wire_target_h_payto
@@ -803,7 +726,6 @@ BEGIN
           IF in0_reserve_pub = i.reserve_pub
           THEN
             ruuid0 = i.reserve_uuid;
-            out_reserve_found0 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -812,7 +734,6 @@ BEGIN
           IF in1_reserve_pub = i.reserve_pub
           THEN
             ruuid1 = i.reserve_uuid;
-            out_reserve_found1 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -821,7 +742,6 @@ BEGIN
           IF in2_reserve_pub = i.reserve_pub
           THEN
             ruuid2 = i.reserve_uuid;
-            out_reserve_found2 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -830,7 +750,6 @@ BEGIN
           IF in3_reserve_pub = i.reserve_pub
           THEN
             ruuid3 = i.reserve_uuid;
-            out_reserve_found3 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -839,7 +758,6 @@ BEGIN
           IF in4_reserve_pub = i.reserve_pub
           THEN
             ruuid4 = i.reserve_uuid;
-            out_reserve_found4 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -848,7 +766,6 @@ BEGIN
           IF in5_reserve_pub = i.reserve_pub
           THEN
             ruuid5 = i.reserve_uuid;
-            out_reserve_found5 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -857,7 +774,6 @@ BEGIN
           IF in6_reserve_pub = i.reserve_pub
           THEN
             ruuid6 = i.reserve_uuid;
-            out_reserve_found6 = FALSE;
             CONTINUE loop_reserve;
           END IF;
           CONTINUE loop_k;
@@ -865,7 +781,6 @@ BEGIN
           IF in7_reserve_pub = i.reserve_pub
           THEN
             ruuid7 = i.reserve_uuid;
-            out_reserve_found7 = FALSE;
           END IF;
           EXIT loop_reserve;
       END CASE;

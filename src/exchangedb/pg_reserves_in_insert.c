@@ -113,12 +113,12 @@ struct ReserveRecord
  * index @a index
  */
 #define RR_RESULT_PARAM(rr,index) \
-  GNUNET_PQ_result_spec_bool ("conflicted" TALER_S (index),            \
-                              &rr[index].conflicts),                   \
   GNUNET_PQ_result_spec_bool ("transaction_duplicate" TALER_S (index), \
                               &rr[index].transaction_duplicate),       \
-  GNUNET_PQ_result_spec_uint64 ("reserve_uuid" TALER_S (index),        \
-                                &rr[index].reserve_uuid)
+  GNUNET_PQ_result_spec_allow_null ( \
+    GNUNET_PQ_result_spec_uint64 ("reserve_uuid" TALER_S (index),        \
+                                  &rr[index].reserve_uuid),              \
+    &rr[index].conflicts)
 
 
 /**
@@ -151,8 +151,7 @@ insert1 (struct PostgresClosure *pg,
   PREPARE (pg,
            "batch1_reserve_create",
            "SELECT "
-           " out_reserve_found0 AS conflicted0"
-           ",transaction_duplicate0 AS transaction_duplicate0"
+           " transaction_duplicate0 AS transaction_duplicate0"
            ",ruuid0 AS reserve_uuid0"
            " FROM exchange_do_batch_reserves_in_insert"
            " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
@@ -210,9 +209,7 @@ insert2 (struct PostgresClosure *pg,
   PREPARE (pg,
            "batch2_reserve_create",
            "SELECT"
-           " out_reserve_found0 AS conflicted0"
-           ",out_reserve_found1 AS conflicted1"
-           ",transaction_duplicate0"
+           " transaction_duplicate0"
            ",transaction_duplicate1"
            ",ruuid0 AS reserve_uuid0"
            ",ruuid1 AS reserve_uuid1"
@@ -279,11 +276,7 @@ insert4 (struct PostgresClosure *pg,
   PREPARE (pg,
            "batch4_reserve_create",
            "SELECT"
-           " out_reserve_found0 AS conflicted0"
-           ",out_reserve_found1 AS conflicted1"
-           ",out_reserve_found2 AS conflicted2"
-           ",out_reserve_found3 AS conflicted3"
-           ",transaction_duplicate0"
+           " transaction_duplicate0"
            ",transaction_duplicate1"
            ",transaction_duplicate2"
            ",transaction_duplicate3"
@@ -363,15 +356,7 @@ insert8 (struct PostgresClosure *pg,
   PREPARE (pg,
            "batch8_reserve_create",
            "SELECT"
-           " out_reserve_found0 AS conflicted0"
-           ",out_reserve_found1 AS conflicted1"
-           ",out_reserve_found2 AS conflicted2"
-           ",out_reserve_found3 AS conflicted3"
-           ",out_reserve_found4 AS conflicted4"
-           ",out_reserve_found5 AS conflicted5"
-           ",out_reserve_found6 AS conflicted6"
-           ",out_reserve_found7 AS conflicted7"
-           ",transaction_duplicate0"
+           " transaction_duplicate0"
            ",transaction_duplicate1"
            ",transaction_duplicate2"
            ",transaction_duplicate3"
