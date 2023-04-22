@@ -222,7 +222,6 @@ age_withdraw_transaction (void *cls,
   awc->kyc.ok = true;
   qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
                                     &awc->commitment,
-                                    awc->now,
                                     &found,
                                     &balance_ok,
                                     &ruuid);
@@ -312,7 +311,7 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
                           const json_t *root)
 {
   MHD_RESULT mhd_ret;
-  struct AgeWithdrawContext awc;
+  struct AgeWithdrawContext awc = {0};
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &awc.commitment.reserve_sig),
@@ -321,12 +320,11 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
     TALER_JSON_spec_amount ("amount",
                             TEH_currency,
                             &awc.commitment.amount_with_fee),
-    GNUNET_JSON_spec_uint32 ("max_age",
+    GNUNET_JSON_spec_uint16 ("max_age",
                              &awc.commitment.max_age),
     GNUNET_JSON_spec_end ()
   };
 
-  memset (&awc, 0, sizeof (awc));
   awc.commitment.reserve_pub = *reserve_pub;
 
 

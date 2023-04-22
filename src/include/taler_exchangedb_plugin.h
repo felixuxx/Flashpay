@@ -18,6 +18,7 @@
  * @brief Low-level (statement-level) database access for the exchange
  * @author Florian Dold
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #ifndef TALER_EXCHANGEDB_PLUGIN_H
 #define TALER_EXCHANGEDB_PLUGIN_H
@@ -283,7 +284,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
   TALER_EXCHANGEDB_RT_KYC_ATTRIBUTES,
   TALER_EXCHANGEDB_RT_PURSE_DELETION,
   TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS,
-  TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS,
+  TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS,
 };
 
 
@@ -764,11 +765,14 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_AgeWithdrawCommitmentHashP h_commitment;
-      // FIXME-Oec: h_commitment --- schema says it is 32 byte, but it was 64 above??!?
       uint32_t freshcoin_index;
       uint64_t denominations_serial;
-      // FIXME-Oec: h_coin_ev --- schema says it is 32 byte!?
-    } withdraw_age_reveals;
+      void *coin_ev;
+      size_t coin_ev_size;
+      struct TALER_ExchangeWithdrawValues ewv;
+      // h_coin_ev omitted, to be recomputed!
+      struct TALER_BlindedDenominationSignature ev_sig;
+    } withdraw_age_revealed_coins;
 
   } details;
 
@@ -1175,9 +1179,8 @@ struct TALER_EXCHANGEDB_AgeWithdrawCommitment
 
   /**
    * Maximum age that the coins are restricted to.
-   * FIXME-Oec: use 16-bit integer (see DB schema!)
    */
-  uint32_t max_age;
+  uint16_t max_age;
 
   /**
    * The hash of the commitment of all n*kappa coins
@@ -1206,11 +1209,6 @@ struct TALER_EXCHANGEDB_AgeWithdrawCommitment
    * The exchange's signature of the response.
    */
   struct TALER_ExchangeSignatureP sig;
-
-  /**
-   * Timestamp of the request being made
-   */
-  struct GNUNET_TIME_Timestamp timestamp;
 };
 
 
@@ -3794,7 +3792,6 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
    * @param commitment corresponding commitment for the age-withdraw
-   * @param now current time (rounded)
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] ruuid set to the reserve's UUID (reserves table row)
@@ -3804,7 +3801,6 @@ struct TALER_EXCHANGEDB_Plugin
   (*do_age_withdraw)(
     void *cls,
     const struct TALER_EXCHANGEDB_AgeWithdrawCommitment *commitment,
-    struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
     uint64_t *ruuid);
@@ -5787,6 +5783,7 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert record set into @a table.  Used in exchange-auditor database
    * replication.
    *
+  memset (&awc, 0, sizeof (awc));
    * @param cls closure
    * @param tb table data to insert
    * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if

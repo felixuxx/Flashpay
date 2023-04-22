@@ -21,6 +21,7 @@
  * @file exchangedb/pg_lookup_records_by_table.c
  * @brief implementation of lookup_records_by_table
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_error_codes.h"
@@ -2807,9 +2808,6 @@ lrbt_cb_table_withdraw_age_commitments (void *cls,
       GNUNET_PQ_result_spec_uint32 (
         "noreveal_index",
         &td.details.withdraw_age_commitments.noreveal_index),
-      GNUNET_PQ_result_spec_absolute_time (
-        "timestamp",
-        &td.details.withdraw_age_commitments.timestamp),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2830,40 +2828,48 @@ lrbt_cb_table_withdraw_age_commitments (void *cls,
 
 
 /**
- * Function called with withdraw_age_reveals table entries.
+ * Function called with withdraw_age_revealed_coins table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_withdraw_age_reveals (void *cls,
-                                    PGresult *result,
-                                    unsigned int num_results)
+lrbt_cb_table_withdraw_age_revealed_coins (void *cls,
+                                           PGresult *result,
+                                           unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
   struct TALER_EXCHANGEDB_TableData td = {
-    .table = TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS
+    .table = TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS
   };
 
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "withdraw_age_reveals_serial_id",
+        "withdraw_age_revealed_coins_id",
         &td.serial),
-#if FIXME_OEC
       GNUNET_PQ_result_spec_auto_from_type (
         "h_commitment",
-        &td.details.withdraw_age_reveals.h_commitment),
-#endif
+        &td.details.withdraw_age_revealed_coins.h_commitment),
       GNUNET_PQ_result_spec_uint32 (
         "freshcoin_index",
-        &td.details.withdraw_age_reveals.freshcoin_index),
+        &td.details.withdraw_age_revealed_coins.freshcoin_index),
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
-        &td.details.withdraw_age_reveals.denominations_serial),
-      /* FIXME-Oec; h_coin_ev, or coin_ev? */
+        &td.details.withdraw_age_revealed_coins.denominations_serial),
+      /* Note: h_coin_ev is recalculated */
+      GNUNET_PQ_result_spec_variable_size (
+        "coin_ev",
+        (void **) &td.details.withdraw_age_revealed_coins.coin_ev,
+        &td.details.withdraw_age_revealed_coins.coin_ev_size),
+      TALER_PQ_result_spec_blinded_denom_sig (
+        "ev_sig",
+        &td.details.refresh_revealed_coins.ev_sig),
+      TALER_PQ_result_spec_exchange_withdraw_values (
+        "ewv",
+        &td.details.refresh_revealed_coins.ewv),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3602,13 +3608,27 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",reserve_pub"
               ",reserve_sig"
               ",noreveal_index"
-              ",timestamp"
               " FROM withdraw_age_commitments"
               " WHERE withdraw_age_commitment_id > $1"
               " ORDER BY withdraw_age_commitment_id ASC;");
     rh = &lrbt_cb_table_withdraw_age_commitments;
     break;
-
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
+    XPREPARE ("select_above_serial_by_table_withdraw_age_revealed_coins",
+              "SELECT"
+              " withdraw_age_revealed_coins_serial_id"
+              ",h_commitment"
+              ",freshcoin_index"
+              ",denominations_serial"
+              ",coin_ev"
+              ",h_coin_ev"
+              ",ev_sig"
+              ",ewv"
+              " FROM withdraw_age_revealed_coins"
+              " WHERE withdraw_age_revealed_coins_serial_id > $1"
+              " ORDER BY withdraw_age_revealed_coins_serial_id ASC;");
+    rh = &lrbt_cb_table_withdraw_age_revealed_coins;
+    break;
   }
   if (NULL == rh)
   {

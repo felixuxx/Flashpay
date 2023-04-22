@@ -19,8 +19,9 @@
  */
 /**
  * @file exchangedb/pg_insert_records_by_table.c
- * @brief insert_records_by_table implementation
+ * @brief replicate_records_by_table implementation
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_error_codes.h"
@@ -28,6 +29,7 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_records_by_table.h"
 #include "pg_helper.h"
+#include <gnunet/gnunet_pq_lib.h>
 
 
 /**
@@ -2110,40 +2112,56 @@ irbt_cb_table_withdraw_age_commitments (struct PostgresClosure *pg,
 
 
 /**
- * Function called with withdraw_age_reveals records to insert into table.
+ * Function called with withdraw_age_revealed_coins records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_withdraw_age_reveals (struct PostgresClosure *pg,
-                                    const struct TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_withdraw_age_revealed_coins (struct PostgresClosure *pg,
+                                           const struct
+                                           TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_HashCode h_coin_ev;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-#if FIXME_OEC
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.withdraw_age_reveals.h_commitment),
-#endif
+      &td->details.withdraw_age_revealed_coins.h_commitment),
     GNUNET_PQ_query_param_uint32 (
-      &td->details.withdraw_age_reveals.freshcoin_index),
+      &td->details.withdraw_age_revealed_coins.freshcoin_index),
     GNUNET_PQ_query_param_uint64 (
-      &td->details.withdraw_age_reveals.denominations_serial),
+      &td->details.withdraw_age_revealed_coins.denominations_serial),
+    GNUNET_PQ_query_param_fixed_size (
+      td->details.withdraw_age_revealed_coins.coin_ev,
+      td->details.withdraw_age_revealed_coins.coin_ev_size),
+    GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
+    TALER_PQ_query_param_blinded_denom_sig (
+      &td->details.withdraw_age_revealed_coins.ev_sig),
+    TALER_PQ_query_param_exchange_withdraw_values (
+      &td->details.withdraw_age_revealed_coins.ewv),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_withdraw_age_reveals",
-           "INSERT INTO withdraw_age_reveals"
-           "(withdraw_age_reveals_id"
-           ",FIXME_OEC"
+           "insert_into_table_withdraw_age_revealed_coins",
+           "INSERT INTO withdraw_age_revealed_coins"
+           "(withdraw_age_revealed_coins_id"
+           ",h_commitment"
            ",freshcoin_index"
            ",denominations_serial"
-           ",FIXME_OEC"
+           ",coin_ev"
+           ",h_coin_ev"
+           ",ev_sig"
+           ",ewv"
            ") VALUES "
-           "($1, $2, $3, $4, $5);");
+           "($1, $2, $3, $4, $5, $6, $7, $8);");
+
+  GNUNET_CRYPTO_hash (td->details.withdraw_age_revealed_coins.coin_ev,
+                      td->details.withdraw_age_revealed_coins.coin_ev_size,
+                      &h_coin_ev);
+
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_withdraw_age_reveals",
+                                             "insert_into_table_withdraw_age_revealed_coins",
                                              params);
 }
 
@@ -2298,8 +2316,8 @@ TEH_PG_insert_records_by_table (void *cls,
   case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
     rh = &irbt_cb_table_withdraw_age_commitments;
     break;
-  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS:
-    rh = &irbt_cb_table_withdraw_age_reveals;
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
+    rh = &irbt_cb_table_withdraw_age_revealed_coins;
     break;
   }
   if (NULL == rh)

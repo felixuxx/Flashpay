@@ -21,6 +21,7 @@
  * @author Christian Grothoff
  * @author Sree Harsha Totakura
  * @author Marcello Stanisci
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include <poll.h>

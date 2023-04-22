@@ -33,7 +33,6 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CHECK (LENGTH(reserve_pub)=32)'
       ',reserve_sig BYTEA CHECK (LENGTH(reserve_sig)=64)'
       ',noreveal_index INT4 NOT NULL'
-      ',timestamp INT8 NOT NULL'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (reserve_pub)'
@@ -51,7 +50,7 @@ BEGIN
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'The maximum age that the client commits to with this request'
+     'The maximum age (in years) that the client commits to with this request'
     ,'max_age'
     ,table_name
     ,partition_suffix
@@ -71,12 +70,6 @@ BEGIN
   PERFORM comment_partitioned_column(
      'Signature of the reserve''s private key over the withdraw-age request'
     ,'reserve_sig'
-    ,table_name
-    ,partition_suffix
-  );
-  PERFORM comment_partitioned_column(
-     'Timestamp with the time when the withdraw-age request was received by the exchange'
-    ,'timestamp'
     ,table_name
     ,partition_suffix
   );

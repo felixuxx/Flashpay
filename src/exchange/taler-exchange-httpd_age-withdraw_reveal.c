@@ -306,7 +306,7 @@ find_original_commitment (
     break;
 
   case GNUNET_DB_STATUS_SOFT_ERROR:
-  /* FIXME:oec: Do we queue a result in this case or retry? */
+  /* FIXME oec: Do we queue a result in this case or retry? */
   default:
     GNUNET_break (0);       /* should be impossible */
     *result = TALER_MHD_reply_with_error (connection,
@@ -564,7 +564,7 @@ verify_commitment_and_max_age (
   {
     size_t k = 0; /* either 0 or 1, to index into coin_evs */
 
-    for (size_t idx = 0; idx<3; idx++)
+    for (size_t idx = 0; idx<TALER_CNC_KAPPA; idx++)
     {
       if (idx == (size_t) noreveal_idx)
       {
@@ -576,12 +576,13 @@ verify_commitment_and_max_age (
       {
         /* FIXME:oec: Refactor this block out into its own function */
 
-        size_t j = 2 * c + k; /* Index into disclosed_coin_secrets[] */
+        size_t j = (TALER_CNC_KAPPA - 1) * c + k; /* Index into disclosed_coin_secrets[] */
         const struct TALER_PlanchetMasterSecretP *secret;
         struct TALER_AgeCommitmentHash ach;
+        struct TALER_BlindedCoinHashP bch;
 
         GNUNET_assert (k<2);
-        GNUNET_assert (num_coins * (TALER_CNC_KAPPA - 1) > j);
+        GNUNET_assert ((TALER_CNC_KAPPA - 1) * num_coins  > j);
 
         secret = &disclosed_coin_secrets[j];
         k++;
@@ -614,7 +615,6 @@ verify_commitment_and_max_age (
         {
           struct TALER_CoinPubHashP c_hash;
           struct TALER_PlanchetDetail detail;
-          struct TALER_BlindedCoinHashP bch;
           struct TALER_CoinSpendPrivateKeyP coin_priv;
           union TALER_DenominationBlindingKeyP bks;
           struct TALER_ExchangeWithdrawValues alg_values = {
@@ -640,9 +640,7 @@ verify_commitment_and_max_age (
                                                    false,
                                                    &alg_values.details.
                                                    cs_values);
-
-#pragma message ("FIXME:oec: return value of needs handling!")
-              /* FIXME:oec: Handle error */
+              /* FIXME Handle error? */
               GNUNET_assert (TALER_EC_NONE == ec);
             }
           }
@@ -692,10 +690,13 @@ verify_commitment_and_max_age (
             return ret;
           }
 
-          GNUNET_CRYPTO_hash_context_read (hash_context,
-                                           &detail.blinded_planchet,
-                                           sizeof(detail.blinded_planchet));
         }
+
+        /* Continue the running hash of all coin hashes with the calculated
+         * hash-value of the current, disclosed coin */
+        GNUNET_CRYPTO_hash_context_read (hash_context,
+                                         &bch,
+                                         sizeof(bch));
       }
     }
   }
@@ -718,6 +719,37 @@ verify_commitment_and_max_age (
 
   }
 
+  return ret;
+}
+
+
+/**
+ * @brief Signs and persists the undisclosed coins
+ *
+ * @param connection HTTP-connection to the client
+ * @param h_commitment_orig Original commitment
+ * @param num_coins Number of coins
+ * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
+ * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
+ * @param[out] result On error, a HTTP-response will be queued and result set accordingly
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+static enum GNUNET_GenericReturnValue
+sign_and_persist_blinded_coins (
+  struct MHD_Connection *connection,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment_orig,
+  const uint32_t num_coins,
+  const struct TALER_BlindedCoinHashP *coin_evs,
+  const struct TEH_DenominationKey *denom_keys,
+  MHD_RESULT *result)
+{
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+
+  /* TODO[oec]:
+   * - sign the planchets
+   * - in a transaction: save the coins.
+   */
+  #pragma message "FIXME[oec]: implement sign_and_persist_blinded_coins"
   return ret;
 }
 
@@ -803,7 +835,15 @@ TEH_handler_age_withdraw_reveal (
           &result))
       break;
 
-    /* TODO:oec: sign the coins */
+    /* Finally, sign and persist the coins */
+    if (GNUNET_OK != sign_and_persist_blinded_coins (
+          rc->connection,
+          &actx.commitment.h_commitment,
+          actx.num_coins,
+          actx.coin_evs,
+          actx.denom_keys,
+          &result))
+      break;
 
   } while(0);
 

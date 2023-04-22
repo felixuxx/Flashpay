@@ -435,14 +435,14 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " LIMIT 1;");
     statement = "select_serial_by_table_withdraw_age_commitments";
     break;
-  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALS:
-    XPREPARE ("select_serial_by_table_withdraw_age_reveals",
+  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
+    XPREPARE ("select_serial_by_table_withdraw_age_revealed_coins",
               "SELECT"
-              " withdraw_age_reveals_id AS serial"
-              " FROM withdraw_age_reveals"
-              " ORDER BY withdraw_age_reveals_id DESC"
+              " withdraw_age_revealed_coins_id AS serial"
+              " FROM withdraw_age_revealed_coins"
+              " ORDER BY withdraw_age_revealed_coins_id DESC"
               " LIMIT 1;");
-    statement = "select_serial_by_table_withdraw_age_reveals";
+    statement = "select_serial_by_table_withdraw_age_revealed_coins";
     break;
   }
   if (NULL == statement)

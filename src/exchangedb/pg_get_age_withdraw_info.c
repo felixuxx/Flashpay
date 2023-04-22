@@ -35,6 +35,7 @@ TEH_PG_get_age_withdraw_info (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (ach),
     GNUNET_PQ_query_param_end
   };
@@ -45,14 +46,12 @@ TEH_PG_get_age_withdraw_info (
                                           &awc->reserve_sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                           &awc->reserve_pub),
-    GNUNET_PQ_result_spec_uint32 ("max_age",
+    GNUNET_PQ_result_spec_uint16 ("max_age",
                                   &awc->max_age),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &awc->amount_with_fee),
     GNUNET_PQ_result_spec_uint32 ("noreveal_index",
                                   &awc->noreveal_index),
-    GNUNET_PQ_result_spec_timestamp ("timtestamp",
-                                     &awc->timestamp),
     GNUNET_PQ_result_spec_end
   };
 
@@ -70,9 +69,8 @@ TEH_PG_get_age_withdraw_info (
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",noreveal_index"
-           ",timestamp"
            " FROM withdraw_age_commitments"
-           " WHERE h_commitment=$1;");
+           " WHERE reserve_pub=$1 and h_commitment=$2;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_age_withdraw_info",
                                                    params,
