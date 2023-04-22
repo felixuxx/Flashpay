@@ -146,13 +146,11 @@ AS $$
 DECLARE
   curs_reserve_exist REFCURSOR;
 DECLARE
+  k INT8;
+DECLARE
   curs_transaction_exist REFCURSOR;
 DECLARE
   i RECORD;
-DECLARE
-  r RECORD;
-DECLARE
-  k INT8;
 BEGIN
   transaction_duplicate0 = TRUE;
   transaction_duplicate1 = TRUE;
@@ -228,34 +226,32 @@ BEGIN
 
   OPEN curs_transaction_exist FOR
   WITH reserve_transaction AS (
-  INSERT INTO reserves_in
-    (reserve_pub
-    ,wire_reference
-    ,credit_val
-    ,credit_frac
-    ,exchange_account_section
-    ,wire_source_h_payto
-    ,execution_date)
-    VALUES
-    (in0_reserve_pub
-    ,in0_wire_ref
-    ,in0_credit_val
-    ,in0_credit_frac
-    ,in0_exchange_account_name
-    ,in0_wire_source_h_payto
-    ,in0_execution_date),
-    (in1_reserve_pub
-    ,in1_wire_ref
-    ,in1_credit_val
-    ,in1_credit_frac
-    ,in1_exchange_account_name
-    ,in1_wire_source_h_payto
-    ,in1_execution_date)
+    INSERT INTO reserves_in
+      (reserve_pub
+      ,wire_reference
+      ,credit_val
+      ,credit_frac
+      ,exchange_account_section
+      ,wire_source_h_payto
+      ,execution_date)
+      VALUES
+      (in0_reserve_pub
+      ,in0_wire_ref
+      ,in0_credit_val
+      ,in0_credit_frac
+      ,in0_exchange_account_name
+      ,in0_wire_source_h_payto
+      ,in0_execution_date),
+      (in1_reserve_pub
+      ,in1_wire_ref
+      ,in1_credit_val
+      ,in1_credit_frac
+      ,in1_exchange_account_name
+      ,in1_wire_source_h_payto
+      ,in1_execution_date)
     ON CONFLICT DO NOTHING
     RETURNING reserve_pub)
   SELECT reserve_pub FROM reserve_transaction;
-
-  FETCH FROM curs_transaction_exist INTO r;
 
   k=0;
   <<loop_transaction>> LOOP
