@@ -788,7 +788,7 @@ verify_commitment_and_max_age (
  * @brief Signs and persists the undisclosed coins
  *
  * @param connection HTTP-connection to the client
- * @param h_commitment_orig Original commitment
+ * @param h_commitment Original commitment
  * @param num_coins Number of coins
  * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
  * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
