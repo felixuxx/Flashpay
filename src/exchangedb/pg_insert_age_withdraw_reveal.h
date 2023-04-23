@@ -24,15 +24,13 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
 /**
- * Store in the database which coin(s) the wallet wanted to create
- * in a given age-withdraw operation and all of the other information
- * we learned or created in the /age-withdraw/reveal step.
+ * @brief Store in the database which coin(s) the wallet wanted to create in a
+ * given age-withdraw operation and all of the other information we learned or
+ * created in the /age-withdraw/reveal step.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_commitment The commitment of the original age-withdraw request
- * @param num_coins The number of revealed coins
- * @param revealed_coins The coins
  * TODO:oec
  * @return query status for the transaction
  */
