@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_cmd_exec_nft.c
+ * @file testing/testing_api_cmd_exec_nexus_fetch_transactions.c
  * @brief run a nft command
  * @author Christian Grothoff
  */
