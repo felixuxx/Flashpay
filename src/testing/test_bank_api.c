@@ -129,6 +129,15 @@ run (void *cls,
 
       TALER_TESTING_cmd_sleep ("Waiting 5s for 'debit-1' to settle",
                                5),
+      with_libeufin
+      ? TALER_TESTING_cmd_nexus_fetch_transactions (
+        "fetch-transactions-at-nexus",
+        "exchange", /* from taler-nexus-prepare */
+        "x", /* from taler-nexus-prepare */
+        "http://localhost:5001",
+        "my-bank-account") /* from taler-nexus-prepare */
+      : TALER_TESTING_cmd_sleep ("nop",
+                                 0),
       TALER_TESTING_cmd_bank_debits ("history-2b",
                                      &bc.exchange_auth,
                                      NULL,

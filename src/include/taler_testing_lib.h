@@ -1243,6 +1243,36 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
 
 /**
+ * Request URL via "wget".
+ *
+ * @param label command label.
+ * @param url URL to fetch
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wget (const char *label,
+                             const char *url);
+
+
+/**
+ * Request fetch-transactions via "wget".
+ *
+ * @param label command label.
+ * @param username username to use
+ * @param password password to use
+ * @param bank_base_url base URL of the nexus
+ * @param account_id account to fetch transactions for
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_nexus_fetch_transactions (const char *label,
+                                            const char *username,
+                                            const char *password,
+                                            const char *bank_base_url,
+                                            const char *account_id);
+
+
+/**
  * Make a "expire" CMD.
  *
  * @param label command label.
