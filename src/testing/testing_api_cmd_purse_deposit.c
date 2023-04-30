@@ -152,8 +152,8 @@ deposit_cb (void *cls,
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
     if (-1 !=
-        TALER_amount_cmp (&dr->details.success.total_deposited,
-                          &dr->details.success.purse_value_after_fees))
+        TALER_amount_cmp (&dr->details.ok.total_deposited,
+                          &dr->details.ok.purse_value_after_fees))
     {
       const struct TALER_TESTING_Command *purse_cmd;
       const struct TALER_ReserveSignatureP *reserve_sig;
@@ -213,7 +213,7 @@ deposit_cb (void *cls,
 
         /* Note: change when flags below changes! */
         ds->reserve_history.amount
-          = dr->details.success.purse_value_after_fees;
+          = dr->details.ok.purse_value_after_fees;
         if (true)
         {
           ds->reserve_history.details.merge_details.purse_fee = gf->fees.purse;
@@ -226,7 +226,7 @@ deposit_cb (void *cls,
         }
       }
       ds->reserve_history.details.merge_details.h_contract_terms
-        = dr->details.success.h_contract_terms;
+        = dr->details.ok.h_contract_terms;
       ds->reserve_history.details.merge_details.merge_pub
         = *merge_pub;
       ds->reserve_history.details.merge_details.purse_pub
@@ -236,7 +236,7 @@ deposit_cb (void *cls,
       ds->reserve_history.details.merge_details.merge_timestamp
         = *merge_timestamp;
       ds->reserve_history.details.merge_details.purse_expiration
-        = dr->details.success.purse_expiration;
+        = dr->details.ok.purse_expiration;
       ds->reserve_history.details.merge_details.min_age
         = ds->min_age;
       ds->reserve_history.details.merge_details.flags

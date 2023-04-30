@@ -131,8 +131,8 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
         return GNUNET_SYSERR;
       }
     }
-    chr.details.success.details_length = len;
-    chr.details.success.details = cd;
+    chr.details.ok.details_length = len;
+    chr.details.ok.details = cd;
     hh->hcb (hh->hcb_cls,
              &chr);
   }

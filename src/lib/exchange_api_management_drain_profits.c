@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2022 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -79,9 +79,9 @@ handle_drain_profits_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementDrainProfitsHandle *dp = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementDrainResponse dr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   dp->job = NULL;
@@ -90,32 +90,32 @@ handle_drain_profits_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dr.hr.ec = TALER_JSON_get_error_code (json);
+    dr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_CONFLICT:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dr.hr.ec = TALER_JSON_get_error_code (json);
+    dr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dr.hr.ec = TALER_JSON_get_error_code (json);
+    dr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dr.hr.ec = TALER_JSON_get_error_code (json);
+    dr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management drain profits\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) dr.hr.ec);
     break;
   }
   if (NULL != dp->cb)
   {
     dp->cb (dp->cb_cls,
-            &hr);
+            &dr);
     dp->cb = NULL;
   }
   TALER_EXCHANGE_management_drain_profits_cancel (dp);

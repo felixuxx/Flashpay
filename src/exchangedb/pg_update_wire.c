@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -29,6 +29,9 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
                     const char *payto_uri,
+                    const char *conversion_url,
+                    json_t *debit_restrictions,
+                    json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
                     bool enabled)
 {
@@ -36,17 +39,28 @@ TEH_PG_update_wire (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_bool (enabled),
+    NULL == conversion_url
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (conversion_url),
+    enabled
+    ? TALER_PQ_query_param_json (debit_restrictions)
+    : GNUNET_PQ_query_param_null (),
+    enabled
+    ? TALER_PQ_query_param_json (credit_restrictions)
+    : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_timestamp (&change_date),
     GNUNET_PQ_query_param_end
   };
 
-  /* used in #postgres_update_wire() */
   PREPARE (pg,
            "update_wire",
            "UPDATE wire_accounts"
            " SET"
            "  is_active=$2"
-           " ,last_change=$3"
+           " ,conversion_url=$3"
+           " ,debit_restrictions=$4"
+           " ,credit_restrictions=$5"
+           " ,last_change=$6"
            " WHERE payto_uri=$1");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_wire",

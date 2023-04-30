@@ -133,8 +133,8 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
         return GNUNET_SYSERR;
       }
     }
-    dhr.details.success.details_length = len;
-    dhr.details.success.details = dd;
+    dhr.details.ok.details_length = len;
+    dhr.details.ok.details = dd;
     hh->hcb (hh->hcb_cls,
              &dhr);
   }

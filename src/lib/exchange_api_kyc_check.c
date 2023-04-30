@@ -100,11 +100,11 @@ handle_kyc_check_finished (void *cls,
       uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &ks.details.success.exchange_sig),
+                                     &ks.details.ok.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &ks.details.success.exchange_pub),
+                                     &ks.details.ok.exchange_pub),
         GNUNET_JSON_spec_timestamp ("now",
-                                    &ks.details.success.timestamp),
+                                    &ks.details.ok.timestamp),
         GNUNET_JSON_spec_json ("kyc_details",
                                &kyc_details),
         GNUNET_JSON_spec_uint32 ("aml_status",
@@ -123,13 +123,13 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ks.details.success.kyc_details = kyc_details;
-      ks.details.success.aml_status
+      ks.details.ok.kyc_details = kyc_details;
+      ks.details.ok.aml_status
         = (enum TALER_AmlDecisionState) status;
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &ks.details.success.exchange_pub))
+                                           &ks.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;
@@ -141,10 +141,10 @@ handle_kyc_check_finished (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_online_account_setup_success_verify (
             &kch->h_payto,
-            ks.details.success.kyc_details,
-            ks.details.success.timestamp,
-            &ks.details.success.exchange_pub,
-            &ks.details.success.exchange_sig))
+            ks.details.ok.kyc_details,
+            ks.details.ok.timestamp,
+            &ks.details.ok.exchange_pub,
+            &ks.details.ok.exchange_sig))
       {
         GNUNET_break_op (0);
         ks.http_status = 0;

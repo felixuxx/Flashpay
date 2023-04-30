@@ -210,7 +210,7 @@ reserve_batch_withdraw_cb (void *cls,
     {
       struct CoinState *cs = &ws->coins[i];
       const struct TALER_EXCHANGE_PrivateCoinDetails *pcd
-        = &wr->details.success.coins[i];
+        = &wr->details.ok.coins[i];
 
       TALER_denom_sig_deep_copy (&cs->sig,
                                  &pcd->sig);

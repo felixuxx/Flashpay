@@ -85,23 +85,32 @@ check_transfers_get_response_ok (
   const json_t *json)
 {
   json_t *details_j;
-  struct TALER_EXCHANGE_TransferData td;
   struct TALER_Amount total_expected;
   struct TALER_MerchantPublicKeyP merchant_pub;
-  struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount_any ("total", &td.total_amount),
-    TALER_JSON_spec_amount_any ("wire_fee", &td.wire_fee),
-    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-    GNUNET_JSON_spec_fixed_auto ("h_payto", &td.h_payto),
-    GNUNET_JSON_spec_timestamp ("execution_time", &td.execution_time),
-    GNUNET_JSON_spec_json ("deposits", &details_j),
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &td.exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &td.exchange_pub),
-    GNUNET_JSON_spec_end ()
+  struct TALER_EXCHANGE_TransfersGetResponse tgr = {
+    .hr.reply = json,
+    .hr.http_status = MHD_HTTP_OK
   };
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = json,
-    .http_status = MHD_HTTP_OK
+  struct TALER_EXCHANGE_TransferData *td
+    = &tgr.details.ok.td;
+  struct GNUNET_JSON_Specification spec[] = {
+    TALER_JSON_spec_amount_any ("total",
+                                &td->total_amount),
+    TALER_JSON_spec_amount_any ("wire_fee",
+                                &td->wire_fee),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                 &merchant_pub),
+    GNUNET_JSON_spec_fixed_auto ("h_payto",
+                                 &td->h_payto),
+    GNUNET_JSON_spec_timestamp ("execution_time",
+                                &td->execution_time),
+    GNUNET_JSON_spec_json ("deposits",
+                           &details_j),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &td->exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &td->exchange_pub),
+    GNUNET_JSON_spec_end ()
   };
 
   if (GNUNET_OK !=
@@ -113,7 +122,7 @@ check_transfers_get_response_ok (
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_set_zero (td.total_amount.currency,
+      TALER_amount_set_zero (td->total_amount.currency,
                              &total_expected))
   {
     GNUNET_break_op (0);
@@ -123,22 +132,22 @@ check_transfers_get_response_ok (
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (
         TALER_EXCHANGE_get_keys (wdh->exchange),
-        &td.exchange_pub))
+        &td->exchange_pub))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
-  td.details_length = json_array_size (details_j);
+  td->details_length = json_array_size (details_j);
   {
     struct GNUNET_HashContext *hash_context;
     struct TALER_TrackTransferDetails *details;
 
-    details = GNUNET_new_array (td.details_length,
+    details = GNUNET_new_array (td->details_length,
                                 struct TALER_TrackTransferDetails);
-    td.details = details;
+    td->details = details;
     hash_context = GNUNET_CRYPTO_hash_context_start ();
-    for (unsigned int i = 0; i<td.details_length; i++)
+    for (unsigned int i = 0; i<td->details_length; i++)
     {
       struct TALER_TrackTransferDetails *detail = &details[i];
       struct json_t *detail_j = json_array_get (details_j, i);
@@ -180,7 +189,7 @@ check_transfers_get_response_ok (
       TALER_exchange_online_wire_deposit_append (
         hash_context,
         &detail->h_contract_terms,
-        td.execution_time,
+        td->execution_time,
         &detail->coin_pub,
         &detail->coin_value,
         &detail->coin_fee);
@@ -193,13 +202,13 @@ check_transfers_get_response_ok (
                                          &h_details);
       if (GNUNET_OK !=
           TALER_exchange_online_wire_deposit_verify (
-            &td.total_amount,
-            &td.wire_fee,
+            &td->total_amount,
+            &td->wire_fee,
             &merchant_pub,
-            &td.h_payto,
+            &td->h_payto,
             &h_details,
-            &td.exchange_pub,
-            &td.exchange_sig))
+            &td->exchange_pub,
+            &td->exchange_sig))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
@@ -211,7 +220,7 @@ check_transfers_get_response_ok (
     if (0 >
         TALER_amount_subtract (&total_expected,
                                &total_expected,
-                               &td.wire_fee))
+                               &td->wire_fee))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
@@ -220,7 +229,7 @@ check_transfers_get_response_ok (
     }
     if (0 !=
         TALER_amount_cmp (&total_expected,
-                          &td.total_amount))
+                          &td->total_amount))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
@@ -228,8 +237,7 @@ check_transfers_get_response_ok (
       return GNUNET_SYSERR;
     }
     wdh->cb (wdh->cb_cls,
-             &hr,
-             &td);
+             &tgr);
     GNUNET_free (details);
   }
   GNUNET_JSON_parse_free (spec);
@@ -253,16 +261,16 @@ handle_transfers_get_finished (void *cls,
 {
   struct TALER_EXCHANGE_TransfersGetHandle *wdh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_TransfersGetResponse tgr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   wdh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    tgr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK ==
@@ -270,48 +278,47 @@ handle_transfers_get_finished (void *cls,
                                          j))
       return;
     GNUNET_break_op (0);
-    hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-    hr.http_status = 0;
+    tgr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+    tgr.hr.http_status = 0;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    tgr.hr.ec = TALER_JSON_get_error_code (j);
+    tgr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    tgr.hr.ec = TALER_JSON_get_error_code (j);
+    tgr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    tgr.hr.ec = TALER_JSON_get_error_code (j);
+    tgr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    tgr.hr.ec = TALER_JSON_get_error_code (j);
+    tgr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    tgr.hr.ec = TALER_JSON_get_error_code (j);
+    tgr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for transfers get\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) tgr.hr.ec);
     break;
   }
   wdh->cb (wdh->cb_cls,
-           &hr,
-           NULL);
+           &tgr);
   TALER_EXCHANGE_transfers_get_cancel (wdh);
 }
 

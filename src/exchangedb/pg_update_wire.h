@@ -24,11 +24,16 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
+
+
 /**
  * Update information about a wire account of the exchange.
  *
  * @param cls closure
  * @param payto_uri account the update is about
+ * @param conversion_url URL of a conversion service, NULL if there is no conversion
+ * @param debit_restrictions JSON array with debit restrictions on the account; NULL allowed if not @a enabled
+ * @param credit_restrictions JSON array with credit restrictions on the account; NULL allowed if not @a enabled
  * @param change_date date when the account status was last changed
  *                      (only to be used for replay detection)
  * @param enabled true to enable, false to disable (the actual change)
@@ -37,6 +42,9 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
                     const char *payto_uri,
+                    const char *conversion_url,
+                    json_t *debit_restrictions,
+                    json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
                     bool enabled);
 

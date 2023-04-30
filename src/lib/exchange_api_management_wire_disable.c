@@ -79,9 +79,9 @@ handle_auditor_disable_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementWireDisableHandle *wh = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementWireDisableResponse wdr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   wh->job = NULL;
@@ -89,38 +89,38 @@ handle_auditor_disable_finished (void *cls,
   {
   case 0:
     /* no reply */
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-    hr.hint = "server offline?";
+    wdr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    wdr.hr.hint = "server offline?";
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wdr.hr.ec = TALER_JSON_get_error_code (json);
+    wdr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wdr.hr.ec = TALER_JSON_get_error_code (json);
+    wdr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_CONFLICT:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wdr.hr.ec = TALER_JSON_get_error_code (json);
+    wdr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wdr.hr.ec = TALER_JSON_get_error_code (json);
+    wdr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d exchange management disable wire\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) wdr.hr.ec);
     break;
   }
   if (NULL != wh->cb)
   {
     wh->cb (wh->cb_cls,
-            &hr);
+            &wdr);
     wh->cb = NULL;
   }
   TALER_EXCHANGE_management_disable_wire_cancel (wh);

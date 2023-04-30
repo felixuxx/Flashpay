@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -53,6 +53,21 @@ struct AddWireContext
    * Payto:// URI this is about.
    */
   const char *payto_uri;
+
+  /**
+   * (optional) address of a conversion service for this account.
+   */
+  const char *conversion_url;
+
+  /**
+   * Restrictions imposed when crediting this account.
+   */
+  json_t *credit_restrictions;
+
+  /**
+   * Restrictions imposed when debiting this account.
+   */
+  json_t *debit_restrictions;
 
   /**
    * Timestamp for checking against replay attacks.
@@ -114,11 +129,17 @@ add_wire (void *cls,
   if (0 == qs)
     qs = TEH_plugin->insert_wire (TEH_plugin->cls,
                                   awc->payto_uri,
+                                  awc->conversion_url,
+                                  awc->debit_restrictions,
+                                  awc->credit_restrictions,
                                   awc->validity_start,
                                   &awc->master_sig_wire);
   else
     qs = TEH_plugin->update_wire (TEH_plugin->cls,
                                   awc->payto_uri,
+                                  awc->conversion_url,
+                                  awc->debit_restrictions,
+                                  awc->credit_restrictions,
                                   awc->validity_start,
                                   true);
   if (qs < 0)
@@ -141,7 +162,9 @@ TEH_handler_management_post_wire (
   struct MHD_Connection *connection,
   const json_t *root)
 {
-  struct AddWireContext awc;
+  struct AddWireContext awc = {
+    .conversion_url = NULL
+  };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig_wire",
                                  &awc.master_sig_wire),
@@ -149,6 +172,14 @@ TEH_handler_management_post_wire (
                                  &awc.master_sig_add),
     GNUNET_JSON_spec_string ("payto_uri",
                              &awc.payto_uri),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("conversion_url",
+                               &awc.conversion_url),
+      NULL),
+    GNUNET_JSON_spec_json ("credit_restrictions",
+                           &awc.credit_restrictions),
+    GNUNET_JSON_spec_json ("debit_restrictions",
+                           &awc.debit_restrictions),
     GNUNET_JSON_spec_timestamp ("validity_start",
                                 &awc.validity_start),
     GNUNET_JSON_spec_end ()
@@ -179,17 +210,22 @@ TEH_handler_management_post_wire (
         MHD_HTTP_BAD_REQUEST,
         TALER_EC_GENERIC_PAYTO_URI_MALFORMED,
         msg);
+      GNUNET_JSON_parse_free (spec);
       GNUNET_free (msg);
       return ret;
     }
   }
   if (GNUNET_OK !=
       TALER_exchange_offline_wire_add_verify (awc.payto_uri,
+                                              awc.conversion_url,
+                                              awc.debit_restrictions,
+                                              awc.credit_restrictions,
                                               awc.validity_start,
                                               &TEH_master_public_key,
                                               &awc.master_sig_add))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
@@ -199,10 +235,14 @@ TEH_handler_management_post_wire (
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
       TALER_exchange_wire_signature_check (awc.payto_uri,
+                                           awc.conversion_url,
+                                           awc.debit_restrictions,
+                                           awc.credit_restrictions,
                                            &TEH_master_public_key,
                                            &awc.master_sig_wire))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
@@ -218,6 +258,7 @@ TEH_handler_management_post_wire (
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "payto:// URI `%s' is malformed\n",
                   awc.payto_uri);
+      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_BAD_REQUEST,
@@ -237,6 +278,7 @@ TEH_handler_management_post_wire (
                                   &ret,
                                   &add_wire,
                                   &awc);
+    GNUNET_JSON_parse_free (spec);
     if (GNUNET_SYSERR == res)
       return ret;
   }

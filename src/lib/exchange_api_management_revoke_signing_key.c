@@ -79,9 +79,9 @@ handle_revoke_signing_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *rh = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementRevokeSigningKeyResponse rsr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   rh->job = NULL;
@@ -89,30 +89,30 @@ handle_revoke_signing_finished (void *cls,
   {
   case 0:
     /* no reply */
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-    hr.hint = "server offline?";
+    rsr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rsr.hr.hint = "server offline?";
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    rsr.hr.ec = TALER_JSON_get_error_code (json);
+    rsr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    rsr.hr.ec = TALER_JSON_get_error_code (json);
+    rsr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management revoke signkey\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) rsr.hr.ec);
     break;
   }
   if (NULL != rh->cb)
   {
     rh->cb (rh->cb_cls,
-            &hr);
+            &rsr);
     rh->cb = NULL;
   }
   TALER_EXCHANGE_management_revoke_signing_key_cancel (rh);

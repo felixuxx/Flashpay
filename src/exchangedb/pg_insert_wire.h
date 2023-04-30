@@ -29,6 +29,9 @@
  *
  * @param cls closure
  * @param payto_uri wire account of the exchange
+ * @param conversion_url URL of a conversion service, NULL if there is no conversion
+ * @param debit_restrictions JSON array with debit restrictions on the account
+ * @param credit_restrictions JSON array with credit restrictions on the account
  * @param start_date date when the account was added by the offline system
  *                      (only to be used for replay detection)
  * @param master_sig public signature affirming the existence of the account,
@@ -38,6 +41,9 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire (void *cls,
                     const char *payto_uri,
+                    const char *conversion_url,
+                    json_t *debit_restrictions,
+                    json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp start_date,
                     const struct TALER_MasterSignatureP *master_sig);
 

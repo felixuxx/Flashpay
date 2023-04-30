@@ -94,8 +94,8 @@ csr_ok (struct TALER_EXCHANGE_CsRMeltHandle *csrh,
   struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
   struct TALER_EXCHANGE_CsRMeltResponse csrr = {
     .hr = *hr,
-    .details.success.alg_values_len = alen,
-    .details.success.alg_values = alg_values
+    .details.ok.alg_values_len = alen,
+    .details.ok.alg_values = alg_values
   };
 
   for (unsigned int i = 0; i<alen; i++)

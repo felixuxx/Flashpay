@@ -585,37 +585,28 @@ handle_refund_finished (void *cls,
                         const void *response)
 {
   struct TALER_EXCHANGE_RefundHandle *rh = cls;
-  struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP *ep = NULL;
-  struct TALER_ExchangeSignatureP *es = NULL;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_RefundResponse rr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   rh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_refund_signature_ok (rh,
                                     j,
-                                    &exchange_pub,
-                                    &exchange_sig))
+                                    &rr.details.ok.exchange_pub,
+                                    &rr.details.ok.exchange_sig))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_SIGNATURE_BY_EXCHANGE;
-    }
-    else
-    {
-      ep = &exchange_pub;
-      es = &exchange_sig;
+      rr.hr.http_status = 0;
+      rr.hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -623,21 +614,21 @@ handle_refund_finished (void *cls,
        (or API version conflict); also can happen if the currency
        differs (which we should obviously never support).
        Just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Requested total refunds exceed deposited amount */
@@ -649,19 +640,19 @@ handle_refund_finished (void *cls,
       json_dumpf (j,
                   stderr,
                   JSON_INDENT (2));
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
-      hr.hint = "conflict information provided by exchange is invalid";
+      rr.hr.http_status = 0;
+      rr.hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      rr.hr.hint = "conflict information provided by exchange is invalid";
       break;
     }
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
     if (GNUNET_OK !=
@@ -669,37 +660,35 @@ handle_refund_finished (void *cls,
                                      j))
     {
       GNUNET_break (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
-      hr.hint = "failed precondition proof returned by exchange is invalid";
+      rr.hr.http_status = 0;
+      rr.hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      rr.hr.hint = "failed precondition proof returned by exchange is invalid";
       break;
     }
     /* Two different refund requests were made about the same deposit, but
        carrying identical refund transaction ids.  */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange refund\n",
                 (unsigned int) response_code,
-                hr.ec);
+                rr.hr.ec);
     break;
   }
   rh->cb (rh->cb_cls,
-          &hr,
-          ep,
-          es);
+          &rr);
   TALER_EXCHANGE_refund_cancel (rh);
 }
 

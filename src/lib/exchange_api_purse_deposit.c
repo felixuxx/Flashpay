@@ -164,17 +164,17 @@ handle_purse_deposit_finished (void *cls,
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &dr.details.success.h_contract_terms),
+                                     &dr.details.ok.h_contract_terms),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &etime),
         GNUNET_JSON_spec_timestamp ("purse_expiration",
-                                    &dr.details.success.purse_expiration),
+                                    &dr.details.ok.purse_expiration),
         TALER_JSON_spec_amount ("total_deposited",
                                 keys->currency,
-                                &dr.details.success.total_deposited),
+                                &dr.details.ok.total_deposited),
         TALER_JSON_spec_amount ("purse_value_after_fees",
                                 keys->currency,
-                                &dr.details.success.purse_value_after_fees),
+                                &dr.details.ok.purse_value_after_fees),
         GNUNET_JSON_spec_end ()
       };
 
@@ -200,11 +200,11 @@ handle_purse_deposit_finished (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_online_purse_created_verify (
             etime,
-            dr.details.success.purse_expiration,
-            &dr.details.success.purse_value_after_fees,
-            &dr.details.success.total_deposited,
+            dr.details.ok.purse_expiration,
+            &dr.details.ok.purse_value_after_fees,
+            &dr.details.ok.total_deposited,
             &pch->purse_pub,
-            &dr.details.success.h_contract_terms,
+            &dr.details.ok.h_contract_terms,
             &exchange_pub,
             &exchange_sig))
       {

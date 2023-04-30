@@ -139,13 +139,13 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  lr.details.success.decisions_length = json_array_size (records);
+  lr.details.ok.decisions_length = json_array_size (records);
   {
     struct TALER_EXCHANGE_AmlDecisionSummary decisions[
-      GNUNET_NZL (lr.details.success.decisions_length)];
+      GNUNET_NZL (lr.details.ok.decisions_length)];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
-    lr.details.success.decisions = decisions;
+    lr.details.ok.decisions = decisions;
     ret = parse_aml_decisions (records,
                                decisions);
     if (GNUNET_OK == ret)

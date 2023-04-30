@@ -236,7 +236,7 @@ handle_deposit_finished (void *cls,
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
-                                   &dr.details.success.transaction_base_url),
+                                   &dr.details.ok.transaction_base_url),
           NULL),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &dh->exchange_timestamp),
@@ -297,9 +297,9 @@ handle_deposit_finished (void *cls,
                                 &auditor_cb,
                                 dh);
     }
-    dr.details.success.exchange_sig = &dh->exchange_sig;
-    dr.details.success.exchange_pub = &dh->exchange_pub;
-    dr.details.success.deposit_timestamp = dh->exchange_timestamp;
+    dr.details.ok.exchange_sig = &dh->exchange_sig;
+    dr.details.ok.exchange_pub = &dh->exchange_pub;
+    dr.details.ok.deposit_timestamp = dh->exchange_timestamp;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy

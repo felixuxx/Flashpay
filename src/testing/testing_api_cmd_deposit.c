@@ -264,9 +264,9 @@ deposit_cb (void *cls,
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
     ds->deposit_succeeded = GNUNET_YES;
-    ds->exchange_timestamp = dr->details.success.deposit_timestamp;
-    ds->exchange_pub = *dr->details.success.exchange_pub;
-    ds->exchange_sig = *dr->details.success.exchange_sig;
+    ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
+    ds->exchange_pub = *dr->details.ok.exchange_pub;
+    ds->exchange_sig = *dr->details.ok.exchange_sig;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }

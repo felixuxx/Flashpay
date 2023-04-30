@@ -179,10 +179,10 @@ credit_history_cb (void *cls,
     global_ret = 0;
     break;
   case MHD_HTTP_OK:
-    for (unsigned int i = 0; i<reply->details.success.details_length; i++)
+    for (unsigned int i = 0; i<reply->details.ok.details_length; i++)
     {
       const struct TALER_BANK_CreditDetails *cd =
-        &reply->details.success.details[i];
+        &reply->details.ok.details[i];
 
       /* If credit/debit accounts were specified, use as a filter */
       if ( (NULL != credit_account) &&
@@ -279,10 +279,10 @@ debit_history_cb (void *cls,
     global_ret = 0;
     break;
   case MHD_HTTP_OK:
-    for (unsigned int i = 0; i<reply->details.success.details_length; i++)
+    for (unsigned int i = 0; i<reply->details.ok.details_length; i++)
     {
       const struct TALER_BANK_DebitDetails *dd =
-        &reply->details.success.details[i];
+        &reply->details.ok.details[i];
 
       /* If credit/debit accounts were specified, use as a filter */
       if ( (NULL != credit_account) &&

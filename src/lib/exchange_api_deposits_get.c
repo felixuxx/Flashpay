@@ -118,15 +118,15 @@ handle_deposit_wtid_finished (void *cls,
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid",
-                                     &dr.details.success.wtid),
+                                     &dr.details.ok.wtid),
         GNUNET_JSON_spec_timestamp ("execution_time",
-                                    &dr.details.success.execution_time),
+                                    &dr.details.ok.execution_time),
         TALER_JSON_spec_amount_any ("coin_contribution",
-                                    &dr.details.success.coin_contribution),
+                                    &dr.details.ok.coin_contribution),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &dr.details.success.exchange_sig),
+                                     &dr.details.ok.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &dr.details.success.exchange_pub),
+                                     &dr.details.ok.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -145,7 +145,7 @@ handle_deposit_wtid_finished (void *cls,
       }
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &dr.details.success.exchange_pub))
+                                           &dr.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
@@ -156,12 +156,12 @@ handle_deposit_wtid_finished (void *cls,
           TALER_exchange_online_confirm_wire_verify (
             &dwh->h_wire,
             &dwh->h_contract_terms,
-            &dr.details.success.wtid,
+            &dr.details.ok.wtid,
             &dwh->coin_pub,
-            dr.details.success.execution_time,
-            &dr.details.success.coin_contribution,
-            &dr.details.success.exchange_pub,
-            &dr.details.success.exchange_sig))
+            dr.details.ok.execution_time,
+            &dr.details.ok.coin_contribution,
+            &dr.details.ok.exchange_pub,
+            &dr.details.ok.exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;

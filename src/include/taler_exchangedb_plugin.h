@@ -2881,6 +2881,9 @@ typedef enum GNUNET_GenericReturnValue
  *
  * @param cls closure
  * @param payto_uri the exchange bank account URI
+ * @param conversion_url URL of a conversion service, NULL if there is no conversion
+ * @param debit_restrictions JSON array with debit restrictions on the account
+ * @param credit_restrictions JSON array with credit restrictions on the account
  * @param master_sig master key signature affirming that this is a bank
  *                   account of the exchange (of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS)
  */
@@ -2888,6 +2891,9 @@ typedef void
 (*TALER_EXCHANGEDB_WireAccountCallback)(
   void *cls,
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   const struct TALER_MasterSignatureP *master_sig);
 
 
@@ -5544,6 +5550,9 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param payto_uri wire account of the exchange
+   * @param conversion_url URL of a conversion service, NULL if there is no conversion
+   * @param debit_restrictions JSON array with debit restrictions on the account
+   * @param credit_restrictions JSON array with credit restrictions on the account
    * @param start_date date when the account was added by the offline system
    *                      (only to be used for replay detection)
    * @param master_sig public signature affirming the existence of the account,
@@ -5553,6 +5562,9 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_wire)(void *cls,
                  const char *payto_uri,
+                 const char *conversion_url,
+                 json_t *debit_restrictions,
+                 json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp start_date,
                  const struct TALER_MasterSignatureP *master_sig);
 
@@ -5562,6 +5574,9 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls closure
    * @param payto_uri account the update is about
+   * @param conversion_url URL of a conversion service, NULL if there is no conversion
+   * @param debit_restrictions JSON array with debit restrictions on the account; NULL allowed if not @a enabled
+   * @param credit_restrictions JSON array with credit restrictions on the account; NULL allowed if not @a enabled
    * @param change_date date when the account status was last changed
    *                      (only to be used for replay detection)
    * @param enabled true to enable, false to disable (the actual change)
@@ -5570,6 +5585,9 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*update_wire)(void *cls,
                  const char *payto_uri,
+                 const char *conversion_url,
+                 json_t *debit_restrictions,
+                 json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp change_date,
                  bool enabled);
 

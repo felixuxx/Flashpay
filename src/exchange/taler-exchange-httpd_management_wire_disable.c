@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -114,6 +114,9 @@ del_wire (void *cls,
   }
   qs = TEH_plugin->update_wire (TEH_plugin->cls,
                                 awc->payto_uri,
+                                NULL,
+                                NULL,
+                                NULL,
                                 awc->validity_end,
                                 false);
   if (qs < 0)

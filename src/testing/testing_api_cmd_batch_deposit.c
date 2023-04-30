@@ -212,17 +212,17 @@ batch_deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
-    if (ds->num_coins != dr->details.success.num_signatures)
+    if (ds->num_coins != dr->details.ok.num_signatures)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (ds->is);
       return;
     }
     ds->deposit_succeeded = GNUNET_YES;
-    ds->exchange_timestamp = dr->details.success.deposit_timestamp;
-    ds->exchange_pub = *dr->details.success.exchange_pub;
-    ds->exchange_sigs = GNUNET_memdup (dr->details.success.exchange_sigs,
-                                       dr->details.success.num_signatures
+    ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
+    ds->exchange_pub = *dr->details.ok.exchange_pub;
+    ds->exchange_sigs = GNUNET_memdup (dr->details.ok.exchange_sigs,
+                                       dr->details.ok.num_signatures
                                        * sizeof (struct
                                                  TALER_ExchangeSignatureP));
   }

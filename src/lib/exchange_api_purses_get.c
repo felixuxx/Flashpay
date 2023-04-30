@@ -101,16 +101,16 @@ handle_purse_get_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_timestamp ("merge_timestamp",
-                                      &dr.details.success.merge_timestamp),
+                                      &dr.details.ok.merge_timestamp),
           &no_merge),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_timestamp ("deposit_timestamp",
-                                      &dr.details.success.deposit_timestamp),
+                                      &dr.details.ok.deposit_timestamp),
           &no_deposit),
         TALER_JSON_spec_amount_any ("balance",
-                                    &dr.details.success.balance),
+                                    &dr.details.ok.balance),
         GNUNET_JSON_spec_timestamp ("purse_expiration",
-                                    &dr.details.success.purse_expiration),
+                                    &dr.details.ok.purse_expiration),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -142,9 +142,9 @@ handle_purse_get_finished (void *cls,
       }
       if (GNUNET_OK !=
           TALER_exchange_online_purse_status_verify (
-            dr.details.success.merge_timestamp,
-            dr.details.success.deposit_timestamp,
-            &dr.details.success.balance,
+            dr.details.ok.merge_timestamp,
+            dr.details.ok.deposit_timestamp,
+            &dr.details.ok.balance,
             &exchange_pub,
             &exchange_sig))
       {

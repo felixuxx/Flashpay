@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published
@@ -40,7 +40,7 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define EXCHANGE_PROTOCOL_CURRENT 14
+#define EXCHANGE_PROTOCOL_CURRENT 15
 
 /**
  * How many versions are we backwards compatible with?
@@ -1305,15 +1305,18 @@ keys_completed_cb (void *cls,
 {
   struct KeysRequest *kr = cls;
   struct TALER_EXCHANGE_Handle *exchange = kr->exchange;
-  struct TALER_EXCHANGE_Keys kd;
   struct TALER_EXCHANGE_Keys kd_old;
-  enum TALER_EXCHANGE_VersionCompatibility vc;
   const json_t *j = resp_obj;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_Keys kd;
+  struct TALER_EXCHANGE_KeysResponse kresp = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code,
+    .details.ok.compat = TALER_EXCHANGE_VC_PROTOCOL_ERROR,
   };
 
+  memset (&kd,
+          0,
+          sizeof (kd));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received keys from URL `%s' with status %ld and expiration %s.\n",
               kr->url,
@@ -1330,10 +1333,6 @@ keys_completed_cb (void *cls,
           GNUNET_TIME_relative_to_absolute (DEFAULT_EXPIRATION));
   }
   kd_old = exchange->key_data;
-  memset (&kd,
-          0,
-          sizeof (struct TALER_EXCHANGE_Keys));
-  vc = TALER_EXCHANGE_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
   case 0:
@@ -1358,8 +1357,10 @@ keys_completed_cb (void *cls,
     }
     /* We keep the denomination keys and auditor signatures from the
        previous iteration (/keys cherry picking) */
-    kd.num_denom_keys = kd_old.num_denom_keys;
-    kd.last_denom_issue_date = kd_old.last_denom_issue_date;
+    kd.num_denom_keys
+      = kd_old.num_denom_keys;
+    kd.last_denom_issue_date
+      = kd_old.last_denom_issue_date;
     GNUNET_array_grow (kd.denom_keys,
                        kd.denom_keys_size,
                        kd.num_denom_keys);
@@ -1401,11 +1402,11 @@ keys_completed_cb (void *cls,
         decode_keys_json (j,
                           true,
                           &kd,
-                          &vc))
+                          &kresp.details.ok.compat))
     {
       TALER_LOG_ERROR ("Could not decode /keys response\n");
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      kresp.hr.http_status = 0;
+      kresp.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       for (unsigned int i = 0; i<kd.num_auditors; i++)
       {
         struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
@@ -1436,13 +1437,13 @@ keys_completed_cb (void *cls,
   case MHD_HTTP_NOT_FOUND:
     if (NULL == j)
     {
-      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-      hr.hint = TALER_ErrorCode_get_hint (hr.ec);
+      kresp.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      kresp.hr.hint = TALER_ErrorCode_get_hint (kresp.hr.ec);
     }
     else
     {
-      hr.ec = TALER_JSON_get_error_code (j);
-      hr.hint = TALER_JSON_get_error_hint (j);
+      kresp.hr.ec = TALER_JSON_get_error_code (j);
+      kresp.hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   default:
@@ -1450,18 +1451,18 @@ keys_completed_cb (void *cls,
       exchange->keys_error_count++;
     if (NULL == j)
     {
-      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-      hr.hint = TALER_ErrorCode_get_hint (hr.ec);
+      kresp.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      kresp.hr.hint = TALER_ErrorCode_get_hint (kresp.hr.ec);
     }
     else
     {
-      hr.ec = TALER_JSON_get_error_code (j);
-      hr.hint = TALER_JSON_get_error_hint (j);
+      kresp.hr.ec = TALER_JSON_get_error_code (j);
+      kresp.hr.hint = TALER_JSON_get_error_hint (j);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) kresp.hr.ec);
     break;
   }
   exchange->key_data = kd;
@@ -1491,9 +1492,7 @@ keys_completed_cb (void *cls,
     free_key_data (&kd_old);
     /* notify application that we failed */
     exchange->cert_cb (exchange->cert_cb_cls,
-                       &hr,
-                       NULL,
-                       vc);
+                       &kresp);
     return;
   }
 
@@ -1504,11 +1503,11 @@ keys_completed_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Successfully downloaded exchange's keys\n");
   update_auditors (exchange);
+  kresp.details.ok.keys = &exchange->key_data;
+
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
-                     &hr,
-                     &exchange->key_data,
-                     vc);
+                     &kresp);
   free_key_data (&kd_old);
 }
 
@@ -1702,7 +1701,6 @@ static void
 deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                   const json_t *data)
 {
-  enum TALER_EXCHANGE_VersionCompatibility vc;
   json_t *keys;
   const char *url;
   uint32_t version;
@@ -1719,10 +1717,11 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys key_data;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .ec = TALER_EC_NONE,
-    .http_status = MHD_HTTP_OK,
-    .reply = data
+  struct TALER_EXCHANGE_KeysResponse kresp = {
+    .hr.ec = TALER_EC_NONE,
+    .hr.http_status = MHD_HTTP_OK,
+    .hr.reply = data,
+    .details.ok.keys = &exchange->key_data
   };
 
   if (NULL == data)
@@ -1754,7 +1753,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
       decode_keys_json (keys,
                         false,
                         &key_data,
-                        &vc))
+                        &kresp.details.ok.compat))
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
@@ -1771,9 +1770,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
-                     &hr,
-                     &exchange->key_data,
-                     vc);
+                     &kresp);
   GNUNET_JSON_parse_free (spec);
 }
 
@@ -2056,17 +2053,18 @@ request_keys (void *cls)
                               url);
   if (NULL == kr->url)
   {
-    struct TALER_EXCHANGE_HttpResponse hr = {
-      .ec = TALER_EC_GENERIC_CONFIGURATION_INVALID
+    struct TALER_EXCHANGE_KeysResponse kresp = {
+      .hr.ec = TALER_EC_GENERIC_CONFIGURATION_INVALID,
+      /* Next line is technically unnecessary, as the
+         http status we set is 0 */
+      .details.ok.compat = TALER_EXCHANGE_VC_PROTOCOL_ERROR
     };
 
     GNUNET_free (kr);
     exchange->keys_error_count++;
     exchange->state = MHS_FAILED;
     exchange->cert_cb (exchange->cert_cb_cls,
-                       &hr,
-                       NULL,
-                       TALER_EXCHANGE_VC_PROTOCOL_ERROR);
+                       &kresp);
     return;
   }
 

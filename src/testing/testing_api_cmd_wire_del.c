@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -67,13 +67,14 @@ struct WireDelState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param wdr response details
  */
 static void
 wire_del_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr)
+             const struct TALER_EXCHANGE_ManagementWireDisableResponse *wdr)
 {
   struct WireDelState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &wdr->hr;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)

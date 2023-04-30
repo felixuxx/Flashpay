@@ -121,7 +121,7 @@ get_cb (void *cls,
     const struct TALER_PurseMergePrivateKeyP *mp;
     const json_t *ct;
 
-    ds->purse_pub = dr->details.success.purse_pub;
+    ds->purse_pub = dr->details.ok.purse_pub;
     if (ds->merge)
     {
       if (GNUNET_OK !=
@@ -136,8 +136,8 @@ get_cb (void *cls,
         TALER_CRYPTO_contract_decrypt_for_merge (
           &ds->contract_priv,
           &ds->purse_pub,
-          dr->details.success.econtract,
-          dr->details.success.econtract_size,
+          dr->details.ok.econtract,
+          dr->details.ok.econtract_size,
           &ds->merge_priv);
       if (0 !=
           GNUNET_memcmp (mp,
@@ -153,8 +153,8 @@ get_cb (void *cls,
       ds->contract_terms =
         TALER_CRYPTO_contract_decrypt_for_deposit (
           &ds->contract_priv,
-          dr->details.success.econtract,
-          dr->details.success.econtract_size);
+          dr->details.ok.econtract,
+          dr->details.ok.econtract_size);
     }
     if (NULL == ds->contract_terms)
     {

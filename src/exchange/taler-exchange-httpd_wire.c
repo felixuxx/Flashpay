@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2022 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -224,12 +224,18 @@ TEH_wire_done ()
  *
  * @param cls a `json_t *` object to expand with wire account details
  * @param payto_uri the exchange bank account URI to add
+ * @param conversion_url URL of a conversion service, NULL if there is no conversion
+ * @param debit_restrictions JSON array with debit restrictions on the account
+ * @param credit_restrictions JSON array with credit restrictions on the account
  * @param master_sig master key signature affirming that this is a bank
  *                   account of the exchange (of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS)
  */
 static void
 add_wire_account (void *cls,
                   const char *payto_uri,
+                  const char *conversion_url,
+                  const json_t *debit_restrictions,
+                  const json_t *credit_restrictions,
                   const struct TALER_MasterSignatureP *master_sig)
 {
   json_t *a = cls;
@@ -240,6 +246,13 @@ add_wire_account (void *cls,
         GNUNET_JSON_PACK (
           GNUNET_JSON_pack_string ("payto_uri",
                                    payto_uri),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_string ("conversion_url",
+                                     conversion_url)),
+          GNUNET_JSON_pack_array_incref ("debit_restrictions",
+                                         (json_t *) debit_restrictions),
+          GNUNET_JSON_pack_array_incref ("credit_restrictions",
+                                         (json_t *) credit_restrictions),
           GNUNET_JSON_pack_data_auto ("master_sig",
                                       master_sig))))
   {
@@ -462,6 +475,8 @@ build_wire_state (void)
   wsh->wire_reply = TALER_MHD_MAKE_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("accounts",
                                   wire_accounts_array),
+    GNUNET_JSON_pack_array_steal ("wads", /* #7271 */
+                                  json_array ()),
     GNUNET_JSON_pack_object_steal ("fees",
                                    wire_fee_object),
     GNUNET_JSON_pack_data_auto ("master_public_key",

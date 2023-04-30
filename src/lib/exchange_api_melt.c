@@ -221,16 +221,16 @@ handle_melt_finished (void *cls,
     if (GNUNET_OK !=
         verify_melt_signature_ok (mh,
                                   j,
-                                  &mr.details.success.sign_key))
+                                  &mr.details.ok.sign_key))
     {
       GNUNET_break_op (0);
       mr.hr.http_status = 0;
       mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
       break;
     }
-    mr.details.success.noreveal_index = mh->noreveal_index;
-    mr.details.success.num_mbds = mh->rd->fresh_pks_len;
-    mr.details.success.mbds = mh->mbds;
+    mr.details.ok.noreveal_index = mh->noreveal_index;
+    mr.details.ok.num_mbds = mh->rd->fresh_pks_len;
+    mr.details.ok.mbds = mh->mbds;
     mh->melt_cb (mh->melt_cb_cls,
                  &mr);
     mh->melt_cb = NULL;
@@ -478,7 +478,7 @@ csr_cb (void *cls,
       break;
     case TALER_DENOMINATION_CS:
       GNUNET_assert (TALER_DENOMINATION_CS == wv->cipher);
-      *wv = csrr->details.success.alg_values[nks_off];
+      *wv = csrr->details.ok.alg_values[nks_off];
       nks_off++;
       break;
     }
