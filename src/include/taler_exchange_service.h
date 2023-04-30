@@ -910,6 +910,33 @@ struct TALER_EXCHANGE_WireAccount
 
 
 /**
+ * Parse array of @a accounts of the exchange into @a was.
+ *
+ * @param master_pub master public key of the exchange, NULL to not verify signatures
+ * @param accounts array of accounts to parse
+ * @param[out] was where to write the result (already allocated)
+ * @param was_length length of the @a was array, must match the length of @a accounts
+ * @return #GNUNET_OK if parsing @a accounts succeeded
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
+                               const json_t *accounts,
+                               struct TALER_EXCHANGE_WireAccount was[],
+                               unsigned int was_length);
+
+
+/**
+ * Free data within @a was, but not @a was itself.
+ *
+ * @param was array of wire account data
+ * @param was_len length of the @a was array
+ */
+void
+TALER_EXCHANGE_free_accounts (struct TALER_EXCHANGE_WireAccount *was,
+                              unsigned int was_len);
+
+
+/**
  * Response to a /wire request.
  */
 struct TALER_EXCHANGE_WireResponse

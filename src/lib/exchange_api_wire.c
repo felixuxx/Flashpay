@@ -174,114 +174,6 @@ parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
 
 
 /**
- * Parse account restriction in @a jrest into @a rest.
- *
- * @param jrest array of account restrictions in JSON
- * @param[out] resta_len set to length of @a resta
- * @param[out] resta account restriction array to set
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-parse_restrictions (const json_t *jresta,
-                    unsigned int *resta_len,
-                    struct TALER_EXCHANGE_AccountRestriction **resta)
-{
-  if (! json_is_array (jresta))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  *resta_len = json_array_size (jresta);
-  if (0 == *resta_len)
-  {
-    /* no restrictions, perfectly OK */
-    *resta = NULL;
-    return GNUNET_OK;
-  }
-  *resta = GNUNET_new_array (*resta_len,
-                             struct TALER_EXCHANGE_AccountRestriction);
-  for (unsigned int i = 0; i<*resta_len; i++)
-  {
-    const json_t *jr = json_array_get (jresta,
-                                       i);
-    struct TALER_EXCHANGE_AccountRestriction *ar = &(*resta)[i];
-    const char *type = json_string_value (json_object_get (jr,
-                                                           "type"));
-
-    if (NULL == type)
-    {
-      GNUNET_break (0);
-      goto fail;
-    }
-    if (0 == strcmp (type,
-                     "deny"))
-    {
-      ar->type = TALER_EXCHANGE_AR_DENY;
-      continue;
-    }
-    if (0 == strcmp (type,
-                     "regex"))
-    {
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string (
-          "payto_regex",
-          &ar->details.regex.posix_egrep),
-        GNUNET_JSON_spec_string (
-          "human_hint",
-          &ar->details.regex.human_hint),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_object_const (
-            "human_hint_i18n",
-            &ar->details.regex.human_hint_i18n),
-          NULL),
-        GNUNET_JSON_spec_end ()
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (jr,
-                             spec,
-                             NULL, NULL))
-      {
-        /* bogus reply */
-        GNUNET_break_op (0);
-        goto fail;
-      }
-      ar->type = TALER_EXCHANGE_AR_REGEX;
-      continue;
-    }
-    /* unsupported type */
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-fail:
-  GNUNET_free (*resta);
-  *resta_len = 0;
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Free data within @a was, but not @a was itself.
- *
- * @param was array of wire account data
- * @param was_len length of the @a was array
- */
-static void
-free_accounts (struct TALER_EXCHANGE_WireAccount *was,
-               unsigned int was_len)
-{
-  for (unsigned int i = 0; i<was_len; i++)
-  {
-    struct TALER_EXCHANGE_WireAccount *wa = &was[i];
-
-    GNUNET_free (wa->credit_restrictions);
-    GNUNET_free (wa->debit_restrictions);
-  }
-}
-
-
-/**
  * Function called when we're done processing the
  * HTTP /wire request.
  *
@@ -383,101 +275,25 @@ handle_wire_finished (void *cls,
       {
         struct TALER_EXCHANGE_WireAccount was[wr.details.ok.accounts_len];
 
-        memset (was,
-                0,
-                sizeof (was));
         wr.details.ok.accounts = was;
-        for (unsigned int i = 0;
-             i<wr.details.ok.accounts_len;
-             i++)
+        if (GNUNET_OK !=
+            TALER_EXCHANGE_parse_accounts (&master_pub,
+                                           accounts,
+                                           was,
+                                           wr.details.ok.accounts_len))
         {
-          struct TALER_EXCHANGE_WireAccount *wa = &was[i];
-          json_t *credit_restrictions;
-          json_t *debit_restrictions;
-          struct GNUNET_JSON_Specification spec_account[] = {
-            GNUNET_JSON_spec_string ("payto_uri",
-                                     &wa->payto_uri),
-            GNUNET_JSON_spec_mark_optional (
-              GNUNET_JSON_spec_string ("conversion_url",
-                                       &wa->conversion_url),
-              NULL),
-            GNUNET_JSON_spec_json ("credit_restrictions",
-                                   &credit_restrictions),
-            GNUNET_JSON_spec_json ("debit_restrictions",
-                                   &debit_restrictions),
-            GNUNET_JSON_spec_fixed_auto ("master_sig",
-                                         &wa->master_sig),
-            GNUNET_JSON_spec_end ()
-          };
-          json_t *account;
-
-          account = json_array_get (accounts,
-                                    i);
-          if (GNUNET_OK !=
-              GNUNET_JSON_parse (account,
-                                 spec_account,
-                                 NULL, NULL))
-          {
-            /* bogus reply */
-            GNUNET_break_op (0);
-            wr.hr.http_status = 0;
-            wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          {
-            char *err;
-
-            err = TALER_payto_validate (wa->payto_uri);
-            if (NULL != err)
-            {
-              GNUNET_break_op (0);
-              wr.hr.http_status = 0;
-              wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-              GNUNET_free (err);
-              break;
-            }
-          }
-
-          if (GNUNET_OK !=
-              TALER_exchange_wire_signature_check (wa->payto_uri,
-                                                   wa->conversion_url,
-                                                   debit_restrictions,
-                                                   credit_restrictions,
-                                                   &master_pub,
-                                                   &wa->master_sig))
-          {
-            /* bogus reply */
-            GNUNET_break_op (0);
-            wr.hr.http_status = 0;
-            wr.hr.ec = TALER_EC_EXCHANGE_WIRE_SIGNATURE_INVALID;
-            break;
-          }
-          if ( (GNUNET_OK !=
-                parse_restrictions (credit_restrictions,
-                                    &wa->credit_restrictions_length,
-                                    &wa->credit_restrictions)) ||
-               (GNUNET_OK !=
-                parse_restrictions (debit_restrictions,
-                                    &wa->debit_restrictions_length,
-                                    &wa->debit_restrictions)) )
-          {
-            /* bogus reply */
-            GNUNET_break_op (0);
-            wr.hr.http_status = 0;
-            wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-            break;
-          }
-          GNUNET_JSON_parse_free (spec_account);
-        } /* end 'for all accounts */
-        if ( (0 != wr.hr.http_status) &&
-             (NULL != wh->cb) )
+          GNUNET_break_op (0);
+          wr.hr.http_status = 0;
+          wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        }
+        else if (NULL != wh->cb)
         {
           wh->cb (wh->cb_cls,
                   &wr);
           wh->cb = NULL;
         }
-        free_accounts (was,
-                       wr.details.ok.accounts_len);
+        TALER_EXCHANGE_free_accounts (was,
+                                      wr.details.ok.accounts_len);
       } /* end of 'parse accounts */
       free_fees (fbm,
                  wr.details.ok.fees_len);
