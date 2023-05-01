@@ -635,7 +635,7 @@ verify_commitment_and_max_age (
       }
       else
       {
-        /* FIXME:oec: Refactor this block out into its own function */
+        /* FIXME[oec] Refactor this block out into its own function */
 
         size_t j = (TALER_CNC_KAPPA - 1) * c + k; /* Index into disclosed_coin_secrets[] */
         const struct TALER_PlanchetMasterSecretP *secret;
@@ -966,8 +966,11 @@ sign_and_finalize_age_withdraw (
                                            num_coins,
                                            awrcs);
 cleanup:
-  // TODO[oec]: handle error cases
-  // TODO[oec]: cleanup!
+  GNUNET_break (MHD_NO != ret);
+
+  /* Free resources */
+  for (unsigned int i = 0; i<num_coins; i++)
+    TALER_blinded_denom_sig_free (&awrcs[i].coin_sig);
   return ret;
 }
 
