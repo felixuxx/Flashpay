@@ -69,7 +69,7 @@ TEH_PG_get_age_withdraw_info (
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",noreveal_index"
-           " FROM withdraw_age_commitments"
+           " FROM age_withdraw_commitments"
            " WHERE reserve_pub=$1 and h_commitment=$2;");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_age_withdraw_info",

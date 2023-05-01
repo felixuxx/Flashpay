@@ -22,6 +22,8 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include "taler-exchange-httpd_metrics.h"
+#include "taler_exchangedb_plugin.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_age-withdraw_reveal.h"
@@ -387,12 +389,10 @@ denomination_is_valid (
   struct TEH_DenominationKey *dks,
   MHD_RESULT *result)
 {
-  dks = TEH_keys_denomination_by_hash2 (
-    ksh,
-    denom_h,
-    connection,
-    result);
-
+  dks = TEH_keys_denomination_by_hash2 (ksh,
+                                        denom_h,
+                                        connection,
+                                        result);
   if (NULL == dks)
   {
     /* The denomination doesn't exist */
@@ -785,6 +785,43 @@ verify_commitment_and_max_age (
 
 
 /**
+ * @brief Send a response for "/age-withdraw/$RCH/reveal"
+ *
+ * @param connection The http connection to the client to send the reponse to
+ * @param num_coins Number of new coins with age restriction for which we reveal data
+ * @param awrcs array of @a num_coins signatures revealed
+ * @return a MHD result code
+ */
+static MHD_RESULT
+reply_age_withdraw_reveal_success (
+  struct MHD_Connection *connection,
+  unsigned int num_coins,
+  const struct TALER_EXCHANGEDB_AgeWithdrawRevealedCoin *awrcs)
+{
+  json_t *list = json_array ();
+  GNUNET_assert (NULL != list);
+
+  for (unsigned int index = 0;
+       index < num_coins;
+       index++)
+  {
+    json_t *obj = GNUNET_JSON_PACK (
+      TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+                                         &awrcs[index].coin_sig));
+    GNUNET_assert (0 ==
+                   json_array_append_new (list,
+                                          obj));
+  }
+
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("ev_sigs",
+                                  list));
+}
+
+
+/**
  * @brief Signs and persists the undisclosed coins
  *
  * @param connection HTTP-connection to the client
@@ -796,7 +833,7 @@ verify_commitment_and_max_age (
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
 static enum GNUNET_GenericReturnValue
-finalize_age_withdraw_and_sign (
+sign_and_finalize_age_withdraw (
   struct MHD_Connection *connection,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const uint32_t num_coins,
@@ -806,7 +843,9 @@ finalize_age_withdraw_and_sign (
 {
   enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   struct TEH_CoinSignData csds[num_coins];
-  struct TALER_BlindedDenominationSignature bss[num_coins];
+  struct TALER_BlindedDenominationSignature bds[num_coins];
+  struct TALER_EXCHANGEDB_AgeWithdrawRevealedCoin awrcs[num_coins];
+  enum GNUNET_DB_QueryStatus qs;
 
   for (uint32_t i = 0; i<num_coins; i++)
   {
@@ -814,13 +853,13 @@ finalize_age_withdraw_and_sign (
     csds[i].bp = &coin_evs[i];
   }
 
-  /* First, sign the the blinded coins */
+  /* Sign the the blinded coins first */
   {
     enum TALER_ErrorCode ec;
     ec = TEH_keys_denomination_batch_sign (csds,
                                            num_coins,
                                            false,
-                                           bss);
+                                           bds);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
@@ -831,12 +870,104 @@ finalize_age_withdraw_and_sign (
     }
   }
 
-  /* TODO[oec]:
-   * - in a transaction: save the coins.
-   * - add signature response
-   */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Signatures ready, starting DB interaction\n");
 
-#pragma message "FIXME[oec]: implement finalize_age_withdraw_and_sign"
+  /* Prepare the data for insertion */
+  for (uint32_t i = 0; i<num_coins; i++)
+  {
+    TALER_coin_ev_hash (&coin_evs[i],
+                        csds[i].h_denom_pub,
+                        &awrcs[i].h_coin_ev);
+    awrcs[i].h_denom_pub = *csds[i].h_denom_pub;
+    awrcs[i].coin_sig = bds[i];
+  }
+
+  /* Persist operation result in DB, transactionally */
+  for (unsigned int r = 0; r < MAX_TRANSACTION_COMMIT_RETRIES; r++)
+  {
+    bool changed = false;
+
+    /* Transaction start */
+    if (GNUNET_OK !=
+        TEH_plugin->start (TEH_plugin->cls,
+                           "insert_age_withdraw_reveal batch"))
+    {
+      GNUNET_break (0);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_START_FAILED,
+                                        NULL);
+      goto cleanup;
+    }
+
+    qs = TEH_plugin->insert_age_withdraw_reveal (TEH_plugin->cls,
+                                                 h_commitment,
+                                                 num_coins,
+                                                 awrcs);
+
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+      continue;
+    }
+    else if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "insert_age_withdraw_reveal");
+      goto cleanup;
+    }
+
+    changed = (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs);
+
+    /* Commit the transaction */
+    qs = TEH_plugin->commit (TEH_plugin->cls);
+    if (qs >= 0)
+    {
+      if (changed)
+        TEH_METRICS_num_success[TEH_MT_SUCCESS_AGE_WITHDRAW_REVEAL]++;
+
+      break; /* success */
+
+    }
+    else if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_break (0);
+      TEH_plugin->rollback (TEH_plugin->cls);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                                        NULL);
+      goto cleanup;
+    }
+    else
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+    }
+  } /* end of retry */
+
+  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+  {
+    GNUNET_break (0);
+    TEH_plugin->rollback (TEH_plugin->cls);
+    ret = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_GENERIC_DB_SOFT_FAILURE,
+                                      NULL);
+    goto cleanup;
+  }
+
+  /* Generate final (positive) response */
+  ret = reply_age_withdraw_reveal_success (connection,
+                                           num_coins,
+                                           awrcs);
+cleanup:
+  // TODO[oec]: handle error cases
+  // TODO[oec]: cleanup!
   return ret;
 }
 
@@ -922,7 +1053,7 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Finally, sign and persist the coins */
-    if (GNUNET_OK != finalize_age_withdraw_and_sign (
+    if (GNUNET_OK != sign_and_finalize_age_withdraw (
           rc->connection,
           &actx.commitment.h_commitment,
           actx.num_coins,

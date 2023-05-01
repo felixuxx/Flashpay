@@ -2062,39 +2062,39 @@ irbt_cb_table_purse_deletion (struct PostgresClosure *pg,
 
 
 /**
- * Function called with withdraw_age_commitments records to insert into table.
+ * Function called with age_withdraw_commitments records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_withdraw_age_commitments (struct PostgresClosure *pg,
+irbt_cb_table_age_withdraw_commitments (struct PostgresClosure *pg,
                                         const struct
                                         TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.withdraw_age_commitments.h_commitment),
+      &td->details.age_withdraw_commitments.h_commitment),
     TALER_PQ_query_param_amount (
-      &td->details.withdraw_age_commitments.amount_with_fee),
+      &td->details.age_withdraw_commitments.amount_with_fee),
     GNUNET_PQ_query_param_uint16 (
-      &td->details.withdraw_age_commitments.max_age),
+      &td->details.age_withdraw_commitments.max_age),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.withdraw_age_commitments.reserve_pub),
+      &td->details.age_withdraw_commitments.reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.withdraw_age_commitments.reserve_sig),
+      &td->details.age_withdraw_commitments.reserve_sig),
     GNUNET_PQ_query_param_uint32 (
-      &td->details.withdraw_age_commitments.noreveal_index),
+      &td->details.age_withdraw_commitments.noreveal_index),
     GNUNET_PQ_query_param_absolute_time (
-      &td->details.withdraw_age_commitments.timestamp),
+      &td->details.age_withdraw_commitments.timestamp),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_withdraw_age_commitments",
-           "INSERT INTO withdraw_age_commitments"
-           "(withdraw_age_commitment_id"
+           "insert_into_table_age_withdraw_commitments",
+           "INSERT INTO age_withdraw_commitments"
+           "(age_withdraw_commitment_id"
            ",h_commitment"
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
@@ -2106,19 +2106,19 @@ irbt_cb_table_withdraw_age_commitments (struct PostgresClosure *pg,
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8, $9);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_withdraw_age_commitments",
+                                             "insert_into_table_age_withdraw_commitments",
                                              params);
 }
 
 
 /**
- * Function called with withdraw_age_revealed_coins records to insert into table.
+ * Function called with age_withdraw_revealed_coins records to insert into table.
  *
  * @param pg plugin context
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_withdraw_age_revealed_coins (struct PostgresClosure *pg,
+irbt_cb_table_age_withdraw_revealed_coins (struct PostgresClosure *pg,
                                            const struct
                                            TALER_EXCHANGEDB_TableData *td)
 {
@@ -2126,26 +2126,26 @@ irbt_cb_table_withdraw_age_revealed_coins (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
-      &td->details.withdraw_age_revealed_coins.h_commitment),
+      &td->details.age_withdraw_revealed_coins.h_commitment),
     GNUNET_PQ_query_param_uint32 (
-      &td->details.withdraw_age_revealed_coins.freshcoin_index),
+      &td->details.age_withdraw_revealed_coins.freshcoin_index),
     GNUNET_PQ_query_param_uint64 (
-      &td->details.withdraw_age_revealed_coins.denominations_serial),
+      &td->details.age_withdraw_revealed_coins.denominations_serial),
     GNUNET_PQ_query_param_fixed_size (
-      td->details.withdraw_age_revealed_coins.coin_ev,
-      td->details.withdraw_age_revealed_coins.coin_ev_size),
+      td->details.age_withdraw_revealed_coins.coin_ev,
+      td->details.age_withdraw_revealed_coins.coin_ev_size),
     GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
     TALER_PQ_query_param_blinded_denom_sig (
-      &td->details.withdraw_age_revealed_coins.ev_sig),
+      &td->details.age_withdraw_revealed_coins.ev_sig),
     TALER_PQ_query_param_exchange_withdraw_values (
-      &td->details.withdraw_age_revealed_coins.ewv),
+      &td->details.age_withdraw_revealed_coins.ewv),
     GNUNET_PQ_query_param_end
   };
 
   PREPARE (pg,
-           "insert_into_table_withdraw_age_revealed_coins",
-           "INSERT INTO withdraw_age_revealed_coins"
-           "(withdraw_age_revealed_coins_id"
+           "insert_into_table_age_withdraw_revealed_coins",
+           "INSERT INTO age_withdraw_revealed_coins"
+           "(age_withdraw_revealed_coins_id"
            ",h_commitment"
            ",freshcoin_index"
            ",denominations_serial"
@@ -2156,12 +2156,12 @@ irbt_cb_table_withdraw_age_revealed_coins (struct PostgresClosure *pg,
            ") VALUES "
            "($1, $2, $3, $4, $5, $6, $7, $8);");
 
-  GNUNET_CRYPTO_hash (td->details.withdraw_age_revealed_coins.coin_ev,
-                      td->details.withdraw_age_revealed_coins.coin_ev_size,
+  GNUNET_CRYPTO_hash (td->details.age_withdraw_revealed_coins.coin_ev,
+                      td->details.age_withdraw_revealed_coins.coin_ev_size,
                       &h_coin_ev);
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_into_table_withdraw_age_revealed_coins",
+                                             "insert_into_table_age_withdraw_revealed_coins",
                                              params);
 }
 
@@ -2314,10 +2314,10 @@ TEH_PG_insert_records_by_table (void *cls,
     rh = &irbt_cb_table_purse_deletion;
     break;
   case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
-    rh = &irbt_cb_table_withdraw_age_commitments;
+    rh = &irbt_cb_table_age_withdraw_commitments;
     break;
   case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
-    rh = &irbt_cb_table_withdraw_age_revealed_coins;
+    rh = &irbt_cb_table_age_withdraw_revealed_coins;
     break;
   }
   if (NULL == rh)
