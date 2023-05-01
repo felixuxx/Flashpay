@@ -52,6 +52,11 @@ struct ReservePoller
   struct MHD_Connection *connection;
 
   /**
+   * Our request context.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
    * Subscription for the database event we are
    * waiting for.
    */
@@ -154,6 +159,8 @@ db_event_cb (void *cls,
   (void) extra_size;
   if (! rp->suspended)
     return; /* might get multiple wake-up events */
+  GNUNET_async_scope_enter (&rp->rc->async_scope_id,
+                            &old_scope);
   TEH_check_invariants ();
   rp->suspended = false;
   MHD_resume_connection (rp->connection);
@@ -176,6 +183,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
 
     rp = GNUNET_new (struct ReservePoller);
     rp->connection = rc->connection;
+    rp->rc = rc;
     rc->rh_ctx = rp;
     rc->rh_cleaner = &rp_cleanup;
     GNUNET_CONTAINER_DLL_insert (rp_head,
