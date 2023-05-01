@@ -261,6 +261,7 @@ handle_wire_finished (void *cls,
       fbm = parse_fees (&master_pub,
                         fees,
                         &wr.details.ok.fees_len);
+      wr.details.ok.fees = fbm;
       if (NULL == fbm)
       {
         /* bogus reply */
