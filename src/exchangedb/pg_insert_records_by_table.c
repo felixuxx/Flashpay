@@ -2137,8 +2137,6 @@ irbt_cb_table_age_withdraw_revealed_coins (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
     TALER_PQ_query_param_blinded_denom_sig (
       &td->details.age_withdraw_revealed_coins.ev_sig),
-    TALER_PQ_query_param_exchange_withdraw_values (
-      &td->details.age_withdraw_revealed_coins.ewv),
     GNUNET_PQ_query_param_end
   };
 

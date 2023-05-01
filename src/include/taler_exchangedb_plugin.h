@@ -769,7 +769,6 @@ struct TALER_EXCHANGEDB_TableData
       uint64_t denominations_serial;
       void *coin_ev;
       size_t coin_ev_size;
-      struct TALER_ExchangeWithdrawValues ewv;
       // h_coin_ev omitted, to be recomputed!
       struct TALER_BlindedDenominationSignature ev_sig;
     } age_withdraw_revealed_coins;

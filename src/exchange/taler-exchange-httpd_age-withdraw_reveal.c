@@ -966,7 +966,7 @@ sign_and_finalize_age_withdraw (
                                            num_coins,
                                            awrcs);
 cleanup:
-  GNUNET_break (MHD_NO != ret);
+  GNUNET_break (GNUNET_OK != ret);
 
   /* Free resources */
   for (unsigned int i = 0; i<num_coins; i++)
