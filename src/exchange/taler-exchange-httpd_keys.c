@@ -2377,9 +2377,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       }
 
       GNUNET_CONTAINER_multihashmap_iterator_destroy (iter);
-      GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
 
     }
+
+    GNUNET_CONTAINER_multihashmap_destroy (denominations_by_group);
   }
 
   GNUNET_CONTAINER_heap_destroy (heap);
