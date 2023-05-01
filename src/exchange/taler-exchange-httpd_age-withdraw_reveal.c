@@ -787,7 +787,7 @@ verify_commitment_and_max_age (
 /**
  * @brief Send a response for "/age-withdraw/$RCH/reveal"
  *
- * @param connection The http connection to the client to send the reponse to
+ * @param connection The http connection to the client to send the response to
  * @param num_coins Number of new coins with age restriction for which we reveal data
  * @param awrcs array of @a num_coins signatures revealed
  * @return a MHD result code
