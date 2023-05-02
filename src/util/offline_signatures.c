@@ -718,7 +718,7 @@ TALER_exchange_offline_wire_add_sign (
                     &kv.h_payto);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
-                        strlen (conversion_url),
+                        strlen (conversion_url) + 1,
                         &kv.h_conversion_url);
   TALER_json_hash (debit_restrictions,
                    &kv.h_debit_restrictions);
@@ -750,7 +750,7 @@ TALER_exchange_offline_wire_add_verify (
                     &aw.h_payto);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
-                        strlen (conversion_url),
+                        strlen (conversion_url) + 1,
                         &aw.h_conversion_url);
   TALER_json_hash (debit_restrictions,
                    &aw.h_debit_restrictions);
@@ -1172,7 +1172,7 @@ TALER_exchange_wire_signature_check (
                     &wd.h_wire_details);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
-                        strlen (conversion_url),
+                        strlen (conversion_url) + 1,
                         &wd.h_conversion_url);
   TALER_json_hash (debit_restrictions,
                    &wd.h_debit_restrictions);
@@ -1203,7 +1203,7 @@ TALER_exchange_wire_signature_make (
                     &wd.h_wire_details);
   if (NULL != conversion_url)
     GNUNET_CRYPTO_hash (conversion_url,
-                        strlen (conversion_url),
+                        strlen (conversion_url) + 1,
                         &wd.h_conversion_url);
   TALER_json_hash (debit_restrictions,
                    &wd.h_debit_restrictions);
