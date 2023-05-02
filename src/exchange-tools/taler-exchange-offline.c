@@ -24,6 +24,8 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "taler_extensions.h"
+#include <regex.h>
+
 
 /**
  * Name of the input for the 'sign' and 'show' operation.
@@ -3017,6 +3019,21 @@ parse_restriction (char *const *args,
                   "Mandatory arguments for restriction of type `regex' missing (REGEX, HINT, HINT-I18 required)\n");
       return -1;
     }
+    {
+      regex_t ex;
+
+      if (0 != regcomp (&ex,
+                        args[1],
+                        REG_NOSUB | REG_EXTENDED))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Invalid regular expression `%s'\n",
+                    args[1]);
+        return -1;
+      }
+      regfree (&ex);
+    }
+
     i18n = json_loads (args[3],
                        JSON_REJECT_DUPLICATES,
                        &err);
