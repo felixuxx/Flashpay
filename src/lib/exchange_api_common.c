@@ -2197,7 +2197,7 @@ TALER_EXCHANGE_verify_deposit_signature_ (
 /**
  * Parse account restriction in @a jrest into @a rest.
  *
- * @param jrest array of account restrictions in JSON
+ * @param jresta array of account restrictions in JSON
  * @param[out] resta_len set to length of @a resta
  * @param[out] resta account restriction array to set
  * @return #GNUNET_OK on success
