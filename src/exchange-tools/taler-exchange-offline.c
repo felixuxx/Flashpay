@@ -2976,6 +2976,81 @@ do_del_auditor (char *const *args)
 
 
 /**
+ * Parse account restriction.
+ *
+ * @param args the array of command-line arguments to process next
+ * @param[in,out] restrictions JSON array to update
+ * @return -1 on error, otherwise number of arguments from @a args that were used
+ */
+static int
+parse_restriction (char *const *args,
+                   json_t *restrictions)
+{
+  if (NULL == args[0])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Restriction TYPE argument missing\n");
+    return -1;
+  }
+  if (0 == strcmp (args[0],
+                   "deny"))
+  {
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     restrictions,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_string ("type",
+                                                "deny"))));
+    return 1;
+  }
+  if (0 == strcmp (args[0],
+                   "regex"))
+  {
+    json_t *i18n;
+    json_error_t err;
+
+    if ( (NULL == args[1]) ||
+         (NULL == args[2]) ||
+         (NULL == args[3]) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Mandatory arguments for restriction of type `regex' missing (REGEX, HINT, HINT-I18 required)\n");
+      return -1;
+    }
+    i18n = json_loads (args[3],
+                       JSON_REJECT_DUPLICATES,
+                       &err);
+    if (NULL == i18n)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid JSON for restriction of type `regex': `%s` at %d\n",
+                  args[3],
+                  err.position);
+      return -1;
+    }
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     restrictions,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_string ("type",
+                                                "regex"),
+                       GNUNET_JSON_pack_string ("regex",
+                                                args[1]),
+                       GNUNET_JSON_pack_string ("human_hint",
+                                                args[2]),
+                       GNUNET_JSON_pack_object_steal ("human_hint_i18n",
+                                                      i18n)
+                       )));
+    return 4;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Restriction TYPE `%s' unsupported\n",
+              args[0]);
+  return -1;
+}
+
+
+/**
  * Add wire account.
  *
  * @param args the array of command-line arguments to process next;
@@ -3041,12 +3116,70 @@ do_add_wire (char *const *args)
     }
     GNUNET_free (wire_method);
   }
-  // FIXME: init new args properly!
   debit_restrictions = json_array ();
   GNUNET_assert (NULL != debit_restrictions);
   credit_restrictions = json_array ();
   GNUNET_assert (NULL != credit_restrictions);
+  while (NULL != args[num_args])
+  {
+    if (0 == strcmp (args[num_args],
+                     "conversion-url"))
+    {
+      num_args++;
+      conversion_url = args[num_args];
+      if (NULL == conversion_url)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "'conversion-url' requires an argument\n");
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args++;
+      continue;
+    }
+    if (0 == strcmp (args[num_args],
+                     "credit-restriction"))
+    {
+      int iret;
 
+      num_args++;
+      iret = parse_restriction (&args[num_args],
+                                credit_restrictions);
+      if (iret <= 0)
+      {
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args += iret;
+      continue;
+    }
+    if (0 == strcmp (args[num_args],
+                     "debit-restriction"))
+    {
+      int iret;
+
+      num_args++;
+      iret = parse_restriction (&args[num_args],
+                                debit_restrictions);
+      if (iret <= 0)
+      {
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args += iret;
+      continue;
+    }
+    break;
+  }
   TALER_exchange_offline_wire_add_sign (args[0],
                                         conversion_url,
                                         debit_restrictions,
@@ -5091,7 +5224,7 @@ work (void *cls)
     {
       .name = "enable-account",
       .help =
-        "enable wire account of the exchange (payto-URI must be given as argument)",
+        "enable wire account of the exchange (payto-URI must be given as argument; for optional argument see man page)",
       .cb = &do_add_wire
     },
     {
