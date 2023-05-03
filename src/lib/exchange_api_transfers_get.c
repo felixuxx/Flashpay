@@ -241,7 +241,6 @@ check_transfers_get_response_ok (
     GNUNET_free (details);
   }
   GNUNET_JSON_parse_free (spec);
-  TALER_EXCHANGE_transfers_get_cancel (wdh);
   return GNUNET_OK;
 }
 
@@ -276,7 +275,10 @@ handle_transfers_get_finished (void *cls,
     if (GNUNET_OK ==
         check_transfers_get_response_ok (wdh,
                                          j))
+    {
+      TALER_EXCHANGE_transfers_get_cancel (wdh);
       return;
+    }
     GNUNET_break_op (0);
     tgr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     tgr.hr.http_status = 0;
