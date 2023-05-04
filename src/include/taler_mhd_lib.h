@@ -528,7 +528,7 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection
  * @param name the name of the parameter with the key
- * @param[out] out_data pointer to store the result, type must determine size
+ * @param[out] val pointer to store the result, type must determine size
  * @param[in,out] required pass true to require presence of this argument; if 'false'
  *                         set to true if the argument was found
  * @return
@@ -566,7 +566,7 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection
  * @param name the name of the parameter with the key
- * @param[out] out_data pointer to store the result, type must determine size
+ * @param[out] val pointer to store the result, type must determine size
  * @return
  *   #GNUNET_YES if the the argument is present
  *   #GNUNET_NO if the argument is absent or malformed
@@ -583,7 +583,7 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection
  * @param name the name of the header with the key
- * @param[out] out_data pointer to store the result, type must determine size
+ * @param[out] val pointer to store the result, type must determine size
  * @param[in,out] required pass true to require presence of this argument; if 'false'
  *                         set to true if the argument was found
  * @return
@@ -621,7 +621,7 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
  *
  * @param connection the MHD connection
  * @param name the name of the header with the key
- * @param[out] out_data pointer to store the result, type must determine size
+ * @param[out] val pointer to store the result, type must determine size
  * @return
  *   #GNUNET_YES if the the argument is present
  *   #GNUNET_NO if the argument is absent or malformed
