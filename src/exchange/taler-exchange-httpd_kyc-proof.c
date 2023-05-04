@@ -297,7 +297,6 @@ TEH_handler_kyc_proof (
 {
   struct KycProofContext *kpc = rc->rh_ctx;
   const char *provider_section_or_logic = args[0];
-  const char *h_payto;
 
   if (NULL == kpc)
   {
@@ -310,33 +309,13 @@ TEH_handler_kyc_proof (
                                          TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                          "'/kyc-proof/$PROVIDER_SECTION?state=$H_PAYTO' required");
     }
-    h_payto = MHD_lookup_connection_value (rc->connection,
-                                           MHD_GET_ARGUMENT_KIND,
-                                           "state");
-    if (NULL == h_payto)
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MISSING,
-                                         "h_payto");
-    }
     kpc = GNUNET_new (struct KycProofContext);
     kpc->rc = rc;
     rc->rh_ctx = kpc;
     rc->rh_cleaner = &clean_kpc;
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (h_payto,
-                                       strlen (h_payto),
-                                       &kpc->h_payto,
-                                       sizeof (kpc->h_payto)))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "h_payto");
-    }
+    TALER_MHD_parse_request_arg_auto_t (rc->connection,
+                                        "state",
+                                        &kpc->h_payto);
     if (GNUNET_OK !=
         TALER_KYCLOGIC_lookup_logic (provider_section_or_logic,
                                      &kpc->logic,

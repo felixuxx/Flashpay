@@ -437,7 +437,47 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
 
 
 /**
- * Extract fixed-size base32crockford encoded data from request.
+ * Extract optional "timeout_ms" argument from request.
+ *
+ * @param connection the MHD connection
+ * @param[out] expiration set to #GNUNET_TIME_UNIT_ZERO_ABS if there was no timeout,
+ *         the current time plus the value given under "timeout_ms" otherwise
+ * @return #GNUNET_OK on success, #GNUNET_NO if an
+ *     error was returned on @a connection (caller should return #MHD_YES) and
+ *     #GNUNET_SYSERR if we failed to return an error (caller should return #MHD_NO)
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
+                                     struct GNUNET_TIME_Absolute *expiration);
+
+
+/**
+ * Extract optional "timeout_ms" argument from request.
+ * Macro that *returns* #MHD_YES/#MHD_NO if the "timeout_ms"
+ * argument existed but failed to parse.
+ *
+ * @param connection the MHD connection
+ * @param[out] expiration set to #GNUNET_TIME_UNIT_ZERO_ABS if there was no timeout,
+ *         the current time plus the value given under "timeout_ms" otherwise
+ */
+#define TALER_MHD_parse_request_timeout(connection,expiration) \
+  do {                                                         \
+    switch (TALER_MHD_parse_request_arg_timeout (connection,   \
+                                                 expiration))  \
+    {                      \
+    case GNUNET_SYSERR:    \
+      GNUNET_break (0);    \
+      return MHD_NO;       \
+    case GNUNET_NO:        \
+      GNUNET_break_op (0); \
+    case GNUNET_OK:        \
+      break;               \
+    }                      \
+  } while (0)
+
+
+/**
+ * Extract fixed-size base32crockford encoded data from request argument.
  *
  * Queues an error response to the connection if the parameter is missing or
  * invalid.
@@ -446,16 +486,152 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
  * @param param_name the name of the parameter with the key
  * @param[out] out_data pointer to store the result
  * @param out_size expected size of @a out_data
+ * @param[out] present set to true if argument was found
  * @return
  *   #GNUNET_YES if the the argument is present
- *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_NO if the argument is malformed
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
 enum GNUNET_GenericReturnValue
 TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
                                   const char *param_name,
                                   void *out_data,
-                                  size_t out_size);
+                                  size_t out_size,
+                                  bool *present);
+
+
+/**
+ * Extract fixed-size base32crockford encoded data from request header.
+ *
+ * Queues an error response to the connection if the parameter is missing or
+ * invalid.
+ *
+ * @param connection the MHD connection
+ * @param header_name the name of the HTTP header with the value
+ * @param[out] out_data pointer to store the result
+ * @param out_size expected size of @a out_data
+ * @param[out] present set to true if argument was found
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
+                                     const char *header_name,
+                                     void *out_data,
+                                     size_t out_size,
+                                     bool *present);
+
+/**
+ * Extract fixed-size base32crockford encoded data from request.
+ *
+ * @param connection the MHD connection
+ * @param name the name of the parameter with the key
+ * @param[out] out_data pointer to store the result, type must determine size
+ * @param[in,out] required pass true to require presence of this argument; if 'false'
+ *                         set to true if the argument was found
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+#define TALER_MHD_parse_request_arg_auto(connection,name,val,required) \
+  do {                                                                 \
+    bool p;                                                            \
+    switch (TALER_MHD_parse_request_arg_data (connection, name,        \
+                                              val, sizeof (*val), &p)) \
+    {                      \
+    case GNUNET_SYSERR:    \
+      GNUNET_break (0);    \
+      return MHD_NO;       \
+    case GNUNET_NO:        \
+      GNUNET_break_op (0); \
+      return MHD_YES;      \
+    case GNUNET_OK:        \
+      if (required & (! p)) \
+      return TALER_MHD_reply_with_error (   \
+        connection,                         \
+        MHD_HTTP_BAD_REQUEST,               \
+        TALER_EC_GENERIC_PARAMETER_MISSING, \
+        name);                              \
+      required = p;                         \
+      break;               \
+    }                      \
+  } while (0)
+
+
+/**
+ * Extract required fixed-size base32crockford encoded data from request.
+ *
+ * @param connection the MHD connection
+ * @param name the name of the parameter with the key
+ * @param[out] out_data pointer to store the result, type must determine size
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+#define TALER_MHD_parse_request_arg_auto_t(connection,name,val) \
+  do {                                                          \
+    bool b = true;                                              \
+    TALER_MHD_parse_request_arg_auto (connection,name,val,b);   \
+  } while (0)
+
+/**
+ * Extract fixed-size base32crockford encoded data from request.
+ *
+ * @param connection the MHD connection
+ * @param name the name of the header with the key
+ * @param[out] out_data pointer to store the result, type must determine size
+ * @param[in,out] required pass true to require presence of this argument; if 'false'
+ *                         set to true if the argument was found
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+#define TALER_MHD_parse_request_header_auto(connection,name,val,required) \
+  do {                                                                    \
+    bool p;                                                               \
+    switch (TALER_MHD_parse_request_header_data (connection, name,        \
+                                                 val, sizeof (*val), &p)) \
+    {                      \
+    case GNUNET_SYSERR:    \
+      GNUNET_break (0);    \
+      return MHD_NO;       \
+    case GNUNET_NO:        \
+      GNUNET_break_op (0); \
+      return MHD_YES;      \
+    case GNUNET_OK:        \
+      if (required & (! p)) \
+      return TALER_MHD_reply_with_error (   \
+        connection,                         \
+        MHD_HTTP_BAD_REQUEST,               \
+        TALER_EC_GENERIC_PARAMETER_MISSING, \
+        name);                              \
+      required = p;                         \
+      break;               \
+    }                      \
+  } while (0)
+
+
+/**
+ * Extract required fixed-size base32crockford encoded data from request.
+ *
+ * @param connection the MHD connection
+ * @param name the name of the header with the key
+ * @param[out] out_data pointer to store the result, type must determine size
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+#define TALER_MHD_parse_request_header_auto_t(connection,name,val) \
+  do {                                                             \
+    bool b = true;                                                 \
+    TALER_MHD_parse_request_header_auto (connection,name,val,b);   \
+  } while (0)
 
 
 /**

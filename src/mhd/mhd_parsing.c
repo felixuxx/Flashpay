@@ -86,25 +86,40 @@ TALER_MHD_parse_post_cleanup_callback (void *con_cls)
 }
 
 
-enum GNUNET_GenericReturnValue
-TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
-                                  const char *param_name,
-                                  void *out_data,
-                                  size_t out_size)
+/**
+ * Extract fixed-size base32crockford encoded data from request.
+ *
+ * Queues an error response to the connection if the parameter is missing or
+ * invalid.
+ *
+ * @param connection the MHD connection
+ * @param param_name the name of the HTTP key with the value
+ * @param kind whether to extract from header, argument or footer
+ * @param[out] out_data pointer to store the result
+ * @param out_size expected size of @a out_data
+ * @param[out] present set to true if argument was found
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+static enum GNUNET_GenericReturnValue
+parse_request_data (struct MHD_Connection *connection,
+                    const char *param_name,
+                    enum MHD_ValueKind kind,
+                    void *out_data,
+                    size_t out_size,
+                    bool *present)
 {
   const char *str;
 
   str = MHD_lookup_connection_value (connection,
-                                     MHD_GET_ARGUMENT_KIND,
+                                     kind,
                                      param_name);
   if (NULL == str)
   {
-    return (MHD_NO ==
-            TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_BAD_REQUEST,
-                                        TALER_EC_GENERIC_PARAMETER_MISSING,
-                                        param_name))
-           ? GNUNET_SYSERR : GNUNET_NO;
+    *present = false;
+    return GNUNET_OK;
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (str,
@@ -117,6 +132,79 @@ TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         param_name))
            ? GNUNET_SYSERR : GNUNET_NO;
+  *present = true;
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
+                                  const char *param_name,
+                                  void *out_data,
+                                  size_t out_size,
+                                  bool *present)
+{
+  return parse_request_data (connection,
+                             param_name,
+                             MHD_GET_ARGUMENT_KIND,
+                             out_data,
+                             out_size,
+                             present);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
+                                     const char *header_name,
+                                     void *out_data,
+                                     size_t out_size,
+                                     bool *present)
+{
+  return parse_request_data (connection,
+                             header_name,
+                             MHD_HEADER_KIND,
+                             out_data,
+                             out_size,
+                             present);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_request_arg_timeout (struct MHD_Connection *connection,
+                                     struct GNUNET_TIME_Absolute *expiration)
+{
+  const char *ts;
+  char dummy;
+  unsigned long long tms;
+
+  ts = MHD_lookup_connection_value (connection,
+                                    MHD_GET_ARGUMENT_KIND,
+                                    "timeout_ms");
+  if (NULL == ts)
+  {
+    *expiration = GNUNET_TIME_UNIT_ZERO_ABS;
+    return GNUNET_OK;
+  }
+  if (1 !=
+      sscanf (ts,
+              "%llu%c",
+              &tms,
+              &dummy))
+  {
+    MHD_RESULT mret;
+
+    GNUNET_break_op (0);
+    mret = TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       "timeout_ms");
+    return (MHD_YES == mret)
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
+  }
+  *expiration = GNUNET_TIME_relative_to_absolute (
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
+                                   tms));
   return GNUNET_OK;
 }
 
