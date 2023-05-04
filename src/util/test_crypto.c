@@ -355,15 +355,24 @@ test_exchange_sigs (void)
   struct TALER_MasterPrivateKeyP priv;
   struct TALER_MasterPublicKeyP pub;
   struct TALER_MasterSignatureP sig;
+  json_t *rest;
 
   GNUNET_CRYPTO_eddsa_key_create (&priv.eddsa_priv);
+  rest = json_array ();
+  GNUNET_assert (NULL != rest);
   TALER_exchange_wire_signature_make (pt,
+                                      NULL,
+                                      rest,
+                                      rest,
                                       &priv,
                                       &sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&priv.eddsa_priv,
                                       &pub.eddsa_pub);
   if (GNUNET_OK !=
       TALER_exchange_wire_signature_check (pt,
+                                           NULL,
+                                           rest,
+                                           rest,
                                            &pub,
                                            &sig))
   {
@@ -373,12 +382,28 @@ test_exchange_sigs (void)
   if (GNUNET_OK ==
       TALER_exchange_wire_signature_check (
         "payto://x-taler-bank/localhost/Other",
+        NULL,
+        rest,
+        rest,
         &pub,
         &sig))
   {
     GNUNET_break (0);
     return 1;
   }
+  if (GNUNET_OK ==
+      TALER_exchange_wire_signature_check (
+        pt,
+        "http://example.com/",
+        rest,
+        rest,
+        &pub,
+        &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  json_decref (rest);
   return 0;
 }
 
