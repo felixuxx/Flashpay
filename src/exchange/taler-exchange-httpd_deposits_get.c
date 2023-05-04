@@ -23,6 +23,7 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include <pthread.h>
+#include "taler_dbevents.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
@@ -36,6 +37,26 @@
  */
 struct DepositWtidContext
 {
+
+  /**
+   * Kept in a DLL.
+   */
+  struct DepositWtidContext *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct DepositWtidContext *prev;
+
+  /**
+   * Context for the request we are processing.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Subscription for the database event we are waiting for.
+   */
+  struct GNUNET_DB_EventHandler *eh;
 
   /**
    * Hash over the proposal data of the contract for which this deposit is made.
@@ -86,6 +107,11 @@ struct DepositWtidContext
   struct GNUNET_TIME_Timestamp execution_time;
 
   /**
+   * Timeout of the request, for long-polling.
+   */
+  struct GNUNET_TIME_Absolute timeout;
+
+  /**
    * Set by #handle_wtid to the coin contribution to the transaction
    * (that is, @e coin_contribution minus @e coin_fee).
    */
@@ -107,7 +133,43 @@ struct DepositWtidContext
    * Set to #GNUNET_SYSERR if there was a serious error.
    */
   enum GNUNET_GenericReturnValue pending;
+
+  /**
+   * #GNUNET_YES if we were suspended, #GNUNET_SYSERR
+   * if we were woken up due to shutdown.
+   */
+  enum GNUNET_GenericReturnValue suspended;
 };
+
+
+/**
+ * Head of DLL of suspended requests.
+ */
+static struct DepositWtidContext *dwc_head;
+
+/**
+ * Tail of DLL of suspended requests.
+ */
+static struct DepositWtidContext *dwc_tail;
+
+
+void
+TEH_deposits_get_cleanup ()
+{
+  struct DepositWtidContext *n;
+  for (struct DepositWtidContext *ctx = dwc_head;
+       NULL != ctx;
+       ctx = n)
+  {
+    n = ctx->next;
+    GNUNET_assert (GNUNET_YES == ctx->suspended);
+    ctx->suspended = GNUNET_SYSERR;
+    MHD_resume_connection (ctx->rc->connection);
+    GNUNET_CONTAINER_DLL_remove (dwc_head,
+                                 dwc_tail,
+                                 ctx);
+  }
+}
 
 
 /**
@@ -234,33 +296,98 @@ deposits_get_transaction (void *cls,
 
 
 /**
+ * Function called on events received from Postgres.
+ * Wakes up long pollers.
+ *
+ * @param cls the `struct DepositWtidContext *`
+ * @param extra additional event data provided
+ * @param extra_size number of bytes in @a extra
+ */
+static void
+db_event_cb (void *cls,
+             const void *extra,
+             size_t extra_size)
+{
+  struct DepositWtidContext *ctx = cls;
+  struct GNUNET_AsyncScopeSave old_scope;
+
+  (void) extra;
+  (void) extra_size;
+  if (GNUNET_NO != ctx->suspended)
+    return; /* might get multiple wake-up events */
+  GNUNET_CONTAINER_DLL_remove (dwc_head,
+                               dwc_tail,
+                               ctx);
+  GNUNET_async_scope_enter (&ctx->rc->async_scope_id,
+                            &old_scope);
+  TEH_check_invariants ();
+  ctx->suspended = GNUNET_NO;
+  MHD_resume_connection (ctx->rc->connection);
+  TALER_MHD_daemon_trigger ();
+  TEH_check_invariants ();
+  GNUNET_async_scope_restore (&old_scope);
+}
+
+
+/**
  * Lookup and return the wire transfer identifier.
  *
- * @param connection the MHD connection to handle
  * @param ctx context of the signed request to execute
  * @return MHD result code
  */
 static MHD_RESULT
 handle_track_transaction_request (
-  struct MHD_Connection *connection,
   struct DepositWtidContext *ctx)
 {
-  MHD_RESULT mhd_ret;
+  struct MHD_Connection *connection = ctx->rc->connection;
 
-  if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
-                              "handle deposits GET",
-                              TEH_MT_REQUEST_OTHER,
-                              &mhd_ret,
-                              &deposits_get_transaction,
-                              ctx))
-    return mhd_ret;
+  if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
+       (NULL == ctx->eh) )
+  {
+    struct TALER_CoinDepositEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+      .coin_pub = ctx->coin_pub,
+      .merchant_pub = ctx->merchant,
+      .h_wire = ctx->h_wire
+    };
+
+    ctx->eh = TEH_plugin->event_listen (
+      TEH_plugin->cls,
+      GNUNET_TIME_absolute_get_remaining (ctx->timeout),
+      &rep.header,
+      &db_event_cb,
+      ctx);
+  }
+  {
+    MHD_RESULT mhd_ret;
+
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "handle deposits GET",
+                                TEH_MT_REQUEST_OTHER,
+                                &mhd_ret,
+                                &deposits_get_transaction,
+                                ctx))
+      return mhd_ret;
+  }
   if (GNUNET_SYSERR == ctx->pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
                                        "wire fees exceed aggregate in database");
-  if (ctx->pending)
+  if (GNUNET_YES == ctx->pending)
+  {
+    if ( (GNUNET_TIME_absolute_is_future (ctx->timeout)) &&
+         (GNUNET_NO == ctx->suspended) )
+    {
+      GNUNET_CONTAINER_DLL_insert (dwc_head,
+                                   dwc_tail,
+                                   ctx);
+      ctx->suspended = GNUNET_YES;
+      MHD_suspend_connection (connection);
+      return MHD_YES;
+    }
     return TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_ACCEPTED,
@@ -276,6 +403,7 @@ handle_track_transaction_request (
                              ctx->kyc.ok),
       GNUNET_JSON_pack_timestamp ("execution_time",
                                   ctx->execution_time));
+  }
   return reply_deposit_details (connection,
                                 ctx);
 }
@@ -291,6 +419,13 @@ dwc_cleaner (struct TEH_RequestContext *rc)
 {
   struct DepositWtidContext *ctx = rc->rh_ctx;
 
+  GNUNET_assert (GNUNET_NO == ctx->suspended);
+  if (NULL != ctx->eh)
+  {
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     ctx->eh);
+    ctx->eh = NULL;
+  }
   GNUNET_free (ctx);
 }
 
@@ -304,6 +439,7 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
   if (NULL == ctx)
   {
     ctx = GNUNET_new (struct DepositWtidContext);
+    ctx->rc = rc;
     rc->rh_ctx = ctx;
     rc->rh_cleaner = &dwc_cleaner;
 
@@ -358,6 +494,8 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
     TALER_MHD_parse_request_arg_auto_t (rc->connection,
                                         "merchant_sig",
                                         &ctx->merchant_sig);
+    TALER_MHD_parse_request_timeout (rc->connection,
+                                     &ctx->timeout);
     TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
     {
       if (GNUNET_OK !=
@@ -376,8 +514,7 @@ TEH_handler_deposits_get (struct TEH_RequestContext *rc,
     }
   }
 
-  return handle_track_transaction_request (rc->connection,
-                                           ctx);
+  return handle_track_transaction_request (ctx);
 }
 
 

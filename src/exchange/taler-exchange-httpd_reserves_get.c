@@ -57,8 +57,7 @@ struct ReservePoller
   struct TEH_RequestContext *rc;
 
   /**
-   * Subscription for the database event we are
-   * waiting for.
+   * Subscription for the database event we are waiting for.
    */
   struct GNUNET_DB_EventHandler *eh;
 

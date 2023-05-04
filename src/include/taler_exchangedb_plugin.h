@@ -149,7 +149,35 @@ struct TALER_EXCHANGEDB_DenominationKeyInformation
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Signature of events signalling a reserve got funding.
+ * Events signalling that a coin deposit status
+ * changed.
+ */
+struct TALER_CoinDepositEventP
+{
+  /**
+   * Of type #TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED.
+   */
+  struct GNUNET_DB_EventHeaderP header;
+
+  /**
+   * The coin's public key.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
+   * The Merchant's public key.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash over the wiring information of the merchant.
+   */
+  struct TALER_MerchantWireHashP h_wire;
+
+};
+
+/**
+ * Events signalling a reserve got funding.
  */
 struct TALER_ReserveEventP
 {
