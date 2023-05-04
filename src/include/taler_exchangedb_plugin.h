@@ -160,19 +160,9 @@ struct TALER_CoinDepositEventP
   struct GNUNET_DB_EventHeaderP header;
 
   /**
-   * The coin's public key.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
-   * The Merchant's public key.
+   * Public key of the merchant.
    */
   struct TALER_MerchantPublicKeyP merchant_pub;
-
-  /**
-   * Hash over the wiring information of the merchant.
-   */
-  struct TALER_MerchantWireHashP h_wire;
 
 };
 

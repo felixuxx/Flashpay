@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -260,6 +260,7 @@ TALER_EXCHANGE_deposits_get (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls)
 {
@@ -293,6 +294,7 @@ TALER_EXCHANGE_deposits_get (
     char msig_str[sizeof (struct TALER_MerchantSignatureP) * 2];
     char chash_str[sizeof (struct TALER_PrivateContractHashP) * 2];
     char whash_str[sizeof (struct TALER_MerchantWireHashP) * 2];
+    char timeout_str[24];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (h_wire,
@@ -320,15 +322,33 @@ TALER_EXCHANGE_deposits_get (
                                          msig_str,
                                          sizeof (msig_str));
     *end = '\0';
+    if (GNUNET_TIME_relative_is_zero (timeout))
+    {
+      timeout_str[0] = '\0';
+    }
+    else
+    {
+      GNUNET_snprintf (
+        timeout_str,
+        sizeof (timeout_str),
+        "%llu",
+        (unsigned long long) (
+          timeout.rel_value_us
+          / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
+    }
 
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/deposits/%s/%s/%s/%s?merchant_sig=%s",
+                     "/deposits/%s/%s/%s/%s?merchant_sig=%s%s%s",
                      whash_str,
                      mpub_str,
                      chash_str,
                      cpub_str,
-                     msig_str);
+                     msig_str,
+                     GNUNET_TIME_relative_is_zero (timeout)
+                     ? ""
+                     : "&timeout_ms=",
+                     timeout_str);
   }
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_DepositGetHandle);

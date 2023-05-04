@@ -281,6 +281,7 @@ track_transaction_run (void *cls,
                                           &h_wire_details,
                                           &h_contract_terms,
                                           &coin_pub,
+                                          GNUNET_TIME_UNIT_ZERO,
                                           &deposit_wtid_cb,
                                           tts);
   GNUNET_assert (NULL != tts->tth);

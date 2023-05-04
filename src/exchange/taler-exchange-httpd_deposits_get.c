@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017, 2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -347,9 +347,7 @@ handle_track_transaction_request (
     struct TALER_CoinDepositEventP rep = {
       .header.size = htons (sizeof (rep)),
       .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
-      .coin_pub = ctx->coin_pub,
-      .merchant_pub = ctx->merchant,
-      .h_wire = ctx->h_wire
+      .merchant_pub = ctx->merchant
     };
 
     ctx->eh = TEH_plugin->event_listen (

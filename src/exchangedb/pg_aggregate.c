@@ -22,6 +22,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
+#include "pg_event_notify.h"
 #include "pg_aggregate.h"
 #include "pg_helper.h"
 
@@ -35,34 +36,12 @@ TEH_PG_aggregate (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now = {0};
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (h_payto),
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_end
-  };
   uint64_t sum_deposit_value;
   uint64_t sum_deposit_frac;
   uint64_t sum_refund_value;
   uint64_t sum_refund_frac;
   uint64_t sum_fee_value;
   uint64_t sum_fee_frac;
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("sum_deposit_value",
-                                  &sum_deposit_value),
-    GNUNET_PQ_result_spec_uint64 ("sum_deposit_fraction",
-                                  &sum_deposit_frac),
-    GNUNET_PQ_result_spec_uint64 ("sum_refund_value",
-                                  &sum_refund_value),
-    GNUNET_PQ_result_spec_uint64 ("sum_refund_fraction",
-                                  &sum_refund_frac),
-    GNUNET_PQ_result_spec_uint64 ("sum_fee_value",
-                                  &sum_fee_value),
-    GNUNET_PQ_result_spec_uint64 ("sum_fee_fraction",
-                                  &sum_fee_frac),
-    GNUNET_PQ_result_spec_end
-  };
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount sum_deposit;
   struct TALER_Amount sum_refund;
@@ -71,8 +50,6 @@ TEH_PG_aggregate (
 
   now = GNUNET_TIME_absolute_round_down (GNUNET_TIME_absolute_get (),
                                          pg->aggregator_shift);
-
-  /* Used in #postgres_aggregate() */
   PREPARE (pg,
            "aggregate",
            "WITH dep AS (" /* restrict to our merchant and account and mark as done */
@@ -148,11 +125,35 @@ TEH_PG_aggregate (
            "   FULL OUTER JOIN ref ON (FALSE)"    /* We just want all sums */
            "   FULL OUTER JOIN fees ON (FALSE);");
 
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_absolute_time (&now),
+      GNUNET_PQ_query_param_auto_from_type (merchant_pub),
+      GNUNET_PQ_query_param_auto_from_type (h_payto),
+      GNUNET_PQ_query_param_auto_from_type (wtid),
+      GNUNET_PQ_query_param_end
+    };
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("sum_deposit_value",
+                                    &sum_deposit_value),
+      GNUNET_PQ_result_spec_uint64 ("sum_deposit_fraction",
+                                    &sum_deposit_frac),
+      GNUNET_PQ_result_spec_uint64 ("sum_refund_value",
+                                    &sum_refund_value),
+      GNUNET_PQ_result_spec_uint64 ("sum_refund_fraction",
+                                    &sum_refund_frac),
+      GNUNET_PQ_result_spec_uint64 ("sum_fee_value",
+                                    &sum_fee_value),
+      GNUNET_PQ_result_spec_uint64 ("sum_fee_fraction",
+                                    &sum_fee_frac),
+      GNUNET_PQ_result_spec_end
+    };
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "aggregate",
-                                                 params,
-                                                 rs);
+    qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "aggregate",
+                                                   params,
+                                                   rs);
+  }
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -164,6 +165,18 @@ TEH_PG_aggregate (
                    TALER_amount_set_zero (pg->currency,
                                           total));
     return qs;
+  }
+  {
+    struct TALER_CoinDepositEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_DEPOSIT_STATUS_CHANGED),
+      .merchant_pub = *merchant_pub
+    };
+
+    TEH_PG_event_notify (pg,
+                         &rep.header,
+                         NULL,
+                         0);
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (pg->currency,

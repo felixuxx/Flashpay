@@ -3546,6 +3546,7 @@ typedef void
  * @param h_wire hash of merchant's wire transfer details
  * @param h_contract_terms hash of the proposal data
  * @param coin_pub public key of the coin
+ * @param timeout timeout to use for long-polling, 0 for no long polling
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to abort request
@@ -3557,6 +3558,7 @@ TALER_EXCHANGE_deposits_get (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls);
 
