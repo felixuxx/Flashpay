@@ -443,8 +443,9 @@ TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
                              ec),
     GNUNET_JSON_pack_string ("hint",
                              TALER_ErrorCode_get_hint (ec)),
-    GNUNET_JSON_pack_string ("detail",
-                             detail)
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("detail",
+                               detail))
     );
   ret = TALER_TEMPLATING_reply (connection,
                                 http_status,
