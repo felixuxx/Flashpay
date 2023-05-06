@@ -98,7 +98,7 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
  * http_status code.
  *
  * @param connection the connection we act upon
- * @param template basename of the template to load
+ * @param template_basename basename of the template to load
  * @param http_status code to use on success
  * @param ec error code to return
  * @param detail optional text to add to the template
