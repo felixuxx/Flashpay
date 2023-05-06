@@ -428,6 +428,45 @@ load_template (void *cls,
 }
 
 
+MHD_RESULT
+TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
+                              const char *template_basename,
+                              unsigned int http_status,
+                              enum TALER_ErrorCode ec,
+                              const char *detail)
+{
+  json_t *data;
+  enum GNUNET_GenericReturnValue ret;
+
+  data = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_uint64 ("ec",
+                             ec),
+    GNUNET_JSON_pack_string ("hint",
+                             TALER_ErrorCode_get_hint (ec)),
+    GNUNET_JSON_pack_string ("detail",
+                             detail)
+    );
+  ret = TALER_TEMPLATING_reply (connection,
+                                http_status,
+                                template_basename,
+                                NULL,
+                                NULL,
+                                data);
+  json_decref (data);
+  switch (ret)
+  {
+  case GNUNET_OK:
+    return MHD_YES;
+  case GNUNET_NO:
+    return MHD_YES;
+  case GNUNET_SYSERR:
+    return MHD_NO;
+  }
+  GNUNET_assert (0);
+  return MHD_NO;
+}
+
+
 enum GNUNET_GenericReturnValue
 TALER_TEMPLATING_init (const char *subsystem)
 {

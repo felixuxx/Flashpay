@@ -364,7 +364,16 @@ TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
                                     MHD_HEADER_KIND,
                                     MHD_HTTP_HEADER_CONTENT_LENGTH);
   if (NULL == cl)
-    return GNUNET_OK;
+  {
+    GNUNET_break_op (0);
+    return (MHD_YES ==
+            TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_GENERIC_PARAMETER_MISSING,
+                                        MHD_HTTP_HEADER_CONTENT_LENGTH))
+      ? GNUNET_NO
+      : GNUNET_SYSERR;
+  }
   if (1 != sscanf (cl,
                    "%llu%c",
                    &cv,
