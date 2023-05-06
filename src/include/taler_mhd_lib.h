@@ -596,14 +596,14 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
     bool p;                                                               \
     switch (TALER_MHD_parse_request_header_data (connection, name,        \
                                                  val, sizeof (*val), &p)) \
-    {                      \
-    case GNUNET_SYSERR:    \
-      GNUNET_break (0);    \
-      return MHD_NO;       \
-    case GNUNET_NO:        \
-      GNUNET_break_op (0); \
-      return MHD_YES;      \
-    case GNUNET_OK:        \
+    {                       \
+    case GNUNET_SYSERR:     \
+      GNUNET_break (0);     \
+      return MHD_NO;        \
+    case GNUNET_NO:         \
+      GNUNET_break_op (0);  \
+      return MHD_YES;       \
+    case GNUNET_OK:         \
       if (required & (! p)) \
       return TALER_MHD_reply_with_error (   \
         connection,                         \
@@ -631,6 +631,49 @@ TALER_MHD_parse_request_header_data (struct MHD_Connection *connection,
   do {                                                             \
     bool b = true;                                                 \
     TALER_MHD_parse_request_header_auto (connection,name,val,b);   \
+  } while (0)
+
+
+/**
+ * Check that the 'Content-Length' header is giving
+ * a length below @a max_len. If not, return an
+ * appropriate error response and return the
+ * correct #MHD_YES/#MHD_NO value from this function.
+ *
+ * @param connection the MHD connection
+ * @param max_len maximum allowed content length
+ * @return
+ *   #GNUNET_YES if the the argument is present
+ *   #GNUNET_NO if the argument is absent or malformed
+ *   #GNUNET_SYSERR on internal error (error response could not be sent)
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
+                                 unsigned long long max_len);
+
+
+/**
+ * Check that the 'Content-Length' header is giving
+ * a length below @a max_len. If not, return an
+ * appropriate error response and return the
+ * correct #MHD_YES/#MHD_NO value from this function.
+ *
+ * @param connection the MHD connection
+ * @param max_len maximum allowed content length
+ */
+#define TALER_MHD_check_content_length(connection,max_len)         \
+  do {                                                             \
+    switch (TALER_MHD_check_content_length_ (connection, max_len)) \
+    {                       \
+    case GNUNET_SYSERR:     \
+      GNUNET_break (0);     \
+      return MHD_NO;        \
+    case GNUNET_NO:         \
+      GNUNET_break_op (0);  \
+      return MHD_YES;       \
+    case GNUNET_OK:         \
+      break;                \
+    }                       \
   } while (0)
 
 
