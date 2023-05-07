@@ -1,0 +1,79 @@
+\section{KYC/AML: Push Payment}
+
+\begin{figure}[h!]
+  \begin{center}
+\begin{tikzpicture}[node distance=0.9cm,font=\sffamily,
+    start/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=yellow!30},
+    end/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30},
+    process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30},
+    failed/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=red!30},
+    io/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30},
+    decision/.style={diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30},
+    arr/.style={very thick,-latex},
+    every edge quotes/.style = {auto, font=\footnotesize, sloped}
+    ]
+ \node (start) [start] {Start};
+ \node (wallet) [decision,below=of start,text width=2.5cm] {Wallet linked to (domestic) phone number?};
+ \node (domestic) [process, right=of wallet] {Validate phone number};
+ \node (amount) [decision, below=of wallet,text width=2.5cm] {Wallet received less than KYC threshold from other wallets?};
+ \node (kyc) [process, right=of amount] {KYC process};
+ \node (high) [decision, below=of amount,text width=2.5cm] {Wallet received more than its AML threshold?};
+ \node (aml) [process, right=of high] {AML process};
+ \node (dummy) [below right=of aml] {};
+ \node (allow) [end, below right=of dummy] {Allow};
+ \node (deny) [failed, right=of kyc] {Deny};
+ \draw[arr] (start) -> (wallet) {};
+
+ \draw[arr] (wallet) -> (amount);
+ \draw (wallet) edge["Yes"] (amount);
+
+ \draw[arr] (wallet.east) -> (domestic);
+ \draw (wallet.east) edge["No"] (domestic);
+
+ \draw[arr] (domestic) -> (amount);
+ \draw (domestic) edge["Confirmed"] (amount);
+
+ \draw[arr] (domestic) -> (deny);
+ \draw (domestic) edge["Failed"] (deny);
+
+ \draw[arr] (amount) -> (high);
+ \draw (amount) edge["Yes"] (high);
+
+ \draw[arr] (amount.east) -> (kyc);
+ \draw (amount.east) edge["No"] (kyc);
+
+ \draw[arr] (kyc) -> (deny);
+ \draw (kyc) edge["Failed"] (deny);
+
+ \draw[arr] (kyc) -> (high);
+ \draw (kyc) edge["Succeeded"] (high);
+
+ \draw[arr] (high.south) -> (allow);
+ \draw (high.south) edge["Yes"] (allow);
+
+ \draw[arr] (high.east) -> (aml);
+ \draw (high.east) edge["No"] (aml);
+
+ \draw[arr] (aml) -> (deny);
+ \draw (aml) edge["Violation"] (deny);
+
+ \draw[arr] (aml) -> (allow);
+ \draw (aml) edge["Ok"] (allow);
+\end{tikzpicture}
+  \end{center}
+  \caption{Regulatory process when receiving payments from another wallet.
+    The threshold depends on the risk profile from the KYC process.
+    When the transfer is denied the money is (eventually) returned to
+    the originating wallet.}
+\end{figure}
+
+
+\begin{table}[h!]
+  \caption{Settings for the push payment trigger}
+  \begin{tabular}{l|l|r}
+    {\bf Setting}             & {\bf Type}     & {\bf Value} \\ \hline \hline
+    Permitted phone numbers   & Dialing prefix & {\em +41} \\
+    P2P KYC threshold         & Amount         & {\em  100 CHF} \\
+    Default P2P AML threshold & Amount         & {\em 1000 CHF} \\
+  \end{tabular}
+\end{table}

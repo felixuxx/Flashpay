@@ -1,0 +1,58 @@
+\section{Pay}
+
+\begin{figure}[h!]
+  \begin{sequencediagram}
+    \newinst{wallet}{\shortstack{Customer wallet \\
+      \\ \begin{tikzpicture}
+        \node [fill=gray!20,draw=black,thick,align=center] { Unique \\ Wallet ID};
+      \end{tikzpicture}
+    }}
+    \newinst[1]{merchant}{\shortstack{Merchant \\
+       \\ \begin{tikzpicture}[shape aspect=.5]
+        \tikzset{every node/.style={cylinder,shape border rotate=90, draw,fill=gray!25}}
+        \node at (1.5,0) {\shortstack{{{\tiny Database}}}};
+       \end{tikzpicture}
+    }}
+    \newinst[1]{exchange}{\shortstack{Taler (exchange) \\
+       \\ \begin{tikzpicture}[shape aspect=.5]
+        \tikzset{every node/.style={cylinder,shape border rotate=90, draw,fill=gray!25}}
+        \node at (1.5,0) {\shortstack{{{\tiny Database}}}};
+       \end{tikzpicture}
+    }}
+    \newinst[1]{bank}{\shortstack{Merchant bank \\
+      \\ \begin{tikzpicture}
+        \node [fill=gray!20,draw=black,thick,align=center] {Commercial \\ Accounts};
+      \end{tikzpicture}
+    }}
+    \postlevel
+    \mess[0]{wallet}{Browse catalog}{merchant}
+    \mess[0]{merchant}{Commercial offer}{wallet}
+    \begin{callself}{wallet}{Review offer}{}
+    \end{callself}
+    \mess[0]{wallet}{Send payment {(Coins)}}{merchant}
+    \mess[0]{merchant}{Deposit {(Coins)}}{exchange}
+    \begin{sdblock}{Acceptable account?}{}
+    \mess[0]{exchange}{{Refuse deposit}}{merchant}
+    \mess[0]{merchant}{{Refund purchase}}{wallet}
+    \end{sdblock}
+    \mess[0]{exchange}{{Confirm deposit}}{merchant}
+    \mess[0]{merchant}{Fulfill order}{wallet}
+    \begin{callself}{exchange}{Aggregate transactions}{}
+    \end{callself}
+    \begin{sdblock}{KYC/AML required?}{}
+    \begin{callself}{exchange}{Figures~\ref{fig:proc:kyc}, \ref{fig:proc:aml}}{}
+    \end{callself}
+    \end{sdblock}
+    \mess[0]{exchange}{{Initiate transfer}}{bank}
+  \end{sequencediagram}
+  \caption{Deposit interactions between customer, merchant,
+    Taler exchange (payment service provider) and merchant bank.}
+  \label{fig:int:pay}
+\end{figure}
+
+{\bf Internal note:} The exchange refusing a deposit immediately based on
+unaccaptable merchant accounts may not be fully implemented (this is a very
+recent feature, after all); especially the merchant then automatically
+refunding the purchase to the customer is certainly missing.  However,
+the entire situation only arises when a merchant is incorrectly configured
+and in violation of the terms of service.

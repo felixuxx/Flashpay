@@ -1,0 +1,57 @@
+\section{KYC: Balance}
+
+Note: this process is not implemented and would require non-trivial extra work
+if required.
+
+\begin{figure}[h!]
+  \begin{center}
+\begin{tikzpicture}[node distance=1cm,font=\sffamily,
+    start/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=yellow!30},
+    end/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30},
+    process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30},
+    failed/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=red!30},
+    io/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30},
+    decision/.style={diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30},
+    arr/.style={very thick,-latex},
+    every edge quotes/.style = {auto, font=\footnotesize, sloped}
+    ]
+ \node (start) [start] {Start};
+ \node (balance) [decision,below=of start,text width=3cm] {Transaction leaves wallet balance below AML threshold?};
+ \node (registered) [decision,below=of balance,text width=3cm] {Wallet has been subject to KYC?};
+ \node (kyc) [process, below=of registered] {KYC process};
+ \node (aml) [process, left=of kyc] {AML process};
+ \node (allow) [end, right=of balance] {Allow};
+ \node (deny) [failed, right=of registered] {Deny};
+ \draw[arr] (start) -> (balance) {};
+ \draw[arr] (balance) -> (registered);
+ \draw (balance) edge["No"] (registered);
+ \draw[arr] (balance) -> (allow);
+ \draw (balance) edge["Yes"] (allow);
+
+ \draw[arr] (registered) -> (kyc);
+ \draw (registered) edge["No"] (kyc);
+ \draw[arr] (registered) -> (deny);
+ \draw (registered) edge["Yes"] (deny);
+
+ \draw[arr] (kyc) -> (deny);
+ \draw (kyc) edge["Failed"] (deny);
+ \draw[arr] (kyc) -> (aml);
+ \draw (kyc) edge["Ok"] (aml);
+
+ \draw[arr] (aml) -> (balance.west);
+ \draw (aml) edge["New threshold"] (balance.west);
+\end{tikzpicture}
+  \end{center}
+  \caption{Regulatory process when a wallet exceeds its AML threshold.
+    When the transfer is denied the transaction (withdraw, P2P transfer)
+    is refused by the wallet.}
+\end{figure}
+
+
+\begin{table}[h!]
+  \caption{Settings for the balance trigger}
+  \begin{tabular}{l|l|r}
+    {\bf Setting}          & {\bf Type}         & {\bf Value} \\ \hline \hline
+    Default AML threshold  & Amount             & {\em 1000 CHF} \\
+  \end{tabular}
+\end{table}

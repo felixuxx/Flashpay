@@ -1,0 +1,159 @@
+\documentclass[10pt,a4paper,oneside]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{qrcode}
+\usepackage{pgf-umlsd}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+\usetikzlibrary{quotes}
+\author{Christian Grothoff}
+\title{Flows in the GNU Taler System}
+
+\begin{document}
+
+\tableofcontents
+
+\chapter{Interactions} \label{chap:interactions}
+
+This chapter introduces the main payment interactions in the GNU Taler payment
+system. For each interaction, we introduce the parties involved and in which
+order they interact and how.  In each interaction it is possible that the
+Taler exchange needs to trigger a compliance process.  These regulatory
+riggers are described in more detail in Chapter~\ref{chap:triggers}.
+
+The main interactions of the system are:
+
+\begin{description}
+  \item[withdraw] a customer withdraws digital cash to their wallet
+  \item[deposit] a customer returns digital cash into their bank account
+  \item[pay] a customer pays into bank account of a merchant
+  \item[refund] a merchant decides to return funds to a customer
+  \item[push] a customer sends a payment to another wallet
+  \item[pull] a customer requests a payment from another wallet (effectively sending an invoice)
+  \item[shutdown] the Taler payment system operator informs the customers that the system is being shut down for good
+\end{description}
+
+Taler has no accounts (this is digital cash) and thus there is no ``opening''
+or ``closing'' of accounts. The equivalent of ``opening'' an account is thus
+to withdraw digital cash.  The equivalent of ``closing'' an account is to
+either (1) deposit the funds explicitly into a bank account, or (2) the coins
+will expire if the wallet was lost (including long-term offline or
+uninstalled).  Finally, if a wallet remains (occasionally) online but a user
+does simply not spend the coins will (3) diminish in value from the change
+fees (see Section~\ref{sec:fees:coin}) that apply to prevent the coins from
+expiring outright.
+
+The following sections describe the respective processes for each of these
+interactions.
+
+\include{int-withdraw}
+\include{int-deposit}
+\include{int-pay}
+\include{int-refund}
+\include{int-push}
+\include{int-pull}
+\include{int-shutdown}
+
+
+\chapter{Regulatory Triggers} \label{chap:triggers}
+
+In this chapter we show decision diagrams for regulatory processes of the
+various core operations of the GNU Taler payment system.  In each case, the
+{\bf start} state refers to one of the interactions described in the previous
+chapter.  The payment system will then use the process to arrive at an {\bf
+  allow} decision which permits the transaction to go through, or at a {\bf
+  deny} decision which ensures that the funds are not moved.
+
+The specific {\em decisions} (in green) depend on the risk profile and the
+regulatory environment. The tables in each section list the specific values
+that are to be configured.
+
+There are five types if interactions that can trigger regulatory processes:
+
+\begin{description}
+  \item[withdraw] a customer withdraws digital cash from their {\bf bank account}
+  \item[deposit] a merchant's {\bf bank account} is designated to receive a payment in digital cash
+  \item[push] a {\bf wallet} accepts a payment from another wallet
+  \item[pull] a {\bf wallet} requests a payment from another wallet
+  \item[balance] a withdraw or P2P payment causes the balance of a {\bf wallet} to exceed a given threshold
+\end{description}
+
+We note in bold the {\bf anchor} for the regulator process. The anchor is used
+to link the interaction to an identity.  Once an identity has been established
+for a particular anchor, that link is considered established for all types of
+activities involving that anchor.  A wallet is uniquely identified in the
+system by its unique cryptographic key.  A bank account is uniquely identified
+in the system by its (RFC 8905) bank routing data (usually including BIC, IBAN
+and account owner name).
+
+The KYC and AML processes themselves are described in
+Chapter~\ref{chap:regproc}.
+
+\include{kyc-withdraw}
+\include{kyc-deposit}
+\include{kyc-push}
+\include{kyc-pull}
+\include{kyc-balance}
+
+\chapter{Regulatory Processes} \label{chap:regproc}
+
+This chapter describes the interactions between the customer, exchange and
+organizations or staff assisting with regulatory processes designed to ensure
+that customers are residents in the area of operation of the payment service
+provider, are properly identified, and do not engage in money laundering.
+
+The three main regulatory processes are:
+
+\begin{description}
+\item[domestic check] This process establishes that a user is generally
+  eligible to use the payment system.  The process checks that the user has an
+  eligible address, but stops short of establishing the user's identity.
+\item[kyc] This process establishes a user's legal identity, possibly
+  using external providers to review documents and check against blacklists.
+\item[aml] The AML process reviews suspicious payment activities for
+  money laundering. Here AML staff reviews all collected information.
+\end{description}
+
+\include{proc-domestic}
+\include{proc-kyc}
+\include{proc-aml}
+
+\chapter{Fees} \label{chap:fees}
+
+The business model for operating a Taler exchange is to charge transaction
+fees.  Fees are charged on certain operations by the exchange.  There are two
+types of fees, {\bf wire fees} and {\bf coin fees}.  This chapter describes
+the fee structure.
+
+Fixed, amount-independent {\bf wire fees} are charged on wire transfers using
+the core banking system.  Details on wire fees are described in
+Section~\ref{sec:fees:wire}.
+
+Coin fees are more complex, as they do not exactly follow neither the usual
+percentage of volume model of other payment systems.  Instead, coin fees are
+applied per coin, resulting in a {\em logarithmic} fee structure.  As a
+result, the effective fee {\em percentage} for tiny transactions is high (for
+example 50\% for transactions of 0.0025 CHF) while the effective fee
+percentage for large transactions is nominal (for example $\approx$ 0.05\% for
+transactions of $\approx$ 40 CHF). Details on coin fees are described in
+Section~\ref{sec:fees:coin}.
+
+Fees are configurable (and that fee types beyond those described here are
+supported by the software). Thus, the specific fees may be adjusted in the
+future based on business decisions.  However, changes to the fees are never
+retroactively applied to coins already in circulation.  Wire fees that have
+been publicly announced for a particular time period also cannot be changed.
+Finally, any change to the terms of service must also be explicitly accepted
+by the users before they withdraw additional funds.
+
+
+\include{fees-wire}
+\include{fees-coins}
+%\include{fees-other}
+
+
+\end{document}
