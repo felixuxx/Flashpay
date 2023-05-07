@@ -41,3 +41,48 @@
     triggered by various {\em actions} described in Chapter~\ref{chap:triggers}.}
   \label{fig:proc:kyc}
 \end{figure}
+
+At the beginning of the KYC process, the user needs to specify
+whether they are an {\bf individual} or a {\bf business}. This
+then determines which types of attributes are collected in the
+KYC process (Table~\ref{table:proc:kyc:individual} vs.
+Table~\ref{table:proc:kyc:business}).
+
+\begin{table}
+  \caption{Information collected for individuals}
+  \label{table:proc:kyc:individual}
+  \begin{center}
+    \begin{tabular}{l|c|r}
+      {\bf Type}                 & {\bf Required}    & {\bf Example} \\ \hline \hline
+      Surname                    & yes        & Mustermann \\
+      First name(s)              & yes        & Max \\
+      Date of birth              & yes        & 1.1.1980 \\
+      Nationality                & yes        & Swiss \\
+      Actual address of domicile & yes        & Seestrasse 3, 8008 Zuerich \\
+      Phone number               & no         & +41-123456789 \\
+      E-mail                     & no         & me@example.com \\
+      Identification document    & yes        & JPG image \\
+  \end{tabular}
+  \end{center}
+\end{table}
+
+
+\begin{table}
+  \caption{Information collected for businesses}
+  \label{table:proc:kyc:business}
+  \begin{center}
+    \begin{tabular}{l|c|r}
+      {\bf Type}                      & {\bf Required} & {\bf Example}        \\ \hline \hline
+      Company name                    & yes        & Mega AG \\
+      Registered office               & yes        & Seestrasse 4, 8008 Zuerich \\
+      Company identification document & yes        & PDF file \\ \hline
+      Contact person name             & yes        & Max Mustermann \\
+      Phone number                    & no         & +41-123456789  \\
+      E-mail                          & yes        & me@example.com \\
+      Identification document         & yes        & JPG image \\
+      Date of birth                   & yes        & 1.1.1980  \\
+      Nationality                     & yes        & Swiss     \\ \hline
+      Power of attorney arrangement   & yes        & PDF file  \\
+  \end{tabular}
+  \end{center}
+\end{table}
