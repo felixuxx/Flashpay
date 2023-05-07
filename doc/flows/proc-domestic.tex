@@ -23,8 +23,8 @@
     \mess[0]{sms}{Validation process ID}{exchange}
     \mess[0]{exchange}{Request address validation}{wallet}
     \mess[0]{wallet}{Send address}{sms}
-    \mess[0]{sms}{{Send PIN/TAN code (to address)}}{wallet}
-    \mess[0]{wallet}{Supply PIN/TAN code}{sms}
+    \mess[0]{sms}{{Send confirmation code (to address)}}{wallet}
+    \mess[0]{wallet}{Supply confirmation code}{sms}
     \mess[0]{sms}{{Confirmed customer address}}{exchange}
     \mess[0]{exchange}{{Confirm completion}}{wallet}
     \mess[0]{wallet}{{Retry action}}{exchange}
@@ -45,9 +45,9 @@ supported:
 
 \begin{itemize}
 \item Control over a domestic {\bf mobile phone number} is established
-  by sending an SMS message with a PIN/TAN to the MSIN.
+  by sending an SMS message with a confirmation code to the MSIN.
 \item Control over a domestic {\bf postal address} is established by
-  sending a letter with a PIN/TAN to the address.
+  sending a letter with a confirmation code to the address.
 \end{itemize}
 
 Depending on the type of address, a validation has a limited validity period,
