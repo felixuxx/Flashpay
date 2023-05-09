@@ -1005,9 +1005,9 @@ TALER_exchange_offline_global_fee_sign (
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_MasterGlobalFeePS kv = {
+  struct TALER_MasterGlobalFeePS wf = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_GLOBAL_FEES),
-    .purpose.size = htonl (sizeof (kv)),
+    .purpose.size = htonl (sizeof (wf)),
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
     .end_date = GNUNET_TIME_timestamp_hton (end_time),
     .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
@@ -1015,10 +1015,10 @@ TALER_exchange_offline_global_fee_sign (
     .purse_account_limit = htonl (purse_account_limit)
   };
 
-  TALER_global_fee_set_hton (&kv.fees,
+  TALER_global_fee_set_hton (&wf.fees,
                              fees);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
-                            &kv,
+                            &wf,
                             &master_sig->eddsa_signature);
 }
 
