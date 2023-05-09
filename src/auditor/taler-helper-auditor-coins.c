@@ -172,9 +172,9 @@ coin_history_index (const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   uint32_t i;
 
-  memcpy (&i,
-          coin_pub,
-          sizeof (i));
+  GNUNET_memcpy (&i,
+                 coin_pub,
+                 sizeof (i));
   return i % MAX_COIN_HISTORIES;
 }
 

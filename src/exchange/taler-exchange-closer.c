@@ -312,10 +312,10 @@ expired_reserve_cb (void *cls,
   memset (&wtid,
           0,
           sizeof (wtid));
-  memcpy (&wtid,
-          reserve_pub,
-          GNUNET_MIN (sizeof (wtid),
-                      sizeof (*reserve_pub)));
+  GNUNET_memcpy (&wtid,
+                 reserve_pub,
+                 GNUNET_MIN (sizeof (wtid),
+                             sizeof (*reserve_pub)));
   qs = db_plugin->insert_reserve_closed (db_plugin->cls,
                                          reserve_pub,
                                          now,

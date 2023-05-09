@@ -1177,10 +1177,10 @@ TALER_exchange_online_denomination_expired_sign (
   };
 
   /* strncpy would create a compiler warning */
-  memcpy (dua.operation,
-          op,
-          GNUNET_MIN (sizeof (dua.operation),
-                      strlen (op)));
+  GNUNET_memcpy (dua.operation,
+                 op,
+                 GNUNET_MIN (sizeof (dua.operation),
+                             strlen (op)));
   return scb (&dua.purpose,
               pub,
               sig);
@@ -1204,10 +1204,10 @@ TALER_exchange_online_denomination_expired_verify (
   };
 
   /* strncpy would create a compiler warning */
-  memcpy (dua.operation,
-          op,
-          GNUNET_MIN (sizeof (dua.operation),
-                      strlen (op)));
+  GNUNET_memcpy (dua.operation,
+                 op,
+                 GNUNET_MIN (sizeof (dua.operation),
+                             strlen (op)));
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED,
                                 &dua,

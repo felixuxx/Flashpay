@@ -150,9 +150,9 @@ TALER_TESTING_cmd_batch (const char *label,
 
   bs->batch = GNUNET_new_array (i + 1,
                                 struct TALER_TESTING_Command);
-  memcpy (bs->batch,
-          batch,
-          sizeof (struct TALER_TESTING_Command) * i);
+  GNUNET_memcpy (bs->batch,
+                 batch,
+                 sizeof (struct TALER_TESTING_Command) * i);
   {
     struct TALER_TESTING_Command cmd = {
       .cls = bs,

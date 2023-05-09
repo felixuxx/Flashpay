@@ -169,9 +169,9 @@ bem_insert (struct GNUNET_PQ_Context *conn,
   GNUNET_CRYPTO_hash (&b,
                       sizeof (b),
                       &hc);
-  memcpy (&ihc,
-          &hc,
-          sizeof (ihc));
+  GNUNET_memcpy (&ihc,
+                 &hc,
+                 sizeof (ihc));
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&hc),
@@ -265,9 +265,9 @@ bem_select (struct GNUNET_PQ_Context *conn,
   GNUNET_CRYPTO_hash (&b,
                       sizeof (b),
                       &hc);
-  memcpy (&ihc,
-          &hc,
-          sizeof (ihc));
+  GNUNET_memcpy (&ihc,
+                 &hc,
+                 sizeof (ihc));
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_uint32 (&ihc),

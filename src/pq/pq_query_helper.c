@@ -202,21 +202,21 @@ qconv_denom_pub (void *cls,
   }
   len = tlen + sizeof (be);
   buf = GNUNET_malloc (len);
-  memcpy (buf,
-          be,
-          sizeof (be));
+  GNUNET_memcpy (buf,
+                 be,
+                 sizeof (be));
   switch (denom_pub->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    memcpy (&buf[sizeof (be)],
-            tbuf,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   tbuf,
+                   tlen);
     GNUNET_free (tbuf);
     break;
   case TALER_DENOMINATION_CS:
-    memcpy (&buf[sizeof (be)],
-            &denom_pub->details.cs_public_key,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   &denom_pub->details.cs_public_key,
+                   tlen);
     break;
   default:
     GNUNET_assert (0);
@@ -298,21 +298,21 @@ qconv_denom_sig (void *cls,
   }
   len = tlen + sizeof (be);
   buf = GNUNET_malloc (len);
-  memcpy (buf,
-          &be,
-          sizeof (be));
+  GNUNET_memcpy (buf,
+                 &be,
+                 sizeof (be));
   switch (denom_sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    memcpy (&buf[sizeof (be)],
-            tbuf,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   tbuf,
+                   tlen);
     GNUNET_free (tbuf);
     break;
   case TALER_DENOMINATION_CS:
-    memcpy (&buf[sizeof (be)],
-            &denom_sig->details.cs_signature,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   &denom_sig->details.cs_signature,
+                   tlen);
     break;
   default:
     GNUNET_assert (0);
@@ -394,21 +394,21 @@ qconv_blinded_denom_sig (void *cls,
   }
   len = tlen + sizeof (be);
   buf = GNUNET_malloc (len);
-  memcpy (buf,
-          &be,
-          sizeof (be));
+  GNUNET_memcpy (buf,
+                 &be,
+                 sizeof (be));
   switch (denom_sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    memcpy (&buf[sizeof (be)],
-            tbuf,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   tbuf,
+                   tlen);
     GNUNET_free (tbuf);
     break;
   case TALER_DENOMINATION_CS:
-    memcpy (&buf[sizeof (be)],
-            &denom_sig->details.blinded_cs_answer,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   &denom_sig->details.blinded_cs_answer,
+                   tlen);
     break;
   default:
     GNUNET_assert (0);
@@ -487,20 +487,20 @@ qconv_blinded_planchet (void *cls,
   }
   len = tlen + sizeof (be);
   buf = GNUNET_malloc (len);
-  memcpy (buf,
-          &be,
-          sizeof (be));
+  GNUNET_memcpy (buf,
+                 &be,
+                 sizeof (be));
   switch (bp->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    memcpy (&buf[sizeof (be)],
-            bp->details.rsa_blinded_planchet.blinded_msg,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   bp->details.rsa_blinded_planchet.blinded_msg,
+                   tlen);
     break;
   case TALER_DENOMINATION_CS:
-    memcpy (&buf[sizeof (be)],
-            &bp->details.cs_blinded_planchet,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   &bp->details.cs_blinded_planchet,
+                   tlen);
     break;
   default:
     GNUNET_assert (0);
@@ -578,17 +578,17 @@ qconv_exchange_withdraw_values (void *cls,
   }
   len = tlen + sizeof (be);
   buf = GNUNET_malloc (len);
-  memcpy (buf,
-          &be,
-          sizeof (be));
+  GNUNET_memcpy (buf,
+                 &be,
+                 sizeof (be));
   switch (alg_values->cipher)
   {
   case TALER_DENOMINATION_RSA:
     break;
   case TALER_DENOMINATION_CS:
-    memcpy (&buf[sizeof (be)],
-            &alg_values->details.cs_values,
-            tlen);
+    GNUNET_memcpy (&buf[sizeof (be)],
+                   &alg_values->details.cs_values,
+                   tlen);
     break;
   default:
     GNUNET_assert (0);

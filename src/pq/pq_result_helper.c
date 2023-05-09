@@ -113,9 +113,9 @@ extract_amount_nbo_helper (PGresult *result,
   }
   len = GNUNET_MIN (TALER_CURRENCY_LEN - 1,
                     strlen (currency));
-  memcpy (r_amount_nbo->currency,
-          currency,
-          len);
+  GNUNET_memcpy (r_amount_nbo->currency,
+                 currency,
+                 len);
   return GNUNET_OK;
 }
 
@@ -420,9 +420,9 @@ extract_denom_pub (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  memcpy (be,
-          res,
-          sizeof (be));
+  GNUNET_memcpy (be,
+                 res,
+                 sizeof (be));
   res += sizeof (be);
   len -= sizeof (be);
   pk->cipher = ntohl (be[0]);
@@ -445,9 +445,9 @@ extract_denom_pub (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    memcpy (&pk->details.cs_public_key,
-            res,
-            len);
+    GNUNET_memcpy (&pk->details.cs_public_key,
+                   res,
+                   len);
     return GNUNET_OK;
   default:
     GNUNET_break (0);
@@ -543,9 +543,9 @@ extract_denom_sig (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  memcpy (&be,
-          res,
-          sizeof (be));
+  GNUNET_memcpy (&be,
+                 res,
+                 sizeof (be));
   if (0x00 != ntohl (be[1]))
   {
     GNUNET_break (0);
@@ -572,9 +572,9 @@ extract_denom_sig (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    memcpy (&sig->details.cs_signature,
-            res,
-            len);
+    GNUNET_memcpy (&sig->details.cs_signature,
+                   res,
+                   len);
     return GNUNET_OK;
   default:
     GNUNET_break (0);
@@ -670,9 +670,9 @@ extract_blinded_denom_sig (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  memcpy (&be,
-          res,
-          sizeof (be));
+  GNUNET_memcpy (&be,
+                 res,
+                 sizeof (be));
   if (0x01 != ntohl (be[1])) /* magic marker: blinded */
   {
     GNUNET_break (0);
@@ -699,9 +699,9 @@ extract_blinded_denom_sig (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    memcpy (&sig->details.blinded_cs_answer,
-            res,
-            len);
+    GNUNET_memcpy (&sig->details.blinded_cs_answer,
+                   res,
+                   len);
     return GNUNET_OK;
   default:
     GNUNET_break (0);
@@ -798,9 +798,9 @@ extract_blinded_planchet (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  memcpy (&be,
-          res,
-          sizeof (be));
+  GNUNET_memcpy (&be,
+                 res,
+                 sizeof (be));
   if (0x0100 != ntohl (be[1])) /* magic marker: blinded */
   {
     GNUNET_break (0);
@@ -824,9 +824,9 @@ extract_blinded_planchet (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    memcpy (&bp->details.cs_blinded_planchet,
-            res,
-            len);
+    GNUNET_memcpy (&bp->details.cs_blinded_planchet,
+                   res,
+                   len);
     return GNUNET_OK;
   default:
     GNUNET_break (0);
@@ -923,9 +923,9 @@ extract_exchange_withdraw_values (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  memcpy (&be,
-          res,
-          sizeof (be));
+  GNUNET_memcpy (&be,
+                 res,
+                 sizeof (be));
   if (0x010000 != ntohl (be[1])) /* magic marker: EWV */
   {
     GNUNET_break (0);
@@ -949,9 +949,9 @@ extract_exchange_withdraw_values (void *cls,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    memcpy (&alg_values->details.cs_values,
-            res,
-            len);
+    GNUNET_memcpy (&alg_values->details.cs_values,
+                   res,
+                   len);
     return GNUNET_OK;
   default:
     GNUNET_break (0);

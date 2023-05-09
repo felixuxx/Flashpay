@@ -674,12 +674,12 @@ hash_rc (const char *receiver_account,
   size_t slen = strlen (receiver_account);
   char buf[sizeof (struct TALER_WireTransferIdentifierRawP) + slen];
 
-  memcpy (buf,
-          wtid,
-          sizeof (*wtid));
-  memcpy (&buf[sizeof (*wtid)],
-          receiver_account,
-          slen);
+  GNUNET_memcpy (buf,
+                 wtid,
+                 sizeof (*wtid));
+  GNUNET_memcpy (&buf[sizeof (*wtid)],
+                 receiver_account,
+                 slen);
   GNUNET_CRYPTO_hash (buf,
                       sizeof (buf),
                       key);
@@ -1504,9 +1504,9 @@ history_debit_cb (void *cls,
       roi->details.execution_date = dd->execution_date;
       roi->details.wtid = dd->wtid;
       roi->details.credit_account_uri = (const char *) &roi[1];
-      memcpy (&roi[1],
-              dd->credit_account_uri,
-              slen);
+      GNUNET_memcpy (&roi[1],
+                     dd->credit_account_uri,
+                     slen);
       if (GNUNET_OK !=
           GNUNET_CONTAINER_multihashmap_put (out_map,
                                              &roi->subject_hash,
@@ -1678,9 +1678,9 @@ reserve_in_cb (void *cls,
   rii->details.execution_date = execution_date;
   rii->details.reserve_pub = *reserve_pub;
   rii->details.debit_account_uri = (const char *) &rii[1];
-  memcpy (&rii[1],
-          sender_account_details,
-          slen);
+  GNUNET_memcpy (&rii[1],
+                 sender_account_details,
+                 slen);
   GNUNET_CRYPTO_hash (&wire_reference,
                       sizeof (uint64_t),
                       &rii->row_off_hash);

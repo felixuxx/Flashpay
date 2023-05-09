@@ -452,9 +452,9 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
   is->commands = GNUNET_malloc_large ( (i + 1)
                                        * sizeof (struct TALER_TESTING_Command));
   GNUNET_assert (NULL != is->commands);
-  memcpy (is->commands,
-          commands,
-          sizeof (struct TALER_TESTING_Command) * i);
+  GNUNET_memcpy (is->commands,
+                 commands,
+                 sizeof (struct TALER_TESTING_Command) * i);
   is->timeout_task = GNUNET_SCHEDULER_add_delayed (
     timeout,
     &do_timeout,

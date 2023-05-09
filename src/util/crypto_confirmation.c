@@ -90,9 +90,9 @@ compute_totp (struct GNUNET_TIME_Timestamp ts,
     mc = gcry_md_read (md,
                        GCRY_MD_SHA1);
     GNUNET_assert (NULL != mc);
-    memcpy (hmac,
-            mc,
-            sizeof (hmac));
+    GNUNET_memcpy (hmac,
+                   mc,
+                   sizeof (hmac));
     gcry_md_close (md);
   }
 

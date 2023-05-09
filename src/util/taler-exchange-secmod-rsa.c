@@ -394,13 +394,13 @@ generate_response (struct DenominationKey *dk)
                                   &an->secm_sig);
   an->secm_pub = TES_smpub;
   p = (void *) &an[1];
-  memcpy (p,
-          buf,
-          buf_len);
+  GNUNET_memcpy (p,
+                 buf,
+                 buf_len);
   GNUNET_free (buf);
-  memcpy (p + buf_len,
-          denom->section,
-          nlen);
+  GNUNET_memcpy (p + buf_len,
+                 denom->section,
+                 nlen);
   dk->an = an;
 }
 
@@ -524,9 +524,9 @@ send_signature (struct TES_Client *client,
   sr = GNUNET_malloc (tsize);
   sr->header.size = htons (tsize);
   sr->header.type = htons (TALER_HELPER_RSA_MT_RES_SIGNATURE);
-  memcpy (&sr[1],
-          buf,
-          buf_size);
+  GNUNET_memcpy (&sr[1],
+                 buf,
+                 buf_size);
   GNUNET_free (buf);
   ret = TES_transmit (client->csock,
                       &sr->header);
@@ -1111,9 +1111,9 @@ rsa_client_init (struct TES_Client *client)
          NULL != dk;
          dk = dk->next)
     {
-      memcpy (&buf[obs],
-              dk->an,
-              ntohs (dk->an->header.size));
+      GNUNET_memcpy (&buf[obs],
+                     dk->an,
+                     ntohs (dk->an->header.size));
       GNUNET_assert (obs + ntohs (dk->an->header.size)
                      > obs);
       obs += ntohs (dk->an->header.size);
@@ -1212,18 +1212,18 @@ rsa_update_client_keys (struct TES_Client *client)
           .h_rsa = key->h_rsa
         };
 
-        memcpy (&buf[obs],
-                &pn,
-                sizeof (pn));
+        GNUNET_memcpy (&buf[obs],
+                       &pn,
+                       sizeof (pn));
         GNUNET_assert (obs + sizeof (pn)
                        > obs);
         obs += sizeof (pn);
       }
       else
       {
-        memcpy (&buf[obs],
-                key->an,
-                ntohs (key->an->header.size));
+        GNUNET_memcpy (&buf[obs],
+                       key->an,
+                       ntohs (key->an->header.size));
         GNUNET_assert (obs + ntohs (key->an->header.size)
                        > obs);
         obs += ntohs (key->an->header.size);

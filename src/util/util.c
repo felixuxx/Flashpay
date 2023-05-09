@@ -41,9 +41,9 @@ TALER_b2s (const void *buf,
                       &hc);
   tmp = GNUNET_STRINGS_data_to_string_alloc (&hc,
                                              sizeof (hc));
-  memcpy (ret,
-          tmp,
-          8);
+  GNUNET_memcpy (ret,
+                 tmp,
+                 8);
   GNUNET_free (tmp);
   ret[8] = '\0';
   return ret;

@@ -417,9 +417,9 @@ TALER_CRYPTO_helper_rsa_sign (
     sr->header.type = htons (TALER_HELPER_RSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
     sr->h_rsa = *rsr->h_rsa;
-    memcpy (&sr[1],
-            rsr->msg,
-            rsr->msg_size);
+    GNUNET_memcpy (&sr[1],
+                   rsr->msg,
+                   rsr->msg_size);
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (dh->sock,
                                       buf,
@@ -655,9 +655,9 @@ TALER_CRYPTO_helper_rsa_batch_sign (
         sr->header.size = htons (sizeof (*sr) + rsr->msg_size);
         sr->reserved = htonl (0);
         sr->h_rsa = *rsr->h_rsa;
-        memcpy (&sr[1],
-                rsr->msg,
-                rsr->msg_size);
+        GNUNET_memcpy (&sr[1],
+                       rsr->msg,
+                       rsr->msg_size);
         wbuf += sizeof (*sr) + rsr->msg_size;
       }
       GNUNET_assert (wbuf == &obuf[mlen]);

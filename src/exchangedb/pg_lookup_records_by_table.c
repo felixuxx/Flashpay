@@ -1118,9 +1118,9 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
       ctx->error = true;
       return;
     }
-    memcpy (&td.details.refresh_transfer_keys.tprivs[0],
-            tpriv,
-            tpriv_size);
+    GNUNET_memcpy (&td.details.refresh_transfer_keys.tprivs[0],
+                   tpriv,
+                   tpriv_size);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);

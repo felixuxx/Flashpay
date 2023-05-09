@@ -297,7 +297,7 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 #endif
 			if (len > MUSTACH_MAX_LENGTH)
 				return MUSTACH_ERROR_TAG_TOO_LONG;
-			memcpy(name, beg, len);
+			GNUNET_memcpy(name, beg, len);
 			name[len] = 0;
 			break;
 		}
@@ -317,7 +317,7 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 				return MUSTACH_ERROR_BAD_SEPARATORS;
 			oplen = l;
 			tmp = alloca(oplen + 1);
-			memcpy(tmp, beg, oplen);
+			GNUNET_memcpy(tmp, beg, oplen);
 			tmp[oplen] = 0;
 			opstr = tmp;
 			while (l < len && isspace(beg[l])) l++;
@@ -325,7 +325,7 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 				return MUSTACH_ERROR_BAD_SEPARATORS;
 			cllen = len - l;
 			tmp = alloca(cllen + 1);
-			memcpy(tmp, beg + l, cllen);
+			GNUNET_memcpy(tmp, beg + l, cllen);
 			tmp[cllen] = 0;
 			clstr = tmp;
 			break;

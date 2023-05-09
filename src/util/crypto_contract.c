@@ -131,9 +131,9 @@ blob_encrypt (const struct NonceP *nonce,
                     + data_size;
   *res_size = ciphertext_size;
   *res = GNUNET_malloc (ciphertext_size);
-  memcpy (*res,
-          nonce,
-          crypto_secretbox_NONCEBYTES);
+  GNUNET_memcpy (*res,
+                 nonce,
+                 crypto_secretbox_NONCEBYTES);
   GNUNET_assert (0 ==
                  crypto_secretbox_easy (*res + crypto_secretbox_NONCEBYTES,
                                         data,
@@ -274,9 +274,9 @@ TALER_CRYPTO_contract_encrypt_for_merge (
   hdr->header.ctype = htonl (TALER_EXCHANGE_CONTRACT_PAYMENT_OFFER);
   hdr->header.clen = htonl ((uint32_t) clen);
   hdr->merge_priv = *merge_priv;
-  memcpy (&hdr[1],
-          xbuf,
-          cbuf_size);
+  GNUNET_memcpy (&hdr[1],
+                 xbuf,
+                 cbuf_size);
   GNUNET_free (xbuf);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
@@ -423,9 +423,9 @@ TALER_CRYPTO_contract_encrypt_for_deposit (
   hdr = GNUNET_malloc (sizeof (*hdr) + cbuf_size);
   hdr->ctype = htonl (TALER_EXCHANGE_CONTRACT_PAYMENT_REQUEST);
   hdr->clen = htonl ((uint32_t) clen);
-  memcpy (&hdr[1],
-          xbuf,
-          cbuf_size);
+  GNUNET_memcpy (&hdr[1],
+                 xbuf,
+                 cbuf_size);
   GNUNET_free (xbuf);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &nonce,
@@ -441,12 +441,12 @@ TALER_CRYPTO_contract_encrypt_for_deposit (
   GNUNET_free (hdr);
   /* prepend purse_pub */
   *econtract = GNUNET_malloc (xecontract_size + sizeof (*purse_pub));
-  memcpy (*econtract,
-          purse_pub,
-          sizeof (*purse_pub));
-  memcpy (sizeof (*purse_pub) + *econtract,
-          xecontract,
-          xecontract_size);
+  GNUNET_memcpy (*econtract,
+                 purse_pub,
+                 sizeof (*purse_pub));
+  GNUNET_memcpy (sizeof (*purse_pub) + *econtract,
+                 xecontract,
+                 xecontract_size);
   *econtract_size = xecontract_size + sizeof (*purse_pub);
   GNUNET_free (xecontract);
 }
@@ -573,9 +573,9 @@ TALER_CRYPTO_kyc_attributes_encrypt (
   cbuf_size = compressBound (clen);
   xbuf = GNUNET_malloc (cbuf_size + sizeof (uint32_t));
   belen = htonl ((uint32_t) clen);
-  memcpy (xbuf,
-          &belen,
-          sizeof (belen));
+  GNUNET_memcpy (xbuf,
+                 &belen,
+                 sizeof (belen));
   ret = compress (xbuf + 4,
                   &cbuf_size,
                   (const Bytef *) cstr,
@@ -623,9 +623,9 @@ TALER_CRYPTO_kyc_attributes_decrypt (
     GNUNET_break_op (0);
     return NULL;
   }
-  memcpy (&belen,
-          xhdr,
-          sizeof (belen));
+  GNUNET_memcpy (&belen,
+                 xhdr,
+                 sizeof (belen));
   clen = ntohl (belen);
   if (clen >= GNUNET_MAX_MALLOC_CHECKED)
   {

@@ -233,9 +233,9 @@ TALER_iban_validate (const char *iban)
     return GNUNET_strdup ("IBAN number too short to be valid");
   if (len > 34)
     return GNUNET_strdup ("IBAN number too long to be valid");
-  memcpy (cc, iban, 2);
-  memcpy (ibancpy, iban + 4, len - 4);
-  memcpy (ibancpy + len - 4, iban, 4);
+  GNUNET_memcpy (cc, iban, 2);
+  GNUNET_memcpy (ibancpy, iban + 4, len - 4);
+  GNUNET_memcpy (ibancpy + len - 4, iban, 4);
   ibancpy[len] = '\0';
   cc_entry.code = cc;
   cc_entry.english = NULL;

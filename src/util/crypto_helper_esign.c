@@ -357,9 +357,9 @@ TALER_CRYPTO_helper_esign_sign_ (
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_EDDSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
-    memcpy (&sr->purpose,
-            purpose,
-            purpose_size);
+    GNUNET_memcpy (&sr->purpose,
+                   purpose,
+                   purpose_size);
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (esh->sock,
                                       buf,

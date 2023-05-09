@@ -932,9 +932,9 @@ proceed_with_handler (struct TEH_RequestContext *rc,
 
     /* Parse command-line arguments */
     /* make a copy of 'url' because 'strtok_r()' will modify */
-    memcpy (d,
-            url,
-            ulen);
+    GNUNET_memcpy (d,
+                   url,
+                   ulen);
     i = 0;
     args[i++] = strtok_r (d, "/", &sp);
     while ( (NULL != args[i - 1]) &&

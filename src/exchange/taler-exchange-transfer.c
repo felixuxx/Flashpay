@@ -563,9 +563,9 @@ wire_prepare_cb (void *cls,
   }
   wpd = GNUNET_malloc (sizeof (struct WirePrepareData)
                        + buf_size);
-  memcpy (&wpd[1],
-          buf,
-          buf_size);
+  GNUNET_memcpy (&wpd[1],
+                 buf,
+                 buf_size);
   wpd->buf_size = buf_size;
   wpd->row_id = rowid;
   GNUNET_CONTAINER_DLL_insert (wpd_head,
