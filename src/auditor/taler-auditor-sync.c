@@ -605,6 +605,9 @@ main (int argc,
                                    level,
                                    NULL));
   GNUNET_free (level);
+  /* suppress compiler warnings... */
+  GNUNET_assert (NULL != src_cfgfile);
+  GNUNET_assert (NULL != dst_cfgfile);
   if (0 == strcmp (src_cfgfile,
                    dst_cfgfile))
   {

@@ -655,6 +655,7 @@ parse_path (json_t *obj,
   json_t *next_obj = NULL;
   char *next_dot;
 
+  GNUNET_assert (NULL != id); /* make stupid compiler happy */
   if (NULL == next_id)
   {
     cb (cb_cls,
