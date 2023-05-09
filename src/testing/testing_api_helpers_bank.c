@@ -30,6 +30,10 @@
 #define BANK_FAIL() \
   do {GNUNET_break (0); return NULL; } while (0)
 
+#define JDBC_TALERCHECK \
+  "jdbc:postgresql://localhost/talercheck?socketFactory=org.newsclub.net.unix." \
+  "AFUNIXSocketFactory$FactoryArg&socketFactoryArg" \
+  "=/var/run/postgresql/.s.PGSQL.5432"
 
 struct TALER_FAKEBANK_Handle *
 TALER_TESTING_run_fakebank (const char *bank_url,
@@ -95,7 +99,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 
   setenv (
     "LIBEUFIN_NEXUS_DB_CONNECTION",
-    "jdbc:sqlite:/tmp/libeufin-exchange-test-nexusdb.sqlite3",
+    JDBC_TALERCHECK,
     1); // not overwriting any potentially existing DB.
 
   nexus_proc = GNUNET_OS_start_process (
@@ -145,7 +149,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   fprintf (stderr, "\n");
   setenv (
     "LIBEUFIN_SANDBOX_DB_CONNECTION",
-    "jdbc:sqlite:/tmp/libeufin-exchange-test-sandboxdb.sqlite3",
+    JDBC_TALERCHECK,
     1); // not overwriting any potentially existing DB.
   setenv (
     "LIBEUFIN_SANDBOX_ADMIN_PASSWORD",
@@ -366,7 +370,12 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
   /* DB preparation */
   if (reset_db)
   {
-    if (0 != system ("rm -f /tmp/libeufin-exchange-test-nexusdb.sqlite3"))
+    setenv (
+      "LIBEUFIN_NEXUS_DB_CONNECTION",
+      JDBC_TALERCHECK,
+      1); // not overwriting any potentially existing DB.
+
+    if (0 != system ("libeufin-nexus reset-tables"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to invoke db-removal command on nexusdb.\n");
@@ -374,7 +383,13 @@ TALER_TESTING_prepare_libeufin (const char *config_filename,
       GNUNET_CONFIGURATION_destroy (cfg);
       return GNUNET_SYSERR;
     }
-    if (0 != system ("rm -f /tmp/libeufin-exchange-test-sandboxdb.sqlite3"))
+
+    setenv (
+      "LIBEUFIN_SANDBOX_DB_CONNECTION",
+      JDBC_TALERCHECK,
+      1); // not overwriting any potentially existing DB.
+
+    if (0 != system ("libeufin-sandbox reset-tables"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to invoke db-removal command on sandboxdb.\n");

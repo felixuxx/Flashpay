@@ -365,6 +365,9 @@ TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
                                     MHD_HTTP_HEADER_CONTENT_LENGTH);
   if (NULL == cl)
   {
+    return GNUNET_OK;
+#if 0
+    /* wallet currently doesn't always send content-length! */
     GNUNET_break_op (0);
     return (MHD_YES ==
             TALER_MHD_reply_with_error (connection,
@@ -373,6 +376,7 @@ TALER_MHD_check_content_length_ (struct MHD_Connection *connection,
                                         MHD_HTTP_HEADER_CONTENT_LENGTH))
       ? GNUNET_NO
       : GNUNET_SYSERR;
+#endif
   }
   if (1 != sscanf (cl,
                    "%llu%c",
