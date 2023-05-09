@@ -22,7 +22,7 @@
 #define TALER_TEMPLATING_LIB_H
 
 #include <microhttpd.h>
-
+#include "taler_mhd_lib.h"
 
 /**
  * Fill in Mustach template @a tmpl using the data from @a root
