@@ -1366,10 +1366,10 @@ keys_completed_cb (void *cls,
                        kd.num_denom_keys);
 
     /* First make a shallow copy, we then need another pass for the RSA key... */
-    memcpy (kd.denom_keys,
-            kd_old.denom_keys,
-            kd_old.num_denom_keys * sizeof (struct
-                                            TALER_EXCHANGE_DenomPublicKey));
+    GNUNET_memcpy (kd.denom_keys,
+                   kd_old.denom_keys,
+                   kd_old.num_denom_keys * sizeof (struct
+                                                   TALER_EXCHANGE_DenomPublicKey));
 
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       TALER_denom_pub_deep_copy (&kd.denom_keys[i].key,
@@ -1391,10 +1391,10 @@ keys_completed_cb (void *cls,
       GNUNET_array_grow (anew->denom_keys,
                          anew->num_denom_keys,
                          aold->num_denom_keys);
-      memcpy (anew->denom_keys,
-              aold->denom_keys,
-              aold->num_denom_keys
-              * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
+      GNUNET_memcpy (anew->denom_keys,
+                     aold->denom_keys,
+                     aold->num_denom_keys
+                     * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
     }
 
     /* Old auditors got just copied into new ones.  */
