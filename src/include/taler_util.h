@@ -230,6 +230,16 @@ TALER_OS_init (void);
 
 
 /**
+ * Re-encode string at @a inp to match RFC 8785 (section 3.2.2.2).
+ *
+ * @param[in,out] inp pointer to string to re-encode
+ * @return number of bytes in resulting @a inp
+ */
+size_t
+TALER_rfc8785encode (char **inp);
+
+
+/**
  * URL-encode a string according to rfc3986.
  *
  * @param s string to encode

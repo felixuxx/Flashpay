@@ -258,12 +258,6 @@ lowdump (struct GNUNET_Buffer *buf,
 }
 
 
-/**
- * Re-encode string at @a inp to match RFC 8785 (section 3.2.2.2).
- *
- * @param[in,out] inp pointer to string to re-encode
- * @return number of bytes in resulting @a inp
- */
 size_t
 TALER_rfc8785encode (char **inp)
 {
