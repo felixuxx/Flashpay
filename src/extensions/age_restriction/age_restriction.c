@@ -207,10 +207,10 @@ libtaler_extension_age_restriction_init (void *arg)
     return NULL;
   }
 
-  mask.bits = TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK;
+  if (NULL == groups)
+    groups = GNUNET_strdup (TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_GROUPS);
 
-  if ((groups != NULL) &&
-      (GNUNET_OK != TALER_parse_age_group_string (groups, &mask)))
+  if (GNUNET_OK != TALER_parse_age_group_string (groups, &mask))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "[age restriction] couldn't parse age groups: '%s'\n",
