@@ -256,6 +256,8 @@ handle_lookup_finished (void *cls,
     GNUNET_assert (NULL == lh->decision_cb);
     TALER_EXCHANGE_lookup_aml_decision_cancel (lh);
     return;
+  case MHD_HTTP_NO_CONTENT:
+    break;
   case MHD_HTTP_BAD_REQUEST:
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);

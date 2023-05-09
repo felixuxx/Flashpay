@@ -542,7 +542,6 @@ handle_get_aml (struct TEH_RequestContext *rc,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          NULL);
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_ACCESS_DENIED,
