@@ -196,7 +196,7 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
     struct TALER_EXCHANGE_AmlDecisionDetail aml_history_ar[
       GNUNET_NZL (lr.details.ok.aml_history_length)];
     struct TALER_EXCHANGE_KycHistoryDetail kyc_attributes_ar[
-      lr.details.ok.kyc_attributes_length];
+      GNUNET_NZL (lr.details.ok.kyc_attributes_length)];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
     lr.details.ok.aml_history = aml_history_ar;

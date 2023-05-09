@@ -1239,9 +1239,11 @@ melt_traits (void *cls,
       TALER_TESTING_make_trait_h_age_commitment (
         index,
         rms->refresh_data.melt_h_age_commitment),
-      TALER_TESTING_make_trait_exchange_wd_value (index,
-                                                  &rms->mbds[index].alg_value),
       TALER_TESTING_make_trait_refresh_secret (&rms->rms),
+      (NULL != rms->mbds)
+      ? TALER_TESTING_make_trait_exchange_wd_value (index,
+                                                    &rms->mbds[index].alg_value)
+      : TALER_TESTING_trait_end (),
       TALER_TESTING_trait_end ()
     };
 
