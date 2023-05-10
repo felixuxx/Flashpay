@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -568,6 +568,58 @@ TALER_age_mask_to_string (
 enum GNUNET_GenericReturnValue
 TALER_JSON_parse_age_groups (const json_t *root,
                              struct TALER_AgeMask *mask);
+
+
+/**
+ * Handle to an external process that will assist
+ * with some JSON-to-JSON conversion.
+ */
+struct TALER_JSON_ExternalConversion;
+
+/**
+ * Type of a callback that receives a JSON @a result.
+ *
+ * @param cls closure
+ * @param status_type how did the process die
+ * @apram code termination status code from the process
+ * @param result some JSON result, NULL if we failed to get an JSON output
+ */
+typedef void
+(*TALER_JSON_JsonCallback) (void *cls,
+                            enum GNUNET_OS_ProcessStatusType status_type,
+                            unsigned long code,
+                            const json_t *result);
+
+
+/**
+ * Launch some external helper @a binary to convert some @a input
+ * and eventually call @a cb with the result.
+ *
+ * @param input JSON to serialize and pass to the helper process
+ * @param cb function to call on the result
+ * @param cb_cls closure for @a cb
+ * @param binary name of the binary to execute
+ * @param ... NULL-terminated list of arguments for the @a binary,
+ *        usually starting with again the name of the binary
+ * @return handle to cancel the operation (and kill the helper)
+ */
+struct TALER_JSON_ExternalConversion *
+TALER_JSON_external_conversion_start (const json_t *input,
+                                      TALER_JSON_JsonCallback cb,
+                                      void *cb_cls,
+                                      const char *binary,
+                                      ...);
+
+/**
+ * Abort external conversion, killing the process and preventing
+ * the callback from being called. Must not be called after the
+ * callback was invoked.
+ *
+ * @param[in] ec external conversion handle to cancel
+ */
+void
+TALER_JSON_external_conversion_stop (
+  struct TALER_JSON_ExternalConversion *ec);
 
 #undef __TALER_UTIL_LIB_H_INSIDE__
 

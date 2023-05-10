@@ -20,7 +20,8 @@ EXTRA_DIST = \
   taler-config.in \
   test_helper_eddsa.conf \
   test_helper_rsa.conf \
-  test_helper_cs.conf
+  test_helper_cs.conf \
+  test_conversion.sh
 
 bin_PROGRAMS = \
   taler-exchange-secmod-eddsa \
@@ -80,6 +81,7 @@ libtalerutil_la_SOURCES = \
   aml_signatures.c \
   auditor_signatures.c \
   config.c \
+  conversion.c \
   crypto.c \
   crypto_confirmation.c \
   crypto_contract.c \
@@ -125,6 +127,7 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 check_PROGRAMS = \
  test_age_restriction \
  test_amount \
+ test_conversion \
  test_crypto \
  test_helper_eddsa \
  test_helper_rsa \
@@ -139,6 +142,14 @@ test_age_restriction_SOURCES = \
   test_age_restriction.c
 test_age_restriction_LDADD = \
   -lgnunetutil \
+  libtalerutil.la
+
+test_conversion_SOURCES = \
+  test_conversion.c
+test_conversion_LDADD = \
+  -lgnunetjson \
+  -lgnunetutil \
+  -ljansson \
   libtalerutil.la
 
 test_amount_SOURCES = \
