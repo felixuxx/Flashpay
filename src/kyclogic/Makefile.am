@@ -16,7 +16,11 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
-  sample.conf
+  sample.conf \
+  persona-sample-reply.json
+
+bin_SCRIPTS = \
+  taler-exchange-kyc-persona-converter.sh
 
 lib_LTLIBRARIES = \
   libtalerkyclogic.la
