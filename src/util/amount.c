@@ -72,9 +72,8 @@ TALER_string_to_amount (const char *str,
   }
 
   GNUNET_assert (TALER_CURRENCY_LEN > (colon - str));
-  GNUNET_memcpy (amount->currency,
-                 str,
-                 colon - str);
+  for (unsigned int i = 0; i<colon - str; i++)
+    amount->currency[i] = toupper (str[i]);
   /* 0-terminate *and* normalize buffer by setting everything to '\0' */
   memset (&amount->currency [colon - str],
           0,
@@ -193,9 +192,8 @@ TALER_amount_hton (struct TALER_AmountNBO *res,
                  TALER_amount_is_valid (d));
   res->value = GNUNET_htonll (d->value);
   res->fraction = htonl (d->fraction);
-  GNUNET_memcpy (res->currency,
-                 d->currency,
-                 TALER_CURRENCY_LEN);
+  for (unsigned int i = 0; i<TALER_CURRENCY_LEN; i++)
+    res->currency[i] = toupper (d->currency[i]);
 }
 
 
@@ -225,9 +223,8 @@ TALER_amount_set_zero (const char *cur,
   memset (amount,
           0,
           sizeof (struct TALER_Amount));
-  GNUNET_memcpy (amount->currency,
-                 cur,
-                 slen);
+  for (unsigned int i = 0; i<slen; i++)
+    amount->currency[i] = toupper (cur[i]);
   return GNUNET_OK;
 }
 
