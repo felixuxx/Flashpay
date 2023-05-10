@@ -180,10 +180,12 @@ TALER_TEMPLATING_fill (const char *tmpl,
   int eno;
 
   if (0 !=
-      (eno = mustach_jansson (tmpl,
-                              (json_t *) root,
-                              (char **) result,
-                              result_size)))
+      (eno = mustach_jansson_mem (tmpl,
+                                  0, /* length of tmpl */
+                                  (json_t *) root,
+                                  Mustach_With_NoExtensions,
+                                  (char **) result,
+                                  result_size)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "mustach failed on template with error %d\n",
@@ -237,10 +239,12 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
       GNUNET_free (static_url);
     }
     if (0 !=
-        (eno = mustach_jansson (tmpl,
-                                (json_t *) root,
-                                &body,
-                                &body_size)))
+        (eno = mustach_jansson_mem (tmpl,
+                                    0,
+                                    (json_t *) root,
+                                    Mustach_With_NoExtensions,
+                                    &body,
+                                    &body_size)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "mustach failed on template `%s' with error %d\n",
