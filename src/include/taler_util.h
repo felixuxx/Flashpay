@@ -581,7 +581,7 @@ struct TALER_JSON_ExternalConversion;
  *
  * @param cls closure
  * @param status_type how did the process die
- * @apram code termination status code from the process
+ * @param code termination status code from the process
  * @param result some JSON result, NULL if we failed to get an JSON output
  */
 typedef void
