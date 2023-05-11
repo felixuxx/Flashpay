@@ -1041,7 +1041,7 @@ start_conversion (const struct TALER_KYCLOGIC_ProviderDetails *pd,
  * @param cls closure with a `struct TALER_KYCLOGIC_ProofHandle *`
  * @param status_type how did the process die
  * @param code termination status code from the process
- * @param result some JSON result, NULL if we failed to get an JSON output
+ * @param attr result some JSON result, NULL if we failed to get an JSON output
  */
 static void
 proof_post_conversion_cb (void *cls,
@@ -1603,7 +1603,7 @@ webhook_reply_error (struct TALER_KYCLOGIC_WebhookHandle *wh,
  * @param cls closure with a `struct TALER_KYCLOGIC_WebhookHandle *`
  * @param status_type how did the process die
  * @param code termination status code from the process
- * @param result some JSON result, NULL if we failed to get an JSON output
+ * @param attr some JSON result, NULL if we failed to get an JSON output
  */
 static void
 webhook_post_conversion_cb (void *cls,
