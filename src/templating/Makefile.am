@@ -41,6 +41,7 @@ libtalertemplating_la_LDFLAGS = \
 
 libmustach_la_SOURCES = \
   mustach.c mustach.h \
+  mustach-wrap.c mustach-wrap.h \
   mustach-jansson.c mustach-jansson.h
 
 test_mustach_jansson_SOURCES = \
