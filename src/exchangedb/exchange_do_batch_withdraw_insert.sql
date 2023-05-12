@@ -15,7 +15,7 @@
 --
 
 
-
+-- TODO[oec]: add min. age requirements handling
 
 CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw_insert(
   IN cs_nonce BYTEA,

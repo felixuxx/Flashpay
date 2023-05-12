@@ -31,6 +31,7 @@ TEH_PG_do_batch_withdraw (
   void *cls,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  /* TODO[oec]: add parameter for maximum age and [out]parameter for required age */
   const struct TALER_Amount *amount,
   bool *found,
   bool *balance_ok,
@@ -68,6 +69,7 @@ TEH_PG_do_batch_withdraw (
            " reserve_found"
            ",balance_ok"
            ",ruuid"
+           /* TODO[oec]: add parameter for maximum age and [out] parameter for required age */
            " FROM exchange_do_batch_withdraw"
            " ($1,$2,$3,$4,$5);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,

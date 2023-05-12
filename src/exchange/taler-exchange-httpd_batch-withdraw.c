@@ -466,10 +466,12 @@ batch_withdraw_transaction (void *cls,
     return qs;
   }
   wc->kyc.ok = true;
+
   qs = TEH_plugin->do_batch_withdraw (TEH_plugin->cls,
                                       wc->now,
                                       wc->reserve_pub,
                                       &wc->batch_total,
+                                      /* TODO[oec]: add parameter for maximum age and [out]parameter for required age */
                                       &found,
                                       &balance_ok,
                                       &ruuid);
@@ -493,6 +495,9 @@ batch_withdraw_transaction (void *cls,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
+  /* TODO[oec]: add error handling for age restriction requirements */
+
   if (! balance_ok)
   {
     TEH_plugin->rollback (TEH_plugin->cls);
