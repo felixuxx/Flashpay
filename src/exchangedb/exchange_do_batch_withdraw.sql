@@ -20,6 +20,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
   IN rpub BYTEA,
   IN now INT8,
   IN min_reserve_gc INT8,
+-- TODO[oec]: add [IN] parameter for maximum age and [OUT] parameter for required age
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT ruuid INT8)
@@ -38,11 +39,13 @@ BEGIN
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
 
+
 SELECT
    current_balance_val
   ,current_balance_frac
   ,gc_date
   ,reserve_uuid
+-- TODO[oec]: get age requirements
  INTO
    reserve_val
   ,reserve_frac
@@ -59,6 +62,8 @@ THEN
   ruuid=2;
   RETURN;
 END IF;
+
+-- TODO[oec]: check age requirements
 
 -- Check reserve balance is sufficient.
 IF (reserve_val > amount_val)
@@ -99,6 +104,7 @@ balance_ok=TRUE;
 
 END $$;
 
+-- TODO[oec]: Update comment re: age requirements are implemented
 COMMENT ON FUNCTION exchange_do_batch_withdraw(INT8, INT4, BYTEA, INT8, INT8)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result. Excludes storing the planchets.';
 
