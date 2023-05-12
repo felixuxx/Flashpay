@@ -1118,9 +1118,9 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
       ctx->error = true;
       return;
     }
-    memcpy (&td.details.refresh_transfer_keys.tprivs[0],
-            tpriv,
-            tpriv_size);
+    GNUNET_memcpy (&td.details.refresh_transfer_keys.tprivs[0],
+                   tpriv,
+                   tpriv_size);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
@@ -2767,14 +2767,14 @@ lrbt_cb_table_purse_deletion (void *cls,
 
 
 /**
- * Function called with withdraw_age_commitments table entries.
+ * Function called with age_withdraw_commitments table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_withdraw_age_commitments (void *cls,
+lrbt_cb_table_age_withdraw_commitments (void *cls,
                                         PGresult *result,
                                         unsigned int num_results)
 {
@@ -2788,26 +2788,26 @@ lrbt_cb_table_withdraw_age_commitments (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "withdraw_age_commitment_id",
+        "age_withdraw_commitment_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "h_commitment",
-        &td.details.withdraw_age_commitments.h_commitment),
+        &td.details.age_withdraw_commitments.h_commitment),
       GNUNET_PQ_result_spec_uint16 (
         "max_age",
-        &td.details.withdraw_age_commitments.max_age),
+        &td.details.age_withdraw_commitments.max_age),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount_with_fee",
-        &td.details.withdraw_age_commitments.amount_with_fee),
+        &td.details.age_withdraw_commitments.amount_with_fee),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_pub",
-        &td.details.withdraw_age_commitments.reserve_pub),
+        &td.details.age_withdraw_commitments.reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_sig",
-        &td.details.withdraw_age_commitments.reserve_sig),
+        &td.details.age_withdraw_commitments.reserve_sig),
       GNUNET_PQ_result_spec_uint32 (
         "noreveal_index",
-        &td.details.withdraw_age_commitments.noreveal_index),
+        &td.details.age_withdraw_commitments.noreveal_index),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2828,14 +2828,14 @@ lrbt_cb_table_withdraw_age_commitments (void *cls,
 
 
 /**
- * Function called with withdraw_age_revealed_coins table entries.
+ * Function called with age_withdraw_revealed_coins table entries.
  *
  * @param cls closure
  * @param result the postgres result
  * @param num_results the number of results in @a result
  */
 static void
-lrbt_cb_table_withdraw_age_revealed_coins (void *cls,
+lrbt_cb_table_age_withdraw_revealed_coins (void *cls,
                                            PGresult *result,
                                            unsigned int num_results)
 {
@@ -2848,22 +2848,22 @@ lrbt_cb_table_withdraw_age_revealed_coins (void *cls,
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 (
-        "withdraw_age_revealed_coins_id",
+        "age_withdraw_revealed_coins_id",
         &td.serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "h_commitment",
-        &td.details.withdraw_age_revealed_coins.h_commitment),
+        &td.details.age_withdraw_revealed_coins.h_commitment),
       GNUNET_PQ_result_spec_uint32 (
         "freshcoin_index",
-        &td.details.withdraw_age_revealed_coins.freshcoin_index),
+        &td.details.age_withdraw_revealed_coins.freshcoin_index),
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
-        &td.details.withdraw_age_revealed_coins.denominations_serial),
+        &td.details.age_withdraw_revealed_coins.denominations_serial),
       /* Note: h_coin_ev is recalculated */
       GNUNET_PQ_result_spec_variable_size (
         "coin_ev",
-        (void **) &td.details.withdraw_age_revealed_coins.coin_ev,
-        &td.details.withdraw_age_revealed_coins.coin_ev_size),
+        (void **) &td.details.age_withdraw_revealed_coins.coin_ev,
+        &td.details.age_withdraw_revealed_coins.coin_ev_size),
       TALER_PQ_result_spec_blinded_denom_sig (
         "ev_sig",
         &td.details.refresh_revealed_coins.ev_sig),
@@ -3598,9 +3598,9 @@ TEH_PG_lookup_records_by_table (void *cls,
     rh = &lrbt_cb_table_purse_deletion;
     break;
   case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
-    XPREPARE ("select_above_serial_by_table_withdraw_age_commitments",
+    XPREPARE ("select_above_serial_by_table_age_withdraw_commitments",
               "SELECT"
-              " withdraw_age_commitment_id"
+              " age_withdraw_commitment_id"
               ",h_commitment"
               ",amount_with_fee_val"
               ",amount_with_fee_frac"
@@ -3608,15 +3608,15 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",reserve_pub"
               ",reserve_sig"
               ",noreveal_index"
-              " FROM withdraw_age_commitments"
-              " WHERE withdraw_age_commitment_id > $1"
-              " ORDER BY withdraw_age_commitment_id ASC;");
-    rh = &lrbt_cb_table_withdraw_age_commitments;
+              " FROM age_withdraw_commitments"
+              " WHERE age_withdraw_commitment_id > $1"
+              " ORDER BY age_withdraw_commitment_id ASC;");
+    rh = &lrbt_cb_table_age_withdraw_commitments;
     break;
   case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
-    XPREPARE ("select_above_serial_by_table_withdraw_age_revealed_coins",
+    XPREPARE ("select_above_serial_by_table_age_withdraw_revealed_coins",
               "SELECT"
-              " withdraw_age_revealed_coins_serial_id"
+              " age_withdraw_revealed_coins_serial_id"
               ",h_commitment"
               ",freshcoin_index"
               ",denominations_serial"
@@ -3624,10 +3624,10 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",h_coin_ev"
               ",ev_sig"
               ",ewv"
-              " FROM withdraw_age_revealed_coins"
-              " WHERE withdraw_age_revealed_coins_serial_id > $1"
-              " ORDER BY withdraw_age_revealed_coins_serial_id ASC;");
-    rh = &lrbt_cb_table_withdraw_age_revealed_coins;
+              " FROM age_withdraw_revealed_coins"
+              " WHERE age_withdraw_revealed_coins_serial_id > $1"
+              " ORDER BY age_withdraw_revealed_coins_serial_id ASC;");
+    rh = &lrbt_cb_table_age_withdraw_revealed_coins;
     break;
   }
   if (NULL == rh)

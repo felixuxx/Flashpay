@@ -247,7 +247,7 @@ handle_deposit_finished (void *cls,
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
-                                   &dr.details.success.transaction_base_url),
+                                   &dr.details.ok.transaction_base_url),
           NULL),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &dh->exchange_timestamp),
@@ -332,7 +332,7 @@ handle_deposit_finished (void *cls,
           GNUNET_break_op (0);
           dr.hr.http_status = 0;
           dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
-          GNUNET_JSON_parse_free (spec);                    
+          GNUNET_JSON_parse_free (spec);
           break;
         }
       }
@@ -341,10 +341,10 @@ handle_deposit_finished (void *cls,
                                 dh);
       GNUNET_JSON_parse_free (spec);
     }
-    dr.details.success.exchange_sigs = dh->exchange_sigs;
-    dr.details.success.exchange_pub = &dh->exchange_pub;
-    dr.details.success.deposit_timestamp = dh->exchange_timestamp;
-    dr.details.success.num_signatures = dh->num_cdds;
+    dr.details.ok.exchange_sigs = dh->exchange_sigs;
+    dr.details.ok.exchange_pub = &dh->exchange_pub;
+    dr.details.ok.deposit_timestamp = dh->exchange_timestamp;
+    dr.details.ok.num_signatures = dh->num_cdds;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy

@@ -31,7 +31,13 @@
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_TIME_UNIT_FOREVER_ABS</name>
-      <anchorfile>gnunet_util_lib.h</anchorfile>
+      <anchorfile>gnunet_time_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_TIME_UNIT_ZERO_ABS</name>
+      <anchorfile>gnunet_time_lib.h</anchorfile>
       <arglist></arglist>
     </member>
   </compound>

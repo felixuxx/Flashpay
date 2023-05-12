@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -108,9 +108,9 @@ reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
                                       "ev_sigs");
   const json_t *j;
   unsigned int index;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = json,
-    .http_status = MHD_HTTP_OK
+  struct TALER_EXCHANGE_BatchWithdraw2Response bwr = {
+    .hr.reply = json,
+    .hr.http_status = MHD_HTTP_OK
   };
 
   if ( (NULL == ja) ||
@@ -141,10 +141,10 @@ reserve_batch_withdraw_ok (struct TALER_EXCHANGE_BatchWithdraw2Handle *wh,
   }
 
   /* signature is valid, return it to the application */
+  bwr.details.ok.blind_sigs = blind_sigs;
+  bwr.details.ok.blind_sigs_length = wh->num_coins;
   wh->cb (wh->cb_cls,
-          &hr,
-          blind_sigs,
-          wh->num_coins);
+          &bwr);
   /* make sure callback isn't called again after return */
   wh->cb = NULL;
   for (unsigned int i = 0; i<wh->num_coins; i++)
@@ -264,16 +264,16 @@ handle_reserve_batch_withdraw_finished (void *cls,
 {
   struct TALER_EXCHANGE_BatchWithdraw2Handle *wh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_BatchWithdraw2Response bwr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   wh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    bwr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -281,8 +281,8 @@ handle_reserve_batch_withdraw_finished (void *cls,
                                    j))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      bwr.hr.http_status = 0;
+      bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
     GNUNET_assert (NULL == wh->cb);
@@ -304,8 +304,8 @@ handle_reserve_batch_withdraw_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        bwr.hr.http_status = 0;
+        bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
     }
@@ -313,24 +313,24 @@ handle_reserve_batch_withdraw_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     GNUNET_break_op (0);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, the exchange basically just says
        that it doesn't know this reserve.  Can happen if we
        query before the wire transfer went through.
        We should simply pass the JSON reply to the application. */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* The exchange says that the reserve has insufficient funds;
@@ -340,13 +340,13 @@ handle_reserve_batch_withdraw_finished (void *cls,
                                                  j))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      bwr.hr.http_status = 0;
+      bwr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     else
     {
-      hr.ec = TALER_JSON_get_error_code (j);
-      hr.hint = TALER_JSON_get_error_hint (j);
+      bwr.hr.ec = TALER_JSON_get_error_code (j);
+      bwr.hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   case MHD_HTTP_GONE:
@@ -354,32 +354,30 @@ handle_reserve_batch_withdraw_finished (void *cls,
     /* Note: one might want to check /keys for revocation
        signature here, alas tricky in case our /keys
        is outdated => left to clients */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    bwr.hr.ec = TALER_JSON_get_error_code (j);
+    bwr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange batch withdraw\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) bwr.hr.ec);
     break;
   }
   if (NULL != wh->cb)
   {
     wh->cb (wh->cb_cls,
-            &hr,
-            NULL,
-            0);
+            &bwr);
     wh->cb = NULL;
   }
   TALER_EXCHANGE_batch_withdraw2_cancel (wh);

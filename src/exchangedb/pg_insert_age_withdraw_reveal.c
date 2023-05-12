@@ -42,8 +42,8 @@ TEH_PG_insert_age_withdraw_reveal (
   /* TODO */
 #if 0
   PREPARE (pg,
-           "insert_withdraw_age_revealed_coin",
-           "INSERT INTO withdraw_age_reveals "
+           "insert_age_withdraw_revealed_coin",
+           "INSERT INTO age_withdraw_reveals "
            "(h_commitment "
            ",freshcoin_index "
            ",denominations_serial "

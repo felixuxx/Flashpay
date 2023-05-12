@@ -90,9 +90,9 @@ compute_totp (struct GNUNET_TIME_Timestamp ts,
     mc = gcry_md_read (md,
                        GCRY_MD_SHA1);
     GNUNET_assert (NULL != mc);
-    memcpy (hmac,
-            mc,
-            sizeof (hmac));
+    GNUNET_memcpy (hmac,
+                   mc,
+                   sizeof (hmac));
     gcry_md_close (md);
   }
 
@@ -102,7 +102,7 @@ compute_totp (struct GNUNET_TIME_Timestamp ts,
 
     offset = hmac[sizeof (hmac) - 1] & 0x0f;
     for (int count = 0; count < 4; count++)
-      code |= hmac[offset + 3 - count] << (8 * count);
+      code |= ((uint32_t) hmac[offset + 3 - count]) << (8 * count);
     code &= 0x7fffffff;
     /* always use 8 digits (maximum) */
     code = code % 100000000;

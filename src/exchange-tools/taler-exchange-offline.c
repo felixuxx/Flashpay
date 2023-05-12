@@ -24,6 +24,8 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 #include "taler_extensions.h"
+#include <regex.h>
+
 
 /**
  * Name of the input for the 'sign' and 'show' operation.
@@ -1119,14 +1121,15 @@ load_offline_key (int do_create)
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure with a `struct DenomRevocationRequest`
- * @param hr HTTP response data
+ * @param dr response data
  */
 static void
 denom_revocation_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementRevokeDenominationResponse *dr)
 {
   struct DenomRevocationRequest *drr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &dr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1208,14 +1211,15 @@ upload_denom_revocation (const char *exchange_url,
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure with a `struct SignkeyRevocationRequest`
- * @param hr HTTP response data
+ * @param sr response data
  */
 static void
 signkey_revocation_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementRevokeSigningKeyResponse *sr)
 {
   struct SignkeyRevocationRequest *srr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &sr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1489,13 +1493,14 @@ upload_auditor_del (const char *exchange_url,
  * Function called with information about the post wire add operation result.
  *
  * @param cls closure with a `struct WireAddRequest`
- * @param hr HTTP response data
+ * @param wer response data
  */
 static void
 wire_add_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr)
+             const struct TALER_EXCHANGE_ManagementWireEnableResponse *wer)
 {
   struct WireAddRequest *war = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &wer->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1533,10 +1538,21 @@ upload_wire_add (const char *exchange_url,
   struct GNUNET_TIME_Timestamp start_time;
   struct WireAddRequest *war;
   const char *err_name;
+  const char *conversion_url = NULL;
+  json_t *debit_restrictions;
+  json_t *credit_restrictions;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
                              &payto_uri),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_string ("conversion_url",
+                               &conversion_url),
+      NULL),
+    GNUNET_JSON_spec_json ("debit_restrictions",
+                           &debit_restrictions),
+    GNUNET_JSON_spec_json ("credit_restrictions",
+                           &credit_restrictions),
     GNUNET_JSON_spec_timestamp ("validity_start",
                                 &start_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig_add",
@@ -1561,6 +1577,7 @@ upload_wire_add (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
+    GNUNET_JSON_parse_free (spec);
     test_shutdown ();
     return;
   }
@@ -1574,6 +1591,7 @@ upload_wire_add (const char *exchange_url,
                   "payto:// URI `%s' is malformed\n",
                   payto_uri);
       global_ret = EXIT_FAILURE;
+      GNUNET_JSON_parse_free (spec);
       test_shutdown ();
       return;
     }
@@ -1588,6 +1606,7 @@ upload_wire_add (const char *exchange_url,
                   "payto URI is malformed: %s\n",
                   msg);
       GNUNET_free (msg);
+      GNUNET_JSON_parse_free (spec);
       test_shutdown ();
       global_ret = EXIT_INVALIDARGUMENT;
       return;
@@ -1599,6 +1618,9 @@ upload_wire_add (const char *exchange_url,
     TALER_EXCHANGE_management_enable_wire (ctx,
                                            exchange_url,
                                            payto_uri,
+                                           conversion_url,
+                                           debit_restrictions,
+                                           credit_restrictions,
                                            start_time,
                                            &master_sig_add,
                                            &master_sig_wire,
@@ -1607,6 +1629,7 @@ upload_wire_add (const char *exchange_url,
   GNUNET_CONTAINER_DLL_insert (war_head,
                                war_tail,
                                war);
+  GNUNET_JSON_parse_free (spec);
 }
 
 
@@ -1614,13 +1637,14 @@ upload_wire_add (const char *exchange_url,
  * Function called with information about the post wire del operation result.
  *
  * @param cls closure with a `struct WireDelRequest`
- * @param hr HTTP response data
+ * @param wdres response data
  */
 static void
 wire_del_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr)
+             const struct TALER_EXCHANGE_ManagementWireDisableResponse *wdres)
 {
   struct WireDelRequest *wdr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &wdres->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1927,14 +1951,15 @@ upload_global_fee (const char *exchange_url,
  * Function called with information about the drain profits operation.
  *
  * @param cls closure with a `struct DrainProfitsRequest`
- * @param hr HTTP response data
+ * @param mdr response data
  */
 static void
 drain_profits_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementDrainResponse *mdr)
 {
   struct DrainProfitsRequest *dpr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mdr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2033,14 +2058,15 @@ upload_drain (const char *exchange_url,
  * Function called with information about the post upload keys operation result.
  *
  * @param cls closure with a `struct UploadKeysRequest`
- * @param hr HTTP response data
+ * @param mr response data
  */
 static void
 keys_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementPostKeysResponse *mr)
 {
   struct UploadKeysRequest *ukr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2206,14 +2232,15 @@ upload_keys (const char *exchange_url,
  * Function called with information about the post upload extensions operation result.
  *
  * @param cls closure with a `struct UploadExtensionsRequest`
- * @param hr HTTP response data
+ * @param er response data
  */
 static void
 extensions_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementPostExtensionsResponse *er)
 {
   struct UploadExtensionsRequest *uer = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &er->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2447,14 +2474,15 @@ add_partner (const char *exchange_url,
  * Function called with information about the AML officer update operation.
  *
  * @param cls closure with a `struct AmlStaffRequest`
- * @param hr HTTP response data
+ * @param ar response data
  */
 static void
 update_aml_officer_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementUpdateAmlOfficerResponse *ar)
 {
   struct AmlStaffRequest *asr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &ar->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2950,6 +2978,96 @@ do_del_auditor (char *const *args)
 
 
 /**
+ * Parse account restriction.
+ *
+ * @param args the array of command-line arguments to process next
+ * @param[in,out] restrictions JSON array to update
+ * @return -1 on error, otherwise number of arguments from @a args that were used
+ */
+static int
+parse_restriction (char *const *args,
+                   json_t *restrictions)
+{
+  if (NULL == args[0])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Restriction TYPE argument missing\n");
+    return -1;
+  }
+  if (0 == strcmp (args[0],
+                   "deny"))
+  {
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     restrictions,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_string ("type",
+                                                "deny"))));
+    return 1;
+  }
+  if (0 == strcmp (args[0],
+                   "regex"))
+  {
+    json_t *i18n;
+    json_error_t err;
+
+    if ( (NULL == args[1]) ||
+         (NULL == args[2]) ||
+         (NULL == args[3]) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Mandatory arguments for restriction of type `regex' missing (REGEX, HINT, HINT-I18 required)\n");
+      return -1;
+    }
+    {
+      regex_t ex;
+
+      if (0 != regcomp (&ex,
+                        args[1],
+                        REG_NOSUB | REG_EXTENDED))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Invalid regular expression `%s'\n",
+                    args[1]);
+        return -1;
+      }
+      regfree (&ex);
+    }
+
+    i18n = json_loads (args[3],
+                       JSON_REJECT_DUPLICATES,
+                       &err);
+    if (NULL == i18n)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid JSON for restriction of type `regex': `%s` at %d\n",
+                  args[3],
+                  err.position);
+      return -1;
+    }
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     restrictions,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_string ("type",
+                                                "regex"),
+                       GNUNET_JSON_pack_string ("regex",
+                                                args[1]),
+                       GNUNET_JSON_pack_string ("human_hint",
+                                                args[2]),
+                       GNUNET_JSON_pack_object_steal ("human_hint_i18n",
+                                                      i18n)
+                       )));
+    return 4;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Restriction TYPE `%s' unsupported\n",
+              args[0]);
+  return -1;
+}
+
+
+/**
  * Add wire account.
  *
  * @param args the array of command-line arguments to process next;
@@ -2961,6 +3079,10 @@ do_add_wire (char *const *args)
   struct TALER_MasterSignatureP master_sig_add;
   struct TALER_MasterSignatureP master_sig_wire;
   struct GNUNET_TIME_Timestamp now;
+  const char *conversion_url = NULL;
+  json_t *debit_restrictions;
+  json_t *credit_restrictions;
+  unsigned int num_args = 1;
 
   if (NULL != in)
   {
@@ -3011,24 +3133,101 @@ do_add_wire (char *const *args)
     }
     GNUNET_free (wire_method);
   }
+  debit_restrictions = json_array ();
+  GNUNET_assert (NULL != debit_restrictions);
+  credit_restrictions = json_array ();
+  GNUNET_assert (NULL != credit_restrictions);
+  while (NULL != args[num_args])
+  {
+    if (0 == strcmp (args[num_args],
+                     "conversion-url"))
+    {
+      num_args++;
+      conversion_url = args[num_args];
+      if (NULL == conversion_url)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "'conversion-url' requires an argument\n");
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args++;
+      continue;
+    }
+    if (0 == strcmp (args[num_args],
+                     "credit-restriction"))
+    {
+      int iret;
+
+      num_args++;
+      iret = parse_restriction (&args[num_args],
+                                credit_restrictions);
+      if (iret <= 0)
+      {
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args += iret;
+      continue;
+    }
+    if (0 == strcmp (args[num_args],
+                     "debit-restriction"))
+    {
+      int iret;
+
+      num_args++;
+      iret = parse_restriction (&args[num_args],
+                                debit_restrictions);
+      if (iret <= 0)
+      {
+        global_ret = EXIT_INVALIDARGUMENT;
+        test_shutdown ();
+        json_decref (debit_restrictions);
+        json_decref (credit_restrictions);
+        return;
+      }
+      num_args += iret;
+      continue;
+    }
+    break;
+  }
   TALER_exchange_offline_wire_add_sign (args[0],
+                                        conversion_url,
+                                        debit_restrictions,
+                                        credit_restrictions,
                                         now,
                                         &master_priv,
                                         &master_sig_add);
   TALER_exchange_wire_signature_make (args[0],
+                                      conversion_url,
+                                      debit_restrictions,
+                                      credit_restrictions,
                                       &master_priv,
                                       &master_sig_wire);
   output_operation (OP_ENABLE_WIRE,
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("payto_uri",
                                                args[0]),
+                      GNUNET_JSON_pack_array_steal ("debit_restrictions",
+                                                    debit_restrictions),
+                      GNUNET_JSON_pack_array_steal ("credit_restrictions",
+                                                    credit_restrictions),
+                      GNUNET_JSON_pack_allow_null (
+                        GNUNET_JSON_pack_string ("conversion_url",
+                                                 conversion_url)),
                       GNUNET_JSON_pack_timestamp ("validity_start",
                                                   now),
                       GNUNET_JSON_pack_data_auto ("master_sig_add",
                                                   &master_sig_add),
                       GNUNET_JSON_pack_data_auto ("master_sig_wire",
                                                   &master_sig_wire)));
-  next (args + 1);
+  next (args + num_args);
 }
 
 
@@ -3643,18 +3842,15 @@ enable_aml_staff (char *const *args)
  * whether there are subsequent commands).
  *
  * @param cls closure with the `char **` remaining args
- * @param hr HTTP response data
- * @param keys information about the various keys used
- *        by the exchange, NULL if /management/keys failed
+ * @param mgr response data
  */
 static void
 download_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr,
-             const struct TALER_EXCHANGE_FutureKeys *keys)
+             const struct TALER_EXCHANGE_ManagementGetKeysResponse *mgr)
 {
   char *const *args = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mgr->hr;
 
-  (void) keys;
   mgkh = NULL;
   switch (hr->http_status)
   {
@@ -5045,7 +5241,7 @@ work (void *cls)
     {
       .name = "enable-account",
       .help =
-        "enable wire account of the exchange (payto-URI must be given as argument)",
+        "enable wire account of the exchange (payto-URI must be given as argument; for optional argument see man page)",
       .cb = &do_add_wire
     },
     {

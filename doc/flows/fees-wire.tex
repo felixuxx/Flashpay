@@ -1,0 +1,30 @@
+\section{Fees per wire} \label{sec:fees:wire}
+
+Wire fees apply whenever an exchange needs to initiate a wire transfer to
+another bank account.  Wire fees do not apply to every individual payment to a
+merchant, as merchants can choose to {\em aggregate} multiple micropayments
+into one large payment on the wire.  Wire fees also do not apply to
+wallet-to-wallet payments within the Taler system.
+
+A {\bf wire} fee is applied when a merchant receives
+an aggregated payment into their bank account.
+
+A {\bf closing} fee is applied when a wallet fails to
+withdraw coins and money has to be sent back to the
+originating bank account.
+
+\begin{table}[h!]
+  \caption{Table with wire fees. Wire fees are set annually.}
+  \label{table:fees:wire}
+  \begin{center}
+    \begin{tabular}{l|c|r}
+      {\bf Year} & {\bf Fee type} & {\bf Amount}   \\ \hline \hline
+      2023       & wire           & {\em CHF 0.05} \\
+      2023       & closing        & {\em CHF 0.10} \\
+      2024       & wire           & {\em CHF 0.05} \\
+      2024       & closing        & {\em CHF 0.10} \\
+      2025       & wire           & {\em CHF 0.05} \\
+      2025       & closing        & {\em CHF 0.10} \\
+  \end{tabular}
+  \end{center}
+\end{table}

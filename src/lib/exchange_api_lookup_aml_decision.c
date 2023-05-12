@@ -190,17 +190,17 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  lr.details.success.aml_history_length = json_array_size (aml_history);
-  lr.details.success.kyc_attributes_length = json_array_size (kyc_attributes);
+  lr.details.ok.aml_history_length = json_array_size (aml_history);
+  lr.details.ok.kyc_attributes_length = json_array_size (kyc_attributes);
   {
     struct TALER_EXCHANGE_AmlDecisionDetail aml_history_ar[
-      GNUNET_NZL (lr.details.success.aml_history_length)];
+      GNUNET_NZL (lr.details.ok.aml_history_length)];
     struct TALER_EXCHANGE_KycHistoryDetail kyc_attributes_ar[
-      lr.details.success.kyc_attributes_length];
+      GNUNET_NZL (lr.details.ok.kyc_attributes_length)];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
-    lr.details.success.aml_history = aml_history_ar;
-    lr.details.success.kyc_attributes = kyc_attributes_ar;
+    lr.details.ok.aml_history = aml_history_ar;
+    lr.details.ok.kyc_attributes = kyc_attributes_ar;
     ret = parse_aml_history (aml_history,
                              aml_history_ar);
     if (GNUNET_OK == ret)
@@ -256,6 +256,8 @@ handle_lookup_finished (void *cls,
     GNUNET_assert (NULL == lh->decision_cb);
     TALER_EXCHANGE_lookup_aml_decision_cancel (lh);
     return;
+  case MHD_HTTP_NO_CONTENT:
+    break;
   case MHD_HTTP_BAD_REQUEST:
     lr.hr.ec = TALER_JSON_get_error_code (j);
     lr.hr.hint = TALER_JSON_get_error_hint (j);

@@ -513,6 +513,9 @@ TALER_parse_age_group_string (
   unsigned int val = 0;
   char c;
 
+  /* reset mask */
+  mask->bits = 0;
+
   while (*pos)
   {
     c = *pos++;

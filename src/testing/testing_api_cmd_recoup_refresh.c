@@ -73,15 +73,14 @@ struct RecoupRefreshState
  * was paid back belonged to the right old coin.
  *
  * @param cls closure
- * @param hr HTTP response details
- * @param old_coin_pub public key of the dirty coin
+ * @param rrr response details
  */
 static void
 recoup_refresh_cb (void *cls,
-                   const struct TALER_EXCHANGE_HttpResponse *hr,
-                   const struct TALER_CoinSpendPublicKeyP *old_coin_pub)
+                   const struct TALER_EXCHANGE_RecoupRefreshResponse *rrr)
 {
   struct RecoupRefreshState *rrs = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &rrr->hr;
   struct TALER_TESTING_Interpreter *is = rrs->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   char *cref;
@@ -150,7 +149,7 @@ recoup_refresh_cb (void *cls,
       GNUNET_CRYPTO_eddsa_key_get_public (&dirty_priv->eddsa_priv,
                                           &oc.eddsa_pub);
       if (0 != GNUNET_memcmp (&oc,
-                              old_coin_pub))
+                              &rrr->details.ok.old_coin_pub))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);

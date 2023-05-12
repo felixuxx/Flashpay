@@ -25,6 +25,7 @@
 #include "taler_util.h"
 #include "taler_attributes.h"
 #include <gnunet/gnunet_json_lib.h>
+#include <unistr.h>
 
 
 const char *
@@ -40,9 +41,9 @@ TALER_b2s (const void *buf,
                       &hc);
   tmp = GNUNET_STRINGS_data_to_string_alloc (&hc,
                                              sizeof (hc));
-  memcpy (ret,
-          tmp,
-          8);
+  GNUNET_memcpy (ret,
+                 tmp,
+                 8);
   GNUNET_free (tmp);
   ret[8] = '\0';
   return ret;
@@ -205,6 +206,164 @@ TALER_denom_fee_check_currency (
 
 
 /**
+ * Dump character in the low range into @a buf
+ * following RFC 8785.
+ *
+ * @param[in,out] buf buffer to modify
+ * @param val value to dump
+ */
+static void
+lowdump (struct GNUNET_Buffer *buf,
+         unsigned char val)
+{
+  char scratch[7];
+
+  switch (val)
+  {
+  case 0x8:
+    GNUNET_buffer_write (buf,
+                         "\\b",
+                         2);
+    break;
+  case 0x9:
+    GNUNET_buffer_write (buf,
+                         "\\t",
+                         2);
+    break;
+  case 0xA:
+    GNUNET_buffer_write (buf,
+                         "\\n",
+                         2);
+    break;
+  case 0xC:
+    GNUNET_buffer_write (buf,
+                         "\\f",
+                         2);
+    break;
+  case 0xD:
+    GNUNET_buffer_write (buf,
+                         "\\r",
+                         2);
+    break;
+  default:
+    GNUNET_snprintf (scratch,
+                     sizeof (scratch),
+                     "\\u%04x",
+                     (unsigned int) val);
+    GNUNET_buffer_write (buf,
+                         scratch,
+                         6);
+    break;
+  }
+}
+
+
+size_t
+TALER_rfc8785encode (char **inp)
+{
+  struct GNUNET_Buffer buf = { 0 };
+  size_t left = strlen (*inp) + 1;
+  size_t olen;
+  char *in = *inp;
+  const char *pos = in;
+
+  GNUNET_buffer_prealloc (&buf,
+                          left + 40);
+  buf.warn_grow = 0; /* disable, + 40 is just a wild guess */
+  while (1)
+  {
+    int mbl = u8_mblen ((unsigned char *) pos,
+                        left);
+    unsigned char val;
+
+    if (0 == mbl)
+      break;
+    val = (unsigned char) *pos;
+    if ( (1 == mbl) &&
+         (val <= 0x1F) )
+    {
+      /* Should not happen, as input is produced by
+       * JSON stringification */
+      GNUNET_break (0);
+      lowdump (&buf,
+               val);
+    }
+    else if ( (1 == mbl) && ('\\' == *pos) )
+    {
+      switch (*(pos + 1))
+      {
+      case '\\':
+        mbl = 2;
+        GNUNET_buffer_write (&buf,
+                             pos,
+                             mbl);
+        break;
+      case 'u':
+        {
+          unsigned int num;
+          uint32_t n32;
+          unsigned char res[8];
+          size_t rlen;
+
+          GNUNET_assert ( (1 ==
+                           sscanf (pos + 2,
+                                   "%4x",
+                                   &num)) ||
+                          (1 ==
+                           sscanf (pos + 2,
+                                   "%4X",
+                                   &num)) );
+          mbl = 6;
+          n32 = (uint32_t) num;
+          rlen = sizeof (res);
+          u32_to_u8 (&n32,
+                     1,
+                     res,
+                     &rlen);
+          if ( (1 == rlen) &&
+               (res[0] <= 0x1F) )
+          {
+            lowdump (&buf,
+                     res[0]);
+          }
+          else
+          {
+            GNUNET_buffer_write (&buf,
+                                 (const char *) res,
+                                 rlen);
+          }
+        }
+        break;
+      default:
+        mbl = 2;
+        GNUNET_buffer_write (&buf,
+                             pos,
+                             mbl);
+        break;
+      }
+    }
+    else
+    {
+      GNUNET_buffer_write (&buf,
+                           pos,
+                           mbl);
+    }
+    left -= mbl;
+    pos += mbl;
+  }
+
+  /* 0-terminate buffer */
+  GNUNET_buffer_write (&buf,
+                       "",
+                       1);
+  GNUNET_free (in);
+  *inp = GNUNET_buffer_reap (&buf,
+                             &olen);
+  return olen;
+}
+
+
+/**
  * Hash normalized @a j JSON object or array and
  * store the result in @a hc.
  *
@@ -221,11 +380,11 @@ TALER_json_hash (const json_t *j,
   cstr = json_dumps (j,
                      JSON_COMPACT | JSON_SORT_KEYS);
   GNUNET_assert (NULL != cstr);
-  clen = strlen (cstr);
+  clen = TALER_rfc8785encode (&cstr);
   GNUNET_CRYPTO_hash (cstr,
                       clen,
                       hc);
-  free (cstr);
+  GNUNET_free (cstr);
 }
 
 

@@ -310,6 +310,7 @@ cleanup (void *cls,
   (void) toe;
   if (NULL == rc)
     return;
+  MHD_destroy_post_processor (rc->pp);
   GNUNET_free (rc->code);
   GNUNET_free (rc->client_id);
   GNUNET_free (rc->redirect_uri);

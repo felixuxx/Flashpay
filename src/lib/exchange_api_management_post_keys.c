@@ -82,9 +82,9 @@ handle_post_keys_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementPostKeysHandle *ph = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementPostKeysResponse pkr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   ph->job = NULL;
@@ -93,32 +93,32 @@ handle_post_keys_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    pkr.hr.ec = TALER_JSON_get_error_code (json);
+    pkr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    pkr.hr.ec = TALER_JSON_get_error_code (json);
+    pkr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_REQUEST_ENTITY_TOO_LARGE:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    pkr.hr.ec = TALER_JSON_get_error_code (json);
+    pkr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    pkr.hr.ec = TALER_JSON_get_error_code (json);
+    pkr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management post keys\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) pkr.hr.ec);
     break;
   }
   if (NULL != ph->cb)
   {
     ph->cb (ph->cb_cls,
-            &hr);
+            &pkr);
     ph->cb = NULL;
   }
   TALER_EXCHANGE_post_management_keys_cancel (ph);

@@ -1,0 +1,45 @@
+\section{KYC: Withdraw}
+
+\begin{figure}[h!]
+  \begin{center}
+\begin{tikzpicture}[node distance=1cm,font=\sffamily,
+    start/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=yellow!30},
+    end/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30},
+    process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=orange!30},
+    failed/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=red!30},
+    io/.style={trapezium, trapezium left angle=70, trapezium right angle=110, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30},
+    decision/.style={diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30},
+    arr/.style={very thick,-latex},
+    every edge quotes/.style = {auto, font=\footnotesize, sloped}
+    ]
+ \node (start) [start] {Start};
+ \node (country) [decision,below=of start,text width=3cm] {Wire transfer originates from allowed country?};
+ \node (amount) [decision, below=of country,text width=3cm] {Transferred less than maximum amount from origin account over last month?};
+ \node (allow) [end, below=of amount] {Allow};
+ \node (deny) [failed, right=of allow] {Deny};
+ \draw[arr] (start) -> (country) {};
+ \draw[arr] (country) -> (amount);
+ \draw (country) edge["Yes"] (amount);
+ \draw[arr] (country.east) -> (deny);
+ \draw (country.east) edge["No"] (deny);
+ \draw[arr] (amount) -> (allow);
+ \draw (amount) edge["Yes"] (allow);
+ \draw[arr] (amount.east) -> (deny);
+ \draw (amount.east) edge["No"] (deny);
+\end{tikzpicture}
+  \end{center}
+  \caption{Regulatory process when withdrawing digital cash from a
+    bank account.
+    When the transfer is denied the money is (eventually) returned to
+    the originating bank account.}
+  \label{fig:kyc:withdraw}
+\end{figure}
+
+\begin{table}[h!]
+  \caption{Settings for the withdraw trigger}
+  \begin{tabular}{l|l|r}
+    {\bf Setting}            & {\bf Type}         & {\bf Value} \\ \hline \hline
+    Allowed bank accounts    & RFC 8905 RegEx     & {\em CH*} \\ \hline
+    Monthly withdraw maximum & Amount             & {\em 1000 CHF} \\
+  \end{tabular}
+\end{table}

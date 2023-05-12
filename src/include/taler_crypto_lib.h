@@ -5512,6 +5512,9 @@ TALER_exchange_offline_global_fee_verify (
  * Create wire account addition signature.
  *
  * @param payto_uri bank account
+ * @param conversion_url URL of the conversion service, or NULL if none
+ * @param debit_restrictions JSON encoding of debit restrictions on the account; see AccountRestriction in the spec
+ * @param credit_restrictions JSON encoding of credit restrictions on the account; see AccountRestriction in the spec
  * @param now timestamp to use for the signature (rounded)
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
@@ -5519,6 +5522,9 @@ TALER_exchange_offline_global_fee_verify (
 void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
@@ -5528,6 +5534,9 @@ TALER_exchange_offline_wire_add_sign (
  * Verify wire account addition signature.
  *
  * @param payto_uri bank account
+ * @param conversion_url URL of the conversion service, or NULL if none
+ * @param debit_restrictions JSON encoding of debit restrictions on the account; see AccountRestriction in the spec
+ * @param credit_restrictions JSON encoding of credit restrictions on the account; see AccountRestriction in the spec
  * @param sign_time timestamp when signature was created
  * @param master_pub public key to verify against
  * @param master_sig the signature the signature
@@ -5536,6 +5545,9 @@ TALER_exchange_offline_wire_add_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
@@ -5578,6 +5590,9 @@ TALER_exchange_offline_wire_del_verify (
  * Check the signature in @a master_sig.
  *
  * @param payto_uri URI that is signed
+ * @param conversion_url URL of the conversion service, or NULL if none
+ * @param debit_restrictions JSON encoding of debit restrictions on the account; see AccountRestriction in the spec
+ * @param credit_restrictions JSON encoding of credit restrictions on the account; see AccountRestriction in the spec
  * @param master_pub master public key of the exchange
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
@@ -5585,6 +5600,9 @@ TALER_exchange_offline_wire_del_verify (
 enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -5593,12 +5611,18 @@ TALER_exchange_wire_signature_check (
  * Create a signed wire statement for the given account.
  *
  * @param payto_uri account specification
+ * @param conversion_url URL of the conversion service, or NULL if none
+ * @param debit_restrictions JSON encoding of debit restrictions on the account; see AccountRestriction in the spec
+ * @param credit_restrictions JSON encoding of credit restrictions on the account; see AccountRestriction in the spec
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
 void
 TALER_exchange_wire_signature_make (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 

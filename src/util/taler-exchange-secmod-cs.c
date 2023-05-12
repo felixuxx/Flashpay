@@ -423,9 +423,9 @@ generate_response (struct DenominationKey *dk)
                                  &an->secm_sig);
   an->secm_pub = TES_smpub;
   p = (void *) &an[1];
-  memcpy (p,
-          denom->section,
-          nlen);
+  GNUNET_memcpy (p,
+                 denom->section,
+                 nlen);
   dk->an = an;
 }
 
@@ -1373,9 +1373,9 @@ cs_client_init (struct TES_Client *client)
          NULL != dk;
          dk = dk->next)
     {
-      memcpy (&buf[obs],
-              dk->an,
-              ntohs (dk->an->header.size));
+      GNUNET_memcpy (&buf[obs],
+                     dk->an,
+                     ntohs (dk->an->header.size));
       obs += ntohs (dk->an->header.size);
     }
   }
@@ -1472,18 +1472,18 @@ cs_update_client_keys (struct TES_Client *client)
           .h_cs = key->h_cs
         };
 
-        memcpy (&buf[obs],
-                &pn,
-                sizeof (pn));
+        GNUNET_memcpy (&buf[obs],
+                       &pn,
+                       sizeof (pn));
         GNUNET_assert (obs + sizeof (pn)
                        > obs);
         obs += sizeof (pn);
       }
       else
       {
-        memcpy (&buf[obs],
-                key->an,
-                ntohs (key->an->header.size));
+        GNUNET_memcpy (&buf[obs],
+                       key->an,
+                       ntohs (key->an->header.size));
         GNUNET_assert (obs + ntohs (key->an->header.size)
                        > obs);
         obs += ntohs (key->an->header.size);

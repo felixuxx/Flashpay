@@ -6,6 +6,15 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+noinst_PROGRAMS = \
+  taler-mustach-tool
+
+taler_mustach_tool_SOURCES = \
+  mustach-tool.c \
+  mustach-jansson.h
+taler_mustach_tool_LDADD = \
+  libmustach.la \
+  -ljansson
 
 lib_LTLIBRARIES = \
   libtalertemplating.la
@@ -15,6 +24,7 @@ noinst_LTLIBRARIES = \
 
 libtalertemplating_la_SOURCES = \
   mustach.c mustach.h \
+  mustach-wrap.c mustach-wrap.h \
   mustach-jansson.c mustach-jansson.h \
   templating_api.c
 libtalertemplating_la_LIBADD = \
@@ -31,6 +41,7 @@ libtalertemplating_la_LDFLAGS = \
 
 libmustach_la_SOURCES = \
   mustach.c mustach.h \
+  mustach-wrap.c mustach-wrap.h \
   mustach-jansson.c mustach-jansson.h
 
 test_mustach_jansson_SOURCES = \

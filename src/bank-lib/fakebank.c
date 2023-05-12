@@ -1389,9 +1389,9 @@ make_transfer (
   if (NULL != timestamp)
     *timestamp = t->date;
   t->type = T_DEBIT;
-  memcpy (t->subject.debit.exchange_base_url,
-          exchange_base_url,
-          url_len);
+  GNUNET_memcpy (t->subject.debit.exchange_base_url,
+                 exchange_base_url,
+                 url_len);
   t->subject.debit.wtid = *subject;
   if (NULL == request_uid)
     GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_NONCE,

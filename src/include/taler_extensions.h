@@ -344,10 +344,6 @@ TALER_extensions_verify_manifests_signature (
  * The default age mask represents the age groups
  * 0-7, 8-9, 10-11, 12-13, 14-15, 16-17, 18-20, 21-...
  */
-#define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK (1 | 1 << 8 | 1 << 10 \
-                                                          | 1 << 12 | 1 << 14 \
-                                                          | 1 << 16 | 1 << 18 \
-                                                          | 1 << 21)
 #define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
 
 

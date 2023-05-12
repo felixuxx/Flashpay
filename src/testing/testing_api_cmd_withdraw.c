@@ -297,10 +297,10 @@ reserve_withdraw_cb (void *cls,
   {
   case MHD_HTTP_OK:
     TALER_denom_sig_deep_copy (&ws->sig,
-                               &wr->details.success.sig);
-    ws->coin_priv = wr->details.success.coin_priv;
-    ws->bks = wr->details.success.bks;
-    ws->exchange_vals = wr->details.success.exchange_vals;
+                               &wr->details.ok.sig);
+    ws->coin_priv = wr->details.ok.coin_priv;
+    ws->bks = wr->details.ok.bks;
+    ws->exchange_vals = wr->details.ok.exchange_vals;
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,

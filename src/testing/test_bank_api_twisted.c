@@ -85,9 +85,9 @@ run (void *cls,
   memset (&wtid,
           0x5a,
           sizeof (wtid));
-  memcpy (&exchange_auth_twisted,
-          &bc.exchange_auth,
-          sizeof (struct TALER_BANK_AuthenticationData));
+  GNUNET_memcpy (&exchange_auth_twisted,
+                 &bc.exchange_auth,
+                 sizeof (struct TALER_BANK_AuthenticationData));
   if (with_fakebank)
     exchange_auth_twisted.wire_gateway_url =
       "http://localhost:8888/2/";

@@ -13,3 +13,4 @@ test-exchangedb-by-j-postgres
 test-exchangedb-populate-link-data-postgres
 test-exchangedb-populate-ready-deposit-postgres
 test-exchangedb-populate-select-refunds-by-coin-postgres
+exchange-0004.sql

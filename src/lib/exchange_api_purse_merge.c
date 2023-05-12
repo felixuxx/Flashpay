@@ -152,11 +152,11 @@ handle_purse_merge_finished (void *cls,
       struct TALER_Amount total_deposited;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &dr.details.success.exchange_sig),
+                                     &dr.details.ok.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &dr.details.success.exchange_pub),
+                                     &dr.details.ok.exchange_pub),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
-                                    &dr.details.success.etime),
+                                    &dr.details.ok.etime),
         TALER_JSON_spec_amount ("merge_amount",
                                 pch->purse_value_after_fees.currency,
                                 &total_deposited),
@@ -176,7 +176,7 @@ handle_purse_merge_finished (void *cls,
       key_state = TALER_EXCHANGE_get_keys (pch->exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &dr.details.success.exchange_pub))
+                                           &dr.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
@@ -185,15 +185,15 @@ handle_purse_merge_finished (void *cls,
       }
       if (GNUNET_OK !=
           TALER_exchange_online_purse_merged_verify (
-            dr.details.success.etime,
+            dr.details.ok.etime,
             pch->purse_expiration,
             &pch->purse_value_after_fees,
             &pch->purse_pub,
             &pch->h_contract_terms,
             &pch->reserve_pub,
             pch->provider_url,
-            &dr.details.success.exchange_pub,
-            &dr.details.success.exchange_sig))
+            &dr.details.ok.exchange_pub,
+            &dr.details.ok.exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;

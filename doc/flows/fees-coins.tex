@@ -1,0 +1,39 @@
+\section{Fees per coin} \label{sec:fees:coin}
+
+Payments with Taler are always made using coins.  Each coin has a specific
+denomination, and an exchange will issue coins in different denominations (in
+the same currency).  The fees per coin depend on the operation and the
+denomination.
+
+The primary fee to be paid is a {\bf deposit} fee that is
+charged whenever a coin is fully or partially deposited
+into a bank account or another wallet.
+
+A secondary fee to be paid is a {\bf change} fee that is
+charged whenever a coin partially spent and change must
+be rendered.
+
+Coins also have an {\bf expiration} date of approximately {\bf one year}.
+After the expiration date, coins become worthless.  Wallets that are online
+{\bf three months} {\em before} a coin expires will automatically trade any
+such coins for one or more fresh coins with a later expiration date. This
+process is also subject to the {\bf change} fee.
+
+
+\begin{table}[h!]
+  \caption{Fees per coin. Coin denomination values are given in units of CHF 0.01.}
+  \label{table:fees:coins}
+  \begin{center}
+    \begin{tabular}{l|c|r}
+      {\bf Denomination} & {\bf Fee type} & {\bf Amount}   \\ \hline \hline
+     $2^{-4}-2^{ 0}$      & deposit        & {\em CHF 0.00125} \\
+     $2^{-4}-2^{ 0}$      & change         & {\em CHF 0.00125} \\
+     $2^{ 0}-2^{ 3}$      & deposit        & {\em CHF 0.00250} \\
+     $2^{ 0}-2^{ 3}$      & change         & {\em CHF 0.00125} \\
+     $2^{ 4}-2^{ 8}$      & deposit        & {\em CHF 0.005} \\
+     $2^{ 4}-2^{ 8}$      & change         & {\em CHF 0.00125} \\
+     $2^{ 8}-2^{12}$      & deposit        & {\em CHF 0.01} \\
+     $2^{ 8}-2^{12}$      & change         & {\em CHF 0.00125} \\
+    \end{tabular}
+  \end{center}
+\end{table}

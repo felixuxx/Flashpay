@@ -57,29 +57,9 @@ TEH_handler_purses_delete (
                                        TALER_EC_EXCHANGE_GENERIC_PURSE_PUB_MALFORMED,
                                        args[0]);
   }
-  {
-    const char *sig;
-
-    sig = MHD_lookup_connection_value (connection,
-                                       MHD_HEADER_KIND,
-                                       "Taler-Purse-Signature");
-    if ( (NULL == sig) ||
-         (GNUNET_OK !=
-          GNUNET_STRINGS_string_to_data (sig,
-                                         strlen (sig),
-                                         &purse_sig,
-                                         sizeof (purse_sig))) )
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         (NULL == sig)
-                                         ? TALER_EC_GENERIC_PARAMETER_MISSING
-                                         : TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "Taler-Purse-Signature");
-    }
-  }
-
+  TALER_MHD_parse_request_header_auto_t (connection,
+                                         "Taler-Purse-Signature",
+                                         &purse_sig);
   if (GNUNET_OK !=
       TALER_wallet_purse_delete_verify (&purse_pub,
                                         &purse_sig))

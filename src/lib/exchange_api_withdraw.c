@@ -116,22 +116,20 @@ struct TALER_EXCHANGE_WithdrawHandle
  * HTTP /reserves/$RESERVE_PUB/withdraw request.
  *
  * @param cls the `struct TALER_EXCHANGE_WithdrawHandle`
- * @param hr HTTP response data
- * @param blind_sig blind signature over the coin, NULL on error
+ * @param w2r response data
  */
 static void
 handle_reserve_withdraw_finished (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_BlindedDenominationSignature *blind_sig)
+  const struct TALER_EXCHANGE_Withdraw2Response *w2r)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
   struct TALER_EXCHANGE_WithdrawResponse wr = {
-    .hr = *hr
+    .hr = w2r->hr
   };
 
   wh->wh2 = NULL;
-  switch (hr->http_status)
+  switch (w2r->hr.http_status)
   {
   case MHD_HTTP_OK:
     {
@@ -139,7 +137,7 @@ handle_reserve_withdraw_finished (
 
       if (GNUNET_OK !=
           TALER_planchet_to_coin (&wh->pk.key,
-                                  blind_sig,
+                                  &w2r->details.ok.blind_sig,
                                   &wh->bks,
                                   &wh->priv,
                                   wh->ach,
@@ -151,10 +149,10 @@ handle_reserve_withdraw_finished (
         wr.hr.ec = TALER_EC_EXCHANGE_WITHDRAW_UNBLIND_FAILURE;
         break;
       }
-      wr.details.success.coin_priv = wh->priv;
-      wr.details.success.bks = wh->bks;
-      wr.details.success.sig = fc.sig;
-      wr.details.success.exchange_vals = wh->alg_values;
+      wr.details.ok.coin_priv = wh->priv;
+      wr.details.ok.bks = wh->bks;
+      wr.details.ok.sig = fc.sig;
+      wr.details.ok.exchange_vals = wh->alg_values;
       break;
     }
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
@@ -170,7 +168,7 @@ handle_reserve_withdraw_finished (
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (hr->reply,
+          GNUNET_JSON_parse (w2r->hr.reply,
                              spec,
                              NULL, NULL))
       {
@@ -186,8 +184,8 @@ handle_reserve_withdraw_finished (
   }
   wh->cb (wh->cb_cls,
           &wr);
-  if (MHD_HTTP_OK == hr->http_status)
-    TALER_denom_sig_free (&wr.details.success.sig);
+  if (MHD_HTTP_OK == w2r->hr.http_status)
+    TALER_denom_sig_free (&wr.details.ok.sig);
   TALER_EXCHANGE_withdraw_cancel (wh);
 }
 
@@ -213,7 +211,7 @@ withdraw_cs_stage_two_callback (
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    wh->alg_values = csrr->details.success.alg_values;
+    wh->alg_values = csrr->details.ok.alg_values;
     TALER_planchet_setup_coin_priv (&wh->ps,
                                     &wh->alg_values,
                                     &wh->priv);

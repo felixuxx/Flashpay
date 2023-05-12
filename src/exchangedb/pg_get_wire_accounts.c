@@ -66,10 +66,25 @@ get_wire_accounts_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     char *payto_uri;
+    char *conversion_url = NULL;
+    json_t *debit_restrictions = NULL;
+    json_t *credit_restrictions = NULL;
     struct TALER_MasterSignatureP master_sig;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_string ("payto_uri",
                                     &payto_uri),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_string ("conversion_url",
+                                      &conversion_url),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json ("debit_restrictions",
+                                   &debit_restrictions),
+        NULL),
+      GNUNET_PQ_result_spec_allow_null (
+        TALER_PQ_result_spec_json ("credit_restrictions",
+                                   &credit_restrictions),
+        NULL),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &master_sig),
       GNUNET_PQ_result_spec_end
@@ -84,8 +99,21 @@ get_wire_accounts_cb (void *cls,
       ctx->status = GNUNET_SYSERR;
       return;
     }
+    if (NULL == debit_restrictions)
+    {
+      debit_restrictions = json_array ();
+      GNUNET_assert (NULL != debit_restrictions);
+    }
+    if (NULL == credit_restrictions)
+    {
+      credit_restrictions = json_array ();
+      GNUNET_assert (NULL != credit_restrictions);
+    }
     ctx->cb (ctx->cb_cls,
              payto_uri,
+             conversion_url,
+             debit_restrictions,
+             credit_restrictions,
              &master_sig);
     GNUNET_PQ_cleanup_result (rs);
   }
@@ -112,6 +140,9 @@ TEH_PG_get_wire_accounts (void *cls,
            "get_wire_accounts",
            "SELECT"
            " payto_uri"
+           ",conversion_url"
+           ",debit_restrictions"
+           ",credit_restrictions"
            ",master_sig"
            " FROM wire_accounts"
            " WHERE is_active");
@@ -123,5 +154,4 @@ TEH_PG_get_wire_accounts (void *cls,
   if (GNUNET_OK != ctx.status)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return qs;
-
 }

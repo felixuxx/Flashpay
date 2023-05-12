@@ -773,11 +773,16 @@ clean_age:
                                      NULL);
       goto cleanup;
     }
+
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
+    {
       rrcs[i].coin_sig = bss[i];
+      rrcs[i].blinded_planchet = rcds[i].blinded_planchet;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
+
 
   for (unsigned int r = 0; r<MAX_TRANSACTION_COMMIT_RETRIES; r++)
   {
@@ -795,12 +800,7 @@ clean_age:
                                         NULL);
       goto cleanup;
     }
-    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
-    {
-      struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
-      rrc->blinded_planchet = rcds[i].blinded_planchet;
-    }
     qs = TEH_plugin->insert_refresh_reveal (
       TEH_plugin->cls,
       melt_serial_id,

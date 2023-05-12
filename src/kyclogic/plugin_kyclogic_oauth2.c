@@ -490,8 +490,6 @@ initiate_task (void *cls)
   struct PluginState *ps = pd->ps;
   char *hps;
   char *url;
-  char *redirect_uri;
-  char *redirect_uri_encoded;
   char legi_s[42];
 
   ih->task = NULL;
@@ -501,19 +499,27 @@ initiate_task (void *cls)
                    (unsigned long long) ih->legitimization_uuid);
   hps = GNUNET_STRINGS_data_to_string_alloc (&ih->h_payto,
                                              sizeof (ih->h_payto));
-  GNUNET_asprintf (&redirect_uri,
-                   "%skyc-proof/%s?state=%s",
-                   ps->exchange_base_url,
-                   pd->section,
-                   hps);
-  redirect_uri_encoded = TALER_urlencode (redirect_uri);
-  GNUNET_free (redirect_uri);
-  GNUNET_asprintf (&url,
-                   "%s?response_type=code&client_id=%s&redirect_uri=%s",
-                   pd->login_url,
-                   pd->client_id,
-                   redirect_uri_encoded);
-  GNUNET_free (redirect_uri_encoded);
+  {
+    char *redirect_uri_encoded;
+
+    {
+      char *redirect_uri;
+
+      GNUNET_asprintf (&redirect_uri,
+                       "%skyc-proof/%s?state=%s",
+                       ps->exchange_base_url,
+                       pd->section,
+                       hps);
+      redirect_uri_encoded = TALER_urlencode (redirect_uri);
+      GNUNET_free (redirect_uri);
+    }
+    GNUNET_asprintf (&url,
+                     "%s?response_type=code&client_id=%s&redirect_uri=%s",
+                     pd->login_url,
+                     pd->client_id,
+                     redirect_uri_encoded);
+    GNUNET_free (redirect_uri_encoded);
+  }
   /* FIXME-API: why do we *redirect* the client here,
      instead of making the HTTP request *ourselves*
      and forwarding the response? This prevents us
@@ -583,6 +589,37 @@ oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
 
 
 /**
+ * Cancel KYC proof.
+ *
+ * @param[in] ph handle of operation to cancel
+ */
+static void
+oauth2_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
+{
+  if (NULL != ph->task)
+  {
+    GNUNET_SCHEDULER_cancel (ph->task);
+    ph->task = NULL;
+  }
+  if (NULL != ph->job)
+  {
+    GNUNET_CURL_job_cancel (ph->job);
+    ph->job = NULL;
+  }
+  if (NULL != ph->response)
+  {
+    MHD_destroy_response (ph->response);
+    ph->response = NULL;
+  }
+  GNUNET_free (ph->provider_user_id);
+  if (NULL != ph->attributes)
+    json_decref (ph->attributes);
+  GNUNET_free (ph->post_body);
+  GNUNET_free (ph);
+}
+
+
+/**
  * Function called to asynchronously return the final
  * result to the callback.
  *
@@ -602,10 +639,8 @@ return_proof_response (void *cls)
           ph->attributes,
           ph->http_status,
           ph->response);
-  GNUNET_free (ph->provider_user_id);
-  if (NULL != ph->attributes)
-    json_decref (ph->attributes);
-  GNUNET_free (ph);
+  ph->response = NULL; /*Ownership passed to 'ph->cb'!*/
+  oauth2_proof_cancel (ph);
 }
 
 
@@ -1101,7 +1136,6 @@ oauth2_proof (void *cls,
                                    1));
   {
     char *client_id;
-    char *redirect_uri;
     char *client_secret;
     char *authorization_code;
     char *redirect_uri_encoded;
@@ -1109,13 +1143,17 @@ oauth2_proof (void *cls,
 
     hps = GNUNET_STRINGS_data_to_string_alloc (&ph->h_payto,
                                                sizeof (ph->h_payto));
-    GNUNET_asprintf (&redirect_uri,
-                     "%skyc-proof/%s?state=%s",
-                     ps->exchange_base_url,
-                     pd->section,
-                     hps);
-    redirect_uri_encoded = TALER_urlencode (redirect_uri);
-    GNUNET_free (redirect_uri);
+    {
+      char *redirect_uri;
+
+      GNUNET_asprintf (&redirect_uri,
+                       "%skyc-proof/%s?state=%s",
+                       ps->exchange_base_url,
+                       pd->section,
+                       hps);
+      redirect_uri_encoded = TALER_urlencode (redirect_uri);
+      GNUNET_free (redirect_uri);
+    }
     GNUNET_assert (NULL != redirect_uri_encoded);
     client_id = curl_easy_escape (ph->eh,
                                   pd->client_id,
@@ -1161,34 +1199,6 @@ oauth2_proof (void *cls,
                                  &handle_curl_login_finished,
                                  ph);
   return ph;
-}
-
-
-/**
- * Cancel KYC proof.
- *
- * @param[in] ph handle of operation to cancel
- */
-static void
-oauth2_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
-{
-  if (NULL != ph->task)
-  {
-    GNUNET_SCHEDULER_cancel (ph->task);
-    ph->task = NULL;
-  }
-  if (NULL != ph->job)
-  {
-    GNUNET_CURL_job_cancel (ph->job);
-    ph->job = NULL;
-  }
-  if (NULL != ph->response)
-  {
-    MHD_destroy_response (ph->response);
-    ph->response = NULL;
-  }
-  GNUNET_free (ph->post_body);
-  GNUNET_free (ph);
 }
 
 

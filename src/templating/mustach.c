@@ -1,20 +1,9 @@
 /*
  Author: José Bollo <jobol@nonadev.net>
- Author: José Bollo <jose.bollo@iot.bzh>
 
  https://gitlab.com/jobol/mustach
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ SPDX-License-Identifier: ISC
 */
 
 #define _GNU_SOURCE
@@ -27,18 +16,8 @@
 #ifdef _WIN32
 #include <malloc.h>
 #endif
-#ifdef __sun
-# include <alloca.h>
-#endif
 
 #include "mustach.h"
-
-#if defined(NO_EXTENSION_FOR_MUSTACH)
-# undef  NO_COLON_EXTENSION_FOR_MUSTACH
-# define NO_COLON_EXTENSION_FOR_MUSTACH
-# undef  NO_ALLOW_EMPTY_TAG
-# define NO_ALLOW_EMPTY_TAG
-#endif
 
 struct iwrap {
 	int (*emit)(void *closure, const char *buffer, size_t size, int escape, FILE *file);
@@ -51,6 +30,13 @@ struct iwrap {
 	int (*get)(void *closure, const char *name, struct mustach_sbuf *sbuf);
 	int (*partial)(void *closure, const char *name, struct mustach_sbuf *sbuf);
 	void *closure_partial; /* closure for partial */
+	int flags;
+};
+
+struct prefix {
+	size_t len;
+	const char *start;
+	struct prefix *prefix;
 };
 
 #if !defined(NO_OPEN_MEMSTREAM)
@@ -135,6 +121,7 @@ static inline void sbuf_reset(struct mustach_sbuf *sbuf)
 	sbuf->value = NULL;
 	sbuf->freecb = NULL;
 	sbuf->closure = NULL;
+	sbuf->length = 0;
 }
 
 static inline void sbuf_release(struct mustach_sbuf *sbuf)
@@ -143,38 +130,47 @@ static inline void sbuf_release(struct mustach_sbuf *sbuf)
 		sbuf->releasecb(sbuf->value, sbuf->closure);
 }
 
+static inline size_t sbuf_length(struct mustach_sbuf *sbuf)
+{
+	size_t length = sbuf->length;
+	if (length == 0 && sbuf->value != NULL)
+		length = strlen(sbuf->value);
+	return length;
+}
+
 static int iwrap_emit(void *closure, const char *buffer, size_t size, int escape, FILE *file)
 {
-	size_t i, j;
+	size_t i, j, r;
 
 	(void)closure; /* unused */
 
 	if (!escape)
-		return fwrite(buffer, size, 1, file) != 1 ? MUSTACH_ERROR_SYSTEM : MUSTACH_OK;
+		return fwrite(buffer, 1, size, file) != size ? MUSTACH_ERROR_SYSTEM : MUSTACH_OK;
 
-	i = 0;
+	r = i = 0;
 	while (i < size) {
 		j = i;
-		while (j < size && buffer[j] != '<' && buffer[j] != '>' && buffer[j] != '&')
+		while (j < size && buffer[j] != '<' && buffer[j] != '>' && buffer[j] != '&' && buffer[j] != '"')
 			j++;
 		if (j != i && fwrite(&buffer[i], j - i, 1, file) != 1)
 			return MUSTACH_ERROR_SYSTEM;
 		if (j < size) {
 			switch(buffer[j++]) {
 			case '<':
-				if (fwrite("&lt;", 4, 1, file) != 1)
-					return MUSTACH_ERROR_SYSTEM;
+				r = fwrite("&lt;", 4, 1, file);
 				break;
 			case '>':
-				if (fwrite("&gt;", 4, 1, file) != 1)
-					return MUSTACH_ERROR_SYSTEM;
+				r = fwrite("&gt;", 4, 1, file);
 				break;
 			case '&':
-				if (fwrite("&amp;", 5, 1, file) != 1)
-					return MUSTACH_ERROR_SYSTEM;
+				r = fwrite("&amp;", 5, 1, file);
 				break;
-			default: break;
+			case '"':
+				r = fwrite("&quot;", 6, 1, file);
+				break;
 			}
+			if (r != 1)
+				return MUSTACH_ERROR_SYSTEM;
 		}
 		i = j;
 	}
@@ -191,7 +187,7 @@ static int iwrap_put(void *closure, const char *name, int escape, FILE *file)
 	sbuf_reset(&sbuf);
 	rc = iwrap->get(iwrap->closure, name, &sbuf);
 	if (rc >= 0) {
-		length = strlen(sbuf.value);
+		length = sbuf_length(&sbuf);
 		if (length)
 			rc = iwrap->emit(iwrap->closure, sbuf.value, length, escape, file);
 		sbuf_release(&sbuf);
@@ -220,55 +216,109 @@ static int iwrap_partial(void *closure, const char *name, struct mustach_sbuf *s
 			if (rc == 0) {
 				sbuf->value = result;
 				sbuf->freecb = free;
+				sbuf->length = size;
 			}
 		}
 	}
 	return rc;
 }
 
-static int process(const char *template, struct iwrap *iwrap, FILE *file, const char *opstr, const char *clstr)
+static int emitprefix(struct iwrap *iwrap, FILE *file, struct prefix *prefix)
+{
+	if (prefix->prefix) {
+		int rc = emitprefix(iwrap, file, prefix->prefix);
+		if (rc < 0)
+			return rc;
+	}
+	return prefix->len ? iwrap->emit(iwrap->closure, prefix->start, prefix->len, 0, file) : 0;
+}
+
+static int process(const char *template, size_t length, struct iwrap *iwrap, FILE *file, struct prefix *prefix)
 {
 	struct mustach_sbuf sbuf;
-	char name[MUSTACH_MAX_LENGTH + 1], c, *tmp;
-	const char *beg, *term;
-	struct { const char *name, *again; size_t length; int enabled, entered; } stack[MUSTACH_MAX_DEPTH];
+	char opstr[MUSTACH_MAX_DELIM_LENGTH], clstr[MUSTACH_MAX_DELIM_LENGTH];
+	char name[MUSTACH_MAX_LENGTH + 1], c;
+	const char *beg, *term, *end;
+	struct { const char *name, *again; size_t length; unsigned enabled: 1, entered: 1; } stack[MUSTACH_MAX_DEPTH];
 	size_t oplen, cllen, len, l;
-	int depth, rc, enabled;
+	int depth, rc, enabled, stdalone;
+	struct prefix pref;
 
-	enabled = 1;
-	oplen = strlen(opstr);
-	cllen = strlen(clstr);
-	depth = 0;
-	for(;;) {
-		beg = strstr(template, opstr);
-		if (beg == NULL) {
-			/* no more mustach */
-			if (enabled && template[0]) {
-				rc = iwrap->emit(iwrap->closure, template, strlen(template), 0, file);
-				if (rc < 0)
-					return rc;
+	pref.prefix = prefix;
+	end = template + (length ? length : strlen(template));
+	opstr[0] = opstr[1] = '{';
+	clstr[0] = clstr[1] = '}';
+	oplen = cllen = 2;
+	stdalone = enabled = 1;
+	depth = pref.len = 0;
+	for (;;) {
+		/* search next openning delimiter */
+		for (beg = template ; ; beg++) {
+			c = beg == end ? '\n' : *beg;
+			if (c == '\n') {
+				l = (beg != end) + (size_t)(beg - template);
+				if (stdalone != 2 && enabled) {
+					if (beg != template /* don't prefix empty lines */) {
+						rc = emitprefix(iwrap, file, &pref);
+						if (rc < 0)
+							return rc;
+					}
+					rc = iwrap->emit(iwrap->closure, template, l, 0, file);
+					if (rc < 0)
+						return rc;
+				}
+				if (beg == end) /* no more mustach */
+					return depth ? MUSTACH_ERROR_UNEXPECTED_END : MUSTACH_OK;
+				template += l;
+				stdalone = 1;
+				pref.len = 0;
 			}
-			return depth ? MUSTACH_ERROR_UNEXPECTED_END : MUSTACH_OK;
+			else if (!isspace(c)) {
+				if (stdalone == 2 && enabled) {
+					rc = emitprefix(iwrap, file, &pref);
+					if (rc < 0)
+						return rc;
+					pref.len = 0;
+					stdalone = 0;
+				}
+				if (c == *opstr && end - beg >= (ssize_t)oplen) {
+					for (l = 1 ; l < oplen && beg[l] == opstr[l] ; l++);
+					if (l == oplen)
+						break;
+				}
+				stdalone = 0;
+			}
 		}
-		if (enabled && beg != template) {
-			rc = iwrap->emit(iwrap->closure, template, (size_t)(beg - template), 0, file);
-			if (rc < 0)
-				return rc;
-		}
+
+		pref.start = template;
+		pref.len = enabled ? (size_t)(beg - template) : 0;
 		beg += oplen;
-		term = strstr(beg, clstr);
-		if (term == NULL)
-			return MUSTACH_ERROR_UNEXPECTED_END;
+
+		/* search next closing delimiter */
+		for (term = beg ; ; term++) {
+			if (term == end)
+				return MUSTACH_ERROR_UNEXPECTED_END;
+			if (*term == *clstr && end - term >= (ssize_t)cllen) {
+				for (l = 1 ; l < cllen && term[l] == clstr[l] ; l++);
+				if (l == cllen)
+					break;
+			}
+		}
 		template = term + cllen;
 		len = (size_t)(term - beg);
 		c = *beg;
 		switch(c) {
+		case ':':
+			stdalone = 0;
+			if (iwrap->flags & Mustach_With_Colon)
+				goto exclude_first;
+			goto get_name;
 		case '!':
 		case '=':
 			break;
 		case '{':
-			for (l = 0 ; clstr[l] == '}' ; l++);
-			if (clstr[l]) {
+			for (l = 0 ; l < cllen && clstr[l] == '}' ; l++);
+			if (l < cllen) {
 				if (!len || beg[len-1] != '}')
 					return MUSTACH_ERROR_BAD_UNESCAPE_TAG;
 				len--;
@@ -279,27 +329,37 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 			}
 			c = '&';
 			/*@fallthrough@*/
+		case '&':
+			stdalone = 0;
+			/*@fallthrough@*/
 		case '^':
 		case '#':
 		case '/':
-		case '&':
 		case '>':
-#if !defined(NO_COLON_EXTENSION_FOR_MUSTACH)
-		case ':':
-#endif
-			beg++; len--;
+exclude_first:
+			beg++;
+			len--;
+			goto get_name;
 		default:
+			stdalone = 0;
+get_name:
 			while (len && isspace(beg[0])) { beg++; len--; }
 			while (len && isspace(beg[len-1])) len--;
-#if !defined(NO_ALLOW_EMPTY_TAG)
-			if (len == 0)
+			if (len == 0 && !(iwrap->flags & Mustach_With_EmptyTag))
 				return MUSTACH_ERROR_EMPTY_TAG;
-#endif
 			if (len > MUSTACH_MAX_LENGTH)
 				return MUSTACH_ERROR_TAG_TOO_LONG;
 			memcpy(name, beg, len);
 			name[len] = 0;
 			break;
+		}
+		if (stdalone)
+			stdalone = 2;
+		else if (enabled) {
+			rc = emitprefix(iwrap, file, &pref);
+			if (rc < 0)
+				return rc;
+			pref.len = 0;
 		}
 		switch(c) {
 		case '!':
@@ -307,27 +367,25 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 			/* nothing to do */
 			break;
 		case '=':
-			/* defines separators */
+			/* defines delimiters */
 			if (len < 5 || beg[len - 1] != '=')
 				return MUSTACH_ERROR_BAD_SEPARATORS;
 			beg++;
 			len -= 2;
+			while (len && isspace(*beg))
+				beg++, len--;
+			while (len && isspace(beg[len - 1]))
+				len--;
 			for (l = 0; l < len && !isspace(beg[l]) ; l++);
-			if (l == len)
+			if (l == len || l > MUSTACH_MAX_DELIM_LENGTH)
 				return MUSTACH_ERROR_BAD_SEPARATORS;
 			oplen = l;
-			tmp = alloca(oplen + 1);
-			memcpy(tmp, beg, oplen);
-			tmp[oplen] = 0;
-			opstr = tmp;
+			memcpy(opstr, beg, l);
 			while (l < len && isspace(beg[l])) l++;
-			if (l == len)
+			if (l == len || len - l > MUSTACH_MAX_DELIM_LENGTH)
 				return MUSTACH_ERROR_BAD_SEPARATORS;
 			cllen = len - l;
-			tmp = alloca(cllen + 1);
-			memcpy(tmp, beg + l, cllen);
-			tmp[cllen] = 0;
-			clstr = tmp;
+			memcpy(clstr, beg + l, cllen);
 			break;
 		case '^':
 		case '#':
@@ -343,8 +401,8 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 			stack[depth].name = beg;
 			stack[depth].again = template;
 			stack[depth].length = len;
-			stack[depth].enabled = enabled;
-			stack[depth].entered = rc;
+			stack[depth].enabled = enabled != 0;
+			stack[depth].entered = rc != 0;
 			if ((c == '#') == (rc == 0))
 				enabled = 0;
 			depth++;
@@ -370,7 +428,7 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 				sbuf_reset(&sbuf);
 				rc = iwrap->partial(iwrap->closure_partial, name, &sbuf);
 				if (rc >= 0) {
-					rc = process(sbuf.value, iwrap, file, opstr, clstr);
+					rc = process(sbuf.value, sbuf_length(&sbuf), iwrap, file, &pref);
 					sbuf_release(&sbuf);
 				}
 				if (rc < 0)
@@ -389,7 +447,7 @@ static int process(const char *template, struct iwrap *iwrap, FILE *file, const 
 	}
 }
 
-int fmustach(const char *template, struct mustach_itf *itf, void *closure, FILE *file)
+int mustach_file(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, FILE *file)
 {
 	int rc;
 	struct iwrap iwrap;
@@ -422,17 +480,18 @@ int fmustach(const char *template, struct mustach_itf *itf, void *closure, FILE 
 	iwrap.next = itf->next;
 	iwrap.leave = itf->leave;
 	iwrap.get = itf->get;
+	iwrap.flags = flags;
 
 	/* process */
 	rc = itf->start ? itf->start(closure) : 0;
 	if (rc == 0)
-		rc = process(template, &iwrap, file, "{{", "}}");
+		rc = process(template, length, &iwrap, file, 0);
 	if (itf->stop)
 		itf->stop(closure, rc);
 	return rc;
 }
 
-int fdmustach(const char *template, struct mustach_itf *itf, void *closure, int fd)
+int mustach_fd(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, int fd)
 {
 	int rc;
 	FILE *file;
@@ -442,13 +501,13 @@ int fdmustach(const char *template, struct mustach_itf *itf, void *closure, int 
 		rc = MUSTACH_ERROR_SYSTEM;
 		errno = ENOMEM;
 	} else {
-		rc = fmustach(template, itf, closure, file);
+		rc = mustach_file(template, length, itf, closure, flags, file);
 		fclose(file);
 	}
 	return rc;
 }
 
-int mustach(const char *template, struct mustach_itf *itf, void *closure, char **result, size_t *size)
+int mustach_mem(const char *template, size_t length, const struct mustach_itf *itf, void *closure, int flags, char **result, size_t *size)
 {
 	int rc;
 	FILE *file;
@@ -461,12 +520,27 @@ int mustach(const char *template, struct mustach_itf *itf, void *closure, char *
 	if (file == NULL)
 		rc = MUSTACH_ERROR_SYSTEM;
 	else {
-		rc = fmustach(template, itf, closure, file);
+		rc = mustach_file(template, length, itf, closure, flags, file);
 		if (rc < 0)
 			memfile_abort(file, result, size);
 		else
 			rc = memfile_close(file, result, size);
 	}
 	return rc;
+}
+
+int fmustach(const char *template, const struct mustach_itf *itf, void *closure, FILE *file)
+{
+	return mustach_file(template, 0, itf, closure, Mustach_With_AllExtensions, file);
+}
+
+int fdmustach(const char *template, const struct mustach_itf *itf, void *closure, int fd)
+{
+	return mustach_fd(template, 0, itf, closure, Mustach_With_AllExtensions, fd);
+}
+
+int mustach(const char *template, const struct mustach_itf *itf, void *closure, char **result, size_t *size)
+{
+	return mustach_mem(template, 0, itf, closure, Mustach_With_AllExtensions, result, size);
 }
 

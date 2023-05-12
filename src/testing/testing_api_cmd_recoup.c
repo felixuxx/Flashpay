@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -73,15 +73,14 @@ struct RecoupState
  * was paid back belonged to the right reserve.
  *
  * @param cls closure
- * @param hr HTTP response details
- * @param reserve_pub public key of the reserve receiving the recoup
+ * @param rr response details
  */
 static void
 recoup_cb (void *cls,
-           const struct TALER_EXCHANGE_HttpResponse *hr,
-           const struct TALER_ReservePublicKeyP *reserve_pub)
+           const struct TALER_EXCHANGE_RecoupResponse *rr)
 {
   struct RecoupState *ps = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
   struct TALER_TESTING_Interpreter *is = ps->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
@@ -135,12 +134,6 @@ recoup_cb (void *cls,
     {
       const struct TALER_ReservePrivateKeyP *reserve_priv;
 
-      if (NULL == reserve_pub)
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
                                                 &reserve_priv))
@@ -151,7 +144,7 @@ recoup_cb (void *cls,
       }
       GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                           &ps->reserve_pub.eddsa_pub);
-      if (0 != GNUNET_memcmp (reserve_pub,
+      if (0 != GNUNET_memcmp (&rr->details.ok.reserve_pub,
                               &ps->reserve_pub))
       {
         GNUNET_break (0);

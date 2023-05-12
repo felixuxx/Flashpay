@@ -731,8 +731,8 @@ history_cb (void *cls,
   {
   case MHD_HTTP_OK:
     process_reply (wrap_size,
-                   reply->details.success.details,
-                   reply->details.success.details_length);
+                   reply->details.ok.details,
+                   reply->details.ok.details_length);
     return;
   case MHD_HTTP_NO_CONTENT:
     transaction_completed ();

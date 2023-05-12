@@ -644,26 +644,19 @@ do_upload (char *const *args)
  * a particular exchange and what keys the exchange is using.
  *
  * @param cls closure with the `char **` remaining args
- * @param hr HTTP response data
- * @param keys information about the various keys used
- *        by the exchange, NULL if /keys failed
- * @param compat protocol compatibility information
+ * @param kr response data
  */
 static void
 keys_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_EXCHANGE_Keys *keys,
-  enum TALER_EXCHANGE_VersionCompatibility compat)
+  const struct TALER_EXCHANGE_KeysResponse *kr)
 {
   char *const *args = cls;
 
-  (void) keys;
-  (void) compat;
-  switch (hr->http_status)
+  switch (kr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    if (! json_is_object (hr->reply))
+    if (! json_is_object (kr->hr.reply))
     {
       GNUNET_break (0);
       TALER_EXCHANGE_disconnect (exchange);
@@ -676,9 +669,9 @@ keys_cb (
   default:
     fprintf (stderr,
              "Failed to download keys: %s (HTTP status: %u/%u)\n",
-             hr->hint,
-             hr->http_status,
-             (unsigned int) hr->ec);
+             kr->hr.hint,
+             kr->hr.http_status,
+             (unsigned int) kr->hr.ec);
     TALER_EXCHANGE_disconnect (exchange);
     exchange = NULL;
     test_shutdown ();
@@ -689,7 +682,7 @@ keys_cb (
     GNUNET_JSON_pack_string ("operation",
                              OP_INPUT_KEYS),
     GNUNET_JSON_pack_object_incref ("arguments",
-                                    (json_t *) hr->reply));
+                                    (json_t *) kr->hr.reply));
   if (NULL == args[0])
   {
     json_dumpf (in,

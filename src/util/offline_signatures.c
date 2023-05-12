@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2022 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -677,6 +677,22 @@ struct TALER_MasterAddWirePS
    * Hash over the exchange's payto URI.
    */
   struct TALER_PaytoHashP h_payto GNUNET_PACKED;
+
+  /**
+   * Hash over the conversion URL, all zeros if there
+   * is no conversion URL.
+   */
+  struct GNUNET_HashCode h_conversion_url;
+
+  /**
+   * Hash over the debit restrictions.
+   */
+  struct GNUNET_HashCode h_debit_restrictions;
+
+  /**
+   * Hash over the credit restrictions.
+   */
+  struct GNUNET_HashCode h_credit_restrictions;
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -685,6 +701,9 @@ GNUNET_NETWORK_STRUCT_END
 void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
@@ -697,6 +716,14 @@ TALER_exchange_offline_wire_add_sign (
 
   TALER_payto_hash (payto_uri,
                     &kv.h_payto);
+  if (NULL != conversion_url)
+    GNUNET_CRYPTO_hash (conversion_url,
+                        strlen (conversion_url) + 1,
+                        &kv.h_conversion_url);
+  TALER_json_hash (debit_restrictions,
+                   &kv.h_debit_restrictions);
+  TALER_json_hash (credit_restrictions,
+                   &kv.h_credit_restrictions);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -706,6 +733,9 @@ TALER_exchange_offline_wire_add_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
@@ -718,6 +748,14 @@ TALER_exchange_offline_wire_add_verify (
 
   TALER_payto_hash (payto_uri,
                     &aw.h_payto);
+  if (NULL != conversion_url)
+    GNUNET_CRYPTO_hash (conversion_url,
+                        strlen (conversion_url) + 1,
+                        &aw.h_conversion_url);
+  TALER_json_hash (debit_restrictions,
+                   &aw.h_debit_restrictions);
+  TALER_json_hash (credit_restrictions,
+                   &aw.h_credit_restrictions);
   return
     GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_ADD_WIRE,
@@ -967,9 +1005,9 @@ TALER_exchange_offline_global_fee_sign (
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_MasterGlobalFeePS kv = {
+  struct TALER_MasterGlobalFeePS wf = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_GLOBAL_FEES),
-    .purpose.size = htonl (sizeof (kv)),
+    .purpose.size = htonl (sizeof (wf)),
     .start_date = GNUNET_TIME_timestamp_hton (start_time),
     .end_date = GNUNET_TIME_timestamp_hton (end_time),
     .purse_timeout = GNUNET_TIME_relative_hton (purse_timeout),
@@ -977,10 +1015,10 @@ TALER_exchange_offline_global_fee_sign (
     .purse_account_limit = htonl (purse_account_limit)
   };
 
-  TALER_global_fee_set_hton (&kv.fees,
+  TALER_global_fee_set_hton (&wf.fees,
                              fees);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
-                            &kv,
+                            &wf,
                             &master_sig->eddsa_signature);
 }
 
@@ -1095,6 +1133,22 @@ struct TALER_MasterWireDetailsPS
    */
   struct TALER_PaytoHashP h_wire_details GNUNET_PACKED;
 
+  /**
+   * Hash over the conversion URL, all zeros if there
+   * is no conversion URL.
+   */
+  struct GNUNET_HashCode h_conversion_url;
+
+  /**
+   * Hash over the debit restrictions.
+   */
+  struct GNUNET_HashCode h_debit_restrictions;
+
+  /**
+   * Hash over the credit restrictions.
+   */
+  struct GNUNET_HashCode h_credit_restrictions;
+
 };
 
 GNUNET_NETWORK_STRUCT_END
@@ -1103,6 +1157,9 @@ GNUNET_NETWORK_STRUCT_END
 enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -1113,6 +1170,14 @@ TALER_exchange_wire_signature_check (
 
   TALER_payto_hash (payto_uri,
                     &wd.h_wire_details);
+  if (NULL != conversion_url)
+    GNUNET_CRYPTO_hash (conversion_url,
+                        strlen (conversion_url) + 1,
+                        &wd.h_conversion_url);
+  TALER_json_hash (debit_restrictions,
+                   &wd.h_debit_restrictions);
+  TALER_json_hash (credit_restrictions,
+                   &wd.h_credit_restrictions);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_DETAILS,
                                      &wd,
                                      &master_sig->eddsa_signature,
@@ -1123,6 +1188,9 @@ TALER_exchange_wire_signature_check (
 void
 TALER_exchange_wire_signature_make (
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -1133,6 +1201,14 @@ TALER_exchange_wire_signature_make (
 
   TALER_payto_hash (payto_uri,
                     &wd.h_wire_details);
+  if (NULL != conversion_url)
+    GNUNET_CRYPTO_hash (conversion_url,
+                        strlen (conversion_url) + 1,
+                        &wd.h_conversion_url);
+  TALER_json_hash (debit_restrictions,
+                   &wd.h_debit_restrictions);
+  TALER_json_hash (credit_restrictions,
+                   &wd.h_credit_restrictions);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &wd,
                             &master_sig->eddsa_signature);

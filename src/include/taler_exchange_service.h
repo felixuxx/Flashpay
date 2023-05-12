@@ -462,21 +462,52 @@ struct TALER_EXCHANGE_HttpResponse
 
 
 /**
+ * Response from /keys.
+ */
+struct TALER_EXCHANGE_KeysResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on the HTTP status code.
+   */
+  union
+  {
+
+    /**
+     * Details on #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Information about the various keys used by the exchange.
+       */
+      const struct TALER_EXCHANGE_Keys *keys;
+
+      /**
+       * Protocol compatibility information
+       */
+      enum TALER_EXCHANGE_VersionCompatibility compat;
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Function called with information about who is auditing
  * a particular exchange and what keys the exchange is using.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param keys information about the various keys used
- *        by the exchange, NULL if /keys failed
- * @param compat protocol compatibility information
+ * @param kr response from /keys
  */
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_EXCHANGE_Keys *keys,
-  enum TALER_EXCHANGE_VersionCompatibility compat);
+  const struct TALER_EXCHANGE_KeysResponse *kr);
 
 
 /**
@@ -712,7 +743,7 @@ TALER_EXCHANGE_get_signing_key_info (
 
 
 /**
- * Sorted list of fees to be paid for aggregate wire transfers.
+ * List sorted by @a start_date with fees to be paid for aggregate wire transfers.
  */
 struct TALER_EXCHANGE_WireAggregateFees
 {
@@ -744,6 +775,95 @@ struct TALER_EXCHANGE_WireAggregateFees
 
 
 /**
+ * Information about wire fees by wire method.
+ */
+struct TALER_EXCHANGE_WireFeesByMethod
+{
+  /**
+   * Wire method with the given @e fees.
+   */
+  const char *method;
+
+  /**
+   * Linked list of wire fees the exchange charges for
+   * accounts of the wire @e method.
+   */
+  struct TALER_EXCHANGE_WireAggregateFees *fees_head;
+
+};
+
+
+/**
+ * Type of an account restriction.
+ */
+enum TALER_EXCHANGE_AccountRestrictionType
+{
+  /**
+   * Invalid restriction.
+   */
+  TALER_EXCHANGE_AR_INVALID = 0,
+
+  /**
+   * Account must not be used for this operation.
+   */
+  TALER_EXCHANGE_AR_DENY = 1,
+
+  /**
+   * Other account must match given regular expression.
+   */
+  TALER_EXCHANGE_AR_REGEX = 2
+};
+
+/**
+ * Restrictions that apply to using a given exchange bank account.
+ */
+struct TALER_EXCHANGE_AccountRestriction
+{
+
+  /**
+   * Type of the account restriction.
+   */
+  enum TALER_EXCHANGE_AccountRestrictionType type;
+
+  /**
+   * Restriction details depending on @e type.
+   */
+  union
+  {
+    /**
+     * Details if type is #TALER_EXCHANGE_AR_REGEX.
+     */
+    struct
+    {
+      /**
+       * Regular expression that the payto://-URI of the partner account must
+       * follow.  The regular expression should follow posix-egrep, but
+       * without support for character classes, GNU extensions,
+       * back-references or intervals. See
+       * https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002degrep-regular-expression-syntax.html
+       * for a description of the posix-egrep syntax. Applications may support
+       * regexes with additional features, but exchanges must not use such
+       * regexes.
+       */
+      const char *posix_egrep;
+
+      /**
+       * Hint for a human to understand the restriction.
+       */
+      const char *human_hint;
+
+      /**
+       * Internationalizations for the @e human_hint.  Map from IETF BCP 47
+       * language tax to localized human hints.
+       */
+      const json_t *human_hint_i18n;
+    } regex;
+  } details;
+
+};
+
+
+/**
  * Information about a wire account of the exchange.
  */
 struct TALER_EXCHANGE_WireAccount
@@ -754,37 +874,130 @@ struct TALER_EXCHANGE_WireAccount
   const char *payto_uri;
 
   /**
+   * URL of a conversion service in case using this account is subject to
+   * currency conversion.  NULL for no conversion needed.
+   */
+  const char *conversion_url;
+
+  /**
+   * Array of restrictions that apply when crediting
+   * this account.
+   */
+  struct TALER_EXCHANGE_AccountRestriction *credit_restrictions;
+
+  /**
+   * Array of restrictions that apply when debiting
+   * this account.
+   */
+  struct TALER_EXCHANGE_AccountRestriction *debit_restrictions;
+
+  /**
+   * Length of the @e credit_restrictions array.
+   */
+  unsigned int credit_restrictions_length;
+
+  /**
+   * Length of the @e debit_restrictions array.
+   */
+  unsigned int debit_restrictions_length;
+
+  /**
    * Signature of the exchange over the account (was checked by the API).
    */
   struct TALER_MasterSignatureP master_sig;
-
-  /**
-   * Linked list of wire fees the exchange charges for
-   * accounts of the wire method matching @e payto_uri.
-   */
-  const struct TALER_EXCHANGE_WireAggregateFees *fees;
 
 };
 
 
 /**
- * Callbacks of this type are used to serve the result of submitting a
- * wire format inquiry request to a exchange.
+ * Parse array of @a accounts of the exchange into @a was.
+ *
+ * @param master_pub master public key of the exchange, NULL to not verify signatures
+ * @param accounts array of accounts to parse
+ * @param[out] was where to write the result (already allocated)
+ * @param was_length length of the @a was array, must match the length of @a accounts
+ * @return #GNUNET_OK if parsing @a accounts succeeded
+ */
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
+                               const json_t *accounts,
+                               struct TALER_EXCHANGE_WireAccount was[],
+                               unsigned int was_length);
+
+
+/**
+ * Free data within @a was, but not @a was itself.
+ *
+ * @param was array of wire account data
+ * @param was_len length of the @a was array
+ */
+void
+TALER_EXCHANGE_free_accounts (struct TALER_EXCHANGE_WireAccount *was,
+                              unsigned int was_len);
+
+
+/**
+ * Response to a /wire request.
+ */
+struct TALER_EXCHANGE_WireResponse
+{
+  /**
+   * HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on status.
+   */
+  union
+  {
+
+    /**
+     * Details for #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Array of accounts of the exchange.
+       */
+      const struct TALER_EXCHANGE_WireAccount *accounts;
+
+      /**
+       * Array of wire fees by wire method.
+       */
+      const struct TALER_EXCHANGE_WireFeesByMethod *fees;
+
+      /**
+       * Length of @e accounts array.
+       */
+      unsigned int accounts_len;
+
+      /**
+       * Length of @e fees array.
+       */
+      unsigned int fees_len;
+
+    } ok;
+
+  } details;
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a wire
+ * format inquiry request to a exchange.
  *
  * If the request fails to generate a valid response from the
- * exchange, @a http_status will also be zero.
+ * exchange, the http_status will also be zero.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param accounts_len length of the @a accounts array
- * @param accounts list of wire accounts of the exchange, NULL on error
+ * @param wr response data
  */
 typedef void
 (*TALER_EXCHANGE_WireCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  unsigned int accounts_len,
-  const struct TALER_EXCHANGE_WireAccount *accounts);
+  const struct TALER_EXCHANGE_WireResponse *wr);
 
 
 /**
@@ -976,7 +1189,7 @@ struct TALER_EXCHANGE_DepositResult
        */
       const char *transaction_base_url;
 
-    } success;
+    } ok;
 
     /**
      * Information returned if the HTTP status is
@@ -1110,7 +1323,7 @@ struct TALER_EXCHANGE_BatchDepositResult
        */
       unsigned int num_signatures;
 
-    } success;
+    } ok;
 
     /**
      * Information returned if the HTTP status is
@@ -1202,23 +1415,51 @@ TALER_EXCHANGE_batch_deposit_cancel (
  */
 struct TALER_EXCHANGE_RefundHandle;
 
+/**
+ * Response from the /refund API.
+ */
+struct TALER_EXCHANGE_RefundResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status code.
+   */
+  union
+  {
+    /**
+     * Details on #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Exchange key used to sign.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * The actual signature
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+    } ok;
+  } details;
+};
+
 
 /**
  * Callbacks of this type are used to serve the result of submitting a
  * refund request to an exchange.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param sign_key exchange key used to sign @a obj, or NULL
- * @param signature the actual signature, or NULL on error
+ * @param rr refund response
  */
 typedef void
 (*TALER_EXCHANGE_RefundCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key,
-  const struct TALER_ExchangeSignatureP *signature);
-
+  const struct TALER_EXCHANGE_RefundResponse *rr);
 
 /**
  * Submit a refund request to the exchange and get the exchange's response.
@@ -1311,7 +1552,7 @@ struct TALER_EXCHANGE_CsRMeltResponse
        * respective coin's withdraw operation.
        */
       const struct TALER_ExchangeWithdrawValues *alg_values;
-    } success;
+    } ok;
 
     /**
      * Details if the status is #MHD_HTTP_GONE.
@@ -1423,7 +1664,7 @@ struct TALER_EXCHANGE_CsRWithdrawResponse
        * respective coin's withdraw operation.
        */
       struct TALER_ExchangeWithdrawValues alg_values;
-    } success;
+    } ok;
 
     /**
      * Details if the status is #MHD_HTTP_GONE.
@@ -2209,7 +2450,7 @@ struct TALER_EXCHANGE_WithdrawResponse
     /**
      * Details if the status is #MHD_HTTP_OK.
      */
-    struct TALER_EXCHANGE_PrivateCoinDetails success;
+    struct TALER_EXCHANGE_PrivateCoinDetails ok;
 
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
@@ -2336,7 +2577,7 @@ struct TALER_EXCHANGE_BatchWithdrawResponse
        * Length of the @e coins array.
        */
       unsigned int num_coins;
-    } success;
+    } ok;
 
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
@@ -2431,18 +2672,45 @@ TALER_EXCHANGE_batch_withdraw_cancel (
 
 
 /**
+ * Response from a withdraw2 request.
+ */
+struct TALER_EXCHANGE_Withdraw2Response
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * blind signature over the coin
+       */
+      struct TALER_BlindedDenominationSignature blind_sig;
+    } ok;
+  } details;
+
+};
+
+/**
  * Callbacks of this type are used to serve the result of submitting a
  * withdraw request to a exchange without the (un)blinding factor.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param blind_sig blind signature over the coin, NULL on error
+ * @param w2r response data
  */
 typedef void
 (*TALER_EXCHANGE_Withdraw2Callback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_BlindedDenominationSignature *blind_sig);
+  const struct TALER_EXCHANGE_Withdraw2Response *w2r);
 
 
 /**
@@ -2493,20 +2761,52 @@ TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh);
 
 
 /**
+ * Response from a batch-withdraw request (2nd variant).
+ */
+struct TALER_EXCHANGE_BatchWithdraw2Response
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * array of blind signatures over the coins.
+       */
+      const struct TALER_BlindedDenominationSignature *blind_sigs;
+
+      /**
+       * length of @e blind_sigs
+       */
+      unsigned int blind_sigs_length;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to serve the result of submitting a batch
  * withdraw request to a exchange without the (un)blinding factor.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param blind_sigs array of blind signatures over the coins, NULL on error
- * @param blind_sigs_length length of @a blind_sigs
+ * @param bw2r response data
  */
 typedef void
 (*TALER_EXCHANGE_BatchWithdraw2Callback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_BlindedDenominationSignature *blind_sigs,
-  unsigned int blind_sigs_length);
+  const struct TALER_EXCHANGE_BatchWithdraw2Response *bw2r);
 
 
 /**
@@ -2675,7 +2975,7 @@ struct TALER_EXCHANGE_MeltResponse
        * Gamma value chosen by the exchange.
        */
       uint32_t noreveal_index;
-    } success;
+    } ok;
 
   } details;
 };
@@ -2801,7 +3101,7 @@ struct TALER_EXCHANGE_RevealResult
        * Number of coins returned.
        */
       unsigned int num_coins;
-    } success;
+    } ok;
 
   } details;
 
@@ -2947,7 +3247,7 @@ struct TALER_EXCHANGE_LinkResult
        * Number of coins returned.
        */
       unsigned int num_coins;
-    } success;
+    } ok;
 
   } details;
 
@@ -3060,18 +3360,43 @@ struct TALER_EXCHANGE_TransferData
 
 
 /**
+ * Response for a GET /transfers request.
+ */
+struct TALER_EXCHANGE_TransfersGetResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details depending on HTTP status code.
+   */
+  union
+  {
+    /**
+     * Details if status code is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      struct TALER_EXCHANGE_TransferData td;
+    } ok;
+
+  } details;
+};
+
+
+/**
  * Function called with detailed wire transfer data, including all
  * of the coin transactions that were combined into the wire transfer.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param ta transfer data, (set only if @a http_status is #MHD_HTTP_OK, otherwise NULL)
+ * @param tgr response data
  */
 typedef void
 (*TALER_EXCHANGE_TransfersGetCallback)(
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_EXCHANGE_TransferData *ta);
+  const struct TALER_EXCHANGE_TransfersGetResponse *tgr);
 
 
 /**
@@ -3163,7 +3488,7 @@ struct TALER_EXCHANGE_GetDepositResponse
        */
       struct TALER_Amount coin_contribution;
 
-    } success;
+    } ok;
 
     /**
      * Response if the status was #MHD_HTTP_ACCEPTED
@@ -3221,6 +3546,7 @@ typedef void
  * @param h_wire hash of merchant's wire transfer details
  * @param h_contract_terms hash of the proposal data
  * @param coin_pub public key of the coin
+ * @param timeout timeout to use for long-polling, 0 for no long polling
  * @param cb function to call with the result
  * @param cb_cls closure for @a cb
  * @return handle to abort request
@@ -3232,6 +3558,7 @@ TALER_EXCHANGE_deposits_get (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls);
 
@@ -3316,20 +3643,49 @@ struct TALER_EXCHANGE_RecoupHandle;
 
 
 /**
+ * Response from a recoup request.
+ */
+struct TALER_EXCHANGE_RecoupResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * public key of the reserve receiving the recoup
+       */
+      struct TALER_ReservePublicKeyP reserve_pub;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to return the final result of
  * submitting a recoup request to a exchange.  If the operation was
  * successful, this function returns the @a reserve_pub of the
  * reserve that was credited.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param reserve_pub public key of the reserve receiving the recoup
+ * @param rr response data
  */
 typedef void
 (*TALER_EXCHANGE_RecoupResultCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ReservePublicKeyP *reserve_pub);
+  const struct TALER_EXCHANGE_RecoupResponse *rr);
 
 
 /**
@@ -3378,18 +3734,47 @@ struct TALER_EXCHANGE_RecoupRefreshHandle;
 
 
 /**
+ * Response from a /recoup-refresh request.
+ */
+struct TALER_EXCHANGE_RecoupRefreshResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * public key of the dirty coin that was credited
+       */
+      struct TALER_CoinSpendPublicKeyP old_coin_pub;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to return the final result of
  * submitting a recoup-refresh request to a exchange.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param old_coin_pub public key of the dirty coin that was credited
+ * @param rrr response data
  */
 typedef void
 (*TALER_EXCHANGE_RecoupRefreshResultCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_CoinSpendPublicKeyP *old_coin_pub);
+  const struct TALER_EXCHANGE_RecoupRefreshResponse *rrr);
 
 
 /**
@@ -3495,7 +3880,7 @@ struct TALER_EXCHANGE_KycStatus
        */
       enum TALER_AmlDecisionState aml_status;
 
-    } success;
+    } ok;
 
     /**
      * KYC is required.
@@ -3899,18 +4284,47 @@ struct TALER_EXCHANGE_FutureKeys
 
 
 /**
+ * Response from a /management/keys request.
+ */
+struct TALER_EXCHANGE_ManagementGetKeysResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * information about the various keys used
+       * by the exchange
+       */
+      struct TALER_EXCHANGE_FutureKeys keys;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Function called with information about future keys.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param keys information about the various keys used
- *        by the exchange, NULL if /management/keys failed
+ * @param mgr HTTP response data
  */
 typedef void
 (*TALER_EXCHANGE_ManagementGetKeysCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_EXCHANGE_FutureKeys *keys);
+  const struct TALER_EXCHANGE_ManagementGetKeysResponse *mgr);
 
 
 /**
@@ -4013,15 +4427,28 @@ struct TALER_EXCHANGE_ManagementPostKeysData
 
 
 /**
+ * Response from a POST /management/keys request.
+ */
+struct TALER_EXCHANGE_ManagementPostKeysResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+
+/**
  * Function called with information about the post keys operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param mr response data
  */
 typedef void
 (*TALER_EXCHANGE_ManagementPostKeysCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementPostKeysResponse *mr);
 
 
 /**
@@ -4071,6 +4498,20 @@ struct TALER_EXCHANGE_ManagementPostExtensionsData
   struct TALER_MasterSignatureP extensions_sig;
 };
 
+
+/**
+ * Response from a POST /management/extensions request.
+ */
+struct TALER_EXCHANGE_ManagementPostExtensionsResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+
 /**
  * Function called with information about the post extensions operation result.
  *
@@ -4080,7 +4521,7 @@ struct TALER_EXCHANGE_ManagementPostExtensionsData
 typedef void
 (*TALER_EXCHANGE_ManagementPostExtensionsCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementPostExtensionsResponse *hr);
 
 /**
  * @brief Handle for a POST /management/extensions request.
@@ -4119,6 +4560,19 @@ TALER_EXCHANGE_management_post_extensions_cancel (
 
 
 /**
+ * Response from a POST /management/drain request.
+ */
+struct TALER_EXCHANGE_ManagementDrainResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+
+/**
  * Function called with information about the drain profits result.
  *
  * @param cls closure
@@ -4127,7 +4581,7 @@ TALER_EXCHANGE_management_post_extensions_cancel (
 typedef void
 (*TALER_EXCHANGE_ManagementDrainProfitsCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementDrainResponse *hr);
 
 
 /**
@@ -4176,6 +4630,19 @@ TALER_EXCHANGE_management_drain_profits_cancel (
 
 
 /**
+ * Response from a POST /management/denominations/$DENOM/revoke request.
+ */
+struct TALER_EXCHANGE_ManagementRevokeDenominationResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+
+/**
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure
@@ -4184,7 +4651,7 @@ TALER_EXCHANGE_management_drain_profits_cancel (
 typedef void
 (*TALER_EXCHANGE_ManagementRevokeDenominationKeyCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementRevokeDenominationResponse *hr);
 
 
 /**
@@ -4225,6 +4692,18 @@ TALER_EXCHANGE_management_revoke_denomination_key_cancel (
 
 
 /**
+ * Response from a POST /management/signkeys/$SK/revoke request.
+ */
+struct TALER_EXCHANGE_ManagementRevokeSigningKeyResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+/**
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure
@@ -4233,7 +4712,7 @@ TALER_EXCHANGE_management_revoke_denomination_key_cancel (
 typedef void
 (*TALER_EXCHANGE_ManagementRevokeSigningKeyCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementRevokeSigningKeyResponse *hr);
 
 
 /**
@@ -4274,6 +4753,18 @@ TALER_EXCHANGE_management_revoke_signing_key_cancel (
 
 
 /**
+ * Response from a POST /management/aml-officers request.
+ */
+struct TALER_EXCHANGE_ManagementUpdateAmlOfficerResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+};
+
+/**
  * Function called with information about the change to
  * an AML officer status.
  *
@@ -4283,7 +4774,7 @@ TALER_EXCHANGE_management_revoke_signing_key_cancel (
 typedef void
 (*TALER_EXCHANGE_ManagementUpdateAmlOfficerCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementUpdateAmlOfficerResponse *hr);
 
 
 /**
@@ -4390,7 +4881,7 @@ struct TALER_EXCHANGE_AmlDecisionsResponse
        */
       unsigned int decisions_length;
 
-    } success;
+    } ok;
 
   } details;
 };
@@ -4547,7 +5038,7 @@ struct TALER_EXCHANGE_AmlDecisionResponse
        */
       unsigned int kyc_attributes_length;
 
-    } success;
+    } ok;
 
   } details;
 };
@@ -4617,6 +5108,7 @@ struct TALER_EXCHANGE_AddAmlDecision;
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_AddAmlDecisionCallback) (
   void *cls,
@@ -4672,6 +5164,7 @@ TALER_EXCHANGE_add_aml_decision_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAddPartnerCallback) (
   void *cls,
@@ -4732,6 +5225,7 @@ TALER_EXCHANGE_management_add_partner_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAuditorEnableCallback) (
   void *cls,
@@ -4787,6 +5281,7 @@ TALER_EXCHANGE_management_enable_auditor_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAuditorDisableCallback) (
   void *cls,
@@ -4833,15 +5328,27 @@ TALER_EXCHANGE_management_disable_auditor_cancel (
 
 
 /**
+ * Response from an exchange account/enable operation.
+ */
+struct TALER_EXCHANGE_ManagementWireEnableResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+
+/**
  * Function called with information about the wire enable operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param wer HTTP response data
  */
 typedef void
 (*TALER_EXCHANGE_ManagementWireEnableCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementWireEnableResponse *wer);
 
 
 /**
@@ -4856,6 +5363,9 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle;
  * @param ctx the context
  * @param url HTTP base URL for the exchange
  * @param payto_uri RFC 8905 URI of the exchange's bank account
+ * @param conversion_url URL of the conversion service, or NULL if none
+ * @param debit_restrictions JSON encoding of debit restrictions on the account; see AccountRestriction in the spec
+ * @param credit_restrictions JSON encoding of credit restrictions on the account; see AccountRestriction in the spec
  * @param validity_start when was this decided?
  * @param master_sig1 signature affirming the wire addition
  *        of purpose #TALER_SIGNATURE_MASTER_ADD_WIRE
@@ -4870,6 +5380,9 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
@@ -4888,15 +5401,26 @@ TALER_EXCHANGE_management_enable_wire_cancel (
 
 
 /**
+ * Response from an exchange account/disable operation.
+ */
+struct TALER_EXCHANGE_ManagementWireDisableResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+/**
  * Function called with information about the wire disable operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param wdr response data
  */
 typedef void
 (*TALER_EXCHANGE_ManagementWireDisableCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementWireDisableResponse *wdr);
 
 
 /**
@@ -4945,6 +5469,7 @@ TALER_EXCHANGE_management_disable_wire_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementSetWireFeeCallback) (
   void *cls,
@@ -5001,6 +5526,7 @@ TALER_EXCHANGE_management_set_wire_fees_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementSetGlobalFeeCallback) (
   void *cls,
@@ -5062,6 +5588,7 @@ TALER_EXCHANGE_management_set_global_fees_cancel (
  * @param cls closure
  * @param hr HTTP response data
  */
+// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_AuditorAddDenominationCallback) (
   void *cls,
@@ -5147,7 +5674,7 @@ struct TALER_EXCHANGE_ContractGetResponse
        */
       size_t econtract_size;
 
-    } success;
+    } ok;
 
   } details;
 
@@ -5243,7 +5770,7 @@ struct TALER_EXCHANGE_PurseGetResponse
        */
       struct GNUNET_TIME_Timestamp purse_expiration;
 
-    } success;
+    } ok;
 
   } details;
 
@@ -5333,7 +5860,7 @@ struct TALER_EXCHANGE_PurseCreateDepositResponse
       struct TALER_ExchangeSignatureP exchange_sig;
 
 
-    } success;
+    } ok;
 
   } details;
 
@@ -5532,7 +6059,7 @@ struct TALER_EXCHANGE_AccountMergeResponse
        */
       struct GNUNET_TIME_Timestamp etime;
 
-    } success;
+    } ok;
 
     /**
      * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
@@ -5640,7 +6167,7 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
     struct
     {
 
-    } success;
+    } ok;
 
     /**
    * Details if the status is #MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS.
@@ -5760,7 +6287,7 @@ struct TALER_EXCHANGE_PurseDepositResponse
        */
       struct TALER_PrivateContractHashP h_contract_terms;
 
-    } success;
+    } ok;
   } details;
 
 };

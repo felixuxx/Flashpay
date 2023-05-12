@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -67,13 +67,14 @@ struct WireAddState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param wer response details
  */
 static void
 wire_add_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr)
+             const struct TALER_EXCHANGE_ManagementWireEnableResponse *wer)
 {
   struct WireAddState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &wer->hr;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)
@@ -110,10 +111,14 @@ wire_add_run (void *cls,
   struct TALER_MasterSignatureP master_sig1;
   struct TALER_MasterSignatureP master_sig2;
   struct GNUNET_TIME_Timestamp now;
+  json_t *credit_rest;
+  json_t *debit_rest;
 
   (void) cmd;
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
+  debit_rest = json_array ();
+  credit_rest = json_array ();
   if (ds->bad_sig)
   {
     memset (&master_sig1,
@@ -126,10 +131,16 @@ wire_add_run (void *cls,
   else
   {
     TALER_exchange_offline_wire_add_sign (ds->payto_uri,
+                                          NULL,
+                                          debit_rest,
+                                          credit_rest,
                                           now,
                                           &is->master_priv,
                                           &master_sig1);
     TALER_exchange_wire_signature_make (ds->payto_uri,
+                                        NULL,
+                                        debit_rest,
+                                        credit_rest,
                                         &is->master_priv,
                                         &master_sig2);
   }
@@ -137,11 +148,16 @@ wire_add_run (void *cls,
     is->ctx,
     is->exchange_url,
     ds->payto_uri,
+    NULL,
+    debit_rest,
+    credit_rest,
     now,
     &master_sig1,
     &master_sig2,
     &wire_add_cb,
     ds);
+  json_decref (debit_rest);
+  json_decref (credit_rest);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

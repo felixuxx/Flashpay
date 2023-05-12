@@ -111,6 +111,7 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param timestamp time when the transaction was made.
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
+// FIXME: bad API
 typedef void
 (*TALER_BANK_AdminAddIncomingCallback) (
   void *cls,
@@ -199,6 +200,7 @@ struct TALER_BANK_TransferHandle;
  * @param row_id unique ID of the wire transfer in the bank's records
  * @param timestamp when did the transaction go into effect
  */
+// FIXME: bad API
 typedef void
 (*TALER_BANK_TransferCallback)(
   void *cls,
@@ -337,7 +339,7 @@ struct TALER_BANK_CreditHistoryResponse
        */
       unsigned int details_length;
 
-    } success;
+    } ok;
 
   } details;
 
@@ -493,7 +495,7 @@ struct TALER_BANK_DebitHistoryResponse
        */
       unsigned int details_length;
 
-    } success;
+    } ok;
 
   } details;
 

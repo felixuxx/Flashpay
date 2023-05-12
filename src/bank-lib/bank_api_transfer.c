@@ -99,12 +99,12 @@ TALER_BANK_prepare_transfer (
   wp->account_len = htonl ((uint32_t) d_len);
   wp->exchange_url_len = htonl ((uint32_t) u_len);
   end = (char *) &wp[1];
-  memcpy (end,
-          destination_account_payto_uri,
-          d_len);
-  memcpy (end + d_len,
-          exchange_base_url,
-          u_len);
+  GNUNET_memcpy (end,
+                 destination_account_payto_uri,
+                 d_len);
+  GNUNET_memcpy (end + d_len,
+                 exchange_base_url,
+                 u_len);
   *buf = (char *) wp;
 }
 

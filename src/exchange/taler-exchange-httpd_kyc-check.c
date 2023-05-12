@@ -520,34 +520,8 @@ TEH_handler_kyc_check (
                                          "usertype");
     }
 
-    {
-      const char *ts;
-
-      ts = MHD_lookup_connection_value (rc->connection,
-                                        MHD_GET_ARGUMENT_KIND,
-                                        "timeout_ms");
-      if (NULL != ts)
-      {
-        char dummy;
-        unsigned long long tms;
-
-        if (1 !=
-            sscanf (ts,
-                    "%llu%c",
-                    &tms,
-                    &dummy))
-        {
-          GNUNET_break_op (0);
-          return TALER_MHD_reply_with_error (rc->connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                             "timeout_ms");
-        }
-        kyp->timeout = GNUNET_TIME_relative_to_absolute (
-          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
-                                         tms));
-      }
-    }
+    TALER_MHD_parse_request_timeout (rc->connection,
+                                     &kyp->timeout);
   }
 
   if ( (NULL == kyp->eh) &&

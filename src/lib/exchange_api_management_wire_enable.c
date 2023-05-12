@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -79,9 +79,9 @@ handle_auditor_enable_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementWireEnableHandle *wh = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementWireEnableResponse wer = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   wh->job = NULL;
@@ -89,34 +89,34 @@ handle_auditor_enable_finished (void *cls,
   {
   case 0:
     /* no reply */
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-    hr.hint = "server offline?";
+    wer.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    wer.hr.hint = "server offline?";
     break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wer.hr.ec = TALER_JSON_get_error_code (json);
+    wer.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_CONFLICT:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wer.hr.ec = TALER_JSON_get_error_code (json);
+    wer.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    wer.hr.ec = TALER_JSON_get_error_code (json);
+    wer.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management enable wire\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) wer.hr.ec);
     break;
   }
   if (NULL != wh->cb)
   {
     wh->cb (wh->cb_cls,
-            &hr);
+            &wer);
     wh->cb = NULL;
   }
   TALER_EXCHANGE_management_enable_wire_cancel (wh);
@@ -128,6 +128,9 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const char *payto_uri,
+  const char *conversion_url,
+  const json_t *debit_restrictions,
+  const json_t *credit_restrictions,
   struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
@@ -167,6 +170,13 @@ TALER_EXCHANGE_management_enable_wire (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
                              payto_uri),
+    GNUNET_JSON_pack_array_incref ("debit_restrictions",
+                                   (json_t *) debit_restrictions),
+    GNUNET_JSON_pack_array_incref ("credit_restrictions",
+                                   (json_t *) credit_restrictions),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("conversion_url",
+                               conversion_url)),
     GNUNET_JSON_pack_data_auto ("master_sig_add",
                                 master_sig1),
     GNUNET_JSON_pack_data_auto ("master_sig_wire",

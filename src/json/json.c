@@ -62,170 +62,6 @@ contains_real (const json_t *json)
 
 
 /**
- * Dump character in the low range into @a buf
- * following RFC 8785.
- *
- * @param[in,out] buf buffer to modify
- * @param val value to dump
- */
-static void
-lowdump (struct GNUNET_Buffer *buf,
-         unsigned char val)
-{
-  char scratch[7];
-
-  switch (val)
-  {
-  case 0x8:
-    GNUNET_buffer_write (buf,
-                         "\\b",
-                         2);
-    break;
-  case 0x9:
-    GNUNET_buffer_write (buf,
-                         "\\t",
-                         2);
-    break;
-  case 0xA:
-    GNUNET_buffer_write (buf,
-                         "\\n",
-                         2);
-    break;
-  case 0xC:
-    GNUNET_buffer_write (buf,
-                         "\\f",
-                         2);
-    break;
-  case 0xD:
-    GNUNET_buffer_write (buf,
-                         "\\r",
-                         2);
-    break;
-  default:
-    GNUNET_snprintf (scratch,
-                     sizeof (scratch),
-                     "\\u%04x",
-                     (unsigned int) val);
-    GNUNET_buffer_write (buf,
-                         scratch,
-                         6);
-    break;
-  }
-}
-
-
-/**
- * Re-encode string at @a inp to match RFC 8785 (section 3.2.2.2).
- *
- * @param[in,out] inp pointer to string to re-encode
- * @return number of bytes in resulting @a inp
- */
-static size_t
-rfc8785encode (char **inp)
-{
-  struct GNUNET_Buffer buf = { 0 };
-  size_t left = strlen (*inp) + 1;
-  size_t olen;
-  char *in = *inp;
-  const char *pos = in;
-
-  GNUNET_buffer_prealloc (&buf,
-                          left + 40);
-  buf.warn_grow = 0; /* disable, + 40 is just a wild guess */
-  while (1)
-  {
-    int mbl = u8_mblen ((unsigned char *) pos,
-                        left);
-    unsigned char val;
-
-    if (0 == mbl)
-      break;
-    val = (unsigned char) *pos;
-    if ( (1 == mbl) &&
-         (val <= 0x1F) )
-    {
-      /* Should not happen, as input is produced by
-       * JSON stringification */
-      GNUNET_break (0);
-      lowdump (&buf,
-               val);
-    }
-    else if ( (1 == mbl) && ('\\' == *pos) )
-    {
-      switch (*(pos + 1))
-      {
-      case '\\':
-        mbl = 2;
-        GNUNET_buffer_write (&buf,
-                             pos,
-                             mbl);
-        break;
-      case 'u':
-        {
-          unsigned int num;
-          uint32_t n32;
-          unsigned char res[8];
-          size_t rlen;
-
-          GNUNET_assert ( (1 ==
-                           sscanf (pos + 2,
-                                   "%4x",
-                                   &num)) ||
-                          (1 ==
-                           sscanf (pos + 2,
-                                   "%4X",
-                                   &num)) );
-          mbl = 6;
-          n32 = (uint32_t) num;
-          rlen = sizeof (res);
-          u32_to_u8 (&n32,
-                     1,
-                     res,
-                     &rlen);
-          if ( (1 == rlen) &&
-               (res[0] <= 0x1F) )
-          {
-            lowdump (&buf,
-                     res[0]);
-          }
-          else
-          {
-            GNUNET_buffer_write (&buf,
-                                 (const char *) res,
-                                 rlen);
-          }
-        }
-        break;
-      default:
-        mbl = 2;
-        GNUNET_buffer_write (&buf,
-                             pos,
-                             mbl);
-        break;
-      }
-    }
-    else
-    {
-      GNUNET_buffer_write (&buf,
-                           pos,
-                           mbl);
-    }
-    left -= mbl;
-    pos += mbl;
-  }
-
-  /* 0-terminate buffer */
-  GNUNET_buffer_write (&buf,
-                       "",
-                       1);
-  GNUNET_free (in);
-  *inp = GNUNET_buffer_reap (&buf,
-                             &olen);
-  return olen;
-}
-
-
-/**
  * Dump the @a json to a string and hash it.
  *
  * @param json value to hash
@@ -262,7 +98,7 @@ dump_and_hash (const json_t *json,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  len = rfc8785encode (&wire_enc);
+  len = TALER_rfc8785encode (&wire_enc);
   if (NULL == salt)
   {
     GNUNET_CRYPTO_hash (wire_enc,
@@ -819,6 +655,7 @@ parse_path (json_t *obj,
   json_t *next_obj = NULL;
   char *next_dot;
 
+  GNUNET_assert (NULL != id); /* make stupid compiler happy */
   if (NULL == next_id)
   {
     cb (cb_cls,
@@ -1031,7 +868,7 @@ TALER_JSON_canonicalize (const json_t *input)
     GNUNET_break (0);
     return NULL;
   }
-  rfc8785encode (&wire_enc);
+  TALER_rfc8785encode (&wire_enc);
   return wire_enc;
 }
 

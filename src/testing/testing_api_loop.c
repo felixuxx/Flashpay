@@ -452,9 +452,9 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
   is->commands = GNUNET_malloc_large ( (i + 1)
                                        * sizeof (struct TALER_TESTING_Command));
   GNUNET_assert (NULL != is->commands);
-  memcpy (is->commands,
-          commands,
-          sizeof (struct TALER_TESTING_Command) * i);
+  GNUNET_memcpy (is->commands,
+                 commands,
+                 sizeof (struct TALER_TESTING_Command) * i);
   is->timeout_task = GNUNET_SCHEDULER_add_delayed (
     timeout,
     &do_timeout,
@@ -526,49 +526,46 @@ sighandler_child_death (void)
 
 void
 TALER_TESTING_cert_cb (void *cls,
-                       const struct TALER_EXCHANGE_HttpResponse *hr,
-                       const struct TALER_EXCHANGE_Keys *keys,
-                       enum TALER_EXCHANGE_VersionCompatibility compat)
+                       const struct TALER_EXCHANGE_KeysResponse *kr)
 {
+  const struct TALER_EXCHANGE_HttpResponse *hr = &kr->hr;
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
 
-  (void) compat;
-  if (NULL == keys)
+  switch (hr->http_status)
   {
-    if (GNUNET_NO == is->working)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Got NULL response for /keys during startup (%u/%d), retrying!\n",
-                  hr->http_status,
-                  (int) hr->ec);
-      TALER_EXCHANGE_disconnect (is->exchange);
-      GNUNET_assert (
-        NULL != (is->exchange
-                   = TALER_EXCHANGE_connect (is->ctx,
-                                             main_ctx->exchange_url,
-                                             &TALER_TESTING_cert_cb,
-                                             main_ctx,
-                                             TALER_EXCHANGE_OPTION_END)));
-      return;
-    }
-    else
+  case MHD_HTTP_OK:
+    /* dealt with below */
+    break;
+  default:
+    if (GNUNET_YES == is->working)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Got NULL response for /keys during execution (%u/%d)!\n",
                   hr->http_status,
                   (int) hr->ec);
+      return;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Got failure response for /keys during startup (%u/%d), retrying!\n",
+                hr->http_status,
+                (int) hr->ec);
+    TALER_EXCHANGE_disconnect (is->exchange);
+    GNUNET_assert (
+      NULL != (is->exchange
+                 = TALER_EXCHANGE_connect (is->ctx,
+                                           main_ctx->exchange_url,
+                                           &TALER_TESTING_cert_cb,
+                                           main_ctx,
+                                           TALER_EXCHANGE_OPTION_END)));
+    return;
   }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Got %d DK from /keys in generation %u\n",
-                keys->num_denom_keys,
-                is->key_generation + 1);
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Got %d DK from /keys in generation %u\n",
+              kr->details.ok.keys->num_denom_keys,
+              is->key_generation + 1);
   is->key_generation++;
-  is->keys = keys;
+  is->keys = kr->details.ok.keys;
 
   /* /keys has been called for some reason and
    * the interpreter is already running. */

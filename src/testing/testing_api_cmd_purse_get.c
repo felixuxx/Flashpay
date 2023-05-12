@@ -147,11 +147,11 @@ purse_status_cb (void *cls,
                    TALER_string_to_amount (ss->expected_balance,
                                            &eb));
     if (0 != TALER_amount_cmp (&eb,
-                               &rs->details.success.balance))
+                               &rs->details.ok.balance))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected amount in purse: %s\n",
-                  TALER_amount_to_string (&rs->details.success.balance));
+                  TALER_amount_to_string (&rs->details.ok.balance));
       TALER_TESTING_interpreter_fail (ss->is);
       return;
     }

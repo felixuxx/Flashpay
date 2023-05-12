@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2022 Taler Systems SA
+  Copyright (C) 2017-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -100,15 +100,14 @@ static enum GNUNET_GenericReturnValue
 process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
                          const json_t *json)
 {
-  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_EXCHANGE_RecoupResponse rr = {
+    .hr.reply = json,
+    .hr.http_status = MHD_HTTP_OK
+  };
   struct GNUNET_JSON_Specification spec_withdraw[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &reserve_pub),
+                                 &rr.details.ok.reserve_pub),
     GNUNET_JSON_spec_end ()
-  };
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = json,
-    .http_status = MHD_HTTP_OK
   };
 
   if (GNUNET_OK !=
@@ -120,8 +119,7 @@ process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
     return GNUNET_SYSERR;
   }
   ph->cb (ph->cb_cls,
-          &hr,
-          &reserve_pub);
+          &rr);
   return GNUNET_OK;
 }
 
@@ -141,9 +139,9 @@ handle_recoup_finished (void *cls,
 {
   struct TALER_EXCHANGE_RecoupHandle *ph = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_RecoupResponse rr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
   const struct TALER_EXCHANGE_Keys *keys;
 
@@ -152,7 +150,7 @@ handle_recoup_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -160,8 +158,8 @@ handle_recoup_finished (void *cls,
                                  j))
     {
       GNUNET_break_op (0);
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      hr.http_status = 0;
+      rr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      rr.hr.http_status = 0;
       break;
     }
     TALER_EXCHANGE_recoup_cancel (ph);
@@ -169,22 +167,22 @@ handle_recoup_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
     {
       struct TALER_Amount min_key;
 
-      hr.ec = TALER_JSON_get_error_code (j);
-      hr.hint = TALER_JSON_get_error_hint (j);
+      rr.hr.ec = TALER_JSON_get_error_code (j);
+      rr.hr.hint = TALER_JSON_get_error_hint (j);
       if (GNUNET_OK !=
           TALER_EXCHANGE_get_min_denomination_ (keys,
                                                 &min_key))
       {
         GNUNET_break (0);
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        hr.http_status = 0;
+        rr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        rr.hr.http_status = 0;
         break;
       }
       if (GNUNET_OK !=
@@ -197,8 +195,8 @@ handle_recoup_finished (void *cls,
             &min_key))
       {
         GNUNET_break (0);
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        hr.http_status = 0;
+        rr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        rr.hr.http_status = 0;
         break;
       }
       break;
@@ -207,41 +205,40 @@ handle_recoup_finished (void *cls,
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange recoup\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) rr.hr.ec);
     GNUNET_break (0);
     break;
   }
   ph->cb (ph->cb_cls,
-          &hr,
-          NULL);
+          &rr);
   TALER_EXCHANGE_recoup_cancel (ph);
 }
 

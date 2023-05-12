@@ -96,7 +96,7 @@ csr_ok (struct TALER_EXCHANGE_CsRWithdrawHandle *csrh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_exchange_withdraw_values (
       "ewv",
-      &csrr.details.success.alg_values),
+      &csrr.details.ok.alg_values),
     GNUNET_JSON_spec_end ()
   };
 

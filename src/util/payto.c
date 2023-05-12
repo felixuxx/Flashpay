@@ -267,9 +267,9 @@ TALER_payto_hash (const char *payto,
                       &sha512);
   GNUNET_static_assert (sizeof (sha512) > sizeof (*h_payto));
   /* truncate */
-  memcpy (h_payto,
-          &sha512,
-          sizeof (*h_payto));
+  GNUNET_memcpy (h_payto,
+                 &sha512,
+                 sizeof (*h_payto));
 }
 
 

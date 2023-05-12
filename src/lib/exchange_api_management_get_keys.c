@@ -75,11 +75,16 @@ struct TALER_EXCHANGE_ManagementGetKeysHandle
  * @param response the response
  * @return #GNUNET_OK if the response was well-formed
  */
-static int
+static enum GNUNET_GenericReturnValue
 handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
            const json_t *response)
 {
-  struct TALER_EXCHANGE_FutureKeys fk;
+  struct TALER_EXCHANGE_ManagementGetKeysResponse gkr = {
+    .hr.http_status = MHD_HTTP_OK,
+    .hr.reply = response,
+  };
+  struct TALER_EXCHANGE_FutureKeys *fk
+    = &gkr.details.ok.keys;
   json_t *sk;
   json_t *dk;
   bool ok;
@@ -89,13 +94,13 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     GNUNET_JSON_spec_json ("future_signkeys",
                            &sk),
     GNUNET_JSON_spec_fixed_auto ("master_pub",
-                                 &fk.master_pub),
+                                 &fk->master_pub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
-                                 &fk.denom_secmod_public_key),
+                                 &fk->denom_secmod_public_key),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_cs_public_key",
-                                 &fk.denom_secmod_cs_public_key),
+                                 &fk->denom_secmod_cs_public_key),
     GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
-                                 &fk.signkey_secmod_public_key),
+                                 &fk->signkey_secmod_public_key),
     GNUNET_JSON_spec_end ()
   };
 
@@ -107,21 +112,21 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  fk.num_sign_keys = json_array_size (sk);
-  fk.num_denom_keys = json_array_size (dk);
-  fk.sign_keys = GNUNET_new_array (
-    fk.num_sign_keys,
+  fk->num_sign_keys = json_array_size (sk);
+  fk->num_denom_keys = json_array_size (dk);
+  fk->sign_keys = GNUNET_new_array (
+    fk->num_sign_keys,
     struct TALER_EXCHANGE_FutureSigningPublicKey);
-  fk.denom_keys = GNUNET_new_array (
-    fk.num_denom_keys,
+  fk->denom_keys = GNUNET_new_array (
+    fk->num_denom_keys,
     struct TALER_EXCHANGE_FutureDenomPublicKey);
   ok = true;
-  for (unsigned int i = 0; i<fk.num_sign_keys; i++)
+  for (unsigned int i = 0; i<fk->num_sign_keys; i++)
   {
     json_t *j = json_array_get (sk,
                                 i);
     struct TALER_EXCHANGE_FutureSigningPublicKey *sign_key
-      = &fk.sign_keys[i];
+      = &fk->sign_keys[i];
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto ("key",
                                    &sign_key->key),
@@ -155,7 +160,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
             &sign_key->key,
             sign_key->valid_from,
             duration,
-            &fk.signkey_secmod_public_key,
+            &fk->signkey_secmod_public_key,
             &sign_key->signkey_secmod_sig))
       {
         GNUNET_break_op (0);
@@ -164,12 +169,12 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
       }
     }
   }
-  for (unsigned int i = 0; i<fk.num_denom_keys; i++)
+  for (unsigned int i = 0; i<fk->num_denom_keys; i++)
   {
     json_t *j = json_array_get (dk,
                                 i);
     struct TALER_EXCHANGE_FutureDenomPublicKey *denom_key
-      = &fk.denom_keys[i];
+      = &fk->denom_keys[i];
     const char *section_name;
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_amount_any ("value",
@@ -236,7 +241,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                                 section_name,
                                                 denom_key->valid_from,
                                                 duration,
-                                                &fk.denom_secmod_public_key,
+                                                &fk->denom_secmod_public_key,
                                                 &denom_key->denom_secmod_sig))
           {
             GNUNET_break_op (0);
@@ -256,7 +261,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                                section_name,
                                                denom_key->valid_from,
                                                duration,
-                                               &fk.denom_secmod_cs_public_key,
+                                               &fk->denom_secmod_cs_public_key,
                                                &denom_key->denom_secmod_sig))
           {
             GNUNET_break_op (0);
@@ -277,19 +282,13 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
   }
   if (ok)
   {
-    struct TALER_EXCHANGE_HttpResponse hr = {
-      .http_status = MHD_HTTP_OK,
-      .reply = response
-    };
-
     gh->cb (gh->cb_cls,
-            &hr,
-            &fk);
+            &gkr);
   }
-  for (unsigned int i = 0; i<fk.num_denom_keys; i++)
-    TALER_denom_pub_free (&fk.denom_keys[i].key);
-  GNUNET_free (fk.sign_keys);
-  GNUNET_free (fk.denom_keys);
+  for (unsigned int i = 0; i<fk->num_denom_keys; i++)
+    TALER_denom_pub_free (&fk->denom_keys[i].key);
+  GNUNET_free (fk->sign_keys);
+  GNUNET_free (fk->denom_keys);
   GNUNET_JSON_parse_free (spec);
   return (ok) ? GNUNET_OK : GNUNET_SYSERR;
 }
@@ -310,9 +309,9 @@ handle_get_keys_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementGetKeysHandle *gh = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementGetKeysResponse gkr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   gh->job = NULL;
@@ -334,25 +333,24 @@ handle_get_keys_finished (void *cls,
     /* unexpected response code */
     if (NULL != json)
     {
-      hr.ec = TALER_JSON_get_error_code (json);
-      hr.hint = TALER_JSON_get_error_hint (json);
+      gkr.hr.ec = TALER_JSON_get_error_code (json);
+      gkr.hr.hint = TALER_JSON_get_error_hint (json);
     }
     else
     {
-      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-      hr.hint = TALER_ErrorCode_get_hint (hr.ec);
+      gkr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      gkr.hr.hint = TALER_ErrorCode_get_hint (gkr.hr.ec);
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management get keys\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) gkr.hr.ec);
     break;
   }
   if (NULL != gh->cb)
   {
     gh->cb (gh->cb_cls,
-            &hr,
-            NULL);
+            &gkr);
     gh->cb = NULL;
   }
   TALER_EXCHANGE_get_management_keys_cancel (gh);

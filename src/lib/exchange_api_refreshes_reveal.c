@@ -266,8 +266,8 @@ handle_refresh_reveal_finished (void *cls,
       else
       {
         GNUNET_assert (rrh->noreveal_index < TALER_CNC_KAPPA);
-        rr.details.success.num_coins = rrh->md.num_fresh_coins;
-        rr.details.success.coins = rcis;
+        rr.details.ok.num_coins = rrh->md.num_fresh_coins;
+        rr.details.ok.coins = rcis;
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         &rr);
         rrh->reveal_cb = NULL;

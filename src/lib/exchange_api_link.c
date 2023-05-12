@@ -365,8 +365,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
 
     if (off_coin == num_coins)
     {
-      lr.details.success.num_coins = num_coins;
-      lr.details.success.coins = lcis;
+      lr.details.ok.num_coins = num_coins;
+      lr.details.ok.coins = lcis;
       lh->link_cb (lh->link_cb_cls,
                    &lr);
       lh->link_cb = NULL;

@@ -144,37 +144,34 @@ struct TALER_EXCHANGE_BatchWithdrawHandle
  * HTTP /reserves/$RESERVE_PUB/batch-withdraw request.
  *
  * @param cls the `struct TALER_EXCHANGE_BatchWithdrawHandle`
- * @param hr HTTP response data
- * @param blind_sigs array of blind signatures over the coins, NULL on error
- * @param blind_sigs_length length of the @a blind_sigs array
+ * @param bw2r response data
  */
 static void
 handle_reserve_batch_withdraw_finished (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_BlindedDenominationSignature *blind_sigs,
-  unsigned int blind_sigs_length)
+  const struct TALER_EXCHANGE_BatchWithdraw2Response *bw2r)
 {
   struct TALER_EXCHANGE_BatchWithdrawHandle *wh = cls;
   struct TALER_EXCHANGE_BatchWithdrawResponse wr = {
-    .hr = *hr
+    .hr = bw2r->hr
   };
-  struct TALER_EXCHANGE_PrivateCoinDetails coins[wh->num_coins];
+  struct TALER_EXCHANGE_PrivateCoinDetails coins[GNUNET_NZL (wh->num_coins)];
 
   wh->wh2 = NULL;
   memset (coins,
           0,
           sizeof (coins));
-  if (blind_sigs_length != wh->num_coins)
-  {
-    GNUNET_break_op (0);
-    wr.hr.http_status = 0;
-    wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-  }
-  switch (hr->http_status)
+  switch (bw2r->hr.http_status)
   {
   case MHD_HTTP_OK:
     {
+      if (bw2r->details.ok.blind_sigs_length != wh->num_coins)
+      {
+        GNUNET_break_op (0);
+        wr.hr.http_status = 0;
+        wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
       for (unsigned int i = 0; i<wh->num_coins; i++)
       {
         struct CoinData *cd = &wh->coins[i];
@@ -183,7 +180,7 @@ handle_reserve_batch_withdraw_finished (
 
         if (GNUNET_OK !=
             TALER_planchet_to_coin (&cd->pk.key,
-                                    &blind_sigs[i],
+                                    &bw2r->details.ok.blind_sigs[i],
                                     &cd->bks,
                                     &cd->priv,
                                     cd->ach,
@@ -200,8 +197,8 @@ handle_reserve_batch_withdraw_finished (
         coin->sig = fc.sig;
         coin->exchange_vals = cd->alg_values;
       }
-      wr.details.success.coins = coins;
-      wr.details.success.num_coins = wh->num_coins;
+      wr.details.ok.coins = coins;
+      wr.details.ok.num_coins = wh->num_coins;
       break;
     }
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
@@ -217,7 +214,7 @@ handle_reserve_batch_withdraw_finished (
       };
 
       if (GNUNET_OK !=
-          GNUNET_JSON_parse (hr->reply,
+          GNUNET_JSON_parse (bw2r->hr.reply,
                              spec,
                              NULL, NULL))
       {
@@ -289,7 +286,7 @@ withdraw_cs_stage_two_callback (
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    cd->alg_values = csrr->details.success.alg_values;
+    cd->alg_values = csrr->details.ok.alg_values;
     TALER_planchet_setup_coin_priv (&cd->ps,
                                     &cd->alg_values,
                                     &cd->priv);

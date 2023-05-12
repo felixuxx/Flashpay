@@ -112,6 +112,12 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *subdomain;
 
   /**
+   * Name of the program we use to convert outputs
+   * from Persona into our JSON inputs.
+   */
+  char *conversion_binary;
+
+  /**
    * Where to redirect the client upon completion.
    */
   char *post_kyc_redirect_url;
@@ -231,6 +237,12 @@ struct TALER_KYCLOGIC_ProofHandle
   char *url;
 
   /**
+   * Handle to an external process that converts the
+   * Persona response to our internal format.
+   */
+  struct TALER_JSON_ExternalConversion *ec;
+
+  /**
    * Hash of the payto:// URI we are checking the KYC for.
    */
   struct TALER_PaytoHashP h_payto;
@@ -245,6 +257,11 @@ struct TALER_KYCLOGIC_ProofHandle
    * Account ID at the provider.
    */
   char *provider_user_id;
+
+  /**
+   * Account ID from the service.
+   */
+  char *account_id;
 
   /**
    * Inquiry ID at the provider.
@@ -295,6 +312,11 @@ struct TALER_KYCLOGIC_WebhookHandle
   char *inquiry_id;
 
   /**
+   * Account ID from the service.
+   */
+  char *account_id;
+
+  /**
    * URL of the cURL request.
    */
   char *url;
@@ -314,6 +336,12 @@ struct TALER_KYCLOGIC_WebhookHandle
    * according to the service.
    */
   const char *template_id;
+
+  /**
+   * Handle to an external process that converts the
+   * Persona response to our internal format.
+   */
+  struct TALER_JSON_ExternalConversion *ec;
 
   /**
    * Our account ID.
@@ -344,6 +372,7 @@ persona_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
   GNUNET_free (pd->auth_token);
   GNUNET_free (pd->template_id);
   GNUNET_free (pd->subdomain);
+  GNUNET_free (pd->conversion_binary);
   GNUNET_free (pd->salt);
   GNUNET_free (pd->section);
   GNUNET_free (pd->post_kyc_redirect_url);
@@ -415,6 +444,18 @@ persona_load_configuration (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
                                "KYC_PERSONA_SUBDOMAIN");
+    persona_unload_configuration (pd);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ps->cfg,
+                                             provider_section_name,
+                                             "KYC_PERSONA_CONVERTER_HELPER",
+                                             &pd->conversion_binary))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_PERSONA_CONVERTER_HELPER");
     persona_unload_configuration (pd);
     return NULL;
   }
@@ -838,8 +879,14 @@ persona_proof_cancel (struct TALER_KYCLOGIC_ProofHandle *ph)
     GNUNET_CURL_job_cancel (ph->job);
     ph->job = NULL;
   }
+  if (NULL != ph->ec)
+  {
+    TALER_JSON_external_conversion_stop (ph->ec);
+    ph->ec = NULL;
+  }
   GNUNET_free (ph->url);
   GNUNET_free (ph->provider_user_id);
+  GNUNET_free (ph->account_id);
   GNUNET_free (ph->inquiry_id);
   GNUNET_free (ph);
 }
@@ -923,161 +970,6 @@ proof_reply_error (struct TALER_KYCLOGIC_ProofHandle *ph,
 
 
 /**
- * Convert KYC attribute data from Persona response.
- *
- * @param attr json array with Persona attribute data
- * @return KYC attribute data
- */
-static json_t *
-convert_attributes (const json_t *attr)
-{
-  const char *country_code = NULL;
-  const char *name_first = NULL;
-  const char *name_middle = NULL;
-  const char *name_last = NULL;
-  const char *address_street_1 = NULL;
-  const char *address_street_2 = NULL;
-  const char *address_city = NULL;
-  const char *address_postal_code = NULL;
-  const char *birthdate = NULL;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("country-code",
-                               &country_code),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name-first",
-                               &name_first),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name-middle",
-                               &name_middle),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("name-last",
-                               &name_last),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address-street-1",
-                               &address_street_1),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address-street-2",
-                               &address_street_2),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address-city",
-                               &address_city),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("address-postal-code",
-                               &address_postal_code),
-      NULL),
-    GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_string ("birthdate",
-                               &birthdate),
-      NULL),
-    GNUNET_JSON_spec_end ()
-  };
-  json_t *ret;
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (attr,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break (0);
-    json_dumpf (attr,
-                stderr,
-                JSON_INDENT (2));
-    return NULL;
-  }
-  {
-    char *name = NULL;
-    char *street = NULL;
-    char *city = NULL;
-
-    if ( (NULL != name_last) ||
-         (NULL != name_first) ||
-         (NULL != name_middle) )
-    {
-      GNUNET_asprintf (&name,
-                       "%s, %s %s",
-                       (NULL != name_last)
-                       ? name_last
-                       : "",
-                       (NULL != name_first)
-                       ? name_first
-                       : "",
-                       (NULL != name_middle)
-                       ? name_middle
-                       : "");
-    }
-    if ( (NULL != address_city) ||
-         (NULL != address_postal_code) )
-    {
-      GNUNET_asprintf (&city,
-                       "%s%s%s %s",
-                       (NULL != country_code)
-                       ? country_code
-                       : "",
-                       (NULL != country_code)
-                       ? "-"
-                       : "",
-                       (NULL != address_postal_code)
-                       ? address_postal_code
-                       : "",
-                       (NULL != address_city)
-                       ? address_city
-                       : "");
-    }
-    if ( (NULL != address_street_1) ||
-         (NULL != address_street_2) )
-    {
-      GNUNET_asprintf (&street,
-                       "%s%s%s",
-                       (NULL != address_street_1)
-                       ? address_street_1
-                       : "",
-                       ( (NULL != address_street_1) &&
-                         (NULL != address_street_2) )
-                       ? "\n"
-                       : "",
-                       (NULL != address_street_2)
-                       ? address_street_2
-                       : "");
-    }
-    ret = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string (
-          TALER_ATTRIBUTE_BIRTHDATE,
-          birthdate)),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string (
-          TALER_ATTRIBUTE_FULL_NAME,
-          name)),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string (
-          TALER_ATTRIBUTE_ADDRESS_STREET,
-          street)),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string (
-          TALER_ATTRIBUTE_ADDRESS_CITY,
-          city)),
-      GNUNET_JSON_pack_allow_null (
-        GNUNET_JSON_pack_string (
-          TALER_ATTRIBUTE_RESIDENCES,
-          country_code))
-      );
-    GNUNET_free (street);
-    GNUNET_free (city);
-    GNUNET_free (name);
-  }
-  return ret;
-}
-
-
-/**
  * Return a response for the @a ph request indicating a
  * protocol violation by the Persona server.
  *
@@ -1112,6 +1004,86 @@ return_invalid_response (struct TALER_KYCLOGIC_ProofHandle *ph,
         GNUNET_JSON_pack_object_incref ("data",
                                         (json_t *)
                                         data))));
+}
+
+
+/**
+ * Start the external conversion helper.
+ *
+ * @param pd configuration details
+ * @param attr attributes to give to the helper
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return handle for the helper
+ */
+static struct TALER_JSON_ExternalConversion *
+start_conversion (const struct TALER_KYCLOGIC_ProviderDetails *pd,
+                  const json_t *attr,
+                  TALER_JSON_JsonCallback cb,
+                  void *cb_cls)
+{
+  return TALER_JSON_external_conversion_start (
+    attr,
+    cb,
+    cb_cls,
+    pd->conversion_binary,
+    pd->conversion_binary,
+    "-a",
+    pd->auth_token,
+    NULL
+    );
+}
+
+
+/**
+ * Type of a callback that receives a JSON @a result.
+ *
+ * @param cls closure with a `struct TALER_KYCLOGIC_ProofHandle *`
+ * @param status_type how did the process die
+ * @param code termination status code from the process
+ * @param attr result some JSON result, NULL if we failed to get an JSON output
+ */
+static void
+proof_post_conversion_cb (void *cls,
+                          enum GNUNET_OS_ProcessStatusType status_type,
+                          unsigned long code,
+                          const json_t *attr)
+{
+  struct TALER_KYCLOGIC_ProofHandle *ph = cls;
+  struct MHD_Response *resp;
+  struct GNUNET_TIME_Absolute expiration;
+
+  ph->ec = NULL;
+  if ( (NULL == attr) ||
+       (0 != code) )
+  {
+    GNUNET_break_op (0);
+    return_invalid_response (ph,
+                             MHD_HTTP_OK,
+                             ph->inquiry_id,
+                             "converter",
+                             NULL);
+    persona_proof_cancel (ph);
+    return;
+  }
+  expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
+  resp = MHD_create_response_from_buffer (0,
+                                          "",
+                                          MHD_RESPMEM_PERSISTENT);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (resp,
+                                         MHD_HTTP_HEADER_LOCATION,
+                                         ph->pd->post_kyc_redirect_url));
+  TALER_MHD_add_global_headers (resp);
+  ph->cb (ph->cb_cls,
+          TALER_KYCLOGIC_STATUS_SUCCESS,
+          ph->account_id,
+          ph->inquiry_id,
+          expiration,
+          attr,
+          MHD_HTTP_SEE_OTHER,
+          resp);
+  persona_proof_cancel (ph);
 }
 
 
@@ -1283,46 +1255,15 @@ handle_proof_finished (void *cls,
                                    data);
           break;
         }
-
-        {
-          struct MHD_Response *resp;
-          struct GNUNET_TIME_Absolute expiration;
-          json_t *attr;
-
-          attr = convert_attributes (attributes);
-          if (NULL == attr)
-          {
-            GNUNET_break_op (0);
-            return_invalid_response (ph,
-                                     response_code,
-                                     inquiry_id,
-                                     "data-relationships-account-data-id",
-                                     data);
-            break;
-          }
-          expiration = GNUNET_TIME_relative_to_absolute (ph->pd->validity);
-          resp = MHD_create_response_from_buffer (0,
-                                                  "",
-                                                  MHD_RESPMEM_PERSISTENT);
-          GNUNET_break (MHD_YES ==
-                        MHD_add_response_header (resp,
-                                                 MHD_HTTP_HEADER_LOCATION,
-                                                 ph->pd->post_kyc_redirect_url));
-          TALER_MHD_add_global_headers (resp);
-          ph->cb (ph->cb_cls,
-                  TALER_KYCLOGIC_STATUS_SUCCESS,
-                  account_id,
-                  inquiry_id,
-                  expiration,
-                  attr,
-                  MHD_HTTP_SEE_OTHER,
-                  resp);
-          json_decref (attr);
-        }
+        ph->account_id = GNUNET_strdup (account_id);
+        ph->ec = start_conversion (ph->pd,
+                                   j,
+                                   &proof_post_conversion_cb,
+                                   ph);
         GNUNET_JSON_parse_free (ispec);
       }
       GNUNET_JSON_parse_free (spec);
-      break;
+      return; /* continued in proof_post_conversion_cb */
     }
   case MHD_HTTP_BAD_REQUEST:
   case MHD_HTTP_NOT_FOUND:
@@ -1580,6 +1521,12 @@ persona_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
     GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
   }
+  if (NULL != wh->ec)
+  {
+    TALER_JSON_external_conversion_stop (wh->ec);
+    wh->ec = NULL;
+  }
+  GNUNET_free (wh->account_id);
   GNUNET_free (wh->inquiry_id);
   GNUNET_free (wh->url);
   GNUNET_free (wh);
@@ -1647,6 +1594,32 @@ webhook_reply_error (struct TALER_KYCLOGIC_WebhookHandle *wh,
                          inquiry_id,
                          NULL, /* attributes */
                          http_status);
+}
+
+
+/**
+ * Type of a callback that receives a JSON @a result.
+ *
+ * @param cls closure with a `struct TALER_KYCLOGIC_WebhookHandle *`
+ * @param status_type how did the process die
+ * @param code termination status code from the process
+ * @param attr some JSON result, NULL if we failed to get an JSON output
+ */
+static void
+webhook_post_conversion_cb (void *cls,
+                            enum GNUNET_OS_ProcessStatusType status_type,
+                            unsigned long code,
+                            const json_t *attr)
+{
+  struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
+
+  wh->ec = NULL;
+  webhook_generic_reply (wh,
+                         TALER_KYCLOGIC_STATUS_SUCCESS,
+                         wh->account_id,
+                         wh->inquiry_id,
+                         attr,
+                         MHD_HTTP_OK);
 }
 
 
@@ -1723,7 +1696,6 @@ handle_webhook_finished (void *cls,
             NULL),
           GNUNET_JSON_spec_end ()
         };
-        json_t *attr;
 
         if (GNUNET_OK !=
             GNUNET_JSON_parse (attributes,
@@ -1807,19 +1779,15 @@ handle_webhook_finished (void *cls,
                                MHD_HTTP_BAD_GATEWAY);
           break;
         }
-
-        attr = convert_attributes (attributes);
-        webhook_generic_reply (wh,
-                               TALER_KYCLOGIC_STATUS_SUCCESS,
-                               account_id,
-                               inquiry_id,
-                               attr,
-                               MHD_HTTP_OK);
-        json_decref (attr);
+        wh->account_id = GNUNET_strdup (account_id);
+        wh->ec = start_conversion (wh->pd,
+                                   j,
+                                   &webhook_post_conversion_cb,
+                                   wh);
         GNUNET_JSON_parse_free (ispec);
       }
       GNUNET_JSON_parse_free (spec);
-      break;
+      return; /* continued in webhook_post_conversion_cb */
     }
   case MHD_HTTP_BAD_REQUEST:
   case MHD_HTTP_NOT_FOUND:

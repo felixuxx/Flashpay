@@ -84,13 +84,15 @@ struct SetOfficerState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param ar response details
  */
 static void
 set_officer_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+                const struct
+                TALER_EXCHANGE_ManagementUpdateAmlOfficerResponse *ar)
 {
   struct SetOfficerState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &ar->hr;
 
   ds->dh = NULL;
   if (MHD_HTTP_NO_CONTENT != hr->http_status)

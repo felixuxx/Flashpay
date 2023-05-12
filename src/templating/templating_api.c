@@ -180,10 +180,12 @@ TALER_TEMPLATING_fill (const char *tmpl,
   int eno;
 
   if (0 !=
-      (eno = mustach_jansson (tmpl,
-                              (json_t *) root,
-                              (char **) result,
-                              result_size)))
+      (eno = mustach_jansson_mem (tmpl,
+                                  0, /* length of tmpl */
+                                  (json_t *) root,
+                                  Mustach_With_NoExtensions,
+                                  (char **) result,
+                                  result_size)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "mustach failed on template with error %d\n",
@@ -237,10 +239,12 @@ TALER_TEMPLATING_build (struct MHD_Connection *connection,
       GNUNET_free (static_url);
     }
     if (0 !=
-        (eno = mustach_jansson (tmpl,
-                                (json_t *) root,
-                                &body,
-                                &body_size)))
+        (eno = mustach_jansson_mem (tmpl,
+                                    0,
+                                    (json_t *) root,
+                                    Mustach_With_NoExtensions,
+                                    &body,
+                                    &body_size)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "mustach failed on template `%s' with error %d\n",
@@ -425,6 +429,46 @@ load_template (void *cls,
                                                    end - lang);
   loaded[loaded_length - 1].value = map;
   return GNUNET_OK;
+}
+
+
+MHD_RESULT
+TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
+                              const char *template_basename,
+                              unsigned int http_status,
+                              enum TALER_ErrorCode ec,
+                              const char *detail)
+{
+  json_t *data;
+  enum GNUNET_GenericReturnValue ret;
+
+  data = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_uint64 ("ec",
+                             ec),
+    GNUNET_JSON_pack_string ("hint",
+                             TALER_ErrorCode_get_hint (ec)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("detail",
+                               detail))
+    );
+  ret = TALER_TEMPLATING_reply (connection,
+                                http_status,
+                                template_basename,
+                                NULL,
+                                NULL,
+                                data);
+  json_decref (data);
+  switch (ret)
+  {
+  case GNUNET_OK:
+    return MHD_YES;
+  case GNUNET_NO:
+    return MHD_YES;
+  case GNUNET_SYSERR:
+    return MHD_NO;
+  }
+  GNUNET_assert (0);
+  return MHD_NO;
 }
 
 

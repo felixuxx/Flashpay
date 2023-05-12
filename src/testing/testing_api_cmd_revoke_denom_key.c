@@ -65,14 +65,15 @@ struct RevokeState
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure with a `struct RevokeState *`
- * @param hr HTTP response data
+ * @param rdr response data
  */
 static void
 success_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementRevokeDenominationResponse *rdr)
 {
   struct RevokeState *rs = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &rdr->hr;
 
   rs->kh = NULL;
   if (rs->expected_response_code != hr->http_status)

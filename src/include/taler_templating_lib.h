@@ -22,7 +22,7 @@
 #define TALER_TEMPLATING_LIB_H
 
 #include <microhttpd.h>
-
+#include "taler_mhd_lib.h"
 
 /**
  * Fill in Mustach template @a tmpl using the data from @a root
@@ -90,6 +90,26 @@ TALER_TEMPLATING_reply (struct MHD_Connection *connection,
                         const char *instance_id,
                         const char *taler_uri,
                         const json_t *root);
+
+
+/**
+ * Load a @a template and substitute an error message based on @a ec and @a
+ * detail, returning the result to the @a connection with the given @a
+ * http_status code.
+ *
+ * @param connection the connection we act upon
+ * @param template_basename basename of the template to load
+ * @param http_status code to use on success
+ * @param ec error code to return
+ * @param detail optional text to add to the template
+ * @return #MHD_YES on success, #MHD_NO to just close the connection
+ */
+MHD_RESULT
+TALER_TEMPLATING_reply_error (struct MHD_Connection *connection,
+                              const char *template_basename,
+                              unsigned int http_status,
+                              enum TALER_ErrorCode ec,
+                              const char *detail);
 
 /**
  * Preload templates.

@@ -674,12 +674,12 @@ hash_rc (const char *receiver_account,
   size_t slen = strlen (receiver_account);
   char buf[sizeof (struct TALER_WireTransferIdentifierRawP) + slen];
 
-  memcpy (buf,
-          wtid,
-          sizeof (*wtid));
-  memcpy (&buf[sizeof (*wtid)],
-          receiver_account,
-          slen);
+  GNUNET_memcpy (buf,
+                 wtid,
+                 sizeof (*wtid));
+  GNUNET_memcpy (&buf[sizeof (*wtid)],
+                 receiver_account,
+                 slen);
   GNUNET_CRYPTO_hash (buf,
                       sizeof (buf),
                       key);
@@ -1483,10 +1483,10 @@ history_debit_cb (void *cls,
   switch (dhr->http_status)
   {
   case MHD_HTTP_OK:
-    for (unsigned int i = 0; i<dhr->details.success.details_length; i++)
+    for (unsigned int i = 0; i<dhr->details.ok.details_length; i++)
     {
       const struct TALER_BANK_DebitDetails *dd
-        = &dhr->details.success.details[i];
+        = &dhr->details.ok.details[i];
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Analyzing bank DEBIT at %s of %s with WTID %s\n",
                   GNUNET_TIME_timestamp2s (dd->execution_date),
@@ -1504,9 +1504,9 @@ history_debit_cb (void *cls,
       roi->details.execution_date = dd->execution_date;
       roi->details.wtid = dd->wtid;
       roi->details.credit_account_uri = (const char *) &roi[1];
-      memcpy (&roi[1],
-              dd->credit_account_uri,
-              slen);
+      GNUNET_memcpy (&roi[1],
+                     dd->credit_account_uri,
+                     slen);
       if (GNUNET_OK !=
           GNUNET_CONTAINER_multihashmap_put (out_map,
                                              &roi->subject_hash,
@@ -1678,9 +1678,9 @@ reserve_in_cb (void *cls,
   rii->details.execution_date = execution_date;
   rii->details.reserve_pub = *reserve_pub;
   rii->details.debit_account_uri = (const char *) &rii[1];
-  memcpy (&rii[1],
-          sender_account_details,
-          slen);
+  GNUNET_memcpy (&rii[1],
+                 sender_account_details,
+                 slen);
   GNUNET_CRYPTO_hash (&wire_reference,
                       sizeof (uint64_t),
                       &rii->row_off_hash);
@@ -1978,10 +1978,10 @@ history_credit_cb (void *cls,
   switch (chr->http_status)
   {
   case MHD_HTTP_OK:
-    for (unsigned int i = 0; i<chr->details.success.details_length; i++)
+    for (unsigned int i = 0; i<chr->details.ok.details_length; i++)
     {
       const struct TALER_BANK_CreditDetails *cd
-        = &chr->details.success.details[i];
+        = &chr->details.ok.details[i];
 
       if (! analyze_credit (wa,
                             cd))

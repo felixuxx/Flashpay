@@ -109,7 +109,7 @@ handle_contract_get_finished (void *cls,
       struct TALER_PurseContractSignatureP econtract_sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("purse_pub",
-                                     &dr.details.success.purse_pub),
+                                     &dr.details.ok.purse_pub),
         GNUNET_JSON_spec_fixed_auto ("econtract_sig",
                                      &econtract_sig),
         GNUNET_JSON_spec_varsize ("econtract",
@@ -133,7 +133,7 @@ handle_contract_get_finished (void *cls,
             econtract,
             econtract_size,
             &cgh->cpub,
-            &dr.details.success.purse_pub,
+            &dr.details.ok.purse_pub,
             &econtract_sig))
       {
         GNUNET_break (0);
@@ -142,8 +142,8 @@ handle_contract_get_finished (void *cls,
         GNUNET_JSON_parse_free (spec);
         break;
       }
-      dr.details.success.econtract = econtract;
-      dr.details.success.econtract_size = econtract_size;
+      dr.details.ok.econtract = econtract;
+      dr.details.ok.econtract_size = econtract_size;
       cgh->cb (cgh->cb_cls,
                &dr);
       GNUNET_JSON_parse_free (spec);

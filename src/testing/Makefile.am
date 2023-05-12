@@ -68,11 +68,13 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_expire.c \
   testing_api_cmd_exec_router.c \
   testing_api_cmd_exec_transfer.c \
+  testing_api_cmd_exec_wget.c \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_insert_deposit.c \
   testing_api_cmd_kyc_check_get.c \
   testing_api_cmd_kyc_proof.c \
   testing_api_cmd_kyc_wallet_get.c \
+  testing_api_cmd_nexus_fetch_transactions.c \
   testing_api_cmd_oauth.c \
   testing_api_cmd_offline_sign_global_fees.c \
   testing_api_cmd_offline_sign_wire_fees.c \

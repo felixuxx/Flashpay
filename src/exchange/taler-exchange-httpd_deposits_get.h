@@ -27,6 +27,13 @@
 
 
 /**
+ * Resume long pollers on GET /deposits.
+ */
+void
+TEH_deposits_get_cleanup (void);
+
+
+/**
  * Handle a "/deposits/$H_WIRE/$MERCHANT_PUB/$H_CONTRACT_TERMS/$COIN_PUB"
  * request.
  *

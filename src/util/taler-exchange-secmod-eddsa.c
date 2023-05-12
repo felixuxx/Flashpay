@@ -826,9 +826,9 @@ parse_key (const char *filename,
                 filename);
     return GNUNET_SYSERR;
   }
-  memcpy (&priv,
-          buf,
-          buf_size);
+  GNUNET_memcpy (&priv,
+                 buf,
+                 buf_size);
 
   {
     struct GNUNET_CRYPTO_EddsaPublicKey pub;

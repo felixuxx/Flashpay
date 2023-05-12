@@ -378,10 +378,10 @@ history_cb (void *cls,
     GNUNET_break (0);
     goto error;
   case MHD_HTTP_OK:
-    for (unsigned int i = 0; i<dhr->details.success.details_length; i++)
+    for (unsigned int i = 0; i<dhr->details.ok.details_length; i++)
     {
       const struct TALER_BANK_DebitDetails *dd =
-        &dhr->details.success.details[i];
+        &dhr->details.ok.details[i];
 
       /* check current element */
       if (GNUNET_OK !=

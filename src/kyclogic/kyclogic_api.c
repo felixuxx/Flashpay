@@ -780,10 +780,11 @@ TALER_KYCLOGIC_kyc_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
       TALER_KYCLOGIC_kyc_done ();
       return GNUNET_SYSERR;
     }
-  qsort (kyc_triggers,
-         num_kyc_triggers,
-         sizeof (struct TALER_KYCLOGIC_KycTrigger *),
-         &sort_by_timeframe);
+  if (0 != num_kyc_triggers)
+    qsort (kyc_triggers,
+           num_kyc_triggers,
+           sizeof (struct TALER_KYCLOGIC_KycTrigger *),
+           &sort_by_timeframe);
   return GNUNET_OK;
 }
 

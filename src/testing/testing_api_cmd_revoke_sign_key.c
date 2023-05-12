@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -65,14 +65,15 @@ struct RevokeState
  * Function called with information about the post revocation operation result.
  *
  * @param cls closure with a `struct RevokeState *`
- * @param hr HTTP response data
+ * @param rsr response data
  */
 static void
 success_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementRevokeSigningKeyResponse *rsr)
 {
   struct RevokeState *rs = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &rsr->hr;
 
   rs->kh = NULL;
   if (rs->expected_response_code != hr->http_status)

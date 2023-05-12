@@ -116,10 +116,10 @@ check_aml_decision_cb (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_amount (ref,
                                                    &amount));
-    for (unsigned int i = 0; i<adr->details.success.aml_history_length; i++)
+    for (unsigned int i = 0; i<adr->details.ok.aml_history_length; i++)
     {
       const struct TALER_EXCHANGE_AmlDecisionDetail *aml_history
-        = &adr->details.success.aml_history[i];
+        = &adr->details.ok.aml_history[i];
 
       if ( (NULL == oldest) ||
            (0 !=

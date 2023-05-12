@@ -542,7 +542,6 @@ handle_get_aml (struct TEH_RequestContext *rc,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          NULL);
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-      GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_EXCHANGE_GENERIC_AML_OFFICER_ACCESS_DENIED,
@@ -932,9 +931,9 @@ proceed_with_handler (struct TEH_RequestContext *rc,
 
     /* Parse command-line arguments */
     /* make a copy of 'url' because 'strtok_r()' will modify */
-    memcpy (d,
-            url,
-            ulen);
+    GNUNET_memcpy (d,
+                   url,
+                   ulen);
     i = 0;
     args[i++] = strtok_r (d, "/", &sp);
     while ( (NULL != args[i - 1]) &&
@@ -1617,33 +1616,8 @@ handle_mhd_request (void *cls,
     if (0 == strcasecmp (method,
                          MHD_HTTP_METHOD_POST))
     {
-      const char *cl;
-
-      /* Maybe check for maximum upload size
-         and refuse requests if they are just too big. */
-      cl = MHD_lookup_connection_value (connection,
-                                        MHD_HEADER_KIND,
-                                        MHD_HTTP_HEADER_CONTENT_LENGTH);
-      if (NULL != cl)
-      {
-        unsigned long long cv;
-        char dummy;
-
-        if (1 != sscanf (cl,
-                         "%llu%c",
-                         &cv,
-                         &dummy))
-        {
-          /* Not valid HTTP request, just close connection. */
-          GNUNET_break_op (0);
-          return MHD_NO;
-        }
-        if (cv > TALER_MHD_REQUEST_BUFFER_MAX)
-        {
-          GNUNET_break_op (0);
-          return TALER_MHD_reply_request_too_large (connection);
-        }
-      }
+      TALER_MHD_check_content_length (connection,
+                                      TALER_MHD_REQUEST_BUFFER_MAX);
     }
   }
 
@@ -2215,6 +2189,7 @@ do_shutdown (void *cls)
 
   mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
+  TEH_deposits_get_cleanup ();
   TEH_reserves_get_cleanup ();
   TEH_purses_get_cleanup ();
   TEH_kyc_check_cleanup ();

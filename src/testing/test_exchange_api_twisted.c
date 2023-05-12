@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -112,8 +112,9 @@ run (void *cls,
    * response from a refresh-reveal operation.
    */
   struct TALER_TESTING_Command refresh_409_conflict[] = {
-    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve",
-                              "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "refresh-create-reserve",
+      "EUR:5.01"),
     /**
      * Make previous command effective.
      */
@@ -121,34 +122,38 @@ run (void *cls,
     /**
      * Withdraw EUR:5.
      */
-    TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin",
-                                       "refresh-create-reserve",
-                                       "EUR:5",
-                                       0, /* age restriction off */
-                                       MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
-                               "refresh-withdraw-coin",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\
-                     \"value\":\"EUR:1\"}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:1",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_withdraw_amount (
+      "refresh-withdraw-coin",
+      "refresh-create-reserve",
+      "EUR:5",
+      0,                                  /* age restriction off */
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit (
+      "refresh-deposit-partial",
+      "refresh-withdraw-coin",
+      0,
+      bc.user42_payto,
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
+      GNUNET_TIME_UNIT_ZERO,
+      "EUR:1",
+      MHD_HTTP_OK),
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_melt ("refresh-melt",
-                            "refresh-withdraw-coin",
-                            MHD_HTTP_OK,
-                            NULL),
+    TALER_TESTING_cmd_melt (
+      "refresh-melt",
+      "refresh-withdraw-coin",
+      MHD_HTTP_OK,
+      NULL),
     /* Trigger 409 Conflict.  */
-    TALER_TESTING_cmd_flip_upload ("flip-upload",
-                                   config_file,
-                                   "transfer_privs.0"),
-    TALER_TESTING_cmd_refresh_reveal ("refresh-(flipped-)reveal",
-                                      "refresh-melt",
-                                      MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_flip_upload (
+      "flip-upload",
+      config_file,
+      "transfer_privs.0"),
+    TALER_TESTING_cmd_refresh_reveal (
+      "refresh-(flipped-)reveal",
+      "refresh-melt",
+      MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
   };
 
@@ -159,23 +164,25 @@ run (void *cls,
    * lib test suite.
    */
   struct TALER_TESTING_Command refund[] = {
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
-                              "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE (
+      "create-reserve-r1",
+      "EUR:5.01"),
     CMD_EXEC_WIREWATCH ("wirewatch-r1"),
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
-                                       "create-reserve-r1",
-                                       "EUR:5",
-                                       0, /* age restriction off */
-                                       MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit ("deposit-refund-1",
-                               "withdraw-coin-r1",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\","
-                               "\"value\":\"EUR:5\"}]}",
-                               GNUNET_TIME_UNIT_MINUTES,
-                               "EUR:5",
-                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_withdraw_amount (
+      "withdraw-coin-r1",
+      "create-reserve-r1",
+      "EUR:5",
+      0,                                  /* age restriction off */
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit (
+      "deposit-refund-1",
+      "withdraw-coin-r1",
+      0,
+      bc.user42_payto,
+      "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_MINUTES,
+      "EUR:5",
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_refund ("refund-currency-mismatch",
                               MHD_HTTP_BAD_REQUEST,
                               "USD:5",
@@ -190,18 +197,18 @@ run (void *cls,
     /* This next deposit CMD is only used to provide a
      * good merchant signature to the next (failing) refund
      * operations.  */
-    TALER_TESTING_cmd_deposit ("deposit-refund-to-fail",
-                               "withdraw-coin-r1",
-                               0, /* coin index.  */
-                               bc.user42_payto,
-                               /* This parameter will make any comparison about
-                                  h_contract_terms fail, when /refund will be handled.
-                                  So in other words, this is h_contract mismatch.  */
-                               "{\"items\":[{\"name\":\"ice skate\","
-                               "\"value\":\"EUR:5\"}]}",
-                               GNUNET_TIME_UNIT_MINUTES,
-                               "EUR:5",
-                               MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_deposit (
+      "deposit-refund-to-fail",
+      "withdraw-coin-r1",
+      0,                          /* coin index.  */
+      bc.user42_payto,
+      /* This parameter will make any comparison about
+         h_contract_terms fail, when /refund will be handled.
+         So in other words, this is h_contract mismatch.  */
+      "{\"items\":[{\"name\":\"ice skate\",\"value\":\"EUR:5\"}]}",
+      GNUNET_TIME_UNIT_MINUTES,
+      "EUR:5",
+      MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_refund ("refund-deposit-not-found",
                               MHD_HTTP_NOT_FOUND,
                               "EUR:5",
@@ -219,10 +226,11 @@ run (void *cls,
    * are out of date.
    */
   struct TALER_TESTING_Command expired_keys[] = {
-    TALER_TESTING_cmd_modify_header_dl ("modify-expiration",
-                                        config_file,
-                                        MHD_HTTP_HEADER_EXPIRES,
-                                        "Wed, 19 Jan 586524 08:01:49 GMT"),
+    TALER_TESTING_cmd_modify_header_dl (
+      "modify-expiration",
+      config_file,
+      MHD_HTTP_HEADER_EXPIRES,
+      "Wed, 19 Jan 586524 08:01:49 GMT"),
     TALER_TESTING_cmd_check_keys_pull_all_keys (
       "check-keys-expiration-0",
       2),
@@ -232,28 +240,34 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r2",
                               "EUR:55.01"),
     CMD_EXEC_WIREWATCH ("wirewatch-r2"),
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r2",
-                                       "create-reserve-r2",
-                                       "EUR:5",
-                                       0, /* age restriction off */
-                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_withdraw_amount (
+      "withdraw-coin-r2",
+      "create-reserve-r2",
+      "EUR:5",
+      0,                                  /* age restriction off */
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 #endif
 
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2?receiver-name=2",
-                                MHD_HTTP_NO_CONTENT,
-                                false),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_file),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1),
-    TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
-                             refresh_409_conflict),
-    TALER_TESTING_cmd_batch ("refund",
-                             refund),
+    TALER_TESTING_cmd_wire_add (
+      "add-wire-account",
+      "payto://x-taler-bank/localhost/2?receiver-name=2",
+      MHD_HTTP_NO_CONTENT,
+      false),
+    TALER_TESTING_cmd_exec_offline_sign_keys (
+      "offline-sign-future-keys",
+      config_file),
+    TALER_TESTING_cmd_check_keys_pull_all_keys (
+      "refetch /keys",
+      1),
+    TALER_TESTING_cmd_batch (
+      "refresh-reveal-409-conflict",
+      refresh_409_conflict),
+    TALER_TESTING_cmd_batch (
+      "refund",
+      refund),
 #if 0
     TALER_TESTING_cmd_batch ("expired-keys",
                              expired_keys),

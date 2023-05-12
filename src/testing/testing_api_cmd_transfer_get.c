@@ -115,15 +115,14 @@ track_transfer_cleanup (void *cls,
  * wire fees and hashed wire details as well.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param ta transfer data returned by the exchange
+ * @param tgr response details
  */
 static void
 track_transfer_cb (void *cls,
-                   const struct TALER_EXCHANGE_HttpResponse *hr,
-                   const struct TALER_EXCHANGE_TransferData *ta)
+                   const struct TALER_EXCHANGE_TransfersGetResponse *tgr)
 {
   struct TrackTransferState *tts = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &tgr->hr;
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   struct TALER_Amount expected_amount;
@@ -148,138 +147,62 @@ track_transfer_cb (void *cls,
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
-    if (NULL == tts->expected_total_amount)
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-    if (NULL == tts->expected_wire_fee)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
+      const struct TALER_EXCHANGE_TransferData *ta
+        = &tgr->details.ok.td;
 
-    if (GNUNET_OK !=
-        TALER_string_to_amount (tts->expected_total_amount,
-                                &expected_amount))
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-    if (0 != TALER_amount_cmp (&ta->total_amount,
-                               &expected_amount))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Total amount mismatch to command %s - "
-                  "%s vs %s\n",
-                  cmd->label,
-                  TALER_amount_to_string (&ta->total_amount),
-                  TALER_amount_to_string (&expected_amount));
-      json_dumpf (hr->reply,
-                  stderr,
-                  0);
-      fprintf (stderr, "\n");
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-
-    if (GNUNET_OK !=
-        TALER_string_to_amount (tts->expected_wire_fee,
-                                &expected_amount))
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-
-    if (0 != TALER_amount_cmp (&ta->wire_fee,
-                               &expected_amount))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Wire fee mismatch to command %s\n",
-                  cmd->label);
-      json_dumpf (hr->reply,
-                  stderr,
-                  0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
-
-    /**
-     * Optionally checking: (1) wire-details for this transfer
-     * match the ones from a referenced "deposit" operation -
-     * or any operation that could provide wire-details.  (2)
-     * Total amount for this transfer matches the one from any
-     * referenced command that could provide one.
-     */
-    if (NULL != tts->wire_details_reference)
-    {
-      const struct TALER_TESTING_Command *wire_details_cmd;
-      const char **payto_uri;
-      struct TALER_PaytoHashP h_payto;
-
-      wire_details_cmd
-        = TALER_TESTING_interpreter_lookup_command (is,
-                                                    tts->wire_details_reference);
-      if (NULL == wire_details_cmd)
+      if (NULL == tts->expected_total_amount)
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
+      if (NULL == tts->expected_wire_fee)
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto_uri (wire_details_cmd,
-                                             &payto_uri))
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      TALER_payto_hash (*payto_uri,
-                        &h_payto);
-      if (0 != GNUNET_memcmp (&h_payto,
-                              &ta->h_payto))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Wire hash missmath to command %s\n",
-                    cmd->label);
-        json_dumpf (hr->reply,
-                    stderr,
-                    0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-    }
-    if (NULL != tts->total_amount_reference)
-    {
-      const struct TALER_TESTING_Command *total_amount_cmd;
-      const struct TALER_Amount *total_amount_from_reference;
-
-      total_amount_cmd
-        = TALER_TESTING_interpreter_lookup_command (is,
-                                                    tts->total_amount_reference);
-      if (NULL == total_amount_cmd)
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      if (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount (total_amount_cmd,
-                                          &total_amount_from_reference))
+          TALER_string_to_amount (tts->expected_total_amount,
+                                  &expected_amount))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
       if (0 != TALER_amount_cmp (&ta->total_amount,
-                                 total_amount_from_reference))
+                                 &expected_amount))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Amount missmath to command %s\n",
+                    "Total amount mismatch to command %s - "
+                    "%s vs %s\n",
+                    cmd->label,
+                    TALER_amount_to_string (&ta->total_amount),
+                    TALER_amount_to_string (&expected_amount));
+        json_dumpf (hr->reply,
+                    stderr,
+                    0);
+        fprintf (stderr, "\n");
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+
+      if (GNUNET_OK !=
+          TALER_string_to_amount (tts->expected_wire_fee,
+                                  &expected_amount))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+
+      if (0 != TALER_amount_cmp (&ta->wire_fee,
+                                 &expected_amount))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Wire fee mismatch to command %s\n",
                     cmd->label);
         json_dumpf (hr->reply,
                     stderr,
@@ -287,8 +210,92 @@ track_transfer_cb (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-    }
-  }
+
+      /**
+       * Optionally checking: (1) wire-details for this transfer
+       * match the ones from a referenced "deposit" operation -
+       * or any operation that could provide wire-details.  (2)
+       * Total amount for this transfer matches the one from any
+       * referenced command that could provide one.
+       */
+      if (NULL != tts->wire_details_reference)
+      {
+        const struct TALER_TESTING_Command *wire_details_cmd;
+        const char **payto_uri;
+        struct TALER_PaytoHashP h_payto;
+
+        wire_details_cmd
+          = TALER_TESTING_interpreter_lookup_command (is,
+                                                      tts->
+                                                      wire_details_reference);
+        if (NULL == wire_details_cmd)
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        if (GNUNET_OK !=
+            TALER_TESTING_get_trait_payto_uri (wire_details_cmd,
+                                               &payto_uri))
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        TALER_payto_hash (*payto_uri,
+                          &h_payto);
+        if (0 != GNUNET_memcmp (&h_payto,
+                                &ta->h_payto))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Wire hash missmath to command %s\n",
+                      cmd->label);
+          json_dumpf (hr->reply,
+                      stderr,
+                      0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+      }
+      if (NULL != tts->total_amount_reference)
+      {
+        const struct TALER_TESTING_Command *total_amount_cmd;
+        const struct TALER_Amount *total_amount_from_reference;
+
+        total_amount_cmd
+          = TALER_TESTING_interpreter_lookup_command (is,
+                                                      tts->
+                                                      total_amount_reference);
+        if (NULL == total_amount_cmd)
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        if (GNUNET_OK !=
+            TALER_TESTING_get_trait_amount (total_amount_cmd,
+                                            &total_amount_from_reference))
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        if (0 != TALER_amount_cmp (&ta->total_amount,
+                                   total_amount_from_reference))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Amount missmath to command %s\n",
+                      cmd->label);
+          json_dumpf (hr->reply,
+                      stderr,
+                      0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+      }
+      break;
+    } /* case OK */
+  } /* switch on status */
   TALER_TESTING_interpreter_next (is);
 }
 

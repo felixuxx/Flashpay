@@ -52,8 +52,12 @@ struct ReservePoller
   struct MHD_Connection *connection;
 
   /**
-   * Subscription for the database event we are
-   * waiting for.
+   * Our request context.
+   */
+  struct TEH_RequestContext *rc;
+
+  /**
+   * Subscription for the database event we are waiting for.
    */
   struct GNUNET_DB_EventHandler *eh;
 
@@ -154,6 +158,8 @@ db_event_cb (void *cls,
   (void) extra_size;
   if (! rp->suspended)
     return; /* might get multiple wake-up events */
+  GNUNET_async_scope_enter (&rp->rc->async_scope_id,
+                            &old_scope);
   TEH_check_invariants ();
   rp->suspended = false;
   MHD_resume_connection (rp->connection);
@@ -171,11 +177,9 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
 
   if (NULL == rp)
   {
-    struct GNUNET_TIME_Relative timeout
-      = GNUNET_TIME_UNIT_ZERO;
-
     rp = GNUNET_new (struct ReservePoller);
     rp->connection = rc->connection;
+    rp->rc = rc;
     rc->rh_ctx = rp;
     rc->rh_cleaner = &rp_cleanup;
     GNUNET_CONTAINER_DLL_insert (rp_head,
@@ -193,34 +197,8 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                                          TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
                                          args[0]);
     }
-    {
-      const char *long_poll_timeout_ms;
-
-      long_poll_timeout_ms
-        = MHD_lookup_connection_value (rc->connection,
-                                       MHD_GET_ARGUMENT_KIND,
-                                       "timeout_ms");
-      if (NULL != long_poll_timeout_ms)
-      {
-        unsigned int timeout_ms;
-        char dummy;
-
-        if (1 != sscanf (long_poll_timeout_ms,
-                         "%u%c",
-                         &timeout_ms,
-                         &dummy))
-        {
-          GNUNET_break_op (0);
-          return TALER_MHD_reply_with_error (rc->connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                             "timeout_ms (must be non-negative number)");
-        }
-        timeout = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
-                                                 timeout_ms);
-      }
-    }
-    rp->timeout = GNUNET_TIME_relative_to_absolute (timeout);
+    TALER_MHD_parse_request_timeout (rc->connection,
+                                     &rp->timeout);
   }
 
   if ( (GNUNET_TIME_absolute_is_future (rp->timeout)) &&

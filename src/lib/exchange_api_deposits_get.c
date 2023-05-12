@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -118,15 +118,15 @@ handle_deposit_wtid_finished (void *cls,
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid",
-                                     &dr.details.success.wtid),
+                                     &dr.details.ok.wtid),
         GNUNET_JSON_spec_timestamp ("execution_time",
-                                    &dr.details.success.execution_time),
+                                    &dr.details.ok.execution_time),
         TALER_JSON_spec_amount_any ("coin_contribution",
-                                    &dr.details.success.coin_contribution),
+                                    &dr.details.ok.coin_contribution),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                     &dr.details.success.exchange_sig),
+                                     &dr.details.ok.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
-                                     &dr.details.success.exchange_pub),
+                                     &dr.details.ok.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -145,7 +145,7 @@ handle_deposit_wtid_finished (void *cls,
       }
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
-                                           &dr.details.success.exchange_pub))
+                                           &dr.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
@@ -156,12 +156,12 @@ handle_deposit_wtid_finished (void *cls,
           TALER_exchange_online_confirm_wire_verify (
             &dwh->h_wire,
             &dwh->h_contract_terms,
-            &dr.details.success.wtid,
+            &dr.details.ok.wtid,
             &dwh->coin_pub,
-            dr.details.success.execution_time,
-            &dr.details.success.coin_contribution,
-            &dr.details.success.exchange_pub,
-            &dr.details.success.exchange_sig))
+            dr.details.ok.execution_time,
+            &dr.details.ok.coin_contribution,
+            &dr.details.ok.exchange_pub,
+            &dr.details.ok.exchange_sig))
       {
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
@@ -260,6 +260,7 @@ TALER_EXCHANGE_deposits_get (
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls)
 {
@@ -293,6 +294,7 @@ TALER_EXCHANGE_deposits_get (
     char msig_str[sizeof (struct TALER_MerchantSignatureP) * 2];
     char chash_str[sizeof (struct TALER_PrivateContractHashP) * 2];
     char whash_str[sizeof (struct TALER_MerchantWireHashP) * 2];
+    char timeout_str[24];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (h_wire,
@@ -320,15 +322,33 @@ TALER_EXCHANGE_deposits_get (
                                          msig_str,
                                          sizeof (msig_str));
     *end = '\0';
+    if (GNUNET_TIME_relative_is_zero (timeout))
+    {
+      timeout_str[0] = '\0';
+    }
+    else
+    {
+      GNUNET_snprintf (
+        timeout_str,
+        sizeof (timeout_str),
+        "%llu",
+        (unsigned long long) (
+          timeout.rel_value_us
+          / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
+    }
 
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/deposits/%s/%s/%s/%s?merchant_sig=%s",
+                     "/deposits/%s/%s/%s/%s?merchant_sig=%s%s%s",
                      whash_str,
                      mpub_str,
                      chash_str,
                      cpub_str,
-                     msig_str);
+                     msig_str,
+                     GNUNET_TIME_relative_is_zero (timeout)
+                     ? ""
+                     : "&timeout_ms=",
+                     timeout_str);
   }
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_DepositGetHandle);
