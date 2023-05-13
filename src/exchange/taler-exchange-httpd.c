@@ -1859,20 +1859,21 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_config_get_amount (TEH_cfg,
-                                "exchange",
-                                "AML_THRESHOLD",
-                                &TEH_aml_threshold))
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "AML_THRESHOLD",
+                               &TEH_aml_threshold))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Need amount in section `exchange' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      TALER_config_get_amount (TEH_cfg,
-                               "exchange",
-                               "ENABLE_TIPPING",
-                               &TEH_aml_threshold))
+  TEH_enable_tipping
+    = GNUNET_CONFIGURATION_get_value_yesno (
+        TEH_cfg,
+        "exchange",
+        "ENABLE_TIPPING");
+  if (GNUNET_SYSERR == TEH_enable_tipping)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Need YES or NO in section `exchange' under `ENABLE_TIPPING'\n");
