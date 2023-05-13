@@ -183,7 +183,7 @@ TALER_TEMPLATING_fill (const char *tmpl,
       (eno = mustach_jansson_mem (tmpl,
                                   0, /* length of tmpl */
                                   (json_t *) root,
-                                  Mustach_With_NoExtensions,
+                                  Mustach_With_AllExtensions,
                                   (char **) result,
                                   result_size)))
   {

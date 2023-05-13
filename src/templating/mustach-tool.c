@@ -174,8 +174,6 @@ int main(int ac, char **av)
 #define MUSTACH_TOOL_JANSSON 2
 #define MUSTACH_TOOL_CJSON   3
 
-#define TOOL MUSTACH_TOOL_JANSSON
-
 #if TOOL == MUSTACH_TOOL_JSON_C
 
 #include "mustach-json-c.h"

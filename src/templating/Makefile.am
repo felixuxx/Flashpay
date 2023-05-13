@@ -15,6 +15,8 @@ taler_mustach_tool_SOURCES = \
 taler_mustach_tool_LDADD = \
   libmustach.la \
   -ljansson
+taler_mustach_tool_CFLAGS = \
+  -DTOOL=MUSTACH_TOOL_JANSSON
 
 lib_LTLIBRARIES = \
   libtalertemplating.la

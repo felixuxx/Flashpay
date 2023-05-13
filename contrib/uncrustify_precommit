@@ -4,7 +4,7 @@
 exec 1>&2
 
 RET=0
-changed=$(git diff --cached --name-only | grep -v mustach)
+changed=$(git diff --cached --name-only | grep -v mustach | grep -v templating/test./)
 crustified=""
 
 for f in $changed;
@@ -28,7 +28,7 @@ done
 if [ $RET = 1 ];
 then
   echo "Run"
-  echo "uncrustify --no-backup -c uncrustify.cfg ${crustified}"
+  echo "uncrustify --replace -c uncrustify.cfg ${crustified}"
   echo "before committing."
 fi
 exit $RET

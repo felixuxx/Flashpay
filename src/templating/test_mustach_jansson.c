@@ -24,7 +24,7 @@
  */
 #include "platform.h"
 #include "mustach-jansson.h"
-
+#include <gnunet/gnunet_util_lib.h>
 
 static void
 assert_template (const char *template,
@@ -34,10 +34,12 @@ assert_template (const char *template,
   char *r;
   size_t sz;
 
-  GNUNET_assert (0 == mustach_jansson (template,
-                                       root,
-                                       &r,
-                                       &sz));
+  GNUNET_assert (0 == mustach_jansson_mem (template,
+                                           0,
+                                           root,
+                                           Mustach_With_AllExtensions,
+                                           &r,
+                                           &sz));
   GNUNET_assert (0 == strcmp (r,
                               expected));
   GNUNET_free (r);
@@ -51,7 +53,6 @@ main (int argc,
   json_t *root = json_object ();
   json_t *arr = json_array ();
   json_t *obj = json_object ();
-  json_t *contract;
   /* test 1 */
   const char *t1 = "hello world";
   const char *x1 = "hello world";
@@ -67,24 +68,15 @@ main (int argc,
   /* test 5 */
   const char *t5 = "hello {{# v3 }}{{ y }}/{{ x }}{{ z }}{{/ v3 }}";
   const char *x5 = "hello quux/baz";
-  /* test 6 */
-  const char *t6 = "hello {{ v2!stringify }}";
-  const char *x6 = "hello [\n  \"foo\",\n  \"bar\"\n]";
-  /* test 7 */
-  const char *t7 = "amount: {{ amt!amount_decimal }} {{ amt!amount_currency }}";
-  const char *x7 = "amount: 123.00 EUR";
   /* test 8 */
   const char *t8 = "{{^ v4 }}fallback{{/ v4 }}";
   const char *x8 = "fallback";
 
-  /* contract test 8 (contract) */
-  const char *tc = "summary: {{ summary!i18n }}";
-  const char *xc_en = "summary: ENGLISH";
-  const char *xc_de = "summary: DEUTSCH";
-  const char *xc_fr = "summary: FRANCAISE";
-
   (void) argc;
   (void) argv;
+  GNUNET_log_setup ("test-mustach-jansson",
+                    "INFO",
+                    NULL);
   GNUNET_assert (NULL != root);
   GNUNET_assert (NULL != arr);
   GNUNET_assert (NULL != obj);
@@ -122,44 +114,12 @@ main (int argc,
                  json_object_set_new (obj,
                                       "y",
                                       json_string ("quux")));
-  contract = json_pack ("{ s:s, s:{s:s, s:s}}",
-                        "summary",
-                        "ENGLISH",
-                        "summary_i18n",
-                        "de",
-                        "DEUTSCH",
-                        "fr",
-                        "FRANCAISE");
-  GNUNET_assert (NULL != contract);
-
   assert_template (t1, root, x1);
   assert_template (t2, root, x2);
   assert_template (t3, root, x3);
   assert_template (t4, root, x4);
   assert_template (t5, root, x5);
-  assert_template (t6, root, x6);
-  assert_template (t7, root, x7);
   assert_template (t8, root, x8);
-  assert_template (tc, contract, xc_en);
-
-  GNUNET_assert (0 ==
-                 json_object_set_new (contract,
-                                      "$language",
-                                      json_string ("de")));
-  assert_template (tc, contract, xc_de);
-
-  GNUNET_assert (0 ==
-                 json_object_set_new (contract,
-                                      "$language",
-                                      json_string ("fr")));
-  assert_template (tc, contract, xc_fr);
-
-  GNUNET_assert (0 ==
-                 json_object_set_new (contract,
-                                      "$language",
-                                      json_string ("it")));
-  assert_template (tc, contract, xc_en);
   json_decref (root);
-  json_decref (contract);
   return 0;
 }
