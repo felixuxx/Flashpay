@@ -154,6 +154,11 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 char *TEH_currency;
 
 /**
+ * Option set to #GNUNET_YES if tipping is enabled.
+ */
+int TEH_enable_tipping;
+
+/**
  * What is the largest amount we allow a peer to
  * merge into a reserve before always triggering
  * an AML check?
@@ -1854,13 +1859,23 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
+      GNUNET_config_get_amount (TEH_cfg,
+                                "exchange",
+                                "AML_THRESHOLD",
+                                &TEH_aml_threshold))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need amount in section `exchange' under `AML_THRESHOLD'\n");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
-                               "taler",
-                               "AML_THRESHOLD",
+                               "exchange",
+                               "ENABLE_TIPPING",
                                &TEH_aml_threshold))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amount in section `TALER' under `AML_THRESHOLD'\n");
+                "Need YES or NO in section `exchange' under `ENABLE_TIPPING'\n");
     return GNUNET_SYSERR;
   }
   if (0 != strcmp (TEH_currency,
