@@ -733,6 +733,7 @@ decode_keys_json (const json_t *resp_obj,
   struct TALER_ExchangePublicKeyP pub;
   const char *currency;
   const char *asset_type;
+  bool tipping_allowed = true;
   json_t *wblwk = NULL;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("denominations_sig",
@@ -749,6 +750,10 @@ decode_keys_json (const json_t *resp_obj,
                              &currency),
     GNUNET_JSON_spec_string ("asset_type",
                              &asset_type),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_bool ("tipping_allowed",
+                             &tipping_allowed),
+      NULL),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("wallet_balance_limit_without_kyc",
                              &wblwk),
@@ -819,6 +824,7 @@ decode_keys_json (const json_t *resp_obj,
                              NULL, NULL));
   key_data->currency = GNUNET_strdup (currency);
   key_data->asset_type = GNUNET_strdup (asset_type);
+  key_data->tipping_allowed = tipping_allowed;
 
   /* parse the global fees */
   {
