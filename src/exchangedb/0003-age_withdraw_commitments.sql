@@ -30,10 +30,9 @@ BEGIN
       ',max_age SMALLINT NOT NULL CONSTRAINT max_age_positive CHECK(max_age>=0)'
       ',reserve_pub BYTEA NOT NULL CONSTRAINT reserve_pub_length CHECK(LENGTH(reserve_pub)=32)'
       ',reserve_sig BYTEA NOT NULL CONSTRAINT reserve_sig_length CHECK(LENGTH(reserve_sig)=64)'
-      ',num_coins SMALLINT NOT NULL CONSTRAINT num_coins_positive CHECK(num_coins>0)'
-      ',denominations_serials INT8[] NOT NULL CONSTRAINT denominations_serial_array_length CHECK(cardinality(denominations_serials)=num_coins)'
-      ',denom_sigs BYTEA[] NOT NULL CONSTRAINT denom_sigs_array_length CHECK(cardinality(denom_sigs)=num_coins)'
       ',noreveal_index SMALLINT NOT NULL CONSTRAINT noreveal_index_positive CHECK(noreveal_index>=0)'
+      ',denominations_serials INT8[] NOT NULL CONSTRAINT denominations_serial_array_length CHECK(cardinality(denominations_serials)=cardinality(denom_sigs))'
+      ',denom_sigs BYTEA[] NOT NULL CONSTRAINT denom_sigs_array_length CHECK(cardinality(denom_sigs)=cardinality(denominations_serials))'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (reserve_pub)'
@@ -75,20 +74,14 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
-  PERFORM comment_partinioned_column(
-    'Number of coins to be withdrawn'
-    ,'num_coins'
-    ,table_name
-    ,partition_suffix
-  );
   PERFORM comment_partitioned_column(
-     'Array of #num_coins of references to the denominations'
+     'Array of references to the denominations'
     ,'denominations_serials'
     ,table_name
     ,partition_suffix
   );
   PERFORM comment_partitioned_column(
-     'Array of #num_coins signatures over the blinded envelopes'
+     'Array of signatures over the blinded envelopes'
     ,'denom_sigs'
     ,table_name
     ,partition_suffix

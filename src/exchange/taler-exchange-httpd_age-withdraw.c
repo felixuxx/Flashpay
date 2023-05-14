@@ -92,9 +92,20 @@ struct AgeWithdrawContext
   struct TALER_EXCHANGEDB_AgeWithdrawCommitment commitment;
 
   /**
-   * Current time for the DB transaction.
+   * Number of coins/denonations in the reveal
    */
-  struct GNUNET_TIME_Timestamp now;
+  uint32_t num_coins;
+
+  /**
+   * kappa * #num_coins hashes of blinded coin planchets.
+   */
+  struct TALER_BlindedPlanchet *coin_evs;
+
+  /**
+   * #num_coins hashes of the denominations from which the coins are withdrawn.
+   * Those must support age restriction.
+   */
+  struct TALER_DenominationHashP *denoms_h;
 };
 
 
