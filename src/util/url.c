@@ -322,7 +322,7 @@ TALER_url_valid_charset (const char *url)
   for (unsigned int i = 0; '\0' != url[i]; i++)
   {
 #define ALLOWED_CHARACTERS \
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:;&?-.,=_~%+"
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:;&?-.,=_~%+#"
     if (NULL == strchr (ALLOWED_CHARACTERS,
                         (int) url[i]))
       return false;
