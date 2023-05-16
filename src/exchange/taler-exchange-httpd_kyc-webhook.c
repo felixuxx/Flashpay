@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,6 +28,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_kyclogic_lib.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_kyc-webhook.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -52,6 +53,11 @@ struct KycWebhookContext
    * Details about the connection we are processing.
    */
   struct TEH_RequestContext *rc;
+
+  /**
+   * Handle for the KYC-AML trigger interaction.
+   */
+  struct TEH_KycAmlTrigger *kat;
 
   /**
    * Plugin responsible for the webhook.
@@ -141,6 +147,28 @@ TEH_kyc_webhook_cleanup (void)
 
 
 /**
+ * Function called after the KYC-AML trigger is done.
+ *
+ * @param cls closure with a `struct KycWebhookContext *`
+ * @param http_status final HTTP status to return
+ * @param[in] response final HTTP ro return
+ */
+static void
+kyc_aml_webhook_finished (
+  void *cls,
+  unsigned int http_status,
+  struct MHD_Response *response)
+{
+  struct KycWebhookContext *kwh = cls;
+
+  kwh->kat = NULL;
+  kwh->response = response;
+  kwh->response_code = http_status;
+  kwh_resume (kwh);
+}
+
+
+/**
  * Function called with the result of a KYC webhook operation.
  *
  * Note that the "decref" for the @a response
@@ -178,58 +206,27 @@ webhook_finished_cb (
   switch (status)
   {
   case TALER_KYCLOGIC_STATUS_SUCCESS:
-    /* _successfully_ resumed case */
+    kwh->kat = TEH_kyc_finished (
+      &kwh->rc->async_scope_id,
+      process_row,
+      account_id,
+      provider_section,
+      provider_user_id,
+      provider_legitimization_id,
+      expiration,
+      attributes,
+      http_status,
+      response,
+      &kyc_aml_webhook_finished,
+      kwh);
+    if (NULL == kwh->kat)
     {
-      enum GNUNET_DB_QueryStatus qs;
-      size_t eas;
-      void *ea;
-      const char *birthdate;
-      struct GNUNET_ShortHashCode kyc_prox;
-
-      TALER_CRYPTO_attributes_to_kyc_prox (attributes,
-                                           &kyc_prox);
-      birthdate = json_string_value (json_object_get (attributes,
-                                                      TALER_ATTRIBUTE_BIRTHDATE));
-      TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
-                                           attributes,
-                                           &ea,
-                                           &eas);
-      qs = TEH_plugin->insert_kyc_attributes (
-        TEH_plugin->cls,
-        account_id,
-        &kyc_prox,
-        provider_section,
-        birthdate,
-        GNUNET_TIME_timestamp_get (),
-        GNUNET_TIME_absolute_to_timestamp (expiration),
-        eas,
-        ea);
-      GNUNET_free (ea);
-      if (qs < 0)
-      {
-        GNUNET_break (0);
-        kwh->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                              "insert_kyc_attributes");
-        kwh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        kwh_resume (kwh);
-        return;
-      }
-      qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
-                                                  process_row,
-                                                  provider_section,
-                                                  account_id,
-                                                  provider_user_id,
-                                                  provider_legitimization_id,
-                                                  expiration);
-      if (qs < 0)
-      {
-        GNUNET_break (0);
-        kwh->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                              "set_kyc_ok");
-        kwh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-        kwh_resume (kwh);
-        return;
-      }
+      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+      if (NULL != response)
+        MHD_destroy_response (response);
+      response = TALER_MHD_make_error (
+        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+        "[exchange] AML_KYC_TRIGGER");
     }
     break;
   default:
@@ -241,9 +238,10 @@ webhook_finished_cb (
                 status);
     break;
   }
-  kwh->response = response;
-  kwh->response_code = http_status;
-  kwh_resume (kwh);
+  if (NULL == kwh->kat)
+    kyc_aml_webhook_finished (kwh,
+                              http_status,
+                              response);
 }
 
 
@@ -261,6 +259,11 @@ clean_kwh (struct TEH_RequestContext *rc)
   {
     kwh->plugin->webhook_cancel (kwh->wh);
     kwh->wh = NULL;
+  }
+  if (NULL != kwh->kat)
+  {
+    TEH_kyc_finished_cancel (kwh->kat);
+    kwh->kat = NULL;
   }
   if (NULL != kwh->response)
   {
