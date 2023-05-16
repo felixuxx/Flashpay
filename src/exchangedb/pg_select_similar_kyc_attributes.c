@@ -76,16 +76,11 @@ get_attributes_cb (void *cls,
     size_t enc_attributes_size;
     void *enc_attributes;
     char *provider;
-    char *birthdate = NULL;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                             &h_payto),
       GNUNET_PQ_result_spec_string ("provider",
                                     &provider),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string ("birthdate",
-                                      &birthdate),
-        NULL),
       GNUNET_PQ_result_spec_timestamp ("collection_time",
                                        &collection_time),
       GNUNET_PQ_result_spec_timestamp ("expiration_time",
@@ -108,7 +103,6 @@ get_attributes_cb (void *cls,
     ctx->cb (ctx->cb_cls,
              &h_payto,
              provider,
-             birthdate,
              collection_time,
              expiration_time,
              enc_attributes_size,
@@ -143,7 +137,6 @@ TEH_PG_select_similar_kyc_attributes (
            "SELECT "
            " h_payto"
            ",provider"
-           ",birthdate"
            ",collection_time"
            ",expiration_time"
            ",encrypted_attributes"

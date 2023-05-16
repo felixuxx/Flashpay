@@ -15,6 +15,8 @@ pkgcfg_DATA = \
   exchange.conf
 
 # Programs
+bin_SCRIPTS = \
+  taler-exchange-kyc-aml-pep-trigger.sh
 
 bin_PROGRAMS = \
   taler-exchange-aggregator \
@@ -228,4 +230,5 @@ EXTRA_DIST = \
   test_taler_exchange_httpd.get \
   test_taler_exchange_httpd.post \
   exchange.conf \
+  $(bin_SCRIPTS) \
   $(check_SCRIPTS)

@@ -14,12 +14,31 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-BEGIN;
+CREATE OR REPLACE FUNCTION master_table_kyc_attributes_V2()
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  table_name VARCHAR DEFAULT 'kyc_attributes';
+BEGIN
+  EXECUTE FORMAT (
+   'ALTER TABLE ' || table_name ||
+   ' DROP COLUMN birthdate;'
+  );
+END $$;
 
-SELECT _v.register_patch('exchange-0004', NULL, NULL);
-SET search_path TO exchange;
+COMMENT ON FUNCTION master_table_kyc_attributes_V2
+  IS 'Removes birthdate colum from the kyc_attributes table';
 
-#include "0004-kyc_attributes.sql"
-#include "0004-wire_accounts.sql"
-
-COMMIT;
+INSERT INTO exchange_tables
+    (name
+    ,version
+    ,action
+    ,partitioned
+    ,by_range)
+  VALUES
+    ('kyc_attributes_V2'
+    ,'exchange-0004'
+    ,'master'
+    ,TRUE
+    ,FALSE);

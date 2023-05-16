@@ -27,30 +27,39 @@
 
 
 /**
- * Store KYC attribute data.
+ * Store KYC attribute data, update KYC process status and
+ * AML status for the given account.
  *
  * @param cls closure
+ * @param process_row KYC process row to update
  * @param h_payto account for which the attribute data is stored
  * @param kyc_prox key for similarity search
  * @param provider_section provider that must be checked
- * @param birthdate birthdate of user, in format YYYY-MM-DD; can be NULL;
- *        digits can be 0 if exact day, month or year are unknown
+ * @param provider_account_id provider account ID
+ * @param provider_legitimization_id provider legitimization ID
+ * @param birthday birthdate of user, in days after 1990, or 0 if unknown or definitively adult
  * @param collection_time when was the data collected
  * @param expiration_time when does the data expire
  * @param enc_attributes_size number of bytes in @a enc_attributes
  * @param enc_attributes encrypted attribute data
+ * @param require_aml true to trigger AML
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_attributes (
   void *cls,
+  uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
   const struct GNUNET_ShortHashCode *kyc_prox,
   const char *provider_section,
-  const char *birthdate,
+  uint32_t birthday,
   struct GNUNET_TIME_Timestamp collection_time,
-  struct GNUNET_TIME_Timestamp expiration_time,
+  const char *provider_account_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration_time,
   size_t enc_attributes_size,
-  const void *enc_attributes);
+  const void *enc_attributes,
+  bool require_aml);
+
 
 #endif

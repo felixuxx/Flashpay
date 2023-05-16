@@ -114,6 +114,7 @@ kyc_aml_finished (void *cls,
   size_t eas;
   void *ea;
   const char *birthdate;
+  unsigned int birthday;
   struct GNUNET_ShortHashCode kyc_prox;
   struct GNUNET_AsyncScopeSave old_scope;
 
@@ -124,21 +125,27 @@ kyc_aml_finished (void *cls,
                                        &kyc_prox);
   birthdate = json_string_value (json_object_get (kat->attributes,
                                                   TALER_ATTRIBUTE_BIRTHDATE));
+  birthday = 0; (void) birthdate;  // FIXME-Oec: calculate birthday here...
+  // Convert 'birthdate' to time after 1970, then compute days.
+  // Then compare against max age-restriction, and if before, set to 0.
   TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
                                        kat->attributes,
                                        &ea,
                                        &eas);
-  // FIXME: begin transaction (or move everything into one stored procedure?)
   qs = TEH_plugin->insert_kyc_attributes (
     TEH_plugin->cls,
+    kat->process_row,
     &kat->account_id,
     &kyc_prox,
     kat->provider_section,
-    birthdate,
+    birthday,
     GNUNET_TIME_timestamp_get (),
-    GNUNET_TIME_absolute_to_timestamp (kat->expiration),
+    kat->provider_user_id,
+    kat->provider_legitimization_id,
+    kat->expiration,
     eas,
-    ea);
+    ea,
+    0 != code);
   GNUNET_free (ea);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
@@ -147,36 +154,9 @@ kyc_aml_finished (void *cls,
       MHD_destroy_response (kat->response);
     kat->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     kat->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                          "insert_kyc_attributes");
-    goto finish;
+                                          "do_insert_kyc_attributes");
   }
-  qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
-                                              kat->process_row,
-                                              kat->provider_section,
-                                              &kat->account_id,
-                                              kat->provider_user_id,
-                                              kat->provider_legitimization_id,
-                                              kat->expiration);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    GNUNET_break (0);
-    if (NULL != kat->response)
-      MHD_destroy_response (kat->response);
-    kat->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    kat->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                          "update_kyc_process_by_row");
-    goto finish;
-  }
-  // FIXME: do DB work, possibly updating kat!
-  if (0 != code)
-  {
-    // FIXME: trigger AML!
-    GNUNET_break (0); // FIXME: not implemented
-  }
-  // FIXME: end transaction
-
   /* Finally, return result to main handler */
-finish:
   kat->cb (kat->cb_cls,
            kat->http_status,
            kat->response);
