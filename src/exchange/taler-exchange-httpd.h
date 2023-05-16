@@ -103,6 +103,11 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 extern char *TEH_currency;
 
 /**
+ * Name of the KYC-AML-trigger evaluation binary.
+ */
+extern char *TEH_kyc_aml_trigger;
+
+/**
  * What is the largest amount we allow a peer to
  * merge into a reserve before always triggering
  * an AML check?

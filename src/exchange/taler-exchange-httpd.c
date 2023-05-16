@@ -154,6 +154,11 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 char *TEH_currency;
 
 /**
+ * Name of the KYC-AML-trigger evaluation binary.
+ */
+char *TEH_kyc_aml_trigger;
+
+/**
  * Option set to #GNUNET_YES if tipping is enabled.
  */
 int TEH_enable_tipping;
@@ -1847,6 +1852,17 @@ exchange_serve_process_config (void)
                                "exchange",
                                "MAX_KEYS_CACHING",
                                "valid relative time expected");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "KYC_AML_TRIGGER",
+                                             &TEH_kyc_aml_trigger))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KYC_AML_TRIGGER");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
