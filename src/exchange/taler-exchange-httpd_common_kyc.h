@@ -64,7 +64,6 @@ struct TEH_KycAmlTrigger;
  * @param provider_section name of the configuration section of the logic that was run
  * @param provider_user_id set to user ID at the provider, or NULL if not supported or unknown
  * @param provider_legitimization_id set to legitimization process ID at the provider, or NULL if not supported or unknown
- * @param status KYC status
  * @param expiration until when is the KYC check valid
  * @param attributes user attributes returned by the provider
  * @param http_status HTTP status code of @a response
