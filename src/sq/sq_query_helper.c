@@ -150,7 +150,7 @@ qconv_json (void *cls,
   if (SQLITE_OK != sqlite3_bind_text (stmt,
                                       (int) off,
                                       str,
-                                      strlen (str) + 1,
+                                      strlen (str),
                                       SQLITE_TRANSIENT))
     return GNUNET_SYSERR;
   GNUNET_free (str);
