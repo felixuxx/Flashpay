@@ -1,0 +1,18 @@
+[Unit]
+Description=GNU Taler payment system exchange aggregator service
+PartOf=taler-exchange.target
+After=postgres.service
+
+[Service]
+User=taler-exchange-aggregator
+Type=simple
+Restart=always
+RestartSec=1s
+ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler/taler.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+Slice=taler-exchange.slice
+RuntimeMaxSec=3600s
