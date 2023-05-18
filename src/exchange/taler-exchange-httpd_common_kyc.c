@@ -82,7 +82,7 @@ struct TEH_KycAmlTrigger
   struct MHD_Response *response;
 
   /**
-   * Handle to an external process that evalutates the
+   * Handle to an external process that evaluates the
    * need to run AML on the account.
    */
   struct TALER_JSON_ExternalConversion *kyc_aml;
