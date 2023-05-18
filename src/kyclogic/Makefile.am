@@ -20,6 +20,7 @@ EXTRA_DIST = \
   persona-sample-reply.json
 
 bin_SCRIPTS = \
+  taler-exchange-kyc-kycaid-converter.sh \
   taler-exchange-kyc-persona-converter.sh
 
 lib_LTLIBRARIES = \
