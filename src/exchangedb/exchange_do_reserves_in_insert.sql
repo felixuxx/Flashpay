@@ -963,3 +963,144 @@ BEGIN
   CLOSE curs_transaction_exist;
   RETURN;
 END $$;
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
+  IN in_gc_date INT8,
+  IN in_reserve_expiration INT8,
+  IN ina_reserve_pub BYTEA[],
+  IN ina_wire_ref INT8[],
+  IN ina_credit_val INT8[],
+  IN ina_credit_frac INT4[],
+  IN ina_exchange_account_name VARCHAR[],
+  IN ina_execution_date INT8[],
+  IN ina_wire_source_h_payto BYTEA[],
+  IN ina_payto_uri VARCHAR[],
+  IN ina_notify TEXT[],
+  OUT transaction_duplicate BOOLEAN,
+  OUT ruuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  curs REFCURSOR;
+DECLARE
+  conflict BOOL;
+DECLARE
+  dup BOOL;
+DECLARE
+  uuid INT8;
+DECLARE
+  i RECORD;
+BEGIN
+
+  INSERT INTO wire_targets
+    (wire_target_h_payto
+    ,payto_uri)
+    SELECT
+      wire_source_h_payto
+     ,payto_uri
+    FROM
+      UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
+     ,UNNEST (ina_payto_uri) AS payto_uri
+  ON CONFLICT DO NOTHING;
+
+  OPEN curs FOR
+  WITH reserve_changes AS (
+    SELECT
+      reserve_pub
+     ,wire_ref
+     ,credit_val
+     ,credit_frac
+     ,exchange_account_name
+     ,execution_date
+     ,wire_source_h_payto
+     ,payto_uri
+     ,notify
+    FROM
+      UNNEST (ina_reserve_pub) AS reserve_pub
+     ,UNNEST (ina_wire_ref) AS wire_ref
+     ,UNNEST (ina_credit_val) AS credit_val
+     ,UNNEST (ina_credit_frac) AS credit_frac
+     ,UNNEST (ina_exchange_account_name) AS exchange_account_name
+     ,UNNEST (ina_execution_date) AS execution_date
+     ,UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
+     ,UNNEST (ina_notify) AS notify;
+
+
+  <<loop>> LOOP
+    FETCH FROM curs INTO i;
+    IF NOT FOUND
+    THEN
+      EXIT loop;
+    END IF;
+
+    INSERT INTO reserves
+      (reserve_pub
+      ,current_balance_val
+      ,current_balance_frac
+      ,expiration_date
+      ,gc_date
+    ) VALUES (
+      i.reserve_pub
+     ,i.credit_val
+     ,i.credit_frac
+     ,in_reserve_expiration
+     ,in_gc_date
+    )
+    ON CONFLICT DO NOTHING
+    RETURNING reserve_uuid
+    INTO uuid;
+    conflict = NOT FOUND;
+
+    INSERT INTO reserves_in
+      (reserve_pub
+      ,wire_reference
+      ,credit_val
+      ,credit_frac
+      ,exchange_account_section
+      ,wire_source_h_payto
+      ,execution_date
+    ) VALUES (
+      i.reserve_pub
+     ,i.wire_reference
+     ,i.credit_val
+     ,i.credit_frac
+     ,i.exchange_account_section
+     ,i.wire_source_h_payto
+     ,i.execution_date
+    ON CONFLICT DO NOTHING;
+
+    IF NOT FOUND
+    THEN
+      IF conflict
+      THEN
+        dup = TRUE;
+      else
+        dup = FALSE;
+      END IF;
+    ELSE
+      IF NOT conflict
+      THEN
+        EXECUTE FORMAT (
+          'NOTIFY %s'
+          ,i.notify);
+      END IF;
+      dup = FALSE;
+    END IF;
+    RETURN (dup,uuid);
+  END LOOP loop_reserve;
+  CLOSE curs;
+
+  RETURN;
+END $$;

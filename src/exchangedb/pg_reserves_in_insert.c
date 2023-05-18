@@ -619,12 +619,36 @@ TEH_PG_reserves_in_insert (
 
 #if 0
 
+/**
+ * Closure for our helper_cb()
+ */
 struct Context
 {
+  /**
+   * Array of reserve UUIDs to initialize.
+   */
   uint64_t *reserve_uuids;
+
+  /**
+   * Array with entries set to 'true' for duplicate transactions.
+   */
   bool *transaction_duplicates;
+
+  /**
+   * Array with entries set to 'true' for rows with conflicts.
+   */
   bool *conflicts;
+
+  /**
+   * Set to #GNUNET_SYSERR on failures.
+   */
   struct GNUNET_GenericReturnValue status;
+
+  /**
+   * Single value (no array) set to true if we need
+   * to follow-up with an update.
+   */
+  bool *needs_update;
 };
 
 
@@ -665,6 +689,7 @@ helper_cb (void *cls,
       ctx->status = GNUNET_SYSERR;
       return;
     }
+    *ctx->need_update |= ctx->conflicts[i];
   }
 }
 
@@ -685,7 +710,6 @@ TEH_PG_reserves_in_insertN (
   const char *sender_account_details[GNUNET_NZL (reserves_length)];
   const char *exchange_account_names[GNUNET_NZL (reserves_length)];
   uint64_t wire_references[GNUNET_NZL (reserves_length)];
-
   uint64_t reserve_uuids[GNUNET_NZL (reserves_length)];
   bool transaction_duplicates[GNUNET_NZL (reserves_length)];
   bool conflicts[GNUNET_NZL (reserves_length)];
@@ -693,6 +717,7 @@ TEH_PG_reserves_in_insertN (
     = GNUNET_TIME_relative_to_timestamp (pg->idle_reserve_expiration_time);
   struct GNUNET_TIME_Timestamp gc
     = GNUNET_TIME_relative_to_timestamp (pg->legal_reserve_expiration_time);
+  bool needs_update = false;
   enum GNUNET_DB_QueryStatus qs;
 
   for (unsigned int i = 0; i<reserves_length; i++)
@@ -709,6 +734,25 @@ TEH_PG_reserves_in_insertN (
     exchange_account_names[i] = reserve->exchange_account_name;
     wire_references[i] = reserve->wire_reference;
   }
+
+  /* NOTE: kind-of pointless to explicitly start a transaction here... */
+  if (GNUNET_OK !=
+      TEH_PG_preflight (pg))
+  {
+    GNUNET_break (0);
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
+    goto finished;
+  }
+
+  if (GNUNET_OK !=
+      TEH_PG_start_read_committed (pg,
+                                   "READ_COMMITED"))
+  {
+    GNUNET_break (0);
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
+    goto finished;
+  }
+
   PREPARE (pg,
            "reserves_insert_with_array",
            "SELECT"
@@ -752,6 +796,7 @@ TEH_PG_reserves_in_insertN (
       .reserve_uuids = reserve_uuids,
       .transaction_duplicates = transaction_duplicates,
       .conflicts = conflicts,
+      .needs_update = &needs_update,
       .status = GNUNET_OK
     };
 
@@ -766,12 +811,42 @@ TEH_PG_reserves_in_insertN (
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to insert into reserves (%d)\n",
                   qs);
-      for (unsigned int i = 0; i<reserves_length; i++)
-        GNUNET_free (rrs[i].notify_s);
-      return qs;
+      goto finished;
     }
   }
 
+  {
+    enum GNUNET_DB_QueryStatus cs;
+
+    cs = TEH_PG_commit (pg);
+    if (cs < 0)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to commit\n");
+      qs = cs;
+      goto finished;
+    }
+  }
+  for (unsigned int i = 0; i<reserves_length; i++)
+  {
+    results[i] = transaction_duplicates[i]
+      ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
+      : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  }
+
+  if (! need_update)
+  {
+    qs = reserves_length;
+    goto finished;
+  }
+  if (GNUNET_OK !=
+      TEH_PG_start (pg,
+                    "reserve-insert-continued"))
+  {
+    GNUNET_break (0);
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
+    goto finished;
+  }
 
   for (unsigned int i = 0; i<reserves_length; i++)
   {
@@ -806,16 +881,14 @@ TEH_PG_reserves_in_insertN (
                     "Failed to update reserves (%d)\n",
                     qs);
         results[i] = qs;
-        for (unsigned int i = 0; i<reserves_length; i++)
-          GNUNET_free (rrs[i].notify_s);
-        return qs;
+        goto finished;
       }
       results[i] = duplicate
           ? GNUNET_DB_STATUS_SUCCESS_NO_RESULTS
           : GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
     }
   }
-  // FIXME: convert results back for caller, too!
+finished:
   for (unsigned int i = 0; i<reserves_length; i++)
     GNUNET_free (rrs[i].notify_s);
   return qs;
