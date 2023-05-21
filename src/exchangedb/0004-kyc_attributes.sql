@@ -28,7 +28,7 @@ BEGIN
 END $$;
 
 COMMENT ON FUNCTION master_table_kyc_attributes_V2
-  IS 'Removes birthdate colum from the kyc_attributes table';
+  IS 'Removes birthdate column from the kyc_attributes table';
 
 INSERT INTO exchange_tables
     (name

@@ -213,7 +213,7 @@ main (int argc,
         ? "Could not remove exchange from database: entry already absent\n"
         : "Could not add exchange to database: entry already exists\n");
       TALER_AUDITORDB_plugin_unload (adb);
-      return EXIT_FAILURE;
+      return EXIT_SUCCESS;
     }
   }
   TALER_AUDITORDB_plugin_unload (adb);

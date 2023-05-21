@@ -565,7 +565,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       if (GNUNET_OK !=
           TALER_TESTING_prepare_bank (cfg_filename,
                                       GNUNET_NO,
-                                      "exchange-account-2",
+                                      "exchange-account-test",
                                       &bc))
       {
         return 1;
