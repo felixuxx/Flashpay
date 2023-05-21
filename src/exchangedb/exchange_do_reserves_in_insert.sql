@@ -975,6 +975,10 @@ END $$;
 
 
 
+CREATE TYPE exchange_do_array_reserve_insert_return_type
+  AS
+  (transaction_duplicate BOOLEAN
+  ,ruuid INT8);
 
 CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN in_gc_date INT8,
@@ -987,9 +991,8 @@ CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN ina_execution_date INT8[],
   IN ina_wire_source_h_payto BYTEA[],
   IN ina_payto_uri VARCHAR[],
-  IN ina_notify TEXT[],
-  OUT transaction_duplicate BOOLEAN,
-  OUT ruuid INT8)
+  IN ina_notify TEXT[])
+RETURNS SETOF exchange_do_array_reserve_insert_return_type
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -1015,8 +1018,7 @@ BEGIN
      ,UNNEST (ina_payto_uri) AS payto_uri
   ON CONFLICT DO NOTHING;
 
-  OPEN curs FOR
-  WITH reserve_changes AS (
+  FOR i IN 
     SELECT
       reserve_pub
      ,wire_ref
@@ -1035,16 +1037,8 @@ BEGIN
      ,UNNEST (ina_exchange_account_name) AS exchange_account_name
      ,UNNEST (ina_execution_date) AS execution_date
      ,UNNEST (ina_wire_source_h_payto) AS wire_source_h_payto
-     ,UNNEST (ina_notify) AS notify;
-
-
-  <<loop>> LOOP
-    FETCH FROM curs INTO i;
-    IF NOT FOUND
-    THEN
-      EXIT loop;
-    END IF;
-
+     ,UNNEST (ina_notify) AS notify
+  LOOP
     INSERT INTO reserves
       (reserve_pub
       ,current_balance_val
@@ -1060,7 +1054,7 @@ BEGIN
     )
     ON CONFLICT DO NOTHING
     RETURNING reserve_uuid
-    INTO uuid;
+      INTO uuid;
     conflict = NOT FOUND;
 
     INSERT INTO reserves_in
@@ -1079,6 +1073,7 @@ BEGIN
      ,i.exchange_account_section
      ,i.wire_source_h_payto
      ,i.execution_date
+    )
     ON CONFLICT DO NOTHING;
 
     IF NOT FOUND
@@ -1098,9 +1093,8 @@ BEGIN
       END IF;
       dup = FALSE;
     END IF;
-    RETURN (dup,uuid);
-  END LOOP loop_reserve;
-  CLOSE curs;
+    RETURN NEXT (dup,uuid);
+  END LOOP;
 
   RETURN;
 END $$;
