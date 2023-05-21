@@ -521,7 +521,7 @@ launch_fakebank (void *cls)
  * @param config_file configuration file to use
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parallel_benchmark (TALER_TESTING_Main main_cb,
                     void *main_cb_cls,
                     const char *config_file)
