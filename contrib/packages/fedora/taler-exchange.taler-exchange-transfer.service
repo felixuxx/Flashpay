@@ -1,0 +1,18 @@
+[Unit]
+Description=Taler Exchange Transfer Service
+After=network.target postgres.service
+PartOf=taler-exchange.target
+
+[Service]
+User=taler-exchange-wire
+Type=simple
+Restart=always
+RestartSec=1s
+ExecStart=/usr/bin/taler-exchange-transfer -c /etc/taler/taler.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+Slice=taler-exchange.slice
+RuntimeMaxSec=3600s

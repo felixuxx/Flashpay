@@ -70,7 +70,8 @@ EXTRA_DIST = \
   $(rdata_DATA) \
   coverage.sh \
   gnunet.tag \
-  microhttpd.tag
+  microhttpd.tag \
+	packages
 
 # Change the set of supported languages here. You should
 # also update tos'XX'data and EXTRA_DIST accordingly.
