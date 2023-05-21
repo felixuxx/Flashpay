@@ -3397,14 +3397,28 @@ do_set_global_fee (char *const *args)
        (NULL == args[3]) ||
        (NULL == args[4]) ||
        (NULL == args[5]) ||
-       (NULL == args[6]) ||
-       ( (1 != sscanf (args[0],
-                       "%u%c",
-                       &year,
-                       &dummy)) &&
-         (0 != strcasecmp ("now",
-                           args[0])) ) ||
-       (GNUNET_OK !=
+       (NULL == args[6]) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must use YEAR, HISTORY-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (1 != sscanf (args[0],
+                     "%u%c",
+                     &year,
+                     &dummy)) &&
+       (0 != strcasecmp ("now",
+                         args[0])) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid YEAR given for 'global-fee' subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (GNUNET_OK !=
         TALER_string_to_amount (args[1],
                                 &fees.history)) ||
        (GNUNET_OK !=
@@ -3412,20 +3426,34 @@ do_set_global_fee (char *const *args)
                                 &fees.account)) ||
        (GNUNET_OK !=
         TALER_string_to_amount (args[3],
-                                &fees.purse)) ||
-       (GNUNET_OK !=
+                                &fees.purse)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid amount given for 'global-fee' subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if ( (GNUNET_OK !=
         GNUNET_STRINGS_fancy_time_to_relative (args[4],
                                                &purse_timeout)) ||
        (GNUNET_OK !=
         GNUNET_STRINGS_fancy_time_to_relative (args[5],
-                                               &history_expiration)) ||
-       (1 != sscanf (args[6],
-                     "%u%c",
-                     &purse_account_limit,
-                     &dummy)) )
+                                               &history_expiration)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "You must use YEAR, HISTORY-FEE, ACCOUNT-FEE, PURSE-FEE, PURSE-TIMEOUT, HISTORY-EXPIRATION and PURSE-ACCOUNT-LIMIT as arguments for this subcommand\n");
+                "Invalid delay given for 'global-fee' subcommand\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+  if (1 != sscanf (args[6],
+                   "%u%c",
+                   &purse_account_limit,
+                   &dummy))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid purse account limit given for 'global-fee' subcommand\n");
     test_shutdown ();
     global_ret = EXIT_INVALIDARGUMENT;
     return;

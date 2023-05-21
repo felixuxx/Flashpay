@@ -1061,24 +1061,6 @@ main (int argc,
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
-    struct GNUNET_OS_Process *compute_wire_response;
-
-    compute_wire_response
-      = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                 NULL, NULL, NULL,
-                                 "taler-exchange-wire",
-                                 "taler-exchange-wire",
-                                 "-c", cfg_filename,
-                                 NULL);
-    if (NULL == compute_wire_response)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to run `taler-exchange-wire`, is your PATH correct?\n");
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
-    GNUNET_OS_process_wait (compute_wire_response);
-    GNUNET_OS_process_destroy (compute_wire_response);
     /* If we use the fakebank, we MUST reset the database as the fakebank
        will have forgotten everything... */
     GNUNET_assert (GNUNET_OK ==
