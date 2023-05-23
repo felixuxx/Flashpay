@@ -941,12 +941,16 @@ handle_webhook_finished (void *cls,
                 resp);
         break;
       }
-      wh->econ = TALER_JSON_external_conversion_start (j,
-                                                       &webhook_conversion_cb,
-                                                       wh,
-                                                       wh->pd->conversion_helper,
-                                                       wh->pd->conversion_helper,
-                                                       NULL);
+      wh->econ
+        = TALER_JSON_external_conversion_start (
+            j,
+            &webhook_conversion_cb,
+            wh,
+            wh->pd->conversion_helper,
+            wh->pd->conversion_helper,
+            "-a",
+            wh->pd->auth_token,
+            NULL);
       return;
     }
     break;
