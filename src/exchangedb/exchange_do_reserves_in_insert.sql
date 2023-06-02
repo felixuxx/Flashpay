@@ -970,15 +970,16 @@ END $$;
 
 
 
-
-
-
-
-
-CREATE TYPE exchange_do_array_reserve_insert_return_type
-  AS
-  (transaction_duplicate BOOLEAN
-  ,ruuid INT8);
+DO $$
+BEGIN
+  CREATE TYPE exchange_do_array_reserve_insert_return_type
+    AS
+    (transaction_duplicate BOOLEAN
+    ,ruuid INT8);
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION exchange_do_array_reserves_insert(
   IN in_gc_date INT8,
