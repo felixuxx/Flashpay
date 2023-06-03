@@ -154,6 +154,16 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 char *TEH_currency;
 
 /**
+ * Name of the KYC-AML-trigger evaluation binary.
+ */
+char *TEH_kyc_aml_trigger;
+
+/**
+ * Option set to #GNUNET_YES if tipping is enabled.
+ */
+int TEH_enable_tipping;
+
+/**
  * What is the largest amount we allow a peer to
  * merge into a reserve before always triggering
  * an AML check?
@@ -1845,6 +1855,17 @@ exchange_serve_process_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "KYC_AML_TRIGGER",
+                                             &TEH_kyc_aml_trigger))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KYC_AML_TRIGGER");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
       TALER_config_get_currency (TEH_cfg,
                                  &TEH_currency))
   {
@@ -1855,19 +1876,30 @@ exchange_serve_process_config (void)
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
-                               "taler",
+                               "exchange",
                                "AML_THRESHOLD",
                                &TEH_aml_threshold))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amount in section `TALER' under `AML_THRESHOLD'\n");
+                "Need amount in section `exchange' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
   if (0 != strcmp (TEH_currency,
                    TEH_aml_threshold.currency))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Amount in section `TALER' under `AML_THRESHOLD' uses the wrong currency!\n");
+                "Amount in section `exchange' under `AML_THRESHOLD' uses the wrong currency!\n");
+    return GNUNET_SYSERR;
+  }
+  TEH_enable_tipping
+    = GNUNET_CONFIGURATION_get_value_yesno (
+        TEH_cfg,
+        "exchange",
+        "ENABLE_TIPPING");
+  if (GNUNET_SYSERR == TEH_enable_tipping)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need YES or NO in section `exchange' under `ENABLE_TIPPING'\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=

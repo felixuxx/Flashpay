@@ -1,6 +1,6 @@
 /*
   This file is part of GNU Taler
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2023 Taler Systems SA
 
   Taler is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -75,15 +75,21 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *section;
 
   /**
-   * URL of the OAuth2.0 endpoint for KYC checks.
-   * (token/auth)
+   * URL of the Challenger ``/setup`` endpoint for
+   * approving address validations. NULL if not used.
    */
-  char *auth_url;
+  char *setup_url;
 
   /**
    * URL of the OAuth2.0 endpoint for KYC checks.
    */
-  char *login_url;
+  char *authorize_url;
+
+  /**
+   * URL of the OAuth2.0 endpoint for KYC checks.
+   * (token/auth)
+   */
+  char *token_url;
 
   /**
    * URL of the user info access endpoint.
@@ -146,6 +152,11 @@ struct TALER_KYCLOGIC_InitiateHandle
    * The task for asynchronous response generation.
    */
   struct GNUNET_SCHEDULER_Task *task;
+
+  /**
+   * Handle for the OAuth 2.0 setup request.
+   */
+  struct GNUNET_CURL_Job *job;
 
   /**
    * Continuation to call.
@@ -283,8 +294,9 @@ static void
 oauth2_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
 {
   GNUNET_free (pd->section);
-  GNUNET_free (pd->auth_url);
-  GNUNET_free (pd->login_url);
+  GNUNET_free (pd->token_url);
+  GNUNET_free (pd->setup_url);
+  GNUNET_free (pd->authorize_url);
   GNUNET_free (pd->info_url);
   GNUNET_free (pd->client_id);
   GNUNET_free (pd->client_secret);
@@ -327,12 +339,12 @@ oauth2_load_configuration (void *cls,
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_OAUTH2_AUTH_URL",
+                                             "KYC_OAUTH2_TOKEN_URL",
                                              &s))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_AUTH_URL");
+                               "KYC_OAUTH2_TOKEN_URL");
     oauth2_unload_configuration (pd);
     return NULL;
   }
@@ -346,23 +358,23 @@ oauth2_load_configuration (void *cls,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_AUTH_URL",
+                               "KYC_OAUTH2_TOKEN_URL",
                                "not a valid URL");
     GNUNET_free (s);
     oauth2_unload_configuration (pd);
     return NULL;
   }
-  pd->auth_url = s;
+  pd->token_url = s;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
                                              provider_section_name,
-                                             "KYC_OAUTH2_LOGIN_URL",
+                                             "KYC_OAUTH2_AUTHORIZE_URL",
                                              &s))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_LOGIN_URL");
+                               "KYC_OAUTH2_AUTHORIZE_URL");
     oauth2_unload_configuration (pd);
     return NULL;
   }
@@ -376,13 +388,41 @@ oauth2_load_configuration (void *cls,
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
-                               "KYC_OAUTH2_LOGIN_URL",
+                               "KYC_OAUTH2_AUTHORIZE_URL",
                                "not a valid URL");
     oauth2_unload_configuration (pd);
     GNUNET_free (s);
     return NULL;
   }
-  pd->login_url = s;
+  if (NULL != strchr (s, '#'))
+  {
+    const char *extra = strchr (s, '#');
+    const char *slash = strrchr (s, '/');
+
+    if ( (0 != strcmp (extra,
+                       "#setup")) ||
+         (NULL == slash) )
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 provider_section_name,
+                                 "KYC_OAUTH2_AUTHORIZE_URL",
+                                 "not a valid authorze URL (bad fragment)");
+      oauth2_unload_configuration (pd);
+      GNUNET_free (s);
+      return NULL;
+    }
+    pd->authorize_url = GNUNET_strndup (s,
+                                        extra - s);
+    GNUNET_asprintf (&pd->setup_url,
+                     "%.*s/setup",
+                     (int) (slash - s),
+                     s);
+    GNUNET_free (s);
+  }
+  else
+  {
+    pd->authorize_url = s;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (ps->cfg,
@@ -480,19 +520,20 @@ oauth2_load_configuration (void *cls,
  * how to begin the OAuth2.0 checking process to
  * the client.
  *
- * @param cls a `struct TALER_KYCLOGIC_InitiateHandle *`
+ * @param ih process to redirect for
+ * @param authorize_url authorization URL to use
  */
 static void
-initiate_task (void *cls)
+initiate_with_url (struct TALER_KYCLOGIC_InitiateHandle *ih,
+                   const char *authorize_url)
 {
-  struct TALER_KYCLOGIC_InitiateHandle *ih = cls;
+
   const struct TALER_KYCLOGIC_ProviderDetails *pd = ih->pd;
   struct PluginState *ps = pd->ps;
   char *hps;
   char *url;
   char legi_s[42];
 
-  ih->task = NULL;
   GNUNET_snprintf (legi_s,
                    sizeof (legi_s),
                    "%llu",
@@ -515,16 +556,11 @@ initiate_task (void *cls)
     }
     GNUNET_asprintf (&url,
                      "%s?response_type=code&client_id=%s&redirect_uri=%s",
-                     pd->login_url,
+                     authorize_url,
                      pd->client_id,
                      redirect_uri_encoded);
     GNUNET_free (redirect_uri_encoded);
   }
-  /* FIXME-API: why do we *redirect* the client here,
-     instead of making the HTTP request *ourselves*
-     and forwarding the response? This prevents us
-     from using authentication on initiation,
-     (which is desirable for challenger!) */
   ih->cb (ih->cb_cls,
           TALER_EC_NONE,
           url,
@@ -534,6 +570,142 @@ initiate_task (void *cls)
   GNUNET_free (url);
   GNUNET_free (hps);
   GNUNET_free (ih);
+}
+
+
+/**
+ * After we are done with the CURL interaction we
+ * need to update our database state with the information
+ * retrieved.
+ *
+ * @param cls a `struct TALER_KYCLOGIC_InitiateHandle *`
+ * @param response_code HTTP response code from server, 0 on hard error
+ * @param response in JSON, NULL if response was not in JSON format
+ */
+static void
+handle_curl_setup_finished (void *cls,
+                            long response_code,
+                            const void *response)
+{
+  struct TALER_KYCLOGIC_InitiateHandle *ih = cls;
+  const struct TALER_KYCLOGIC_ProviderDetails *pd = ih->pd;
+  const json_t *j = response;
+
+  ih->job = NULL;
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    {
+      const char *nonce;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_string ("nonce",
+                                 &nonce),
+        GNUNET_JSON_spec_end ()
+      };
+      enum GNUNET_GenericReturnValue res;
+      const char *emsg;
+      unsigned int line;
+      char *url;
+
+      res = GNUNET_JSON_parse (j,
+                               spec,
+                               &emsg,
+                               &line);
+      if (GNUNET_OK != res)
+      {
+        GNUNET_break_op (0);
+        json_dumpf (j,
+                    stderr,
+                    JSON_INDENT (2));
+        ih->cb (ih->cb_cls,
+                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+                NULL,
+                NULL,
+                NULL,
+                "Unexpected response from KYC gateway: setup must return a nonce");
+        GNUNET_free (ih);
+        return;
+      }
+      GNUNET_asprintf (&url,
+                       "%s/%s",
+                       pd->setup_url,
+                       nonce);
+      initiate_with_url (ih,
+                         url);
+      GNUNET_free (url);
+      return;
+    }
+    break;
+  default:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "/setup URL returned HTTP status %u\n",
+                (unsigned int) response_code);
+    ih->cb (ih->cb_cls,
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            NULL,
+            NULL,
+            NULL,
+            "/setup request to OAuth 2.0 backend returned unexpected HTTP status code");
+    GNUNET_free (ih);
+    return;
+  }
+}
+
+
+/**
+ * Logic to asynchronously return the response for how to begin the OAuth2.0
+ * checking process to the client.  May first request a dynamic URL via
+ * ``/setup`` if configured to use a client-authenticated setup process.
+ *
+ * @param cls a `struct TALER_KYCLOGIC_InitiateHandle *`
+ */
+static void
+initiate_task (void *cls)
+{
+  struct TALER_KYCLOGIC_InitiateHandle *ih = cls;
+  const struct TALER_KYCLOGIC_ProviderDetails *pd = ih->pd;
+  struct PluginState *ps = pd->ps;
+  char *hdr;
+  struct curl_slist *slist;
+  CURL *eh;
+
+  ih->task = NULL;
+  if (NULL == pd->setup_url)
+  {
+    initiate_with_url (ih,
+                       pd->authorize_url);
+    return;
+  }
+  eh = curl_easy_init ();
+  if (NULL == eh)
+  {
+    GNUNET_break (0);
+    ih->cb (ih->cb_cls,
+            TALER_EC_GENERIC_ALLOCATION_FAILURE,
+            NULL,
+            NULL,
+            NULL,
+            "curl_easy_init() failed");
+    GNUNET_free (ih);
+    return;
+  }
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_URL,
+                                   pd->setup_url));
+  GNUNET_asprintf (&hdr,
+                   "%s: Bearer %s",
+                   MHD_HTTP_HEADER_AUTHORIZATION,
+                   pd->client_secret);
+  slist = curl_slist_append (NULL,
+                             hdr);
+  ih->job = GNUNET_CURL_job_add2 (ps->curl_ctx,
+                                  eh,
+                                  slist,
+                                  &handle_curl_setup_finished,
+                                  ih);
+  curl_slist_free_all (slist);
+  GNUNET_free (hdr);
 }
 
 
@@ -583,6 +755,11 @@ oauth2_initiate_cancel (struct TALER_KYCLOGIC_InitiateHandle *ih)
   {
     GNUNET_SCHEDULER_cancel (ih->task);
     ih->task = NULL;
+  }
+  if (NULL != ih->job)
+  {
+    GNUNET_CURL_job_cancel (ih->job);
+    ih->job = NULL;
   }
   GNUNET_free (ih);
 }
@@ -1002,7 +1179,7 @@ handle_curl_login_finished (void *cls,
       eh = curl_easy_init ();
       if (NULL == eh)
       {
-        GNUNET_break_op (0);
+        GNUNET_break (0);
         ph->response
           = TALER_MHD_make_error (
               TALER_EC_GENERIC_ALLOCATION_FAILURE,
@@ -1129,7 +1306,7 @@ oauth2_proof (void *cls,
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (ph->eh,
                                    CURLOPT_URL,
-                                   pd->auth_url));
+                                   pd->token_url));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (ph->eh,
                                    CURLOPT_POST,

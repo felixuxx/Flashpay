@@ -12,7 +12,7 @@ Shown.
 {{/person}}
 
 {{#repo}}
-  <b>{{name}}</b> reviewers:{{#who}} {{reviewer}}{{/who}} committers:{{#who}} {{committer}}{{/who}}
+  <b>{{name}}</b> reviewers:{{#who}} {{reviewer}}{{/who}} commiters:{{#who}} {{commiter}}{{/who}}
 {{/repo}}
 
 {{#person?}}
@@ -23,7 +23,7 @@ Shown.
 =====================================
 %(%! gros commentaire %)%
 %(%#repo%)%
-  <b>%(%name%)%</b> reviewers:%(%#who%)% %(%reviewer%)%%(%/who%)% committers:%(%#who%)% %(%committer%)%%(%/who%)%
+  <b>%(%name%)%</b> reviewers:%(%#who%)% %(%reviewer%)%%(%/who%)% commiters:%(%#who%)% %(%commiter%)%%(%/who%)%
 %(%/repo%)%
 =====================================
 %(%={{ }}=%)%

@@ -1995,10 +1995,6 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
       &td->details.kyc_attributes.kyc_prox),
     GNUNET_PQ_query_param_string (
       td->details.kyc_attributes.provider),
-    (NULL == td->details.kyc_attributes.birthdate)
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (
-      td->details.kyc_attributes.birthdate),
     GNUNET_PQ_query_param_timestamp (
       &td->details.kyc_attributes.collection_time),
     GNUNET_PQ_query_param_timestamp (
@@ -2016,12 +2012,11 @@ irbt_cb_table_kyc_attributes (struct PostgresClosure *pg,
            ",h_payto"
            ",kyc_prox"
            ",provider"
-           ",birthdate"
            ",collection_time"
            ",expiration_time"
            ",encrypted_attributes"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7, $8);");
+           "($1, $2, $3, $4, $5, $6, $7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_kyc_attributes",
                                              params);

@@ -303,17 +303,17 @@ parse_aggregator_config (void)
        (TALER_amount_is_zero (&currency_round_unit)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need non-zero amount in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
+                "Need non-zero amount in section `taler' under `CURRENCY_ROUND_UNIT'\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
       TALER_config_get_amount (cfg,
-                               "taler",
+                               "exchange",
                                "AML_THRESHOLD",
                                &aml_threshold))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need amount in section `TALER' under `AML_THRESHOLD'\n");
+                "Need amount in section `exchange' under `AML_THRESHOLD'\n");
     return GNUNET_SYSERR;
   }
 

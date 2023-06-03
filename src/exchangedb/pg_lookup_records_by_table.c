@@ -2684,11 +2684,6 @@ lrbt_cb_table_kyc_attributes (void *cls,
       GNUNET_PQ_result_spec_string (
         "provider",
         &td.details.kyc_attributes.provider),
-      GNUNET_PQ_result_spec_allow_null (
-        GNUNET_PQ_result_spec_string (
-          "birthdate",
-          &td.details.kyc_attributes.birthdate),
-        NULL),
       GNUNET_PQ_result_spec_timestamp (
         "collection_time",
         &td.details.kyc_attributes.collection_time),
@@ -3577,7 +3572,6 @@ TEH_PG_lookup_records_by_table (void *cls,
               ",h_payto"
               ",kyc_prox"
               ",provider"
-              ",birthdate"
               ",collection_time"
               ",expiration_time"
               ",encrypted_attributes"

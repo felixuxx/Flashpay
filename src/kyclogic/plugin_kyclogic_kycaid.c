@@ -88,6 +88,12 @@ struct TALER_KYCLOGIC_ProviderDetails
   char *form_id;
 
   /**
+   * Helper binary to convert attributes returned by
+   * KYCAID into our internal format.
+   */
+  char *conversion_helper;
+
+  /**
    * Validity time for a successful KYC process.
    */
   struct GNUNET_TIME_Relative validity;
@@ -216,6 +222,12 @@ struct TALER_KYCLOGIC_WebhookHandle
   struct PluginState *ps;
 
   /**
+   * Handle to helper process to extract attributes
+   * we care about.
+   */
+  struct TALER_JSON_ExternalConversion *econ;
+
+  /**
    * Our configuration details.
    */
   const struct TALER_KYCLOGIC_ProviderDetails *pd;
@@ -224,6 +236,11 @@ struct TALER_KYCLOGIC_WebhookHandle
    * Connection we are handling.
    */
   struct MHD_Connection *connection;
+
+  /**
+   * JSON response we got back, or NULL for none.
+   */
+  json_t *json_response;
 
   /**
    * Verification ID from the service.
@@ -262,6 +279,11 @@ struct TALER_KYCLOGIC_WebhookHandle
   uint64_t process_row;
 
   /**
+   * HTTP response code we got from KYCAID.
+   */
+  unsigned int kycaid_response_code;
+
+  /**
    * HTTP response code to return asynchronously.
    */
   unsigned int response_code;
@@ -277,6 +299,7 @@ static void
 kycaid_unload_configuration (struct TALER_KYCLOGIC_ProviderDetails *pd)
 {
   curl_slist_free_all (pd->slist);
+  GNUNET_free (pd->conversion_helper);
   GNUNET_free (pd->auth_token);
   GNUNET_free (pd->form_id);
   GNUNET_free (pd->section);
@@ -334,6 +357,18 @@ kycaid_load_configuration (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                provider_section_name,
                                "KYC_KYCAID_FORM_ID");
+    kycaid_unload_configuration (pd);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (ps->cfg,
+                                               provider_section_name,
+                                               "KYC_KYCAID_CONVERTER_HELPER",
+                                               &pd->conversion_helper))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               provider_section_name,
+                               "KYC_KYCAID_CONVERTER_HELPER");
     kycaid_unload_configuration (pd);
     return NULL;
   }
@@ -695,10 +730,20 @@ kycaid_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
     GNUNET_SCHEDULER_cancel (wh->task);
     wh->task = NULL;
   }
+  if (NULL != wh->econ)
+  {
+    TALER_JSON_external_conversion_stop (wh->econ);
+    wh->econ = NULL;
+  }
   if (NULL != wh->job)
   {
     GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
+  }
+  if (NULL != wh->json_response)
+  {
+    json_decref (wh->json_response);
+    wh->json_response = NULL;
   }
   GNUNET_free (wh->verification_id);
   GNUNET_free (wh->applicant_id);
@@ -751,6 +796,97 @@ log_failure (json_t *verifications)
 
 
 /**
+ * Type of a callback that receives a JSON @a result.
+ *
+ * @param cls closure our `struct TALER_KYCLOGIC_WebhookHandle *`
+ * @param status_type how did the process die
+ * @param code termination status code from the process
+ * @param result converted attribute data, NULL on failure
+ */
+static void
+webhook_conversion_cb (void *cls,
+                       enum GNUNET_OS_ProcessStatusType status_type,
+                       unsigned long code,
+                       const json_t *result)
+{
+  struct TALER_KYCLOGIC_WebhookHandle *wh = cls;
+  struct GNUNET_TIME_Absolute expiration;
+  struct MHD_Response *resp;
+
+  wh->econ = NULL;
+  if ( (0 == code) ||
+       (NULL == result) )
+  {
+    /* No result, but *our helper* was OK => bad input */
+    GNUNET_break_op (0);
+    json_dumpf (wh->json_response,
+                stderr,
+                JSON_INDENT (2));
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               wh->kycaid_response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) wh->json_response));
+    wh->cb (wh->cb_cls,
+            wh->process_row,
+            &wh->h_payto,
+            wh->pd->section,
+            wh->applicant_id,
+            wh->verification_id,
+            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
+            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
+            MHD_HTTP_BAD_GATEWAY,
+            resp);
+    kycaid_webhook_cancel (wh);
+    return;
+  }
+  if (NULL == result)
+  {
+    /* Failure in our helper */
+    GNUNET_break (0);
+    json_dumpf (wh->json_response,
+                stderr,
+                JSON_INDENT (2));
+    resp = TALER_MHD_MAKE_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("kycaid_http_status",
+                               wh->kycaid_response_code),
+      GNUNET_JSON_pack_object_incref ("kycaid_body",
+                                      (json_t *) wh->json_response));
+    wh->cb (wh->cb_cls,
+            wh->process_row,
+            &wh->h_payto,
+            wh->pd->section,
+            wh->applicant_id,
+            wh->verification_id,
+            TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
+            GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
+            NULL,
+            MHD_HTTP_BAD_GATEWAY,
+            resp);
+    kycaid_webhook_cancel (wh);
+    return;
+  }
+  expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
+  resp = MHD_create_response_from_buffer (0,
+                                          "",
+                                          MHD_RESPMEM_PERSISTENT);
+  wh->cb (wh->cb_cls,
+          wh->process_row,
+          &wh->h_payto,
+          wh->pd->section,
+          wh->applicant_id,
+          wh->verification_id,
+          TALER_KYCLOGIC_STATUS_SUCCESS,
+          expiration,
+          result,
+          MHD_HTTP_NO_CONTENT,
+          resp);
+  kycaid_webhook_cancel (wh);
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP "/applicants/{verification_id}" request.
  *
@@ -768,246 +904,20 @@ handle_webhook_finished (void *cls,
   struct MHD_Response *resp;
 
   wh->job = NULL;
+  wh->kycaid_response_code = response_code;
+  wh->json_response = json_incref ((json_t *) j);
   switch (response_code)
   {
   case MHD_HTTP_OK:
     {
-      const char *type;
       const char *profile_status;
-      const char *first_name = NULL;
-      const char *last_name = NULL;
-      const char *middle_name = NULL;
-      const char *dob = NULL;
-      const char *residence_country = NULL;
-      const char *gender = NULL;
-      bool pep = false;
-      bool no_pep = false;
-      const char *company_name = NULL;
-      const char *business_activity_id = NULL;
-      const char *registration_country = NULL;
-      const char *email = NULL;
-      const char *phone = NULL;
-      json_t *addresses = NULL;
-      json_t *documents = NULL;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("type",
-                                 &type),
-        GNUNET_JSON_spec_string ("profile_status",
-                                 &profile_status), /* valid, invalid, pending */
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("email",
-                                   &email),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("phone",
-                                   &phone),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_json ("addresses",
-                                 &addresses),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_json ("documents",
-                                 &documents),
-          NULL),
-        GNUNET_JSON_spec_end ()
-      };
-      struct GNUNET_JSON_Specification bspec[] = {
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("company_name",
-                                   &company_name),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("business_activity_id",
-                                   &business_activity_id),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("registration_country",
-                                   &registration_country),
-          NULL),
-        GNUNET_JSON_spec_end ()
-      };
-      struct GNUNET_JSON_Specification pspec[] = {
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("first_name",
-                                   &first_name),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("middle_name",
-                                   &middle_name),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("last_name",
-                                   &last_name),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("dob",
-                                   &dob),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("residence_country",
-                                   &residence_country),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_string ("gender",
-                                   &gender),
-          NULL),
-        GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_bool ("pep",
-                                 &pep),
-          &no_pep),
-        GNUNET_JSON_spec_end ()
-      };
-      struct GNUNET_JSON_Specification *ispec = NULL;
-      struct GNUNET_TIME_Absolute expiration;
-      bool no_parse;
-      enum TALER_KYCLOGIC_KycUserType ut;
 
-      no_parse = (GNUNET_OK !=
-                  GNUNET_JSON_parse (j,
-                                     spec,
-                                     NULL, NULL));
-      if (! no_parse)
-      {
-        ut = (0 == strcasecmp ("person",
-                               type))
-          ? TALER_KYCLOGIC_KYC_UT_INDIVIDUAL
-          : TALER_KYCLOGIC_KYC_UT_BUSINESS;
-        ispec = (ut == TALER_KYCLOGIC_KYC_UT_INDIVIDUAL)
-          ? pspec
-          : bspec;
-        no_parse = (GNUNET_OK !=
-                    GNUNET_JSON_parse (j,
-                                       ispec,
-                                       NULL, NULL));
-      }
-      if (no_parse)
-      {
-        GNUNET_break_op (0);
-        json_dumpf (j,
-                    stderr,
-                    JSON_INDENT (2));
-        resp = TALER_MHD_MAKE_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("kycaid_http_status",
-                                   response_code),
-          GNUNET_JSON_pack_object_incref ("kycaid_body",
-                                          (json_t *) j));
-        wh->cb (wh->cb_cls,
-                wh->process_row,
-                &wh->h_payto,
-                wh->pd->section,
-                wh->applicant_id,
-                wh->verification_id,
-                TALER_KYCLOGIC_STATUS_PROVIDER_FAILED,
-                GNUNET_TIME_UNIT_ZERO_ABS, /* expiration */
-                NULL,
-                MHD_HTTP_BAD_GATEWAY,
-                resp);
-        break;
-      }
-      if (0 == strcasecmp ("valid",
+      profile_status = json_string_value (
+        json_object_get (
+          j,
+          "profile_status"));
+      if (0 != strcasecmp ("valid",
                            profile_status))
-      {
-        log_failure (json_object_get (j,
-                                      "decline_reasons"));
-      }
-      resp = MHD_create_response_from_buffer (0,
-                                              "",
-                                              MHD_RESPMEM_PERSISTENT);
-      if (0 == strcasecmp ("valid",
-                           profile_status))
-      {
-        json_t *attr;
-
-        if (ut == TALER_KYCLOGIC_KYC_UT_INDIVIDUAL)
-        {
-          char *name = NULL;
-
-          if ( (NULL != last_name) ||
-               (NULL != first_name) ||
-               (NULL != middle_name) )
-          {
-            GNUNET_asprintf (&name,
-                             "%s, %s %s",
-                             (NULL != last_name)
-                             ? last_name
-                             : "",
-                             (NULL != first_name)
-                             ? first_name
-                             : "",
-                             (NULL != middle_name)
-                             ? middle_name
-                             : "");
-          }
-          attr = GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_BIRTHDATE,
-                dob)),
-            GNUNET_JSON_pack_allow_null (
-              no_pep
-              ? GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_PEP,
-                NULL)
-              : GNUNET_JSON_pack_bool (
-                TALER_ATTRIBUTE_PEP,
-                pep)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_FULL_NAME,
-                name)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_PHONE,
-                phone)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_EMAIL,
-                email)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_RESIDENCES,
-                residence_country))
-            );
-          GNUNET_free (name);
-        }
-        else
-        {
-          attr = GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_COMPANY_NAME,
-                company_name)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_PHONE,
-                phone)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_EMAIL,
-                email)),
-            GNUNET_JSON_pack_allow_null (
-              GNUNET_JSON_pack_string (
-                TALER_ATTRIBUTE_REGISTRATION_COUNTRY,
-                residence_country))
-            );
-        }
-        // FIXME: do something about addresses & documents!
-        expiration = GNUNET_TIME_relative_to_absolute (wh->pd->validity);
-        wh->cb (wh->cb_cls,
-                wh->process_row,
-                &wh->h_payto,
-                wh->pd->section,
-                wh->applicant_id,
-                wh->verification_id,
-                TALER_KYCLOGIC_STATUS_SUCCESS,
-                expiration,
-                attr,
-                MHD_HTTP_NO_CONTENT,
-                resp);
-        json_decref (attr);
-      }
-      else
       {
         enum TALER_KYCLOGIC_KycStatus ks;
 
@@ -1015,6 +925,9 @@ handle_webhook_finished (void *cls,
                                profile_status))
           ? TALER_KYCLOGIC_STATUS_PENDING
           : TALER_KYCLOGIC_STATUS_USER_ABORTED;
+        resp = MHD_create_response_from_buffer (0,
+                                                "",
+                                                MHD_RESPMEM_PERSISTENT);
         wh->cb (wh->cb_cls,
                 wh->process_row,
                 &wh->h_payto,
@@ -1026,9 +939,19 @@ handle_webhook_finished (void *cls,
                 NULL,
                 MHD_HTTP_NO_CONTENT,
                 resp);
+        break;
       }
-      GNUNET_JSON_parse_free (ispec);
-      GNUNET_JSON_parse_free (spec);
+      wh->econ
+        = TALER_JSON_external_conversion_start (
+            j,
+            &webhook_conversion_cb,
+            wh,
+            wh->pd->conversion_helper,
+            wh->pd->conversion_helper,
+            "-a",
+            wh->pd->auth_token,
+            NULL);
+      return;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:

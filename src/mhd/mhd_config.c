@@ -78,7 +78,7 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_number (cfg,
                                                section,
-                                               "port",
+                                               "PORT",
                                                &port))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,

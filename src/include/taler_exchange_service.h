@@ -366,6 +366,10 @@ struct TALER_EXCHANGE_Keys
    */
   char *asset_type;
 
+  /**
+   * Set to true if tipping is allowed at this exchange.
+   */
+  bool tipping_allowed;
 };
 
 

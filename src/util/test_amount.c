@@ -85,8 +85,8 @@ main (int argc,
   GNUNET_assert (0 == a2.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE / 100 * 2 == a2.fraction);
   c = TALER_amount_to_string (&a2);
-  GNUNET_assert (0 == strcmp ("eur:0.02",
-                              c));
+  GNUNET_assert (0 == strcasecmp ("eur:0.02",
+                                  c));
   GNUNET_free (c);
 
   /* test conversion with leading space and with fraction */

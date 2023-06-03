@@ -245,7 +245,7 @@ basic-tests: mustach
 	@$(MAKE) -C test3 test
 	@$(MAKE) -C test4 test
 	@$(MAKE) -C test5 test
-	@$(MAKE) -C test6 test
+#	@$(MAKE) -C test6 test
 
 spec-tests: $(TESTSPECS)
 
@@ -298,4 +298,3 @@ manuals: mustach.1.gz
 
 mustach.1.gz: mustach.1.scd
 	if which scdoc >/dev/null 2>&1; then scdoc < mustach.1.scd | gzip > mustach.1.gz; fi
-

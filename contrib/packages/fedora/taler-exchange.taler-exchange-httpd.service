@@ -1,0 +1,33 @@
+[Unit]
+Description=GNU Taler payment system exchange REST API
+AssertPathExists=/run/taler/exchange-httpd
+Requires=taler-exchange-httpd.socket taler-exchange-secmod-cs.service taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
+After=postgres.service network.target taler-exchange-secmod-cs.service taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
+PartOf=taler-exchange.target
+
+[Service]
+User=taler-exchange-httpd
+Type=simple
+
+# Depending on the configuration, the service process kills itself and then
+# needs to be restarted. Thus no significant delay on restarts.
+Restart=always
+RestartSec=1ms
+
+# Disable the service if more than 5 restarts are encountered within 5s.
+# These are usually the systemd defaults, but can be overwritten, thus we set
+# them here explicitly, as the exchange code assumes StartLimitInterval
+# to be >=5s.
+StartLimitBurst=5
+StartLimitInterval=5s
+
+ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/taler.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=no
+PrivateDevices=yes
+ProtectSystem=full
+Slice=taler-exchange.slice
+
+[Install]
+WantedBy=multi-user.target

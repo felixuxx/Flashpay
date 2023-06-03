@@ -68,7 +68,8 @@ TEH_PG_update_kyc_process_by_row (
   if (qs <= 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to update legitimization process: %d\n",
+                "Failed to update legitimization process %llu: %d\n",
+                (unsigned long long) process_row,
                 qs);
     return qs;
   }

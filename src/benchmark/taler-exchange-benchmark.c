@@ -521,7 +521,7 @@ launch_fakebank (void *cls)
  * @param config_file configuration file to use
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parallel_benchmark (TALER_TESTING_Main main_cb,
                     void *main_cb_cls,
                     const char *config_file)
@@ -565,7 +565,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       if (GNUNET_OK !=
           TALER_TESTING_prepare_bank (cfg_filename,
                                       GNUNET_NO,
-                                      "exchange-account-2",
+                                      "exchange-account-test",
                                       &bc))
       {
         return 1;
@@ -1061,32 +1061,20 @@ main (int argc,
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
-    struct GNUNET_OS_Process *compute_wire_response;
-
-    compute_wire_response
-      = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                 NULL, NULL, NULL,
-                                 "taler-exchange-wire",
-                                 "taler-exchange-wire",
-                                 "-c", cfg_filename,
-                                 NULL);
-    if (NULL == compute_wire_response)
+    /* If we use the fakebank, we MUST reset the database as the fakebank
+       will have forgotten everything... */
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_exchange (cfg_filename,
+                                        (GNUNET_YES == use_fakebank)
+                                        ? GNUNET_YES
+                                        : GNUNET_NO,
+                                        &ec))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to run `taler-exchange-wire`, is your PATH correct?\n");
+                  "Failed to prepare the exchange for launch\n");
       GNUNET_free (cfg_filename);
       return BAD_CONFIG_FILE;
     }
-    GNUNET_OS_process_wait (compute_wire_response);
-    GNUNET_OS_process_destroy (compute_wire_response);
-    /* If we use the fakebank, we MUST reset the database as the fakebank
-       will have forgotten everything... */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_prepare_exchange (cfg_filename,
-                                                   (GNUNET_YES == use_fakebank)
-                                                   ? GNUNET_YES
-                                                   : GNUNET_NO,
-                                                   &ec));
   }
   else
   {

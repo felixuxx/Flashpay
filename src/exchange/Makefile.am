@@ -15,6 +15,8 @@ pkgcfg_DATA = \
   exchange.conf
 
 # Programs
+bin_SCRIPTS = \
+  taler-exchange-kyc-aml-pep-trigger.sh
 
 bin_PROGRAMS = \
   taler-exchange-aggregator \
@@ -131,6 +133,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_age-withdraw.c taler-exchange-httpd_age-withdraw.h \
   taler-exchange-httpd_age-withdraw_reveal.c taler-exchange-httpd_age-withdraw_reveal.h \
   taler-exchange-httpd_common_deposit.c taler-exchange-httpd_common_deposit.h \
+  taler-exchange-httpd_common_kyc.c taler-exchange-httpd_common_kyc.h \
   taler-exchange-httpd_config.c taler-exchange-httpd_config.h \
   taler-exchange-httpd_contract.c taler-exchange-httpd_contract.h \
   taler-exchange-httpd_csr.c taler-exchange-httpd_csr.h \
@@ -227,4 +230,5 @@ EXTRA_DIST = \
   test_taler_exchange_httpd.get \
   test_taler_exchange_httpd.post \
   exchange.conf \
+  $(bin_SCRIPTS) \
   $(check_SCRIPTS)

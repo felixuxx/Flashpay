@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022, 2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -29,43 +29,72 @@
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_attributes (
   void *cls,
+  uint64_t process_row,
   const struct TALER_PaytoHashP *h_payto,
   const struct GNUNET_ShortHashCode *kyc_prox,
   const char *provider_section,
-  const char *birthdate,
+  uint32_t birthday,
   struct GNUNET_TIME_Timestamp collection_time,
-  struct GNUNET_TIME_Timestamp expiration_time,
+  const char *provider_account_id,
+  const char *provider_legitimization_id,
+  struct GNUNET_TIME_Absolute expiration_time,
   size_t enc_attributes_size,
-  const void *enc_attributes)
+  const void *enc_attributes,
+  bool require_aml)
 {
   struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Timestamp expiration
+    = GNUNET_TIME_absolute_to_timestamp (expiration_time);
+  struct TALER_KycCompletedEventP rep = {
+    .header.size = htons (sizeof (rep)),
+    .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+    .h_payto = *h_payto
+  };
+  char *kyc_completed_notify_s
+    = GNUNET_PG_get_event_notify_channel (&rep.header);
   struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&process_row),
     GNUNET_PQ_query_param_auto_from_type (h_payto),
     GNUNET_PQ_query_param_auto_from_type (kyc_prox),
     GNUNET_PQ_query_param_string (provider_section),
-    (NULL == birthdate)
+    GNUNET_PQ_query_param_uint32 (&birthday),
+    (NULL == provider_account_id)
     ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_string (birthdate),
+    : GNUNET_PQ_query_param_string (provider_account_id),
+    (NULL == provider_legitimization_id)
+    ? GNUNET_PQ_query_param_null ()
+    : GNUNET_PQ_query_param_string (provider_legitimization_id),
     GNUNET_PQ_query_param_timestamp (&collection_time),
-    GNUNET_PQ_query_param_timestamp (&expiration_time),
+    GNUNET_PQ_query_param_absolute_time (&expiration_time),
+    GNUNET_PQ_query_param_timestamp (&expiration),
     GNUNET_PQ_query_param_fixed_size (enc_attributes,
                                       enc_attributes_size),
+    GNUNET_PQ_query_param_bool (require_aml),
+    GNUNET_PQ_query_param_string (kyc_completed_notify_s),
     GNUNET_PQ_query_param_end
   };
+  bool ok;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("out_ok",
+                                &ok),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
   PREPARE (pg,
            "insert_kyc_attributes",
-           "INSERT INTO kyc_attributes "
-           "(h_payto"
-           ",kyc_prox"
-           ",provider"
-           ",birthdate"
-           ",collection_time"
-           ",expiration_time"
-           ",encrypted_attributes"
-           ") VALUES "
-           "($1, $2, $3, $4, $5, $6, $7);");
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_kyc_attributes",
-                                             params);
+           "SELECT "
+           " out_ok"
+           " FROM exchange_do_insert_kyc_attributes "
+           "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);");
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "insert_kyc_attributes",
+                                                 params,
+                                                 rs);
+  GNUNET_free (kyc_completed_notify_s);
+  if (qs < 0)
+    return qs;
+  if (! ok)
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  return qs;
 }

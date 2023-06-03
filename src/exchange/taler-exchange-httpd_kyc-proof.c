@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021-2022 Taler Systems SA
+  Copyright (C) 2021-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -23,11 +23,11 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
-#include <pthread.h>
 #include "taler_attributes.h"
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_common_kyc.h"
 #include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -67,6 +67,11 @@ struct KycProofContext
    * Asynchronous operation with the proof system.
    */
   struct TALER_KYCLOGIC_ProofHandle *ph;
+
+  /**
+   * KYC AML trigger operation.
+   */
+  struct TEH_KycAmlTrigger *kat;
 
   /**
    * Process information about the user for the plugin from the database, can
@@ -160,6 +165,28 @@ TEH_kyc_proof_cleanup (void)
 
 
 /**
+ * Function called after the KYC-AML trigger is done.
+ *
+ * @param cls closure
+ * @param http_status final HTTP status to return
+ * @param[in] response final HTTP ro return
+ */
+static void
+proof_finish (
+  void *cls,
+  unsigned int http_status,
+  struct MHD_Response *response)
+{
+  struct KycProofContext *kpc = cls;
+
+  kpc->kat = NULL;
+  kpc->response_code = http_status;
+  kpc->response = response;
+  kpc_resume (kpc);
+}
+
+
+/**
  * Function called with the result of a proof check operation.
  *
  * Note that the "decref" for the @a response
@@ -192,74 +219,40 @@ proof_cb (
   kpc->ph = NULL;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
-
   if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
   {
-    enum GNUNET_DB_QueryStatus qs;
-    size_t eas;
-    void *ea;
-    const char *birthdate;
-    struct GNUNET_ShortHashCode kyc_prox;
-
-    TALER_CRYPTO_attributes_to_kyc_prox (attributes,
-                                         &kyc_prox);
-    birthdate = json_string_value (json_object_get (attributes,
-                                                    TALER_ATTRIBUTE_BIRTHDATE));
-    TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
-                                         attributes,
-                                         &ea,
-                                         &eas);
-    qs = TEH_plugin->insert_kyc_attributes (
-      TEH_plugin->cls,
-      &kpc->h_payto,
-      &kyc_prox,
-      kpc->provider_section,
-      birthdate,
-      GNUNET_TIME_timestamp_get (),
-      GNUNET_TIME_absolute_to_timestamp (expiration),
-      eas,
-      ea);
-    GNUNET_free (ea);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    kpc->kat = TEH_kyc_finished (&rc->async_scope_id,
+                                 kpc->process_row,
+                                 &kpc->h_payto,
+                                 kpc->provider_section,
+                                 provider_user_id,
+                                 provider_legitimization_id,
+                                 expiration,
+                                 attributes,
+                                 http_status,
+                                 response,
+                                 &proof_finish,
+                                 kpc);
+    if (NULL == kpc->kat)
     {
-      GNUNET_break (0);
+      http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
       if (NULL != response)
         MHD_destroy_response (response);
-      kpc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      kpc->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                            "insert_kyc_attributes");
-      GNUNET_async_scope_restore (&old_scope);
-      return;
-    }
-    qs = TEH_plugin->update_kyc_process_by_row (TEH_plugin->cls,
-                                                kpc->process_row,
-                                                kpc->provider_section,
-                                                &kpc->h_payto,
-                                                provider_user_id,
-                                                provider_legitimization_id,
-                                                expiration);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      GNUNET_break (0);
-      if (NULL != response)
-        MHD_destroy_response (response);
-      kpc->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
-      kpc->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
-                                            "set_kyc_ok");
-      GNUNET_async_scope_restore (&old_scope);
-      return;
+      response = TALER_MHD_make_error (
+        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+        "[exchange] AML_KYC_TRIGGER");
     }
   }
-  else
+  if (NULL == kpc->kat)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "KYC process #%llu failed with status %d\n",
                 (unsigned long long) kpc->process_row,
                 status);
+    proof_finish (kpc,
+                  http_status,
+                  response);
   }
-  kpc->response_code = http_status;
-  kpc->response = response;
-  kpc_resume (kpc);
   GNUNET_async_scope_restore (&old_scope);
 }
 
@@ -278,6 +271,11 @@ clean_kpc (struct TEH_RequestContext *rc)
   {
     kpc->logic->proof_cancel (kpc->ph);
     kpc->ph = NULL;
+  }
+  if (NULL != kpc->kat)
+  {
+    TEH_kyc_finished_cancel (kpc->kat);
+    kpc->kat = NULL;
   }
   if (NULL != kpc->response)
   {

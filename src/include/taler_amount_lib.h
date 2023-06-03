@@ -402,7 +402,7 @@ TALER_amount_multiply (struct TALER_Amount *result,
  *         #GNUNET_NO if value was already normalized
  *         #GNUNET_SYSERR if value was invalid or could not be normalized
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_normalize (struct TALER_Amount *amount);
 
 

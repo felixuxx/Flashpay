@@ -251,7 +251,7 @@ child_done_cb (void *cls,
                long unsigned int exit_code)
 {
   struct TALER_JSON_ExternalConversion *ec = cls;
-  json_t *j;
+  json_t *j = NULL;
   json_error_t err;
 
   ec->cwh = NULL;
@@ -269,16 +269,19 @@ child_done_cb (void *cls,
   }
   GNUNET_OS_process_destroy (ec->helper);
   ec->helper = NULL;
-  j = json_loadb (ec->read_buf,
-                  ec->read_pos,
-                  JSON_REJECT_DUPLICATES,
-                  &err);
-  if (NULL == j)
+  if (0 != ec->read_pos)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to parse JSON from helper at %d: %s\n",
-                err.position,
-                err.text);
+    j = json_loadb (ec->read_buf,
+                    ec->read_pos,
+                    JSON_REJECT_DUPLICATES,
+                    &err);
+    if (NULL == j)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to parse JSON from helper at %d: %s\n",
+                  err.position,
+                  err.text);
+    }
   }
   ec->cb (ec->cb_cls,
           type,

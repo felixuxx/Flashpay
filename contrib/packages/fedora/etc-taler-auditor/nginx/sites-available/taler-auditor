@@ -1,0 +1,18 @@
+server {
+
+  listen 80;
+  listen [::]:80;
+
+  server_name localhost;
+
+  access_log /var/log/nginx/auditor.log;
+  error_log /var/log/nginx/auditor.err;
+
+  location /taler-auditor/ {
+    proxy_pass http://unix:/var/lib/taler-auditor/auditor.sock;
+    proxy_redirect off;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host "localhost";
+    #proxy_set_header X-Forwarded-Proto "https";
+  }
+}

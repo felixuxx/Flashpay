@@ -39,6 +39,7 @@ SET search_path TO exchange;
 #include "exchange_do_insert_or_update_policy_details.sql"
 #include "exchange_do_insert_aml_decision.sql"
 #include "exchange_do_insert_aml_officer.sql"
+#include "exchange_do_insert_kyc_attributes.sql"
 #include "exchange_do_reserves_in_insert.sql"
 #include "exchange_do_batch_reserves_update.sql"
 #include "exchange_do_refund_by_coin.sql"
