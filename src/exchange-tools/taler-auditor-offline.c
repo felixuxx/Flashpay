@@ -388,14 +388,15 @@ load_offline_key (int do_create)
  * add operation result.
  *
  * @param cls closure with a `struct DenominationAddRequest`
- * @param hr HTTP response data
+ * @param adr response data
  */
 static void
 denomination_add_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_AuditorAddDenominationResponse *adr)
 {
   struct DenominationAddRequest *dar = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &adr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {

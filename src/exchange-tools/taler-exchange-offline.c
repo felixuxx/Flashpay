@@ -1301,13 +1301,15 @@ upload_signkey_revocation (const char *exchange_url,
  * Function called with information about the post auditor add operation result.
  *
  * @param cls closure with a `struct AuditorAddRequest`
- * @param hr HTTP response data
+ * @param mer response data
  */
 static void
-auditor_add_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+auditor_add_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_ManagementAuditorEnableResponse *mer)
 {
   struct AuditorAddRequest *aar = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mer->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1401,13 +1403,15 @@ upload_auditor_add (const char *exchange_url,
  * Function called with information about the post auditor del operation result.
  *
  * @param cls closure with a `struct AuditorDelRequest`
- * @param hr HTTP response data
+ * @param mdr response data
  */
 static void
 auditor_del_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+                const struct
+                TALER_EXCHANGE_ManagementAuditorDisableResponse *mdr)
 {
   struct AuditorDelRequest *adr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mdr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1726,14 +1730,15 @@ upload_wire_del (const char *exchange_url,
  * Function called with information about the post wire fee operation result.
  *
  * @param cls closure with a `struct WireFeeRequest`
- * @param hr HTTP response data
+ * @param swr response data
  */
 static void
 wire_fee_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementSetWireFeeResponse *swr)
 {
   struct WireFeeRequest *wfr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &swr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1831,14 +1836,15 @@ upload_wire_fee (const char *exchange_url,
  * Function called with information about the post global fee operation result.
  *
  * @param cls closure with a `struct WireFeeRequest`
- * @param hr HTTP response data
+ * @param gr response data
  */
 static void
 global_fee_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementSetGlobalFeeResponse *gr)
 {
   struct GlobalFeeRequest *gfr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &gr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2358,14 +2364,15 @@ upload_extensions (const char *exchange_url,
  * Function called with information about the add partner operation.
  *
  * @param cls closure with a `struct PartnerAddRequest`
- * @param hr HTTP response data
+ * @param apr response data
  */
 static void
 add_partner_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementAddPartnerResponse *apr)
 {
   struct PartnerAddRequest *par = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &apr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {

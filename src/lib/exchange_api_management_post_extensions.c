@@ -126,7 +126,7 @@ struct TALER_EXCHANGE_ManagementPostExtensionsHandle *
 TALER_EXCHANGE_management_post_extensions (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
+  const struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
   TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
   void *cb_cls)
 {
@@ -151,7 +151,7 @@ TALER_EXCHANGE_management_post_extensions (
 
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_object_steal ("extensions",
-                                   ped->extensions),
+                                   (json_t *) ped->extensions),
     GNUNET_JSON_pack_data_auto ("extensions_sig",
                                 &ped->extensions_sig));
 

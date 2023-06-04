@@ -90,17 +90,19 @@ struct AmlDecisionState
 
 
 /**
- * Callback to analyze the /management/XXX response, just used to check
+ * Callback to analyze the /aml-decision/$OFFICER_PUB response, just used to check
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param adr response details
  */
 static void
-take_aml_decision_cb (void *cls,
-                      const struct TALER_EXCHANGE_HttpResponse *hr)
+take_aml_decision_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_AddAmlDecisionResponse *adr)
 {
   struct AmlDecisionState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &adr->hr;
 
   ds->dh = NULL;
   if (ds->expected_response != hr->http_status)

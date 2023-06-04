@@ -67,13 +67,15 @@ struct AuditorAddDenomSigState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param adr response details
  */
 static void
-denom_sig_add_cb (void *cls,
-                  const struct TALER_EXCHANGE_HttpResponse *hr)
+denom_sig_add_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_AuditorAddDenominationResponse *adr)
 {
   struct AuditorAddDenomSigState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &adr->hr;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)
