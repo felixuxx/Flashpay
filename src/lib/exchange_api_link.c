@@ -270,9 +270,10 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
      whilst 'i' and 'session' track the 2d array. *///
   for (session = 0; session<json_array_size (json); session++)
   {
-    json_t *jsona;
+    const json_t *jsona;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_json ("new_coins", &jsona),
+      GNUNET_JSON_spec_array_const ("new_coins",
+                                    &jsona),
       GNUNET_JSON_spec_end ()
     };
 
@@ -285,16 +286,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    if (! json_is_array (jsona))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-
     /* count all coins over all sessions */
     num_coins += json_array_size (jsona);
-    GNUNET_JSON_parse_free (spec);
   }
   /* Now that we know how big the 1d array is, allocate
      and fill it. */
@@ -307,11 +300,11 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
     off_coin = 0;
     for (session = 0; session<json_array_size (json); session++)
     {
-      json_t *jsona;
+      const json_t *jsona;
       struct TALER_TransferPublicKeyP trans_pub;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_json ("new_coins",
-                               &jsona),
+        GNUNET_JSON_spec_array_const ("new_coins",
+                                      &jsona),
         GNUNET_JSON_spec_fixed_auto ("transfer_pub",
                                      &trans_pub),
         GNUNET_JSON_spec_end ()
@@ -324,12 +317,6 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      if (! json_is_array (jsona))
-      {
-        GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
 
@@ -357,10 +344,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
       {
         GNUNET_break_op (0);
         ret = GNUNET_SYSERR;
-        GNUNET_JSON_parse_free (spec);
         break;
       }
-      GNUNET_JSON_parse_free (spec);
     } /* end of for (session) */
 
     if (off_coin == num_coins)

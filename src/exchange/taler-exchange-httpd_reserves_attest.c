@@ -68,7 +68,7 @@ struct ReserveAttestContext
   /**
    * List of requested details.
    */
-  json_t *details;
+  const json_t *details;
 
   /**
    * Client signature approving the request.
@@ -287,8 +287,8 @@ TEH_handler_reserves_attest (struct TEH_RequestContext *rc,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("request_timestamp",
                                 &rsc.timestamp),
-    GNUNET_JSON_spec_json ("details",
-                           &rsc.details),
+    GNUNET_JSON_spec_array_const ("details",
+                                  &rsc.details),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &rsc.reserve_sig),
     GNUNET_JSON_spec_end ()

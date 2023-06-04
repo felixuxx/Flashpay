@@ -758,11 +758,12 @@ kycaid_webhook_cancel (struct TALER_KYCLOGIC_WebhookHandle *wh)
  * @param verifications JSON object with failure details
  */
 static void
-log_failure (json_t *verifications)
+log_failure (const json_t *verifications)
 {
-  json_t *member;
+  const json_t *member;
   const char *name;
-  json_object_foreach (verifications, name, member)
+
+  json_object_foreach ((json_t *) verifications, name, member)
   {
     bool iverified;
     const char *comment;
@@ -1176,7 +1177,7 @@ kycaid_webhook (void *cls,
   const char *status = NULL;
   bool verified = false;
   bool no_verified = true;
-  json_t *verifications = NULL;
+  const json_t *verifications = NULL;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("request_id",
                              &request_id),
@@ -1195,8 +1196,8 @@ kycaid_webhook (void *cls,
                              &verified),
       &no_verified),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_json ("verifications",
-                             &verifications),
+      GNUNET_JSON_spec_object_const ("verifications",
+                                     &verifications),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -1253,7 +1254,6 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -1267,7 +1267,6 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_NOT_FOUND;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
   wh->verification_id = GNUNET_strdup (verification_id);
@@ -1286,7 +1285,6 @@ kycaid_webhook (void *cls,
                                                 MHD_RESPMEM_PERSISTENT);
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
 
@@ -1300,7 +1298,6 @@ kycaid_webhook (void *cls,
     wh->response_code = MHD_HTTP_INTERNAL_SERVER_ERROR;
     wh->task = GNUNET_SCHEDULER_add_now (&async_webhook_reply,
                                          wh);
-    GNUNET_JSON_parse_free (spec);
     return wh;
   }
 
@@ -1324,7 +1321,6 @@ kycaid_webhook (void *cls,
                                   pd->slist,
                                   &handle_webhook_finished,
                                   wh);
-  GNUNET_JSON_parse_free (spec);
   return wh;
 }
 

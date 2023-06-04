@@ -951,12 +951,12 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
                            const json_t *j)
 {
   const char *state;
-  json_t *data;
+  const json_t *data;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("status",
                              &state),
-    GNUNET_JSON_spec_json ("data",
-                           &data),
+    GNUNET_JSON_spec_object_const ("data",
+                                   &data),
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_GenericReturnValue res;
@@ -988,7 +988,6 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
     GNUNET_break_op (0);
     handle_proof_error (ph,
                         j);
-    GNUNET_JSON_parse_free (spec);
     return;
   }
   {
@@ -1016,7 +1015,6 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
             "Unexpected response from KYC gateway: data must contain id");
       ph->http_status
         = MHD_HTTP_BAD_GATEWAY;
-      GNUNET_JSON_parse_free (spec);
       return;
     }
     ph->status = TALER_KYCLOGIC_STATUS_SUCCESS;
@@ -1034,7 +1032,6 @@ parse_proof_success_reply (struct TALER_KYCLOGIC_ProofHandle *ph,
   }
   ph->attributes = data2attributes (ph->pd,
                                     data);
-  GNUNET_JSON_parse_free (spec);
 }
 
 

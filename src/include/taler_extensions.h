@@ -259,13 +259,13 @@ TALER_extensions_parse_manifest (
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_load_manifests (
-  json_t *manifests);
+  const json_t *manifests);
 
 /*
  * @brief Returns the head of the linked list of extensions.
  */
 const struct TALER_Extensions *
-TALER_extensions_get_head ();
+TALER_extensions_get_head (void);
 
 /**
  * @brief Finds and returns a supported extension by a given type.
@@ -323,7 +323,7 @@ TALER_extensions_is_enabled (
  */
 enum GNUNET_GenericReturnValue
 TALER_extensions_verify_manifests_signature (
-  json_t *manifests,
+  const json_t *manifests,
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub);
 
@@ -363,7 +363,7 @@ struct TALER_AgeRestrictionConfig
  * @return age restriction configuration if present, otherwise NULL.
  */
 const struct TALER_AgeRestrictionConfig *
-TALER_extensions_get_age_restriction_config ();
+TALER_extensions_get_age_restriction_config (void);
 
 /**
  * @brief Check if age restriction is enabled
@@ -371,7 +371,7 @@ TALER_extensions_get_age_restriction_config ();
  * @return true, if age restriction is loaded, configured and enabled; otherwise false.
  */
 bool
-TALER_extensions_is_age_restriction_enabled ();
+TALER_extensions_is_age_restriction_enabled (void);
 
 /**
  * @brief Return the age mask for age restriction
@@ -379,6 +379,6 @@ TALER_extensions_is_age_restriction_enabled ();
  * @return configured age mask, if age restriction is loaded, configured and enabled; otherwise zero mask.
  */
 struct TALER_AgeMask
-TALER_extensions_get_age_restriction_mask ();
+TALER_extensions_get_age_restriction_mask (void);
 
 #endif

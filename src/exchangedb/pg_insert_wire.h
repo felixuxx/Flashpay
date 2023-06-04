@@ -42,8 +42,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire (void *cls,
                     const char *payto_uri,
                     const char *conversion_url,
-                    json_t *debit_restrictions,
-                    json_t *credit_restrictions,
+                    const json_t *debit_restrictions,
+                    const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp start_date,
                     const struct TALER_MasterSignatureP *master_sig);
 

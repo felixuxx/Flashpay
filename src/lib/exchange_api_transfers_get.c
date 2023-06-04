@@ -84,7 +84,7 @@ check_transfers_get_response_ok (
   struct TALER_EXCHANGE_TransfersGetHandle *wdh,
   const json_t *json)
 {
-  json_t *details_j;
+  const json_t *details_j;
   struct TALER_Amount total_expected;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_EXCHANGE_TransfersGetResponse tgr = {
@@ -104,8 +104,8 @@ check_transfers_get_response_ok (
                                  &td->h_payto),
     GNUNET_JSON_spec_timestamp ("execution_time",
                                 &td->execution_time),
-    GNUNET_JSON_spec_json ("deposits",
-                           &details_j),
+    GNUNET_JSON_spec_array_const ("deposits",
+                                  &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                  &td->exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
@@ -126,7 +126,6 @@ check_transfers_get_response_ok (
                              &total_expected))
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -135,7 +134,6 @@ check_transfers_get_response_ok (
         &td->exchange_pub))
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   td->details_length = json_array_size (details_j);
@@ -181,7 +179,6 @@ check_transfers_get_response_ok (
       {
         GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
-        GNUNET_JSON_parse_free (spec);
         GNUNET_free (details);
         return GNUNET_SYSERR;
       }
@@ -211,7 +208,6 @@ check_transfers_get_response_ok (
             &td->exchange_sig))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         GNUNET_free (details);
         return GNUNET_SYSERR;
       }
@@ -223,7 +219,6 @@ check_transfers_get_response_ok (
                                &td->wire_fee))
     {
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
       GNUNET_free (details);
       return GNUNET_SYSERR;
     }
@@ -232,7 +227,6 @@ check_transfers_get_response_ok (
                           &td->total_amount))
     {
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
       GNUNET_free (details);
       return GNUNET_SYSERR;
     }
@@ -240,7 +234,6 @@ check_transfers_get_response_ok (
              &tgr);
     GNUNET_free (details);
   }
-  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 

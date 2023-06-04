@@ -984,14 +984,18 @@ TEH_handler_age_withdraw_reveal (
   MHD_RESULT result = MHD_NO;
   enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   struct AgeRevealContext actx = {0};
-  json_t *j_denoms_h;
-  json_t *j_coin_evs;
-  json_t *j_disclosed_coin_secrets;
+  const json_t *j_denoms_h;
+  const json_t *j_coin_evs;
+  const json_t *j_disclosed_coin_secrets;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &actx.reserve_pub),
-    GNUNET_JSON_spec_json ("denoms_h", &j_denoms_h),
-    GNUNET_JSON_spec_json ("coin_evs", &j_coin_evs),
-    GNUNET_JSON_spec_json ("disclosed_coin_secrets", &j_disclosed_coin_secrets),
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                 &actx.reserve_pub),
+    GNUNET_JSON_spec_array_const ("denoms_h",
+                                  &j_denoms_h),
+    GNUNET_JSON_spec_array_const ("coin_evs",
+                                  &j_coin_evs),
+    GNUNET_JSON_spec_array_const ("disclosed_coin_secrets",
+                                  &j_disclosed_coin_secrets),
     GNUNET_JSON_spec_end ()
   };
 
@@ -1010,7 +1014,8 @@ TEH_handler_age_withdraw_reveal (
 
   do {
     /* Extract denominations, blinded and disclosed coins */
-    if (GNUNET_OK != parse_age_withdraw_reveal_json (
+    if (GNUNET_OK !=
+        parse_age_withdraw_reveal_json (
           rc->connection,
           j_denoms_h,
           j_coin_evs,
@@ -1020,7 +1025,8 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Find original commitment */
-    if (GNUNET_OK != find_original_commitment (
+    if (GNUNET_OK !=
+        find_original_commitment (
           rc->connection,
           &actx.ach,
           &actx.reserve_pub,
@@ -1029,7 +1035,8 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Ensure validity of denoms and the sum of amounts and fees */
-    if (GNUNET_OK != are_denominations_valid (
+    if (GNUNET_OK !=
+        are_denominations_valid (
           rc->connection,
           actx.num_coins,
           actx.denoms_h,
@@ -1043,7 +1050,8 @@ TEH_handler_age_withdraw_reveal (
 
     /* Verify the computed h_commitment equals the committed one and that coins
      * have a maximum age group corresponding max_age (age-mask dependent) */
-    if (GNUNET_OK != verify_commitment_and_max_age (
+    if (GNUNET_OK !=
+        verify_commitment_and_max_age (
           rc->connection,
           &actx.commitment.h_commitment,
           actx.commitment.max_age,
@@ -1056,7 +1064,8 @@ TEH_handler_age_withdraw_reveal (
       break;
 
     /* Finally, sign and persist the coins */
-    if (GNUNET_OK != sign_and_finalize_age_withdraw (
+    if (GNUNET_OK !=
+        sign_and_finalize_age_withdraw (
           rc->connection,
           &actx.commitment.h_commitment,
           actx.num_coins,
@@ -1068,7 +1077,6 @@ TEH_handler_age_withdraw_reveal (
   } while(0);
 
   age_reveal_context_free (&actx);
-  GNUNET_JSON_parse_free (spec);
   return result;
 }
 

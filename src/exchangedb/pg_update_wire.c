@@ -30,8 +30,8 @@ enum GNUNET_DB_QueryStatus
 TEH_PG_update_wire (void *cls,
                     const char *payto_uri,
                     const char *conversion_url,
-                    json_t *debit_restrictions,
-                    json_t *credit_restrictions,
+                    const json_t *debit_restrictions,
+                    const json_t *credit_restrictions,
                     struct GNUNET_TIME_Timestamp change_date,
                     bool enabled)
 {

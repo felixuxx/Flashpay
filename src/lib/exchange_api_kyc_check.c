@@ -96,7 +96,7 @@ handle_kyc_check_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      json_t *kyc_details;
+      const json_t *kyc_details;
       uint32_t status;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -105,8 +105,8 @@ handle_kyc_check_finished (void *cls,
                                      &ks.details.ok.exchange_pub),
         GNUNET_JSON_spec_timestamp ("now",
                                     &ks.details.ok.timestamp),
-        GNUNET_JSON_spec_json ("kyc_details",
-                               &kyc_details),
+        GNUNET_JSON_spec_object_const ("kyc_details",
+                                       &kyc_details),
         GNUNET_JSON_spec_uint32 ("aml_status",
                                  &status),
         GNUNET_JSON_spec_end ()

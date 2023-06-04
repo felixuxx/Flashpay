@@ -1113,17 +1113,17 @@ handle_proof_finished (void *cls,
       const char *inquiry_id;
       const char *account_id;
       const char *type = NULL;
-      json_t *attributes;
-      json_t *relationships;
+      const json_t *attributes;
+      const json_t *relationships;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("type",
                                  &type),
         GNUNET_JSON_spec_string ("id",
                                  &inquiry_id),
-        GNUNET_JSON_spec_json ("attributes",
-                               &attributes),
-        GNUNET_JSON_spec_json ("relationships",
-                               &relationships),
+        GNUNET_JSON_spec_object_const ("attributes",
+                                       &attributes),
+        GNUNET_JSON_spec_object_const ("relationships",
+                                       &relationships),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1141,7 +1141,6 @@ handle_proof_finished (void *cls,
                                  inquiry_id,
                                  "data",
                                  data);
-        GNUNET_JSON_parse_free (spec);
         break;
       }
 
@@ -1172,8 +1171,6 @@ handle_proof_finished (void *cls,
                                    inquiry_id,
                                    "data-attributes",
                                    data);
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
         {
@@ -1192,8 +1189,6 @@ handle_proof_finished (void *cls,
                                      inquiry_id,
                                      "data-attributes-reference_id",
                                      data);
-            GNUNET_JSON_parse_free (ispec);
-            GNUNET_JSON_parse_free (spec);
             break;
           }
         }
@@ -1207,8 +1202,6 @@ handle_proof_finished (void *cls,
                                    inquiry_id,
                                    "data-id",
                                    data);
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
 
@@ -1240,8 +1233,6 @@ handle_proof_finished (void *cls,
                 GNUNET_JSON_pack_object_incref ("data",
                                                 (json_t *)
                                                 data))));
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
 
@@ -1260,9 +1251,7 @@ handle_proof_finished (void *cls,
                                    j,
                                    &proof_post_conversion_cb,
                                    ph);
-        GNUNET_JSON_parse_free (ispec);
       }
-      GNUNET_JSON_parse_free (spec);
       return; /* continued in proof_post_conversion_cb */
     }
   case MHD_HTTP_BAD_REQUEST:
@@ -1649,17 +1638,17 @@ handle_webhook_finished (void *cls,
       const char *inquiry_id;
       const char *account_id;
       const char *type = NULL;
-      json_t *attributes;
-      json_t *relationships;
+      const json_t *attributes;
+      const json_t *relationships;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string ("type",
                                  &type),
         GNUNET_JSON_spec_string ("id",
                                  &inquiry_id),
-        GNUNET_JSON_spec_json ("attributes",
-                               &attributes),
-        GNUNET_JSON_spec_json ("relationships",
-                               &relationships),
+        GNUNET_JSON_spec_object_const ("attributes",
+                                       &attributes),
+        GNUNET_JSON_spec_object_const ("relationships",
+                                       &relationships),
         GNUNET_JSON_spec_end ()
       };
 
@@ -1709,8 +1698,6 @@ handle_webhook_finished (void *cls,
           webhook_reply_error (wh,
                                inquiry_id,
                                MHD_HTTP_BAD_GATEWAY);
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
         {
@@ -1727,8 +1714,6 @@ handle_webhook_finished (void *cls,
             webhook_reply_error (wh,
                                  inquiry_id,
                                  MHD_HTTP_BAD_GATEWAY);
-            GNUNET_JSON_parse_free (ispec);
-            GNUNET_JSON_parse_free (spec);
             break;
           }
         }
@@ -1740,8 +1725,6 @@ handle_webhook_finished (void *cls,
           webhook_reply_error (wh,
                                inquiry_id,
                                MHD_HTTP_BAD_GATEWAY);
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
 
@@ -1763,8 +1746,6 @@ handle_webhook_finished (void *cls,
                                  inquiry_id,
                                  NULL,
                                  MHD_HTTP_OK);
-          GNUNET_JSON_parse_free (ispec);
-          GNUNET_JSON_parse_free (spec);
           break;
         }
 
@@ -1784,9 +1765,7 @@ handle_webhook_finished (void *cls,
                                    j,
                                    &webhook_post_conversion_cb,
                                    wh);
-        GNUNET_JSON_parse_free (ispec);
       }
-      GNUNET_JSON_parse_free (spec);
       return; /* continued in webhook_post_conversion_cb */
     }
   case MHD_HTTP_BAD_REQUEST:

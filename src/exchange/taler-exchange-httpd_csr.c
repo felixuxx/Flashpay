@@ -39,12 +39,12 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
 {
   struct TALER_RefreshMasterSecretP rms;
   unsigned int csr_requests_num;
-  json_t *csr_requests;
+  const json_t *csr_requests;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("rms",
                                  &rms),
-    GNUNET_JSON_spec_json ("nks",
-                           &csr_requests),
+    GNUNET_JSON_spec_array_const ("nks",
+                                  &csr_requests),
     GNUNET_JSON_spec_end ()
   };
   enum TALER_ErrorCode ec;
@@ -65,7 +65,7 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
   if ( (TALER_MAX_FRESH_COINS <= csr_requests_num) ||
        (0 == csr_requests_num) )
   {
-    GNUNET_JSON_parse_free (spec);
+    GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
       rc->connection,
       MHD_HTTP_BAD_REQUEST,
@@ -101,14 +101,12 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
                                           -1);
         if (GNUNET_OK != res)
         {
-          GNUNET_JSON_parse_free (spec);
           return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
         }
         TALER_cs_refresh_nonce_derive (&rms,
                                        coin_off,
                                        &nonces[i]);
       }
-      GNUNET_JSON_parse_free (spec);
 
       for (unsigned int i = 0; i < csr_requests_num; i++)
       {

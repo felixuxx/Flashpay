@@ -93,7 +93,7 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
     .hr.reply = j,
     .hr.http_status = MHD_HTTP_OK
   };
-  json_t *attributes;
+  const json_t *attributes;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                 &rs.details.ok.exchange_time),
@@ -103,8 +103,8 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
                                  &rs.details.ok.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                  &rs.details.ok.exchange_pub),
-    GNUNET_JSON_spec_json ("attributes",
-                           &attributes),
+    GNUNET_JSON_spec_object_const ("attributes",
+                                   &attributes),
     GNUNET_JSON_spec_end ()
   };
 

@@ -3592,7 +3592,7 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  json_t *history,
+  const json_t *history,
   struct TALER_Amount *total);
 
 
@@ -4498,7 +4498,7 @@ TALER_EXCHANGE_post_management_keys_cancel (
  */
 struct TALER_EXCHANGE_ManagementPostExtensionsData
 {
-  json_t *extensions;
+  const json_t *extensions;
   struct TALER_MasterSignatureP extensions_sig;
 };
 

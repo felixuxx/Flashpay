@@ -983,26 +983,26 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
                     const json_t *root,
                     const char *const args[2])
 {
-  json_t *coin_evs;
-  json_t *transfer_privs;
-  json_t *link_sigs;
-  json_t *new_denoms_h;
-  json_t *old_age_commitment;
+  const json_t *coin_evs;
+  const json_t *transfer_privs;
+  const json_t *link_sigs;
+  const json_t *new_denoms_h;
+  const json_t *old_age_commitment;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("transfer_pub",
                                  &rctx.gamma_tp),
-    GNUNET_JSON_spec_json ("transfer_privs",
-                           &transfer_privs),
-    GNUNET_JSON_spec_json ("link_sigs",
-                           &link_sigs),
-    GNUNET_JSON_spec_json ("coin_evs",
-                           &coin_evs),
-    GNUNET_JSON_spec_json ("new_denoms_h",
-                           &new_denoms_h),
+    GNUNET_JSON_spec_array_const ("transfer_privs",
+                                  &transfer_privs),
+    GNUNET_JSON_spec_array_const ("link_sigs",
+                                  &link_sigs),
+    GNUNET_JSON_spec_array_const ("coin_evs",
+                                  &coin_evs),
+    GNUNET_JSON_spec_array_const ("new_denoms_h",
+                                  &new_denoms_h),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_json ("old_age_commitment",
-                             &old_age_commitment),
+      GNUNET_JSON_spec_array_const ("old_age_commitment",
+                                    &old_age_commitment),
       NULL),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_fixed_auto ("rms",
@@ -1053,7 +1053,6 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
   /* Note we do +1 as 1 row (cut-and-choose!) is missing! */
   if (TALER_CNC_KAPPA != json_array_size (transfer_privs) + 1)
   {
-    GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
@@ -1061,19 +1060,13 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
-  {
-    MHD_RESULT res;
-
-    res = handle_refreshes_reveal_json (rc->connection,
-                                        &rctx,
-                                        transfer_privs,
-                                        link_sigs,
-                                        new_denoms_h,
-                                        old_age_commitment,
-                                        coin_evs);
-    GNUNET_JSON_parse_free (spec);
-    return res;
-  }
+  return handle_refreshes_reveal_json (rc->connection,
+                                       &rctx,
+                                       transfer_privs,
+                                       link_sigs,
+                                       new_denoms_h,
+                                       old_age_commitment,
+                                       coin_evs);
 }
 
 

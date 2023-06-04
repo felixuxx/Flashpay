@@ -145,7 +145,7 @@ set_extensions (void *cls,
 
 static enum GNUNET_GenericReturnValue
 verify_extensions_from_json (
-  json_t *extensions,
+  const json_t *extensions,
   struct SetExtensionsContext *sec)
 {
   const char*name;
@@ -160,7 +160,7 @@ verify_extensions_from_json (
   sec->extensions = GNUNET_new_array (sec->num_extensions,
                                       struct Extension);
 
-  json_object_foreach (extensions, name, manifest)
+  json_object_foreach ((json_t *) extensions, name, manifest)
   {
     int critical = 0;
     json_t *config;
@@ -200,11 +200,11 @@ TEH_handler_management_post_extensions (
   const json_t *root)
 {
   MHD_RESULT ret;
-  json_t *extensions;
+  const json_t *extensions;
   struct SetExtensionsContext sec = {0};
   struct GNUNET_JSON_Specification top_spec[] = {
-    GNUNET_JSON_spec_json ("extensions",
-                           &extensions),
+    GNUNET_JSON_spec_object_const ("extensions",
+                                   &extensions),
     GNUNET_JSON_spec_fixed_auto ("extensions_sig",
                                  &sec.extensions_sig),
     GNUNET_JSON_spec_end ()
@@ -223,31 +223,19 @@ TEH_handler_management_post_extensions (
       return MHD_YES; /* failure */
   }
 
-  /* Ensure we have an object */
-  if ((! json_is_object (extensions)) &&
-      (! json_is_null (extensions)))
-  {
-    GNUNET_JSON_parse_free (top_spec);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "invalid object");
-  }
-
   /* Verify the signature */
   {
     struct TALER_ExtensionManifestsHashP h_manifests;
 
     if (GNUNET_OK !=
-        TALER_JSON_extensions_manifests_hash (extensions, &h_manifests) ||
+        TALER_JSON_extensions_manifests_hash (extensions,
+                                              &h_manifests) ||
         GNUNET_OK !=
         TALER_exchange_offline_extension_manifests_hash_verify (
           &h_manifests,
           &TEH_master_public_key,
           &sec.extensions_sig))
     {
-      GNUNET_JSON_parse_free (top_spec);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_BAD_REQUEST,
@@ -263,7 +251,6 @@ TEH_handler_management_post_extensions (
   if (GNUNET_OK !=
       verify_extensions_from_json (extensions, &sec))
   {
-    GNUNET_JSON_parse_free (top_spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_BAD_REQUEST,
@@ -306,7 +293,6 @@ CLEANUP:
     }
   }
   GNUNET_free (sec.extensions);
-  GNUNET_JSON_parse_free (top_spec);
   return ret;
 }
 

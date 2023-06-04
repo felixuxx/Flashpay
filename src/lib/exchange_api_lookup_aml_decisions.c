@@ -123,10 +123,10 @@ parse_decisions_ok (struct TALER_EXCHANGE_LookupAmlDecisions *lh,
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
   };
-  json_t *records;
+  const json_t *records;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("records",
-                           &records),
+    GNUNET_JSON_spec_array_const ("records",
+                                  &records),
     GNUNET_JSON_spec_end ()
   };
 

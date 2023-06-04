@@ -843,10 +843,10 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
     .reserve_pub = reserve_pub,
     .rc = rc
   };
-  json_t *planchets;
+  const json_t *planchets;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("planchets",
-                           &planchets),
+    GNUNET_JSON_spec_array_const ("planchets",
+                                  &planchets),
     GNUNET_JSON_spec_end ()
   };
 
@@ -862,20 +862,17 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
     if (GNUNET_OK != res)
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  if ( (! json_is_array (planchets)) ||
-       (0 == json_array_size (planchets)) )
+  wc.planchets_length = json_array_size (planchets);
+  if (0 == wc.planchets_length)
   {
-    GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "planchets");
   }
-  wc.planchets_length = json_array_size (planchets);
   if (wc.planchets_length > TALER_MAX_FRESH_COINS)
   {
-    GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
@@ -901,7 +898,6 @@ TEH_handler_batch_withdraw (struct TEH_RequestContext *rc,
       TALER_blinded_planchet_free (&pc->blinded_planchet);
       TALER_blinded_denom_sig_free (&pc->collectable.sig);
     }
-    GNUNET_JSON_parse_free (spec);
     return ret;
   }
 }

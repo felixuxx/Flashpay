@@ -99,7 +99,7 @@ static enum GNUNET_GenericReturnValue
 handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
                             const json_t *j)
 {
-  json_t *history;
+  const json_t *history;
   unsigned int len;
   struct TALER_EXCHANGE_ReserveHistory rs = {
     .hr.reply = j,
@@ -110,8 +110,8 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount_any ("balance",
                                 &rs.details.ok.balance),
-    GNUNET_JSON_spec_json ("history",
-                           &history),
+    GNUNET_JSON_spec_array_const ("history",
+                                  &history),
     GNUNET_JSON_spec_end ()
   };
 
@@ -143,7 +143,6 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
       GNUNET_break_op (0);
       TALER_EXCHANGE_free_reserve_history (rhistory,
                                            len);
-      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (NULL != rsh->cb)
@@ -157,7 +156,6 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
     TALER_EXCHANGE_free_reserve_history (rhistory,
                                          len);
   }
-  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 

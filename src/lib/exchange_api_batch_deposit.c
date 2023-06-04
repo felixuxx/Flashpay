@@ -237,12 +237,12 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_OK:
     {
       const struct TALER_EXCHANGE_Keys *key_state;
-      json_t *sigs;
+      const json_t *sigs;
       json_t *sig;
       unsigned int idx;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_json ("exchange_sigs",
-                               &sigs),
+        GNUNET_JSON_spec_array_const ("exchange_sigs",
+                                      &sigs),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
@@ -269,7 +269,6 @@ handle_deposit_finished (void *cls,
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-        GNUNET_JSON_parse_free (spec);
         break;
       }
       dh->exchange_sigs = GNUNET_new_array (dh->num_cdds,
@@ -282,7 +281,6 @@ handle_deposit_finished (void *cls,
         GNUNET_break_op (0);
         dr.hr.http_status = 0;
         dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
-        GNUNET_JSON_parse_free (spec);
         break;
       }
       json_array_foreach (sigs, idx, sig)
@@ -303,7 +301,6 @@ handle_deposit_finished (void *cls,
           GNUNET_break_op (0);
           dr.hr.http_status = 0;
           dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          GNUNET_JSON_parse_free (spec);
           break;
         }
         dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
@@ -332,14 +329,12 @@ handle_deposit_finished (void *cls,
           GNUNET_break_op (0);
           dr.hr.http_status = 0;
           dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
-          GNUNET_JSON_parse_free (spec);
           break;
         }
       }
       TEAH_get_auditors_for_dc (dh->exchange,
                                 &auditor_cb,
                                 dh);
-      GNUNET_JSON_parse_free (spec);
     }
     dr.details.ok.exchange_sigs = dh->exchange_sigs;
     dr.details.ok.exchange_pub = &dh->exchange_pub;
