@@ -357,34 +357,28 @@ execute_debit_history (void)
  * execution.
  *
  * @param cls closure
- * @param response_code HTTP status code
- * @param ec taler error code
- * @param row_id unique ID of the wire transfer in the bank's records
- * @param timestamp when did the transaction go into effect
+ * @param tr response details
  */
 static void
 confirmation_cb (void *cls,
-                 unsigned int response_code,
-                 enum TALER_ErrorCode ec,
-                 uint64_t row_id,
-                 struct GNUNET_TIME_Timestamp timestamp)
+                 const struct TALER_BANK_TransferResponse *tr)
 {
   (void) cls;
   eh = NULL;
-  if (MHD_HTTP_OK != response_code)
+  if (MHD_HTTP_OK != tr->http_status)
   {
     fprintf (stderr,
              "The wire transfer didn't execute correctly (%u/%d).\n",
-             response_code,
-             ec);
+             tr->http_status,
+             tr->ec);
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
   fprintf (stdout,
            "Wire transfer #%llu executed successfully at %s.\n",
-           (unsigned long long) row_id,
-           GNUNET_TIME_timestamp2s (timestamp));
+           (unsigned long long) tr->details.ok.row_id,
+           GNUNET_TIME_timestamp2s (tr->details.ok.timestamp));
   global_ret = 0;
   GNUNET_SCHEDULER_shutdown ();
 }
@@ -464,39 +458,29 @@ execute_wire_transfer (void)
  * Function called with the result of the operation.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol)
- * @param ec detailed error code
- * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
- * @param timestamp timestamp when the transaction got settled at the bank.
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ * @param air response details
  */
 static void
 res_cb (void *cls,
-        unsigned int http_status,
-        enum TALER_ErrorCode ec,
-        uint64_t serial_id,
-        struct GNUNET_TIME_Timestamp timestamp,
-        const json_t *json)
+        const struct TALER_BANK_AdminAddIncomingResponse *air)
 {
   (void) cls;
-  (void) timestamp;
   op = NULL;
-  switch (ec)
+  switch (air->http_status)
   {
-  case TALER_EC_NONE:
+  case MHD_HTTP_OK:
     global_ret = 0;
     fprintf (stdout,
              "%llu\n",
-             (unsigned long long) serial_id);
+             (unsigned long long) air->details.ok.serial_id);
     break;
   default:
     fprintf (stderr,
              "Operation failed with status code %u/%u\n",
-             (unsigned int) ec,
-             http_status);
-    if (NULL != json)
-      json_dumpf (json,
+             (unsigned int) air->ec,
+             air->http_status);
+    if (NULL != air->response)
+      json_dumpf (air->response,
                   stderr,
                   JSON_INDENT (2));
     break;

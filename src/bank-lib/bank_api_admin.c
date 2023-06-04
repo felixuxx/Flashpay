@@ -74,25 +74,25 @@ handle_admin_add_incoming_finished (void *cls,
                                     const void *response)
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
-  uint64_t row_id = UINT64_MAX;
-  struct GNUNET_TIME_Timestamp timestamp;
-  enum TALER_ErrorCode ec;
   const json_t *j = response;
+  struct TALER_BANK_AdminAddIncomingResponse ir = {
+    .http_status = response_code,
+    .response = response
+  };
 
   aai->job = NULL;
-  timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    ir.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
-                                 &row_id),
+                                 &ir.details.ok.serial_id),
         GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
+                                    &ir.details.ok.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -102,42 +102,41 @@ handle_admin_add_incoming_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        response_code = 0;
-        ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        ir.http_status = 0;
+        ir.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break_op (0);
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Access denied */
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says the password is invalid; we should
        pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, maybe account really does not exist.
        We should pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Nothing to verify, we used the same wire subject
        twice? */
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
@@ -145,15 +144,11 @@ handle_admin_add_incoming_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
-    ec = TALER_JSON_get_error_code (j);
+    ir.ec = TALER_JSON_get_error_code (j);
     break;
   }
   aai->cb (aai->cb_cls,
-           response_code,
-           ec,
-           row_id,
-           timestamp,
-           j);
+           &ir);
   TALER_BANK_admin_add_incoming_cancel (aai);
 }
 

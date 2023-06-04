@@ -100,26 +100,64 @@ struct TALER_BANK_AdminAddIncomingHandle;
 
 
 /**
+ * Response details for a history request.
+ */
+struct TALER_BANK_AdminAddIncomingResponse
+{
+
+  /**
+   * HTTP status.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+      /**
+       * unique ID of the wire transfer in the bank's records
+       */
+      uint64_t serial_id;
+
+      /**
+       * time when the transaction was made.
+       */
+      struct GNUNET_TIME_Timestamp timestamp;
+
+    } ok;
+
+  } details;
+
+};
+
+/**
  * Callbacks of this type are used to return the result of submitting
  * a request to transfer funds to the exchange.
  *
  * @param cls closure
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for successful status request
- *                    0 if the bank's reply is bogus (fails to follow the protocol)
- * @param ec detailed error code
- * @param serial_id unique ID of the wire transfer in the bank's records; UINT64_MAX on error
- * @param timestamp time when the transaction was made.
- * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
+ * @param air response details
  */
-// FIXME: bad API
 typedef void
 (*TALER_BANK_AdminAddIncomingCallback) (
   void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
-  uint64_t serial_id,
-  struct GNUNET_TIME_Timestamp timestamp,
-  const json_t *json);
+  const struct TALER_BANK_AdminAddIncomingResponse *air);
 
 
 /**
@@ -192,22 +230,64 @@ struct TALER_BANK_TransferHandle;
 
 
 /**
+ * Response details for a history request.
+ */
+struct TALER_BANK_TransferResponse
+{
+
+  /**
+   * HTTP status.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, #TALER_EC_NONE on success.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Full response, NULL if body was not in JSON format.
+   */
+  const json_t *response;
+
+  /**
+   * Details returned depending on the @e http_status.
+   */
+  union
+  {
+
+    /**
+     * Details if status was #MHD_HTTP_OK
+     */
+    struct
+    {
+
+
+      /**
+       * unique ID of the wire transfer in the bank's records
+       */
+      uint64_t row_id;
+
+      /**
+       * when did the transaction go into effect
+       */
+      struct GNUNET_TIME_Timestamp timestamp;
+
+    } ok;
+  } details;
+};
+
+
+/**
  * Function called with the result from the execute step.
  *
  * @param cls closure
- * @param response_code HTTP status code
- * @param ec taler error code
- * @param row_id unique ID of the wire transfer in the bank's records
- * @param timestamp when did the transaction go into effect
+ * @param tr response details
  */
-// FIXME: bad API
 typedef void
 (*TALER_BANK_TransferCallback)(
   void *cls,
-  unsigned int response_code,
-  enum TALER_ErrorCode ec,
-  uint64_t row_id,
-  struct GNUNET_TIME_Timestamp timestamp);
+  const struct TALER_BANK_TransferResponse *tr);
 
 
 /**

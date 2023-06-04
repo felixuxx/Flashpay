@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015--2020 Taler Systems SA
+  Copyright (C) 2015--2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -158,23 +158,24 @@ handle_transfer_finished (void *cls,
 {
   struct TALER_BANK_TransferHandle *th = cls;
   const json_t *j = response;
-  uint64_t row_id = UINT64_MAX;
-  struct GNUNET_TIME_Timestamp timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
-  enum TALER_ErrorCode ec;
+  struct TALER_BANK_TransferResponse tr = {
+    .http_status = response_code,
+    .response = j
+  };
 
   th->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    tr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
-                                 &row_id),
+                                 &tr.details.ok.row_id),
         GNUNET_JSON_spec_timestamp ("timestamp",
-                                    &timestamp),
+                                    &tr.details.ok.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -184,39 +185,38 @@ handle_transfer_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        response_code = 0;
-        ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        tr.http_status = 0;
+        tr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
     GNUNET_break_op (0);
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_UNAUTHORIZED:
     /* Nothing really to verify, bank says our credentials are
        invalid. We should pass the JSON reply to the application. */
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, endpoint wrong -- could be user unknown */
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Nothing really to verify. Server says we used the same transfer request
        UID before, but with different details.  Should not happen if the user
        properly used #TALER_BANK_prepare_transfer() and our PRNG is not
        broken... */
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
@@ -224,14 +224,11 @@ handle_transfer_finished (void *cls,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
     GNUNET_break (0);
-    ec = TALER_JSON_get_error_code (j);
+    tr.ec = TALER_JSON_get_error_code (j);
     break;
   }
   th->cb (th->cb_cls,
-          response_code,
-          ec,
-          row_id,
-          timestamp);
+          &tr);
   TALER_BANK_transfer_cancel (th);
 }
 
