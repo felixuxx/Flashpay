@@ -15,6 +15,10 @@ bin_PROGRAMS = \
   taler-bank-benchmark \
   taler-exchange-benchmark
 
+bin_SCRIPTS = \
+  taler-benchmark-setup.sh
+
+
 taler_aggregator_benchmark_SOURCES = \
   taler-aggregator-benchmark.c
 taler_aggregator_benchmark_LDADD = \
@@ -66,4 +70,5 @@ taler_exchange_benchmark_LDADD = \
 EXTRA_DIST = \
   benchmark-cs.conf \
   benchmark-rsa.conf \
+  $(bin_SCRIPTS) \
   exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv
