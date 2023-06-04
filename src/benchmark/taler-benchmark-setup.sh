@@ -51,23 +51,36 @@ START_FAKEBANK=0
 START_MERCHANT=0
 START_NEXUS=0
 START_SANDBOX=0
-CONF="~/.config/taler.conf"
+CONF_ORIG="~/.config/taler.conf"
 LOGLEVEL="DEBUG"
 
 # Parse command-line options
-while getopts ':abc:efl:ms' OPTION; do
+while getopts ':abc:efhl:ms' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
             ;;
         c)
-            CONF="$OPTARG"
+            CONF_ORIG="$OPTARG"
             ;;
         e)
             START_EXCHANGE="1"
             ;;
         f)
             START_FAKEBANK="1"
+            ;;
+        h)
+            echo 'Supported options:'
+            echo '  -a           -- start auditor'
+            echo '  -c $CONF     -- set configuration'
+            echo '  -e           -- start exchange'
+            echo '  -f           -- start fakebank'
+            echo '  -h           -- print this help'
+            echo '  -l $LOGLEVEL -- set log level'
+            echo '  -m           -- start merchant'
+            echo '  -n           -- start nexus'
+            echo '  -s           -- start sandbox'
+            exit 0
             ;;
         l)
             LOGLEVEL="$OPTARG"
@@ -87,26 +100,29 @@ while getopts ':abc:efl:ms' OPTION; do
     esac
 done
 
+echo "Starting with configuration file at: $CONF_ORIG"
+CONF="$CONF_ORIG.edited"
+cp "${CONF_ORIG}" "${CONF}"
 
 echo -n "Testing for jq"
 jq -h > /dev/null || exit_skip " jq required"
 echo " FOUND"
 
-if ["1" = "$START_EXCHANGE"]
+if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Testing for Taler exchange"
     taler-exchange-httpd -h > /dev/null || exit_skip " taler-exchange-httpd required"
     echo " FOUND"
 fi
 
-if ["1" = "$START_MERCHANT"]
+if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Testing for Taler merchant"
     taler-merchant-httpd -h > /dev/null || exit_skip " taler-merchant-httpd required"
     echo " FOUND"
 fi
 
-if ["1" = "$START_NEXUS"]
+if [ "1" = "$START_NEXUS" ]
 then
     echo -n "Testing for libeufin-cli"
     libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
@@ -114,7 +130,7 @@ then
 fi
 
 EXCHANGE_URL=$(taler-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
-
+CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
 
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME="$1"
@@ -128,7 +144,7 @@ register_sandbox_account() {
 
 
 BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
-if ["1" = "$START_NEXUS"]
+if [ "1" = "$START_NEXUS" ]
 then
     NEXUS_PORT="$BANK_PORT"
     SANDBOX_PORT="1$BANK_PORT"
@@ -137,12 +153,11 @@ else
     SANDBOX_PORT="1$BANK_PORT"
 fi
 
-if ["1" = "$START_SANDBOX"]
+if [ "1" = "$START_SANDBOX" ]
 then
     export LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
 
     # Create the default demobank.
-    CURRENCY=$(taler-config -c "$CONF" -s "EXCHANGE" -o "CURRENCY")
     libeufin-sandbox config --currency "$CURRENCY" default
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
     libeufin-sandbox serve \
@@ -152,6 +167,7 @@ then
     echo $! > libeufin-sandbox.pid
     export LIBEUFIN_SANDBOX_URL="http://localhost:$SANDBOX_PORT/"
     set +e
+    OK="0"
     echo -n "Waiting for Sandbox ..."
     for n in $(seq 1 100); do
         echo -n "."
@@ -163,9 +179,14 @@ then
                 -O /dev/null \
                 "$LIBEUFIN_SANDBOX_URL";
         then
+            OK="1"
             break
         fi
     done
+    if [ "1" != "$OK" ]
+    then
+        exit_skip "Failed to launch services (sandbox)"
+    fi
     echo "OK"
     set -e
     echo -n "Register Sandbox users ..."
@@ -208,7 +229,7 @@ then
     unset LIBEUFIN_SANDBOX_PASSWORD
 fi
 
-if ["1" = "$START_NEXUS"]
+if [ "1" = "$START_NEXUS" ]
 then
     echo "Setting up Nexus ..."
 
@@ -228,6 +249,7 @@ then
     export LIBEUFIN_NEXUS_URL="http://localhost:$NEXUS_PORT"
     echo -n "Waiting for Nexus ..."
     set +e
+    OK="0"
     for n in $(seq 1 100); do
         echo -n "."
         sleep 0.2
@@ -238,9 +260,14 @@ then
                 -O /dev/null \
                 "$LIBEUFIN_NEXUS_URL";
         then
+            OK="1"
             break
         fi
     done
+    if [ "1" != "$OK" ]
+    then
+        exit_skip "Failed to launch services (bank)"
+    fi
     set -e
     echo " OK"
 
@@ -296,14 +323,14 @@ then
     # FIXME: set the above URL automatically in the configuration?
 fi
 
-if ["1" = "$START_FAKEBANK"]
+if [ "1" = "$START_FAKEBANK" ]
 then
     echo "Setting up fakebank ..."
     taler-fakebank-run -c "$CONF" -L "$LOGLEVEL" 2> taler-fakebank-run.log &
 fi
 
 
-if ["1" = "$START_EXCHANGE"]
+if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
 
@@ -313,9 +340,9 @@ then
     gnunet-ecc -g1 "$MASTER_PRIV_FILE" > /dev/null 2> /dev/null
     MASTER_PUB=$(gnunet-ecc -p "${MASTER_PRIV_FILE}")
     MPUB=$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)
-    if ["$MPUB" != "$MASTER_PUB"]
+    if [ "$MPUB" != "$MASTER_PUB" ]
     then
-        echo -n " patching master_pub ... "
+        echo -n " patching master_pub ($MASTER_PUB)..."
         taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF"
@@ -329,7 +356,7 @@ then
     echo " DONE"
 fi
 
-if ["1" = "$START_MERCHANT"]
+if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Starting merchant ..."
     MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
@@ -340,7 +367,7 @@ then
     echo " DONE"
 fi
 
-if ["1" = "$START_AUDITOR"]
+if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Starting auditor ..."
     AUDITOR_URL="http://localhost:8083/"
@@ -355,15 +382,15 @@ then
     echo " DONE"
 fi
 
-if ["1" = "$START_NEXUS" || "1" = "$START_FAKEBANK"]
+if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
 then
     echo -n "Waiting for the bank"
     # Wait for bank to be available (usually the slowest)
+    OK="0"
     for n in $(seq 1 300)
     do
         echo -n "."
         sleep 0.1
-        OK=0
         # bank
         wget --tries=1 \
              --waitretry=0 \
@@ -373,34 +400,49 @@ then
              "http://localhost:8082/" \
              -o /dev/null \
              -O /dev/null >/dev/null || continue
-        OK=1
+        OK="1"
         break
     done
-    if [ 1 != $OK ]
+    if [ "1" != "$OK" ]
     then
         exit_skip "Failed to launch services (bank)"
     fi
     echo " OK"
 fi
 
-echo -n "Waiting for Taler services "
+echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
 for n in $(seq 1 20)
 do
     echo -n "."
     sleep 0.1
     OK="0"
-    if ["1" = "$START_EXCHANGE"]
+    if [ "1" = "$START_EXCHANGE" ]
     then
-        wget --tries=1 --timeout=1 http://localhost:8081/seed -o /dev/null -O /dev/null >/dev/null || continue
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "http://localhost:8081/seed" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
     fi
-    if ["1" = "$START_MERCHANT"]
+    if [ "1" = "$START_MERCHANT" ]
     then
-        wget --tries=1 --timeout=1 http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "http://localhost:9966/" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
     fi
-    if ["1" = "$START_AUDITOR"]
+    if [ "1" = "$START_AUDITOR" ]
     then
-        wget --tries=1 --timeout=1 http://localhost:8083/ -o /dev/null -O /dev/null >/dev/null || continue
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "http://localhost:8083/" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
     fi
     OK="1"
     break
@@ -409,48 +451,55 @@ if [ 1 != "$OK" ]
 then
     exit_skip "Failed to launch (some) Taler services"
 fi
-echo "OK"
+echo " OK"
 
-if ["1" = "$START_EXCHANGE"]
+if [ "1" = "$START_EXCHANGE" ]
 then
     set +e
-    echo -n "Wait exchange /management/keys to be ready "
+    echo -n "Wait for exchange /management/keys to be ready "
+    OK="0"
+    LAST_RESPONSE=$(mktemp tmp-last-response.XXXXXXXX)
     for n in $(seq 1 50)
     do
         echo -n "."
         sleep 0.1
-        OK=0
         # exchange
-        wget --tries=3 --waitretry=0 --timeout=1 http://localhost:8081/management/keys -o /dev/null -O $LAST_RESPONSE >/dev/null
+        wget \
+            --tries=3 \
+            --waitretry=0 \
+            --timeout=1 \
+            "http://localhost:8081/management/keys"\
+            -o /dev/null \
+            -O "$LAST_RESPONSE" \
+            >/dev/null
         DENOMS_COUNT=$(jq '.future_denoms|length' < $LAST_RESPONSE)
         SIGNKEYS_COUNT=$(jq '.future_signkeys|length' < $LAST_RESPONSE)
         [[ -z "$SIGNKEYS_COUNT" || "$SIGNKEYS_COUNT" == "0" || -z "$DENOMS_COUNT" || "$DENOMS_COUNT" == "0" ]] && continue
-        OK=1
+        OK="1"
         break;
     done
     set -e
-    if [ 1 != $OK ]
+    if [ "1" != "$OK" ]
     then
         exit_skip "Failed to setup exchange keys, check secmod logs"
     fi
+    rm "$LAST_RESPONSE"
     echo " OK"
 
     echo -n "Setting up exchange keys ..."
     taler-exchange-offline -c "$CONF" \
       download \
       sign \
-      enable-account "$EXCHANGE_PAYTO_URI" \
-      enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
-      wire-fee now iban TESTKUDOS:0.01 TESTKUDOS:0.01 \
-      global-fee now TESTKUDOS:0.01 TESTKUDOS:0.01 TESTKUDOS:0.01 1h 1year 5 \
+      wire-fee now iban "$CURRENCY:0.01" "$CURRENCY:0.01" \
+      global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.01" 1h 1year 5 \
       upload &> taler-exchange-offline.log
     echo "OK"
     for ASEC in $(taler-config -c "$CONF" -S | grep -i "exchange-account-")
     do
         ENABLED=$(taler-config -c "$CONF" -s "$ASEC" -o "ENABLE_CREDIT")
-        if ["YES" = "$ENABLED"]
+        if [ "YES" = "$ENABLED" ]
         then
-            echo -n "Configuring bank account $ASEC"
+            echo -n "Configuring bank account $ASEC ..."
             EXCHANGE_PAYTO_URI=$(taler-config -c "$CONF" -s "$ASEC" -o "PAYTO_URI")
             taler-exchange-offline -c "$CONF" \
               enable-account "$EXCHANGE_PAYTO_URI" \
@@ -458,34 +507,37 @@ then
             echo "OK"
         fi
     done
-    if ["1" = "$START_AUDITOR"]
+    if [ "1" = "$START_AUDITOR" ]
     then
         echo -n "Enabling auditor ..."
         taler-exchange-offline -c "$CONF" \
-          enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
+          enable-auditor $AUDITOR_PUB $AUDITOR_URL "$CURRENCY Auditor" \
           upload &> taler-exchange-offline-auditor.log
         echo "OK"
     fi
 
     echo -n "Checking /keys "
+    OK="0"
     for n in $(seq 1 3)
     do
         echo -n "."
-        OK=0
-        wget --tries=1 --timeout=1 \
-             http://localhost:8081/keys \
-             -o /dev/null -O /dev/null >/dev/null || continue
-        OK=1
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "http://localhost:8081/keys" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
+        OK="1"
         break
     done
-    if [ 1 != $OK ]
+    if [ "1" != "$OK" ]
     then
         exit_skip " Failed to setup keys"
     fi
     echo " OK"
 fi
 
-if ["1" = "$START_AUDITOR"]
+if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Setting up auditor signatures ..."
     taler-auditor-offline -c "$CONF" \
