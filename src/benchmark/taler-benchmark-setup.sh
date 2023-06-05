@@ -17,7 +17,14 @@
 # License along with TALER; see the file COPYING.  If not, see
 # <http://www.gnu.org/licenses/>
 #
-
+# Author: Christian Grothoff
+#
+# This script configures and launches various GNU Taler services.
+# Which ones depend on command-line options. Use "-h" to find out.
+# Prints "<<READY>>" on a separate line once all requested services
+# are running. Close STDIN (or input 'NEWLINE') to stop all started
+# services again.
+#
 set -eu
 
 # Exit, with status code "skip" (no 'real' failure)
@@ -155,6 +162,7 @@ CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME="$1"
     export LIBEUFIN_SANDBOX_PASSWORD="$2"
+    # FIXME-MS: delete should be removed after we make 'register' idempotent!
     libeufin-cli sandbox \
       demobank \
       delete \
@@ -239,11 +247,13 @@ then
     export LIBEUFIN_SANDBOX_USERNAME="admin"
     export LIBEUFIN_SANDBOX_PASSWORD="secret"
     echo -n "Create EBICS host at Sandbox.."
+    # FIXME-MS: || true should be removed after we make 'create' idempotent!
     libeufin-cli sandbox \
        --sandbox-url "$LIBEUFIN_SANDBOX_URL" \
        ebicshost create --host-id talerebics &> libeufin-sandbox-ebicshost-create.log || true
     echo "OK"
     echo -n "Create exchange EBICS subscriber at Sandbox.."
+    # FIXME-MS: || true should be removed after we make 'new-ebicssubscriber' idempotent!
     libeufin-cli sandbox \
        demobank new-ebicssubscriber --host-id talerebics \
        --user-id exchangeebics --partner-id talerpartner \
@@ -347,7 +357,7 @@ fi
 if [ "1" = "$START_FAKEBANK" ]
 then
     echo "Setting up fakebank ..."
-    taler-fakebank-run -c "$CONF" -L "$LOGLEVEL" 2> taler-fakebank-run.log &
+    $USE_VALGRIND taler-fakebank-run -c "$CONF" -L "$LOGLEVEL" 2> taler-fakebank-run.log &
 fi
 
 
