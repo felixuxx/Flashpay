@@ -55,7 +55,7 @@ CONF_ORIG="~/.config/taler.conf"
 LOGLEVEL="DEBUG"
 
 # Parse command-line options
-while getopts ':abc:efhl:ms' OPTION; do
+while getopts ':abc:efhl:mns' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -248,27 +248,23 @@ then
     echo $! > libeufin-nexus.pid
     export LIBEUFIN_NEXUS_URL="http://localhost:$NEXUS_PORT"
     echo -n "Waiting for Nexus ..."
-    set +e
     OK="0"
     for n in $(seq 1 100); do
         echo -n "."
         sleep 0.2
-        if wget --timeout=1 \
-                --tries=3 \
-                --waitretry=0 \
-                -o /dev/null \
-                -O /dev/null \
-                "$LIBEUFIN_NEXUS_URL";
-        then
-            OK="1"
-            break
-        fi
+        wget --timeout=1 \
+             --tries=3 \
+             --waitretry=0 \
+             -o /dev/null \
+             -O /dev/null \
+             "$LIBEUFIN_NEXUS_URL" || continue
+        OK="1"
+        break
     done
     if [ "1" != "$OK" ]
     then
         exit_skip "Failed to launch services (bank)"
     fi
-    set -e
     echo " OK"
 
     export LIBEUFIN_NEXUS_USERNAME=exchange
@@ -343,7 +339,7 @@ then
     if [ "$MPUB" != "$MASTER_PUB" ]
     then
         echo -n " patching master_pub ($MASTER_PUB)..."
-        taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
+        taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF"
     taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
@@ -359,6 +355,13 @@ fi
 if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Starting merchant ..."
+    MEPUB=$(taler-config -c "$CONF" -s merchant-exchange-benchmark -o MASTER_KEY)
+    MXPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
+    if [ "$MEPUB" != "$MXPUB" ]
+    then
+        echo -n " patching master_pub ($MXPUB)..."
+        taler-config -c "$CONF" -s merchant-exchange-benchmark -o MASTER_KEY -V "$MXPUB"
+    fi
     MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
     MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
     taler-merchant-dbinit -c "$CONF"
@@ -376,8 +379,9 @@ then
     mkdir -p "$AUDITOR_PRIV_DIR"
     gnunet-ecc -g1 "$AUDITOR_PRIV_FILE" > /dev/null 2> /dev/null
     AUDITOR_PUB=$(gnunet-ecc -p "${AUDITOR_PRIV_FILE}")
+    MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
     taler-auditor-dbinit -c "$CONF"
-    taler-auditor-exchange -c "$CONF" -m "$MASTER_PUB" -u "$EXCHANGE_URL"
+    taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
     taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
     echo " DONE"
 fi
@@ -415,7 +419,7 @@ echo -n "Waiting for Taler services ..."
 for n in $(seq 1 20)
 do
     echo -n "."
-    sleep 0.1
+    sleep 0.2
     OK="0"
     if [ "1" = "$START_EXCHANGE" ]
     then
@@ -455,7 +459,6 @@ echo " OK"
 
 if [ "1" = "$START_EXCHANGE" ]
 then
-    set +e
     echo -n "Wait for exchange /management/keys to be ready "
     OK="0"
     LAST_RESPONSE=$(mktemp tmp-last-response.XXXXXXXX)
@@ -471,16 +474,13 @@ then
             "http://localhost:8081/management/keys"\
             -o /dev/null \
             -O "$LAST_RESPONSE" \
-            >/dev/null
-        DENOMS_COUNT=$(jq '.future_denoms|length' < $LAST_RESPONSE)
-        SIGNKEYS_COUNT=$(jq '.future_signkeys|length' < $LAST_RESPONSE)
-        [[ -z "$SIGNKEYS_COUNT" || "$SIGNKEYS_COUNT" == "0" || -z "$DENOMS_COUNT" || "$DENOMS_COUNT" == "0" ]] && continue
+            >/dev/null || continue
         OK="1"
         break;
     done
-    set -e
     if [ "1" != "$OK" ]
     then
+        cat "$LAST_RESPONSE"
         exit_skip "Failed to setup exchange keys, check secmod logs"
     fi
     rm "$LAST_RESPONSE"
@@ -504,7 +504,7 @@ then
             taler-exchange-offline -c "$CONF" \
               enable-account "$EXCHANGE_PAYTO_URI" \
               upload &> "taler-exchange-offline-account-$ASEC.log"
-            echo "OK"
+            echo " OK"
         fi
     done
     if [ "1" = "$START_AUDITOR" ]
@@ -518,29 +518,34 @@ then
 
     echo -n "Checking /keys "
     OK="0"
-    for n in $(seq 1 3)
+    LAST_RESPONSE=$(mktemp tmp-last-response.XXXXXXXX)
+    for n in $(seq 1 10)
     do
         echo -n "."
+        sleep 0.1
         wget \
             --tries=1 \
             --timeout=1 \
             "http://localhost:8081/keys" \
             -o /dev/null \
-            -O /dev/null >/dev/null || continue
+            -O "$LAST_RESPONSE" \
+             >/dev/null || continue
         OK="1"
         break
     done
     if [ "1" != "$OK" ]
     then
+        cat "$LAST_RESPONSE"
         exit_skip " Failed to setup keys"
     fi
+    rm "$LAST_RESPONSE"
     echo " OK"
 fi
 
 if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Setting up auditor signatures ..."
-    taler-auditor-offline -c "$CONF" \
+    timeout 15 taler-auditor-offline -c "$CONF" \
       download \
       sign \
       upload &> taler-auditor-offline.log
