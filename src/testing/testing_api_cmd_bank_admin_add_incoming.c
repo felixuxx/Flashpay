@@ -194,28 +194,15 @@ do_retry (void *cls)
  * acceptable.
  *
  * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request; 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param serial_id unique ID of the wire transfer
- * @param timestamp time stamp of the transaction made.
- * @param json raw response
+ * @param air response details
  */
 static void
 confirmation_cb (void *cls,
-                 unsigned int http_status,
-                 enum TALER_ErrorCode ec,
-                 uint64_t serial_id,
-                 struct GNUNET_TIME_Timestamp timestamp,
-                 const json_t *json)
+                 const struct TALER_BANK_AdminAddIncomingResponse *air)
 {
   struct AdminAddIncomingState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
 
-  (void) json;
-  fts->reserve_history.details.in_details.timestamp = timestamp;
-  fts->reserve_history.details.in_details.wire_reference = serial_id;
   fts->aih = NULL;
   /**
    * Test case not caring about the HTTP status code.
@@ -237,17 +224,23 @@ confirmation_cb (void *cls,
     TALER_TESTING_interpreter_next (is);
     return;
   }
-  if (http_status != fts->expected_http_status)
+  if (air->http_status != fts->expected_http_status)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  switch (http_status)
+  switch (air->http_status)
   {
   case MHD_HTTP_OK:
-    fts->serial_id = serial_id;
-    fts->timestamp = timestamp;
+    fts->reserve_history.details.in_details.timestamp
+      = air->details.ok.timestamp;
+    fts->reserve_history.details.in_details.wire_reference
+      = air->details.ok.serial_id;
+    fts->serial_id
+      = air->details.ok.serial_id;
+    fts->timestamp
+      = air->details.ok.timestamp;
     TALER_TESTING_interpreter_next (is);
     return;
   case MHD_HTTP_UNAUTHORIZED:
@@ -271,17 +264,17 @@ confirmation_cb (void *cls,
     if (0 != fts->do_retry)
     {
       fts->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == air->http_status) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == air->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == air->http_status) )
       {
         GNUNET_log (
           GNUNET_ERROR_TYPE_INFO,
           "Retrying fakebank transfer failed with %u/%d\n",
-          http_status,
-          (int) ec);
+          air->http_status,
+          (int) air->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == air->ec)
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,
@@ -299,8 +292,8 @@ confirmation_cb (void *cls,
   GNUNET_break (0);
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "Fakebank returned HTTP status %u/%d\n",
-              http_status,
-              (int) ec);
+              air->http_status,
+              (int) air->ec);
   TALER_TESTING_interpreter_fail (is);
 }
 

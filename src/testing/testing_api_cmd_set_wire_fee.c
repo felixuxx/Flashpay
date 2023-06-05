@@ -77,13 +77,14 @@ struct WireFeeState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param sfr response details
  */
 static void
 wire_add_cb (void *cls,
-             const struct TALER_EXCHANGE_HttpResponse *hr)
+             const struct TALER_EXCHANGE_ManagementSetWireFeeResponse *sfr)
 {
   struct WireFeeState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &sfr->hr;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)

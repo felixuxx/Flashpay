@@ -388,14 +388,15 @@ load_offline_key (int do_create)
  * add operation result.
  *
  * @param cls closure with a `struct DenominationAddRequest`
- * @param hr HTTP response data
+ * @param adr response data
  */
 static void
 denomination_add_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_AuditorAddDenominationResponse *adr)
 {
   struct DenominationAddRequest *dar = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &adr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -949,11 +950,11 @@ do_show (char *const *args)
   json_t *keys;
   const char *err_name;
   unsigned int err_line;
-  json_t *denomkeys;
+  const json_t *denomkeys;
   struct TALER_MasterPublicKeyP mpub;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("denoms",
-                           &denomkeys),
+    GNUNET_JSON_spec_array_const ("denoms",
+                                  &denomkeys),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &mpub),
     GNUNET_JSON_spec_end ()
@@ -997,11 +998,9 @@ do_show (char *const *args)
   {
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
-  GNUNET_JSON_parse_free (spec);
   json_decref (keys);
   /* do NOT consume input if next argument is '-' */
   if ( (NULL != args[0]) &&
@@ -1138,10 +1137,10 @@ do_sign (char *const *args)
   const char *err_name;
   unsigned int err_line;
   struct TALER_MasterPublicKeyP mpub;
-  json_t *denomkeys;
+  const json_t *denomkeys;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("denoms",
-                           &denomkeys),
+    GNUNET_JSON_spec_array_const ("denoms",
+                                  &denomkeys),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &mpub),
     GNUNET_JSON_spec_end ()
@@ -1196,11 +1195,9 @@ do_sign (char *const *args)
   {
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
-  GNUNET_JSON_parse_free (spec);
   json_decref (keys);
   next (args);
 }

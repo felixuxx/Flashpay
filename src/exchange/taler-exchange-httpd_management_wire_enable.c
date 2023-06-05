@@ -62,12 +62,12 @@ struct AddWireContext
   /**
    * Restrictions imposed when crediting this account.
    */
-  json_t *credit_restrictions;
+  const json_t *credit_restrictions;
 
   /**
    * Restrictions imposed when debiting this account.
    */
-  json_t *debit_restrictions;
+  const json_t *debit_restrictions;
 
   /**
    * Timestamp for checking against replay attacks.
@@ -176,10 +176,10 @@ TEH_handler_management_post_wire (
       GNUNET_JSON_spec_string ("conversion_url",
                                &awc.conversion_url),
       NULL),
-    GNUNET_JSON_spec_json ("credit_restrictions",
-                           &awc.credit_restrictions),
-    GNUNET_JSON_spec_json ("debit_restrictions",
-                           &awc.debit_restrictions),
+    GNUNET_JSON_spec_array_const ("credit_restrictions",
+                                  &awc.credit_restrictions),
+    GNUNET_JSON_spec_array_const ("debit_restrictions",
+                                  &awc.debit_restrictions),
     GNUNET_JSON_spec_timestamp ("validity_start",
                                 &awc.validity_start),
     GNUNET_JSON_spec_end ()

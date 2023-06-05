@@ -340,13 +340,13 @@ TEH_handler_management_post_keys (
   const json_t *root)
 {
   struct AddKeysContext akc;
-  json_t *denom_sigs;
-  json_t *signkey_sigs;
+  const json_t *denom_sigs;
+  const json_t *signkey_sigs;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("denom_sigs",
-                           &denom_sigs),
-    GNUNET_JSON_spec_json ("signkey_sigs",
-                           &signkey_sigs),
+    GNUNET_JSON_spec_array_const ("denom_sigs",
+                                  &denom_sigs),
+    GNUNET_JSON_spec_array_const ("signkey_sigs",
+                                  &signkey_sigs),
     GNUNET_JSON_spec_end ()
   };
   bool ok;
@@ -363,24 +363,12 @@ TEH_handler_management_post_keys (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
-  if (! (json_is_array (denom_sigs) &&
-         json_is_array (signkey_sigs)) )
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "array expected for denom_sigs and signkey_sigs");
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/keys\n");
   akc.ksh = TEH_keys_get_state_for_management_only (); /* may start its own transaction, thus must be done here, before we run ours! */
   if (NULL == akc.ksh)
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_INTERNAL_SERVER_ERROR,
@@ -423,7 +411,6 @@ TEH_handler_management_post_keys (
   if (! ok)
   {
     GNUNET_free (akc.d_sigs);
-    GNUNET_JSON_parse_free (spec);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failure to handle /management/keys\n");
     return ret;
@@ -466,7 +453,6 @@ TEH_handler_management_post_keys (
                 "Failure to handle /management/keys\n");
     GNUNET_free (akc.d_sigs);
     GNUNET_free (akc.s_sigs);
-    GNUNET_JSON_parse_free (spec);
     return ret;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -484,7 +470,6 @@ TEH_handler_management_post_keys (
                                   &akc);
     GNUNET_free (akc.d_sigs);
     GNUNET_free (akc.s_sigs);
-    GNUNET_JSON_parse_free (spec);
     if (GNUNET_SYSERR == res)
       return ret;
   }

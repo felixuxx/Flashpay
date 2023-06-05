@@ -306,8 +306,9 @@ run (void *cls,
   GNUNET_asprintf (&amount_5, "%s:5", currency);
   GNUNET_asprintf (&amount_4, "%s:4", currency);
   GNUNET_asprintf (&amount_1, "%s:1", currency);
-  GNUNET_assert (GNUNET_OK == TALER_amount_set_zero (currency,
-                                                     &total_reserve_amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (currency,
+                                        &total_reserve_amount));
   total_reserve_amount.value = 5 * howmany_coins;
   GNUNET_asprintf (&withdraw_fee_str,
                    "%s:0.1",
@@ -537,7 +538,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   struct GNUNET_OS_Process *exchange_slave = NULL;
   struct GNUNET_DISK_PipeHandle *exchange_slave_pipe;
 
-  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
+  if ( (MODE_CLIENT == mode) ||
+       (MODE_BOTH == mode) )
   {
     if (use_fakebank)
     {
@@ -587,7 +589,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                          "-c", config_file,
                                          "-C",
                                          NULL);
-    if ( (NULL == exchanged) && (MODE_BOTH == mode) )
+    if ( (NULL == exchanged) &&
+         (MODE_BOTH == mode) )
     {
       if (-1 != fakebank)
       {
@@ -978,15 +981,19 @@ main (int argc,
                     logfile);
   if (NULL == mode_str)
     mode = MODE_BOTH;
-  else if (0 == strcmp (mode_str, "exchange"))
+  else if (0 == strcmp (mode_str,
+                        "exchange"))
     mode = MODE_EXCHANGE;
-  else if (0 == strcmp (mode_str, "client"))
+  else if (0 == strcmp (mode_str,
+                        "client"))
     mode = MODE_CLIENT;
-  else if (0 == strcmp (mode_str, "both"))
+  else if (0 == strcmp (mode_str,
+                        "both"))
     mode = MODE_BOTH;
   else
   {
-    TALER_LOG_ERROR ("Unknown mode given: '%s'\n", mode_str);
+    TALER_LOG_ERROR ("Unknown mode given: '%s'\n",
+                     mode_str);
     GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
@@ -1137,7 +1144,9 @@ main (int argc,
   if (GNUNET_OK == result)
   {
     struct rusage usage;
-    GNUNET_assert (0 == getrusage (RUSAGE_CHILDREN, &usage));
+
+    GNUNET_assert (0 == getrusage (RUSAGE_CHILDREN,
+                                   &usage));
     fprintf (stdout,
              "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f) * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,

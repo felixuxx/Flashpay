@@ -88,10 +88,10 @@ handle_reserves_get_attestable_ok (
     .hr.reply = j,
     .hr.http_status = MHD_HTTP_OK
   };
-  json_t *details;
+  const json_t *details;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("details",
-                           &details),
+    GNUNET_JSON_spec_array_const ("details",
+                                  &details),
     GNUNET_JSON_spec_end ()
   };
 
@@ -116,7 +116,6 @@ handle_reserves_get_attestable_ok (
       if (NULL == attributes[i])
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
@@ -126,7 +125,6 @@ handle_reserves_get_attestable_ok (
               &rs);
     rgah->cb = NULL;
   }
-  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 

@@ -329,12 +329,12 @@ TEH_handler_purses_deposit (
     .purse_pub = purse_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
-  json_t *deposits;
+  const json_t *deposits;
   json_t *deposit;
   unsigned int idx;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("deposits",
-                           &deposits),
+    GNUNET_JSON_spec_array_const ("deposits",
+                                  &deposits),
     GNUNET_JSON_spec_end ()
   };
 
@@ -363,7 +363,6 @@ TEH_handler_purses_deposit (
        (pcc.num_coins > TALER_MAX_FRESH_COINS) )
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
@@ -435,7 +434,6 @@ TEH_handler_purses_deposit (
                       deposit);
     if (GNUNET_OK != res)
     {
-      GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<idx; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
@@ -447,7 +445,6 @@ TEH_handler_purses_deposit (
       TEH_plugin->preflight (TEH_plugin->cls))
   {
     GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
@@ -469,7 +466,6 @@ TEH_handler_purses_deposit (
                                 &deposit_transaction,
                                 &pcc))
     {
-      GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<pcc.num_coins; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
@@ -501,7 +497,6 @@ TEH_handler_purses_deposit (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
-    GNUNET_JSON_parse_free (spec);
     return res;
   }
 }

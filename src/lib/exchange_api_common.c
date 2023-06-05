@@ -1465,7 +1465,7 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  json_t *history,
+  const json_t *history,
   struct TALER_Amount *total)
 {
   const char *currency = dk->value.currency;
@@ -1865,7 +1865,7 @@ TALER_EXCHANGE_check_coin_amount_conflict_ (
   struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct TALER_Amount *remaining)
 {
-  json_t *history;
+  const json_t *history;
   struct TALER_Amount total;
   struct TALER_DenominationHashP h_denom_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
@@ -1874,8 +1874,8 @@ TALER_EXCHANGE_check_coin_amount_conflict_ (
                                  coin_pub),
     GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                  &h_denom_pub),
-    GNUNET_JSON_spec_json ("history",
-                           &history),
+    GNUNET_JSON_spec_array_const ("history",
+                                  &history),
     GNUNET_JSON_spec_end ()
   };
 
@@ -1902,10 +1902,8 @@ TALER_EXCHANGE_check_coin_amount_conflict_ (
                                           &total))
   {
     GNUNET_break_op (0);
-    json_decref (history);
     return GNUNET_SYSERR;
   }
-  json_decref (history);
   if (0 >
       TALER_amount_subtract (remaining,
                              &dki->value,
@@ -2298,8 +2296,8 @@ TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
        i++)
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
-    json_t *credit_restrictions;
-    json_t *debit_restrictions;
+    const json_t *credit_restrictions;
+    const json_t *debit_restrictions;
     struct GNUNET_JSON_Specification spec_account[] = {
       GNUNET_JSON_spec_string ("payto_uri",
                                &wa->payto_uri),
@@ -2307,10 +2305,10 @@ TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
         GNUNET_JSON_spec_string ("conversion_url",
                                  &wa->conversion_url),
         NULL),
-      GNUNET_JSON_spec_json ("credit_restrictions",
-                             &credit_restrictions),
-      GNUNET_JSON_spec_json ("debit_restrictions",
-                             &debit_restrictions),
+      GNUNET_JSON_spec_array_const ("credit_restrictions",
+                                    &credit_restrictions),
+      GNUNET_JSON_spec_array_const ("debit_restrictions",
+                                    &debit_restrictions),
       GNUNET_JSON_spec_fixed_auto ("master_sig",
                                    &wa->master_sig),
       GNUNET_JSON_spec_end ()
@@ -2366,7 +2364,6 @@ TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    GNUNET_JSON_parse_free (spec_account);
   }       /* end 'for all accounts */
   return GNUNET_OK;
 }

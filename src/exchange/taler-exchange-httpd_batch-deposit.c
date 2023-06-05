@@ -545,7 +545,7 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
 {
   struct MHD_Connection *connection = rc->connection;
   struct BatchDepositContext dc;
-  json_t *coins;
+  const json_t *coins;
   bool no_refund_deadline = true;
   bool no_policy_json = true;
   struct GNUNET_JSON_Specification spec[] = {
@@ -557,8 +557,8 @@ TEH_handler_batch_deposit (struct TEH_RequestContext *rc,
                                  &dc.merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &dc.h_contract_terms),
-    GNUNET_JSON_spec_json ("coins",
-                           &coins),
+    GNUNET_JSON_spec_array_const ("coins",
+                                  &coins),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_json ("policy",
                              &dc.policy_json),

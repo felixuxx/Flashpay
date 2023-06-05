@@ -3592,7 +3592,7 @@ enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  json_t *history,
+  const json_t *history,
   struct TALER_Amount *total);
 
 
@@ -4498,7 +4498,7 @@ TALER_EXCHANGE_post_management_keys_cancel (
  */
 struct TALER_EXCHANGE_ManagementPostExtensionsData
 {
-  json_t *extensions;
+  const json_t *extensions;
   struct TALER_MasterSignatureP extensions_sig;
 };
 
@@ -4548,7 +4548,7 @@ struct TALER_EXCHANGE_ManagementPostExtensionsHandle *
 TALER_EXCHANGE_management_post_extensions (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
+  const struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
   TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
   void *cb_cls);
 
@@ -5091,7 +5091,7 @@ TALER_EXCHANGE_lookup_aml_decision (
 
 
 /**
- * Cancel #TALER_EXCHANGE_add_aml_decision() operation.
+ * Cancel #TALER_EXCHANGE_lookup_aml_decision() operation.
  *
  * @param rh handle of the operation to cancel
  */
@@ -5105,18 +5105,30 @@ TALER_EXCHANGE_lookup_aml_decision_cancel (
  */
 struct TALER_EXCHANGE_AddAmlDecision;
 
+
+/**
+ * Response when making an AML decision.
+ */
+struct TALER_EXCHANGE_AddAmlDecisionResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+
 /**
  * Function called with information about storing an
  * an AML decision.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param adr response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_AddAmlDecisionCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_AddAmlDecisionResponse *adr);
 
 /**
  * Inform the exchange that an AML decision has been taken.
@@ -5162,17 +5174,27 @@ TALER_EXCHANGE_add_aml_decision_cancel (
 
 
 /**
+ * Response when adding a partner exchange.
+ */
+struct TALER_EXCHANGE_ManagementAddPartnerResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+/**
  * Function called with information about the change to
  * an AML officer status.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param apr response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAddPartnerCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementAddPartnerResponse *apr);
 
 
 /**
@@ -5224,16 +5246,26 @@ TALER_EXCHANGE_management_add_partner_cancel (
 
 
 /**
+ * Response when enabling an auditor.
+ */
+struct TALER_EXCHANGE_ManagementAuditorEnableResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+/**
  * Function called with information about the auditor setup operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param aer response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAuditorEnableCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementAuditorEnableResponse *aer);
 
 
 /**
@@ -5278,18 +5310,27 @@ void
 TALER_EXCHANGE_management_enable_auditor_cancel (
   struct TALER_EXCHANGE_ManagementAuditorEnableHandle *ah);
 
+/**
+ * Response when disabling an auditor.
+ */
+struct TALER_EXCHANGE_ManagementAuditorDisableResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
 
 /**
  * Function called with information about the auditor disable operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param adr HTTP response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementAuditorDisableCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementAuditorDisableResponse *adr);
 
 
 /**
@@ -5468,16 +5509,26 @@ TALER_EXCHANGE_management_disable_wire_cancel (
 
 
 /**
+ * Response when setting wire fees.
+ */
+struct TALER_EXCHANGE_ManagementSetWireFeeResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+/**
  * Function called with information about the wire enable operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param wfr response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementSetWireFeeCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementSetWireFeeResponse *wfr);
 
 
 /**
@@ -5525,16 +5576,27 @@ TALER_EXCHANGE_management_set_wire_fees_cancel (
 
 
 /**
+ * Response when setting global fees.
+ */
+struct TALER_EXCHANGE_ManagementSetGlobalFeeResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+
+/**
  * Function called with information about the global fee setting operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param gfr HTTP response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_ManagementSetGlobalFeeCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_ManagementSetGlobalFeeResponse *gfr);
 
 
 /**
@@ -5586,17 +5648,28 @@ TALER_EXCHANGE_management_set_global_fees_cancel (
 
 
 /**
+ * Response when adding denomination signature by auditor.
+ */
+struct TALER_EXCHANGE_AuditorAddDenominationResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+};
+
+
+/**
  * Function called with information about the POST
  * /auditor/$AUDITOR_PUB/$H_DENOM_PUB operation result.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param adr HTTP response data
  */
-// FIXME: bad API
 typedef void
 (*TALER_EXCHANGE_AuditorAddDenominationCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr);
+  const struct TALER_EXCHANGE_AuditorAddDenominationResponse *adr);
 
 
 /**

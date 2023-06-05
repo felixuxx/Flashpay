@@ -79,9 +79,9 @@ handle_set_wire_fee_finished (void *cls,
 {
   struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_ManagementSetWireFeeResponse swr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   swfh->job = NULL;
@@ -90,32 +90,32 @@ handle_set_wire_fee_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    swr.hr.ec = TALER_JSON_get_error_code (json);
+    swr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_CONFLICT:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    swr.hr.ec = TALER_JSON_get_error_code (json);
+    swr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    swr.hr.ec = TALER_JSON_get_error_code (json);
+    swr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    swr.hr.ec = TALER_JSON_get_error_code (json);
+    swr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange management set wire fee\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) swr.hr.ec);
     break;
   }
   if (NULL != swfh->cb)
   {
     swfh->cb (swfh->cb_cls,
-              &hr);
+              &swr);
     swfh->cb = NULL;
   }
   TALER_EXCHANGE_management_set_wire_fees_cancel (swfh);

@@ -79,9 +79,9 @@ handle_auditor_add_denomination_finished (void *cls,
 {
   struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah = cls;
   const json_t *json = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .http_status = (unsigned int) response_code,
-    .reply = json
+  struct TALER_EXCHANGE_AuditorAddDenominationResponse adr = {
+    .hr.http_status = (unsigned int) response_code,
+    .hr.reply = json
   };
 
   ah->job = NULL;
@@ -90,37 +90,37 @@ handle_auditor_add_denomination_finished (void *cls,
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    adr.hr.ec = TALER_JSON_get_error_code (json);
+    adr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    adr.hr.ec = TALER_JSON_get_error_code (json);
+    adr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_GONE:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    adr.hr.ec = TALER_JSON_get_error_code (json);
+    adr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    adr.hr.ec = TALER_JSON_get_error_code (json);
+    adr.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
     if (NULL != json)
     {
-      hr.ec = TALER_JSON_get_error_code (json);
-      hr.hint = TALER_JSON_get_error_hint (json);
+      adr.hr.ec = TALER_JSON_get_error_code (json);
+      adr.hr.hint = TALER_JSON_get_error_hint (json);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected response code %u/%d for exchange auditor-add-denomination at URL `%s'\n",
                   (unsigned int) response_code,
-                  (int) hr.ec,
+                  (int) adr.hr.ec,
                   ah->url);
     }
     else
     {
-      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-      hr.hint = NULL;
+      adr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      adr.hr.hint = NULL;
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected HTTP response code %u (no JSON returned) at URL `%s'\n",
                   (unsigned int) response_code,
@@ -131,7 +131,7 @@ handle_auditor_add_denomination_finished (void *cls,
   if (NULL != ah->cb)
   {
     ah->cb (ah->cb_cls,
-            &hr);
+            &adr);
     ah->cb = NULL;
   }
   TALER_EXCHANGE_add_auditor_denomination_cancel (ah);

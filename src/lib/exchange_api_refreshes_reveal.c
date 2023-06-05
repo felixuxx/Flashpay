@@ -107,10 +107,10 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                    const json_t *json,
                    struct TALER_EXCHANGE_RevealedCoinInfo *rcis)
 {
-  json_t *jsona;
+  const json_t *jsona;
   struct GNUNET_JSON_Specification outer_spec[] = {
-    GNUNET_JSON_spec_json ("ev_sigs",
-                           &jsona),
+    GNUNET_JSON_spec_array_const ("ev_sigs",
+                                  &jsona),
     GNUNET_JSON_spec_end ()
   };
 
@@ -122,18 +122,10 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (! json_is_array (jsona))
-  {
-    /* We expected an array of coins */
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (outer_spec);
-    return GNUNET_SYSERR;
-  }
   if (rrh->md.num_fresh_coins != json_array_size (jsona))
   {
     /* Number of coins generated does not match our expectation */
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (outer_spec);
     return GNUNET_SYSERR;
   }
   for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
@@ -180,7 +172,6 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (outer_spec);
       return GNUNET_SYSERR;
     }
 
@@ -209,13 +200,11 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
-      GNUNET_JSON_parse_free (outer_spec);
       return GNUNET_SYSERR;
     }
     GNUNET_JSON_parse_free (spec);
     rci->sig = coin.sig;
   }
-  GNUNET_JSON_parse_free (outer_spec);
   return GNUNET_OK;
 }
 

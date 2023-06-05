@@ -1301,13 +1301,15 @@ upload_signkey_revocation (const char *exchange_url,
  * Function called with information about the post auditor add operation result.
  *
  * @param cls closure with a `struct AuditorAddRequest`
- * @param hr HTTP response data
+ * @param mer response data
  */
 static void
-auditor_add_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+auditor_add_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_ManagementAuditorEnableResponse *mer)
 {
   struct AuditorAddRequest *aar = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mer->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1401,13 +1403,15 @@ upload_auditor_add (const char *exchange_url,
  * Function called with information about the post auditor del operation result.
  *
  * @param cls closure with a `struct AuditorDelRequest`
- * @param hr HTTP response data
+ * @param mdr response data
  */
 static void
 auditor_del_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+                const struct
+                TALER_EXCHANGE_ManagementAuditorDisableResponse *mdr)
 {
   struct AuditorDelRequest *adr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mdr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1539,8 +1543,8 @@ upload_wire_add (const char *exchange_url,
   struct WireAddRequest *war;
   const char *err_name;
   const char *conversion_url = NULL;
-  json_t *debit_restrictions;
-  json_t *credit_restrictions;
+  const json_t *debit_restrictions;
+  const json_t *credit_restrictions;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
@@ -1549,10 +1553,10 @@ upload_wire_add (const char *exchange_url,
       GNUNET_JSON_spec_string ("conversion_url",
                                &conversion_url),
       NULL),
-    GNUNET_JSON_spec_json ("debit_restrictions",
-                           &debit_restrictions),
-    GNUNET_JSON_spec_json ("credit_restrictions",
-                           &credit_restrictions),
+    GNUNET_JSON_spec_array_const ("debit_restrictions",
+                                  &debit_restrictions),
+    GNUNET_JSON_spec_array_const ("credit_restrictions",
+                                  &credit_restrictions),
     GNUNET_JSON_spec_timestamp ("validity_start",
                                 &start_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig_add",
@@ -1577,7 +1581,6 @@ upload_wire_add (const char *exchange_url,
                 stderr,
                 JSON_INDENT (2));
     global_ret = EXIT_FAILURE;
-    GNUNET_JSON_parse_free (spec);
     test_shutdown ();
     return;
   }
@@ -1591,7 +1594,6 @@ upload_wire_add (const char *exchange_url,
                   "payto:// URI `%s' is malformed\n",
                   payto_uri);
       global_ret = EXIT_FAILURE;
-      GNUNET_JSON_parse_free (spec);
       test_shutdown ();
       return;
     }
@@ -1606,7 +1608,6 @@ upload_wire_add (const char *exchange_url,
                   "payto URI is malformed: %s\n",
                   msg);
       GNUNET_free (msg);
-      GNUNET_JSON_parse_free (spec);
       test_shutdown ();
       global_ret = EXIT_INVALIDARGUMENT;
       return;
@@ -1629,7 +1630,6 @@ upload_wire_add (const char *exchange_url,
   GNUNET_CONTAINER_DLL_insert (war_head,
                                war_tail,
                                war);
-  GNUNET_JSON_parse_free (spec);
 }
 
 
@@ -1730,14 +1730,15 @@ upload_wire_del (const char *exchange_url,
  * Function called with information about the post wire fee operation result.
  *
  * @param cls closure with a `struct WireFeeRequest`
- * @param hr HTTP response data
+ * @param swr response data
  */
 static void
 wire_fee_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementSetWireFeeResponse *swr)
 {
   struct WireFeeRequest *wfr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &swr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -1835,14 +1836,15 @@ upload_wire_fee (const char *exchange_url,
  * Function called with information about the post global fee operation result.
  *
  * @param cls closure with a `struct WireFeeRequest`
- * @param hr HTTP response data
+ * @param gr response data
  */
 static void
 global_fee_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementSetGlobalFeeResponse *gr)
 {
   struct GlobalFeeRequest *gfr = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &gr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -2102,13 +2104,13 @@ upload_keys (const char *exchange_url,
   struct UploadKeysRequest *ukr;
   const char *err_name;
   unsigned int err_line;
-  json_t *denom_sigs;
-  json_t *signkey_sigs;
+  const json_t *denom_sigs;
+  const json_t *signkey_sigs;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("denom_sigs",
-                           &denom_sigs),
-    GNUNET_JSON_spec_json ("signkey_sigs",
-                           &signkey_sigs),
+    GNUNET_JSON_spec_array_const ("denom_sigs",
+                                  &denom_sigs),
+    GNUNET_JSON_spec_array_const ("signkey_sigs",
+                                  &signkey_sigs),
     GNUNET_JSON_spec_end ()
   };
   bool ok = true;
@@ -2224,7 +2226,6 @@ upload_keys (const char *exchange_url,
   }
   GNUNET_free (pkd.sign_sigs);
   GNUNET_free (pkd.denom_sigs);
-  GNUNET_JSON_parse_free (spec);
 }
 
 
@@ -2272,13 +2273,13 @@ upload_extensions (const char *exchange_url,
                    size_t idx,
                    const json_t *value)
 {
-  json_t *extensions;
+  const json_t *extensions;
   struct TALER_MasterSignatureP sig;
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("extensions",
-                           &extensions),
+    GNUNET_JSON_spec_object_const ("extensions",
+                                   &extensions),
     GNUNET_JSON_spec_fixed_auto ("extensions_sig",
                                  &sig),
     GNUNET_JSON_spec_end ()
@@ -2309,9 +2310,9 @@ upload_extensions (const char *exchange_url,
     struct TALER_ExtensionManifestsHashP h_manifests;
 
     if (GNUNET_OK !=
-        TALER_JSON_extensions_manifests_hash (extensions, &h_manifests))
+        TALER_JSON_extensions_manifests_hash (extensions,
+                                              &h_manifests))
     {
-      GNUNET_JSON_parse_free (spec);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "couldn't hash extensions' manifests\n");
       global_ret = EXIT_FAILURE;
@@ -2328,7 +2329,6 @@ upload_extensions (const char *exchange_url,
           &master_pub,
           &sig))
     {
-      GNUNET_JSON_parse_free (spec);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "invalid signature for extensions\n");
       global_ret = EXIT_FAILURE;
@@ -2343,8 +2343,9 @@ upload_extensions (const char *exchange_url,
       .extensions = extensions,
       .extensions_sig = sig,
     };
-    struct UploadExtensionsRequest *uer = GNUNET_new (struct
-                                                      UploadExtensionsRequest);
+    struct UploadExtensionsRequest *uer
+      = GNUNET_new (struct UploadExtensionsRequest);
+
     uer->idx = idx;
     uer->h = TALER_EXCHANGE_management_post_extensions (
       ctx,
@@ -2356,7 +2357,6 @@ upload_extensions (const char *exchange_url,
                                  uer_tail,
                                  uer);
   }
-  GNUNET_JSON_parse_free (spec);
 }
 
 
@@ -2364,14 +2364,15 @@ upload_extensions (const char *exchange_url,
  * Function called with information about the add partner operation.
  *
  * @param cls closure with a `struct PartnerAddRequest`
- * @param hr HTTP response data
+ * @param apr response data
  */
 static void
 add_partner_cb (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+  const struct TALER_EXCHANGE_ManagementAddPartnerResponse *apr)
 {
   struct PartnerAddRequest *par = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &apr->hr;
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
@@ -4482,15 +4483,15 @@ do_show (char *const *args)
   json_t *keys;
   const char *err_name;
   unsigned int err_line;
-  json_t *denomkeys;
-  json_t *signkeys;
+  const json_t *denomkeys;
+  const json_t *signkeys;
   struct TALER_MasterPublicKeyP mpub;
   struct TALER_SecurityModulePublicKeySetP secmset;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("future_denoms",
-                           &denomkeys),
-    GNUNET_JSON_spec_json ("future_signkeys",
-                           &signkeys),
+    GNUNET_JSON_spec_array_const ("future_denoms",
+                                  &denomkeys),
+    GNUNET_JSON_spec_array_const ("future_signkeys",
+                                  &signkeys),
     GNUNET_JSON_spec_fixed_auto ("master_pub",
                                  &mpub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
@@ -4535,7 +4536,6 @@ do_show (char *const *args)
                 "Fatal: exchange uses different master key!\n");
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
@@ -4544,7 +4544,6 @@ do_show (char *const *args)
   {
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
@@ -4558,12 +4557,10 @@ do_show (char *const *args)
   {
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
   json_decref (keys);
-  GNUNET_JSON_parse_free (spec);
   next (args);
 }
 
@@ -4883,15 +4880,15 @@ do_sign (char *const *args)
   json_t *keys;
   const char *err_name;
   unsigned int err_line;
-  json_t *denomkeys;
-  json_t *signkeys;
+  const json_t *denomkeys;
+  const json_t *signkeys;
   struct TALER_MasterPublicKeyP mpub;
   struct TALER_SecurityModulePublicKeySetP secmset;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("future_denoms",
-                           &denomkeys),
-    GNUNET_JSON_spec_json ("future_signkeys",
-                           &signkeys),
+    GNUNET_JSON_spec_array_const ("future_denoms",
+                                  &denomkeys),
+    GNUNET_JSON_spec_array_const ("future_signkeys",
+                                  &signkeys),
     GNUNET_JSON_spec_fixed_auto ("master_pub",
                                  &mpub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
@@ -4938,7 +4935,6 @@ do_sign (char *const *args)
                 "Fatal: exchange uses different master key!\n");
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
@@ -4949,7 +4945,6 @@ do_sign (char *const *args)
                 "Fatal: security module keys changed!\n");
     global_ret = EXIT_FAILURE;
     test_shutdown ();
-    GNUNET_JSON_parse_free (spec);
     json_decref (keys);
     return;
   }
@@ -4973,7 +4968,6 @@ do_sign (char *const *args)
       test_shutdown ();
       json_decref (signkey_sig_array);
       json_decref (denomkey_sig_array);
-      GNUNET_JSON_parse_free (spec);
       json_decref (keys);
       return;
     }
@@ -4985,7 +4979,6 @@ do_sign (char *const *args)
                         GNUNET_JSON_pack_array_steal ("signkey_sigs",
                                                       signkey_sig_array)));
   }
-  GNUNET_JSON_parse_free (spec);
   json_decref (keys);
   next (args);
 }

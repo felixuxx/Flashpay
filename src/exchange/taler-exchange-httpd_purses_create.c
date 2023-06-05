@@ -430,7 +430,7 @@ TEH_handler_purses_create (
     .pd.purse_pub = *purse_pub,
     .exchange_timestamp = GNUNET_TIME_timestamp_get ()
   };
-  json_t *deposits;
+  const json_t *deposits;
   json_t *deposit;
   unsigned int idx;
   struct GNUNET_JSON_Specification spec[] = {
@@ -449,8 +449,8 @@ TEH_handler_purses_create (
                                  &pcc.purse_sig),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &pcc.pd.h_contract_terms),
-    GNUNET_JSON_spec_json ("deposits",
-                           &deposits),
+    GNUNET_JSON_spec_array_const ("deposits",
+                                  &deposits),
     GNUNET_JSON_spec_timestamp ("purse_expiration",
                                 &pcc.pd.purse_expiration),
     GNUNET_JSON_spec_end ()
@@ -482,7 +482,6 @@ TEH_handler_purses_create (
                                  pcc.exchange_timestamp))
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_EXPIRATION_BEFORE_NOW,
@@ -491,7 +490,6 @@ TEH_handler_purses_create (
   if (GNUNET_TIME_absolute_is_never (pcc.pd.purse_expiration.abs_time))
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_PURSE_CREATE_EXPIRATION_IS_NEVER,
@@ -502,7 +500,6 @@ TEH_handler_purses_create (
        (pcc.num_coins > TALER_MAX_FRESH_COINS) )
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
@@ -515,7 +512,6 @@ TEH_handler_purses_create (
     if (NULL == keys)
     {
       GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -547,7 +543,6 @@ TEH_handler_purses_create (
                       deposit);
     if (GNUNET_OK != res)
     {
-      GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<idx; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
@@ -559,7 +554,6 @@ TEH_handler_purses_create (
                             &pcc.deposit_total))
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
     GNUNET_free (pcc.coins);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
@@ -579,7 +573,6 @@ TEH_handler_purses_create (
         &pcc.purse_sig))
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
-    GNUNET_JSON_parse_free (spec);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
@@ -597,7 +590,6 @@ TEH_handler_purses_create (
                                               &pcc.econtract.econtract_sig)) )
   {
     TALER_LOG_WARNING ("Invalid signature on /purses/$PID/create request\n");
-    GNUNET_JSON_parse_free (spec);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
@@ -612,7 +604,6 @@ TEH_handler_purses_create (
       TEH_plugin->preflight (TEH_plugin->cls))
   {
     GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
@@ -634,7 +625,6 @@ TEH_handler_purses_create (
                                 &create_transaction,
                                 &pcc))
     {
-      GNUNET_JSON_parse_free (spec);
       for (unsigned int i = 0; i<pcc.num_coins; i++)
         TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
       GNUNET_free (pcc.coins);
@@ -653,7 +643,6 @@ TEH_handler_purses_create (
     for (unsigned int i = 0; i<pcc.num_coins; i++)
       TEH_common_purse_deposit_free_coin (&pcc.coins[i]);
     GNUNET_free (pcc.coins);
-    GNUNET_JSON_parse_free (spec);
     return res;
   }
 }

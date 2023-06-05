@@ -127,13 +127,12 @@ parse_kyc_attributes (const json_t *kyc_attributes,
   json_array_foreach (kyc_attributes, idx, obj)
   {
     struct TALER_EXCHANGE_KycHistoryDetail *kyc = &kyc_attributes_ar[idx];
-    json_t *attributes = NULL;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_timestamp ("collection_time",
                                   &kyc->collection_time),
       GNUNET_JSON_spec_mark_optional (
-        GNUNET_JSON_spec_json ("attributes",
-                               &attributes),
+        GNUNET_JSON_spec_object_const ("attributes",
+                                       &kyc->attributes),
         NULL),
       GNUNET_JSON_spec_string ("provider_section",
                                &kyc->provider_section),
@@ -149,8 +148,6 @@ parse_kyc_attributes (const json_t *kyc_attributes,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    kyc->attributes = attributes;
-    json_decref (attributes); /* this is OK, RC preserved via 'kyc_attributes' as long as needed! */
   }
   return GNUNET_OK;
 }
@@ -171,13 +168,13 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
     .hr.reply = json,
     .hr.http_status = MHD_HTTP_OK
   };
-  json_t *aml_history;
-  json_t *kyc_attributes;
+  const json_t *aml_history;
+  const json_t *kyc_attributes;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("aml_history",
-                           &aml_history),
-    GNUNET_JSON_spec_json ("kyc_attributes",
-                           &kyc_attributes),
+    GNUNET_JSON_spec_array_const ("aml_history",
+                                  &aml_history),
+    GNUNET_JSON_spec_array_const ("kyc_attributes",
+                                  &kyc_attributes),
     GNUNET_JSON_spec_end ()
   };
 
@@ -199,6 +196,12 @@ parse_decision_ok (struct TALER_EXCHANGE_LookupAmlDecision *lh,
       GNUNET_NZL (lr.details.ok.kyc_attributes_length)];
     enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
+    memset (aml_history_ar,
+            0,
+            sizeof (aml_history_ar));
+    memset (kyc_attributes_ar,
+            0,
+            sizeof (kyc_attributes_ar));
     lr.details.ok.aml_history = aml_history_ar;
     lr.details.ok.kyc_attributes = kyc_attributes_ar;
     ret = parse_aml_history (aml_history,

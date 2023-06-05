@@ -1237,11 +1237,6 @@ parse_i18n_string (void *cls,
     const char *str;
 
     str = json_string_value (val);
-    if (NULL == str)
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
     *(const char **) spec->ptr = str;
   }
   return GNUNET_OK;

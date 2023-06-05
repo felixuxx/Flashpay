@@ -5577,8 +5577,8 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_wire)(void *cls,
                  const char *payto_uri,
                  const char *conversion_url,
-                 json_t *debit_restrictions,
-                 json_t *credit_restrictions,
+                 const json_t *debit_restrictions,
+                 const json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp start_date,
                  const struct TALER_MasterSignatureP *master_sig);
 
@@ -5600,8 +5600,8 @@ struct TALER_EXCHANGEDB_Plugin
   (*update_wire)(void *cls,
                  const char *payto_uri,
                  const char *conversion_url,
-                 json_t *debit_restrictions,
-                 json_t *credit_restrictions,
+                 const json_t *debit_restrictions,
+                 const json_t *credit_restrictions,
                  struct GNUNET_TIME_Timestamp change_date,
                  bool enabled);
 

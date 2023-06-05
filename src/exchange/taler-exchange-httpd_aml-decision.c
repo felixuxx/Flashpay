@@ -74,7 +74,7 @@ struct DecisionContext
   /**
    * KYC requirements imposed, NULL for none.
    */
-  json_t *kyc_requirements;
+  const json_t *kyc_requirements;
 
 };
 
@@ -261,8 +261,8 @@ TEH_handler_post_aml_decision (
     GNUNET_JSON_spec_uint32 ("new_state",
                              &new_state32),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_json ("kyc_requirements",
-                             &dc.kyc_requirements),
+      GNUNET_JSON_spec_array_const ("kyc_requirements",
+                                    &dc.kyc_requirements),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -306,17 +306,6 @@ TEH_handler_post_aml_decision (
     size_t index;
     json_t *elem;
 
-    if (! json_is_array (dc.kyc_requirements))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_BAD_REQUEST,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "kyc_requirements must be an array");
-    }
-
     json_array_foreach (dc.kyc_requirements, index, elem)
     {
       const char *val;
@@ -324,7 +313,6 @@ TEH_handler_post_aml_decision (
       if (! json_is_string (elem))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_BAD_REQUEST,
@@ -336,7 +324,6 @@ TEH_handler_post_aml_decision (
           TALER_KYCLOGIC_check_satisfiable (val))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_BAD_REQUEST,
@@ -357,11 +344,9 @@ TEH_handler_post_aml_decision (
                                 &make_aml_decision,
                                 &dc))
     {
-      GNUNET_JSON_parse_free (spec);
       return mhd_ret;
     }
   }
-  GNUNET_JSON_parse_free (spec);
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

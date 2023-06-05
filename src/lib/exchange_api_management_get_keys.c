@@ -85,14 +85,14 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
   };
   struct TALER_EXCHANGE_FutureKeys *fk
     = &gkr.details.ok.keys;
-  json_t *sk;
-  json_t *dk;
+  const json_t *sk;
+  const json_t *dk;
   bool ok;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("future_denoms",
-                           &dk),
-    GNUNET_JSON_spec_json ("future_signkeys",
-                           &sk),
+    GNUNET_JSON_spec_array_const ("future_denoms",
+                                  &dk),
+    GNUNET_JSON_spec_array_const ("future_signkeys",
+                                  &sk),
     GNUNET_JSON_spec_fixed_auto ("master_pub",
                                  &fk->master_pub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
@@ -127,7 +127,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                 i);
     struct TALER_EXCHANGE_FutureSigningPublicKey *sign_key
       = &fk->sign_keys[i];
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification ispec[] = {
       GNUNET_JSON_spec_fixed_auto ("key",
                                    &sign_key->key),
       GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
@@ -143,7 +143,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (j,
-                           spec,
+                           ispec,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
@@ -276,7 +276,6 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
         break;
       }
     }
-    GNUNET_JSON_parse_free (spec);
     if (! ok)
       break;
   }
@@ -289,7 +288,6 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     TALER_denom_pub_free (&fk->denom_keys[i].key);
   GNUNET_free (fk->sign_keys);
   GNUNET_free (fk->denom_keys);
-  GNUNET_JSON_parse_free (spec);
   return (ok) ? GNUNET_OK : GNUNET_SYSERR;
 }
 

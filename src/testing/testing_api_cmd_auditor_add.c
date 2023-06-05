@@ -62,13 +62,15 @@ struct AuditorAddState
  * if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param aer response details
  */
 static void
-auditor_add_cb (void *cls,
-                const struct TALER_EXCHANGE_HttpResponse *hr)
+auditor_add_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_ManagementAuditorEnableResponse *aer)
 {
   struct AuditorAddState *ds = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &aer->hr;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)

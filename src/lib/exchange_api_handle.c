@@ -400,7 +400,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                     json_t *auditor_obj,
                     const struct TALER_EXCHANGE_Keys *key_data)
 {
-  json_t *keys;
+  const json_t *keys;
   json_t *key;
   unsigned int len;
   unsigned int off;
@@ -411,8 +411,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                                  &auditor->auditor_pub),
     GNUNET_JSON_spec_string ("auditor_url",
                              &auditor_url),
-    GNUNET_JSON_spec_json ("denomination_keys",
-                           &keys),
+    GNUNET_JSON_spec_array_const ("denomination_keys",
+                                  &keys),
     GNUNET_JSON_spec_end ()
   };
 
@@ -492,7 +492,6 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
             &auditor_sig))
       {
         GNUNET_break_op (0);
-        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
@@ -501,7 +500,6 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     off++;
   }
   auditor->num_denom_keys = off;
-  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 
@@ -734,7 +732,7 @@ decode_keys_json (const json_t *resp_obj,
   const char *currency;
   const char *asset_type;
   bool tipping_allowed = true;
-  json_t *wblwk = NULL;
+  const json_t *wblwk = NULL;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("denominations_sig",
                                  &denominations_sig),
@@ -755,8 +753,8 @@ decode_keys_json (const json_t *resp_obj,
                              &tipping_allowed),
       NULL),
     GNUNET_JSON_spec_mark_optional (
-      GNUNET_JSON_spec_json ("wallet_balance_limit_without_kyc",
-                             &wblwk),
+      GNUNET_JSON_spec_array_const ("wallet_balance_limit_without_kyc",
+                                    &wblwk),
       NULL),
     GNUNET_JSON_spec_end ()
   };
@@ -908,14 +906,14 @@ decode_keys_json (const json_t *resp_obj,
   /* TODO: maybe lift all this into a FP in TALER_Extension ? */
   {
     struct TALER_MasterSignatureP extensions_sig = {0};
-    json_t *manifests = NULL;
+    const json_t *manifests = NULL;
     bool no_extensions = false;
     bool no_signature = false;
 
     struct GNUNET_JSON_Specification ext_spec[] = {
       GNUNET_JSON_spec_mark_optional (
-        GNUNET_JSON_spec_json ("extensions",
-                               &manifests),
+        GNUNET_JSON_spec_object_const ("extensions",
+                                       &manifests),
         &no_extensions),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_fixed_auto (
@@ -1707,15 +1705,15 @@ static void
 deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                   const json_t *data)
 {
-  json_t *keys;
+  const json_t *keys;
   const char *url;
   uint32_t version;
   struct GNUNET_TIME_Timestamp expire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("version",
                              &version),
-    GNUNET_JSON_spec_json ("keys",
-                           &keys),
+    GNUNET_JSON_spec_array_const ("keys",
+                                  &keys),
     GNUNET_JSON_spec_string ("exchange_url",
                              &url),
     GNUNET_JSON_spec_timestamp ("expire",
@@ -1742,14 +1740,12 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   }
   if (0 != version)
   {
-    GNUNET_JSON_parse_free (spec);
     return; /* unsupported version */
   }
   if (0 != strcmp (url,
                    exchange->url))
   {
     GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
     return;
   }
   memset (&key_data,
@@ -1762,7 +1758,6 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                         &kresp.details.ok.compat))
   {
     GNUNET_break (0);
-    GNUNET_JSON_parse_free (spec);
     return;
   }
   /* decode successful, initialize with the result */
@@ -1777,7 +1772,6 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &kresp);
-  GNUNET_JSON_parse_free (spec);
 }
 
 

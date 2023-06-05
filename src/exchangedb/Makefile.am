@@ -65,6 +65,9 @@ exchange-0004.sql: exchange-0004.sql.in 0004-*.sql
 	gcc -E -P -undef - < exchange-0004.sql.in 2>/dev/null | sed -e "s/--.*//" | awk 'NF' - >$@
 	chmod ugo-w $@
 
+check_SCRIPTS = \
+  test_idempotency.sh
+
 EXTRA_DIST = \
   exchangedb.conf \
   exchangedb-postgres.conf \
@@ -72,6 +75,7 @@ EXTRA_DIST = \
   test-exchange-db-postgres.conf \
   $(sqlinputs) \
   $(sql_DATA) \
+  $(check_SCRIPTS) \
   pg_template.h pg_template.c \
   pg_template.sh
 
@@ -311,6 +315,7 @@ noinst_PROGRAMS = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
+  $(check_SCRIPTS) \
   $(check_PROGRAMS)
 
 test_exchangedb_postgres_SOURCES = \

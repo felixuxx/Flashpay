@@ -163,39 +163,31 @@ do_retry (void *cls)
  * acceptable.
  *
  * @param cls closure with the interpreter state
- * @param http_status HTTP response code, #MHD_HTTP_OK (200) for
- *        successful status request; 0 if the exchange's reply is
- *        bogus (fails to follow the protocol)
- * @param ec taler-specific error code, #TALER_EC_NONE on success
- * @param serial_id unique ID of the wire transfer
- * @param timestamp time stamp of the transaction made.
+ * @param tr response details
  */
 static void
 confirmation_cb (void *cls,
-                 unsigned int http_status,
-                 enum TALER_ErrorCode ec,
-                 uint64_t serial_id,
-                 struct GNUNET_TIME_Timestamp timestamp)
+                 const struct TALER_BANK_TransferResponse *tr)
 {
   struct TransferState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
 
   fts->weh = NULL;
-  if (MHD_HTTP_OK != http_status)
+  if (MHD_HTTP_OK != tr->http_status)
   {
     if (0 != fts->do_retry)
     {
       fts->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == tr->http_status) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == tr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == tr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying transfer failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    tr->http_status,
+                    (int) tr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == tr->ec)
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
@@ -210,14 +202,14 @@ confirmation_cb (void *cls,
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Bank returned HTTP status %u/%d\n",
-                http_status,
-                (int) ec);
+                tr->http_status,
+                (int) tr->ec);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
 
-  fts->serial_id = serial_id;
-  fts->timestamp = timestamp;
+  fts->serial_id = tr->details.ok.row_id;
+  fts->timestamp = tr->details.ok.timestamp;
   TALER_TESTING_interpreter_next (is);
 }
 

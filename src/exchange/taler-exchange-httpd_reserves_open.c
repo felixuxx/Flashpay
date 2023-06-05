@@ -303,7 +303,7 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
                            const json_t *root)
 {
   struct ReserveOpenContext rsc;
-  json_t *payments;
+  const json_t *payments;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_timestamp ("request_timestamp",
                                 &rsc.timestamp),
@@ -313,8 +313,8 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
                                  &rsc.reserve_sig),
     GNUNET_JSON_spec_uint32 ("purse_limit",
                              &rsc.purse_limit),
-    GNUNET_JSON_spec_json ("payments",
-                           &payments),
+    GNUNET_JSON_spec_array_const ("payments",
+                                  &payments),
     TALER_JSON_spec_amount ("reserve_payment",
                             TEH_currency,
                             &rsc.reserve_payment),
@@ -403,7 +403,6 @@ TEH_handler_reserves_open (struct TEH_RequestContext *rc,
     if (NULL == keys)
     {
       GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
       cleanup_rsc (&rsc);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,

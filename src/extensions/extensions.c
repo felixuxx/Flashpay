@@ -138,7 +138,7 @@ TALER_extensions_get_by_name (
 
 enum GNUNET_GenericReturnValue
 TALER_extensions_verify_manifests_signature (
-  json_t *manifests,
+  const json_t *manifests,
   struct TALER_MasterSignatureP *extensions_sig,
   struct TALER_MasterPublicKeyP *master_pub)
 {
@@ -274,72 +274,76 @@ TALER_extensions_parse_manifest (
   json_t **config)
 {
   enum GNUNET_GenericReturnValue ret;
-  json_t *cfg;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_boolean ("critical",
                               critical),
     GNUNET_JSON_spec_string ("version",
                              version),
     GNUNET_JSON_spec_json ("config",
-                           &cfg),
+                           config),
     GNUNET_JSON_spec_end ()
   };
 
+  *config = NULL;
   if (GNUNET_OK !=
       (ret = GNUNET_JSON_parse (obj,
                                 spec,
                                 NULL,
                                 NULL)))
     return ret;
-
-  *config = json_copy (cfg);
-  GNUNET_JSON_parse_free (spec);
-
   return GNUNET_OK;
 }
 
 
 enum GNUNET_GenericReturnValue
 TALER_extensions_load_manifests (
-  json_t *extensions)
+  const json_t *extensions)
 {
-  const char*name;
+  const char *name;
   json_t *manifest;
 
   GNUNET_assert (NULL != extensions);
   GNUNET_assert (json_is_object (extensions));
 
-  json_object_foreach (extensions, name, manifest)
+  json_object_foreach ((json_t *) extensions, name, manifest)
   {
     int critical;
     const char *version;
     json_t *config;
-    struct TALER_Extension *extension =  (struct
-                                          TALER_Extension *)
-                                        TALER_extensions_get_by_name (name);
+    struct TALER_Extension *extension
+      = (struct TALER_Extension *)
+        TALER_extensions_get_by_name (name);
 
     if (NULL == extension)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "no such extension: %s\n", name);
+                  "no such extension: %s\n",
+                  name);
       return GNUNET_SYSERR;
     }
 
     /* load and verify criticality, version, etc. */
     if (GNUNET_OK !=
         TALER_extensions_parse_manifest (
-          manifest, &critical, &version, &config))
+          manifest,
+          &critical,
+          &version,
+          &config))
       return GNUNET_SYSERR;
 
     if (critical != extension->critical
-        || 0 != strcmp (version, extension->version) // TODO: libtool compare?
+        || 0 != strcmp (version,
+                        extension->version) // TODO: libtool compare?
         || NULL == config
-        || GNUNET_OK != extension->load_config (config, NULL))
+        || (GNUNET_OK !=
+            extension->load_config (config,
+                                    NULL)) )
       return GNUNET_SYSERR;
 
     /* This _should_ work now */
     if (GNUNET_OK !=
-        extension->load_config (config, extension))
+        extension->load_config (config,
+                                extension))
       return GNUNET_SYSERR;
 
     extension->enabled = true;

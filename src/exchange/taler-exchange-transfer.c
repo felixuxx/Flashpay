@@ -406,25 +406,17 @@ batch_done (void)
  * except for irrecoverable errors.
  *
  * @param cls `struct WirePrepareData` we are working on
- * @param http_status_code #MHD_HTTP_OK on success
- * @param ec taler error code
- * @param row_id unique ID of the wire transfer in the bank's records
- * @param wire_timestamp when did the transfer happen
+ * @param tr transfer response
  */
 static void
 wire_confirm_cb (void *cls,
-                 unsigned int http_status_code,
-                 enum TALER_ErrorCode ec,
-                 uint64_t row_id,
-                 struct GNUNET_TIME_Timestamp wire_timestamp)
+                 const struct TALER_BANK_TransferResponse *tr)
 {
   struct WirePrepareData *wpd = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) row_id;
-  (void) wire_timestamp;
   wpd->eh = NULL;
-  switch (http_status_code)
+  switch (tr->http_status)
   {
   case MHD_HTTP_OK:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -438,8 +430,8 @@ wire_confirm_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transaction %llu failed: %u/%d\n",
                 (unsigned long long) wpd->row_id,
-                http_status_code,
-                ec);
+                tr->http_status,
+                tr->ec);
     qs = db_plugin->wire_prepare_data_mark_failed (db_plugin->cls,
                                                    wpd->row_id);
     /* continued below */
@@ -456,7 +448,7 @@ wire_confirm_cb (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Wire transfer %llu failed (%u), trying again\n",
                   (unsigned long long) wpd->row_id,
-                  http_status_code);
+                  tr->http_status);
       wpd->eh = TALER_BANK_transfer (ctx,
                                      wpd->wa->auth,
                                      &wpd[1],
@@ -468,8 +460,8 @@ wire_confirm_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transaction %llu failed: %u/%d\n",
                 (unsigned long long) wpd->row_id,
-                http_status_code,
-                ec);
+                tr->http_status,
+                tr->ec);
     cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
@@ -479,8 +471,8 @@ wire_confirm_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transfer %llu failed: %u/%d\n",
                 (unsigned long long) wpd->row_id,
-                http_status_code,
-                ec);
+                tr->http_status,
+                tr->ec);
     db_plugin->rollback (db_plugin->cls);
     cleanup_wpd ();
     global_ret = EXIT_FAILURE;
