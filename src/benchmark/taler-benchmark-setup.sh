@@ -40,25 +40,32 @@ function cleanup()
         kill $n 2> /dev/null || true
     done
     wait
+    rm -f libeufin-nexus.pid libeufin-sandbox.pid
 }
 
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
 
 START_AUDITOR=0
+START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
 START_MERCHANT=0
 START_NEXUS=0
 START_SANDBOX=0
+USE_VALGRIND=""
 CONF_ORIG="~/.config/taler.conf"
 LOGLEVEL="DEBUG"
+DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:efhl:mns' OPTION; do
+while getopts ':abc:efhl:mnsv' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
+            ;;
+        b)
+            START_BACKUP="1"
             ;;
         c)
             CONF_ORIG="$OPTARG"
@@ -72,6 +79,7 @@ while getopts ':abc:efhl:mns' OPTION; do
         h)
             echo 'Supported options:'
             echo '  -a           -- start auditor'
+            echo '  -b           -- start backup/sync'
             echo '  -c $CONF     -- set configuration'
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
@@ -80,6 +88,7 @@ while getopts ':abc:efhl:mns' OPTION; do
             echo '  -m           -- start merchant'
             echo '  -n           -- start nexus'
             echo '  -s           -- start sandbox'
+            echo '  -v           -- use valgrind'
             exit 0
             ;;
         l)
@@ -93,6 +102,10 @@ while getopts ':abc:efhl:mns' OPTION; do
             ;;
         s)
             START_SANDBOX="1"
+            ;;
+        v)
+            USE_VALGRIND="valgrind --leak-check=yes"
+            DEFAULT_SLEEP="2"
             ;;
         ?)
         exit_fail "Unrecognized command line option"
@@ -122,6 +135,13 @@ then
     echo " FOUND"
 fi
 
+if [ "1" = "$START_BACKUP" ]
+then
+    echo -n "Testing for sync-httpd"
+    sync-httpd -h > /dev/null || exit_skip " sync-httpd required"
+    echo " FOUND"
+fi
+
 if [ "1" = "$START_NEXUS" ]
 then
     echo -n "Testing for libeufin-cli"
@@ -135,6 +155,10 @@ CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME="$1"
     export LIBEUFIN_SANDBOX_PASSWORD="$2"
+    libeufin-cli sandbox \
+      demobank \
+      delete \
+      --bank-account "$1" &> /dev/null || true
     libeufin-cli sandbox \
       demobank \
       register --name "$3"
@@ -158,37 +182,37 @@ then
     export LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
 
     # Create the default demobank.
-    libeufin-sandbox config --currency "$CURRENCY" default
+    echo -n "Configuring sandbox "
+    libeufin-sandbox config --currency "$CURRENCY" default &> libeufin-sandbox-config.log
+    echo "DONE"
+    echo -n "Launching sandbox "
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
     libeufin-sandbox serve \
       --port "$SANDBOX_PORT" \
       > libeufin-sandbox-stdout.log \
       2> libeufin-sandbox-stderr.log &
     echo $! > libeufin-sandbox.pid
+    echo "DONE"
     export LIBEUFIN_SANDBOX_URL="http://localhost:$SANDBOX_PORT/"
-    set +e
     OK="0"
     echo -n "Waiting for Sandbox ..."
     for n in $(seq 1 100); do
         echo -n "."
-        sleep 0.2
-        if wget --timeout=1 \
-                --tries=3 \
-                --waitretry=0 \
-                -o /dev/null \
-                -O /dev/null \
-                "$LIBEUFIN_SANDBOX_URL";
-        then
-            OK="1"
-            break
-        fi
+        sleep "$DEFAULT_SLEEP"
+        wget --timeout=1 \
+             --tries=3 \
+             --waitretry=0 \
+             -o /dev/null \
+             -O /dev/null \
+             "$LIBEUFIN_SANDBOX_URL" || continue
+        OK="1"
+        break
     done
     if [ "1" != "$OK" ]
     then
         exit_skip "Failed to launch services (sandbox)"
     fi
     echo "OK"
-    set -e
     echo -n "Register Sandbox users ..."
     register_sandbox_account fortytwo x "Forty Two"
     register_sandbox_account fortythree x "Forty Three"
@@ -217,13 +241,14 @@ then
     echo -n "Create EBICS host at Sandbox.."
     libeufin-cli sandbox \
        --sandbox-url "$LIBEUFIN_SANDBOX_URL" \
-       ebicshost create --host-id talerebics
+       ebicshost create --host-id talerebics &> libeufin-sandbox-ebicshost-create.log || true
     echo "OK"
     echo -n "Create exchange EBICS subscriber at Sandbox.."
     libeufin-cli sandbox \
        demobank new-ebicssubscriber --host-id talerebics \
        --user-id exchangeebics --partner-id talerpartner \
-       --bank-account exchange # that's a username _and_ a bank account name
+       --bank-account exchange &> libeufin-sandbox-ebicsscubscriber.log || true
+    # that's a username _and_ a bank account name
     echo "OK"
     unset LIBEUFIN_SANDBOX_USERNAME
     unset LIBEUFIN_SANDBOX_PASSWORD
@@ -235,7 +260,7 @@ then
 
     # Prepare Nexus, which is the side actually talking
     # to the exchange.
-    export LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
+    export LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
 
     # For convenience, username and password are
     # identical to those used at the Sandbox.
@@ -251,7 +276,7 @@ then
     OK="0"
     for n in $(seq 1 100); do
         echo -n "."
-        sleep 0.2
+        sleep "$DEFAULT_SLEEP"
         wget --timeout=1 \
              --tries=3 \
              --waitretry=0 \
@@ -330,6 +355,8 @@ if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
 
+    EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
+    EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
     MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
     MASTER_PRIV_DIR=$(dirname "$MASTER_PRIV_FILE")
     mkdir -p "${MASTER_PRIV_DIR}"
@@ -342,13 +369,17 @@ then
         taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
     taler-exchange-dbinit -c "$CONF"
-    taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
-    taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
-    taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
-    taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
+    $USE_VALGRIND taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
+    $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
+    $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
+    $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
     EXCHANGE_HTTPD_PID=$!
-    taler-exchange-wirewatch -c "$CONF" 2> taler-exchange-wirewatch.log &
+    $USE_VALGRIND taler-exchange-wirewatch -c "$CONF" 2> taler-exchange-wirewatch.log &
     WIREWATCH_PID=$!
+    $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
+    AGGREGATOR_PID=$!
+    $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
+    TRANSFER_PID=$!
     echo " DONE"
 fi
 
@@ -365,10 +396,23 @@ then
     MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
     MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
     taler-merchant-dbinit -c "$CONF"
-    taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
+    $USE_VALGRIND taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
     MERCHANT_HTTPD_PID=$!
+    $USE_VALGRIND taler-merchant-webhook -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
+    MERCHANT_WEBHOOK_PID=$!
     echo " DONE"
 fi
+
+if [ "1" = "$START_BACKUP" ]
+then
+    echo -n "Starting sync ..."
+    SYNC_PORT=$(taler-config -c "$CONF" -s SYNC -o PORT)
+    SYNC_URL="http://localhost:${SYNC_PORT}/"
+    sync-dbinit -c "$CONF"
+    $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
+    echo " DONE"
+fi
+
 
 if [ "1" = "$START_AUDITOR" ]
 then
@@ -382,7 +426,7 @@ then
     MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
     taler-auditor-dbinit -c "$CONF"
     taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
-    taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
+    $USE_VALGRIND taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
     echo " DONE"
 fi
 
@@ -394,7 +438,7 @@ then
     for n in $(seq 1 300)
     do
         echo -n "."
-        sleep 0.1
+        sleep "$DEFAULT_SLEEP"
         # bank
         wget --tries=1 \
              --waitretry=0 \
@@ -419,14 +463,14 @@ echo -n "Waiting for Taler services ..."
 for n in $(seq 1 20)
 do
     echo -n "."
-    sleep 0.2
+    sleep "$DEFAULT_SLEEP"
     OK="0"
     if [ "1" = "$START_EXCHANGE" ]
     then
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:8081/seed" \
+            "http://localhost:8081/config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
     fi
@@ -435,7 +479,16 @@ do
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:9966/" \
+            "${MERCHANT_URL}config" \
+            -o /dev/null \
+            -O /dev/null >/dev/null || continue
+    fi
+    if [ "1" = "$START_BACKUP" ]
+    then
+        wget \
+            --tries=1 \
+            --timeout=1 \
+            "${SYNC_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
     fi
@@ -444,7 +497,7 @@ do
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:8083/" \
+            "${AUDITOR_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
     fi
@@ -465,7 +518,7 @@ then
     for n in $(seq 1 50)
     do
         echo -n "."
-        sleep 0.1
+        sleep "$DEFAULT_SLEEP"
         # exchange
         wget \
             --tries=3 \
@@ -522,7 +575,7 @@ then
     for n in $(seq 1 10)
     do
         echo -n "."
-        sleep 0.1
+        sleep "$DEFAULT_SLEEP"
         wget \
             --tries=1 \
             --timeout=1 \
