@@ -57,16 +57,19 @@ START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
+START_AGGREGATOR=0
 START_MERCHANT=0
 START_NEXUS=0
 START_SANDBOX=0
+START_TRANSFER=0
+START_WIREWATCH=0
 USE_VALGRIND=""
 CONF_ORIG="~/.config/taler.conf"
 LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:efhl:mnsv' OPTION; do
+while getopts ':abc:efghl:mnstvw' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -95,8 +98,13 @@ while getopts ':abc:efhl:mnsv' OPTION; do
             echo '  -m           -- start merchant'
             echo '  -n           -- start nexus'
             echo '  -s           -- start sandbox'
+            echo '  -t           -- start transfer'
             echo '  -v           -- use valgrind'
+            echo '  -w           -- start wirewatch'
             exit 0
+            ;;
+        g)
+            START_AGGREGATOR="1"
             ;;
         l)
             LOGLEVEL="$OPTARG"
@@ -110,9 +118,15 @@ while getopts ':abc:efhl:mnsv' OPTION; do
         s)
             START_SANDBOX="1"
             ;;
+        t)
+            START_TRANSFER="1"
+            ;;
         v)
             USE_VALGRIND="valgrind --leak-check=yes"
             DEFAULT_SLEEP="2"
+            ;;
+        w)
+            START_WIREWATCH="1"
             ;;
         ?)
         exit_fail "Unrecognized command line option"
@@ -364,7 +378,6 @@ fi
 if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
-
     EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
     EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
     MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
@@ -384,10 +397,28 @@ then
     $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
     $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
     EXCHANGE_HTTPD_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_WIREWATCH" ]
+then
+    echo -n "Starting wirewatch ..."
     $USE_VALGRIND taler-exchange-wirewatch -c "$CONF" 2> taler-exchange-wirewatch.log &
     WIREWATCH_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_AGGREGATOR" ]
+then
+    echo -n "Starting aggregator ..."
     $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
     AGGREGATOR_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_TRANSFER" ]
+then
+    echo -n "Starting transfer ..."
     $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
     TRANSFER_PID=$!
     echo " DONE"

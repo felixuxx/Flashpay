@@ -987,6 +987,21 @@ TALER_TESTING_history_entry_cmp (
 
 
 /**
+ * Launch GNU Taler setup.
+ *
+ * @param label command label.
+ * @param config_file configuration file to use
+ * @param ... NULL-terminated (const char *) arguments to pass to taler-benchmark-setup.sh
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_system_start (
+  const char *label,
+  const char *config_file,
+  ...);
+
+
+/**
  * Command to modify authorization header used in the CURL context.
  * This will destroy the existing CURL context and create a fresh
  * one. The command will fail (badly) if the existing CURL context
