@@ -153,16 +153,8 @@ purse_cb (void *cls,
   ds->reserve_sig = *dr->reserve_sig;
   if (ds->expected_response_code != dr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   switch (dr->hr.http_status)
@@ -192,8 +184,12 @@ purse_run (void *cls,
   struct ReservePurseState *ds = cls;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   const struct TALER_TESTING_Command *ref;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->reserve_ref);
@@ -221,8 +217,21 @@ purse_run (void *cls,
 
   {
     char *payto_uri;
+    const char *exchange_url;
+    const struct TALER_TESTING_Command *exchange_cmd;
 
-    payto_uri = TALER_reserve_make_payto (is->exchange_url,
+    exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                          "exchange");
+    if (NULL == exchange_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                         &exchange_url));
+    payto_uri = TALER_reserve_make_payto (exchange_url,
                                           &ds->reserve_pub);
     TALER_payto_hash (payto_uri,
                       &ds->h_payto);
@@ -236,7 +245,7 @@ purse_run (void *cls,
                    GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
   ds->dh = TALER_EXCHANGE_purse_create_with_merge (
-    is->exchange,
+    exchange,
     &ds->reserve_priv,
     &ds->purse_priv,
     &ds->merge_priv,
@@ -273,10 +282,8 @@ purse_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_purse_create_with_merge_cancel (ds->dh);
     ds->dh = NULL;
   }

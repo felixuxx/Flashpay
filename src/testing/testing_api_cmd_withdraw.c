@@ -67,6 +67,11 @@ struct WithdrawState
   const char *reuse_coin_key_ref;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * String describing the denomination value we should withdraw.
    * A corresponding denomination key must exist in the exchange's
    * offerings.  Can be NULL if @e pk is set instead.
@@ -220,8 +225,7 @@ do_retry (void *cls)
   struct WithdrawState *ws = cls;
 
   ws->retry_task = NULL;
-  ws->is->commands[ws->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (ws->is);
   withdraw_run (ws,
                 NULL,
                 ws->is);
@@ -272,25 +276,15 @@ reserve_withdraw_cb (void *cls,
                                                 UNKNOWN_MAX_BACKOFF);
         ws->total_backoff = GNUNET_TIME_relative_add (ws->total_backoff,
                                                       ws->backoff);
-        ws->is->commands[ws->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (ws->is);
         ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
                                                        &do_retry,
                                                        ws);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                wr->hr.http_status,
-                (int) wr->hr.ec,
-                TALER_TESTING_interpreter_get_current_label (is),
-                __FILE__,
-                __LINE__);
-    json_dumpf (wr->hr.reply,
-                stderr,
-                0);
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     wr->hr.http_status);
     return;
   }
   switch (wr->hr.http_status)
@@ -305,9 +299,9 @@ reserve_withdraw_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Total withdraw backoff for %s was %s\n",
-                  is->commands[is->ip].label,
+                  ws->cmd->label,
                   GNUNET_STRINGS_relative_time_to_string (ws->total_backoff,
-                                                          GNUNET_YES));
+                                                          true));
     }
     break;
   case MHD_HTTP_FORBIDDEN:
@@ -353,8 +347,9 @@ withdraw_run (void *cls,
   const struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
+  struct TALER_EXCHANGE_Handle *exchange;
 
-  (void) cmd;
+  ws->cmd = cmd;
   ws->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (
@@ -374,9 +369,12 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  exchange = TALER_TESTING_get_exchange (is);
+  if (NULL == exchange)
+    return;
   if (NULL == ws->exchange_url)
     ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (exchange));
   ws->reserve_priv = *rp;
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);
@@ -412,7 +410,7 @@ withdraw_run (void *cls,
 
   if (NULL == ws->pk)
   {
-    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
                                  &ws->amount,
                                  ws->age > 0);
     if (NULL == dpk)
@@ -445,7 +443,7 @@ withdraw_run (void *cls,
       .ps = &ws->ps,
       .ach = ws->h_age_commitment
     };
-    ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
+    ws->wsh = TALER_EXCHANGE_withdraw (exchange,
                                        rp,
                                        &wci,
                                        &reserve_withdraw_cb,
@@ -475,9 +473,8 @@ withdraw_cleanup (void *cls,
 
   if (NULL != ws->wsh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %s did not complete\n",
-                cmd->label);
+    TALER_TESTING_command_incomplete (ws->is,
+                                      cmd->label);
     TALER_EXCHANGE_withdraw_cancel (ws->wsh);
     ws->wsh = NULL;
   }
@@ -544,12 +541,9 @@ withdraw_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
     TALER_TESTING_make_trait_amount (&ws->amount),
     TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
-    TALER_TESTING_make_trait_h_payto (
-      &ws->h_payto),
-    TALER_TESTING_make_trait_payto_uri (
-      (const char **) &ws->reserve_payto_uri),
-    TALER_TESTING_make_trait_exchange_url (
-      (const char **) &ws->exchange_url),
+    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_payto_uri (ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_exchange_url (ws->exchange_url),
     TALER_TESTING_make_trait_age_commitment_proof (0,
                                                    ws->age_commitment_proof),
     TALER_TESTING_make_trait_h_age_commitment (0,
@@ -570,13 +564,12 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    const char *reserve_reference,
                                    const char *amount,
-                                   const uint8_t age,
+                                   uint8_t age,
                                    unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 
   ws = GNUNET_new (struct WithdrawState);
-
   ws->age = age;
   if (0 < age)
   {
@@ -605,8 +598,8 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                   label);
       GNUNET_assert (0);
     }
-
-    TALER_age_commitment_hash (&acp->commitment,hac);
+    TALER_age_commitment_hash (&acp->commitment,
+                               hac);
     ws->age_commitment_proof = acp;
     ws->h_age_commitment = hac;
   }

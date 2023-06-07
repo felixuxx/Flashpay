@@ -83,18 +83,12 @@ proof_kyc_cb (void *cls,
 {
   struct KycProofGetState *kcg = cls;
   struct TALER_TESTING_Interpreter *is = kcg->is;
-  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   kcg->kph = NULL;
   if (kcg->expected_response_code != kpr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                kpr->http_status,
-                cmd->label,
-                __FILE__,
-                __LINE__);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     kpr->http_status);
     return;
   }
   switch (kpr->http_status)
@@ -133,8 +127,12 @@ proof_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const struct TALER_PaytoHashP *h_payto;
   char *uargs;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   kps->is = is;
   res_cmd = TALER_TESTING_interpreter_lookup_command (
     kps->is,
@@ -159,7 +157,7 @@ proof_kyc_run (void *cls,
     GNUNET_asprintf (&uargs,
                      "&code=%s",
                      kps->code);
-  kps->kph = TALER_EXCHANGE_kyc_proof (is->exchange,
+  kps->kph = TALER_EXCHANGE_kyc_proof (exchange,
                                        h_payto,
                                        kps->logic,
                                        uargs,
@@ -185,10 +183,8 @@ proof_kyc_cleanup (void *cls,
 
   if (NULL != kps->kph)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                kps->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (kps->is,
+                                      cmd->label);
     TALER_EXCHANGE_kyc_proof_cancel (kps->kph);
     kps->kph = NULL;
   }
@@ -214,8 +210,7 @@ proof_kyc_traits (void *cls,
 {
   struct KycProofGetState *kps = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_web_url (
-      (const char **) &kps->redirect_url),
+    TALER_TESTING_make_trait_web_url (kps->redirect_url),
     TALER_TESTING_trait_end ()
   };
 

@@ -58,9 +58,33 @@ check_bank_empty_run (void *cls,
                       const struct TALER_TESTING_Command *cmd,
                       struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_FAKEBANK_Handle *fakebank;
+
   (void) cls;
   (void) cmd;
-  if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
+  {
+    const struct TALER_TESTING_Command *fakebank_cmd;
+
+    fakebank_cmd
+      = TALER_TESTING_interpreter_get_command (is,
+                                               "fakebank");
+    if (NULL == fakebank_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_fakebank (fakebank_cmd,
+                                          &fakebank))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+  }
+  if (GNUNET_OK !=
+      TALER_FAKEBANK_check_empty (fakebank))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);

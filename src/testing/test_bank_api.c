@@ -34,6 +34,7 @@
 #include "taler_testing_lib.h"
 
 #define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank.conf"
+
 #define CONFIG_FILE_NEXUS "test_bank_api_nexus.conf"
 
 
@@ -41,28 +42,19 @@
  * Configuration file.  It changes based on
  * whether Nexus or Fakebank are used.
  */
-const char *cfgfile;
+static const char *cfgfile;
 
 /**
- * Bank configuration data.
+ * Our credentials.
  */
-static struct TALER_TESTING_BankConfiguration bc;
+static struct TALER_TESTING_Credentials cred;
 
 /**
- * Flag indicating whether the test is running against the
- * Fakebank.  Set up at runtime.
+ * Which bank is the test running against?
+ * Set up at runtime.
  */
-static int with_fakebank;
+static enum TALER_TESTING_BankSystem bs;
 
-/**
- * Handles to the libeufin services.
- */
-static struct TALER_TESTING_LibeufinServices libeufin_services;
-
-/**
- * Needed to shutdown differently.
- */
-static int with_libeufin;
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -75,20 +67,36 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
+  const char *ssoptions;
 
   (void) cls;
-  memset (&wtid, 42, sizeof (wtid));
+  switch (bs)
+  {
+  case TALER_TESTING_BS_FAKEBANK:
+    ssoptions = "-f";
+    break;
+  case TALER_TESTING_BS_IBAN:
+    ssoptions = "-ns";
+    break;
+  }
+  memset (&wtid,
+          42,
+          sizeof (wtid));
 
   {
     struct TALER_TESTING_Command commands[] = {
+      TALER_TESTING_cmd_system_start ("start-taler",
+                                      cfgfile,
+                                      ssoptions,
+                                      NULL),
       TALER_TESTING_cmd_bank_credits ("history-0",
-                                      &bc.exchange_auth,
+                                      &cred.ba,
                                       NULL,
                                       1),
       TALER_TESTING_cmd_admin_add_incoming ("credit-1",
-                                            "KUDOS:5.01",
-                                            &bc.exchange_auth,
-                                            bc.user42_payto),
+                                            "EUR:5.01",
+                                            &cred.ba,
+                                            cred.user42_payto),
       /**
        * This CMD doesn't care about the HTTP response code; that's
        * because Fakebank and euFin behaves differently when a reserve
@@ -96,9 +104,9 @@ run (void *cls,
        * with 200 but it bounces the payment back to the customer.
        */
       TALER_TESTING_cmd_admin_add_incoming_with_ref ("credit-1-fail",
-                                                     "KUDOS:2.01",
-                                                     &bc.exchange_auth,
-                                                     bc.user42_payto,
+                                                     "EUR:2.01",
+                                                     &cred.ba,
+                                                     cred.user42_payto,
                                                      "credit-1",
                                                      -1),
       TALER_TESTING_cmd_sleep ("Waiting 4s for 'credit-1' to settle",
@@ -108,28 +116,28 @@ run (void *cls,
        * reserve public key didn't make it to the exchange.
        */
       TALER_TESTING_cmd_bank_credits ("history-1c",
-                                      &bc.exchange_auth,
+                                      &cred.ba,
                                       NULL,
                                       5),
       TALER_TESTING_cmd_bank_debits ("history-1d",
-                                     &bc.exchange_auth,
+                                     &cred.ba,
                                      NULL,
                                      5),
       TALER_TESTING_cmd_admin_add_incoming ("credit-2",
-                                            "KUDOS:3.21",
-                                            &bc.exchange_auth,
-                                            bc.user42_payto),
+                                            "EUR:3.21",
+                                            &cred.ba,
+                                            cred.user42_payto),
       TALER_TESTING_cmd_transfer ("debit-1",
-                                  "KUDOS:3.22",
-                                  &bc.exchange_auth,
-                                  bc.exchange_payto,
-                                  bc.user42_payto,
+                                  "EUR:3.22",
+                                  &cred.ba,
+                                  cred.exchange_payto,
+                                  cred.user42_payto,
                                   &wtid,
                                   "http://exchange.example.com/"),
 
       TALER_TESTING_cmd_sleep ("Waiting 5s for 'debit-1' to settle",
                                5),
-      with_libeufin
+      (bs == TALER_TESTING_BS_IBAN)
       ? TALER_TESTING_cmd_nexus_fetch_transactions (
         "fetch-transactions-at-nexus",
         "exchange", /* from taler-nexus-prepare */
@@ -139,7 +147,7 @@ run (void *cls,
       : TALER_TESTING_cmd_sleep ("nop",
                                  0),
       TALER_TESTING_cmd_bank_debits ("history-2b",
-                                     &bc.exchange_auth,
+                                     &cred.ba,
                                      NULL,
                                      5),
       TALER_TESTING_cmd_end ()
@@ -147,35 +155,10 @@ run (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Bank serves at `%s'\n",
-                bc.exchange_auth.wire_gateway_url);
-    if (GNUNET_YES == with_fakebank)
-      TALER_TESTING_run_with_fakebank (is,
-                                       commands,
-                                       bc.exchange_auth.wire_gateway_url);
-    else
-      TALER_TESTING_run (is,
-                         commands);
+                cred.ba.wire_gateway_url);
+    TALER_TESTING_run (is,
+                       commands);
   }
-}
-
-
-/**
- * Runs #TALER_TESTING_setup() using the configuration.
- *
- * @param cls unused
- * @param cfg configuration to use
- * @return status code
- */
-static int
-setup_with_cfg (void *cls,
-                const struct GNUNET_CONFIGURATION_Handle *cfg)
-{
-  (void) cls;
-  return TALER_TESTING_setup (&run,
-                              NULL,
-                              cfg,
-                              NULL,
-                              GNUNET_NO);
 }
 
 
@@ -183,80 +166,33 @@ int
 main (int argc,
       char *const *argv)
 {
-  int rv;
-
   (void) argc;
-  (void) argv;
-  /* These environment variables get in the way... */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-bank-api",
-                    "INFO",
-                    NULL);
-
-  with_fakebank = TALER_TESTING_has_in_name (argv[0],
-                                             "_with_fakebank");
-  if (GNUNET_YES == with_fakebank)
+  if (TALER_TESTING_has_in_name (argv[0],
+                                 "_with_fakebank"))
   {
-    TALER_LOG_DEBUG ("Running against the Fakebank.\n");
+    bs = TALER_TESTING_BS_FAKEBANK;
     cfgfile = CONFIG_FILE_FAKEBANK;
-    if (GNUNET_OK !=
-        TALER_TESTING_prepare_fakebank (CONFIG_FILE_FAKEBANK,
-                                        "exchange-account-2",
-                                        &bc))
-    {
-      GNUNET_break (0);
-      return 77;
-    }
   }
-  else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
-                                                    "_with_nexus"))
+  else if (TALER_TESTING_has_in_name (argv[0],
+                                      "_with_nexus"))
   {
-    TALER_LOG_DEBUG ("Running with Nexus.\n");
-    with_libeufin = GNUNET_YES;
+    bs = TALER_TESTING_BS_IBAN;
     cfgfile = CONFIG_FILE_NEXUS;
-    if (GNUNET_OK !=
-        TALER_TESTING_prepare_libeufin (CONFIG_FILE_NEXUS,
-                                        GNUNET_YES,
-                                        "exchange-account-2",
-                                        &bc))
-    {
-      GNUNET_break (0);
-      return 77;
-    }
-    libeufin_services = TALER_TESTING_run_libeufin (&bc);
-    if ( (NULL == libeufin_services.nexus) ||
-         (NULL == libeufin_services.sandbox) )
-      return 77;
   }
   else
   {
-    /* no bank service was ever invoked.  */
+    /* no bank service was specified.  */
+    GNUNET_break (0);
     return 77;
   }
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_parse_and_run (cfgfile,
-                                          &setup_with_cfg,
-                                          NULL))
-    rv = 1;
-  else
-    rv = 0;
-
-  if (with_libeufin)
-  {
-    GNUNET_OS_process_kill (libeufin_services.nexus,
-                            SIGKILL);
-    GNUNET_OS_process_wait (libeufin_services.nexus);
-    GNUNET_OS_process_destroy (libeufin_services.nexus);
-
-    GNUNET_OS_process_kill (libeufin_services.sandbox,
-                            SIGKILL);
-    GNUNET_OS_process_wait (libeufin_services.sandbox);
-    GNUNET_OS_process_destroy (libeufin_services.sandbox);
-  }
-
-  return rv;
+  return TALER_TESTING_main (argv,
+                             "INFO",
+                             cfgfile,
+                             "exchange-account-2",
+                             bs,
+                             &cred,
+                             &run,
+                             NULL);
 }
 
 

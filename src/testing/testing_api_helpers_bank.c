@@ -64,30 +64,6 @@ TALER_TESTING_run_fakebank (const char *bank_url,
 }
 
 
-int
-TALER_TESTING_has_in_name (const char *prog,
-                           const char *marker)
-{
-  size_t name_pos;
-  size_t pos;
-
-  if (! prog || ! marker)
-    return GNUNET_NO;
-
-  pos = 0;
-  name_pos = 0;
-  while (prog[pos])
-  {
-    if ('/' == prog[pos])
-      name_pos = pos + 1;
-    pos++;
-  }
-  if (name_pos == pos)
-    return GNUNET_YES;
-  return (NULL != strstr (prog + name_pos, marker));
-}
-
-
 struct TALER_TESTING_LibeufinServices
 TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 {
@@ -705,23 +681,6 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user43_payto: %s\n",
               bc->user43_payto);
   return GNUNET_OK;
-}
-
-
-json_t *
-TALER_TESTING_make_wire_details (const char *payto)
-{
-  struct TALER_WireSaltP salt;
-
-  /* salt must be constant for aggregation tests! */
-  memset (&salt,
-          47,
-          sizeof (salt));
-  return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             payto),
-    GNUNET_JSON_pack_data_auto ("salt",
-                                &salt));
 }
 
 

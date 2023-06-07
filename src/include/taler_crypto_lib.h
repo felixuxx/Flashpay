@@ -5873,7 +5873,7 @@ TALER_age_commitment_hash (
 enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
-  const uint8_t age,
+  uint8_t age,
   const struct GNUNET_HashCode *seed,
   struct TALER_AgeCommitmentProof *comm_proof);
 

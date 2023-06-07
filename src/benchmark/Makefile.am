@@ -12,11 +12,9 @@ endif
 
 bin_PROGRAMS = \
   taler-aggregator-benchmark \
-  taler-bank-benchmark \
-  taler-exchange-benchmark
+  taler-bank-benchmark
 
-bin_SCRIPTS = \
-  taler-benchmark-setup.sh
+# taler-exchange-benchmark
 
 
 taler_aggregator_benchmark_SOURCES = \
@@ -75,5 +73,4 @@ EXTRA_DIST = \
   bank-benchmark-rsa.conf \
   coins-cs.conf \
   coins-rsa.conf \
-  $(bin_SCRIPTS) \
   exchange_benchmark_home/.local/share/taler/exchange/offline-keys/master.priv

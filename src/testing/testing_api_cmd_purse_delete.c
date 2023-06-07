@@ -74,16 +74,8 @@ purse_delete_cb (void *cls,
   pds->pdh = NULL;
   if (pds->expected_response_code != pdr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                pdr->hr.http_status,
-                pds->is->commands[pds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (pdr->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (pds->is);
+    TALER_TESTING_unexpected_status (pds->is,
+                                     pdr->hr.http_status);
     return;
   }
   TALER_TESTING_interpreter_next (pds->is);
@@ -105,8 +97,12 @@ purse_delete_run (void *cls,
   struct PurseDeleteState *pds = cls;
   const struct TALER_PurseContractPrivateKeyP *purse_priv;
   const struct TALER_TESTING_Command *ref;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ref = TALER_TESTING_interpreter_lookup_command (is,
                                                   pds->purse_cmd);
   if (NULL == ref)
@@ -125,7 +121,7 @@ purse_delete_run (void *cls,
   }
   pds->is = is;
   pds->pdh = TALER_EXCHANGE_purse_delete (
-    is->exchange,
+    exchange,
     purse_priv,
     &purse_delete_cb,
     pds);
@@ -153,10 +149,8 @@ purse_delete_cleanup (void *cls,
 
   if (NULL != pds->pdh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                pds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (pds->is,
+                                      cmd->label);
     TALER_EXCHANGE_purse_delete_cancel (pds->pdh);
     pds->pdh = NULL;
   }

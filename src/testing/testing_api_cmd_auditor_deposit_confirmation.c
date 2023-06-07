@@ -69,11 +69,6 @@ struct DepositConfirmationState
   struct TALER_AUDITOR_DepositConfirmationHandle *dc;
 
   /**
-   * Auditor connection.
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -125,8 +120,7 @@ do_retry (void *cls)
   struct DepositConfirmationState *dcs = cls;
 
   dcs->retry_task = NULL;
-  dcs->is->commands[dcs->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (dcs->is);
   deposit_confirmation_run (dcs,
                             NULL,
                             dcs->is);
@@ -166,21 +160,15 @@ deposit_confirmation_cb (void *cls,
         else
           dcs->backoff = GNUNET_TIME_randomized_backoff (dcs->backoff,
                                                          MAX_BACKOFF);
-        dcs->is->commands[dcs->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (dcs->is);
         dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
                                                         &do_retry,
                                                         dcs);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
-                dcs->is->commands[dcs->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply, stderr, 0);
-    TALER_TESTING_interpreter_fail (dcs->is);
+    TALER_TESTING_unexpected_status (dcs->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (dcs->is);
@@ -220,10 +208,31 @@ deposit_confirmation_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
+  struct TALER_AUDITOR_Handle *auditor;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   dcs->is = is;
   GNUNET_assert (NULL != dcs->deposit_reference);
+  {
+    const struct TALER_TESTING_Command *auditor_cmd;
+
+    auditor_cmd
+      = TALER_TESTING_interpreter_get_command (is,
+                                               "auditor");
+    if (NULL == auditor_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_auditor (auditor_cmd,
+                                                    &auditor));
+  }
   deposit_cmd
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 dcs->deposit_reference);
@@ -251,7 +260,7 @@ deposit_confirmation_run (void *cls,
                                                         dcs->coin_index,
                                                         &wire_deadline));
   GNUNET_assert (NULL != exchange_timestamp);
-  keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
+  keys = TALER_EXCHANGE_get_keys (exchange);
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_signing_key_info (keys,
                                              exchange_pub);
@@ -308,7 +317,7 @@ deposit_confirmation_run (void *cls,
     if (GNUNET_TIME_absolute_is_zero (refund_deadline.abs_time))
       refund_deadline = timestamp;
   }
-  dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,
+  dcs->dc = TALER_AUDITOR_deposit_confirmation (auditor,
                                                 &h_wire,
                                                 &no_h_policy,
                                                 &h_contract_terms,
@@ -353,10 +362,8 @@ deposit_confirmation_cleanup (void *cls,
 
   if (NULL != dcs->dc)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                dcs->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (dcs->is,
+                                      cmd->label);
     TALER_AUDITOR_deposit_confirmation_cancel (dcs->dc);
     dcs->dc = NULL;
   }
@@ -371,7 +378,6 @@ deposit_confirmation_cleanup (void *cls,
 
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation (const char *label,
-                                        struct TALER_AUDITOR_Handle *auditor,
                                         const char *deposit_reference,
                                         unsigned int coin_index,
                                         const char *amount_without_fee,
@@ -380,7 +386,6 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
   struct DepositConfirmationState *dcs;
 
   dcs = GNUNET_new (struct DepositConfirmationState);
-  dcs->auditor = auditor;
   dcs->deposit_reference = deposit_reference;
   dcs->coin_index = coin_index;
   dcs->amount_without_fee = amount_without_fee;

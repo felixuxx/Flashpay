@@ -133,20 +133,15 @@ deposit_cb (void *cls,
             const struct TALER_EXCHANGE_PurseDepositResponse *dr)
 {
   struct PurseDepositState *ds = cls;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (ds->is);
 
   ds->dh = NULL;
+  GNUNET_assert (NULL != exchange);
   if (ds->expected_response_code != dr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                JSON_INDENT (2));
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
@@ -205,7 +200,7 @@ deposit_cb (void *cls,
         const struct TALER_EXCHANGE_Keys *keys;
         const struct TALER_EXCHANGE_GlobalFee *gf;
 
-        keys = TALER_EXCHANGE_get_keys (ds->is->exchange);
+        keys = TALER_EXCHANGE_get_keys (exchange);
         GNUNET_assert (NULL != keys);
         gf = TALER_EXCHANGE_get_global_fee (keys,
                                             *merge_timestamp);
@@ -264,10 +259,13 @@ deposit_run (void *cls,
   struct TALER_EXCHANGE_PurseDeposit deposits[ds->num_coin_references];
   const struct TALER_PurseContractPublicKeyP *purse_pub;
   const struct TALER_TESTING_Command *purse_cmd;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   (void) cmd;
   ds->is = is;
-
   purse_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                         ds->purse_ref);
   GNUNET_assert (NULL != purse_cmd);
@@ -323,7 +321,7 @@ deposit_run (void *cls,
   }
 
   ds->dh = TALER_EXCHANGE_purse_deposit (
-    is->exchange,
+    exchange,
     NULL, /* FIXME #7271: WADs support: purse exchange URL */
     &ds->purse_pub,
     ds->min_age,
@@ -357,10 +355,8 @@ deposit_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_purse_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }

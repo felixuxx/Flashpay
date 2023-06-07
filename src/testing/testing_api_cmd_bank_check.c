@@ -91,26 +91,48 @@ check_bank_transfer_run (void *cls,
   struct TALER_Amount amount;
   char *debit_account;
   char *credit_account;
-  const char **exchange_base_url;
-  const char **debit_payto;
-  const char **credit_payto;
+  const char *exchange_base_url;
+  const char *debit_payto;
+  const char *credit_payto;
+  struct TALER_FAKEBANK_Handle *fakebank;
 
   (void) cmd;
+  {
+    const struct TALER_TESTING_Command *fakebank_cmd;
+
+    fakebank_cmd
+      = TALER_TESTING_interpreter_get_command (is,
+                                               "fakebank");
+    if (NULL == fakebank_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_fakebank (fakebank_cmd,
+                                          &fakebank))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+  }
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
-    debit_payto = &bcs->debit_payto;
-    credit_payto = &bcs->credit_payto;
-    exchange_base_url = &bcs->exchange_base_url;
+    debit_payto = bcs->debit_payto;
+    credit_payto = bcs->credit_payto;
+    exchange_base_url = bcs->exchange_base_url;
 
     if (GNUNET_OK !=
         TALER_string_to_amount (bcs->amount,
                                 &amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to parse amount `%s' at %u\n",
+                  "Failed to parse amount `%s' at %s\n",
                   bcs->amount,
-                  is->ip);
+                  TALER_TESTING_interpreter_get_current_label (is));
       TALER_TESTING_interpreter_fail (is);
       return;
     }
@@ -145,27 +167,22 @@ check_bank_transfer_run (void *cls,
       TALER_TESTING_FAIL (is);
     amount = *amount_ptr;
   }
-
-
-  debit_account = TALER_xtalerbank_account_from_payto (*debit_payto);
-  credit_account = TALER_xtalerbank_account_from_payto (*credit_payto);
-
+  debit_account = TALER_xtalerbank_account_from_payto (debit_payto);
+  credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted debit_payto (%s) to debit_account (%s)\n",
-              *debit_payto,
+              debit_payto,
               debit_account);
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted credit_payto (%s) to credit_account (%s)\n",
-              *credit_payto,
+              credit_payto,
               credit_account);
-
   if (GNUNET_OK !=
-      TALER_FAKEBANK_check_debit (is->fakebank,
+      TALER_FAKEBANK_check_debit (fakebank,
                                   &amount,
                                   debit_account,
                                   credit_account,
-                                  *exchange_base_url,
+                                  exchange_base_url,
                                   &bcs->wtid))
   {
     GNUNET_break (0);
@@ -217,7 +234,7 @@ check_bank_transfer_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_wtid (wtid_ptr),
     TALER_TESTING_make_trait_exchange_url (
-      &bcs->exchange_base_url),
+      bcs->exchange_base_url),
     TALER_TESTING_trait_end ()
   };
 

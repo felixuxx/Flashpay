@@ -180,8 +180,7 @@ do_retry (void *cls)
   struct AdminAddIncomingState *fts = cls;
 
   fts->retry_task = NULL;
-  fts->is->commands[fts->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (fts->is);
   admin_add_incoming_run (fts,
                           NULL,
                           fts->is);
@@ -279,7 +278,7 @@ confirmation_cb (void *cls,
         else
           fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,
                                                          MAX_BACKOFF);
-        fts->is->commands[fts->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (fts->is);
         fts->retry_task = GNUNET_SCHEDULER_add_delayed (
           fts->backoff,
           &do_retry,
@@ -314,6 +313,7 @@ admin_add_incoming_run (void *cls,
   bool have_public = false;
 
   (void) cmd;
+  fts->is = is;
   /* Use reserve public key as subject */
   if (NULL != fts->reserve_reference)
   {
@@ -364,7 +364,6 @@ admin_add_incoming_run (void *cls,
   fts->reserve_history.amount = fts->amount;
   fts->reserve_history.details.in_details.sender_url
     = (char *) fts->payto_debit_account; /* remember to NOT free this one... */
-  fts->is = is;
   fts->aih
     = TALER_BANK_admin_add_incoming (
         TALER_TESTING_interpreter_get_context (is),
@@ -398,9 +397,8 @@ admin_add_incoming_cleanup (void *cls,
 
   if (NULL != fts->aih)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %s did not complete\n",
-                cmd->label);
+    TALER_TESTING_command_incomplete (fts->is,
+                                      cmd->label);
     TALER_BANK_admin_add_incoming_cancel (fts->aih);
     fts->aih = NULL;
   }
@@ -439,12 +437,12 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
-      TALER_TESTING_make_trait_payto_uri (&fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
+      TALER_TESTING_make_trait_payto_uri (fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
+      TALER_TESTING_make_trait_credit_payto_uri (void_uri),
       TALER_TESTING_make_trait_exchange_bank_account_url (
-        &fts->exchange_credit_url),
+        fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_timestamp (0,
                                           &fts->timestamp),
@@ -464,13 +462,14 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
+      TALER_TESTING_make_trait_credit_payto_uri (void_uri),
       TALER_TESTING_make_trait_exchange_bank_account_url (
-        &fts->exchange_credit_url),
+        fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
-      TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
+      TALER_TESTING_make_trait_timestamp (0,
+                                          &fts->timestamp),
       TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
       TALER_TESTING_make_trait_reserve_history (0,
                                                 &fts->reserve_history),

@@ -29,6 +29,7 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_exchangedb_lib.h"
 
 
 /**
@@ -37,9 +38,9 @@
 struct InsertDepositState
 {
   /**
-   * Configuration file used by the command.
+   * Database connection we use.
    */
-  const struct TALER_TESTING_DatabaseConnection *dbc;
+  struct TALER_EXCHANGEDB_Plugin *plugin;
 
   /**
    * Human-readable name of the shop.
@@ -71,6 +72,11 @@ struct InsertDepositState
    * Deposit fee.
    */
   const char *deposit_fee;
+
+  /**
+   * Do we used a cached @e plugin?
+   */
+  bool cached;
 };
 
 /**
@@ -133,6 +139,19 @@ insert_deposit_run (void *cls,
   struct TALER_DenominationPrivateKey denom_priv;
 
   (void) cmd;
+  if (NULL == ids->plugin)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  if (GNUNET_OK !=
+      ids->plugin->preflight (ids->plugin->cls))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   // prepare and store issue first.
   fake_issue (&issue);
   GNUNET_assert (GNUNET_OK ==
@@ -144,14 +163,14 @@ insert_deposit_run (void *cls,
                         &issue.denom_hash);
 
   if ( (GNUNET_OK !=
-        ids->dbc->plugin->start (ids->dbc->plugin->cls,
-                                 "talertestinglib: denomination insertion")) ||
+        ids->plugin->start (ids->plugin->cls,
+                            "talertestinglib: denomination insertion")) ||
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-        ids->dbc->plugin->insert_denomination_info (ids->dbc->plugin->cls,
-                                                    &dpk,
-                                                    &issue)) ||
+        ids->plugin->insert_denomination_info (ids->plugin->cls,
+                                               &dpk,
+                                               &issue)) ||
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-        ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
+        ids->plugin->commit (ids->plugin->cls)) )
   {
     TALER_TESTING_interpreter_fail (is);
     TALER_denom_pub_free (&dpk);
@@ -248,23 +267,23 @@ insert_deposit_run (void *cls,
     struct TALER_AgeCommitmentHash agh;
 
     if ( (GNUNET_OK !=
-          ids->dbc->plugin->start (ids->dbc->plugin->cls,
-                                   "libtalertesting: insert deposit")) ||
+          ids->plugin->start (ids->plugin->cls,
+                              "libtalertesting: insert deposit")) ||
          (0 >
-          ids->dbc->plugin->ensure_coin_known (ids->dbc->plugin->cls,
-                                               &deposit.coin,
-                                               &known_coin_id,
-                                               &dph,
-                                               &agh)) ||
+          ids->plugin->ensure_coin_known (ids->plugin->cls,
+                                          &deposit.coin,
+                                          &known_coin_id,
+                                          &dph,
+                                          &agh)) ||
          (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
-                                            ids->exchange_timestamp,
-                                            &deposit)) ||
+          ids->plugin->insert_deposit (ids->plugin->cls,
+                                       ids->exchange_timestamp,
+                                       &deposit)) ||
          (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
+          ids->plugin->commit (ids->plugin->cls)) )
     {
       GNUNET_break (0);
-      ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
+      ids->plugin->rollback (ids->plugin->cls);
       GNUNET_free (deposit.receiver_wire_account);
       TALER_denom_pub_free (&dpk);
       TALER_denom_priv_free (&denom_priv);
@@ -295,6 +314,14 @@ insert_deposit_cleanup (void *cls,
   struct InsertDepositState *ids = cls;
 
   (void) cmd;
+  if ( (NULL != ids->plugin) &&
+       (! ids->cached) )
+  {
+    // FIXME: historically, we also did:
+    // ids->plugin->drop_tables (ids->plugin->cls);
+    TALER_EXCHANGEDB_plugin_unload (ids->plugin);
+    ids->plugin = NULL;
+  }
   GNUNET_free (ids);
 }
 
@@ -302,7 +329,7 @@ insert_deposit_cleanup (void *cls,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (
   const char *label,
-  const struct TALER_TESTING_DatabaseConnection *dbc,
+  const struct GNUNET_CONFIGURATION_Handle *db_cfg,
   const char *merchant_name,
   const char *merchant_account,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
@@ -310,10 +337,22 @@ TALER_TESTING_cmd_insert_deposit (
   const char *amount_with_fee,
   const char *deposit_fee)
 {
+  static struct TALER_EXCHANGEDB_Plugin *pluginc;
+  static const struct GNUNET_CONFIGURATION_Handle *db_cfgc;
   struct InsertDepositState *ids;
 
   ids = GNUNET_new (struct InsertDepositState);
-  ids->dbc = dbc;
+  if (db_cfgc == db_cfg)
+  {
+    ids->plugin = pluginc;
+    ids->cached = true;
+  }
+  else
+  {
+    ids->plugin = TALER_EXCHANGEDB_plugin_load (db_cfg);
+    pluginc = ids->plugin;
+    db_cfgc = db_cfg;
+  }
   ids->merchant_name = merchant_name;
   ids->merchant_account = merchant_account;
   ids->exchange_timestamp = exchange_timestamp;

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/test_bank_api_with_fakebank_twisted.c
+ * @file testing/test_bank_api_twisted.c
  * @author Marcello Stanisci
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
@@ -42,14 +42,20 @@
 #define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank_twisted.conf"
 
 /**
- * True when the test runs against Fakebank.
+ * Configuration file we use.
  */
-static int with_fakebank;
+static const char *cfgfile;
 
 /**
- * Bank configuration data.
+ * Our credentials.
  */
-static struct TALER_TESTING_BankConfiguration bc;
+static struct TALER_TESTING_Credentials cred;
+
+/**
+ * Which bank is the test running against?
+ * Set up at runtime.
+ */
+static enum TALER_TESTING_BankSystem bs;
 
 /**
  * (real) Twister URL.  Used at startup time to check if it runs.
@@ -60,11 +66,6 @@ static char *twister_url;
  * Twister process.
  */
 static struct GNUNET_OS_Process *twisterd;
-
-/**
- * Python bank process handle.
- */
-static struct GNUNET_OS_Process *bankd;
 
 
 /**
@@ -78,79 +79,70 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
-  /* Route our commands through twister. */
+  /* Authentication data to route our commands through twister. */
   struct TALER_BANK_AuthenticationData exchange_auth_twisted;
+  const char *systype = NULL;
 
   (void) cls;
   memset (&wtid,
           0x5a,
           sizeof (wtid));
   GNUNET_memcpy (&exchange_auth_twisted,
-                 &bc.exchange_auth,
+                 &cred.ba,
                  sizeof (struct TALER_BANK_AuthenticationData));
-  if (with_fakebank)
-    exchange_auth_twisted.wire_gateway_url =
-      "http://localhost:8888/2/";
-  else
-    exchange_auth_twisted.wire_gateway_url =
-      "http://localhost:8888/taler-wire-gateway/Exchange/";
+  switch (bs)
+  {
+  case TALER_TESTING_BS_FAKEBANK:
+    exchange_auth_twisted.wire_gateway_url
+      = "http://localhost:8888/2/";
+    systype = "-f";
+    break;
+  case TALER_TESTING_BS_IBAN:
+    exchange_auth_twisted.wire_gateway_url
+      = "http://localhost:8888/taler-wire-gateway/Exchange/";
+    systype = "-ns";
+    break;
+  }
+  GNUNET_assert (NULL != systype);
 
-  struct TALER_TESTING_Command commands[] = {
-    /* Test retrying transfer after failure. */
-    TALER_TESTING_cmd_malform_response ("malform-transfer",
-                                        CONFIG_FILE_FAKEBANK),
-    TALER_TESTING_cmd_transfer_retry (
-      TALER_TESTING_cmd_transfer ("debit-1",
-                                  "KUDOS:3.22",
-                                  &exchange_auth_twisted,
-                                  bc.exchange_payto,
-                                  bc.user42_payto,
-                                  &wtid,
-                                  "http://exchange.example.com/")),
-    TALER_TESTING_cmd_end ()
-  };
+  {
+    struct TALER_TESTING_Command commands[] = {
+      TALER_TESTING_cmd_system_start ("start-taler",
+                                      cfgfile,
+                                      systype,
+                                      NULL),
+      /* Test retrying transfer after failure. */
+      TALER_TESTING_cmd_malform_response ("malform-transfer",
+                                          cfgfile),
+      TALER_TESTING_cmd_transfer_retry (
+        TALER_TESTING_cmd_transfer ("debit-1",
+                                    "EUR:3.22",
+                                    &exchange_auth_twisted,
+                                    cred.exchange_payto,
+                                    cred.user42_payto,
+                                    &wtid,
+                                    "http://exchange.example.com/")),
+      TALER_TESTING_cmd_end ()
+    };
 
-  if (GNUNET_YES == with_fakebank)
-    TALER_TESTING_run_with_fakebank (is,
-                                     commands,
-                                     bc.exchange_auth.wire_gateway_url);
-  else
     TALER_TESTING_run (is,
                        commands);
+  }
 }
 
 
 /**
  * Kill, wait, and destroy convenience function.
  *
- * @param process process to purge.
+ * @param[in] process process to purge.
  */
 static void
 purge_process (struct GNUNET_OS_Process *process)
 {
-  GNUNET_OS_process_kill (process, SIGINT);
+  GNUNET_OS_process_kill (process,
+                          SIGINT);
   GNUNET_OS_process_wait (process);
   GNUNET_OS_process_destroy (process);
-}
-
-
-/**
- * Runs #TALER_TESTING_setup() using the configuration.
- *
- * @param cls unused
- * @param cfg configuration to use
- * @return status code
- */
-static int
-setup_with_cfg (void *cls,
-                const struct GNUNET_CONFIGURATION_Handle *cfg)
-{
-  (void) cls;
-  return TALER_TESTING_setup (&run,
-                              NULL,
-                              cfg,
-                              NULL,
-                              GNUNET_NO);
 }
 
 
@@ -159,75 +151,46 @@ main (int argc,
       char *const *argv)
 {
   int ret;
-  const char *cfgfilename;
 
   (void) argc;
-  /* These environment variables get in the way... */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-bank-api-with-(fake)bank-twisted",
-                    "INFO",
-                    NULL);
-
-  with_fakebank = TALER_TESTING_has_in_name (argv[0],
-                                             "_with_fakebank");
-
-  if (with_fakebank)
-    cfgfilename = CONFIG_FILE_FAKEBANK;
-  else
-    GNUNET_assert (0);
-  if (NULL == (twister_url = TALER_TWISTER_prepare_twister (
-                 cfgfilename)))
+  if (TALER_TESTING_has_in_name (argv[0],
+                                 "_with_fakebank"))
   {
-    GNUNET_break (0);
-    return 77;
+    bs = TALER_TESTING_BS_FAKEBANK;
+    cfgfile = CONFIG_FILE_FAKEBANK;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "twister_url is %s\n",
-              twister_url);
-  if (NULL == (twisterd = TALER_TWISTER_run_twister (cfgfilename)))
+  else if (TALER_TESTING_has_in_name (argv[0],
+                                      "_with_nexus"))
   {
-    GNUNET_break (0);
-    GNUNET_free (twister_url);
-    return 77;
-  }
-  if (GNUNET_YES == with_fakebank)
-  {
-    TALER_LOG_DEBUG ("Running against the Fakebank.\n");
-    if (GNUNET_OK !=
-        TALER_TESTING_prepare_fakebank (cfgfilename,
-                                        "exchange-account-2",
-                                        &bc))
-    {
-      GNUNET_break (0);
-      GNUNET_free (twister_url);
-      return 77;
-    }
+    GNUNET_assert (0); /* FIXME: test with nexus not yet implemented */
+    bs = TALER_TESTING_BS_IBAN;
+    /* cfgfile = CONFIG_FILE_NEXUS; */
   }
   else
   {
-    GNUNET_assert (0);
+    /* no bank service was specified.  */
+    GNUNET_break (0);
+    return 77;
   }
 
-  sleep (5);
-  ret = GNUNET_CONFIGURATION_parse_and_run (cfgfilename,
-                                            &setup_with_cfg,
-                                            NULL);
+  /* FIXME: introduce commands for twister! */
+  twister_url = TALER_TWISTER_prepare_twister (cfgfile);
+  if (NULL == twister_url)
+    return 77;
+  twisterd = TALER_TWISTER_run_twister (cfgfile);
+  if (NULL == twisterd)
+    return 77;
+  ret = TALER_TESTING_main (argv,
+                            "INFO",
+                            cfgfile,
+                            "exchange-account-2",
+                            bs,
+                            &cred,
+                            &run,
+                            NULL);
   purge_process (twisterd);
-
-  if (GNUNET_NO == with_fakebank)
-  {
-    GNUNET_OS_process_kill (bankd,
-                            SIGKILL);
-    GNUNET_OS_process_wait (bankd);
-    GNUNET_OS_process_destroy (bankd);
-  }
-
   GNUNET_free (twister_url);
-  if (GNUNET_OK == ret)
-    return 0;
-
-  return 1;
+  return ret;
 }
 
 

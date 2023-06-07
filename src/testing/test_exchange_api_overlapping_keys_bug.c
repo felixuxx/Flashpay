@@ -44,9 +44,9 @@
 static char *config_file;
 
 /**
- * Exchange configuration data.
+ * Our credentials.
  */
-static struct TALER_TESTING_ExchangeConfiguration ec;
+static struct TALER_TESTING_Credentials cred;
 
 
 /**
@@ -60,22 +60,21 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
-                                   MHD_HTTP_NO_CONTENT,
-                                   false),
-    TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2?receiver-name=2",
-                                MHD_HTTP_NO_CONTENT,
-                                false),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_file),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1),
-    TALER_TESTING_cmd_check_keys ("first-download",
-                                  1),
+    TALER_TESTING_cmd_run_fakebank ("run-fakebank",
+                                    cred.cfg,
+                                    "exchange-account-2"),
+    TALER_TESTING_cmd_system_start ("start-taler",
+                                    config_file,
+                                    "-e",
+                                    NULL),
+    TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                    cred.cfg,
+                                    true,
+                                    true),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
+    TALER_TESTING_cmd_check_keys ("first-download"),
     /* Causes GET /keys?last_denom_issue=0 */
     TALER_TESTING_cmd_check_keys_with_last_denom ("second-download",
-                                                  1,
                                                   "zero"),
     TALER_TESTING_cmd_end ()
   };
@@ -90,50 +89,25 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cipher;
-
   (void) argc;
-  /* These environment variables get in the way... */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup (argv[0],
-                    "INFO",
-                    NULL);
-  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
-  GNUNET_assert (NULL != cipher);
-  GNUNET_asprintf (&config_file,
-                   "test_exchange_api_keys_cherry_picking-%s.conf",
-                   cipher);
-  GNUNET_free (cipher);
-  TALER_TESTING_cleanup_files (config_file);
-  /* @helpers.  Run keyup, create tables, ... Note: it
-   * fetches the port number from config in order to see
-   * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (config_file,
-                                          GNUNET_YES,
-                                          &ec))
   {
-  case GNUNET_SYSERR:
-    GNUNET_break (0);
-    return 1;
-  case GNUNET_NO:
-    return 77;
-  case GNUNET_OK:
-    if (GNUNET_OK !=
-        /* Set up event loop and reschedule context, plus
-         * start/stop the exchange.  It calls TALER_TESTING_setup
-         * which creates the 'is' object.
-         */
-        TALER_TESTING_setup_with_exchange (&run,
-                                           NULL,
-                                           config_file))
-      return 1;
-    break;
-  default:
-    GNUNET_break (0);
-    return 1;
+    char *cipher;
+
+    cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+    GNUNET_assert (NULL != cipher);
+    GNUNET_asprintf (&config_file,
+                     "test_exchange_api_keys_cherry_picking-%s.conf",
+                     cipher);
+    GNUNET_free (cipher);
   }
-  return 0;
+  return TALER_TESTING_main (argv,
+                             "INFO",
+                             config_file,
+                             "exchange-account-2",
+                             TALER_TESTING_BS_FAKEBANK,
+                             &cred,
+                             &run,
+                             NULL);
 }
 
 

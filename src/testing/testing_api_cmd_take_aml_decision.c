@@ -107,16 +107,8 @@ take_aml_decision_cb (
   ds->dh = NULL;
   if (ds->expected_response != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);
@@ -141,8 +133,24 @@ take_aml_decision_run (void *cls,
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
   json_t *kyc_requirements = NULL;
+  const char *exchange_url;
 
   (void) cmd;
+  {
+    const struct TALER_TESTING_Command *exchange_cmd;
+
+    exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                          "exchange");
+    if (NULL == exchange_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                         &exchange_url));
+  }
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (is,
@@ -188,8 +196,8 @@ take_aml_decision_run (void *cls,
   }
 
   ds->dh = TALER_EXCHANGE_add_aml_decision (
-    is->ctx,
-    is->exchange_url,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     ds->justification,
     now,
     &ds->new_threshold,
@@ -224,10 +232,8 @@ take_aml_decision_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_add_aml_decision_cancel (ds->dh);
     ds->dh = NULL;
   }
@@ -254,7 +260,7 @@ take_aml_decision_traits (void *cls,
   struct AmlDecisionState *ws = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_h_payto (&ws->h_payto),
-    TALER_TESTING_make_trait_aml_justification (&ws->justification),
+    TALER_TESTING_make_trait_aml_justification (ws->justification),
     TALER_TESTING_make_trait_aml_decision (&ws->new_state),
     TALER_TESTING_make_trait_amount (&ws->new_threshold),
     TALER_TESTING_trait_end ()

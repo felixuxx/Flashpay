@@ -82,8 +82,30 @@ check_bank_admin_transfer_run (void *cls,
   const char *credit_payto;
   const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_TESTING_Command *cmd_ref;
+  struct TALER_FAKEBANK_Handle *fakebank;
 
   (void) cmd;
+  {
+    const struct TALER_TESTING_Command *fakebank_cmd;
+
+    fakebank_cmd
+      = TALER_TESTING_interpreter_get_command (is,
+                                               "fakebank");
+    if (NULL == fakebank_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_fakebank (fakebank_cmd,
+                                          &fakebank))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+  }
   cmd_ref
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 bcs->reserve_pub_ref);
@@ -109,9 +131,9 @@ check_bank_admin_transfer_run (void *cls,
                               &amount))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %u\n",
+                "Failed to parse amount `%s' at %s\n",
                 bcs->amount,
-                is->ip);
+                TALER_TESTING_interpreter_get_current_label (is));
     TALER_TESTING_interpreter_fail (is);
     return;
   }
@@ -122,7 +144,7 @@ check_bank_admin_transfer_run (void *cls,
               debit_payto,
               debit_account);
   if (GNUNET_OK !=
-      TALER_FAKEBANK_check_credit (is->fakebank,
+      TALER_FAKEBANK_check_credit (fakebank,
                                    &amount,
                                    debit_account,
                                    credit_account,

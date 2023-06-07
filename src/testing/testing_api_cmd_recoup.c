@@ -82,7 +82,6 @@ recoup_cb (void *cls,
   struct RecoupState *ps = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
   struct TALER_TESTING_Interpreter *is = ps->is;
-  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct TALER_TESTING_Command *reserve_cmd;
   char *cref;
   unsigned int idx;
@@ -90,18 +89,8 @@ recoup_cb (void *cls,
   ps->ph = NULL;
   if (ps->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                cmd->label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    fprintf (stderr, "\n");
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     hr->http_status);
     return;
   }
 
@@ -193,7 +182,11 @@ recoup_run (void *cls,
   char *cref;
   unsigned int idx;
   const struct TALER_ExchangeWithdrawValues *ewv;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   ps->is = is;
   if (GNUNET_OK !=
       TALER_TESTING_parse_coin_reference (
@@ -266,7 +259,7 @@ recoup_run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to recoup denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
-  ps->ph = TALER_EXCHANGE_recoup (is->exchange,
+  ps->ph = TALER_EXCHANGE_recoup (exchange,
                                   denom_pub,
                                   coin_sig,
                                   ewv,

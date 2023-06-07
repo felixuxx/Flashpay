@@ -34,14 +34,9 @@
 
 
 /**
- * Bank configuration data.
+ * Our credentials.
  */
-static struct TALER_TESTING_BankConfiguration bc;
-
-/**
- * Helper structure to keep exchange configuration values.
- */
-static struct TALER_TESTING_ExchangeConfiguration ec;
+static struct TALER_TESTING_Credentials cred;
 
 /**
  * Name of the configuration file to use.
@@ -66,8 +61,8 @@ transfer_to_exchange (const char *label,
 {
   return TALER_TESTING_cmd_admin_add_incoming (label,
                                                amount,
-                                               &bc.exchange_auth,
-                                               bc.user42_payto);
+                                               &cred.ba,
+                                               cred.user42_payto);
 }
 
 
@@ -82,21 +77,19 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command all[] = {
-    TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
-                                              config_filename,
-                                              "EUR:0.01",
-                                              "EUR:0.01"),
-    TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
-                                   MHD_HTTP_NO_CONTENT,
-                                   false),
-    TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2?receiver-name=2",
-                                MHD_HTTP_NO_CONTENT,
-                                false),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_filename),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1),
+    TALER_TESTING_cmd_run_fakebank ("run-fakebank",
+                                    cred.cfg,
+                                    "exchange-account-1"),
+    TALER_TESTING_cmd_system_start ("start-taler",
+                                    config_filename,
+                                    "-e",
+                                    "-u", "exchange-account-1",
+                                    NULL),
+    TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                    cred.cfg,
+                                    true,
+                                    true),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-on-start"),
     CMD_EXEC_AGGREGATOR ("run-aggregator-on-empty"),
     TALER_TESTING_cmd_exec_wirewatch ("run-wirewatch-on-empty",
@@ -111,8 +104,8 @@ run (void *cls,
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "clear-good-transfer-to-the-exchange",
       "EUR:5",
-      bc.user42_payto,                                            // debit
-      bc.exchange_payto,                                            // credit
+      cred.user42_payto,                                            // debit
+      cred.exchange_payto,                                            // credit
       "run-transfer-good-to-exchange"),
 
     TALER_TESTING_cmd_exec_closer ("run-closer-non-expired-reserve",
@@ -135,18 +128,17 @@ run (void *cls,
 
     CMD_EXEC_AGGREGATOR ("run-closer-on-expired-reserve"),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-1",
-                                           ec.exchange_url,
+                                           cred.exchange_url,
                                            "EUR:4.99",
-                                           bc.exchange_payto,
-                                           bc.user42_payto),
+                                           cred.exchange_payto,
+                                           cred.user42_payto),
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-2"),
     TALER_TESTING_cmd_end ()
   };
 
   (void) cls;
-  TALER_TESTING_run_with_fakebank (is,
-                                   all,
-                                   bc.exchange_auth.wire_gateway_url);
+  TALER_TESTING_run (is,
+                     all);
 }
 
 
@@ -154,69 +146,29 @@ int
 main (int argc,
       char *const argv[])
 {
-  const char *plugin_name;
-
   (void) argc;
-  /* these might get in the way */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test_taler_exchange_wirewatch",
-                    "INFO",
-                    NULL);
-
-  if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {
-    GNUNET_break (0);
-    return -1;
-  }
-  plugin_name++;
-  {
-    char *testname;
+    const char *plugin_name;
 
-    GNUNET_asprintf (&testname,
-                     "test-taler-exchange-wirewatch-%s",
-                     plugin_name);
+    plugin_name = strrchr (argv[0], (int) '-');
+    if (NULL == plugin_name)
+    {
+      GNUNET_break (0);
+      return -1;
+    }
+    plugin_name++;
     GNUNET_asprintf (&config_filename,
-                     "%s.conf",
-                     testname);
-    GNUNET_free (testname);
+                     "test-taler-exchange-wirewatch-%s.conf",
+                     plugin_name);
   }
-  /* check database is working */
-  {
-    struct GNUNET_PQ_Context *conn;
-    struct GNUNET_PQ_ExecuteStatement es[] = {
-      GNUNET_PQ_EXECUTE_STATEMENT_END
-    };
-
-    conn = GNUNET_PQ_connect ("postgres:///talercheck",
-                              NULL,
-                              es,
-                              NULL);
-    if (NULL == conn)
-      return 77;
-    GNUNET_PQ_disconnect (conn);
-  }
-
-  TALER_TESTING_cleanup_files (config_filename);
-  if (GNUNET_OK !=
-      TALER_TESTING_prepare_exchange (config_filename,
-                                      GNUNET_YES,
-                                      &ec))
-  {
-    TALER_LOG_INFO ("Could not prepare the exchange\n");
-    return 77;
-  }
-
-  if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (config_filename,
-                                      "exchange-account-1",
-                                      &bc))
-    return 77;
-
-  return (GNUNET_OK ==
-          TALER_TESTING_setup_with_exchange (&run,
-                                             NULL,
-                                             config_filename)) ? 0 : 1;
+  return TALER_TESTING_main (argv,
+                             "INFO",
+                             config_filename,
+                             "exchange-account-1",
+                             TALER_TESTING_BS_FAKEBANK,
+                             &cred,
+                             &run,
+                             NULL);
 }
 
 

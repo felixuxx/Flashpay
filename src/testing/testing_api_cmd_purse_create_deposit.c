@@ -162,16 +162,8 @@ deposit_cb (void *cls,
   ds->dh = NULL;
   if (ds->expected_response_code != dr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
@@ -197,8 +189,12 @@ deposit_run (void *cls,
 {
   struct PurseCreateDepositState *ds = cls;
   struct TALER_EXCHANGE_PurseDeposit deposits[ds->num_coin_references];
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ds->is = is;
   for (unsigned int i = 0; i<ds->num_coin_references; i++)
   {
@@ -263,7 +259,7 @@ deposit_run (void *cls,
                    "pay_deadline",
                    GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->dh = TALER_EXCHANGE_purse_create_with_deposit (
-    is->exchange,
+    exchange,
     &ds->purse_priv,
     &ds->merge_priv,
     &ds->contract_priv,
@@ -299,10 +295,8 @@ deposit_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_purse_create_with_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }

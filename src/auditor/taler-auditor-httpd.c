@@ -132,7 +132,7 @@ handle_mhd_completion_callback (void *cls,
 
 
 /**
- * Handle a "/version" request.
+ * Handle a "/config" request.
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
@@ -142,11 +142,11 @@ handle_mhd_completion_callback (void *cls,
  * @return MHD result code
   */
 static MHD_RESULT
-handle_version (struct TAH_RequestHandler *rh,
-                struct MHD_Connection *connection,
-                void **connection_cls,
-                const char *upload_data,
-                size_t *upload_data_size)
+handle_config (struct TAH_RequestHandler *rh,
+               struct MHD_Connection *connection,
+               void **connection_cls,
+               const char *upload_data,
+               size_t *upload_data_size)
 {
   static json_t *ver; /* we build the response only once, keep around for next query! */
 
@@ -207,9 +207,9 @@ handle_mhd_request (void *cls,
     { "/exchanges", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
       &TAH_EXCHANGES_handler, MHD_HTTP_OK },
-    { "/version", MHD_HTTP_METHOD_GET, "application/json",
+    { "/config", MHD_HTTP_METHOD_GET, "application/json",
       NULL, 0,
-      &handle_version, MHD_HTTP_OK },
+      &handle_config, MHD_HTTP_OK },
     /* Landing page, for now tells humans to go away
      * (NOTE: ideally, the reverse proxy will respond with a nicer page) */
     { "/", MHD_HTTP_METHOD_GET, "text/plain",

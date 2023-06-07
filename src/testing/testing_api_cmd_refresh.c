@@ -103,6 +103,11 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_RefreshData refresh_data;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Reference to a previous melt command.
    */
   const char *melt_reference;
@@ -210,6 +215,11 @@ struct RefreshRevealState
   struct TALER_EXCHANGE_RefreshesRevealHandle *rrh;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Convenience struct to keep in one place all the
    * data related to one fresh coin, set by the reveal callback
    * as it comes from the exchange.
@@ -273,6 +283,11 @@ struct RefreshLinkState
   const char *reveal_reference;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_LinkHandle *rlh;
@@ -334,8 +349,7 @@ do_reveal_retry (void *cls)
   struct RefreshRevealState *rrs = cls;
 
   rrs->retry_task = NULL;
-  rrs->is->commands[rrs->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (rrs->is);
   refresh_reveal_run (rrs,
                       NULL,
                       rrs->is);
@@ -357,8 +371,12 @@ reveal_cb (void *cls,
   struct RefreshRevealState *rrs = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
   const struct TALER_TESTING_Command *melt_cmd;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (rrs->is);
 
   rrs->rrh = NULL;
+  if (NULL == exchange)
+    return;
   if (rrs->expected_response_code != hr->http_status)
   {
     if (0 != rrs->do_retry)
@@ -380,24 +398,15 @@ reveal_cb (void *cls,
                                                          MAX_BACKOFF);
         rrs->total_backoff = GNUNET_TIME_relative_add (rrs->total_backoff,
                                                        rrs->backoff);
-        rrs->is->commands[rrs->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (rrs->is);
         rrs->retry_task = GNUNET_SCHEDULER_add_delayed (rrs->backoff,
                                                         &do_reveal_retry,
                                                         rrs);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                rrs->is->commands[rrs->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (rrs->is);
+    TALER_TESTING_unexpected_status (rrs->is,
+                                     hr->http_status);
     return;
   }
   melt_cmd = TALER_TESTING_interpreter_lookup_command (rrs->is,
@@ -444,9 +453,9 @@ reveal_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Total reveal backoff for %s was %s\n",
-                  rrs->is->commands[rrs->is->ip].label,
+                  rrs->cmd->label,
                   GNUNET_STRINGS_relative_time_to_string (rrs->total_backoff,
-                                                          GNUNET_YES));
+                                                          true));
     }
     break;
   default:
@@ -487,7 +496,12 @@ refresh_reveal_run (void *cls,
   struct RefreshRevealState *rrs = cls;
   struct RefreshMeltState *rms;
   const struct TALER_TESTING_Command *melt_cmd;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  rrs->cmd = cmd;
+  if (NULL == exchange)
+    return;
   rrs->is = is;
   melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        rrs->melt_reference);
@@ -504,7 +518,7 @@ refresh_reveal_run (void *cls,
 
     for (unsigned int i = 0; i<rms->num_fresh_coins; i++)
       alg_values[i] = rms->mbds[i].alg_value;
-    rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
+    rrs->rrh = TALER_EXCHANGE_refreshes_reveal (exchange,
                                                 &rms->rms,
                                                 &rms->refresh_data,
                                                 rms->num_fresh_coins,
@@ -538,10 +552,8 @@ refresh_reveal_cleanup (void *cls,
   (void) cmd;
   if (NULL != rrs->rrh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                rrs->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (rrs->is,
+                                      cmd->label);
     TALER_EXCHANGE_refreshes_reveal_cancel (rrs->rrh);
     rrs->rrh = NULL;
   }
@@ -585,8 +597,7 @@ do_link_retry (void *cls)
   struct RefreshLinkState *rls = cls;
 
   rls->retry_task = NULL;
-  rls->is->commands[rls->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (rls->is);
   refresh_link_run (rls,
                     NULL,
                     rls->is);
@@ -608,7 +619,6 @@ link_cb (void *cls,
   struct RefreshLinkState *rls = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &lr->hr;
   const struct TALER_TESTING_Command *reveal_cmd;
-  struct TALER_TESTING_Command *link_cmd = &rls->is->commands[rls->is->ip];
   unsigned int found;
   const unsigned int *num_fresh_coins;
 
@@ -634,24 +644,15 @@ link_cb (void *cls,
                                                          MAX_BACKOFF);
         rls->total_backoff = GNUNET_TIME_relative_add (rls->total_backoff,
                                                        rls->backoff);
-        rls->is->commands[rls->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (rls->is);
         rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
                                                         &do_link_retry,
                                                         rls);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                link_cmd->label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (rls->is);
+    TALER_TESTING_unexpected_status (rls->is,
+                                     hr->http_status);
     return;
   }
   reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
@@ -749,9 +750,9 @@ link_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Total link backoff for %s was %s\n",
-                  rls->is->commands[rls->is->ip].label,
+                  rls->cmd->label,
                   GNUNET_STRINGS_relative_time_to_string (rls->total_backoff,
-                                                          GNUNET_YES));
+                                                          true));
     }
     break;
   default:
@@ -782,8 +783,12 @@ refresh_link_run (void *cls,
   const struct TALER_TESTING_Command *reveal_cmd;
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_TESTING_Command *coin_cmd;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
-  (void) cmd;
+  rls->cmd = cmd;
+  if (NULL == exchange)
+    return;
   rls->is = is;
   reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
                                                          rls->reveal_reference);
@@ -827,7 +832,7 @@ refresh_link_run (void *cls,
   }
 
   /* finally, use private key from withdraw sign command */
-  rls->rlh = TALER_EXCHANGE_link (is->exchange,
+  rls->rlh = TALER_EXCHANGE_link (exchange,
                                   coin_priv,
                                   rms->refresh_data.melt_age_commitment_proof,
                                   &link_cb,
@@ -857,11 +862,8 @@ refresh_link_cleanup (void *cls,
 
   if (NULL != rls->rlh)
   {
-
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                rls->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (rls->is,
+                                      cmd->label);
     TALER_EXCHANGE_link_cancel (rls->rlh);
     rls->rlh = NULL;
   }
@@ -885,8 +887,7 @@ do_melt_retry (void *cls)
   struct RefreshMeltState *rms = cls;
 
   rms->retry_task = NULL;
-  rms->is->commands[rms->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (rms->is);
   melt_run (rms,
             NULL,
             rms->is);
@@ -907,8 +908,12 @@ melt_cb (void *cls,
 {
   struct RefreshMeltState *rms = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &mr->hr;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (rms->is);
 
   rms->rmh = NULL;
+  if (NULL == exchange)
+    return;
   if (rms->expected_response_code != hr->http_status)
   {
     if (0 != rms->do_retry)
@@ -930,24 +935,15 @@ melt_cb (void *cls,
                                                          MAX_BACKOFF);
         rms->total_backoff = GNUNET_TIME_relative_add (rms->total_backoff,
                                                        rms->backoff);
-        rms->is->commands[rms->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (rms->is);
         rms->retry_task = GNUNET_SCHEDULER_add_delayed (rms->backoff,
                                                         &do_melt_retry,
                                                         rms);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                rms->is->commands[rms->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (rms->is);
+    TALER_TESTING_unexpected_status (rms->is,
+                                     hr->http_status);
     return;
   }
   if (MHD_HTTP_OK == hr->http_status)
@@ -969,15 +965,15 @@ melt_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Total melt backoff for %s was %s\n",
-                rms->is->commands[rms->is->ip].label,
+                rms->cmd->label,
                 GNUNET_STRINGS_relative_time_to_string (rms->total_backoff,
-                                                        GNUNET_YES));
+                                                        true));
   }
   if (rms->double_melt)
   {
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
-                     rms->is->commands[rms->is->ip].label);
-    rms->rmh = TALER_EXCHANGE_melt (rms->is->exchange,
+                     rms->cmd->label);
+    rms->rmh = TALER_EXCHANGE_melt (exchange,
                                     &rms->rms,
                                     &rms->refresh_data,
                                     &melt_cb,
@@ -1008,8 +1004,12 @@ melt_run (void *cls,
     NULL
   };
   const char **melt_fresh_amounts;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
-  (void) cmd;
+  rms->cmd = cmd;
+  if (NULL == exchange)
+    return;
   if (NULL == (melt_fresh_amounts = rms->melt_fresh_amounts))
     melt_fresh_amounts = default_melt_fresh_amounts;
   rms->is = is;
@@ -1113,7 +1113,7 @@ melt_run (void *cls,
         TALER_TESTING_interpreter_fail (rms->is);
         return;
       }
-      fresh_pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+      fresh_pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
                                         &fresh_amount,
                                         age_restricted);
       if (NULL == fresh_pk)
@@ -1149,7 +1149,7 @@ melt_run (void *cls,
     GNUNET_assert (age_restricted ==
                    (NULL != age_commitment_proof));
 
-    rms->rmh = TALER_EXCHANGE_melt (is->exchange,
+    rms->rmh = TALER_EXCHANGE_melt (exchange,
                                     &rms->rms,
                                     &rms->refresh_data,
                                     &melt_cb,
@@ -1181,10 +1181,8 @@ melt_cleanup (void *cls,
   (void) cmd;
   if (NULL != rms->rmh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                rms->is->ip,
-                rms->is->commands[rms->is->ip].label);
+    TALER_TESTING_command_incomplete (rms->is,
+                                      cmd->label);
     TALER_EXCHANGE_melt_cancel (rms->rmh);
     rms->rmh = NULL;
   }

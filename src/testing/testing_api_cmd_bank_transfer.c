@@ -149,8 +149,7 @@ do_retry (void *cls)
   struct TransferState *fts = cls;
 
   fts->retry_task = NULL;
-  fts->is->commands[fts->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (fts->is);
   transfer_run (fts,
                 NULL,
                 fts->is);
@@ -191,7 +190,7 @@ confirmation_cb (void *cls,
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
-        fts->is->commands[fts->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (fts->is);
         fts->retry_task
           = GNUNET_SCHEDULER_add_delayed (fts->backoff,
                                           &do_retry,
@@ -199,12 +198,8 @@ confirmation_cb (void *cls,
         return;
       }
     }
-    GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Bank returned HTTP status %u/%d\n",
-                tr->http_status,
-                (int) tr->ec);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     tr->http_status);
     return;
   }
 
@@ -276,9 +271,8 @@ transfer_cleanup (void *cls,
 
   if (NULL != fts->weh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %s did not complete\n",
-                cmd->label);
+    TALER_TESTING_command_incomplete (fts->is,
+                                      cmd->label);
     TALER_BANK_transfer_cancel (fts->weh);
     fts->weh = NULL;
   }
@@ -311,12 +305,12 @@ transfer_traits (void *cls,
   struct TransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_exchange_url (
-      (const char **) &fts->exchange_base_url),
+      fts->exchange_base_url),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
     TALER_TESTING_make_trait_credit_payto_uri (
-      (const char **) &fts->payto_credit_account),
+      fts->payto_credit_account),
     TALER_TESTING_make_trait_debit_payto_uri (
-      (const char **) &fts->payto_debit_account),
+      fts->payto_debit_account),
     TALER_TESTING_make_trait_amount (&fts->amount),
     TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
     TALER_TESTING_make_trait_wtid (&fts->wtid),

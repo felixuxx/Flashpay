@@ -163,14 +163,19 @@ read_stdout (void *cls)
                 "Child closed stdout\n");
     return;
   }
+  /* forward log, except single '.' outputs */
+  if ( (1 != ret) ||
+       ('.' != buf[off]) )
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "TUS: %.*s\n",
+                (int) ret,
+                &buf[off]);
   start_reader (as);
   off += ret;
   if (as->ready)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Taler system UP\n");
-    TALER_TESTING_interpreter_next (as->is);
-    return; /* done */
+    /* already done */
+    return;
   }
   if (NULL !=
       memmem (buf,
@@ -178,7 +183,10 @@ read_stdout (void *cls)
               "\n<<READY>>\n",
               strlen ("\n<<READY>>\n")))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Taler system UP\n");
     as->ready = true;
+    TALER_TESTING_interpreter_next (as->is);
     return;
   }
 
@@ -226,7 +234,7 @@ system_run (void *cls,
 
   (void) cmd;
   as->is = is;
-  as->pipe_in = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
+  as->pipe_in = GNUNET_DISK_pipe (GNUNET_DISK_PF_BLOCKING_READ);
   GNUNET_assert (NULL != as->pipe_in);
   as->pipe_out = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
   GNUNET_assert (NULL != as->pipe_out);
@@ -234,7 +242,7 @@ system_run (void *cls,
     = GNUNET_OS_start_process_vap (
         GNUNET_OS_INHERIT_STD_ERR,
         as->pipe_in, as->pipe_out, NULL,
-        "taler-benchmark-setup.sh",
+        "taler-unified-setup.sh",
         as->args);
   if (NULL == as->system_proc)
   {
@@ -357,7 +365,7 @@ TALER_TESTING_cmd_system_start (
   va_end (ap);
   as->args = GNUNET_new_array (cnt,
                                char *);
-  as->args[0] = GNUNET_strdup ("taler-benchmark-setup");
+  as->args[0] = GNUNET_strdup ("taler-unified-setup");
   as->args[1] = GNUNET_strdup ("-c");
   as->args[2] = GNUNET_strdup (config_file);
   cnt = 3;

@@ -623,15 +623,20 @@ enum TALER_EXCHANGE_CheckKeysFlags
 
 /**
  * Check if our current response for /keys is valid, and if
- * not, trigger /keys download.
+ * not, trigger /keys download.  If @a cb is given, changes
+ * the @a exchange callback for the /keys response.
  *
  * @param exchange exchange to check keys for
  * @param flags options controlling when to download what
+ * @param cb function to call with the /keys response, can be NULL
+ * @param cb_cls closure for @a cb
  * @return until when the existing response is current, 0 if we are re-downloading now
  */
 struct GNUNET_TIME_Timestamp
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   enum TALER_EXCHANGE_CheckKeysFlags flags);
+                                   enum TALER_EXCHANGE_CheckKeysFlags flags,
+                                   TALER_EXCHANGE_CertificationCallback cb,
+                                   void *cb_cls);
 
 
 /**

@@ -46,3 +46,12 @@ test_exchange_api_twisted_cs
 test_exchange_api_twisted_rsa
 test_exchange_p2p_cs
 test_exchange_p2p_rsa
+*.edited
+tmp-last-response.*
+test_exchange_api_home/taler/auditor/
+test_exchange_api_home/taler/exchange-offline/secm_tofus.pub
+test_exchange_api_home/taler/exchange-secmod-cs/
+test_exchange_api_home/taler/exchange-secmod-eddsa/
+test_exchange_api_home/taler/exchange-secmod-rsa/
+test_exchange_api_keys_cherry_picking_home/taler/
+test_taler_exchange_httpd_home/taler/

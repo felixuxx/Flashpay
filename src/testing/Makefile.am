@@ -13,6 +13,9 @@ endif
 clean-local:
 	rm -rf report*
 
+bin_SCRIPTS = \
+  taler-unified-setup.sh
+
 # Libraries
 
 lib_LTLIBRARIES = \
@@ -54,11 +57,11 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_batch.c \
   testing_api_cmd_batch_deposit.c \
   testing_api_cmd_batch_withdraw.c \
-  testing_api_cmd_change_auth.c \
   testing_api_cmd_check_aml_decision.c \
   testing_api_cmd_check_aml_decisions.c \
   testing_api_cmd_check_keys.c \
   testing_api_cmd_common.c \
+  testing_api_cmd_connect_with_state.c \
   testing_api_cmd_contract_get.c \
   testing_api_cmd_deposit.c \
   testing_api_cmd_deposits_get.c \
@@ -70,6 +73,8 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_transfer.c \
   testing_api_cmd_exec_wget.c \
   testing_api_cmd_exec_wirewatch.c \
+  testing_api_cmd_get_auditor.c \
+  testing_api_cmd_get_exchange.c \
   testing_api_cmd_insert_deposit.c \
   testing_api_cmd_kyc_check_get.c \
   testing_api_cmd_kyc_proof.c \
@@ -85,7 +90,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_purse_deposit.c \
   testing_api_cmd_purse_get.c \
   testing_api_cmd_purse_merge.c \
-  testing_api_cmd_set_wire_fee.c \
   testing_api_cmd_recoup.c \
   testing_api_cmd_recoup_refresh.c \
   testing_api_cmd_refund.c \
@@ -101,9 +105,10 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_revoke.c \
   testing_api_cmd_revoke_denom_key.c \
   testing_api_cmd_revoke_sign_key.c \
-  testing_api_cmd_rewind.c \
+  testing_api_cmd_run_fakebank.c \
   testing_api_cmd_serialize_keys.c \
   testing_api_cmd_set_officer.c \
+  testing_api_cmd_set_wire_fee.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_sleep.c \
   testing_api_cmd_stat.c \
@@ -115,14 +120,15 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_wire_add.c \
   testing_api_cmd_wire_del.c \
   testing_api_cmd_withdraw.c \
-  testing_api_helpers_auditor.c \
-  testing_api_helpers_bank.c \
-  testing_api_helpers_exchange.c \
   testing_api_loop.c \
+  testing_api_misc.c \
   testing_api_traits.c
+
+
 libtalertesting_la_LIBADD = \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
@@ -141,15 +147,16 @@ libtalertesting_la_LIBADD = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
+# removed for now, due to bug(s) in libeufin!
+noinst_PROGRAMS = \
+  test_bank_api_with_nexus
 
 .NOTPARALLEL:
 check_PROGRAMS = \
   test_auditor_api_cs \
   test_auditor_api_rsa \
-  test_auditor_api_version_rsa \
-  test_auditor_api_version_cs \
+  test_auditor_api_version \
   test_bank_api_with_fakebank \
-  test_bank_api_with_nexus \
   test_exchange_api_cs \
   test_exchange_api_rsa \
   test_exchange_api_keys_cherry_picking_cs \
@@ -212,22 +219,9 @@ test_auditor_api_rsa_LDADD = \
   $(XLIB)
 
 
-test_auditor_api_version_cs_SOURCES = \
+test_auditor_api_version_SOURCES = \
   test_auditor_api_version.c
-test_auditor_api_version_cs_LDADD = \
-  libtalertesting.la \
-  $(top_builddir)/src/lib/libtalerauditor.la \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunettesting \
-  -lgnunetcurl \
-  -lgnunetutil \
-  -ljansson \
-  $(XLIB)
-
-test_auditor_api_version_rsa_SOURCES = \
-  test_auditor_api_version.c
-test_auditor_api_version_rsa_LDADD = \
+test_auditor_api_version_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(LIBGCRYPT_LIBS) \
@@ -543,10 +537,14 @@ test_kyc_api_LDADD = \
 # Distribution
 
 EXTRA_DIST = \
+  $(bin_SCRIPTS) \
+  coins-cs.conf \
+  coins-rsa.conf \
   test_auditor_api-cs.conf \
   test_auditor_api-rsa.conf \
   test_auditor_api_expire_reserve_now-cs.conf \
   test_auditor_api_expire_reserve_now-rsa.conf \
+  test_bank_api.conf \
   test_bank_api_fakebank.conf \
   test_bank_api_fakebank_twisted.conf \
   test_bank_api_nexus.conf \

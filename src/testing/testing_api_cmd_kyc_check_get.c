@@ -73,19 +73,12 @@ check_kyc_cb (void *cls,
 {
   struct KycCheckGetState *kcg = cls;
   struct TALER_TESTING_Interpreter *is = kcg->is;
-  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   kcg->kwh = NULL;
   if (kcg->expected_response_code != ks->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                ks->http_status,
-                (int) ks->ec,
-                cmd->label,
-                __FILE__,
-                __LINE__);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     ks->http_status);
     return;
   }
   switch (ks->http_status)
@@ -121,8 +114,12 @@ check_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const uint64_t *requirement_row;
   const struct TALER_PaytoHashP *h_payto;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   kcg->is = is;
   res_cmd = TALER_TESTING_interpreter_lookup_command (kcg->is,
                                                       kcg->
@@ -155,7 +152,7 @@ check_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
-  kcg->kwh = TALER_EXCHANGE_kyc_check (is->exchange,
+  kcg->kwh = TALER_EXCHANGE_kyc_check (exchange,
                                        *requirement_row,
                                        h_payto,
                                        TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
@@ -181,10 +178,8 @@ check_kyc_cleanup (void *cls,
 
   if (NULL != kcg->kwh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                kcg->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (kcg->is,
+                                      cmd->label);
     TALER_EXCHANGE_kyc_check_cancel (kcg->kwh);
     kcg->kwh = NULL;
   }
@@ -210,8 +205,7 @@ check_kyc_traits (void *cls,
 {
   struct KycCheckGetState *kcg = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_kyc_url (
-      (const char **) &kcg->kyc_url),
+    TALER_TESTING_make_trait_kyc_url (kcg->kyc_url),
     TALER_TESTING_trait_end ()
   };
 
