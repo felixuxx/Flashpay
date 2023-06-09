@@ -236,7 +236,7 @@ test_bank_api_with_nexus_SOURCES = \
   test_bank_api.c
 test_bank_api_with_nexus_LDADD = \
   libtalertesting.la \
-  -ltalerexchange \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   -lgnunetutil \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(XLIB)
@@ -245,7 +245,7 @@ test_bank_api_with_fakebank_SOURCES = \
   test_bank_api.c
 test_bank_api_with_fakebank_LDADD = \
   libtalertesting.la \
-  -ltalerexchange \
+  $(top_builddir)/src/lib/libtalerexchange.la \
   -lgnunetutil \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(XLIB)
