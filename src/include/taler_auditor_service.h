@@ -154,6 +154,7 @@ struct TALER_AUDITOR_HttpResponse
  * @param vi basic information about the auditor
  * @param compat protocol compatibility information
  */
+// FIXME: bad API!
 typedef void
 (*TALER_AUDITOR_VersionCallback) (
   void *cls,

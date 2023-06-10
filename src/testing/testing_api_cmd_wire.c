@@ -39,6 +39,11 @@ struct WireState
   struct TALER_EXCHANGE_WireHandle *wh;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Which wire-method we expect is offered by the exchange.
    */
   const char *expected_method;
@@ -80,7 +85,6 @@ wire_cb (void *cls,
 {
   struct WireState *ws = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &wr->hr;
-  struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
   TALER_LOG_DEBUG ("Checking parsed /wire response\n");
@@ -145,7 +149,7 @@ wire_cb (void *cls,
           {
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                         "Wire fee mismatch to command %s\n",
-                        cmd->label);
+                        ws->cmd->label);
             TALER_TESTING_interpreter_fail (ws->is);
             return;
           }
@@ -187,10 +191,14 @@ wire_run (void *cls,
           struct TALER_TESTING_Interpreter *is)
 {
   struct WireState *ws = cls;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
-  (void) cmd;
+  ws->cmd = cmd;
+  if (NULL == exchange)
+    return;
   ws->is = is;
-  ws->wh = TALER_EXCHANGE_wire (is->exchange,
+  ws->wh = TALER_EXCHANGE_wire (exchange,
                                 &wire_cb,
                                 ws);
 }
@@ -211,10 +219,8 @@ wire_cleanup (void *cls,
 
   if (NULL != ws->wh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ws->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ws->is,
+                                      cmd->label);
     TALER_EXCHANGE_wire_cancel (ws->wh);
     ws->wh = NULL;
   }

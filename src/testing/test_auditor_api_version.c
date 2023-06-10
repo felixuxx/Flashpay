@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -39,7 +39,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_auditor_api.conf"
+#define CONFIG_FILE "test_auditor_api-rsa.conf"
 
 static struct TALER_AUDITOR_Handle *ah;
 
@@ -50,6 +50,7 @@ static struct GNUNET_CURL_RescheduleContext *rc;
 static int global_ret;
 
 static struct GNUNET_SCHEDULER_Task *tt;
+
 
 static void
 do_shutdown (void *cls)
@@ -148,15 +149,16 @@ main (int argc,
                                   "taler-auditor-httpd",
                                   "taler-auditor-httpd",
                                   "-c", CONFIG_FILE,
+                                  "-L", "INFO",
                                   NULL);
   if (NULL == proc)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to run `taler-auditor-httpd`,"
-                " is your PATH correct?\n");
+                "Failed to run `taler-auditor-httpd`, is your PATH correct?\n");
     return 77;
   }
-  if (0 != TALER_TESTING_wait_auditor_ready ("http://localhost:8083/"))
+  global_ret = TALER_TESTING_wait_httpd_ready ("http://localhost:8083/");
+  if (0 != global_ret)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to launch `taler-auditor-httpd`\n");
@@ -166,7 +168,8 @@ main (int argc,
     GNUNET_SCHEDULER_run (&run,
                           NULL);
   }
-  GNUNET_OS_process_kill (proc, SIGTERM);
+  GNUNET_OS_process_kill (proc,
+                          SIGTERM);
   GNUNET_OS_process_wait (proc);
   GNUNET_OS_process_destroy (proc);
   return global_ret;

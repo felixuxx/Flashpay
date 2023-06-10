@@ -48,81 +48,6 @@ TALER_TESTING_cleanup_files (const char *config_name)
 }
 
 
-/**
- * Remove @a option directory from @a section in @a cfg.
- *
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-remove_dir (const struct GNUNET_CONFIGURATION_Handle *cfg,
-            const char *section,
-            const char *option)
-{
-  char *dir;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               section,
-                                               option,
-                                               &dir))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               option);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_YES ==
-      GNUNET_DISK_directory_test (dir,
-                                  GNUNET_NO))
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_DISK_directory_remove (dir));
-  GNUNET_free (dir);
-  return GNUNET_OK;
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_TESTING_cleanup_files_cfg (void *cls,
-                                 const struct GNUNET_CONFIGURATION_Handle *cfg)
-{
-  char *dir;
-
-  (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "exchange-offline",
-                                               "SECM_TOFU_FILE",
-                                               &dir))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange-offline",
-                               "SECM_TOFU_FILE");
-    return GNUNET_SYSERR;
-  }
-  if ( (0 != unlink (dir)) &&
-       (ENOENT != errno) )
-  {
-    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                              "unlink",
-                              dir);
-    GNUNET_free (dir);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (dir);
-  if (GNUNET_OK !=
-      remove_dir (cfg,
-                  "taler-exchange-secmod-eddsa",
-                  "KEY_DIR"))
-    return GNUNET_SYSERR;
-  if (GNUNET_OK !=
-      remove_dir (cfg,
-                  "taler-exchange-secmod-rsa",
-                  "KEY_DIR"))
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
 enum GNUNET_GenericReturnValue
 TALER_TESTING_run_auditor_exchange (const char *config_filename,
                                     const char *exchange_master_pub,
@@ -410,66 +335,6 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 }
 
 
-const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount,
-                       bool age_restricted)
-{
-  struct GNUNET_TIME_Timestamp now;
-  struct TALER_EXCHANGE_DenomPublicKey *pk;
-  char *str;
-
-  now = GNUNET_TIME_timestamp_get ();
-  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
-  {
-    pk = &keys->denom_keys[i];
-    if ( (0 == TALER_amount_cmp (amount,
-                                 &pk->value)) &&
-         (GNUNET_TIME_timestamp_cmp (now,
-                                     >=,
-                                     pk->valid_from)) &&
-         (GNUNET_TIME_timestamp_cmp (now,
-                                     <,
-                                     pk->withdraw_valid_until)) &&
-         (age_restricted == (0 != pk->key.age_mask.bits)) )
-      return pk;
-  }
-  /* do 2nd pass to check if expiration times are to blame for
-   * failure */
-  str = TALER_amount_to_string (amount);
-  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
-  {
-    pk = &keys->denom_keys[i];
-    if ( (0 == TALER_amount_cmp (amount,
-                                 &pk->value)) &&
-         (GNUNET_TIME_timestamp_cmp (now,
-                                     <,
-                                     pk->valid_from) ||
-          GNUNET_TIME_timestamp_cmp (now,
-                                     >,
-                                     pk->withdraw_valid_until) ) &&
-         (age_restricted == (0 != pk->key.age_mask.bits)) )
-    {
-      GNUNET_log
-        (GNUNET_ERROR_TYPE_WARNING,
-        "Have denomination key for `%s', but with wrong"
-        " expiration range %llu vs [%llu,%llu)\n",
-        str,
-        (unsigned long long) now.abs_time.abs_value_us,
-        (unsigned long long) pk->valid_from.abs_time.abs_value_us,
-        (unsigned long long) pk->withdraw_valid_until.abs_time.abs_value_us);
-      GNUNET_free (str);
-      return NULL;
-    }
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "No denomination key for amount %s found\n",
-              str);
-  GNUNET_free (str);
-  return NULL;
-}
-
-
 int
 TALER_TESTING_wait_exchange_ready (const char *base_url)
 {
@@ -490,38 +355,6 @@ TALER_TESTING_wait_exchange_ready (const char *base_url)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to launch `taler-exchange-httpd` service (or `wget')\n");
-      GNUNET_free (wget_cmd);
-      return 77;
-    }
-    sleep (1);
-    iter++;
-  }
-  while (0 != system (wget_cmd));
-  GNUNET_free (wget_cmd);
-  return 0;
-}
-
-
-int
-TALER_TESTING_wait_httpd_ready (const char *base_url)
-{
-  char *wget_cmd;
-  unsigned int iter;
-
-  GNUNET_asprintf (&wget_cmd,
-                   "wget -q -t 1 -T 1 %s -o /dev/null -O /dev/null",
-                   base_url); // make sure ends with '/'
-  /* give child time to start and bind against the socket */
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Waiting for HTTP service to be ready (check with: %s)\n",
-              wget_cmd);
-  iter = 0;
-  do
-  {
-    if (10 == iter)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to launch HTTP service (or `wget')\n");
       GNUNET_free (wget_cmd);
       return 77;
     }
@@ -957,31 +790,6 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
     config_file,
     &TALER_TESTING_setup_with_auditor_and_exchange_cfg,
     &setup_ctx);
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_TESTING_url_port_free (const char *url)
-{
-  const char *port;
-  long pnum;
-
-  port = strrchr (url,
-                  (unsigned char) ':');
-  if (NULL == port)
-    pnum = 80;
-  else
-    pnum = strtol (port + 1, NULL, 10);
-  if (GNUNET_OK !=
-      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
-                                     pnum))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Port %u not available.\n",
-                (unsigned int) pnum);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
 }
 
 

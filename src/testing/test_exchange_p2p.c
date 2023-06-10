@@ -42,14 +42,9 @@
 static char *config_file;
 
 /**
- * Exchange configuration data.
+ * Our credentials.
  */
-static struct TALER_TESTING_ExchangeConfiguration ec;
-
-/**
- * Bank configuration data.
- */
-static struct TALER_TESTING_BankConfiguration bc;
+struct TALER_TESTING_Credentials cred;
 
 /**
  * Some tests behave differently when using CS as we cannot
@@ -90,8 +85,8 @@ static bool uses_cs;
  */
 #define CMD_TRANSFER_TO_EXCHANGE(label,amount) \
   TALER_TESTING_cmd_admin_add_incoming (label, amount, \
-                                        &bc.exchange_auth,                \
-                                        bc.user42_payto)
+                                        &cred.ba,                \
+                                        cred.user42_payto)
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -122,13 +117,13 @@ run (void *cls,
                                     MHD_HTTP_OK),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
                                                  "EUR:5.04",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
+                                                 cred.user42_payto,
+                                                 cred.exchange_payto,
                                                  "create-reserve-1"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-2",
                                                  "EUR:5.01",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
+                                                 cred.user42_payto,
+                                                 cred.exchange_payto,
                                                  "create-reserve-2"),
     /**
      * Make a reserve exist, according to the previous
@@ -380,15 +375,15 @@ run (void *cls,
                               "EUR:1.04"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-100",
                                                  "EUR:1.04",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
+                                                 cred.user42_payto,
+                                                 cred.exchange_payto,
                                                  "create-reserve-100"),
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-101",
                               "EUR:1.04"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-101",
                                                  "EUR:1.04",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
+                                                 cred.user42_payto,
+                                                 cred.exchange_payto,
                                                  "create-reserve-101"),
     CMD_EXEC_WIREWATCH ("wirewatch-100"),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-100",
@@ -500,32 +495,18 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command commands[] = {
-    /* setup exchange */
-    TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
-                                   MHD_HTTP_NO_CONTENT,
-                                   false),
-    TALER_TESTING_cmd_exec_offline_sign_extensions ("offline-sign-extensions",
-                                                    config_file),
-    TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2?receiver-name=2",
-                                MHD_HTTP_NO_CONTENT,
-                                false),
-    TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-wire-fees",
-                                              config_file,
-                                              "EUR:0.01",
-                                              "EUR:0.01"),
-    TALER_TESTING_cmd_exec_offline_sign_global_fees ("offline-sign-global-fees",
-                                                     config_file,
-                                                     "EUR:0.01",
-                                                     "EUR:0.01",
-                                                     "EUR:0.01",
-                                                     GNUNET_TIME_UNIT_MINUTES,
-                                                     GNUNET_TIME_UNIT_DAYS,
-                                                     1),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_file),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1),
+    TALER_TESTING_cmd_run_fakebank ("run-fakebank",
+                                    cred.cfg,
+                                    "exchange-account-2"),
+    TALER_TESTING_cmd_system_start ("start-taler",
+                                    config_file,
+                                    "-e",
+                                    NULL),
+    TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                    cred.cfg,
+                                    true,
+                                    true),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     TALER_TESTING_cmd_batch ("withdraw",
                              withdraw),
     TALER_TESTING_cmd_batch ("push",
@@ -541,9 +522,8 @@ run (void *cls,
   };
 
   (void) cls;
-  TALER_TESTING_run_with_fakebank (is,
-                                   commands,
-                                   bc.exchange_auth.wire_gateway_url);
+  TALER_TESTING_run (is,
+                     commands);
 }
 
 
@@ -551,59 +531,26 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cipher;
-
   (void) argc;
-  /* These environment variables get in the way... */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup (argv[0],
-                    "INFO",
-                    NULL);
-
-  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
-  GNUNET_assert (NULL != cipher);
-  uses_cs = (0 == strcmp (cipher, "cs"));
-  GNUNET_asprintf (&config_file,
-                   "test_exchange_api-%s.conf",
-                   cipher);
-  GNUNET_free (cipher);
-
-  /* Check fakebank port is available and get config */
-  if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (config_file,
-                                      "exchange-account-2",
-                                      &bc))
-    return 77;
-  TALER_TESTING_cleanup_files (config_file);
-  /* @helpers.  Run keyup, create tables, ... Note: it
-   * fetches the port number from config in order to see
-   * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (config_file,
-                                          GNUNET_YES,
-                                          &ec))
   {
-  case GNUNET_SYSERR:
-    GNUNET_break (0);
-    return 1;
-  case GNUNET_NO:
-    return 78;
-  case GNUNET_OK:
-    if (GNUNET_OK !=
-        /* Set up event loop and reschedule context, plus
-         * start/stop the exchange.  It calls TALER_TESTING_setup
-         * which creates the 'is' object.
-         */
-        TALER_TESTING_setup_with_exchange (&run,
-                                           NULL,
-                                           config_file))
-      return 2;
-    break;
-  default:
-    GNUNET_break (0);
-    return 3;
+    char *cipher;
+
+    cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+    GNUNET_assert (NULL != cipher);
+    uses_cs = (0 == strcmp (cipher, "cs"));
+    GNUNET_asprintf (&config_file,
+                     "test_exchange_api-%s.conf",
+                     cipher);
+    GNUNET_free (cipher);
   }
-  return 0;
+  return TALER_TESTING_main (argv,
+                             "INFO",
+                             config_file,
+                             "exchange-account-2",
+                             TALER_TESTING_BS_FAKEBANK,
+                             &cred,
+                             &run,
+                             NULL);
 }
 
 

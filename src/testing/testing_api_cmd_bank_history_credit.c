@@ -83,6 +83,11 @@ struct HistoryState
   struct TALER_BANK_CreditHistoryHandle *hh;
 
   /**
+   * The interpreter.
+   */
+  struct TALER_TESTING_Interpreter *is;
+
+  /**
    * Authentication data for the operation.
    */
   struct TALER_BANK_AuthenticationData auth;
@@ -144,6 +149,139 @@ print_expected (struct History *h,
 
 
 /**
+ * Closure for command_cb().
+ */
+struct IteratorContext
+{
+  /**
+   * Array of history items to return.
+   */
+  struct History *h;
+
+  /**
+   * Set to the row ID from where on we should actually process history items,
+   * or NULL if we should process all of them.
+   */
+  const uint64_t *row_id_start;
+
+  /**
+   * History state we are working on.
+   */
+  struct HistoryState *hs;
+
+  /**
+   * Current length of the @e h array.
+   */
+  unsigned int total;
+
+  /**
+   * Current write position in @e h array.
+   */
+  unsigned int pos;
+
+  /**
+   * Ok equals True whenever a starting row_id was provided AND was found
+   * among the CMDs, OR no starting row was given in the first place.
+   */
+  bool ok;
+
+};
+
+
+/**
+ * Helper function of build_history() that expands
+ * the history for each relevant command encountered.
+ *
+ * @param[in,out] cls our `struct IteratorContext`
+ * @param cmd a command to process
+ */
+static void
+command_cb (void *cls,
+            const struct TALER_TESTING_Command *cmd)
+{
+  struct IteratorContext *ic = cls;
+  struct HistoryState *hs = ic->hs;
+  const uint64_t *row_id;
+  const char *credit_account;
+  const char *debit_account;
+  const struct TALER_Amount *amount;
+  const struct TALER_ReservePublicKeyP *reserve_pub;
+  const char *exchange_credit_url;
+
+  /**
+   * The following command allows us to skip over those CMDs
+   * that do not offer a "row_id" trait.  Such skipped CMDs are
+   * not interesting for building a history.
+   */
+  if ( (GNUNET_OK !=
+        TALER_TESTING_get_trait_bank_row (cmd,
+                                          &row_id)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_credit_payto_uri (cmd,
+                                                  &credit_account)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_debit_payto_uri (cmd,
+                                                 &debit_account)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_amount (cmd,
+                                        &amount)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_reserve_pub (cmd,
+                                             &reserve_pub)) ||
+       (GNUNET_OK !=
+        TALER_TESTING_get_trait_exchange_bank_account_url (
+          cmd,
+          &exchange_credit_url)) )
+    return;   // Not an interesting event
+
+  /**
+   * Is the interesting event a match with regard to
+   * the row_id value?  If yes, store this condition
+   * to the state and analyze the next CMDs.
+   */
+  if ( (NULL != ic->row_id_start) &&
+       (*(ic->row_id_start) == *row_id) &&
+       (! ic->ok) )
+  {
+    ic->ok = true;
+    return;
+  }
+  /**
+   * The interesting event didn't match the wanted
+   * row_id value, analyze the next CMDs.  Note: this
+   * branch is relevant only when row_id WAS given.
+   */
+  if (! ic->ok)
+    return;
+  if (0 != strcasecmp (hs->account_url,
+                       exchange_credit_url))
+    return;   // Account mismatch
+  if (ic->total >= GNUNET_MAX (hs->num_results,
+                               -hs->num_results) )
+  {
+    TALER_LOG_DEBUG ("Hit history limit\n");
+    return;
+  }
+  TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
+                  debit_account,
+                  credit_account,
+                  hs->account_url);
+  /* found matching record, make sure we have room */
+  if (ic->pos == ic->total)
+    GNUNET_array_grow (ic->h,
+                       ic->total,
+                       ic->pos * 2);
+  ic->h[ic->pos].url = GNUNET_strdup (debit_account);
+  ic->h[ic->pos].details.debit_account_uri = ic->h[ic->pos].url;
+  ic->h[ic->pos].details.amount = *amount;
+  ic->h[ic->pos].row_id = *row_id;
+  ic->h[ic->pos].details.reserve_pub = *reserve_pub;
+  ic->h[ic->pos].details.credit_account_uri = exchange_credit_url;
+  ic->pos++;
+}
+
+
+/**
  * This function constructs the list of history elements that
  * interest the account number of the caller.  It has two main
  * loops: the first to figure out how many history elements have
@@ -156,23 +294,18 @@ print_expected (struct History *h,
  * @return number of entries in @a rh.
  */
 static unsigned int
-build_history (struct TALER_TESTING_Interpreter *is,
+build_history (struct HistoryState *hs,
                struct History **rh)
 {
-  struct HistoryState *hs = is->commands[is->ip].cls;
-  unsigned int total;
-  unsigned int pos;
-  struct History *h;
-  const struct TALER_TESTING_Command *add_incoming_cmd;
-  int inc;
-  unsigned int start;
-  unsigned int end;
-
-  int ok;
-  const uint64_t *row_id_start = NULL;
+  struct TALER_TESTING_Interpreter *is = hs->is;
+  struct IteratorContext ic = {
+    .hs = hs
+  };
 
   if (NULL != hs->start_row_reference)
   {
+    const struct TALER_TESTING_Command *add_incoming_cmd;
+
     TALER_LOG_INFO ("`%s': start row given via reference `%s'\n",
                     TALER_TESTING_interpreter_get_current_label (is),
                     hs->start_row_reference);
@@ -182,131 +315,28 @@ build_history (struct TALER_TESTING_Interpreter *is,
     GNUNET_assert (NULL != add_incoming_cmd);
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_get_trait_row (add_incoming_cmd,
-                                                &row_id_start));
+                                                &ic.row_id_start));
   }
 
-  GNUNET_assert (0 != hs->num_results);
-  if (0 == is->ip)
-  {
-    TALER_LOG_DEBUG ("Checking history at FIRST transaction (EMPTY)\n");
-    *rh = NULL;
-    return 0;
-  }
-
-  if (hs->num_results > 0)
-  {
-    inc = 1;  /* _inc_rement */
-    start = 0;
-    end = is->ip - 1;
-  }
-  else
-  {
-    inc = -1;
-    start = is->ip - 1;
-    end = 0;
-  }
-  /**
-   * ok equals GNUNET_YES whenever a starting row_id
-   * was provided AND was found among the CMDs, OR no
-   * starting row was given in the first place.
-   */
-  ok = GNUNET_NO;
-  if (NULL == row_id_start)
-    ok = GNUNET_YES;
-  h = NULL;
-  total = 0;
-  GNUNET_array_grow (h,
-                     total,
+  ic.ok = false;
+  if (NULL == ic.row_id_start)
+    ic.ok = true;
+  GNUNET_array_grow (ic.h,
+                     ic.total,
                      4);
-  pos = 0;
-  for (unsigned int off = start; off != end + inc; off += inc)
-  {
-    const struct TALER_TESTING_Command *cmd = &is->commands[off];
-    const uint64_t *row_id;
-    const char **credit_account;
-    const char **debit_account;
-    const struct TALER_Amount *amount;
-    const struct TALER_ReservePublicKeyP *reserve_pub;
-    const char **exchange_credit_url;
-
-    /**
-     * The following command allows us to skip over those CMDs
-     * that do not offer a "row_id" trait.  Such skipped CMDs are
-     * not interesting for building a history.
-     */
-    if ( (GNUNET_OK !=
-          TALER_TESTING_get_trait_bank_row (cmd,
-                                            &row_id)) ||
-         (GNUNET_OK !=
-          TALER_TESTING_get_trait_credit_payto_uri (cmd,
-                                                    &credit_account)) ||
-         (GNUNET_OK !=
-          TALER_TESTING_get_trait_debit_payto_uri (cmd,
-                                                   &debit_account)) ||
-         (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount (cmd,
-                                          &amount)) ||
-         (GNUNET_OK !=
-          TALER_TESTING_get_trait_reserve_pub (cmd,
-                                               &reserve_pub)) ||
-         (GNUNET_OK !=
-          TALER_TESTING_get_trait_exchange_bank_account_url (
-            cmd,
-            &exchange_credit_url)) )
-      continue; // Not an interesting event
-    /**
-     * Is the interesting event a match with regard to
-     * the row_id value?  If yes, store this condition
-     * to the state and analyze the next CMDs.
-     */
-    if ( (NULL != row_id_start) &&
-         (*row_id_start == *row_id) &&
-         (GNUNET_NO == ok) )
-    {
-      ok = GNUNET_YES;
-      continue;
-    }
-    /**
-     * The interesting event didn't match the wanted
-     * row_id value, analyze the next CMDs.  Note: this
-     * branch is relevant only when row_id WAS given.
-     */
-    if (GNUNET_NO == ok)
-      continue;
-    if (0 != strcasecmp (hs->account_url,
-                         *exchange_credit_url))
-      continue; // Account mismatch
-    if (total >= GNUNET_MAX (hs->num_results,
-                             -hs->num_results) )
-    {
-      TALER_LOG_DEBUG ("Hit history limit\n");
-      break;
-    }
-    TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
-                    *debit_account,
-                    *credit_account,
-                    hs->account_url);
-    /* found matching record, make sure we have room */
-    if (pos == total)
-      GNUNET_array_grow (h,
-                         total,
-                         pos * 2);
-    h[pos].url = GNUNET_strdup (*debit_account);
-    h[pos].details.debit_account_uri = h[pos].url;
-    h[pos].details.amount = *amount;
-    h[pos].row_id = *row_id;
-    h[pos].details.reserve_pub = *reserve_pub;
-    h[pos].details.credit_account_uri = *exchange_credit_url;
-    pos++;
-  }
-  GNUNET_assert (GNUNET_YES == ok);
-  GNUNET_array_grow (h,
-                     total,
-                     pos);
-  if (0 == pos)
+  GNUNET_assert (0 != hs->num_results);
+  TALER_TESTING_iterate (is,
+                         hs->num_results > 0,
+                         &command_cb,
+                         &ic);
+  GNUNET_assert (ic.ok);
+  GNUNET_array_grow (ic.h,
+                     ic.total,
+                     ic.pos);
+  if (0 == ic.pos)
     TALER_LOG_DEBUG ("Empty credit history computed\n");
-  *rh = h;
-  return total;
+  *rh = ic.h;
+  return ic.pos;
 }
 
 
@@ -376,8 +406,8 @@ static void
 history_cb (void *cls,
             const struct TALER_BANK_CreditHistoryResponse *chr)
 {
-  struct TALER_TESTING_Interpreter *is = cls;
-  struct HistoryState *hs = is->commands[is->ip].cls;
+  struct HistoryState *hs = cls;
+  struct TALER_TESTING_Interpreter *is = hs->is;
 
   hs->hh = NULL;
   switch (chr->http_status)
@@ -470,6 +500,7 @@ history_run (void *cls,
   const uint64_t *row_ptr;
 
   (void) cmd;
+  hs->is = is;
   /* Get row_id from trait. */
   if (NULL != hs->start_row_reference)
   {
@@ -490,15 +521,16 @@ history_run (void *cls,
     TALER_LOG_DEBUG ("row id (from trait) is %llu\n",
                      (unsigned long long) row_id);
   }
-  hs->total = build_history (is,
+  hs->total = build_history (hs,
                              &hs->h);
-  hs->hh = TALER_BANK_credit_history (is->ctx,
-                                      &hs->auth,
-                                      row_id,
-                                      hs->num_results,
-                                      GNUNET_TIME_UNIT_ZERO,
-                                      &history_cb,
-                                      is);
+  hs->hh = TALER_BANK_credit_history (
+    TALER_TESTING_interpreter_get_context (is),
+    &hs->auth,
+    row_id,
+    hs->num_results,
+    GNUNET_TIME_UNIT_ZERO,
+    &history_cb,
+    hs);
   GNUNET_assert (NULL != hs->hh);
 }
 
@@ -519,7 +551,8 @@ history_cleanup (void *cls,
   (void) cmd;
   if (NULL != hs->hh)
   {
-    TALER_LOG_WARNING ("/history/incoming did not complete\n");
+    TALER_TESTING_command_incomplete (hs->is,
+                                      cmd->label);
     TALER_BANK_credit_history_cancel (hs->hh);
   }
   GNUNET_free (hs->account_url);

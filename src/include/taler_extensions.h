@@ -219,12 +219,12 @@ struct TALER_Extensions
  * Generic functions for extensions
  */
 
-/*
+/**
  * @brief Loads the extensions as shared libraries, as specified in the given
  * TALER configuration.
  *
  * @param cfg Handle to the TALER configuration
- * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if unknown extensions were found
  *         or any particular configuration couldn't be parsed.
  */
 enum GNUNET_GenericReturnValue

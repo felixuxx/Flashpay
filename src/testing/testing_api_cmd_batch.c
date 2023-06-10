@@ -38,6 +38,11 @@ struct BatchState
   struct TALER_TESTING_Command *batch;
 
   /**
+   * My command (the batch command).
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Internal command pointer.
    */
   unsigned int batch_ip;
@@ -58,6 +63,7 @@ batch_run (void *cls,
 {
   struct BatchState *bs = cls;
 
+  bs->cmd = cmd;
   if (NULL != bs->batch[bs->batch_ip].label)
     TALER_LOG_INFO ("Running batched command: %s\n",
                     bs->batch[bs->batch_ip].label);
@@ -167,19 +173,33 @@ TALER_TESTING_cmd_batch (const char *label,
 }
 
 
-void
-TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is)
+bool
+TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is,
+                              void *cls)
 {
-  struct BatchState *bs = is->commands[is->ip].cls;
+  struct BatchState *bs = cls;
+  struct TALER_TESTING_Command *bcmd = &bs->batch[bs->batch_ip];
 
-  if (NULL == bs->batch[bs->batch_ip].label)
+  if (NULL == bcmd->label)
   {
-    is->commands[is->ip].finish_time = GNUNET_TIME_absolute_get ();
-    is->ip++;
-    return;
+    /* This batch is done */
+    return true;
   }
-  bs->batch[bs->batch_ip].finish_time = GNUNET_TIME_absolute_get ();
+  if (TALER_TESTING_cmd_is_batch (bcmd))
+  {
+    if (TALER_TESTING_cmd_batch_next (is,
+                                      bcmd->cls))
+    {
+      /* sub-batch is done */
+      bcmd->finish_time = GNUNET_TIME_absolute_get ();
+      bs->batch_ip++;
+      return false;
+    }
+  }
+  /* Simple command is done */
+  bcmd->finish_time = GNUNET_TIME_absolute_get ();
   bs->batch_ip++;
+  return false;
 }
 
 

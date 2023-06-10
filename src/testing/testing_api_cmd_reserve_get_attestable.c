@@ -125,7 +125,11 @@ get_attestable_run (void *cls,
   const struct TALER_TESTING_Command *ref_reserve;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   const struct TALER_ReservePublicKeyP *reserve_pub;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   ss->is = is;
   ref_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -158,7 +162,7 @@ get_attestable_run (void *cls,
     }
     ss->reserve_pub = *reserve_pub;
   }
-  ss->rgah = TALER_EXCHANGE_reserves_get_attestable (is->exchange,
+  ss->rgah = TALER_EXCHANGE_reserves_get_attestable (exchange,
                                                      &ss->reserve_pub,
                                                      &reserve_get_attestable_cb,
                                                      ss);
@@ -180,10 +184,8 @@ get_attestable_cleanup (void *cls,
 
   if (NULL != ss->rgah)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ss->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ss->is,
+                                      cmd->label);
     TALER_EXCHANGE_reserves_get_attestable_cancel (ss->rgah);
     ss->rgah = NULL;
   }

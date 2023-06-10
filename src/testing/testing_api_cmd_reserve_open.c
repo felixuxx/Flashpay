@@ -165,7 +165,11 @@ open_run (void *cls,
   struct OpenState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
   struct TALER_EXCHANGE_PurseDeposit cp[GNUNET_NZL (ss->cpl)];
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   ss->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -252,7 +256,7 @@ open_run (void *cls,
     cpi->h_denom_pub = denom_pub->h_key;
   }
   ss->rsh = TALER_EXCHANGE_reserves_open (
-    is->exchange,
+    exchange,
     ss->reserve_priv,
     &ss->reserve_pay,
     ss->cpl,
@@ -279,10 +283,8 @@ open_cleanup (void *cls,
 
   if (NULL != ss->rsh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ss->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ss->is,
+                                      cmd->label);
     TALER_EXCHANGE_reserves_open_cancel (ss->rsh);
     ss->rsh = NULL;
   }

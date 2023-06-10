@@ -44,6 +44,11 @@ struct TrackTransferState
   const char *expected_wire_fee;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Reference to any operation that can provide a WTID.
    * Will be the WTID to track.
    */
@@ -98,10 +103,8 @@ track_transfer_cleanup (void *cls,
 
   if (NULL != tts->tth)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                tts->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (tts->is,
+                                      cmd->label);
     TALER_EXCHANGE_transfers_get_cancel (tts->tth);
     tts->tth = NULL;
   }
@@ -124,23 +127,13 @@ track_transfer_cb (void *cls,
   struct TrackTransferState *tts = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &tgr->hr;
   struct TALER_TESTING_Interpreter *is = tts->is;
-  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   struct TALER_Amount expected_amount;
 
   tts->tth = NULL;
   if (tts->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                cmd->label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     hr->http_status);
     return;
   }
 
@@ -178,7 +171,7 @@ track_transfer_cb (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Total amount mismatch to command %s - "
                     "%s vs %s\n",
-                    cmd->label,
+                    tts->cmd->label,
                     TALER_amount_to_string (&ta->total_amount),
                     TALER_amount_to_string (&expected_amount));
         json_dumpf (hr->reply,
@@ -203,7 +196,7 @@ track_transfer_cb (void *cls,
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Wire fee mismatch to command %s\n",
-                    cmd->label);
+                    tts->cmd->label);
         json_dumpf (hr->reply,
                     stderr,
                     0);
@@ -221,7 +214,7 @@ track_transfer_cb (void *cls,
       if (NULL != tts->wire_details_reference)
       {
         const struct TALER_TESTING_Command *wire_details_cmd;
-        const char **payto_uri;
+        const char *payto_uri;
         struct TALER_PaytoHashP h_payto;
 
         wire_details_cmd
@@ -242,14 +235,14 @@ track_transfer_cb (void *cls,
           TALER_TESTING_interpreter_fail (is);
           return;
         }
-        TALER_payto_hash (*payto_uri,
+        TALER_payto_hash (payto_uri,
                           &h_payto);
         if (0 != GNUNET_memcmp (&h_payto,
                                 &ta->h_payto))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "Wire hash missmath to command %s\n",
-                      cmd->label);
+                      tts->cmd->label);
           json_dumpf (hr->reply,
                       stderr,
                       0);
@@ -284,8 +277,8 @@ track_transfer_cb (void *cls,
                                    total_amount_from_reference))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Amount missmath to command %s\n",
-                      cmd->label);
+                      "Amount mismatch in command %s\n",
+                      tts->cmd->label);
           json_dumpf (hr->reply,
                       stderr,
                       0);
@@ -316,14 +309,18 @@ track_transfer_run (void *cls,
   struct TrackTransferState *tts = cls;
   struct TALER_WireTransferIdentifierRawP wtid;
   const struct TALER_WireTransferIdentifierRawP *wtid_ptr;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  tts->cmd = cmd;
+  if (NULL == exchange)
+    return;
   /* If no reference is given, we'll use a all-zeros
    * WTID */
   memset (&wtid,
           0,
           sizeof (wtid));
   wtid_ptr = &wtid;
-
   tts->is = is;
   if (NULL != tts->wtid_reference)
   {
@@ -348,7 +345,7 @@ track_transfer_run (void *cls,
     }
     GNUNET_assert (NULL != wtid_ptr);
   }
-  tts->tth = TALER_EXCHANGE_transfers_get (is->exchange,
+  tts->tth = TALER_EXCHANGE_transfers_get (exchange,
                                            wtid_ptr,
                                            &track_transfer_cb,
                                            tts);

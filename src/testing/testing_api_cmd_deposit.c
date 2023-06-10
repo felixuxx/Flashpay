@@ -199,8 +199,7 @@ do_retry (void *cls)
   struct DepositState *ds = cls;
 
   ds->retry_task = NULL;
-  ds->is->commands[ds->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (ds->is);
   deposit_run (ds,
                NULL,
                ds->is);
@@ -240,7 +239,7 @@ deposit_cb (void *cls,
         else
           ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
                                                         MAX_BACKOFF);
-        ds->is->commands[ds->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (ds->is);
         GNUNET_assert (NULL == ds->retry_task);
         ds->retry_task
           = GNUNET_SCHEDULER_add_delayed (ds->backoff,
@@ -249,16 +248,8 @@ deposit_cb (void *cls,
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                JSON_INDENT (2));
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
@@ -305,8 +296,12 @@ deposit_run (void *cls,
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
   };
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ds->is = is;
   if (NULL != ds->deposit_reference)
   {
@@ -474,7 +469,7 @@ deposit_run (void *cls,
       .refund_deadline = ds->refund_deadline
     };
 
-    ds->dh = TALER_EXCHANGE_deposit (is->exchange,
+    ds->dh = TALER_EXCHANGE_deposit (exchange,
                                      &dcd,
                                      &cdd,
                                      &deposit_cb,
@@ -508,10 +503,8 @@ deposit_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }

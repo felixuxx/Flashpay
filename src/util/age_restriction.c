@@ -135,7 +135,7 @@ ecdsa_create_from_seed (
 enum GNUNET_GenericReturnValue
 TALER_age_restriction_commit (
   const struct TALER_AgeMask *mask,
-  const uint8_t age,
+  uint8_t age,
   const struct GNUNET_HashCode *seed,
   struct TALER_AgeCommitmentProof *ncp)
 {
@@ -147,7 +147,7 @@ TALER_age_restriction_commit (
   GNUNET_assert (NULL != mask);
   GNUNET_assert (NULL != seed);
   GNUNET_assert (NULL != ncp);
-  GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
+  GNUNET_assert (mask->bits & 1); /* first bit must have been set */
 
   num_pub = __builtin_popcount (mask->bits) - 1;
   num_priv = get_age_group (mask, age);

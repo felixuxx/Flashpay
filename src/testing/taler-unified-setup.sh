@@ -57,16 +57,21 @@ START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
 START_FAKEBANK=0
+START_AGGREGATOR=0
 START_MERCHANT=0
 START_NEXUS=0
 START_SANDBOX=0
+START_TRANSFER=0
+START_WIREWATCH=0
+USE_ACCOUNT="exchange-account-1"
 USE_VALGRIND=""
+WIRE_DOMAIN="x-taler-bank"
 CONF_ORIG="~/.config/taler.conf"
 LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:efhl:mnsv' OPTION; do
+while getopts ':abc:d:efghl:mnr:stu:vw' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -76,6 +81,9 @@ while getopts ':abc:efhl:mnsv' OPTION; do
             ;;
         c)
             CONF_ORIG="$OPTARG"
+            ;;
+        c)
+            WIRE_DOMAIN="$OPTARG"
             ;;
         e)
             START_EXCHANGE="1"
@@ -88,15 +96,23 @@ while getopts ':abc:efhl:mnsv' OPTION; do
             echo '  -a           -- start auditor'
             echo '  -b           -- start backup/sync'
             echo '  -c $CONF     -- set configuration'
+            echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
             echo '  -h           -- print this help'
             echo '  -l $LOGLEVEL -- set log level'
             echo '  -m           -- start merchant'
             echo '  -n           -- start nexus'
+            echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
             echo '  -s           -- start sandbox'
+            echo '  -t           -- start transfer'
+            echo '  -u $SECTION  -- exchange account to use'
             echo '  -v           -- use valgrind'
+            echo '  -w           -- start wirewatch'
             exit 0
+            ;;
+        g)
+            START_AGGREGATOR="1"
             ;;
         l)
             LOGLEVEL="$OPTARG"
@@ -107,12 +123,24 @@ while getopts ':abc:efhl:mnsv' OPTION; do
         n)
             START_NEXUS="1"
             ;;
+        r)
+            USE_MERCHANT_EXCHANGE="$OPTARG"
+            ;;
         s)
             START_SANDBOX="1"
+            ;;
+        t)
+            START_TRANSFER="1"
+            ;;
+        u)
+            USE_ACCOUNT="$OPTARG"
             ;;
         v)
             USE_VALGRIND="valgrind --leak-check=yes"
             DEFAULT_SLEEP="2"
+            ;;
+        w)
+            START_WIREWATCH="1"
             ;;
         ?)
         exit_fail "Unrecognized command line option"
@@ -155,6 +183,12 @@ then
     libeufin-cli --help >/dev/null </dev/null || exit_skip " MISSING"
     echo " FOUND"
 fi
+
+# FIXME-MS: when run twice using
+# taler-unified-setup.sh -c test_bank_api_nexus.conf -ns
+# libeufin fails with a 502 failure (sandbox happy, nexus dies) below.
+# Work-around is to delete the database every time. Very unclean. => needs a fix!
+rm -f *.sqlite3
 
 EXCHANGE_URL=$(taler-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
 CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
@@ -235,7 +269,7 @@ then
     export LIBEUFIN_SANDBOX_USERNAME="exchange"
     export LIBEUFIN_SANDBOX_PASSWORD="x"
     EXCHANGE_PAYTO=$(libeufin-cli sandbox demobank info --bank-account exchange | jq --raw-output '.paytoUri')
-    taler-config -c "$CONF" -s exchange-account-1 -o "PAYTO_URI" -V "$EXCHANGE_PAYTO"
+    taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "PAYTO_URI" -V "$EXCHANGE_PAYTO"
     echo " OK"
 
     echo -n "Setting this exchange as the bank's default ..."
@@ -305,6 +339,7 @@ then
     export LIBEUFIN_NEXUS_USERNAME=exchange
     export LIBEUFIN_NEXUS_PASSWORD=x
     echo -n "Creating a EBICS connection at Nexus ..."
+    # FIXME-MS: '||true' should be removed after we make 'new-ebics-connection' idempotent!
     libeufin-cli connections new-ebics-connection \
       --ebics-url "http://localhost:$SANDBOX_PORT/ebicsweb" \
       --host-id talerebics \
@@ -314,7 +349,7 @@ then
     echo "OK"
 
     echo -n "Setup EBICS keying ..."
-    libeufin-cli connections connect talerconn > /dev/null
+    libeufin-cli connections connect talerconn
     echo "OK"
     echo -n "Download bank account name from Sandbox ..."
     libeufin-cli connections download-bank-accounts talerconn
@@ -364,13 +399,16 @@ fi
 if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
-
     EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
     EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
     MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
     MASTER_PRIV_DIR=$(dirname "$MASTER_PRIV_FILE")
     mkdir -p "${MASTER_PRIV_DIR}"
-    gnunet-ecc -g1 "$MASTER_PRIV_FILE" > /dev/null 2> /dev/null
+    if [ ! -e "$MASTER_PRIV_FILE" ]
+    then
+        gnunet-ecc -g1 "$MASTER_PRIV_FILE" > /dev/null 2> /dev/null
+        echo -n "."
+    fi
     MASTER_PUB=$(gnunet-ecc -p "${MASTER_PRIV_FILE}")
     MPUB=$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)
     if [ "$MPUB" != "$MASTER_PUB" ]
@@ -378,16 +416,34 @@ then
         echo -n " patching master_pub ($MASTER_PUB)..."
         taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY -V "$MASTER_PUB"
     fi
-    taler-exchange-dbinit -c "$CONF"
+    taler-exchange-dbinit -c "$CONF" --reset
     $USE_VALGRIND taler-exchange-secmod-eddsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-eddsa.log &
     $USE_VALGRIND taler-exchange-secmod-rsa -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-rsa.log &
     $USE_VALGRIND taler-exchange-secmod-cs -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-secmod-cs.log &
     $USE_VALGRIND taler-exchange-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-exchange-httpd.log &
     EXCHANGE_HTTPD_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_WIREWATCH" ]
+then
+    echo -n "Starting wirewatch ..."
     $USE_VALGRIND taler-exchange-wirewatch -c "$CONF" 2> taler-exchange-wirewatch.log &
     WIREWATCH_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_AGGREGATOR" ]
+then
+    echo -n "Starting aggregator ..."
     $USE_VALGRIND taler-exchange-aggregator -c "$CONF" 2> taler-exchange-aggregator.log &
     AGGREGATOR_PID=$!
+    echo " DONE"
+fi
+
+if [ "1" = "$START_TRANSFER" ]
+then
+    echo -n "Starting transfer ..."
     $USE_VALGRIND taler-exchange-transfer -c "$CONF" 2> taler-exchange-transfer.log &
     TRANSFER_PID=$!
     echo " DONE"
@@ -396,16 +452,19 @@ fi
 if [ "1" = "$START_MERCHANT" ]
 then
     echo -n "Starting merchant ..."
-    MEPUB=$(taler-config -c "$CONF" -s merchant-exchange-benchmark -o MASTER_KEY)
-    MXPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
-    if [ "$MEPUB" != "$MXPUB" ]
+    if [ ! -z "${USE_MERCHANT_EXCHANGE+x}" ]
     then
-        echo -n " patching master_pub ($MXPUB)..."
-        taler-config -c "$CONF" -s merchant-exchange-benchmark -o MASTER_KEY -V "$MXPUB"
+        MEPUB=$(taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY)
+        MXPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
+        if [ "$MEPUB" != "$MXPUB" ]
+        then
+            echo -n " patching master_pub ($MXPUB)..."
+            taler-config -c "$CONF" -s "${USE_MERCHANT_EXCHANGE}" -o MASTER_KEY -V "$MXPUB"
+        fi
     fi
     MERCHANT_PORT=$(taler-config -c "$CONF" -s MERCHANT -o PORT)
     MERCHANT_URL="http://localhost:${MERCHANT_PORT}/"
-    taler-merchant-dbinit -c "$CONF"
+    taler-merchant-dbinit -c "$CONF" -L "$LOGLEVEL" --reset &> taler-merchant-dbinit.log
     $USE_VALGRIND taler-merchant-httpd -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-httpd.log &
     MERCHANT_HTTPD_PID=$!
     $USE_VALGRIND taler-merchant-webhook -c "$CONF" -L "$LOGLEVEL" 2> taler-merchant-webhook.log &
@@ -418,7 +477,7 @@ then
     echo -n "Starting sync ..."
     SYNC_PORT=$(taler-config -c "$CONF" -s SYNC -o PORT)
     SYNC_URL="http://localhost:${SYNC_PORT}/"
-    sync-dbinit -c "$CONF"
+    sync-dbinit -c "$CONF" --reset
     $USE_VALGRIND sync-httpd -c "$CONF" -L "$LOGLEVEL" 2> sync-httpd.log &
     echo " DONE"
 fi
@@ -427,14 +486,18 @@ fi
 if [ "1" = "$START_AUDITOR" ]
 then
     echo -n "Starting auditor ..."
-    AUDITOR_URL="http://localhost:8083/"
+    AUDITOR_URL=$(taler-config -c "$CONF" -s AUDITOR -o BASE_URL)
     AUDITOR_PRIV_FILE=$(taler-config -f -c "$CONF" -s AUDITOR -o AUDITOR_PRIV_FILE)
     AUDITOR_PRIV_DIR=$(dirname "$AUDITOR_PRIV_FILE")
     mkdir -p "$AUDITOR_PRIV_DIR"
-    gnunet-ecc -g1 "$AUDITOR_PRIV_FILE" > /dev/null 2> /dev/null
+    if [ ! -e "$AUDITOR_PRIV_FILE" ]
+    then
+        gnunet-ecc -g1 "$AUDITOR_PRIV_FILE" > /dev/null 2> /dev/null
+        echo -n "."
+    fi
     AUDITOR_PUB=$(gnunet-ecc -p "${AUDITOR_PRIV_FILE}")
     MAPUB=${MASTER_PUB:-$(taler-config -c "$CONF" -s exchange -o MASTER_PUBLIC_KEY)}
-    taler-auditor-dbinit -c "$CONF"
+    taler-auditor-dbinit -c "$CONF" --reset
     taler-auditor-exchange -c "$CONF" -m "$MAPUB" -u "$EXCHANGE_URL"
     $USE_VALGRIND taler-auditor-httpd -L "$LOGLEVEL" -c "$CONF" 2> taler-auditor-httpd.log &
     echo " DONE"
@@ -472,20 +535,21 @@ echo -n "Waiting for Taler services ..."
 # Wait for all other taler services to be available
 for n in $(seq 1 20)
 do
-    echo -n "."
     sleep "$DEFAULT_SLEEP"
     OK="0"
     if [ "1" = "$START_EXCHANGE" ]
     then
+        echo -n "E"
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:8081/config" \
+            "${EXCHANGE_URL}config" \
             -o /dev/null \
             -O /dev/null >/dev/null || continue
     fi
     if [ "1" = "$START_MERCHANT" ]
     then
+        echo -n "M"
         wget \
             --tries=1 \
             --timeout=1 \
@@ -495,6 +559,7 @@ do
     fi
     if [ "1" = "$START_BACKUP" ]
     then
+        echo -n "S"
         wget \
             --tries=1 \
             --timeout=1 \
@@ -504,6 +569,7 @@ do
     fi
     if [ "1" = "$START_AUDITOR" ]
     then
+        echo -n "A"
         wget \
             --tries=1 \
             --timeout=1 \
@@ -553,23 +619,20 @@ then
     taler-exchange-offline -c "$CONF" \
       download \
       sign \
-      wire-fee now iban "$CURRENCY:0.01" "$CURRENCY:0.01" \
+      wire-fee now "$WIRE_DOMAIN" "$CURRENCY:0.01" "$CURRENCY:0.01" \
       global-fee now "$CURRENCY:0.01" "$CURRENCY:0.01" "$CURRENCY:0.01" 1h 1year 5 \
       upload &> taler-exchange-offline.log
     echo "OK"
-    for ASEC in $(taler-config -c "$CONF" -S | grep -i "exchange-account-")
-    do
-        ENABLED=$(taler-config -c "$CONF" -s "$ASEC" -o "ENABLE_CREDIT")
-        if [ "YES" = "$ENABLED" ]
-        then
-            echo -n "Configuring bank account $ASEC ..."
-            EXCHANGE_PAYTO_URI=$(taler-config -c "$CONF" -s "$ASEC" -o "PAYTO_URI")
-            taler-exchange-offline -c "$CONF" \
-              enable-account "$EXCHANGE_PAYTO_URI" \
-              upload &> "taler-exchange-offline-account-$ASEC.log"
-            echo " OK"
-        fi
-    done
+    ENABLED=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "ENABLE_CREDIT")
+    if [ "YES" = "$ENABLED" ]
+    then
+        echo -n "Configuring bank account $USE_ACCOUNT ..."
+        EXCHANGE_PAYTO_URI=$(taler-config -c "$CONF" -s "$USE_ACCOUNT" -o "PAYTO_URI")
+        taler-exchange-offline -c "$CONF" \
+          enable-account "$EXCHANGE_PAYTO_URI" \
+          upload &> "taler-exchange-offline-account.log"
+        echo " OK"
+    fi
     if [ "1" = "$START_AUDITOR" ]
     then
         echo -n "Enabling auditor ..."

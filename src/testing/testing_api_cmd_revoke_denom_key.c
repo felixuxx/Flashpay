@@ -78,16 +78,8 @@ success_cb (
   rs->kh = NULL;
   if (rs->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
-                rs->is->commands[rs->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (rs->is);
+    TALER_TESTING_unexpected_status (rs->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (rs->is);
@@ -159,7 +151,23 @@ revoke_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   struct TALER_MasterSignatureP master_sig;
+  const char *exchange_url;
 
+  {
+    const struct TALER_TESTING_Command *exchange_cmd;
+
+    exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                          "exchange");
+    if (NULL == exchange_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                         &exchange_url));
+  }
   rs->is = is;
   /* Get denom pub from trait */
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
@@ -186,13 +194,27 @@ revoke_run (void *cls,
   }
   else
   {
+    const struct TALER_TESTING_Command *exchange_cmd;
+    const struct TALER_MasterPrivateKeyP *master_priv;
+
+    exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                          "exchange");
+    if (NULL == exchange_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_master_priv (exchange_cmd,
+                                                        &master_priv));
     TALER_exchange_offline_denomination_revoke_sign (&denom_pub->h_key,
-                                                     &is->master_priv,
+                                                     master_priv,
                                                      &master_sig);
   }
   rs->kh = TALER_EXCHANGE_management_revoke_denomination_key (
-    is->ctx,
-    is->exchange_url,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     &denom_pub->h_key,
     &master_sig,
     &success_cb,

@@ -1268,14 +1268,24 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
 
 struct GNUNET_TIME_Timestamp
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   enum TALER_EXCHANGE_CheckKeysFlags flags)
+                                   enum TALER_EXCHANGE_CheckKeysFlags flags,
+                                   TALER_EXCHANGE_CertificationCallback cb,
+                                   void *cb_cls)
 {
   bool force_download = 0 != (flags & TALER_EXCHANGE_CKF_FORCE_DOWNLOAD);
   bool pull_all_keys = 0 != (flags & TALER_EXCHANGE_CKF_PULL_ALL_KEYS);
 
+  if ( (NULL != cb) &&
+       ( (exchange->cert_cb != cb) ||
+         (exchange->cert_cb_cls != cb_cls) ) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Changing target of exchange certification callback\n");
+    exchange->cert_cb = cb;
+    exchange->cert_cb_cls = cb_cls;
+  }
   if (NULL != exchange->kr)
     return GNUNET_TIME_UNIT_ZERO_TS;
-
   if (pull_all_keys)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -2269,7 +2279,9 @@ const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
-                                            TALER_EXCHANGE_CKF_NONE);
+                                            TALER_EXCHANGE_CKF_NONE,
+                                            NULL,
+                                            NULL);
   return &exchange->key_data;
 }
 
@@ -2278,7 +2290,9 @@ json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
-                                            TALER_EXCHANGE_CKF_NONE);
+                                            TALER_EXCHANGE_CKF_NONE,
+                                            NULL,
+                                            NULL);
   return json_deep_copy (exchange->key_data_raw);
 }
 

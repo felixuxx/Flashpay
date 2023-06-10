@@ -76,16 +76,8 @@ auditor_del_cb (
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);
@@ -107,10 +99,36 @@ auditor_del_run (void *cls,
   struct AuditorDelState *ds = cls;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Timestamp now;
+  const struct TALER_AuditorPublicKeyP *auditor_pub;
+  const struct TALER_TESTING_Command *auditor_cmd;
+  const struct TALER_TESTING_Command *exchange_cmd;
+  const char *exchange_url;
 
   (void) cmd;
   now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
+  auditor_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                       "auditor");
+  if (NULL == auditor_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_auditor_pub (auditor_cmd,
+                                                      &auditor_pub));
+  exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                        "exchange");
+  if (NULL == exchange_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                       &exchange_url));
   if (ds->bad_sig)
   {
     memset (&master_sig,
@@ -119,15 +137,20 @@ auditor_del_run (void *cls,
   }
   else
   {
-    TALER_exchange_offline_auditor_del_sign (&is->auditor_pub,
+    const struct TALER_MasterPrivateKeyP *master_priv;
+
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_master_priv (exchange_cmd,
+                                                        &master_priv));
+    TALER_exchange_offline_auditor_del_sign (auditor_pub,
                                              now,
-                                             &is->master_priv,
+                                             master_priv,
                                              &master_sig);
   }
   ds->dh = TALER_EXCHANGE_management_disable_auditor (
-    is->ctx,
-    is->exchange_url,
-    &is->auditor_pub,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    auditor_pub,
     now,
     &master_sig,
     &auditor_del_cb,
@@ -156,10 +179,8 @@ auditor_del_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_management_disable_auditor_cancel (ds->dh);
     ds->dh = NULL;
   }

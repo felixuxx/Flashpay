@@ -44,19 +44,14 @@
 static char *config_file;
 
 /**
+ * Our credentials.
+ */
+static struct TALER_TESTING_Credentials cred;
+
+/**
  * (real) Twister URL.  Used at startup time to check if it runs.
  */
 static char *twister_url;
-
-/**
- * Exchange configuration data.
- */
-static struct TALER_TESTING_ExchangeConfiguration ec;
-
-/**
- * Bank configuration data.
- */
-static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Twister process.
@@ -92,8 +87,8 @@ CMD_TRANSFER_TO_EXCHANGE (const char *label,
 {
   return TALER_TESTING_cmd_admin_add_incoming (label,
                                                amount,
-                                               &bc.exchange_auth,
-                                               bc.user42_payto);
+                                               &cred.ba,
+                                               cred.user42_payto);
 }
 
 
@@ -132,7 +127,7 @@ run (void *cls,
       "refresh-deposit-partial",
       "refresh-withdraw-coin",
       0,
-      bc.user42_payto,
+      cred.user42_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
@@ -178,7 +173,7 @@ run (void *cls,
       "deposit-refund-1",
       "withdraw-coin-r1",
       0,
-      bc.user42_payto,
+      cred.user42_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:5\"}]}",
       GNUNET_TIME_UNIT_MINUTES,
       "EUR:5",
@@ -201,7 +196,7 @@ run (void *cls,
       "deposit-refund-to-fail",
       "withdraw-coin-r1",
       0,                          /* coin index.  */
-      bc.user42_payto,
+      cred.user42_payto,
       /* This parameter will make any comparison about
          h_contract_terms fail, when /refund will be handled.
          So in other words, this is h_contract mismatch.  */
@@ -251,17 +246,17 @@ run (void *cls,
 #endif
 
   struct TALER_TESTING_Command commands[] = {
-    TALER_TESTING_cmd_wire_add (
-      "add-wire-account",
-      "payto://x-taler-bank/localhost/2?receiver-name=2",
-      MHD_HTTP_NO_CONTENT,
-      false),
-    TALER_TESTING_cmd_exec_offline_sign_keys (
-      "offline-sign-future-keys",
-      config_file),
-    TALER_TESTING_cmd_check_keys_pull_all_keys (
-      "refetch /keys",
-      1),
+    TALER_TESTING_cmd_run_fakebank ("run-fakebank",
+                                    cred.cfg,
+                                    "exchange-account-2"),
+    TALER_TESTING_cmd_system_start ("start-taler",
+                                    config_file,
+                                    "-e",
+                                    NULL),
+    TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                    cred.cfg,
+                                    true,
+                                    true),
     TALER_TESTING_cmd_batch (
       "refresh-reveal-409-conflict",
       refresh_409_conflict),
@@ -276,16 +271,15 @@ run (void *cls,
   };
 
   (void) cls;
-  TALER_TESTING_run_with_fakebank (is,
-                                   commands,
-                                   bc.exchange_auth.wire_gateway_url);
+  TALER_TESTING_run (is,
+                     commands);
 }
 
 
 /**
  * Kill, wait, and destroy convenience function.
  *
- * @param process process to purge.
+ * @param[in] process process to purge.
  */
 static void
 purge_process (struct GNUNET_OS_Process *process)
@@ -301,57 +295,37 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cipher;
   int ret;
 
   (void) argc;
-  /* These environment variables get in the way... */
-  unsetenv ("XDG_DATA_HOME");
-  unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup (argv[0],
-                    "INFO",
-                    NULL);
-  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
-  GNUNET_assert (NULL != cipher);
-  GNUNET_asprintf (&config_file,
-                   "test_exchange_api_twisted-%s.conf",
-                   cipher);
-  GNUNET_free (cipher);
-  if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (config_file,
-                                      "exchange-account-2",
-                                      &bc))
-    return 77;
-  if (NULL == (twister_url = TALER_TWISTER_prepare_twister
-                               (config_file)))
-    return 77;
-  TALER_TESTING_cleanup_files (config_file);
-  switch (TALER_TESTING_prepare_exchange (config_file,
-                                          GNUNET_YES,
-                                          &ec))
   {
-  case GNUNET_SYSERR:
-    GNUNET_break (0);
-    return 1;
-  case GNUNET_NO:
-    return 77;
-  case GNUNET_OK:
-    if (NULL == (twisterd = TALER_TWISTER_run_twister (config_file)))
-      return 77;
-    ret = TALER_TESTING_setup_with_exchange (&run,
-                                             NULL,
-                                             config_file);
-    purge_process (twisterd);
-    GNUNET_free (twister_url);
+    char *cipher;
 
-    if (GNUNET_OK != ret)
-      return 1;
-    break;
-  default:
-    GNUNET_break (0);
-    return 1;
+    cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+    GNUNET_assert (NULL != cipher);
+    GNUNET_asprintf (&config_file,
+                     "test_exchange_api_twisted-%s.conf",
+                     cipher);
+    GNUNET_free (cipher);
   }
-  return 0;
+  /* FIXME: introduce commands for twister! */
+  twister_url = TALER_TWISTER_prepare_twister (config_file);
+  if (NULL == twister_url)
+    return 77;
+  twisterd = TALER_TWISTER_run_twister (config_file);
+  if (NULL == twisterd)
+    return 77;
+  ret = TALER_TESTING_main (argv,
+                            "INFO",
+                            config_file,
+                            "exchange-account-2",
+                            TALER_TESTING_BS_FAKEBANK,
+                            &cred,
+                            &run,
+                            NULL);
+  purge_process (twisterd);
+  GNUNET_free (twister_url);
+  return ret;
 }
 
 

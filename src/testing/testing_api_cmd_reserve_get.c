@@ -178,7 +178,11 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   ss->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -193,7 +197,7 @@ status_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  ss->rsh = TALER_EXCHANGE_reserves_get (is->exchange,
+  ss->rsh = TALER_EXCHANGE_reserves_get (exchange,
                                          ss->reserve_pubp,
                                          ss->timeout,
                                          &reserve_status_cb,
@@ -221,10 +225,8 @@ status_cleanup (void *cls,
 
   if (NULL != ss->rsh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ss->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ss->is,
+                                      cmd->label);
     TALER_EXCHANGE_reserves_get_cancel (ss->rsh);
     ss->rsh = NULL;
   }

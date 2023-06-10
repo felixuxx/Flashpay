@@ -572,7 +572,7 @@ flip_object_cleanup
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 flip_object_traits (void *cls,
                     const void **ret,
                     const char *trait,

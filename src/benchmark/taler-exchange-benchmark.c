@@ -86,11 +86,6 @@ enum BenchmarkMode
 static const struct TALER_EXCHANGEDB_AccountInfo *exchange_bank_account;
 
 /**
- * Configuration of our exchange.
- */
-static struct TALER_TESTING_ExchangeConfiguration ec;
-
-/**
  * Hold information about a user at the bank.
  */
 static char *user_payto_uri;
@@ -145,11 +140,6 @@ static unsigned int refresh_rate = 10;
  * How many clients we want to create.
  */
 static unsigned int howmany_clients = 1;
-
-/**
- * Bank configuration to use.
- */
-static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Log level used during the run.
@@ -475,45 +465,6 @@ print_stats (void)
 
 
 /**
- * Stop the fakebank.
- *
- * @param cls fakebank handle
- */
-static void
-stop_fakebank (void *cls)
-{
-  struct TALER_FAKEBANK_Handle *fakebank = cls;
-
-  TALER_FAKEBANK_stop (fakebank);
-}
-
-
-/**
- * Start the fakebank.
- *
- * @param cls NULL
- */
-static void
-launch_fakebank (void *cls)
-{
-  struct TALER_FAKEBANK_Handle *fakebank;
-
-  (void) cls;
-  fakebank
-    = TALER_TESTING_run_fakebank (
-        exchange_bank_account->auth->wire_gateway_url,
-        currency);
-  if (NULL == fakebank)
-  {
-    GNUNET_break (0);
-    return;
-  }
-  GNUNET_SCHEDULER_add_shutdown (&stop_fakebank,
-                                 fakebank);
-}
-
-
-/**
  * Run the benchmark in parallel in many (client) processes
  * and summarize result.
  *
@@ -531,148 +482,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   pid_t cpids[howmany_clients];
   pid_t fakebank = -1;
   int wstatus;
-  struct GNUNET_OS_Process *bankd = NULL;
-  struct GNUNET_OS_Process *auditord = NULL;
-  struct GNUNET_OS_Process *exchanged = NULL;
-  struct GNUNET_OS_Process *wirewatch = NULL;
-  struct GNUNET_OS_Process *exchange_slave = NULL;
-  struct GNUNET_DISK_PipeHandle *exchange_slave_pipe;
-
-  if ( (MODE_CLIENT == mode) ||
-       (MODE_BOTH == mode) )
-  {
-    if (use_fakebank)
-    {
-      /* start fakebank */
-      fakebank = fork ();
-      if (0 == fakebank)
-      {
-        GNUNET_log_setup ("benchmark-fakebank",
-                          NULL == loglev ? "INFO" : loglev,
-                          logfile);
-        GNUNET_SCHEDULER_run (&launch_fakebank,
-                              NULL);
-        exit (0);
-      }
-      if (-1 == fakebank)
-      {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-        return GNUNET_SYSERR;
-      }
-    }
-    else
-    {
-      /* start bank */
-      if (GNUNET_OK !=
-          TALER_TESTING_prepare_bank (cfg_filename,
-                                      GNUNET_NO,
-                                      "exchange-account-test",
-                                      &bc))
-      {
-        return 1;
-      }
-      bankd = TALER_TESTING_run_bank (cfg_filename,
-                                      "http://localhost:8082/");
-      if (NULL == bankd)
-        return 77;
-    }
-  }
-
-  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
-  {
-    /* start exchange */
-    exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                         NULL, NULL, NULL,
-                                         "taler-exchange-httpd",
-                                         "taler-exchange-httpd",
-                                         "-c", config_file,
-                                         "-C",
-                                         NULL);
-    if ( (NULL == exchanged) &&
-         (MODE_BOTH == mode) )
-    {
-      if (-1 != fakebank)
-      {
-        kill (fakebank,
-              SIGTERM);
-        waitpid (fakebank,
-                 &wstatus,
-                 0);
-      }
-      if (NULL != bankd)
-      {
-        GNUNET_OS_process_kill (bankd,
-                                SIGTERM);
-        GNUNET_OS_process_destroy (bankd);
-      }
-      return 77;
-    }
-    /* start auditor */
-    auditord = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                        NULL, NULL, NULL,
-                                        "taler-auditor-httpd",
-                                        "taler-auditor-httpd",
-                                        "-c", config_file,
-                                        NULL);
-    if (NULL == auditord)
-    {
-      GNUNET_OS_process_kill (exchanged,
-                              SIGTERM);
-      if (MODE_BOTH == mode)
-      {
-        if (-1 != fakebank)
-        {
-          kill (fakebank,
-                SIGTERM);
-          waitpid (fakebank,
-                   &wstatus,
-                   0);
-        }
-        if (NULL != bankd)
-        {
-          GNUNET_OS_process_kill (bankd,
-                                  SIGTERM);
-          GNUNET_OS_process_destroy (bankd);
-        }
-      }
-      GNUNET_OS_process_destroy (exchanged);
-      return 77;
-    }
-    /* start exchange wirewatch */
-    wirewatch = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                         NULL, NULL, NULL,
-                                         "taler-exchange-wirewatch",
-                                         "taler-exchange-wirewatch",
-                                         "-c", config_file,
-                                         NULL);
-    if (NULL == wirewatch)
-    {
-      GNUNET_OS_process_kill (auditord,
-                              SIGTERM);
-      GNUNET_OS_process_kill (exchanged,
-                              SIGTERM);
-      if (MODE_BOTH == mode)
-      {
-        if (-1 != fakebank)
-        {
-          kill (fakebank,
-                SIGTERM);
-          waitpid (fakebank,
-                   &wstatus,
-                   0);
-        }
-        if (NULL != bankd)
-        {
-          GNUNET_OS_process_kill (bankd,
-                                  SIGTERM);
-          GNUNET_OS_process_destroy (bankd);
-        }
-      }
-      GNUNET_OS_process_destroy (exchanged);
-      return 77;
-    }
-  }
 
   if (MODE_CLIENT == mode)
   {
@@ -710,58 +519,16 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to detect running exchange at `%s'\n",
                 ec.exchange_url);
-    GNUNET_OS_process_kill (exchanged,
-                            SIGTERM);
-    if ( (MODE_BOTH == mode) || (MODE_CLIENT == mode))
-    {
-      if (-1 != fakebank)
-      {
-        kill (fakebank,
-              SIGTERM);
-        waitpid (fakebank,
-                 &wstatus,
-                 0);
-      }
-      if (NULL != bankd)
-      {
-        GNUNET_OS_process_kill (bankd,
-                                SIGTERM);
-        GNUNET_OS_process_destroy (bankd);
-      }
-    }
-    GNUNET_OS_process_wait (exchanged);
-    GNUNET_OS_process_destroy (exchanged);
-    if (NULL != wirewatch)
-    {
-      GNUNET_OS_process_kill (wirewatch,
-                              SIGTERM);
-      GNUNET_OS_process_wait (wirewatch);
-      GNUNET_OS_process_destroy (wirewatch);
-    }
-    if (NULL != auditord)
-    {
-      GNUNET_OS_process_kill (auditord,
-                              SIGTERM);
-      GNUNET_OS_process_wait (auditord);
-      GNUNET_OS_process_destroy (auditord);
-    }
     return 77;
   }
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
-    if (-1 != fakebank)
-      sleep (1); /* make sure fakebank process is ready before continuing */
-
     start_time = GNUNET_TIME_absolute_get ();
     result = GNUNET_OK;
-
     if (1 == howmany_clients)
     {
-      result = TALER_TESTING_setup (main_cb,
-                                    main_cb_cls,
-                                    cfg,
-                                    exchanged,
-                                    GNUNET_YES);
+      result = TALER_TESTING_run (main_cb,
+                                  main_cb_cls);
       print_stats ();
     }
     else
@@ -775,11 +542,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                             NULL == loglev ? "INFO" : loglev,
                             logfile);
 
-          result = TALER_TESTING_setup (main_cb,
-                                        main_cb_cls,
-                                        cfg,
-                                        exchanged,
-                                        GNUNET_YES);
+          result = TALER_TESTING_run (main_cb,
+                                      main_cb_cls);
           print_stats ();
           if (GNUNET_OK != result)
             GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -845,58 +609,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_OS_process_destroy (exchange_slave);
   }
 
-  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
-  {
-    GNUNET_assert (NULL != wirewatch);
-    GNUNET_assert (NULL != exchanged);
-    GNUNET_assert (NULL != auditord);
-    /* stop wirewatch */
-    GNUNET_break (0 ==
-                  GNUNET_OS_process_kill (wirewatch,
-                                          SIGTERM));
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_OS_process_wait (wirewatch));
-    GNUNET_OS_process_destroy (wirewatch);
-    /* stop auditor */
-    GNUNET_break (0 ==
-                  GNUNET_OS_process_kill (auditord,
-                                          SIGTERM));
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_OS_process_wait (auditord));
-    GNUNET_OS_process_destroy (auditord);
-    /* stop exchange */
-    GNUNET_break (0 ==
-                  GNUNET_OS_process_kill (exchanged,
-                                          SIGTERM));
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_OS_process_wait (exchanged));
-    GNUNET_OS_process_destroy (exchanged);
-  }
-
-  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
-  {
-    /* stop fakebank */
-    if (-1 != fakebank)
-    {
-      kill (fakebank,
-            SIGTERM);
-      waitpid (fakebank,
-               &wstatus,
-               0);
-      if ( (! WIFEXITED (wstatus)) ||
-           (0 != WEXITSTATUS (wstatus)) )
-      {
-        GNUNET_break (0);
-        result = GNUNET_SYSERR;
-      }
-    }
-    if (NULL != bankd)
-    {
-      GNUNET_OS_process_kill (bankd,
-                              SIGTERM);
-      GNUNET_OS_process_destroy (bankd);
-    }
-  }
   return result;
 }
 
@@ -1066,39 +778,8 @@ main (int argc,
     GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
-  if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
-  {
-    /* If we use the fakebank, we MUST reset the database as the fakebank
-       will have forgotten everything... */
-    if (GNUNET_OK !=
-        TALER_TESTING_prepare_exchange (cfg_filename,
-                                        (GNUNET_YES == use_fakebank)
-                                        ? GNUNET_YES
-                                        : GNUNET_NO,
-                                        &ec))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to prepare the exchange for launch\n");
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
-  }
-  else
-  {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "exchange",
-                                               "BASE_URL",
-                                               &ec.exchange_url))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange",
-                                 "base_url");
-      GNUNET_CONFIGURATION_destroy (cfg);
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
 
+  {
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (cfg,
                                                "benchmark-remote-exchange",

@@ -198,16 +198,8 @@ batch_deposit_cb (void *cls,
   ds->dh = NULL;
   if (ds->expected_response_code != dr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                JSON_INDENT (2));
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
@@ -259,8 +251,12 @@ batch_deposit_run (void *cls,
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
   };
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   memset (cdds,
           0,
           sizeof (cdds));
@@ -387,7 +383,7 @@ batch_deposit_run (void *cls,
       .refund_deadline = ds->refund_deadline
     };
 
-    ds->dh = TALER_EXCHANGE_batch_deposit (is->exchange,
+    ds->dh = TALER_EXCHANGE_batch_deposit (exchange,
                                            &dcd,
                                            ds->num_coins,
                                            cdds,
@@ -422,10 +418,8 @@ batch_deposit_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_batch_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }

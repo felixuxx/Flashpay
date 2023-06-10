@@ -83,23 +83,12 @@ refund_cb (void *cls,
 {
   struct RefundState *rs = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
-  struct TALER_TESTING_Command *refund_cmd;
 
-  refund_cmd = &rs->is->commands[rs->is->ip];
   rs->rh = NULL;
   if (rs->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                hr->ec,
-                refund_cmd->label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (rs->is);
+    TALER_TESTING_unexpected_status (rs->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (rs->is);
@@ -127,17 +116,17 @@ refund_run (void *cls,
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;
 
-  rs->exchange = is->exchange;
+  rs->exchange = TALER_TESTING_get_exchange (is);
+  if (NULL == rs->exchange)
+    return;
   rs->is = is;
-
   if (GNUNET_OK !=
       TALER_string_to_amount (rs->refund_amount,
                               &refund_amount))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %u/%s\n",
+                "Failed to parse amount `%s' at %s\n",
                 rs->refund_amount,
-                is->ip,
                 cmd->label);
     TALER_TESTING_interpreter_fail (is);
     return;
@@ -210,10 +199,8 @@ refund_cleanup (void *cls,
 
   if (NULL != rs->rh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                rs->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (rs->is,
+                                      cmd->label);
     TALER_EXCHANGE_refund_cancel (rs->rh);
     rs->rh = NULL;
   }

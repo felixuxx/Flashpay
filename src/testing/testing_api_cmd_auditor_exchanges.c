@@ -54,11 +54,6 @@ struct ExchangesState
   struct TALER_AUDITOR_ListExchangesHandle *leh;
 
   /**
-   * Auditor connection.
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
    * Interpreter state.
    */
   struct TALER_TESTING_Interpreter *is;
@@ -115,8 +110,7 @@ do_retry (void *cls)
   struct ExchangesState *es = cls;
 
   es->retry_task = NULL;
-  es->is->commands[es->is->ip].last_req_time
-    = GNUNET_TIME_absolute_get ();
+  TALER_TESTING_touch_cmd (es->is);
   exchanges_run (es,
                  NULL,
                  es->is);
@@ -159,24 +153,15 @@ exchanges_cb (void *cls,
         else
           es->backoff = GNUNET_TIME_randomized_backoff (es->backoff,
                                                         MAX_BACKOFF);
-        es->is->commands[es->is->ip].num_tries++;
+        TALER_TESTING_inc_tries (es->is);
         es->retry_task = GNUNET_SCHEDULER_add_delayed (es->backoff,
                                                        &do_retry,
                                                        es);
         return;
       }
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
-                es->is->commands[es->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (es->is);
+    TALER_TESTING_unexpected_status (es->is,
+                                     hr->http_status);
     return;
   }
   if (NULL != es->exchange_url)
@@ -217,13 +202,26 @@ exchanges_run (void *cls,
                struct TALER_TESTING_Interpreter *is)
 {
   struct ExchangesState *es = cls;
+  const struct TALER_TESTING_Command *auditor_cmd;
+  struct TALER_AUDITOR_Handle *auditor;
 
   (void) cmd;
+  auditor_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                       "auditor");
+  if (NULL == auditor_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_auditor (auditor_cmd,
+                                                  &auditor));
+
   es->is = is;
-  es->leh = TALER_AUDITOR_list_exchanges
-              (is->auditor,
-              &exchanges_cb,
-              es);
+  es->leh = TALER_AUDITOR_list_exchanges (auditor,
+                                          &exchanges_cb,
+                                          es);
 
   if (NULL == es->leh)
   {
@@ -250,10 +248,8 @@ exchanges_cleanup (void *cls,
 
   if (NULL != es->leh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                es->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (es->is,
+                                      cmd->label);
     TALER_AUDITOR_list_exchanges_cancel (es->leh);
     es->leh = NULL;
   }
@@ -275,7 +271,7 @@ exchanges_cleanup (void *cls,
  * @param index index number of the traits to be returned.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 exchanges_traits (void *cls,
                   const void **ret,
                   const char *trait,
@@ -301,13 +297,11 @@ exchanges_traits (void *cls,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges (const char *label,
-                             struct TALER_AUDITOR_Handle *auditor,
                              unsigned int expected_response_code)
 {
   struct ExchangesState *es;
 
   es = GNUNET_new (struct ExchangesState);
-  es->auditor = auditor;
   es->expected_response_code = expected_response_code;
 
   {

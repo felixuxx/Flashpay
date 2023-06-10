@@ -101,16 +101,8 @@ get_cb (void *cls,
   ds->dh = NULL;
   if (ds->expected_response_code != dr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                dr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (dr->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     dr->hr.http_status);
     return;
   }
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
@@ -198,8 +190,12 @@ get_run (void *cls,
   struct ContractGetState *ds = cls;
   const struct TALER_ContractDiffiePrivateP *contract_priv;
   const struct TALER_TESTING_Command *ref;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->contract_ref);
@@ -214,7 +210,7 @@ get_run (void *cls,
   }
   ds->contract_priv = *contract_priv;
   ds->dh = TALER_EXCHANGE_contract_get (
-    is->exchange,
+    exchange,
     contract_priv,
     &get_cb,
     ds);
@@ -244,10 +240,8 @@ get_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_contract_get_cancel (ds->dh);
     ds->dh = NULL;
   }

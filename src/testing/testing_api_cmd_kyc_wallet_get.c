@@ -49,6 +49,11 @@ struct KycWalletGetState
   char *reserve_payto_uri;
 
   /**
+   * Our command.
+   */
+  const struct TALER_TESTING_Command *cmd;
+
+  /**
    * Command to get a reserve private key from.
    */
   const char *reserve_reference;
@@ -99,20 +104,12 @@ wallet_kyc_cb (void *cls,
 {
   struct KycWalletGetState *kwg = cls;
   struct TALER_TESTING_Interpreter *is = kwg->is;
-  struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   kwg->kwh = NULL;
   if (kwg->expected_response_code != wkr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d (wanted %u) to command %s in %s:%u\n",
-                wkr->http_status,
-                (int) wkr->ec,
-                kwg->expected_response_code,
-                cmd->label,
-                __FILE__,
-                __LINE__);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     wkr->http_status);
     return;
   }
   switch (wkr->http_status)
@@ -150,8 +147,12 @@ wallet_kyc_run (void *cls,
                 struct TALER_TESTING_Interpreter *is)
 {
   struct KycWalletGetState *kwg = cls;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
-  (void) cmd;
+  kwg->cmd = cmd;
+  if (NULL == exchange)
+    return;
   kwg->is = is;
   if (NULL != kwg->reserve_reference)
   {
@@ -184,9 +185,9 @@ wallet_kyc_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
                                       &kwg->reserve_pub.eddsa_pub);
   kwg->reserve_payto_uri
-    = TALER_reserve_make_payto (TALER_EXCHANGE_get_base_url (is->exchange),
+    = TALER_reserve_make_payto (TALER_EXCHANGE_get_base_url (exchange),
                                 &kwg->reserve_pub);
-  kwg->kwh = TALER_EXCHANGE_kyc_wallet (is->exchange,
+  kwg->kwh = TALER_EXCHANGE_kyc_wallet (exchange,
                                         &kwg->reserve_priv,
                                         &kwg->balance,
                                         &wallet_kyc_cb,
@@ -210,10 +211,8 @@ wallet_kyc_cleanup (void *cls,
 
   if (NULL != kwg->kwh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                kwg->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (kwg->is,
+                                      cmd->label);
     TALER_EXCHANGE_kyc_wallet_cancel (kwg->kwh);
     kwg->kwh = NULL;
   }
@@ -243,8 +242,7 @@ wallet_kyc_traits (void *cls,
     TALER_TESTING_make_trait_reserve_pub (&kwg->reserve_pub),
     TALER_TESTING_make_trait_legi_requirement_row (&kwg->requirement_row),
     TALER_TESTING_make_trait_h_payto (&kwg->h_payto),
-    TALER_TESTING_make_trait_payto_uri (
-      (const char **) &kwg->reserve_payto_uri),
+    TALER_TESTING_make_trait_payto_uri (kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()
   };
 

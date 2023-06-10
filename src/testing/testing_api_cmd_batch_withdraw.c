@@ -189,18 +189,8 @@ reserve_batch_withdraw_cb (void *cls,
   ws->wsh = NULL;
   if (ws->expected_response_code != wr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
-                wr->hr.http_status,
-                (int) wr->hr.ec,
-                TALER_TESTING_interpreter_get_current_label (is),
-                __FILE__,
-                __LINE__);
-    json_dumpf (wr->hr.reply,
-                stderr,
-                0);
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     wr->hr.http_status);
     return;
   }
   switch (wr->hr.http_status)
@@ -263,8 +253,12 @@ batch_withdraw_run (void *cls,
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
   struct TALER_EXCHANGE_WithdrawCoinInput wcis[ws->num_coins];
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
+  if (NULL == exchange)
+    return;
   ws->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (
@@ -287,7 +281,7 @@ batch_withdraw_run (void *cls,
   }
   if (NULL == ws->exchange_url)
     ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (exchange));
   ws->reserve_priv = *rp;
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);
@@ -301,7 +295,7 @@ batch_withdraw_run (void *cls,
     struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
 
     TALER_planchet_master_setup_random (&cs->ps);
-    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
                                  &cs->amount,
                                  ws->age > 0);
     if (NULL == dpk)
@@ -327,7 +321,7 @@ batch_withdraw_run (void *cls,
     wci->ps = &cs->ps;
     wci->ach = cs->h_age_commitment;
   }
-  ws->wsh = TALER_EXCHANGE_batch_withdraw (is->exchange,
+  ws->wsh = TALER_EXCHANGE_batch_withdraw (exchange,
                                            rp,
                                            wcis,
                                            ws->num_coins,
@@ -357,9 +351,8 @@ batch_withdraw_cleanup (void *cls,
 
   if (NULL != ws->wsh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %s did not complete\n",
-                cmd->label);
+    TALER_TESTING_command_incomplete (ws->is,
+                                      cmd->label);
     TALER_EXCHANGE_batch_withdraw_cancel (ws->wsh);
     ws->wsh = NULL;
   }
@@ -427,12 +420,9 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_make_trait_amounts (index,
                                       &cs->amount),
     TALER_TESTING_make_trait_legi_requirement_row (&ws->requirement_row),
-    TALER_TESTING_make_trait_h_payto (
-      &ws->h_payto),
-    TALER_TESTING_make_trait_payto_uri (
-      (const char **) &ws->reserve_payto_uri),
-    TALER_TESTING_make_trait_exchange_url (
-      (const char **) &ws->exchange_url),
+    TALER_TESTING_make_trait_h_payto (&ws->h_payto),
+    TALER_TESTING_make_trait_payto_uri (ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_exchange_url (ws->exchange_url),
     TALER_TESTING_make_trait_age_commitment_proof (index,
                                                    cs->age_commitment_proof),
     TALER_TESTING_make_trait_h_age_commitment (index,

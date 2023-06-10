@@ -80,16 +80,8 @@ denom_sig_add_cb (
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (hr->reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     hr->http_status);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);
@@ -112,6 +104,11 @@ auditor_add_run (void *cls,
   struct TALER_AuditorSignatureP auditor_sig;
   struct TALER_DenominationHashP h_denom_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
+  const struct TALER_AuditorPublicKeyP *auditor_pub;
+  const struct TALER_TESTING_Command *auditor_cmd;
+  const struct TALER_TESTING_Command *exchange_cmd;
+  const char *exchange_url;
+  const char *auditor_url;
 
   (void) cmd;
   /* Get denom pub from trait */
@@ -120,7 +117,6 @@ auditor_add_run (void *cls,
 
     denom_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                           ds->denom_ref);
-
     if (NULL == denom_cmd)
     {
       GNUNET_break (0);
@@ -133,6 +129,31 @@ auditor_add_run (void *cls,
                                                       &dk));
   }
   ds->is = is;
+  auditor_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                       "auditor");
+  if (NULL == auditor_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_auditor_pub (auditor_cmd,
+                                                      &auditor_pub));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_auditor_url (auditor_cmd,
+                                                      &auditor_url));
+  exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                        "exchange");
+  if (NULL == exchange_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                       &exchange_url));
   if (ds->bad_sig)
   {
     memset (&auditor_sig,
@@ -141,28 +162,33 @@ auditor_add_run (void *cls,
   }
   else
   {
-    struct TALER_MasterPublicKeyP master_pub;
+    const struct TALER_MasterPublicKeyP *master_pub;
+    const struct TALER_AuditorPrivateKeyP *auditor_priv;
 
-    GNUNET_CRYPTO_eddsa_key_get_public (&is->master_priv.eddsa_priv,
-                                        &master_pub.eddsa_pub);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_master_pub (exchange_cmd,
+                                                       &master_pub));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_auditor_priv (auditor_cmd,
+                                                         &auditor_priv));
     TALER_auditor_denom_validity_sign (
-      is->auditor_url,
+      auditor_url,
       &dk->h_key,
-      &master_pub,
+      master_pub,
       dk->valid_from,
       dk->withdraw_valid_until,
       dk->expire_deposit,
       dk->expire_legal,
       &dk->value,
       &dk->fees,
-      &is->auditor_priv,
+      auditor_priv,
       &auditor_sig);
   }
   ds->dh = TALER_EXCHANGE_add_auditor_denomination (
-    is->ctx,
-    is->exchange_url,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     &h_denom_pub,
-    &is->auditor_pub,
+    auditor_pub,
     &auditor_sig,
     &denom_sig_add_cb,
     ds);
@@ -190,10 +216,8 @@ auditor_add_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_add_auditor_denomination_cancel (ds->dh);
     ds->dh = NULL;
   }

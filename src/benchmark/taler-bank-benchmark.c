@@ -322,11 +322,8 @@ launch_clients (void)
   if (1 == howmany_clients)
   {
     /* do everything in this process */
-    result = TALER_TESTING_setup (&run,
-                                  NULL,
-                                  cfg,
-                                  NULL,
-                                  GNUNET_NO);
+    result = TALER_TESTING_loop (&run,
+                                 NULL);
     if (verbose)
       print_stats ();
     return result;
@@ -340,11 +337,8 @@ launch_clients (void)
       GNUNET_log_setup ("benchmark-worker",
                         NULL == loglev ? "INFO" : loglev,
                         logfile);
-      result = TALER_TESTING_setup (&run,
-                                    NULL,
-                                    cfg,
-                                    NULL,
-                                    GNUNET_NO);
+      result = TALER_TESTING_loop (&run,
+                                   NULL);
       if (verbose)
         print_stats ();
       if (GNUNET_OK != result)

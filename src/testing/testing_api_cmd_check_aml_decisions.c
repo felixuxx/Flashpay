@@ -79,16 +79,8 @@ check_aml_decisions_cb (void *cls,
   ds->dh = NULL;
   if (ds->expected_http_status != adr->hr.http_status)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                adr->hr.http_status,
-                ds->is->commands[ds->is->ip].label,
-                __FILE__,
-                __LINE__);
-    json_dumpf (adr->hr.reply,
-                stderr,
-                0);
-    TALER_TESTING_interpreter_fail (ds->is);
+    TALER_TESTING_unexpected_status (ds->is,
+                                     adr->hr.http_status);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);
@@ -110,9 +102,25 @@ check_aml_decisions_run (void *cls,
   struct AmlCheckState *ds = cls;
   const struct TALER_AmlOfficerPrivateKeyP *officer_priv;
   const struct TALER_TESTING_Command *ref;
+  const char *exchange_url;
 
   (void) cmd;
   ds->is = is;
+  {
+    const struct TALER_TESTING_Command *exchange_cmd;
+
+    exchange_cmd = TALER_TESTING_interpreter_get_command (is,
+                                                          "exchange");
+    if (NULL == exchange_cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                                         &exchange_url));
+  }
   ref = TALER_TESTING_interpreter_lookup_command (is,
                                                   ds->ref_officer);
   if (NULL == ref)
@@ -125,8 +133,8 @@ check_aml_decisions_run (void *cls,
                  TALER_TESTING_get_trait_officer_priv (ref,
                                                        &officer_priv));
   ds->dh = TALER_EXCHANGE_lookup_aml_decisions (
-    is->ctx,
-    is->exchange_url,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     INT64_MAX,
     -1, /* return last one for testing */
     ds->filter,
@@ -157,10 +165,8 @@ check_aml_decisions_cleanup (void *cls,
 
   if (NULL != ds->dh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ds->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ds->is,
+                                      cmd->label);
     TALER_EXCHANGE_lookup_aml_decisions_cancel (ds->dh);
     ds->dh = NULL;
   }

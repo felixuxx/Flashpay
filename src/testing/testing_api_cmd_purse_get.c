@@ -183,7 +183,11 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_purse;
+  struct TALER_EXCHANGE_Handle *exchange
+    = TALER_TESTING_get_exchange (is);
 
+  if (NULL == exchange)
+    return;
   ss->is = is;
   create_purse
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -198,7 +202,7 @@ status_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  ss->pgh = TALER_EXCHANGE_purse_get (is->exchange,
+  ss->pgh = TALER_EXCHANGE_purse_get (exchange,
                                       ss->purse_pub,
                                       ss->timeout,
                                       ss->wait_for_merge,
@@ -227,10 +231,8 @@ status_cleanup (void *cls,
 
   if (NULL != ss->pgh)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Command %u (%s) did not complete\n",
-                ss->is->ip,
-                cmd->label);
+    TALER_TESTING_command_incomplete (ss->is,
+                                      cmd->label);
     TALER_EXCHANGE_purse_get_cancel (ss->pgh);
     ss->pgh = NULL;
   }

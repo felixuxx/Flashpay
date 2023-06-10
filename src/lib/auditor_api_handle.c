@@ -102,7 +102,7 @@ struct TALER_AUDITOR_Handle
   void *version_cb_cls;
 
   /**
-   * Data for the request to get the /version of a auditor,
+   * Data for the request to get the /config of a auditor,
    * NULL once we are past stage #MHS_INIT.
    */
   struct GNUNET_CURL_Job *vr;
@@ -113,12 +113,12 @@ struct TALER_AUDITOR_Handle
   char *vr_url;
 
   /**
-   * Task for retrying /version request.
+   * Task for retrying /config request.
    */
   struct GNUNET_SCHEDULER_Task *retry_task;
 
   /**
-   * /version data of the auditor, only valid if
+   * /config data of the auditor, only valid if
    * @e handshake_complete is past stage #MHS_VERSION.
    */
   char *version;
@@ -129,7 +129,7 @@ struct TALER_AUDITOR_Handle
   struct TALER_AUDITOR_VersionInformation vi;
 
   /**
-   * Retry /version frequency.
+   * Retry /config frequency.
    */
   struct GNUNET_TIME_Relative retry_delay;
 
@@ -141,10 +141,10 @@ struct TALER_AUDITOR_Handle
 };
 
 
-/* ***************** Internal /version fetching ************* */
+/* ***************** Internal /config fetching ************* */
 
 /**
- * Decode the JSON in @a resp_obj from the /version response and store the data
+ * Decode the JSON in @a resp_obj from the /config response and store the data
  * in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
@@ -216,16 +216,16 @@ decode_version_json (const json_t *resp_obj,
 
 
 /**
- * Initiate download of /version from the auditor.
+ * Initiate download of /config from the auditor.
  *
- * @param cls auditor where to download /version from
+ * @param cls auditor where to download /config from
  */
 static void
 request_version (void *cls);
 
 
 /**
- * Callback used when downloading the reply to a /version request
+ * Callback used when downloading the reply to a /config request
  * is complete.
  *
  * @param cls the `struct TALER_AUDITOR_Handle`
@@ -267,7 +267,7 @@ version_completed_cb (void *cls,
     if (NULL == resp_obj)
     {
       GNUNET_break_op (0);
-      TALER_LOG_WARNING ("NULL body for a 200-OK /version\n");
+      TALER_LOG_WARNING ("NULL body for a 200-OK /config\n");
       hr.http_status = 0;
       hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
       break;
@@ -295,7 +295,7 @@ version_completed_cb (void *cls,
   if (MHD_HTTP_OK != response_code)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "/version failed for auditor %s: %u!\n",
+                "/config failed for auditor %s: %u!\n",
                 auditor->url,
                 (unsigned int) response_code);
     auditor->state = MHS_FAILED;
@@ -309,7 +309,7 @@ version_completed_cb (void *cls,
   TALER_LOG_DEBUG ("Switching auditor state to 'version'\n");
   auditor->state = MHS_VERSION;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Auditor %s is now READY!\n",
+              "Auditor %s is ready!\n",
               auditor->url);
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
@@ -320,9 +320,9 @@ version_completed_cb (void *cls,
 
 
 /**
- * Initiate download of /version from the auditor.
+ * Initiate download of /config from the auditor.
  *
- * @param cls auditor where to download /version from
+ * @param cls auditor where to download /config from
  */
 static void
 request_version (void *cls)
@@ -406,7 +406,7 @@ TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
   auditor->ctx = ctx;
   auditor->url = GNUNET_strdup (url);
   auditor->vr_url = TALER_AUDITOR_path_to_url_ (auditor,
-                                                "/version");
+                                                "/config");
   if (NULL == auditor->vr_url)
   {
     GNUNET_break (0);

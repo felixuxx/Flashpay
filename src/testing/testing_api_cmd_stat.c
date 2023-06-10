@@ -74,13 +74,15 @@ stat_cmd (struct TALER_TESTING_Timer *timings,
 /**
  * Obtain statistics for @a timings of @a cmd
  *
- * @param timings what timings to get
+ * @param[in,out] cls what timings to get
  * @param cmd command to process
  */
 static void
-do_stat (struct TALER_TESTING_Timer *timings,
+do_stat (void *cls,
          const struct TALER_TESTING_Command *cmd)
 {
+  struct TALER_TESTING_Timer *timings = cls;
+
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command **bcmd;
@@ -121,13 +123,10 @@ stat_run (void *cls,
 {
   struct TALER_TESTING_Timer *timings = cls;
 
-  for (unsigned int i = 0; NULL != is->commands[i].label; i++)
-  {
-    if (cmd == &is->commands[i])
-      break; /* skip at our current command */
-    do_stat (timings,
-             &is->commands[i]);
-  }
+  TALER_TESTING_iterate (is,
+                         true,
+                         &do_stat,
+                         timings);
   TALER_TESTING_interpreter_next (is);
 }
 

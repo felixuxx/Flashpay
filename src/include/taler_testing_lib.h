@@ -27,11 +27,13 @@
 #define TALER_TESTING_LIB_H
 
 #include "taler_util.h"
-#include "taler_exchange_service.h"
+#include <microhttpd.h>
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
+#include "taler_auditor_service.h"
 #include "taler_bank_service.h"
-#include <microhttpd.h>
+#include "taler_exchange_service.h"
+#include "taler_fakebank_lib.h"
 
 
 /* ********************* Helper functions ********************* */
@@ -50,6 +52,115 @@
 
 
 /**
+ * Log an error message about us receiving an unexpected HTTP
+ * status code at the current command and fail the test.
+ *
+ * @param is interpreter to fail
+ * @param status unexpected HTTP status code received
+ */
+#define TALER_TESTING_unexpected_status(is,status)                      \
+  do {                                                                  \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                "Unexpected response code %u to command %s in %s:%u\n", \
+                status,                                                 \
+                TALER_TESTING_interpreter_get_current_label (is),       \
+                __FILE__,                                               \
+                __LINE__);                                              \
+    TALER_TESTING_interpreter_fail (is);                                \
+  } while (0)
+
+
+/**
+ * Log an error message about a command not having
+ * run to completion.
+ *
+ * @param is interpreter
+ * @param label command label of the incomplete command
+ */
+#define TALER_TESTING_command_incomplete(is,label)                      \
+  do {                                                                  \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                "Command %s (%s:%u) did not complete (at %s)\n",        \
+                label,                                                  \
+                __FILE__,                                               \
+                __LINE__,                                               \
+                TALER_TESTING_interpreter_get_current_label (is));      \
+  }while (0)
+
+
+/**
+ * Common credentials used in a test.
+ */
+struct TALER_TESTING_Credentials
+{
+  /**
+   * Bank authentication details for the exchange bank
+   * account.
+   */
+  struct TALER_BANK_AuthenticationData ba;
+
+  /**
+   * Configuration file data.
+   */
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+
+  /**
+   * Base URL of the exchange.
+   */
+  char *exchange_url;
+
+  /**
+   * Base URL of the auditor.
+   */
+  char *auditor_url;
+
+  /**
+   * RFC 8905 URI of the exchange.
+   */
+  char *exchange_payto;
+
+  /**
+   * RFC 8905 URI of a user.
+   */
+  char *user42_payto;
+
+  /**
+   * RFC 8905 URI of a user.
+   */
+  char *user43_payto;
+};
+
+
+/**
+ * What type of bank are we using?
+ */
+enum TALER_TESTING_BankSystem
+{
+  TALER_TESTING_BS_FAKEBANK = 1,
+  TALER_TESTING_BS_IBAN = 2
+};
+
+
+/**
+ * Obtain bank credentials for a given @a cfg_file using
+ * @a exchange_account_section as the basis for the
+ * exchange account.
+ *
+ * @param cfg_file name of configuration to parse
+ * @param exchange_account_section configuration section name for the exchange account to use
+ * @param bs type of bank to use
+ * @param[out] ua where to write user account details
+ *         and other credentials
+ */
+enum GNUNET_GenericReturnValue
+TALER_TESTING_get_credentials (
+  const char *cfg_file,
+  const char *exchange_account_section,
+  enum TALER_TESTING_BankSystem bs,
+  struct TALER_TESTING_Credentials *ua);
+
+
+/**
  * Allocate and return a piece of wire-details.  Combines
  * a @a payto -URL and adds some salt to create the JSON.
  *
@@ -59,6 +170,18 @@
  */
 json_t *
 TALER_TESTING_make_wire_details (const char *payto);
+
+
+/**
+ * Remove files from previous runs
+ *
+ * @param cls NULL
+ * @param cfg configuration
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_TESTING_cleanup_files_cfg (void *cls,
+                                 const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -76,204 +199,6 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
 
 
 /**
- * Configuration data for an exchange.
- */
-struct TALER_TESTING_ExchangeConfiguration
-{
-  /**
-   * Exchange base URL as it appears in the configuration.  Note
-   * that it might differ from the one where the exchange actually
-   * listens from.
-   */
-  char *exchange_url;
-
-  /**
-   * Auditor base URL as it appears in the configuration.  Note
-   * that it might differ from the one where the auditor actually
-   * listens from.
-   */
-  char *auditor_url;
-
-};
-
-/**
- * Connection to the database: aggregates
- * plugin and session handles.
- */
-struct TALER_TESTING_DatabaseConnection
-{
-  /**
-   * Database plugin.
-   */
-  struct TALER_EXCHANGEDB_Plugin *plugin;
-
-};
-
-struct TALER_TESTING_LibeufinServices
-{
-  /**
-   * Nexus
-   */
-  struct GNUNET_OS_Process *nexus;
-
-  /**
-   * Sandbox
-   */
-  struct GNUNET_OS_Process *sandbox;
-
-};
-
-/**
- * Prepare launching an exchange.  Checks that the configured
- * port is available, runs taler-exchange-keyup,
- * taler-auditor-sign and taler-exchange-dbinit.  Does not
- * launch the exchange process itself.
- *
- * @param config_filename configuration file to use
- * @param reset_db should we reset the database
- * @param[out] ec will be set to the exchange configuration data
- * @return #GNUNET_OK on success, #GNUNET_NO if test should be
- *         skipped, #GNUNET_SYSERR on test failure
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_exchange (const char *config_filename,
-                                int reset_db,
-                                struct TALER_TESTING_ExchangeConfiguration *ec);
-
-
-/**
- * "Canonical" cert_cb used when we are connecting to the
- * Exchange.
- *
- * @param cls closure, typically, the "run" method containing
- *        all the commands to be run, and a closure for it.
- * @param kr response details
- */
-void
-TALER_TESTING_cert_cb (void *cls,
-                       const struct TALER_EXCHANGE_KeysResponse *kr);
-
-
-/**
- * Wait for the exchange to have started. Waits for at
- * most 10s, after that returns 77 to indicate an error.
- *
- * @param base_url what URL should we expect the exchange
- *        to be running at
- * @return 0 on success
- */
-int
-TALER_TESTING_wait_exchange_ready (const char *base_url);
-
-
-/**
- * Wait for an HTTPD service to have started. Waits for at
- * most 10s, after that returns 77 to indicate an error.
- *
- * @param base_url what URL should we expect the exchange
- *        to be running at
- * @return 0 on success
- */
-int
-TALER_TESTING_wait_httpd_ready (const char *base_url);
-
-
-/**
- * Wait for the auditor to have started. Waits for at
- * most 10s, after that returns 77 to indicate an error.
- *
- * @param base_url what URL should we expect the auditor
- *        to be running at
- * @return 0 on success
- */
-int
-TALER_TESTING_wait_auditor_ready (const char *base_url);
-
-
-/**
- * Remove files from previous runs
- *
- * @param config_name configuration file to use+
- */
-void
-TALER_TESTING_cleanup_files (const char *config_name);
-
-
-/**
- * Remove files from previous runs
- *
- * @param cls NULL
- * @param cfg configuration
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_cleanup_files_cfg (void *cls,
-                                 const struct GNUNET_CONFIGURATION_Handle *cfg);
-
-
-/**
- * Run `taler-exchange-offline`.
- *
- * @param config_filename configuration file to use
- * @param payto_uri bank account to enable, can be NULL
- * @param auditor_pub public key of auditor to enable, can be NULL
- * @param auditor_url URL of auditor to enable, can be NULL
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_run_exchange_offline (const char *config_filename,
-                                    const char *payto_uri,
-                                    const char *auditor_pub,
-                                    const char *auditor_url);
-
-
-/**
- * Run `taler-auditor-dbinit -r` (reset auditor database).
- *
- * @param config_filename configuration file to use
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_auditor_db_reset (const char *config_filename);
-
-
-/**
- * Run `taler-exchange-dbinit -r` (reset exchange database).
- *
- * @param config_filename configuration file to use
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_exchange_db_reset (const char *config_filename);
-
-
-/**
- * Run `taler-auditor-offline` tool.
- *
- * @param config_filename configuration file to use
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_run_auditor_offline (const char *config_filename);
-
-
-/**
- * Run `taler-auditor-exchange`.
- *
- * @param config_filename configuration file to use
- * @param exchange_master_pub master public key of the exchange
- * @param exchange_base_url what is the base URL of the exchange
- * @param do_remove #GNUNET_NO to add exchange, #GNUNET_YES to remove
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_run_auditor_exchange (const char *config_filename,
-                                    const char *exchange_master_pub,
-                                    const char *exchange_base_url,
-                                    int do_remove);
-
-
-/**
  * Test port in URL string for availability.
  *
  * @param url URL to extract port from, 80 is default
@@ -283,194 +208,13 @@ enum GNUNET_GenericReturnValue
 TALER_TESTING_url_port_free (const char *url);
 
 
-/**
- * Configuration data for a bank.
- */
-struct TALER_TESTING_BankConfiguration
-{
-
-  /**
-   * Authentication data for the exchange user at the bank.
-   */
-  struct TALER_BANK_AuthenticationData exchange_auth;
-
-  /**
-   * Payto URL of the exchange's account ("2")
-   */
-  char *exchange_payto;
-
-  /**
-   * Payto URL of a user account ("42")
-   */
-  char *user42_payto;
-
-  /**
-   * Payto URL of another user's account ("43")
-   */
-  char *user43_payto;
-
-};
-
-/**
- * Prepare launching a fakebank.  Check that the configuration
- * file has the right option, and that the port is available.
- * If everything is OK, return the configuration data of the fakebank.
- *
- * @param config_filename configuration file to use
- * @param config_section which account to use
- *                       (must match x-taler-bank)
- * @param[out] bc set to the bank's configuration data
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_fakebank (const char *config_filename,
-                                const char *config_section,
-                                struct TALER_TESTING_BankConfiguration *bc);
-
-
 /* ******************* Generic interpreter logic ************ */
 
 /**
  * Global state of the interpreter, used by a command
  * to access information about other commands.
  */
-struct TALER_TESTING_Interpreter
-{
-
-  /**
-   * Commands the interpreter will run.
-   */
-  struct TALER_TESTING_Command *commands;
-
-  /**
-   * Interpreter task (if one is scheduled).
-   */
-  struct GNUNET_SCHEDULER_Task *task;
-
-  /**
-   * ID of task called whenever we get a SIGCHILD.
-   * Used for #TALER_TESTING_wait_for_sigchld().
-   */
-  struct GNUNET_SCHEDULER_Task *child_death_task;
-
-  /**
-   * Main execution context for the main loop.
-   */
-  struct GNUNET_CURL_Context *ctx;
-
-  /**
-   * Our configuration.
-   */
-  const struct GNUNET_CONFIGURATION_Handle *cfg;
-
-  /**
-   * Context for running the CURL event loop.
-   */
-  struct GNUNET_CURL_RescheduleContext *rc;
-
-  /**
-   * Handle to our fakebank, if #TALER_TESTING_run_with_fakebank()
-   * was used.  Otherwise NULL.
-   */
-  struct TALER_FAKEBANK_Handle *fakebank;
-
-  /**
-   * Task run on timeout.
-   */
-  struct GNUNET_SCHEDULER_Task *timeout_task;
-
-  /**
-   * Function to call for cleanup at the end. Can be NULL.
-   */
-  GNUNET_SCHEDULER_TaskCallback final_cleanup_cb;
-
-  /**
-   * Closure for #final_cleanup_cb().
-   */
-  void *final_cleanup_cb_cls;
-
-  /**
-   * Instruction pointer.  Tells #interpreter_run() which instruction to run
-   * next.  Need (signed) int because it gets -1 when rewinding the
-   * interpreter to the first CMD.
-   */
-  int ip;
-
-  /**
-   * Result of the testcases, #GNUNET_OK on success
-   */
-  int result;
-
-  /**
-   * Handle to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
-   * Handle to the auditor.  NULL unless specifically initialized
-   * as part of #TALER_TESTING_auditor_setup().
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
-   * Handle to exchange process; some commands need it
-   * to send signals.  E.g. to trigger the key state reload.
-   */
-  struct GNUNET_OS_Process *exchanged;
-
-  /**
-   * Public key of the auditor.
-   */
-  struct TALER_AuditorPublicKeyP auditor_pub;
-
-  /**
-   * Private key of the auditor.
-   */
-  struct TALER_AuditorPrivateKeyP auditor_priv;
-
-  /**
-   * Private offline signing key.
-   */
-  struct TALER_MasterPrivateKeyP master_priv;
-
-  /**
-   * Public offline signing key.
-   */
-  struct TALER_MasterPublicKeyP master_pub;
-
-  /**
-   * URL of the auditor (as per configuration).
-   */
-  char *auditor_url;
-
-  /**
-   * URL of the exchange (as per configuration).
-   */
-  char *exchange_url;
-
-  /**
-   * Is the interpreter running (#GNUNET_YES) or waiting
-   * for /keys (#GNUNET_NO)?
-   */
-  int working;
-
-  /**
-   * Is the auditor running (#GNUNET_YES) or waiting
-   * for /version (#GNUNET_NO)?
-   */
-  int auditor_working;
-
-  /**
-   * How often have we gotten a /keys response so far?
-   */
-  unsigned int key_generation;
-
-  /**
-   * Exchange keys from last download.
-   */
-  const struct TALER_EXCHANGE_Keys *keys;
-
-};
+struct TALER_TESTING_Interpreter;
 
 
 /**
@@ -489,6 +233,11 @@ struct TALER_TESTING_Command
    * Label for the command.
    */
   const char *label;
+
+  /**
+   * Variable name for the command, NULL for none.
+   */
+  const char *name;
 
   /**
    * Runs the command.  Note that upon return, the interpreter
@@ -574,7 +323,41 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 
 
 /**
- * Obtain main execution context for the main loop.
+ * Get command from hash map by variable name.
+ *
+ * @param is interpreter state.
+ * @param name name of the variable to get command by
+ * @return the command, if it is found, or NULL.
+ */
+const struct TALER_TESTING_Command *
+TALER_TESTING_interpreter_get_command (struct TALER_TESTING_Interpreter *is,
+                                       const char *name);
+
+
+/**
+ * Update the last request time of the current command
+ * to the current time.
+ *
+ * @param[in,out] is interpreter state where to show
+ *       that we are doing something
+ */
+void
+TALER_TESTING_touch_cmd (struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Increment the 'num_tries' counter for the current
+ * command.
+ *
+ * @param[in,out] is interpreter state where to
+ *   increment the counter
+ */
+void
+TALER_TESTING_inc_tries (struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Obtain CURL context for the main loop.
  *
  * @param is interpreter state.
  * @return CURL execution context.
@@ -595,15 +378,6 @@ TALER_TESTING_interpreter_get_current_label (
 
 
 /**
- * Get connection handle to the fakebank.
- *
- * @param is interpreter state.
- * @return the handle.
- */
-struct TALER_FAKEBANK_Handle *
-TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is);
-
-/**
  * Current command is done, run the next one.
  *
  * @param is interpreter state.
@@ -618,14 +392,6 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is);
  */
 void
 TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is);
-
-/**
- * Create command array terminator.
- *
- * @return a end-command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_end (void);
 
 
 /**
@@ -683,20 +449,6 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
 
 
 /**
- * First launch the fakebank, then schedule the first CMD
- * in the array of all the CMDs to execute.
- *
- * @param is interpreter state.
- * @param commands array of all the commands to execute.
- * @param bank_url base URL of the fake bank.
- */
-void
-TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
-                                 struct TALER_TESTING_Command *commands,
-                                 const char *bank_url);
-
-
-/**
  * The function that contains the array of all the CMDs to run,
  * which is then on charge to call some fashion of
  * TALER_TESTING_run*.  In all the test cases, this function is
@@ -711,248 +463,91 @@ typedef void
 
 
 /**
- * Install signal handlers plus schedules the main wrapper
- * around the "run" method.
+ * Run Taler testing loop.  Starts the GNUnet SCHEDULER (event loop).
  *
- * @param main_cb the "run" method which coontains all the
- *        commands.
- * @param main_cb_cls a closure for "run", typically NULL.
- * @param cfg configuration to use
- * @param exchanged exchange process handle: will be put in the
- *        state as some commands - e.g. revoke - need to send
- *        signal to it, for example to let it know to reload the
- *        key state. If NULL, the interpreter will run without
- *        trying to connect to the exchange first.
- * @param exchange_connect #GNUNET_YES if the test should connect
- *        to the exchange, #GNUNET_NO otherwise
- * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
- *         non-#GNUNET_OK codes are #GNUNET_SYSERR most of the
- *         times.
+ * @param main_cb main function to run
+ * @param main_cb_cls closure for @a main_cb
  */
 enum GNUNET_GenericReturnValue
-TALER_TESTING_setup (TALER_TESTING_Main main_cb,
-                     void *main_cb_cls,
-                     const struct GNUNET_CONFIGURATION_Handle *cfg,
-                     struct GNUNET_OS_Process *exchanged,
-                     int exchange_connect);
+TALER_TESTING_loop (TALER_TESTING_Main main_cb,
+                    void *main_cb_cls);
 
 
 /**
- * Install signal handlers plus schedules the main wrapper
- * around the "run" method.
+ * Convenience function to run a test.
  *
- * @param main_cb the "run" method which contains all the
- *        commands.
- * @param main_cb_cls a closure for "run", typically NULL.
- * @param config_filename configuration filename.
- * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
- *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
- *         times.
+ * @param argv command-line arguments given
+ * @param loglevel log level to use
+ * @param cfg_file configuration file to use
+ * @param exchange_account_section configuration section
+ *   with exchange bank account to use
+ * @param bs bank system to use
+ * @param[in,out] cred global credentials to initialize
+ * @param main_cb main test function to run
+ * @param main_cb_cls closure for @a main_cb
+ * @return 0 on success, 77 on setup trouble, non-zero process status code otherwise
  */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_auditor_setup (TALER_TESTING_Main main_cb,
-                             void *main_cb_cls,
-                             const char *config_filename);
+int
+TALER_TESTING_main (char *const *argv,
+                    const char *loglevel,
+                    const char *cfg_file,
+                    const char *exchange_account_section,
+                    enum TALER_TESTING_BankSystem bs,
+                    struct TALER_TESTING_Credentials *cred,
+                    TALER_TESTING_Main main_cb,
+                    void *main_cb_cls);
 
 
 /**
- * Closure for #TALER_TESTING_setup_with_exchange_cfg().
- */
-struct TALER_TESTING_SetupContext
-{
-  /**
-   * Main function of the test to run.
-   */
-  TALER_TESTING_Main main_cb;
-
-  /**
-   * Closure for @e main_cb.
-   */
-  void *main_cb_cls;
-
-  /**
-   * Name of the configuration file.
-   */
-  const char *config_filename;
-};
-
-
-/**
- * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the exchange using the given
- * configuration file.
+ * Callback over commands of an interpreter.
  *
- * @param cls must be a `struct TALER_TESTING_SetupContext *`
- * @param cfg configuration to use.
- * @return #GNUNET_OK if no errors occurred.
+ * @param cls closure
+ * @param cmd a command to process
  */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_setup_with_exchange_cfg (
+typedef void
+(*TALER_TESTING_CommandIterator)(
   void *cls,
-  const struct GNUNET_CONFIGURATION_Handle *cfg);
+  const struct TALER_TESTING_Command *cmd);
 
 
 /**
- * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the exchange using the given
- * configuration file.
+ * Iterates over all of the top-level commands of an
+ * interpreter.
  *
- * @param main_cb main method.
- * @param main_cb_cls main method closure.
- * @param config_file configuration file name.  Is is used
- *        by both this function and the exchange itself.  In the
- *        first case it gives out the exchange port number and
- *        the exchange base URL so as to check whether the port
- *        is available and the exchange responds when requested
- *        at its base URL.
- * @return #GNUNET_OK if no errors occurred.
+ * @param[in] interpreter to iterate over
+ * @param asc true in execution order, false for reverse execution order
+ * @param cb function to call on each command
+ * @param cb_cls closure for cb
  */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
-                                   void *main_cb_cls,
-                                   const char *config_file);
+void
+TALER_TESTING_iterate (struct TALER_TESTING_Interpreter *is,
+                       bool asc,
+                       TALER_TESTING_CommandIterator cb,
+                       void *cb_cls);
 
-
-/**
- * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the auditor and exchange using
- * the given configuration file.
- *
- * @param cls must be a `struct TALER_TESTING_SetupContext *`
- * @param cfg configuration to use.
- * @return #GNUNET_OK if no errors occurred.
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_setup_with_auditor_and_exchange_cfg (
-  void *cls,
-  const struct GNUNET_CONFIGURATION_Handle *cfg);
-
-
-/**
- * Initialize scheduler loop and curl context for the test case
- * including starting and stopping the auditor and exchange using
- * the given configuration file.
- *
- * @param main_cb main method.
- * @param main_cb_cls main method closure.
- * @param config_file configuration file name.  Is is used
- *        by both this function and the exchange itself.  In the
- *        first case it gives out the exchange port number and
- *        the exchange base URL so as to check whether the port
- *        is available and the exchange responds when requested
- *        at its base URL.
- * @return #GNUNET_OK if no errors occurred.
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
-                                               void *main_cb_cls,
-                                               const char *config_file);
-
-
-/**
- * Start the (Python) bank process.  Assume the port
- * is available and the database is clean.  Use the "prepare
- * bank" function to do such tasks.
- *
- * @param config_filename configuration filename.
- * @param bank_url base URL of the bank, used by `wget' to check
- *        that the bank was started right.
- * @return the process, or NULL if the process could not
- *         be started.
- */
-struct GNUNET_OS_Process *
-TALER_TESTING_run_bank (const char *config_filename,
-                        const char *bank_url);
-
-
-/**
- * Prepare libeufin sandbox execution.  Check if the port is available and
- * reset database.
- *
- * @param config_filename configuration file name.
- * @param reset_db should we reset the bank's database
- * @param config_section which configuration section should be used
- * @param[out] bc set to the bank's configuration data
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_libeufin (const char *config_filename,
-                                bool reset_db,
-                                const char *config_section,
-                                struct TALER_TESTING_BankConfiguration *bc);
-
-
-/**
- * Start the (nexus) bank process.  Assume the port
- * is available and the database is clean.  Use the "prepare
- * bank" function to do such tasks.  This function is also
- * responsible to create the exchange EBICS subscriber at
- * the nexus.
- *
- * @param bc bank configuration of the bank
- * @return the process, or NULL if the process could not
- *         be started.
- */
-struct TALER_TESTING_LibeufinServices
-TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc);
-
-
-/**
- * Runs the Fakebank by guessing / extracting the portnumber
- * from the base URL.
- *
- * @param bank_url bank's base URL.
- * @param currency currency the bank uses
- * @return the fakebank process handle, or NULL if any
- *         error occurs.
- */
-struct TALER_FAKEBANK_Handle *
-TALER_TESTING_run_fakebank (const char *bank_url,
-                            const char *currency);
-
-
-/**
- * Prepare the bank execution.  Check if the port is available
- * and reset database.
- *
- * @param config_filename configuration file name.
- * @param reset_db should we reset the bank's database
- * @param config_section which configuration section should be used
- * @param[out] bc set to the bank's configuration data
- * @return #GNUNET_OK on success
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_bank (const char *config_filename,
-                            bool reset_db,
-                            const char *config_section,
-                            struct TALER_TESTING_BankConfiguration *bc);
-
-/**
- * Prepare the Nexus execution.  Check if the port is available
- * and delete old database.
- *
- * @param config_filename configuration file name.
- * @param reset_db should we reset the bank's database
- * @param config_section section of the configuration with the exchange's account
- * @param[out] bc set to the bank's configuration data
- * @return the base url, or NULL upon errors.  Must be freed
- *         by the caller.
- */
-enum GNUNET_GenericReturnValue
-TALER_TESTING_prepare_nexus (const char *config_filename,
-                             int reset_db,
-                             const char *config_section,
-                             struct TALER_TESTING_BankConfiguration *bc);
 
 /**
  * Look for substring in a programs' name.
  *
  * @param prog program's name to look into
  * @param marker chunk to find in @a prog
+ * @return true if @a marker is in @a prog
  */
-enum GNUNET_GenericReturnValue
+bool
 TALER_TESTING_has_in_name (const char *prog,
                            const char *marker);
+
+
+/**
+ * Wait for an HTTPD service to have started. Waits for at
+ * most 10s, after that returns 77 to indicate an error.
+ *
+ * @param base_url what URL should we expect the exchange
+ *        to be running at
+ * @return 0 on success
+ */
+int
+TALER_TESTING_wait_httpd_ready (const char *base_url);
 
 
 /**
@@ -984,6 +579,92 @@ TALER_TESTING_history_entry_cmp (
 
 
 /* ************** Specific interpreter commands ************ */
+
+
+/**
+ * Create command array terminator.
+ *
+ * @return a end-command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_end (void);
+
+
+/**
+ * Set variable to command as side-effect of
+ * running a command.
+ *
+ * @param name name of the variable to set
+ * @param cmd command to set to variable when run
+ * @return modified command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_set_var (const char *name,
+                           struct TALER_TESTING_Command cmd);
+
+
+/**
+ * Launch GNU Taler setup.
+ *
+ * @param label command label.
+ * @param config_file configuration file to use
+ * @param ... NULL-terminated (const char *) arguments to pass to taler-benchmark-setup.sh
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_system_start (
+  const char *label,
+  const char *config_file,
+  ...);
+
+
+/**
+ * Connects to the exchange.
+ *
+ * @param label command label
+ * @param cfg configuration to use
+ * @param wait_for_keys block until we got /keys
+ * @param load_private_key obtain private key from file indicated in @a cfg
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_get_exchange (
+  const char *label,
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  bool wait_for_keys,
+  bool load_private_key);
+
+
+/**
+ * Connects to the auditor.
+ *
+ * @param label command label
+ * @param cfg configuration to use
+ * @param load_auditor_keys obtain auditor keys from file indicated in @a cfg
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_get_auditor (
+  const char *label,
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  bool load_auditor_keys);
+
+
+/**
+ * Runs the Fakebank in-process by guessing / extracting the portnumber
+ * from the base URL.
+ *
+ * @param label command label
+ * @param cfg configuration to use
+ * @param exchange_account_section configuration section
+ *   to use to determine bank account of the exchange
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_run_fakebank (
+  const char *label,
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *exchange_account_section);
 
 
 /**
@@ -1100,7 +781,6 @@ TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
  * Create a "deposit-confirmation" command.
  *
  * @param label command label.
- * @param auditor auditor connection.
  * @param deposit_reference reference to any operation that can
  *        provide a coin.
  * @param coin_index if @a deposit_reference offers an array of
@@ -1113,7 +793,6 @@ TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation (const char *label,
-                                        struct TALER_AUDITOR_Handle *auditor,
                                         const char *deposit_reference,
                                         unsigned int coin_index,
                                         const char *amount_without_fee,
@@ -1136,13 +815,11 @@ TALER_TESTING_cmd_deposit_confirmation_with_retry (
  * Create a "list exchanges" command.
  *
  * @param label command label.
- * @param auditor auditor connection.
  * @param expected_response_code expected HTTP response code.
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges (const char *label,
-                             struct TALER_AUDITOR_Handle *auditor,
                              unsigned int expected_response_code);
 
 
@@ -2114,13 +1791,10 @@ TALER_TESTING_cmd_wait_service (const char *label,
  * Make a "check keys" command.
  *
  * @param label command label
- * @param generation how many /keys responses are expected to
- *        have been returned when this CMD will be run.
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys (const char *label,
-                              unsigned int generation);
+TALER_TESTING_cmd_check_keys (const char *label);
 
 
 /**
@@ -2128,16 +1802,10 @@ TALER_TESTING_cmd_check_keys (const char *label,
  * just redownload the whole /keys.
  *
  * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
-                                            unsigned int generation);
+TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label);
 
 
 /**
@@ -2145,11 +1813,6 @@ TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
  * used in the request for /keys.
  *
  * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
  * @param last_denom_date_ref previous /keys command to use to
  *        obtain the "last_denom_date" value from; "zero" can be used
  *        as a special value to force an absolute time of zero to be
@@ -2159,7 +1822,6 @@ TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_with_last_denom (
   const char *label,
-  unsigned int generation,
   const char *last_denom_date_ref);
 
 
@@ -2188,13 +1850,18 @@ TALER_TESTING_cmd_batch (const char *label,
 bool
 TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 
+
 /**
  * Advance internal pointer to next command.
  *
  * @param is interpreter state.
+ * @param[in,out] cls closure of the batch
+ * @return true to advance IP in parent
  */
-void
-TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is);
+bool
+TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is,
+                              void *cls);
+
 
 /**
  * Obtain what command the batch is at.
@@ -2240,11 +1907,12 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_connect_with_state (const char *label,
                                       const char *state_reference);
 
+
 /**
  * Make the "insert-deposit" CMD.
  *
  * @param label command label.
- * @param dbc collects plugin and session handles
+ * @param db_cfg configuration to talk to the DB
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account merchant's account name (NOT a payto:// URI)
  * @param exchange_timestamp when did the exchange receive the deposit
@@ -2257,7 +1925,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (
   const char *label,
-  const struct TALER_TESTING_DatabaseConnection *dbc,
+  const struct GNUNET_CONFIGURATION_Handle *db_cfg,
   const char *merchant_name,
   const char *merchant_account,
   struct GNUNET_TIME_Timestamp exchange_timestamp,
@@ -2978,9 +2646,13 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (bank_row, const uint64_t)                                    \
   op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
   op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
-  op (officer_name, const char *)                                  \
+  op (officer_name, const char)                                  \
   op (aml_decision, enum TALER_AmlDecisionState)                   \
-  op (aml_justification, const char *)                             \
+  op (aml_justification, const char)                             \
+  op (auditor_priv, const struct TALER_AuditorPrivateKeyP)     \
+  op (auditor_pub, const struct TALER_AuditorPublicKeyP)       \
+  op (master_priv, const struct TALER_MasterPrivateKeyP)     \
+  op (master_pub, const struct TALER_MasterPublicKeyP)       \
   op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
   op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
   op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
@@ -2996,21 +2668,23 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
   op (merchant_sig, const struct TALER_MerchantSignatureP)         \
   op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
+  op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
   op (contract_terms, const json_t)                                \
   op (wire_details, const json_t)                                  \
   op (exchange_keys, const json_t)                                 \
-  op (exchange_url, const char *)                                  \
-  op (exchange_bank_account_url, const char *)                     \
-  op (taler_uri, const char *)                                     \
-  op (payto_uri, const char *)                                     \
-  op (kyc_url, const char *)                                       \
-  op (web_url, const char *)                                       \
+  op (exchange_url, const char)                                    \
+  op (auditor_url, const char)                                     \
+  op (exchange_bank_account_url, const char)                       \
+  op (taler_uri, const char)                                       \
+  op (payto_uri, const char)                                       \
+  op (kyc_url, const char)                                         \
+  op (web_url, const char)                                         \
   op (row, const uint64_t)                                         \
   op (legi_requirement_row, const uint64_t)                        \
   op (array_length, const unsigned int)                            \
-  op (credit_payto_uri, const char *)                              \
-  op (debit_payto_uri, const char *)                               \
-  op (order_id, const char *)                                      \
+  op (credit_payto_uri, const char)                                \
+  op (debit_payto_uri, const char)                                 \
+  op (order_id, const char)                                        \
   op (amount, const struct TALER_Amount)                           \
   op (amount_with_fee, const struct TALER_Amount)                  \
   op (batch_cmds, struct TALER_TESTING_Command *)                  \
@@ -3018,6 +2692,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
+  op (auditor, struct TALER_AUDITOR_Handle)                        \
+  op (exchange, struct TALER_EXCHANGE_Handle)                      \
+  op (fakebank, struct TALER_FAKEBANK_Handle)                      \
   op (process, struct GNUNET_OS_Process *)
 
 
@@ -3050,6 +2727,18 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
 
 TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
+
+
+/* ****************** convenience functions ************** */
+
+/**
+ * Get exchange handle from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange handle, or NULL on error
+ */
+struct TALER_EXCHANGE_Handle *
+TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is);
 
 
 #endif
