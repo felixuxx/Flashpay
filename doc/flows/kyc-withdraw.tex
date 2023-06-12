@@ -30,16 +30,21 @@
   \end{center}
   \caption{Regulatory process when withdrawing digital cash from a
     bank account.
-    When the transfer is denied the money is (eventually) returned to
+    If the transfer is denied or the user fails to withdraw the
+    funds for any other reason, the money is automatically returned
+    after the bounce period (see Table~\ref{table:kyc:withdraw:settings}) to
     the originating bank account.}
   \label{fig:kyc:withdraw}
 \end{figure}
 
 \begin{table}[h!]
-  \caption{Settings for the withdraw trigger}
+  \caption{Settings for the withdraw trigger. Note that the operation
+  must satisfy all of the given rules.} \label{table:kyc:withdraw:settings}
   \begin{tabular}{l|l|r}
-    {\bf Setting}            & {\bf Type}         & {\bf Value} \\ \hline \hline
-    Allowed bank accounts    & RFC 8905 RegEx     & {\em CH*} \\ \hline
-    Monthly withdraw maximum & Amount             & {\em 1000 CHF} \\
+    {\bf Setting}            & {\bf Type}         &  {\bf Value} \\ \hline \hline
+    Allowed bank accounts    & RFC 8905 RegEx     &  {\em CH*} \\ \hline
+    Withdraw maximum         & Amount/month       &  {\em 5000 CHF} \\
+    Withdraw maximum         & Amount/year        &  {\em 15000 CHF} \\
+    Bounce period            & Delay              &  1 month \\
   \end{tabular}
 \end{table}

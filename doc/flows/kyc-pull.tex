@@ -68,11 +68,13 @@
 
 
 \begin{table}[h!]
-  \caption{Settings for the pull payment trigger}
+  \caption{Settings for the pull payment trigger. Note that the operation
+  must satisfy all of the given rules.}
   \begin{tabular}{l|l|r}
     {\bf Setting}             & {\bf Type}      & {\bf Value} \\ \hline \hline
     Permitted phone numbers   & Dialing prefix  & {\em +41} \\
-    P2P KYC threshold         & Amount          & {\em  100 CHF} \\
-    Default P2P AML threshold & Amount          & {\em 1000 CHF} \\
+    P2P KYC threshold         & Amount/month    & {\em  5000 CHF} \\
+    P2P KYC threshold         & Amount/year     & {\em 15000 CHF} \\
+    Default P2P AML threshold & Amount/month    & {\em  1000 CHF} \\
   \end{tabular}
 \end{table}
