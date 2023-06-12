@@ -201,9 +201,18 @@ register_sandbox_account() {
       demobank \
       delete \
       --bank-account "$1" &> /dev/null || true
-    libeufin-cli sandbox \
-      demobank \
-      register --name "$3"
+
+    MAYBE_IBAN="${4:-}"
+    if test -n "$MAYBE_IBAN"; then
+      libeufin-cli sandbox \
+        demobank \
+        register --name "$3" --iban "$MAYBE_IBAN"
+    else
+      libeufin-cli sandbox \
+        demobank \
+        register --name "$3"
+    fi
+
     unset LIBEUFIN_SANDBOX_USERNAME
     unset LIBEUFIN_SANDBOX_PASSWORD
 }
@@ -256,7 +265,11 @@ then
     fi
     echo "OK"
     echo -n "Register Sandbox users ..."
-    register_sandbox_account fortytwo x "Forty Two"
+    # The specified IBAN and name must match the ones hard-coded into
+    # the C helper for the add-incoming call.  Without this value,
+    # Sandbox  won't find the target account to debit along a /add-incoming
+    # call.
+    register_sandbox_account fortytwo x "User42" FR7630006000011234567890189
     register_sandbox_account fortythree x "Forty Three"
     register_sandbox_account exchange x "Exchange Company"
     register_sandbox_account tor x "Tor Project"
