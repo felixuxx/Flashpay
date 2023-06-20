@@ -385,7 +385,7 @@ do_timeout (void *cls)
  *
  * @param cls the `struct TALER_TESTING_Interpreter *`
  * @param type type of the process
- * @param exit_code status code of the process
+ * @param code status code of the process
  */
 static void
 maint_child_death (void *cls,

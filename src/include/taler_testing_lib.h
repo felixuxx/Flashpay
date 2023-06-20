@@ -514,7 +514,7 @@ typedef void
  * Iterates over all of the top-level commands of an
  * interpreter.
  *
- * @param[in] interpreter to iterate over
+ * @param[in] is interpreter to iterate over
  * @param asc true in execution order, false for reverse execution order
  * @param cb function to call on each command
  * @param cb_cls closure for cb

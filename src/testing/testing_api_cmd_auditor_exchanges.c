@@ -287,14 +287,6 @@ exchanges_traits (void *cls,
 }
 
 
-/**
- * Create a "list exchanges" command.
- *
- * @param label command label.
- * @param auditor auditor connection.
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges (const char *label,
                              unsigned int expected_response_code)
@@ -318,16 +310,6 @@ TALER_TESTING_cmd_exchanges (const char *label,
 }
 
 
-/**
- * Create a "list exchanges" command and check whether
- * a particular exchange belongs to the returned bundle.
- *
- * @param label command label.
- * @param expected_response_code expected HTTP response code.
- * @param exchange_url URL of the exchange supposed to
- *  be included in the response.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges_with_url (const char *label,
                                       unsigned int expected_response_code,
