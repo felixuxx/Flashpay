@@ -110,7 +110,7 @@ struct TEAH_AuditorListEntry
   /**
    * Handle to the auditor.
    */
-  struct TALER_AUDITOR_Handle *ah;
+  struct TALER_AUDITOR_GetConfigHandle *ah;
 
   /**
    * Head of DLL of interactions with this auditor.
@@ -583,13 +583,14 @@ parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
  * @param vr response from the auditor
  */
 static void
-auditor_version_cb (
+auditor_config_cb (
   void *cls,
-  const struct TALER_AUDITOR_VersionResponse *vr)
+  const struct TALER_AUDITOR_ConfigResponse *vr)
 {
   struct TEAH_AuditorListEntry *ale = cls;
   enum TALER_AUDITOR_VersionCompatibility compat;
 
+  ale->ah = NULL;
   if (MHD_HTTP_OK != vr->hr.http_status)
   {
     /* In this case, we don't mark the auditor as 'up' */
@@ -664,10 +665,10 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_insert (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
-    ale->ah = TALER_AUDITOR_connect (exchange->ctx,
-                                     ale->auditor_url,
-                                     &auditor_version_cb,
-                                     ale);
+    ale->ah = TALER_AUDITOR_get_config (exchange->ctx,
+                                        ale->auditor_url,
+                                        &auditor_config_cb,
+                                        ale);
   }
 }
 
@@ -2137,9 +2138,11 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_remove (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
-    TALER_LOG_DEBUG ("Disconnecting the auditor `%s'\n",
-                     ale->auditor_url);
-    TALER_AUDITOR_disconnect (ale->ah);
+    if (NULL != ale->ah)
+    {
+      TALER_AUDITOR_get_config_cancel (ale->ah);
+      ale->ah = NULL;
+    }
     GNUNET_free (ale->auditor_url);
     GNUNET_free (ale);
   }

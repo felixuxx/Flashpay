@@ -2692,7 +2692,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
-  op (auditor, struct TALER_AUDITOR_Handle)                        \
   op (exchange, struct TALER_EXCHANGE_Handle)                      \
   op (fakebank, struct TALER_FAKEBANK_Handle)                      \
   op (process, struct GNUNET_OS_Process *)

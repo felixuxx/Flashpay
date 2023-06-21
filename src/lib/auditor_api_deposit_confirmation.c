@@ -25,9 +25,10 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
+#include "taler_util.h"
+#include "taler_curl_lib.h"
 #include "taler_json_lib.h"
 #include "taler_auditor_service.h"
-#include "auditor_api_handle.h"
 #include "taler_signatures.h"
 #include "auditor_api_curl_defaults.h"
 

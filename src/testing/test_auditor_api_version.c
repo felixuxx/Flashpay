@@ -41,7 +41,7 @@
  */
 #define CONFIG_FILE "test_auditor_api-rsa.conf"
 
-static struct TALER_AUDITOR_Handle *ah;
+static struct TALER_AUDITOR_GetConfigHandle *ah;
 
 static struct GNUNET_CURL_Context *ctx;
 
@@ -62,7 +62,11 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (tt);
     tt = NULL;
   }
-  TALER_AUDITOR_disconnect (ah);
+  if (NULL != ah)
+  {
+    TALER_AUDITOR_get_config_cancel (ah);
+    ah = NULL;
+  }
   GNUNET_CURL_fini (ctx);
   GNUNET_CURL_gnunet_rc_destroy (rc);
 }
@@ -86,9 +90,10 @@ do_timeout (void *cls)
  */
 static void
 version_cb (void *cls,
-            const struct TALER_AUDITOR_VersionResponse *vr)
+            const struct TALER_AUDITOR_ConfigResponse *vr)
 {
   (void) cls;
+  ah = NULL;
   if ( (MHD_HTTP_OK == vr->hr.http_status) &&
        (TALER_AUDITOR_VC_MATCH == vr->details.ok.compat) )
     global_ret = 0;
@@ -113,10 +118,10 @@ run (void *cls)
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
-  ah = TALER_AUDITOR_connect (ctx,
-                              auditor_url,
-                              &version_cb,
-                              NULL);
+  ah = TALER_AUDITOR_get_config (ctx,
+                                 auditor_url,
+                                 &version_cb,
+                                 NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   tt = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_SECONDS,

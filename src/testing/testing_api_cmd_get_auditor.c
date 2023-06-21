@@ -49,9 +49,9 @@ struct GetAuditorState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Auditor handle we produced.
+   * Auditor handle used to get the configuration.
    */
-  struct TALER_AUDITOR_Handle *auditor;
+  struct TALER_AUDITOR_GetConfigHandle *auditor;
 
   /**
    * URL of the auditor.
@@ -75,14 +75,23 @@ struct GetAuditorState
 static void
 version_cb (
   void *cls,
-  const struct TALER_AUDITOR_VersionResponse *vr)
+  const struct TALER_AUDITOR_ConfigResponse *vr)
 {
   struct GetAuditorState *gas = cls;
 
+  gas->auditor = NULL;
   if (MHD_HTTP_OK != vr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (gas->is,
                                      vr->hr.http_status);
+    return;
+  }
+  if ( (NULL != gas->priv_file) &&
+       (0 != GNUNET_memcmp (&gas->auditor_pub,
+                            &vr->details.ok.vi.auditor_pub)) )
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (gas->is);
     return;
   }
   TALER_TESTING_interpreter_next (gas->is);
@@ -126,10 +135,10 @@ get_auditor_run (void *cls,
   }
   gas->is = is;
   gas->auditor
-    = TALER_AUDITOR_connect (TALER_TESTING_interpreter_get_context (is),
-                             gas->auditor_url,
-                             &version_cb,
-                             gas);
+    = TALER_AUDITOR_get_config (TALER_TESTING_interpreter_get_context (is),
+                                gas->auditor_url,
+                                &version_cb,
+                                gas);
   if (NULL == gas->auditor)
   {
     GNUNET_break (0);
@@ -153,7 +162,8 @@ get_auditor_cleanup (void *cls,
 
   if (NULL != gas->auditor)
   {
-    TALER_AUDITOR_disconnect (gas->auditor);
+    GNUNET_break (0);
+    TALER_AUDITOR_get_config_cancel (gas->auditor);
     gas->auditor = NULL;
   }
   GNUNET_free (gas->priv_file);
@@ -182,7 +192,6 @@ get_auditor_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_auditor_priv (&gas->auditor_priv),
     TALER_TESTING_make_trait_auditor_pub (&gas->auditor_pub),
-    TALER_TESTING_make_trait_auditor (gas->auditor),
     TALER_TESTING_make_trait_auditor_url (gas->auditor_url),
     TALER_TESTING_trait_end ()
   };

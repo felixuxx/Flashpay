@@ -28,12 +28,12 @@
 #include <gnunet/gnunet_curl_lib.h>
 
 
-/* *********************  /version *********************** */
+/* *********************  /config *********************** */
 
 /**
- * @brief Information we get from the auditor about auditors.
+ * @brief Information we get from the auditor about itself.
  */
-struct TALER_AUDITOR_VersionInformation
+struct TALER_AUDITOR_ConfigInformation
 {
   /**
    * Public key of the auditing institution.  Wallets and merchants
@@ -147,9 +147,9 @@ struct TALER_AUDITOR_HttpResponse
 
 
 /**
- * Response to /version request.
+ * Response to /config request.
  */
-struct TALER_AUDITOR_VersionResponse
+struct TALER_AUDITOR_ConfigResponse
 {
   /**
    * HTTP response.
@@ -174,11 +174,12 @@ struct TALER_AUDITOR_VersionResponse
       enum TALER_AUDITOR_VersionCompatibility compat;
 
       /**
-       * Version data returned by /config.
+       * Config data returned by /config.
        */
-      struct TALER_AUDITOR_VersionInformation vi;
+      struct TALER_AUDITOR_ConfigInformation vi;
 
     } ok;
+
   } details;
 
 };
@@ -191,46 +192,45 @@ struct TALER_AUDITOR_VersionResponse
  * @param vr response data
  */
 typedef void
-(*TALER_AUDITOR_VersionCallback) (
+(*TALER_AUDITOR_ConfigCallback) (
   void *cls,
-  const struct TALER_AUDITOR_VersionResponse *vr);
+  const struct TALER_AUDITOR_ConfigResponse *vr);
 
 
 /**
  * @brief Handle to the auditor.  This is where we interact with
  * a particular auditor and keep the per-auditor information.
  */
-struct TALER_AUDITOR_Handle;
+struct TALER_AUDITOR_GetConfigHandle;
 
 
 /**
- * Initialise a connection to the auditor. Will connect to the
+ * Obtain meta data about an auditor. Will connect to the
  * auditor and obtain information about the auditor's master public
  * key and the auditor's auditor.  The respective information will
- * be passed to the @a version_cb once available, and all future
- * interactions with the auditor will be checked to be signed
- * (where appropriate) by the respective master key.
+ * be passed to the @a config_cb once available.
  *
  * @param ctx the context for CURL requests
  * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the auditor's version information
- * @param version_cb_cls closure for @a version_cb
+ * @param config_cb function to call with the auditor's config information
+ * @param config_cb_cls closure for @a config_cb
  * @return the auditor handle; NULL upon error
  */
-struct TALER_AUDITOR_Handle *
-TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
-                       const char *url,
-                       TALER_AUDITOR_VersionCallback version_cb,
-                       void *version_cb_cls);
+struct TALER_AUDITOR_GetConfigHandle *
+TALER_AUDITOR_get_config (struct GNUNET_CURL_Context *ctx,
+                          const char *url,
+                          TALER_AUDITOR_ConfigCallback config_cb,
+                          void *config_cb_cls);
 
 
 /**
- * Disconnect from the auditor.
+ * Cancel auditor config request.
  *
  * @param auditor the auditor handle
  */
 void
-TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor);
+TALER_AUDITOR_get_config_cancel (struct
+                                 TALER_AUDITOR_GetConfigHandle *auditor);
 
 
 /**
@@ -271,11 +271,10 @@ typedef void
  * that the response is well-formed.  If the auditor's reply is not
  * well-formed, we return an HTTP status code of zero to @a cb.
  *
- * We also verify that the @a exchange_sig is valid for this deposit-confirmation
- * request, and that the @a master_sig is a valid signature for @a
- * exchange_pub.  Also, the @a auditor must be ready to operate (i.e.  have
- * finished processing the /version reply).  If either check fails, we do
- * NOT initiate the transaction with the auditor and instead return NULL.
+ * We also verify that the @a exchange_sig is valid for this
+ * deposit-confirmation request, and that the @a master_sig is a valid
+ * signature for @a exchange_pub.  If the check fails, we do NOT initiate the
+ * transaction with the auditor and instead return NULL.
  *
  * @param ctx the context for CURL requests
  * @param url HTTP base URL for the auditor
