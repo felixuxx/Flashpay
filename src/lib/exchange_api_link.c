@@ -37,11 +37,6 @@ struct TALER_EXCHANGE_LinkHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -451,12 +446,12 @@ handle_link_finished (void *cls,
 
 
 struct TALER_EXCHANGE_LinkHandle *
-TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                     const struct
-                     TALER_AgeCommitmentProof *age_commitment_proof,
-                     TALER_EXCHANGE_LinkCallback link_cb,
-                     void *link_cb_cls)
+TALER_EXCHANGE_link (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentProof *age_commitment_proof,
+  TALER_EXCHANGE_LinkCallback link_cb,
+  void *link_cb_cls)
 {
   struct TALER_EXCHANGE_LinkHandle *lh;
   CURL *eh;
@@ -489,7 +484,6 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
                      pub_str);
   }
   lh = GNUNET_new (struct TALER_EXCHANGE_LinkHandle);
-  lh->exchange = exchange;
   lh->link_cb = link_cb;
   lh->link_cb_cls = link_cb_cls;
   lh->coin_priv = *coin_priv;
