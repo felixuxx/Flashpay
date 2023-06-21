@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018, 2021 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -132,13 +132,15 @@ do_retry (void *cls)
  * to check if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param dcr response details
  */
 static void
-deposit_confirmation_cb (void *cls,
-                         const struct TALER_AUDITOR_HttpResponse *hr)
+deposit_confirmation_cb (
+  void *cls,
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr)
 {
   struct DepositConfirmationState *dcs = cls;
+  const struct TALER_AUDITOR_HttpResponse *hr = &dcr->hr;
 
   dcs->dc = NULL;
   if (dcs->expected_response_code != hr->http_status)

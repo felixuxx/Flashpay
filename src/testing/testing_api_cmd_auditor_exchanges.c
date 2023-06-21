@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -127,11 +127,10 @@ do_retry (void *cls)
  */
 static void
 exchanges_cb (void *cls,
-              const struct TALER_AUDITOR_HttpResponse *hr,
-              unsigned int num_exchanges,
-              const struct TALER_AUDITOR_ExchangeInfo *ei)
+              const struct TALER_AUDITOR_ListExchangesResponse *ler)
 {
   struct ExchangesState *es = cls;
+  const struct TALER_AUDITOR_HttpResponse *hr = &ler->hr;
 
   es->leh = NULL;
   if (es->expected_response_code != hr->http_status)
@@ -164,24 +163,30 @@ exchanges_cb (void *cls,
                                      hr->http_status);
     return;
   }
+  if (MHD_HTTP_OK != hr->http_status)
+  {
+    TALER_TESTING_interpreter_next (es->is);
+    return;
+  }
   if (NULL != es->exchange_url)
   {
-    unsigned int found = GNUNET_NO;
+    bool found = false;
+    unsigned int num_exchanges = ler->details.ok.num_exchanges;
+    const struct TALER_AUDITOR_ExchangeInfo *ei = ler->details.ok.ei;
 
     for (unsigned int i = 0;
          i<num_exchanges;
          i++)
       if (0 == strcmp (es->exchange_url,
                        ei[i].exchange_url))
-        found = GNUNET_YES;
-    if (GNUNET_NO == found)
+        found = true;
+    if (! found)
     {
       TALER_LOG_ERROR ("Exchange '%s' doesn't exist at this auditor\n",
                        es->exchange_url);
       TALER_TESTING_interpreter_fail (es->is);
       return;
     }
-
     TALER_LOG_DEBUG ("Exchange '%s' exists at this auditor!\n",
                      es->exchange_url);
   }

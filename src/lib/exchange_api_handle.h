@@ -193,11 +193,12 @@ typedef struct TEAH_AuditorInteractionEntry *
  * auditor's /deposit-confirmation handler.
  *
  * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
- * @param hr HTTP response
+ * @param dcr response
  */
 void
-TEAH_acc_confirmation_cb (void *cls,
-                          const struct TALER_AUDITOR_HttpResponse *hr);
+TEAH_acc_confirmation_cb (
+  void *cls,
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr);
 
 
 /**

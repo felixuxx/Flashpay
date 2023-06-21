@@ -82,20 +82,15 @@ do_timeout (void *cls)
  * Function called with information about the auditor.
  *
  * @param cls closure
- * @param hr http response details
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response details
  */
 static void
 version_cb (void *cls,
-            const struct TALER_AUDITOR_HttpResponse *hr,
-            const struct TALER_AUDITOR_VersionInformation *vi,
-            enum TALER_AUDITOR_VersionCompatibility compat)
+            const struct TALER_AUDITOR_VersionResponse *vr)
 {
   (void) cls;
-  (void) hr;
-  if ( (NULL != vi) &&
-       (TALER_AUDITOR_VC_MATCH == compat) )
+  if ( (MHD_HTTP_OK == vr->hr.http_status) &&
+       (TALER_AUDITOR_VC_MATCH == vr->details.ok.compat) )
     global_ret = 0;
   else
     global_ret = 2;

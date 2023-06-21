@@ -168,19 +168,20 @@ struct KeysRequest
 
 
 void
-TEAH_acc_confirmation_cb (void *cls,
-                          const struct TALER_AUDITOR_HttpResponse *hr)
+TEAH_acc_confirmation_cb (
+  void *cls,
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr)
 {
   struct TEAH_AuditorInteractionEntry *aie = cls;
   struct TEAH_AuditorListEntry *ale = aie->ale;
 
-  if (MHD_HTTP_OK != hr->http_status)
+  if (MHD_HTTP_OK != dcr->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n",
                 ale->auditor_url,
-                hr->http_status,
-                hr->ec);
+                dcr->hr.http_status,
+                dcr->hr.ec);
   }
   GNUNET_CONTAINER_DLL_remove (ale->ai_head,
                                ale->ai_tail,
@@ -579,21 +580,17 @@ parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
  * auditor as 'up'.
  *
  * @param cls closure, a `struct TEAH_AuditorListEntry *`
- * @param hr http response from the auditor
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response from the auditor
  */
 static void
 auditor_version_cb (
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat)
+  const struct TALER_AUDITOR_VersionResponse *vr)
 {
   struct TEAH_AuditorListEntry *ale = cls;
+  enum TALER_AUDITOR_VersionCompatibility compat;
 
-  (void) hr;
-  if (NULL == vi)
+  if (MHD_HTTP_OK != vr->hr.http_status)
   {
     /* In this case, we don't mark the auditor as 'up' */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -601,7 +598,7 @@ auditor_version_cb (
                 ale->auditor_url);
     return;
   }
-
+  compat = vr->details.ok.compat;
   if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

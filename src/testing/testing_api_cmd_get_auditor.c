@@ -70,23 +70,19 @@ struct GetAuditorState
  * Function called with information about the auditor.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response data
  */
 static void
 version_cb (
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat)
+  const struct TALER_AUDITOR_VersionResponse *vr)
 {
   struct GetAuditorState *gas = cls;
 
-  if (MHD_HTTP_OK != hr->http_status)
+  if (MHD_HTTP_OK != vr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (gas->is,
-                                     hr->http_status);
+                                     vr->hr.http_status);
     return;
   }
   TALER_TESTING_interpreter_next (gas->is);

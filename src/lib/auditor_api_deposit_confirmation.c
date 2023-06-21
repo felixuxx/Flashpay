@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -87,64 +87,64 @@ handle_deposit_confirmation_finished (void *cls,
 {
   const json_t *json = djson;
   struct TALER_AUDITOR_DepositConfirmationHandle *dh = cls;
-  struct TALER_AUDITOR_HttpResponse hr = {
-    .reply = json,
-    .http_status = (unsigned int) response_code
+  struct TALER_AUDITOR_DepositConfirmationResponse dcr = {
+    .hr.reply = json,
+    .hr.http_status = (unsigned int) response_code
   };
 
   dh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dcr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    hr.ec = TALER_EC_NONE;
+    dcr.hr.ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_BAD_REQUEST:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* This should never happen, either us or the auditor is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, auditor says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_GONE:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, auditor says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for auditor deposit confirmation\n",
                 (unsigned int) response_code,
-                hr.ec);
+                dcr.hr.ec);
     break;
   }
   dh->cb (dh->cb_cls,
-          &hr);
+          &dcr);
   TALER_AUDITOR_deposit_confirmation_cancel (dh);
 }
 

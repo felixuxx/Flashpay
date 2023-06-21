@@ -239,10 +239,9 @@ version_completed_cb (void *cls,
 {
   struct TALER_AUDITOR_Handle *auditor = cls;
   const json_t *resp_obj = gresp_obj;
-  enum TALER_AUDITOR_VersionCompatibility vc;
-  struct TALER_AUDITOR_HttpResponse hr = {
-    .reply = resp_obj,
-    .http_status = (unsigned int) response_code
+  struct TALER_AUDITOR_VersionResponse vr = {
+    .hr.reply = resp_obj,
+    .hr.http_status = (unsigned int) response_code
   };
 
   auditor->vr = NULL;
@@ -250,7 +249,6 @@ version_completed_cb (void *cls,
               "Received version from URL `%s' with status %ld.\n",
               auditor->url,
               response_code);
-  vc = TALER_AUDITOR_VC_PROTOCOL_ERROR;
   switch (response_code)
   {
   case 0:
@@ -268,28 +266,33 @@ version_completed_cb (void *cls,
     {
       GNUNET_break_op (0);
       TALER_LOG_WARNING ("NULL body for a 200-OK /config\n");
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      vr.hr.http_status = 0;
+      vr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
       break;
     }
-    hr.ec = decode_version_json (resp_obj,
-                                 auditor,
-                                 &vc);
-    if (TALER_EC_NONE != hr.ec)
+    vr.hr.ec = decode_version_json (resp_obj,
+                                    auditor,
+                                    &vr.details.ok.compat);
+    if (TALER_EC_NONE != vr.hr.ec)
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
+      vr.hr.http_status = 0;
       break;
     }
+    auditor->state = MHS_VERSION;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Auditor %s is ready!\n",
+                auditor->url);
+    vr.details.ok.vi = auditor->vi;
     auditor->retry_delay = GNUNET_TIME_UNIT_ZERO; /* restart quickly */
     break;
   default:
-    hr.ec = TALER_JSON_get_error_code (resp_obj);
-    hr.hint = TALER_JSON_get_error_hint (resp_obj);
+    vr.hr.ec = TALER_JSON_get_error_code (resp_obj);
+    vr.hr.hint = TALER_JSON_get_error_hint (resp_obj);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) vr.hr.ec);
     break;
   }
   if (MHD_HTTP_OK != response_code)
@@ -299,23 +302,9 @@ version_completed_cb (void *cls,
                 auditor->url,
                 (unsigned int) response_code);
     auditor->state = MHS_FAILED;
-    /* notify application that we failed */
-    auditor->version_cb (auditor->version_cb_cls,
-                         &hr,
-                         NULL,
-                         vc);
-    return;
   }
-  TALER_LOG_DEBUG ("Switching auditor state to 'version'\n");
-  auditor->state = MHS_VERSION;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Auditor %s is ready!\n",
-              auditor->url);
-  /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
-                       &hr,
-                       &auditor->vi,
-                       vc);
+                       &vr);
 }
 
 

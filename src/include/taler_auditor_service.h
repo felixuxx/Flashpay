@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -147,20 +147,53 @@ struct TALER_AUDITOR_HttpResponse
 
 
 /**
+ * Response to /version request.
+ */
+struct TALER_AUDITOR_VersionResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+
+  /**
+   * Details depending on HTTP status.
+   */
+  union
+  {
+
+    /**
+     * Details for #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Protocol compatibility evaluation.
+       */
+      enum TALER_AUDITOR_VersionCompatibility compat;
+
+      /**
+       * Version data returned by /config.
+       */
+      struct TALER_AUDITOR_VersionInformation vi;
+
+    } ok;
+  } details;
+
+};
+
+
+/**
  * Function called with information about the auditor.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response data
  */
-// FIXME: bad API!
 typedef void
 (*TALER_AUDITOR_VersionCallback) (
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat);
+  const struct TALER_AUDITOR_VersionResponse *vr);
 
 
 /**
@@ -207,16 +240,28 @@ struct TALER_AUDITOR_DepositConfirmationHandle;
 
 
 /**
+ * Response to /deposit-confirmation request.
+ */
+struct TALER_AUDITOR_DepositConfirmationResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+};
+
+
+/**
  * Signature of functions called with the result from our call to the
  * auditor's /deposit-confirmation handler.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param dcr response data
  */
 typedef void
 (*TALER_AUDITOR_DepositConfirmationResultCallback)(
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr);
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr);
 
 
 /**
@@ -314,19 +359,53 @@ struct TALER_AUDITOR_ExchangeInfo
 
 
 /**
+ * Response to GET /exchanges request.
+ */
+struct TALER_AUDITOR_ListExchangesResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+
+  /**
+   * Details depending on HTTP status.
+   */
+  union
+  {
+
+    /**
+     * Details for #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Length of the @e ei array.
+       */
+      unsigned int num_exchanges;
+
+      /**
+       * Array with information about exchanges
+       * audited by this auditor.
+       */
+      const struct TALER_AUDITOR_ExchangeInfo *ei;
+    } ok;
+  } details;
+};
+
+
+/**
  * Function called with the result from /exchanges.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param num_exchanges length of array at @a ei
- * @param ei information about exchanges returned by the auditor
+ * @param ler response data
  */
 typedef void
 (*TALER_AUDITOR_ListExchangesResultCallback)(
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  unsigned int num_exchanges,
-  const struct TALER_AUDITOR_ExchangeInfo *ei);
+  const struct TALER_AUDITOR_ListExchangesResponse *ler);
+
 
 /**
  * Submit an /exchanges request to the auditor and get the
