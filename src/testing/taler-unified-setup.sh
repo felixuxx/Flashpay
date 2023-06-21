@@ -29,19 +29,21 @@ set -eu
 
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
-    echo " SKIP: " "$@"
+    echo " SKIP: " "$@" >&2
     exit 77
 }
 
 # Exit, with error message (hard failure)
 function exit_fail() {
-    echo " FAIL: " "$@"
+    echo " FAIL: " "$@" >&2
     exit 1
 }
 
 # Cleanup to run whenever we exit
 function cleanup()
 {
+    echo "Taler unified setup terminating!" >&2
+
     for n in $(jobs -p)
     do
         kill $n 2> /dev/null || true
@@ -53,6 +55,7 @@ function cleanup()
 # Install cleanup handler (except for kill -9)
 trap cleanup EXIT
 
+WAIT_FOR_SIGNAL=0
 START_AUDITOR=0
 START_BACKUP=0
 START_EXCHANGE=0
@@ -71,7 +74,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghl:mnr:stu:vw' OPTION; do
+while getopts ':abc:d:efghl:mnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -141,6 +144,9 @@ while getopts ':abc:d:efghl:mnr:stu:vw' OPTION; do
             ;;
         w)
             START_WIREWATCH="1"
+            ;;
+        W)
+            WAIT_FOR_SIGNAL="1"
             ;;
         ?)
         exit_fail "Unrecognized command line option"
@@ -218,14 +224,17 @@ register_sandbox_account() {
 }
 
 
-BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
-if [ "1" = "$START_NEXUS" ]
+if [[ "1" = "$START_NEXUS" || "1" = "$START_FAKEBANK" ]]
 then
-    NEXUS_PORT="$BANK_PORT"
-    SANDBOX_PORT="1$BANK_PORT"
-else
-    NEXUS_PORT="0"
-    SANDBOX_PORT="1$BANK_PORT"
+    BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
+    if [ "1" = "$START_NEXUS" ]
+    then
+        NEXUS_PORT="$BANK_PORT"
+        SANDBOX_PORT="1$BANK_PORT"
+    else
+        NEXUS_PORT="0"
+        SANDBOX_PORT="1$BANK_PORT"
+    fi
 fi
 
 if [ "1" = "$START_SANDBOX" ]
@@ -694,7 +703,17 @@ fi
 # Signal caller that we are ready.
 echo "<<READY>>"
 
-# Wait until caller stops us.
-read
+if [ "1" = "$WAIT_FOR_SIGNAL" ]
+then
+    while true
+    do
+        sleep 0.1
+    done
+else
+    # Wait until caller stops us.
+    read
+fi
+
+echo "Taler unified setup terminating!" >&2
 
 exit 0
