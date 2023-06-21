@@ -211,7 +211,7 @@ struct TALER_AUDITOR_Handle;
  * interactions with the auditor will be checked to be signed
  * (where appropriate) by the respective master key.
  *
- * @param ctx the context
+ * @param ctx the context for CURL requests
  * @param url HTTP base URL for the auditor
  * @param version_cb function to call with the auditor's version information
  * @param version_cb_cls closure for @a version_cb
@@ -412,14 +412,16 @@ typedef void
  * auditor's response.  If the auditor's reply is not
  * well-formed, we return an HTTP status code of zero to @a cb.
  *
- * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param ctx the context for CURL requests
+ * @param url HTTP base URL for the auditor
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_AUDITOR_ListExchangesHandle *
-TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
+TALER_AUDITOR_list_exchanges (struct GNUNET_CURL_Context *ctx,
+                              const char *url,
                               TALER_AUDITOR_ListExchangesResultCallback cb,
                               void *cb_cls);
 

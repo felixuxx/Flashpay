@@ -45,11 +45,6 @@ struct TALER_AUDITOR_ListExchangesHandle
 {
 
   /**
-   * The connection to auditor this request handle will use
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -122,14 +117,15 @@ handle_exchanges_finished (void *cls,
     }
     {
       struct TALER_AUDITOR_ExchangeInfo ei[GNUNET_NZL (ja_len)];
-      bool ok;
+      bool ok = true;
 
-      ok = true;
       for (unsigned int i = 0; i<ja_len; i++)
       {
         struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_fixed_auto ("master_pub", &ei[i].master_pub),
-          GNUNET_JSON_spec_string ("exchange_url", &ei[i].exchange_url),
+          GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                       &ei[i].master_pub),
+          GNUNET_JSON_spec_string ("exchange_url",
+                                   &ei[i].exchange_url),
           GNUNET_JSON_spec_end ()
         };
 
@@ -192,23 +188,20 @@ handle_exchanges_finished (void *cls,
 
 
 struct TALER_AUDITOR_ListExchangesHandle *
-TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
+TALER_AUDITOR_list_exchanges (struct GNUNET_CURL_Context *ctx,
+                              const char *url,
                               TALER_AUDITOR_ListExchangesResultCallback cb,
                               void *cb_cls)
 {
   struct TALER_AUDITOR_ListExchangesHandle *leh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_AUDITOR_handle_is_ready_ (auditor));
-
   leh = GNUNET_new (struct TALER_AUDITOR_ListExchangesHandle);
-  leh->auditor = auditor;
   leh->cb = cb;
   leh->cb_cls = cb_cls;
-  leh->url = TALER_AUDITOR_path_to_url_ (auditor,
-                                         "/exchanges");
+  leh->url = TALER_url_join (url,
+                             "exchanges",
+                             NULL);
   if (NULL == leh->url)
   {
     GNUNET_free (leh);
@@ -225,7 +218,6 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
     GNUNET_free (leh);
     return NULL;
   }
-  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   leh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_exchanges_finished,

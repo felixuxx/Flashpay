@@ -208,7 +208,7 @@ exchanges_run (void *cls,
 {
   struct ExchangesState *es = cls;
   const struct TALER_TESTING_Command *auditor_cmd;
-  struct TALER_AUDITOR_Handle *auditor;
+  const char *auditor_url;
 
   (void) cmd;
   auditor_cmd = TALER_TESTING_interpreter_get_command (is,
@@ -219,15 +219,20 @@ exchanges_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_auditor (auditor_cmd,
-                                                  &auditor));
-
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_auditor_url (auditor_cmd,
+                                           &auditor_url))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   es->is = is;
-  es->leh = TALER_AUDITOR_list_exchanges (auditor,
-                                          &exchanges_cb,
-                                          es);
-
+  es->leh = TALER_AUDITOR_list_exchanges (
+    TALER_TESTING_interpreter_get_context (is),
+    auditor_url,
+    &exchanges_cb,
+    es);
   if (NULL == es->leh)
   {
     GNUNET_break (0);
