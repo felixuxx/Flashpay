@@ -277,7 +277,8 @@ typedef void
  * finished processing the /version reply).  If either check fails, we do
  * NOT initiate the transaction with the auditor and instead return NULL.
  *
- * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param ctx the context for CURL requests
+ * @param url HTTP base URL for the auditor
  * @param h_wire hash of merchant wire details
  * @param h_policy hash over the policy, if any
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
@@ -301,7 +302,8 @@ typedef void
  */
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
-  struct TALER_AUDITOR_Handle *auditor,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,

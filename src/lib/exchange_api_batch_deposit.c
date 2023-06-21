@@ -56,6 +56,11 @@ struct TALER_EXCHANGE_BatchDepositHandle
   struct TALER_EXCHANGE_Handle *exchange;
 
   /**
+   * Context for our curl request(s).
+   */
+  struct GNUNET_CURL_Context *ctx;
+
+  /**
    * The url for this request.
    */
   char *url;
@@ -64,7 +69,7 @@ struct TALER_EXCHANGE_BatchDepositHandle
    * Context for #TEH_curl_easy_post(). Keeps the data that must
    * persist for Curl to make the upload.
    */
-  struct TALER_CURL_PostContext ctx;
+  struct TALER_CURL_PostContext post_ctx;
 
   /**
    * Handle for the request.
@@ -136,13 +141,13 @@ struct TALER_EXCHANGE_BatchDepositHandle
  * launch a deposit confirmation interaction.
  *
  * @param cls closure
- * @param ah handle to the auditor
+ * @param auditor_url base URL of the auditor
  * @param auditor_pub public key of the auditor
  * @return NULL if no deposit confirmation interaction was launched
  */
 static struct TEAH_AuditorInteractionEntry *
 auditor_cb (void *cls,
-            struct TALER_AUDITOR_Handle *ah,
+            const char *auditor_url,
             const struct TALER_AuditorPublicKeyP *auditor_pub)
 {
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
@@ -183,7 +188,8 @@ auditor_cb (void *cls,
                                         &dki->fees.deposit));
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
   aie->dch = TALER_AUDITOR_deposit_confirmation (
-    ah,
+    dh->ctx,
+    auditor_url,
     &dh->h_wire,
     &dh->h_policy,
     &dh->dcd.h_contract_terms,
@@ -464,7 +470,6 @@ TALER_EXCHANGE_batch_deposit (
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   struct TALER_EXCHANGE_BatchDepositHandle *dh;
-  struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
   json_t *deposits;
   CURL *eh;
@@ -600,7 +605,7 @@ TALER_EXCHANGE_batch_deposit (
   eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=
-        TALER_curl_easy_post (&dh->ctx,
+        TALER_curl_easy_post (&dh->post_ctx,
                               eh,
                               deposit_obj)) )
   {
@@ -618,10 +623,10 @@ TALER_EXCHANGE_batch_deposit (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit: `%s'\n",
               dh->url);
-  ctx = TEAH_handle_to_context (exchange);
-  dh->job = GNUNET_CURL_job_add2 (ctx,
+  dh->ctx = TEAH_handle_to_context (exchange);
+  dh->job = GNUNET_CURL_job_add2 (dh->ctx,
                                   eh,
-                                  dh->ctx.headers,
+                                  dh->post_ctx.headers,
                                   &handle_deposit_finished,
                                   dh);
   return dh;
@@ -648,7 +653,7 @@ TALER_EXCHANGE_batch_deposit_cancel (
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->cdds);
   GNUNET_free (deposit->exchange_sigs);
-  TALER_curl_easy_post_finished (&deposit->ctx);
+  TALER_curl_easy_post_finished (&deposit->post_ctx);
   GNUNET_free (deposit);
 }
 

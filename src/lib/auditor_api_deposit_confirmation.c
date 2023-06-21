@@ -39,11 +39,6 @@ struct TALER_AUDITOR_DepositConfirmationHandle
 {
 
   /**
-   * The connection to auditor this request handle will use
-   */
-  struct TALER_AUDITOR_Handle *auditor;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -237,7 +232,8 @@ verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
 
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
-  struct TALER_AUDITOR_Handle *auditor,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -258,12 +254,9 @@ TALER_AUDITOR_deposit_confirmation (
   void *cb_cls)
 {
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
-  struct GNUNET_CURL_Context *ctx;
   json_t *deposit_confirmation_obj;
   CURL *eh;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_AUDITOR_handle_is_ready_ (auditor));
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_policy,
@@ -322,18 +315,17 @@ TALER_AUDITOR_deposit_confirmation (
         GNUNET_JSON_pack_data_auto ("exchange_pub",
                                     exchange_pub));
   dh = GNUNET_new (struct TALER_AUDITOR_DepositConfirmationHandle);
-  dh->auditor = auditor;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->url = TALER_AUDITOR_path_to_url_ (auditor,
-                                        "/deposit-confirmation");
+  dh->url = TALER_url_join (url,
+                            "deposit-confirmation",
+                            NULL);
   if (NULL == dh->url)
   {
     GNUNET_free (dh);
     return NULL;
   }
   eh = TALER_AUDITOR_curl_easy_get_ (dh->url);
-
   if ( (NULL == eh) ||
        (CURLE_OK !=
         curl_easy_setopt (eh,
@@ -356,7 +348,6 @@ TALER_AUDITOR_deposit_confirmation (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit-confirmation: `%s'\n",
               dh->url);
-  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   dh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   dh->ctx.headers,

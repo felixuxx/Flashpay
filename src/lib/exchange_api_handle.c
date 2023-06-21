@@ -211,7 +211,7 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
     if (! ale->is_up)
       continue;
     aie = ac (ac_cls,
-              ale->ah,
+              ale->auditor_url,
               &ale->auditor_pub);
     if (NULL != aie)
     {

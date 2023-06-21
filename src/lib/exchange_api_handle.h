@@ -178,13 +178,13 @@ struct TALER_EXCHANGE_Handle
  * launch a deposit confirmation interaction.
  *
  * @param cls closure
- * @param ah handle to the auditor
+ * @param auditor_url base URL of the auditor
  * @param auditor_pub public key of the auditor
  * @return NULL if no deposit confirmation interaction was launched
  */
 typedef struct TEAH_AuditorInteractionEntry *
 (*TEAH_AuditorCallback)(void *cls,
-                        struct TALER_AUDITOR_Handle *ah,
+                        const char *auditor_url,
                         const struct TALER_AuditorPublicKeyP *auditor_pub);
 
 
