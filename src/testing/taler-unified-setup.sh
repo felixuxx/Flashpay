@@ -235,6 +235,12 @@ then
         NEXUS_PORT="0"
         SANDBOX_PORT="1$BANK_PORT"
     fi
+else
+    if [ "1" = "$START_SANDBOX" ]
+    then
+        BANK_PORT=$(taler-config -c "$CONF" -s "BANK" -o "HTTP_PORT")
+        SANDBOX_PORT="$BANK_PORT"
+    fi
 fi
 
 if [ "1" = "$START_SANDBOX" ]
