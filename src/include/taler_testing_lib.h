@@ -2740,4 +2740,15 @@ struct TALER_EXCHANGE_Handle *
 TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is);
 
 
+/**
+ * Get exchange URL from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange URL, or NULL on error
+ */
+const char *
+TALER_TESTING_get_exchange_url (
+  struct TALER_TESTING_Interpreter *is);
+
+
 #endif

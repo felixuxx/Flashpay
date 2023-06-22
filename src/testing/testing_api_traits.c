@@ -102,4 +102,31 @@ TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is)
 }
 
 
+const char *
+TALER_TESTING_get_exchange_url (struct TALER_TESTING_Interpreter *is)
+{
+  const char *exchange_url;
+  const struct TALER_TESTING_Command *exchange_cmd;
+
+  exchange_cmd
+    = TALER_TESTING_interpreter_get_command (is,
+                                             "exchange");
+  if (NULL == exchange_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_exchange_url (exchange_cmd,
+                                            &exchange_url))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return NULL;
+  }
+  return exchange_url;
+}
+
+
 /* end of testing_api_traits.c */

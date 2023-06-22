@@ -2127,7 +2127,8 @@ typedef void
  * reply is not well-formed, we return an HTTP status code of zero to
  * @a cb.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
  * @param reserve_pub public key of the reserve to inspect
  * @param timeout how long to wait for an affirmative reply
  *        (enables long polling if the reserve does not yet exist)
@@ -2138,7 +2139,8 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesGetHandle *
 TALER_EXCHANGE_reserves_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_ReservesGetCallback cb,
