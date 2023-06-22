@@ -85,7 +85,7 @@ while getopts ':abc:d:efghl:mnr:stu:vwW' OPTION; do
         c)
             CONF_ORIG="$OPTARG"
             ;;
-        c)
+        d)
             WIRE_DOMAIN="$OPTARG"
             ;;
         e)
