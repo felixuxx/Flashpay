@@ -125,12 +125,15 @@ get_attestable_run (void *cls,
   const struct TALER_TESTING_Command *ref_reserve;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   const struct TALER_ReservePublicKeyP *reserve_pub;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   ref_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->reserve_reference);
@@ -162,10 +165,12 @@ get_attestable_run (void *cls,
     }
     ss->reserve_pub = *reserve_pub;
   }
-  ss->rgah = TALER_EXCHANGE_reserves_get_attestable (exchange,
-                                                     &ss->reserve_pub,
-                                                     &reserve_get_attestable_cb,
-                                                     ss);
+  ss->rgah = TALER_EXCHANGE_reserves_get_attestable (
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    &ss->reserve_pub,
+    &reserve_get_attestable_cb,
+    ss);
 }
 
 

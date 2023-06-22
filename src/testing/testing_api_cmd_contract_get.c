@@ -190,13 +190,16 @@ get_run (void *cls,
   struct ContractGetState *ds = cls;
   const struct TALER_ContractDiffiePrivateP *contract_priv;
   const struct TALER_TESTING_Command *ref;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   ds->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->contract_ref);
   GNUNET_assert (NULL != ref);
@@ -210,7 +213,8 @@ get_run (void *cls,
   }
   ds->contract_priv = *contract_priv;
   ds->dh = TALER_EXCHANGE_contract_get (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     contract_priv,
     &get_cb,
     ds);

@@ -5785,7 +5785,8 @@ struct TALER_EXCHANGE_ContractsGetHandle;
 /**
  * Request information about a contract from the exchange.
  *
- * @param exchange exchange handle
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param contract_priv private key of the contract
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -5793,7 +5794,8 @@ struct TALER_EXCHANGE_ContractsGetHandle;
  */
 struct TALER_EXCHANGE_ContractsGetHandle *
 TALER_EXCHANGE_contract_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   TALER_EXCHANGE_ContractGetCallback cb,
   void *cb_cls);
@@ -6637,7 +6639,8 @@ typedef void
 /**
  * Submit a request to get the list of attestable attributes for a reserve.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param reserve_pub public key of the reserve to get available attributes for
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
@@ -6646,7 +6649,8 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesGetAttestHandle *
 TALER_EXCHANGE_reserves_get_attestable (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   TALER_EXCHANGE_ReservesGetAttestCallback cb,
   void *cb_cls);

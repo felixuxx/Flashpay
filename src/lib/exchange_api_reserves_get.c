@@ -226,7 +226,8 @@ TALER_EXCHANGE_reserves_get (
   rgh->cb_cls = cb_cls;
   rgh->reserve_pub = *reserve_pub;
   rgh->url = TALER_url_join (url,
-                             arg_str);
+                             arg_str,
+                             NULL);
   if (NULL == rgh->url)
   {
     GNUNET_free (rgh);
