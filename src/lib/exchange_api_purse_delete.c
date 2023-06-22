@@ -41,11 +41,6 @@ struct TALER_EXCHANGE_PurseDeleteHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -148,26 +143,23 @@ handle_purse_delete_finished (void *cls,
 
 struct TALER_EXCHANGE_PurseDeleteHandle *
 TALER_EXCHANGE_purse_delete (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   TALER_EXCHANGE_PurseDeleteCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_PurseDeleteHandle *pdh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   struct TALER_PurseContractPublicKeyP purse_pub;
   struct TALER_PurseContractSignatureP purse_sig;
   char arg_str[sizeof (purse_pub) * 2 + 32];
 
   pdh = GNUNET_new (struct TALER_EXCHANGE_PurseDeleteHandle);
-  pdh->exchange = exchange;
   pdh->cb = cb;
   pdh->cb_cls = cb_cls;
   GNUNET_CRYPTO_eddsa_key_get_public (&purse_priv->eddsa_priv,
                                       &purse_pub.eddsa_pub);
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   {
     char pub_str[sizeof (purse_pub) * 2];
     char *end;
@@ -179,11 +171,12 @@ TALER_EXCHANGE_purse_delete (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/purses/%s",
+                     "purses/%s",
                      pub_str);
   }
-  pdh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  pdh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == pdh->url)
   {
     GNUNET_break (0);
@@ -223,7 +216,6 @@ TALER_EXCHANGE_purse_delete (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for purse delete: `%s'\n",
               pdh->url);
-  ctx = TEAH_handle_to_context (exchange);
   pdh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    pdh->xhdr,

@@ -6081,7 +6081,8 @@ struct TALER_EXCHANGE_PurseDeleteHandle;
  * Asks the exchange to delete a purse. Will only succeed if
  * the purse was not yet merged and did not yet time out.
  *
- * @param exchange the exchange to interact with
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param purse_priv private key of the purse
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -6089,7 +6090,8 @@ struct TALER_EXCHANGE_PurseDeleteHandle;
  */
 struct TALER_EXCHANGE_PurseDeleteHandle *
 TALER_EXCHANGE_purse_delete (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   TALER_EXCHANGE_PurseDeleteCallback cb,
   void *cb_cls);
