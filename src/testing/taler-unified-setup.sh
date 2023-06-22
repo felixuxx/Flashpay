@@ -638,7 +638,7 @@ then
     if [ "1" != "$OK" ]
     then
         cat "$LAST_RESPONSE"
-        exit_skip "Failed to setup exchange keys, check secmod logs"
+        exit_fail "Failed to setup exchange keys, check secmod logs"
     fi
     rm "$LAST_RESPONSE"
     echo " OK"
@@ -690,7 +690,7 @@ then
     if [ "1" != "$OK" ]
     then
         cat "$LAST_RESPONSE"
-        exit_skip " Failed to setup keys"
+        exit_fail " Failed to setup keys"
     fi
     rm "$LAST_RESPONSE"
     echo " OK"
