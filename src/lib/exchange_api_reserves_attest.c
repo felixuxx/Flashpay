@@ -39,11 +39,6 @@ struct TALER_EXCHANGE_ReservesAttestHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -131,6 +126,8 @@ handle_reserves_attest_ok (struct TALER_EXCHANGE_ReservesAttestHandle *rsh,
     GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
+  /* FIXME: validate exchange_pub is actually
+     a good exchange signing key */
   rsh->cb (rsh->cb_cls,
            &rs);
   rsh->cb = NULL;
@@ -228,7 +225,8 @@ handle_reserves_attest_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesAttestHandle *
 TALER_EXCHANGE_reserves_attest (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
   const char *const*attributes,
@@ -236,7 +234,6 @@ TALER_EXCHANGE_reserves_attest (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesAttestHandle *rsh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
   struct TALER_ReserveSignatureP reserve_sig;
@@ -244,12 +241,6 @@ TALER_EXCHANGE_reserves_attest (
   struct GNUNET_TIME_Timestamp ts;
 
   if (0 == attributes_length)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
   {
     GNUNET_break (0);
     return NULL;
@@ -263,7 +254,6 @@ TALER_EXCHANGE_reserves_attest (
                                           json_string (attributes[i])));
   }
   rsh = GNUNET_new (struct TALER_EXCHANGE_ReservesAttestHandle);
-  rsh->exchange = exchange;
   rsh->cb = cb;
   rsh->cb_cls = cb_cls;
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
@@ -280,11 +270,12 @@ TALER_EXCHANGE_reserves_attest (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves-attest/%s",
+                     "reserves-attest/%s",
                      pub_str);
   }
-  rsh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  rsh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == rsh->url)
   {
     json_decref (details);
@@ -328,7 +319,6 @@ TALER_EXCHANGE_reserves_attest (
     }
     json_decref (attest_obj);
   }
-  ctx = TEAH_handle_to_context (exchange);
   rsh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    rsh->post_ctx.headers,

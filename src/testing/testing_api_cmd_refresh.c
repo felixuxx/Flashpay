@@ -783,13 +783,16 @@ refresh_link_run (void *cls,
   const struct TALER_TESTING_Command *reveal_cmd;
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_TESTING_Command *coin_cmd;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
   rls->cmd = cmd;
-  if (NULL == exchange)
-    return;
   rls->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
                                                          rls->reveal_reference);
   if (NULL == reveal_cmd)
@@ -832,11 +835,13 @@ refresh_link_run (void *cls,
   }
 
   /* finally, use private key from withdraw sign command */
-  rls->rlh = TALER_EXCHANGE_link (exchange,
-                                  coin_priv,
-                                  rms->refresh_data.melt_age_commitment_proof,
-                                  &link_cb,
-                                  rls);
+  rls->rlh = TALER_EXCHANGE_link (
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    coin_priv,
+    rms->refresh_data.melt_age_commitment_proof,
+    &link_cb,
+    rls);
 
   if (NULL == rls->rlh)
   {

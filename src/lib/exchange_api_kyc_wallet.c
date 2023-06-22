@@ -43,11 +43,6 @@ struct TALER_EXCHANGE_KycWalletHandle
   struct TALER_CURL_PostContext ctx;
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -154,16 +149,17 @@ handle_kyc_wallet_finished (void *cls,
 
 
 struct TALER_EXCHANGE_KycWalletHandle *
-TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
-                           const struct TALER_ReservePrivateKeyP *reserve_priv,
-                           const struct TALER_Amount *balance,
-                           TALER_EXCHANGE_KycWalletCallback cb,
-                           void *cb_cls)
+TALER_EXCHANGE_kyc_wallet (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_Amount *balance,
+  TALER_EXCHANGE_KycWalletCallback cb,
+  void *cb_cls)
 {
   struct TALER_EXCHANGE_KycWalletHandle *kwh;
   CURL *eh;
   json_t *req;
-  struct GNUNET_CURL_Context *ctx;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReserveSignatureP reserve_sig;
 
@@ -181,18 +177,17 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
                                 &reserve_sig));
   GNUNET_assert (NULL != req);
   kwh = GNUNET_new (struct TALER_EXCHANGE_KycWalletHandle);
-  kwh->exchange = exchange;
   kwh->cb = cb;
   kwh->cb_cls = cb_cls;
-  kwh->url = TEAH_path_to_url (exchange,
-                               "/kyc-wallet");
+  kwh->url = TALER_url_join (url,
+                             "kyc-wallet",
+                             NULL);
   if (NULL == kwh->url)
   {
     json_decref (req);
     GNUNET_free (kwh);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
   eh = TALER_EXCHANGE_curl_easy_get_ (kwh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

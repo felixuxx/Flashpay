@@ -37,11 +37,6 @@ struct TALER_EXCHANGE_KycProofHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -140,27 +135,22 @@ handle_kyc_proof_finished (void *cls,
 
 
 struct TALER_EXCHANGE_KycProofHandle *
-TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
-                          const struct TALER_PaytoHashP *h_payto,
-                          const char *logic,
-                          const char *args,
-                          TALER_EXCHANGE_KycProofCallback cb,
-                          void *cb_cls)
+TALER_EXCHANGE_kyc_proof (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PaytoHashP *h_payto,
+  const char *logic,
+  const char *args,
+  TALER_EXCHANGE_KycProofCallback cb,
+  void *cb_cls)
 {
   struct TALER_EXCHANGE_KycProofHandle *kph;
-  struct GNUNET_CURL_Context *ctx;
   char *arg_str;
 
   if (NULL == args)
     args = "";
   else
     GNUNET_assert (args[0] == '&');
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   {
     char hstr[sizeof (struct TALER_PaytoHashP) * 2];
     char *end;
@@ -171,17 +161,17 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
                                          sizeof (hstr));
     *end = '\0';
     GNUNET_asprintf (&arg_str,
-                     "/kyc-proof/%s?state=%s%s",
+                     "kyc-proof/%s?state=%s%s",
                      logic,
                      hstr,
                      args);
   }
   kph = GNUNET_new (struct TALER_EXCHANGE_KycProofHandle);
-  kph->exchange = exchange;
   kph->cb = cb;
   kph->cb_cls = cb_cls;
-  kph->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  kph->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   GNUNET_free (arg_str);
   if (NULL == kph->url)
   {
@@ -202,7 +192,6 @@ TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *exchange,
                  curl_easy_setopt (kph->eh,
                                    CURLOPT_FOLLOWLOCATION,
                                    0L));
-  ctx = TEAH_handle_to_context (exchange);
   kph->job = GNUNET_CURL_job_add_raw (ctx,
                                       kph->eh,
                                       NULL,

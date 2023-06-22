@@ -3286,7 +3286,8 @@ typedef void
  * This API is typically not used by anyone, it is more a threat against those
  * trying to receive a funds transfer by abusing the refresh protocol.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param coin_priv private key to request link data for
  * @param age_commitment_proof age commitment to the corresponding coin, might be NULL
  * @param link_cb the callback to call with the useful result of the
@@ -3296,7 +3297,8 @@ typedef void
  */
 struct TALER_EXCHANGE_LinkHandle *
 TALER_EXCHANGE_link (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   const struct TALER_AgeCommitmentProof *age_commitment_proof,
   TALER_EXCHANGE_LinkCallback link_cb,
@@ -4025,7 +4027,8 @@ struct TALER_EXCHANGE_KycProofHandle;
 /**
  * Run interaction with exchange to provide proof of KYC status.
  *
- * @param eh exchange handle to use
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param h_payto hash of payto URI identifying the target account
  * @param logic name of the KYC logic to run
  * @param args additional args to pass, can be NULL
@@ -4035,12 +4038,14 @@ struct TALER_EXCHANGE_KycProofHandle;
  * @return NULL on error
  */
 struct TALER_EXCHANGE_KycProofHandle *
-TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *eh,
-                          const struct TALER_PaytoHashP *h_payto,
-                          const char *logic,
-                          const char *args,
-                          TALER_EXCHANGE_KycProofCallback cb,
-                          void *cb_cls);
+TALER_EXCHANGE_kyc_proof (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_PaytoHashP *h_payto,
+  const char *logic,
+  const char *args,
+  TALER_EXCHANGE_KycProofCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -4118,7 +4123,8 @@ typedef void
  * Run interaction with exchange to find out the wallet's KYC
  * identifier.
  *
- * @param eh exchange handle to use
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param reserve_priv wallet private key to check
  * @param balance balance (or balance threshold) crossed by the wallet
  * @param cb function to call with the result
@@ -4126,11 +4132,13 @@ typedef void
  * @return NULL on error
  */
 struct TALER_EXCHANGE_KycWalletHandle *
-TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *eh,
-                           const struct TALER_ReservePrivateKeyP *reserve_priv,
-                           const struct TALER_Amount *balance,
-                           TALER_EXCHANGE_KycWalletCallback cb,
-                           void *cb_cls);
+TALER_EXCHANGE_kyc_wallet (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_Amount *balance,
+  TALER_EXCHANGE_KycWalletCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -6250,7 +6258,7 @@ struct TALER_EXCHANGE_PurseCreateMergeResponse
   union
   {
     /**
-     * Detailed returned on #MHD_HTTP_OK.
+     * Details returned on #MHD_HTTP_OK.
      */
     struct
     {
@@ -6746,7 +6754,8 @@ typedef void
 /**
  * Submit a request to attest attributes about the owner of a reserve.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx CURL context
+ * @param url exchange base URL
  * @param reserve_priv private key of the reserve to attest
  * @param attributes_length length of the @a attributes array
  * @param attributes array of names of attributes to get attestations for
@@ -6757,7 +6766,8 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesAttestHandle *
 TALER_EXCHANGE_reserves_attest (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
   const char *const*attributes,

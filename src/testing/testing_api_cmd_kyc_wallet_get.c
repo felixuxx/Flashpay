@@ -147,13 +147,16 @@ wallet_kyc_run (void *cls,
                 struct TALER_TESTING_Interpreter *is)
 {
   struct KycWalletGetState *kwg = cls;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
   kwg->cmd = cmd;
-  if (NULL == exchange)
-    return;
   kwg->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   if (NULL != kwg->reserve_reference)
   {
     const struct TALER_TESTING_Command *res_cmd;
@@ -185,13 +188,15 @@ wallet_kyc_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
                                       &kwg->reserve_pub.eddsa_pub);
   kwg->reserve_payto_uri
-    = TALER_reserve_make_payto (TALER_EXCHANGE_get_base_url (exchange),
+    = TALER_reserve_make_payto (exchange_url,
                                 &kwg->reserve_pub);
-  kwg->kwh = TALER_EXCHANGE_kyc_wallet (exchange,
-                                        &kwg->reserve_priv,
-                                        &kwg->balance,
-                                        &wallet_kyc_cb,
-                                        kwg);
+  kwg->kwh = TALER_EXCHANGE_kyc_wallet (
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    &kwg->reserve_priv,
+    &kwg->balance,
+    &wallet_kyc_cb,
+    kwg);
   GNUNET_assert (NULL != kwg->kwh);
 }
 
