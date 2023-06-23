@@ -75,8 +75,10 @@ THEN
     UPDATE SET status=EXCLUDED.status | 1;
 END IF;
 
--- Wake up everyone who might care...
-PERFORM pg_notify (in_kyc_completed_notify_s, NULL);
+EXECUTE FORMAT (
+ 'NOTIFY %s'
+ ,in_kyc_completed_notify_s);
+
 
 INSERT INTO kyc_alerts
  (h_payto

@@ -611,6 +611,7 @@ TEH_PG_reserves_in_insert (
                  reserves_length,
                  batch_size,
                  results);
+  GNUNET_PQ_event_do_poll (pg->conn);
   for (unsigned int i = 0; i<reserves_length; i++)
     GNUNET_free (rrs[i].notify_s);
   return qs;
@@ -889,6 +890,7 @@ TEH_PG_reserves_in_insertN (
     }
   }
 finished:
+  GNUNET_PQ_event_do_poll (pg->conn);
   for (unsigned int i = 0; i<reserves_length; i++)
     GNUNET_free (rrs[i].notify_s);
   return qs;

@@ -601,11 +601,12 @@ TEH_handler_kyc_check (
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Suspending HTTP request on timeout (%s) now...\n",
-                GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_duration (
+                GNUNET_TIME_relative2s (GNUNET_TIME_absolute_get_remaining (
                                           kyp->timeout),
                                         true));
     GNUNET_assert (NULL != kyp->eh);
     kyp->suspended = true;
+    kyp->section_name = NULL;
     GNUNET_CONTAINER_DLL_insert (kyp_head,
                                  kyp_tail,
                                  kyp);

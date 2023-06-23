@@ -65,7 +65,9 @@ BEGIN
              ,expiration_date=GREATEST(expiration_date,in_expiration_date)
              ,gc_date=GREATEST(gc_date,in_expiration_date)
    	        WHERE reserve_pub=in_reserve_pub;
-    PERFORM pg_notify(in_notify, NULL);
+    EXECUTE FORMAT (
+      'NOTIFY %s'
+       in_notify);
   ELSE
     out_duplicate = TRUE;
   END IF;
