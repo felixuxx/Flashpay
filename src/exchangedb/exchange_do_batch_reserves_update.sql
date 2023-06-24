@@ -67,7 +67,7 @@ BEGIN
    	        WHERE reserve_pub=in_reserve_pub;
     EXECUTE FORMAT (
       'NOTIFY %s'
-       in_notify);
+      ,in_notify);
   ELSE
     out_duplicate = TRUE;
   END IF;
