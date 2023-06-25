@@ -35,32 +35,6 @@ struct TEAH_AuditorListEntry;
 
 
 /**
- * Entry in list of ongoing interactions with an auditor.
- */
-struct TEAH_AuditorInteractionEntry
-{
-  /**
-   * DLL entry.
-   */
-  struct TEAH_AuditorInteractionEntry *next;
-
-  /**
-   * DLL entry.
-   */
-  struct TEAH_AuditorInteractionEntry *prev;
-
-  /**
-   * Which auditor is this action associated with?
-   */
-  struct TEAH_AuditorListEntry *ale;
-
-  /**
-   * Interaction state.
-   */
-  struct TALER_AUDITOR_DepositConfirmationHandle *dch;
-};
-
-/**
  * Stages of initialization for the `struct TALER_EXCHANGE_Handle`
  */
 enum ExchangeHandleState
@@ -180,25 +154,11 @@ struct TALER_EXCHANGE_Handle
  * @param cls closure
  * @param auditor_url base URL of the auditor
  * @param auditor_pub public key of the auditor
- * @return NULL if no deposit confirmation interaction was launched
  */
-typedef struct TEAH_AuditorInteractionEntry *
+typedef void
 (*TEAH_AuditorCallback)(void *cls,
                         const char *auditor_url,
                         const struct TALER_AuditorPublicKeyP *auditor_pub);
-
-
-/**
- * Signature of functions called with the result from our call to the
- * auditor's /deposit-confirmation handler.
- *
- * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
- * @param dcr response
- */
-void
-TEAH_acc_confirmation_cb (
-  void *cls,
-  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr);
 
 
 /**
@@ -206,12 +166,12 @@ TEAH_acc_confirmation_cb (
  * @a ac and giving it a chance to start a deposit
  * confirmation interaction.
  *
- * @param h exchange to go over auditors for
+ * @param keys the keys to go over auditors for
  * @param ac function to call per auditor
  * @param ac_cls closure for @a ac
  */
 void
-TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
+TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Keys *keys,
                           TEAH_AuditorCallback ac,
                           void *ac_cls);
 

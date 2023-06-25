@@ -98,7 +98,7 @@ struct DepositState
   /**
    * Deposit handle while operation is running.
    */
-  struct TALER_EXCHANGE_DepositHandle *dh;
+  struct TALER_EXCHANGE_BatchDepositHandle *dh;
 
   /**
    * Timestamp of the /deposit operation in the wallet (contract signing time).
@@ -215,7 +215,7 @@ do_retry (void *cls)
  */
 static void
 deposit_cb (void *cls,
-            const struct TALER_EXCHANGE_DepositResult *dr)
+            const struct TALER_EXCHANGE_BatchDepositResult *dr)
 {
   struct DepositState *ds = cls;
 
@@ -254,10 +254,11 @@ deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == dr->hr.http_status)
   {
+    GNUNET_assert (1 == dr->details.ok.num_signatures);
     ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_timestamp = dr->details.ok.deposit_timestamp;
     ds->exchange_pub = *dr->details.ok.exchange_pub;
-    ds->exchange_sig = *dr->details.ok.exchange_sig;
+    ds->exchange_sig = dr->details.ok.exchange_sigs[0];
   }
   TALER_TESTING_interpreter_next (ds->is);
 }
@@ -296,12 +297,15 @@ deposit_run (void *cls,
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
   };
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url
+    = TALER_TESTING_get_exchange_url (is);
 
   (void) cmd;
-  if (NULL == exchange)
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
     return;
+  }
   ds->is = is;
   if (NULL != ds->deposit_reference)
   {
@@ -469,12 +473,16 @@ deposit_run (void *cls,
       .refund_deadline = ds->refund_deadline
     };
 
-    ds->dh = TALER_EXCHANGE_deposit (exchange,
-                                     &dcd,
-                                     &cdd,
-                                     &deposit_cb,
-                                     ds,
-                                     &ec);
+    ds->dh = TALER_EXCHANGE_batch_deposit (
+      TALER_TESTING_interpreter_get_context (is),
+      exchange_url,
+      TALER_TESTING_get_keys (is),
+      &dcd,
+      1,
+      &cdd,
+      &deposit_cb,
+      ds,
+      &ec);
   }
   if (NULL == ds->dh)
   {
@@ -505,7 +513,7 @@ deposit_cleanup (void *cls,
   {
     TALER_TESTING_command_incomplete (ds->is,
                                       cmd->label);
-    TALER_EXCHANGE_deposit_cancel (ds->dh);
+    TALER_EXCHANGE_batch_deposit_cancel (ds->dh);
     ds->dh = NULL;
   }
   if (NULL != ds->retry_task)

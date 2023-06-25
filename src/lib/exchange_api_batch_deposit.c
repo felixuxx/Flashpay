@@ -44,6 +44,39 @@
  */
 #define AUDITOR_CHANCE 20
 
+
+/**
+ * Entry in list of ongoing interactions with an auditor.
+ */
+struct TEAH_AuditorInteractionEntry
+{
+  /**
+   * DLL entry.
+   */
+  struct TEAH_AuditorInteractionEntry *next;
+
+  /**
+   * DLL entry.
+   */
+  struct TEAH_AuditorInteractionEntry *prev;
+
+  /**
+   * URL of our auditor. For logging.
+   */
+  const char *auditor_url;
+
+  /**
+   * Interaction state.
+   */
+  struct TALER_AUDITOR_DepositConfirmationHandle *dch;
+
+  /**
+   * Batch deposit this is for.
+   */
+  struct TALER_EXCHANGE_BatchDepositHandle *dh;
+};
+
+
 /**
  * @brief A Deposit Handle
  */
@@ -51,9 +84,9 @@ struct TALER_EXCHANGE_BatchDepositHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange.
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Context for our curl request(s).
@@ -118,9 +151,29 @@ struct TALER_EXCHANGE_BatchDepositHandle
   struct TALER_ExchangeSignatureP *exchange_sigs;
 
   /**
+   * Head of DLL of interactions with this auditor.
+   */
+  struct TEAH_AuditorInteractionEntry *ai_head;
+
+  /**
+   * Tail of DLL of interactions with this auditor.
+   */
+  struct TEAH_AuditorInteractionEntry *ai_tail;
+
+  /**
+   * Result to return to the application once @e ai_head is empty.
+   */
+  struct TALER_EXCHANGE_BatchDepositResult dr;
+
+  /**
    * Exchange signing public key, set for #auditor_cb.
    */
   struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Response object to free at the end.
+   */
+  json_t *response;
 
   /**
    * Chance that we will inform the auditor about the deposit
@@ -137,21 +190,65 @@ struct TALER_EXCHANGE_BatchDepositHandle
 
 
 /**
+ * Finish batch deposit operation by calling the callback.
+ *
+ * @param[in] dh handle to finished batch deposit operation
+ */
+static void
+finish_dh (struct TALER_EXCHANGE_BatchDepositHandle *dh)
+{
+  dh->cb (dh->cb_cls,
+          &dh->dr);
+  TALER_EXCHANGE_batch_deposit_cancel (dh);
+}
+
+
+/**
+ * Function called with the result from our call to the
+ * auditor's /deposit-confirmation handler.
+ *
+ * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
+ * @param dcr response
+ */
+static void
+acc_confirmation_cb (
+  void *cls,
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr)
+{
+  struct TEAH_AuditorInteractionEntry *aie = cls;
+  struct TALER_EXCHANGE_BatchDepositHandle *dh = aie->dh;
+
+  if (MHD_HTTP_OK != dcr->hr.http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n",
+                aie->auditor_url,
+                dcr->hr.http_status,
+                dcr->hr.ec);
+  }
+  GNUNET_CONTAINER_DLL_remove (dh->ai_head,
+                               dh->ai_tail,
+                               aie);
+  GNUNET_free (aie);
+  if (NULL == dh->ai_head)
+    finish_dh (dh);
+}
+
+
+/**
  * Function called for each auditor to give us a chance to possibly
  * launch a deposit confirmation interaction.
  *
  * @param cls closure
  * @param auditor_url base URL of the auditor
  * @param auditor_pub public key of the auditor
- * @return NULL if no deposit confirmation interaction was launched
  */
-static struct TEAH_AuditorInteractionEntry *
+static void
 auditor_cb (void *cls,
             const char *auditor_url,
             const struct TALER_AuditorPublicKeyP *auditor_pub)
 {
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
-  const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   struct TEAH_AuditorInteractionEntry *aie;
   struct TALER_Amount amount_without_fee;
@@ -164,29 +261,30 @@ auditor_cb (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Not providing deposit confirmation to auditor\n");
-    return NULL;
+    return;
   }
   coin = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_WEAK,
                                    dh->num_cdds);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Will provide deposit confirmation to auditor `%s'\n",
               TALER_B2S (auditor_pub));
-  key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-  dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+  dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
                                                      &dh->cdds[coin].h_denom_pub);
   GNUNET_assert (NULL != dki);
-  spk = TALER_EXCHANGE_get_signing_key_info (key_state,
+  spk = TALER_EXCHANGE_get_signing_key_info (dh->keys,
                                              &dh->exchange_pub);
   if (NULL == spk)
   {
     GNUNET_break_op (0);
-    return NULL;
+    return;
   }
   GNUNET_assert (0 <=
                  TALER_amount_subtract (&amount_without_fee,
                                         &dh->cdds[coin].amount,
                                         &dki->fees.deposit));
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
+  aie->dh = dh;
+  aie->auditor_url = auditor_url;
   aie->dch = TALER_AUDITOR_deposit_confirmation (
     dh->ctx,
     auditor_url,
@@ -201,14 +299,16 @@ auditor_cb (void *cls,
     &dh->dcd.merchant_pub,
     &dh->exchange_pub,
     &dh->exchange_sigs[coin],
-    &key_state->master_pub,
+    &dh->keys->master_pub,
     spk->valid_from,
     spk->valid_until,
     spk->valid_legal,
     &spk->master_sig,
-    &TEAH_acc_confirmation_cb,
+    &acc_confirmation_cb,
     aie);
-  return aie;
+  GNUNET_CONTAINER_DLL_insert (dh->ai_head,
+                               dh->ai_tail,
+                               aie);
 }
 
 
@@ -227,22 +327,19 @@ handle_deposit_finished (void *cls,
 {
   struct TALER_EXCHANGE_BatchDepositHandle *dh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_BatchDepositResult dr = {
-    .hr.reply = j,
-    .hr.http_status = (unsigned int) response_code
-  };
-  const struct TALER_EXCHANGE_Keys *keys;
+  struct TALER_EXCHANGE_BatchDepositResult *dr = &dh->dr;
 
   dh->job = NULL;
-  keys = TALER_EXCHANGE_get_keys (dh->exchange);
+  dh->response = json_incref ((json_t*) j);
+  dr->hr.reply = dh->response;
+  dr->hr.http_status = (unsigned int) response_code;
   switch (response_code)
   {
   case 0:
-    dr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dr->hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
-      const struct TALER_EXCHANGE_Keys *key_state;
       const json_t *sigs;
       json_t *sig;
       unsigned int idx;
@@ -253,7 +350,7 @@ handle_deposit_finished (void *cls,
                                      &dh->exchange_pub),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
-                                   &dr.details.ok.transaction_base_url),
+                                   &dr->details.ok.transaction_base_url),
           NULL),
         GNUNET_JSON_spec_timestamp ("exchange_timestamp",
                                     &dh->exchange_timestamp),
@@ -266,27 +363,26 @@ handle_deposit_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       if (json_array_size (sigs) != dh->num_cdds)
       {
         GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       dh->exchange_sigs = GNUNET_new_array (dh->num_cdds,
                                             struct TALER_ExchangeSignatureP);
-      key_state = TALER_EXCHANGE_get_keys (dh->exchange);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
+          TALER_EXCHANGE_test_signing_key (dh->keys,
                                            &dh->exchange_pub))
       {
         GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
         break;
       }
       json_array_foreach (sigs, idx, sig)
@@ -305,11 +401,11 @@ handle_deposit_finished (void *cls,
                                NULL, NULL))
         {
           GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          dr->hr.http_status = 0;
+          dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           break;
         }
-        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+        dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
                                                            &dh->cdds[idx].
                                                            h_denom_pub);
         GNUNET_assert (NULL != dki);
@@ -333,42 +429,41 @@ handle_deposit_finished (void *cls,
               &dh->exchange_sigs[idx]))
         {
           GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+          dr->hr.http_status = 0;
+          dr->hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
           break;
         }
       }
-      TEAH_get_auditors_for_dc (dh->exchange,
+      TEAH_get_auditors_for_dc (dh->keys,
                                 &auditor_cb,
                                 dh);
     }
-    dr.details.ok.exchange_sigs = dh->exchange_sigs;
-    dr.details.ok.exchange_pub = &dh->exchange_pub;
-    dr.details.ok.deposit_timestamp = dh->exchange_timestamp;
-    dr.details.ok.num_signatures = dh->num_cdds;
+    dr->details.ok.exchange_sigs = dh->exchange_sigs;
+    dr->details.ok.exchange_pub = &dh->exchange_pub;
+    dr->details.ok.deposit_timestamp = dh->exchange_timestamp;
+    dr->details.ok.num_signatures = dh->num_cdds;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
     {
-      const struct TALER_EXCHANGE_Keys *key_state;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -384,8 +479,8 @@ handle_deposit_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       for (unsigned int i = 0; i<dh->num_cdds; i++)
@@ -394,14 +489,13 @@ handle_deposit_finished (void *cls,
             GNUNET_memcmp (&coin_pub,
                            &dh->cdds[i].coin_pub))
           continue;
-        key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-        dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+        dki = TALER_EXCHANGE_get_denomination_key_by_hash (dh->keys,
                                                            &dh->cdds[i].
                                                            h_denom_pub);
         GNUNET_assert (NULL != dki);
         if (GNUNET_OK !=
             TALER_EXCHANGE_check_coin_conflict_ (
-              keys,
+              dh->keys,
               j,
               dki,
               &dh->cdds[i].coin_pub,
@@ -409,8 +503,8 @@ handle_deposit_finished (void *cls,
               &dh->cdds[i].amount))
         {
           GNUNET_break_op (0);
-          dr.hr.http_status = 0;
-          dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          dr->hr.http_status = 0;
+          dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           break;
         }
         found = true;
@@ -419,12 +513,12 @@ handle_deposit_finished (void *cls,
       if (! found)
       {
         GNUNET_break_op (0);
-        dr.hr.http_status = 0;
-        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr->hr.http_status = 0;
+        dr->hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      dr.hr.ec = TALER_JSON_get_error_code (j);
-      dr.hr.hint = TALER_JSON_get_error_hint (j);
+      dr->hr.ec = TALER_JSON_get_error_code (j);
+      dr->hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   case MHD_HTTP_GONE:
@@ -432,35 +526,37 @@ handle_deposit_finished (void *cls,
     /* Note: one might want to check /keys for revocation
        signature here, alas tricky in case our /keys
        is outdated => left to clients */
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
-    dr.hr.ec = TALER_JSON_get_error_code (j);
-    dr.hr.hint = TALER_JSON_get_error_hint (j);
+    dr->hr.ec = TALER_JSON_get_error_code (j);
+    dr->hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange deposit\n",
                 (unsigned int) response_code,
-                dr.hr.ec);
+                dr->hr.ec);
     GNUNET_break_op (0);
     break;
   }
-  dh->cb (dh->cb_cls,
-          &dr);
-  TALER_EXCHANGE_batch_deposit_cancel (dh);
+  if (NULL != dh->ai_head)
+    return;
+  finish_dh (dh);
 }
 
 
 struct TALER_EXCHANGE_BatchDepositHandle *
 TALER_EXCHANGE_batch_deposit (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_EXCHANGE_DepositContractDetail *dcd,
   unsigned int num_cdds,
   const struct TALER_EXCHANGE_CoinDepositDetail *cdds,
@@ -468,15 +564,12 @@ TALER_EXCHANGE_batch_deposit (
   void *cb_cls,
   enum TALER_ErrorCode *ec)
 {
-  const struct TALER_EXCHANGE_Keys *key_state;
   struct TALER_EXCHANGE_BatchDepositHandle *dh;
   json_t *deposit_obj;
   json_t *deposits;
   CURL *eh;
   struct TALER_Amount amount_without_fee;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   if (GNUNET_TIME_timestamp_cmp (dcd->refund_deadline,
                                  >,
                                  dcd->wire_deadline))
@@ -485,10 +578,8 @@ TALER_EXCHANGE_batch_deposit (
     *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
     return NULL;
   }
-  key_state = TALER_EXCHANGE_get_keys (exchange);
   dh = GNUNET_new (struct TALER_EXCHANGE_BatchDepositHandle);
   dh->auditor_chance = AUDITOR_CHANCE;
-  dh->exchange = exchange;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
   dh->cdds = GNUNET_memdup (cdds,
@@ -509,7 +600,7 @@ TALER_EXCHANGE_batch_deposit (
     const struct TALER_EXCHANGE_CoinDepositDetail *cdd = &cdds[i];
     const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
-    dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
+    dki = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
                                                        &cdd->h_denom_pub);
     if (NULL == dki)
     {
@@ -568,8 +659,9 @@ TALER_EXCHANGE_batch_deposit (
                                       &cdd->coin_sig)
           )));
   }
-  dh->url = TEAH_path_to_url (exchange,
-                              "/batch-deposit");
+  dh->url = TALER_url_join (url,
+                            "batch-deposit",
+                            NULL);
   if (NULL == dh->url)
   {
     GNUNET_break (0);
@@ -623,8 +715,9 @@ TALER_EXCHANGE_batch_deposit (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit: `%s'\n",
               dh->url);
-  dh->ctx = TEAH_handle_to_context (exchange);
-  dh->job = GNUNET_CURL_job_add2 (dh->ctx,
+  dh->ctx = ctx;
+  dh->keys = TALER_EXCHANGE_keys_incref (keys);
+  dh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   dh->post_ctx.headers,
                                   &handle_deposit_finished,
@@ -645,15 +738,31 @@ void
 TALER_EXCHANGE_batch_deposit_cancel (
   struct TALER_EXCHANGE_BatchDepositHandle *deposit)
 {
+  struct TEAH_AuditorInteractionEntry *aie;
+
+  while (NULL != (aie = deposit->ai_head))
+  {
+    GNUNET_assert (aie->dh == deposit);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Not sending deposit confirmation to auditor `%s' due to cancellation\n",
+                aie->auditor_url);
+    TALER_AUDITOR_deposit_confirmation_cancel (aie->dch);
+    GNUNET_CONTAINER_DLL_remove (deposit->ai_head,
+                                 deposit->ai_tail,
+                                 aie);
+    GNUNET_free (aie);
+  }
   if (NULL != deposit->job)
   {
     GNUNET_CURL_job_cancel (deposit->job);
     deposit->job = NULL;
   }
+  TALER_EXCHANGE_keys_decref (deposit->keys);
   GNUNET_free (deposit->url);
   GNUNET_free (deposit->cdds);
   GNUNET_free (deposit->exchange_sigs);
   TALER_curl_easy_post_finished (&deposit->post_ctx);
+  json_decref (deposit->response);
   GNUNET_free (deposit);
 }
 

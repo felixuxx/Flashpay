@@ -2694,6 +2694,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (relative_time, const struct GNUNET_TIME_Relative)            \
   op (exchange, struct TALER_EXCHANGE_Handle)                      \
   op (fakebank, struct TALER_FAKEBANK_Handle)                      \
+  op (keys, struct TALER_EXCHANGE_Keys)                            \
   op (process, struct GNUNET_OS_Process *)
 
 
@@ -2748,6 +2749,17 @@ TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is);
  */
 const char *
 TALER_TESTING_get_exchange_url (
+  struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Get exchange keys from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange keys, or NULL on error
+ */
+struct TALER_EXCHANGE_Keys *
+TALER_TESTING_get_keys (
   struct TALER_TESTING_Interpreter *is);
 
 

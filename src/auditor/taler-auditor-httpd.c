@@ -157,6 +157,8 @@ handle_config (struct TAH_RequestHandler *rh,
   if (NULL == ver)
   {
     ver = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("name",
+                               "taler-auditor"),
       GNUNET_JSON_pack_string ("version",
                                AUDITOR_PROTOCOL_VERSION),
       GNUNET_JSON_pack_string ("currency",
