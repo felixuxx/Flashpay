@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2014--2023 Taler Systems SA
+-- Copyright (C) 2023 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -13,21 +13,27 @@
 -- You should have received a copy of the GNU General Public License along with
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
--- @author Christian Grothoff
 -- @author Özgür Kesim
 
-CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
+CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
   IN amount_val INT8,
   IN amount_frac INT4,
   IN rpub BYTEA,
+  IN rsig BYTEA,
   IN now INT8,
   IN min_reserve_gc INT8,
-  IN do_age_check BOOLEAN,
+  IN h_commitment BYTEA,
+  IN maximum_age_committed INT2, -- in years ϵ [0,1..)
+  IN noreveal_index INT2,
+  IN blinded_evs BYTEA[],
+  IN denom_serials INT8[],
+  IN denom_sigs BYTEA[],
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT age_ok BOOLEAN,
-  OUT allowed_maximum_age INT4, -- in years
-  OUT ruuid INT8
+  OUT required_age INT2, -- in years ϵ [0,1..)
+  OUT conflict BOOLEAN,
+  OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -36,13 +42,13 @@ DECLARE
   reserve_frac INT4;
   reserve_birthday INT4;
   not_before date;
+  earliest_date date;
 BEGIN
 -- Shards: reserves by reserve_pub (SELECT)
 --         reserves_out (INSERT, with CONFLICT detection) by wih
 --         reserves by reserve_pub (UPDATE)
 --         reserves_in by reserve_pub (SELECT)
 --         wire_targets by wire_target_h_payto
-
 
 SELECT
    current_balance_val
@@ -65,30 +71,40 @@ THEN
   reserve_found=FALSE;
   balance_ok=FALSE;
   age_ok=FALSE;
-  allowed_maximum_age=0;
+  required_age=0;
+  conflict=FALSE;
   ruuid=2;
   RETURN;
 END IF;
 
 
--- Check if age requirements are present
-IF ((NOT do_age_check) OR (reserve_birthday = 0))
+-- Check age requirements
+IF ((maximum_age_committed = 0) OR (reserve_birthday = 0))
 THEN
+  -- No commitment to a non-zero age was provided or the reserve is marked as
+  -- having no age restriction. We can simply pass.
   age_ok = OK;
-  required_age = 0;
-ELSE
-  -- Age requirements are formally not met:  The exchange is setup to support
-  -- age restrictions (do_age_check == TRUE) and the reserve has a
-  -- birthday set (reserve_birthday != 0), but the client called the
-  -- batch-withdraw endpoint instead of the age-withdraw endpoint, which it
-  -- should have.
+ELSE 
   not_before=date '1970-01-01' + reserve_birthday;
-  allowed_maximum_age = extract(year from age(current_date, not_before));
-
-  reserve_found=TRUE;
-  balance_ok=FALSE;
-  age_ok = FALSE;
-  RETURN;
+  earliest_date = current_date - make_interval(maximum_age_committed);
+  --
+  -- 1970-01-01 + birthday == not_before                 now
+  --     |                     |                          |
+  -- <.......not allowed......>[<.....allowed range......>]
+  --     |                     |                          |
+  -- ____*_____________________*_________*________________*  timeline
+  --                                     |
+  --                            earliest_date ==
+  --                                now - maximum_age_committed*year
+  --
+  IF (earliest_date < not_before)
+  THEN
+    reserve_found = TRUE;
+    balance_ok = FALSE;
+    age_ok = FALSE;
+    required_age = extract(year from age(not_before, current_date)) + 1;
+    RETURN;
+  END IF;
 END IF;
 
 -- Check reserve balance is sufficient.
@@ -127,8 +143,39 @@ WHERE
 reserve_found=TRUE;
 balance_ok=TRUE;
 
+-- Write the commitment into the age-withdraw table
+INSERT INTO exchange.age_withdraw
+  (h_commitment
+  ,max_age
+  ,reserve_pub
+  ,reserve_sig
+  ,noreveal_index
+  ,denomination_serials
+  ,h_blind_evs
+  ,denom_sigs)
+VALUES
+  (h_commitment
+  ,maximum_age_committed
+  ,rpub
+  ,rsig
+  ,noreveal_index
+  ,denom_serials
+  ,blinded_evs
+  ,denom_sigs)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Signal a conflict so that the caller
+  -- can fetch the actual data from the DB.
+  conflict=TRUE;
+  RETURN;
+ELSE
+  conflict=FALSE;
+END IF;
+
 END $$;
 
-COMMENT ON FUNCTION exchange_do_batch_withdraw(INT8, INT4, BYTEA, INT8, INT8, BOOLEAN)
-  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and that age requirements are formally met. If so updates the database with the result. Excludes storing the planchets.';
+COMMENT ON FUNCTION exchange_do_age_withdraw(INT8, INT4, BYTEA, BYTEA, INT8, INT8, BYTEA, INT2, INT2, BYTEA[], INT8[], BYTEA[])
+  IS 'Checks whether the reserve has sufficient balance for an age-withdraw operation (or the request is repeated and was previously approved) and that age requirements are met. If so updates the database with the result. Includes storing the blinded planchets and denomination signatures, or signaling conflict';
 

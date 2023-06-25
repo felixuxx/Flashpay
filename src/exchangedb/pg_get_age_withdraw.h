@@ -14,12 +14,12 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_get_age_withdraw_info.h
- * @brief implementation of the get_age_withdraw_info function for Postgres
+ * @file exchangedb/pg_get_age_withdraw.h
+ * @brief implementation of the get_age_withdraw function for Postgres
  * @author Özgür KESIM
  */
-#ifndef PG_GET_AGE_WITHDRAW_INFO_H
-#define PG_GET_AGE_WITHDRAW_INFO_H
+#ifndef PG_GET_AGE_WITHDRAW_H
+#define PG_GET_AGE_WITHDRAW_H
 
 #include "taler_util.h"
 #include "taler_json_lib.h"
@@ -33,13 +33,13 @@
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve for which the age-withdraw request is made
    * @param ach hash that uniquely identifies the age-withdraw operation
-   * @param[out] awc corresponding details of the previous age-withdraw request if an entry was found
+   * @param[out] aw corresponding details of the previous age-withdraw request if an entry was found
    * @return statement execution status
    */
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_age_withdraw_info (
+TEH_PG_get_age_withdraw (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_AgeWithdrawCommitmentHashP *ach,
-  struct TALER_EXCHANGEDB_AgeWithdrawCommitment *awc);
+  struct TALER_EXCHANGEDB_AgeWithdraw *aw);
 #endif

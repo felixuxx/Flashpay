@@ -426,23 +426,14 @@ TEH_PG_lookup_serial_by_table (void *cls,
               " LIMIT 1;");
     statement = "select_serial_by_table_purse_deletion";
     break;
-  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_COMMITMENTS:
-    XPREPARE ("select_serial_by_table_age_withdraw_commitments",
+  case TALER_EXCHANGEDB_RT_AGE_WITHDRAW:
+    XPREPARE ("select_serial_by_table_age_withdraw",
               "SELECT"
-              " age_withdraw_commitment_id AS serial"
-              " FROM age_withdraw_commitments"
-              " ORDER BY age_withdraw_commitment_id DESC"
+              " age_withdraw_id AS serial"
+              " FROM age_withdraw"
+              " ORDER BY age_withdraw_id DESC"
               " LIMIT 1;");
-    statement = "select_serial_by_table_age_withdraw_commitments";
-    break;
-  case TALER_EXCHANGEDB_RT_WITHDRAW_AGE_REVEALED_COINS:
-    XPREPARE ("select_serial_by_table_age_withdraw_revealed_coins",
-              "SELECT"
-              " age_withdraw_revealed_coins_id AS serial"
-              " FROM age_withdraw_revealed_coins"
-              " ORDER BY age_withdraw_revealed_coins_id DESC"
-              " LIMIT 1;");
-    statement = "select_serial_by_table_age_withdraw_revealed_coins";
+    statement = "select_serial_by_table_age_withdraw";
     break;
   }
   if (NULL == statement)

@@ -14,24 +14,24 @@
    TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
  */
 /**
- * @file exchangedb/pg_get_age_withdraw_info.c
- * @brief Implementation of the get_age_withdraw_info function for Postgres
+ * @file exchangedb/pg_get_age_withdraw.c
+ * @brief Implementation of the get_age_withdraw function for Postgres
  * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
-#include "pg_get_age_withdraw_info.h"
+#include "pg_get_age_withdraw.h"
 #include "pg_helper.h"
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_age_withdraw_info (
+TEH_PG_get_age_withdraw (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_AgeWithdrawCommitmentHashP *ach,
-  struct TALER_EXCHANGEDB_AgeWithdrawCommitment *awc)
+  struct TALER_EXCHANGEDB_AgeWithdraw *aw)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -41,26 +41,44 @@ TEH_PG_get_age_withdraw_info (
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("h_commitment",
-                                          &awc->h_commitment),
+                                          &aw->h_commitment),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
-                                          &awc->reserve_sig),
+                                          &aw->reserve_sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                          &awc->reserve_pub),
+                                          &aw->reserve_pub),
     GNUNET_PQ_result_spec_uint16 ("max_age",
-                                  &awc->max_age),
+                                  &aw->max_age),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 &awc->amount_with_fee),
-    GNUNET_PQ_result_spec_uint32 ("noreveal_index",
-                                  &awc->noreveal_index),
+                                 &aw->amount_with_fee),
+    GNUNET_PQ_result_spec_uint16 ("noreveal_index",
+                                  &aw->noreveal_index),
+    GNUNET_PQ_result_spec_array_fixed_size (
+      pg->conn,
+      "h_coin_evs",
+      sizeof(struct TALER_BlindedPlanchet),
+      &aw->num_coins,
+      (void **) &aw->h_coin_evs),
+    GNUNET_PQ_result_spec_array_fixed_size (
+      pg->conn,
+      "denom_sigs",
+      sizeof(struct TALER_DenominationSignature),
+      NULL,
+      (void **) &aw->denom_sigs),
+    GNUNET_PQ_result_spec_array_fixed_size (
+      pg->conn,
+      "denom_pub_hashes",
+      sizeof(struct TALER_DenominationHashP),
+      NULL,
+      (void **) &aw->denom_pub_hashes),
     GNUNET_PQ_result_spec_end
   };
 
-  /* Used in #postgres_get_age_withdraw_info() to
-     locate the response for a /reserve/$RESERVE_PUB/age-withdraw request using
-     the hash of the blinded message.  Used to make sure
-     /reserve/$RESERVE_PUB/age-withdraw requests are idempotent. */
+  /* Used in #postgres_get_age_withdraw() to
+     locate the response for a /reserve/$RESERVE_PUB/age-withdraw request
+     using the hash of the blinded message.  Also needed to ensure
+     idempotency of /reserve/$RESERVE_PUB/age-withdraw requests. */
   PREPARE (pg,
-           "get_age_withdraw_info",
+           "get_age_withdraw",
            "SELECT"
            " h_commitment"
            ",reserve_sig"
@@ -69,10 +87,20 @@ TEH_PG_get_age_withdraw_info (
            ",amount_with_fee_val"
            ",amount_with_fee_frac"
            ",noreveal_index"
-           " FROM age_withdraw_commitments"
+           ",h_coin_evs"
+           ",denom_sigs"
+           ",ARRAY("
+           "  SELECT denominations.denom_pub_hash FROM ("
+           "    SELECT UNNEST(denomination_serials) AS id,"
+           "           generate_subscripts(denominations_serials, 1) AS nr" /* for order */
+           "  ) AS denoms"
+           "  LEFT JOIN denominations ON denominations.denominations_serial=denoms.id"
+           ") AS denom_pub_hashes"
+           " FROM age_withdraw"
            " WHERE reserve_pub=$1 and h_commitment=$2;");
+
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_age_withdraw_info",
+                                                   "get_age_withdraw",
                                                    params,
                                                    rs);
 }

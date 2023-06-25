@@ -26,12 +26,14 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
+#include "taler-exchange-httpd.h"
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_batch-withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
+#include "taler_util.h"
 
 
 /**
@@ -306,8 +308,10 @@ batch_withdraw_transaction (void *cls,
   struct BatchWithdrawContext *wc = cls;
   uint64_t ruuid;
   enum GNUNET_DB_QueryStatus qs;
-  bool balance_ok = false;
   bool found = false;
+  bool balance_ok = false;
+  bool age_ok = false;
+  uint16_t required_age = 0;
   char *kyc_required;
   struct TALER_PaytoHashP reserve_h_payto;
 
@@ -471,9 +475,11 @@ batch_withdraw_transaction (void *cls,
                                       wc->now,
                                       wc->reserve_pub,
                                       &wc->batch_total,
-                                      /* TODO[oec]: add parameter for maximum age and [out]parameter for required age */
+                                      TEH_age_restriction_enabled,
                                       &found,
                                       &balance_ok,
+                                      &age_ok,
+                                      &required_age,
                                       &ruuid);
   if (0 > qs)
   {
@@ -496,7 +502,20 @@ batch_withdraw_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* TODO[oec]: add error handling for age restriction requirements */
+  if (! age_ok)
+  {
+    /* We respond with the lowest age in the corresponding age group
+     * of the required age */
+    uint16_t lowest_age = TALER_get_lowest_age (
+      &TEH_age_restriction_config.mask,
+      required_age);
+
+    TEH_plugin->rollback (TEH_plugin->cls);
+    *mhd_ret = TEH_RESPONSE_reply_reserve_age_restriction_required (
+      connection,
+      lowest_age);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
 
   if (! balance_ok)
   {
@@ -722,10 +741,12 @@ parse_planchets (const struct TEH_RequestContext *rc,
     struct PlanchetContext *pc = &wc->planchets[i];
     struct TEH_DenominationKey *dk;
 
-    dk = TEH_keys_denomination_by_hash2 (ksh,
-                                         &pc->collectable.denom_pub_hash,
-                                         NULL,
-                                         NULL);
+    dk = TEH_keys_denomination_by_hash_from_state (
+      ksh,
+      &pc->collectable.denom_pub_hash,
+      NULL,
+      NULL);
+
     if (NULL == dk)
     {
       if (! check_request_idempotent (wc,

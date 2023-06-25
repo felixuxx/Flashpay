@@ -75,6 +75,20 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
   const struct TALER_Amount *balance_required,
   const struct TALER_ReservePublicKeyP *reserve_pub);
 
+/**
+ * Return error message indicating that a reserve requires age
+ * restriction to be set during withdraw, that is: the age-withdraw
+ * protocol MUST be used with commitment to an admissible age.
+ *
+ * @param connection connection to the client
+ * @param maximum_allowed_age the balance required for the operation
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_reserve_age_restriction_required (
+  struct MHD_Connection *connection,
+  uint16_t maximum_allowed_age);
+
 
 /**
  * Send information that a KYC check must be

@@ -22,14 +22,515 @@
  * @author Özgür Kesim
  */
 #include "platform.h"
+#include <gnunet/gnunet_common.h>
+#include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
+#include <microhttpd.h>
+#include "taler-exchange-httpd.h"
+#include "taler_error_codes.h"
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_age-withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
+
+
+/**
+ * Context for #age_withdraw_transaction.
+ */
+struct AgeWithdrawContext
+{
+  /**
+   * KYC status for the operation.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * Timestamp
+   */
+  struct GNUNET_TIME_Timestamp now;
+
+  /**
+   * Hash of the wire source URL, needed when kyc is needed.
+   */
+  struct TALER_PaytoHashP h_payto;
+
+  /**
+   * The data from the age-withdraw request, as we persist it
+   */
+  struct TALER_EXCHANGEDB_AgeWithdraw commitment;
+
+  /**
+   * Number of coins/denonations in the reveal
+   */
+  uint32_t num_coins;
+
+  /**
+   * kappa * #num_coins hashes of blinded coin planchets.
+   */
+  struct TALER_BlindedPlanchet *coin_evs;
+
+  /**
+   * #num_coins hashes of the denominations from which the coins are withdrawn.
+   * Those must support age restriction.
+   */
+  struct TALER_DenominationHashP *denom_hs;
+
+};
+
+/*
+ * @brief Free the resources within a AgeWithdrawContext
+ *
+ * @param awc the context to free
+ */
+static void
+free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
+{
+  GNUNET_free (awc->denom_hs);
+  GNUNET_free (awc->coin_evs);
+  GNUNET_free (awc->commitment.denom_serials);
+  /* commitment.denom_serials and .h_coin_evs are stack allocated */
+}
+
+
+/**
+ * Parse the denominations and blinded coin data of an '/age-withdraw' request.
+ *
+ * @param connection The MHD connection to handle
+ * @param j_denoms_h Array of n hashes of the denominations for the withdrawal, in JSON format
+ * @param j_blinded_coin_evs Array of n arrays of kappa blinded envelopes of in JSON format for the coins.
+ * @param[out] aws The context of the operation, only partially built at call time
+ * @param[out] mhd_ret The result if a reply is queued for MHD
+ * @return true on success, false on failure, with a reply already queued for MHD
+ */
+static enum GNUNET_GenericReturnValue
+parse_age_withdraw_json (
+  struct MHD_Connection *connection,
+  const json_t *j_denoms_h,
+  const json_t *j_blinded_coin_evs,
+  struct AgeWithdrawContext *awc,
+  MHD_RESULT *mhd_ret)
+{
+  char buf[256] = {0};
+  const char *error = NULL;
+  unsigned int idx = 0;
+  json_t *value = NULL;
+
+
+  /* The age value MUST be on the beginning of an age group */
+  if (awc->commitment.max_age !=
+      TALER_get_lowest_age (&TEH_age_restriction_config.mask,
+                            awc->commitment.max_age))
+  {
+    error = "max_age must be the lower edge of an age group";
+    goto EXIT;
+  }
+
+  /* Verify JSON-structure consistency */
+  {
+    uint32_t num_coins = json_array_size (j_denoms_h);
+
+    if (! json_is_array (j_denoms_h))
+      error = "denoms_h must be an array";
+    else if (! json_is_array (j_blinded_coin_evs))
+      error = "coin_evs must be an array";
+    else if (num_coins == 0)
+      error = "denoms_h must not be empty";
+    else if (num_coins != json_array_size (j_blinded_coin_evs))
+      error = "denoms_h and coins_evs must be arrays of the same size";
+    else if (num_coins > TALER_MAX_FRESH_COINS)
+      /**
+       * The wallet had committed to more than the maximum coins allowed, the
+       * reserve has been charged, but now the user can not withdraw any money
+       * from it.  Note that the user can't get their money back in this case!
+       **/
+      error = "maximum number of coins that can be withdrawn has been exceeded";
+
+    _Static_assert ((TALER_MAX_FRESH_COINS < INT_MAX / TALER_CNC_KAPPA),
+                    "TALER_MAX_FRESH_COINS too large");
+
+    if (NULL != error)
+      goto EXIT;
+
+    awc->num_coins =  num_coins;
+  }
+
+  /* Continue parsing the parts */
+
+  /* Parse denomination keys */
+  awc->denom_hs = GNUNET_new_array (awc->num_coins,
+                                    struct TALER_DenominationHashP);
+
+  json_array_foreach (j_denoms_h, idx, value) {
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto (NULL, &awc->denom_hs[idx]),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value, spec, NULL, NULL))
+    {
+      GNUNET_snprintf (buf,
+                       sizeof(buf),
+                       "couldn't parse entry no. %d in array denoms_h",
+                       idx + 1);
+      error = buf;
+      goto EXIT;
+    }
+  };
+
+  /* no overflow because
+   *   num_coins <= TALER_MAX_FRESH_COINS
+   * and
+   *    TALER_MAX_FRESH_COINS * TALER_CNC_KAPPA < INT_MAX
+   */
+  awc->coin_evs = GNUNET_new_array (awc->num_coins * TALER_CNC_KAPPA,
+                                    struct TALER_BlindedPlanchet);
+
+  /* Parse blinded envelopes. */
+  json_array_foreach (j_blinded_coin_evs, idx, value) {
+    const json_t *j_kappa_coin_evs;
+    struct GNUNET_JSON_Specification aspec[] = {
+      GNUNET_JSON_spec_array_const (NULL, &j_kappa_coin_evs),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value, aspec, NULL, NULL))
+    {
+      GNUNET_snprintf (buf,
+                       sizeof(buf),
+                       "couldn't parse entry no. %d in array coin_evs",
+                       idx + 1);
+      error = buf;
+      goto EXIT;
+    }
+
+    if (TALER_CNC_KAPPA != json_array_size (j_kappa_coin_evs))
+    {
+      GNUNET_snprintf (buf,
+                       sizeof(buf),
+                       "array no. %d in coin_evs not of correct size",
+                       idx + 1);
+      error = buf;
+      goto EXIT;
+    }
+
+    /* Now parse the individual kappa envelopes */
+    {
+      size_t off = idx * TALER_CNC_KAPPA;
+      size_t kappa = 0;
+
+      json_array_foreach (j_kappa_coin_evs, kappa, value) {
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_fixed_auto (NULL, &awc->coin_evs[off + kappa]),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (value, spec, NULL, NULL))
+        {
+          GNUNET_snprintf (buf,
+                           sizeof(buf),
+                           "couldn't parse array no. %d in coin_evs",
+                           idx + 1);
+          error = buf;
+          goto EXIT;
+        }
+
+        /* Check for duplicate planchets
+         * FIXME: is this needed?
+         */
+        for (unsigned int i = 0; i < off + kappa; i++)
+        {
+          if (0 == TALER_blinded_planchet_cmp (&awc->coin_evs[off + kappa],
+                                               &awc->coin_evs[i]))
+          {
+            error = "duplicate planchet";
+            goto EXIT;
+          }
+        }
+      }
+    }
+  }; /* json_array_foreach over j_blinded_coin_evs */
+
+  /* We successfully parsed denoms_h and blinded_coins_evs */
+  GNUNET_assert (NULL == error);
+
+  /* Finally, calculate the h_commitment from all blinded envelopes */
+  {
+    enum GNUNET_GenericReturnValue ret;
+    struct GNUNET_HashContext *hash_context;
+
+    hash_context = GNUNET_CRYPTO_hash_context_start ();
+
+    for (size_t c = 0;
+         c < TALER_CNC_KAPPA * awc->num_coins;
+         c++)
+    {
+      struct TALER_BlindedCoinHashP bch;
+
+      ret = TALER_coin_ev_hash (&awc->coin_evs[c],
+                                &awc->denom_hs[c],
+                                &bch);
+
+      GNUNET_assert (GNUNET_OK == ret);
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &bch,
+                                       sizeof(bch));
+    }
+
+    GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                       &awc->commitment.h_commitment.hash);
+  }
+
+
+EXIT:
+  if (NULL != error)
+  {
+    /* Note: resources are freed in caller */
+
+    *mhd_ret = TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      error);
+    return GNUNET_SYSERR;
+  }
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * Check if the given denomination is still or already valid, has not been
+ * revoked and supports age restriction.
+ *
+ * @param connection HTTP-connection to the client
+ * @param ksh The handle to the current state of (denomination) keys in the exchange
+ * @param denom_h Hash of the denomination key to check
+ * @param[out] dk On success, will contain the denomination key details
+ * @param[out] result On failure, an MHD-response will be qeued and result will be set to accordingly
+ * @return true on success (denomination valid), false otherwise
+ */
+static bool
+denomination_is_valid (
+  struct MHD_Connection *connection,
+  struct TEH_KeyStateHandle *ksh,
+  const struct TALER_DenominationHashP *denom_h,
+  struct TEH_DenominationKey **pdk,
+  MHD_RESULT *result)
+{
+  struct TEH_DenominationKey *dk;
+  dk = TEH_keys_denomination_by_hash_from_state (ksh,
+                                                 denom_h,
+                                                 connection,
+                                                 result);
+  if (NULL == dk)
+  {
+    /* The denomination doesn't exist */
+    /* Note: a HTTP-response has been queued and result has been set by
+     * TEH_keys_denominations_by_hash_from_state */
+    return false;
+  }
+
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
+  {
+    /* This denomination is past the expiration time for withdraws */
+    /* FIXME[oec]: add idempotency check */
+    *result = TEH_RESPONSE_reply_expired_denom_pub_hash (
+      connection,
+      denom_h,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+      "age-withdraw_reveal");
+    return false;
+  }
+
+  if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
+  {
+    /* This denomination is not yet valid */
+    *result = TEH_RESPONSE_reply_expired_denom_pub_hash (
+      connection,
+      denom_h,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+      "age-withdraw_reveal");
+    return false;
+  }
+
+  if (dk->recoup_possible)
+  {
+    /* This denomination has been revoked */
+    *result = TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+      NULL);
+    return false;
+  }
+
+  if (0 == dk->denom_pub.age_mask.bits)
+  {
+    /* This denomation does not support age restriction */
+    char msg[256] = {0};
+    GNUNET_snprintf (msg,
+                     sizeof(msg),
+                     "denomination %s does not support age restriction",
+                     GNUNET_h2s (&denom_h->hash));
+
+    *result = TALER_MHD_reply_with_ec (
+      connection,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+      msg);
+    return false;
+  }
+
+  *pdk = dk;
+  return true;
+}
+
+
+/**
+ * Check if the given array of hashes of denomination_keys a) belong
+ * to valid denominations and b) those are marked as age restricted.
+ * Also, calculate the total amount of the denominations including fees
+ * for withdraw.
+ *
+ * @param connection The HTTP connection to the client
+ * @param len The lengths of the array @a denoms_h
+ * @param denoms_h array of hashes of denomination public keys
+ * @param coin_evs array of blinded coin planchets
+ * @param[out] denom_serials On success, will be filled with the serial-id's of the denomination keys.  Caller must deallocate.
+ * @param[out] amount_with_fee On succes, will contain the committed amount including fees
+ * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
+ * @return GNUNET_OK if the denominations are valid and support age-restriction
+ *   GNUNET_SYSERR otherwise
+ */
+static enum GNUNET_GenericReturnValue
+are_denominations_valid (
+  struct MHD_Connection *connection,
+  uint32_t len,
+  const struct TALER_DenominationHashP *denom_hs,
+  const struct TALER_BlindedPlanchet *coin_evs,
+  uint64_t **denom_serials,
+  struct TALER_Amount *amount_with_fee,
+  MHD_RESULT *result)
+{
+  struct TALER_Amount total_amount;
+  struct TALER_Amount total_fee;
+  struct TEH_KeyStateHandle *ksh;
+  uint64_t *serials;
+
+  GNUNET_assert (*denom_serials == NULL);
+
+  ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+  {
+    *result = TALER_MHD_reply_with_ec (connection,
+                                       TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                       NULL);
+    return GNUNET_SYSERR;
+  }
+
+  *denom_serials =
+    serials = GNUNET_new_array (len, uint64_t);
+
+  TALER_amount_set_zero (TEH_currency, &total_amount);
+  TALER_amount_set_zero (TEH_currency, &total_fee);
+
+  for (uint32_t i = 0; i < len; i++)
+  {
+    struct TEH_DenominationKey *dk;
+    if (! denomination_is_valid (connection,
+                                 ksh,
+                                 &denom_hs[i],
+                                 &dk,
+                                 result))
+      /* FIXME[oec]: add idempotency check */
+      return GNUNET_SYSERR;
+
+    /* Ensure the ciphers from the planchets match the denominations' */
+    if (dk->denom_pub.cipher != coin_evs[i].cipher)
+    {
+      GNUNET_break_op (0);
+      *result = TALER_MHD_reply_with_ec (connection,
+                                         TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+                                         NULL);
+      return GNUNET_SYSERR;
+    }
+
+    /* Accumulate the values */
+    if (0 > TALER_amount_add (&total_amount,
+                              &total_amount,
+                              &dk->meta.value))
+    {
+      GNUNET_break_op (0);
+      *result = TALER_MHD_reply_with_error (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
+                                            "amount");
+      return GNUNET_SYSERR;
+    }
+
+    /* Accumulate the withdraw fees */
+    if (0 > TALER_amount_add (&total_fee,
+                              &total_fee,
+                              &dk->meta.fees.withdraw))
+    {
+      GNUNET_break_op (0);
+      *result = TALER_MHD_reply_with_error (connection,
+                                            MHD_HTTP_BAD_REQUEST,
+                                            TALER_EC_EXCHANGE_AGE_WITHDRAW_AMOUNT_OVERFLOW,
+                                            "fee");
+      return GNUNET_SYSERR;
+    }
+
+    serials[i] = dk->meta.serial;
+  }
+
+  /* Save the total amount including fees */
+  GNUNET_assert (0 < TALER_amount_add (amount_with_fee,
+                                       &total_amount,
+                                       &total_fee));
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * @brief Verify the signature of the request body with the reserve key
+ *
+ * @param connection the connection to the client
+ * @param commitment the age withdraw commitment
+ * @param mhd_ret the response to fill in the error case
+ * @return GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+verify_reserve_signature (
+  struct MHD_Connection *connection,
+  const struct TALER_EXCHANGEDB_AgeWithdraw *commitment,
+  enum MHD_Result *mhd_ret
+  )
+{
+
+  TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+  if (GNUNET_OK !=
+      TALER_wallet_age_withdraw_verify (&commitment->h_commitment,
+                                        &commitment->amount_with_fee,
+                                        &TEH_age_restriction_config.mask,
+                                        commitment->max_age,
+                                        &commitment->reserve_pub,
+                                        &commitment->reserve_sig))
+  {
+    GNUNET_break_op (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                        TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
+                                        NULL);
+    return GNUNET_SYSERR;
+  }
+
+  return GNUNET_OK;
+}
+
 
 /**
  * Send a response to a "age-withdraw" request.
@@ -72,57 +573,62 @@ reply_age_withdraw_success (
 
 
 /**
- * Context for #age_withdraw_transaction.
+ * Check if the request is replayed and we already have an
+ * answer. If so, replay the existing answer and return the
+ * HTTP response.
+ *
+ * @param con connection to the client
+ * @param[in,out] awc parsed request data
+ * @param[out] mret HTTP status, set if we return true
+ * @return true if the request is idempotent with an existing request
+ *    false if we did not find the request in the DB and did not set @a mret
  */
-struct AgeWithdrawContext
+static bool
+request_is_idempotent (struct MHD_Connection *con,
+                       struct AgeWithdrawContext *awc,
+                       MHD_RESULT *mret)
 {
-  /**
-   * KYC status for the operation.
-   */
-  struct TALER_EXCHANGEDB_KycStatus kyc;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_AgeWithdraw commitment;
 
-  /**
-   * Hash of the wire source URL, needed when kyc is needed.
-   */
-  struct TALER_PaytoHashP h_payto;
+  qs = TEH_plugin->get_age_withdraw (TEH_plugin->cls,
+                                     &awc->commitment.reserve_pub,
+                                     &awc->commitment.h_commitment,
+                                     &commitment);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      *mret = TALER_MHD_reply_with_ec (con,
+                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                       "get_age_withdraw");
+    return true; /* Well, kind-of.  At least we have set mret. */
+  }
 
-  /**
-   * The data from the age-withdraw request
-   */
-  struct TALER_EXCHANGEDB_AgeWithdrawCommitment commitment;
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return false;
 
-  /**
-   * Number of coins/denonations in the reveal
-   */
-  uint32_t num_coins;
-
-  /**
-   * kappa * #num_coins hashes of blinded coin planchets.
-   */
-  struct TALER_BlindedPlanchet *coin_evs;
-
-  /**
-   * #num_coins hashes of the denominations from which the coins are withdrawn.
-   * Those must support age restriction.
-   */
-  struct TALER_DenominationHashP *denoms_h;
-};
+  /* Generate idempotent reply */
+  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_AGE_WITHDRAW]++;
+  *mret = reply_age_withdraw_success (con,
+                                      &commitment.h_commitment,
+                                      commitment.noreveal_index);
+  return true;
+}
 
 
 /**
- * Function called to iterate over KYC-relevant
- * transaction amounts for a particular time range.
- * Called within a database transaction, so must
+ * Function called to iterate over KYC-relevant transaction amounts for a
+ * particular time range. Called within a database transaction, so must
  * not start a new one.
  *
- * @param cls closure, identifies the event type and
- *        account to iterate over events for
- * @param limit maximum time-range for which events
- *        should be fetched (timestamp in the past)
- * @param cb function to call on each event found,
- *        events must be returned in reverse chronological
- *        order
- * @param cb_cls closure for @a cb
+ * @param cls closure, identifies the event type and account to iterate
+ *        over events for
+ * @param limit maximum time-range for which events should be fetched
+ *        (timestamp in the past)
+ * @param cb function to call on each event found, events must be returned
+ *        in reverse chronological order
+ * @param cb_cls closure for @a cb, of type struct AgeWithdrawContext
  */
 static void
 age_withdraw_amount_cb (void *cls,
@@ -162,9 +668,6 @@ age_withdraw_amount_cb (void *cls,
  * IF it returns the soft error code, the function MAY be called again
  * to retry and MUST not queue a MHD response.
  *
- * Note that "awc->commitment.sig" is set before entering this function as we
- * signed before entering the transaction.
- *
  * @param cls a `struct AgeWithdrawContext *`
  * @param connection MHD request which triggered the transaction
  * @param[out] mhd_ret set to MHD response status for @a connection,
@@ -178,20 +681,17 @@ age_withdraw_transaction (void *cls,
 {
   struct AgeWithdrawContext *awc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  bool found = false;
-  bool balance_ok = false;
-  uint64_t ruuid;
 
-  awc->now = GNUNET_TIME_timestamp_get ();
   qs = TEH_plugin->reserves_get_origin (TEH_plugin->cls,
                                         &awc->commitment.reserve_pub,
                                         &awc->h_payto);
   if (qs < 0)
     return qs;
 
-  /* If no results, reserve was created by merge,
+  /* If _no_ results, reserve was created by merge,
      in which case no KYC check is required as the
      merge already did that. */
+
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     char *kyc_required;
@@ -210,17 +710,16 @@ age_withdraw_transaction (void *cls,
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       {
         GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "kyc_test_required");
+        *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "kyc_test_required");
       }
       return qs;
     }
 
     if (NULL != kyc_required)
     {
-      /* insert KYC requirement into DB! */
+      /* Mark result and return by inserting KYC requirement into DB! */
       awc->kyc.ok = false;
       return TEH_plugin->insert_kyc_requirement_for_account (
         TEH_plugin->cls,
@@ -231,37 +730,77 @@ age_withdraw_transaction (void *cls,
   }
 
   awc->kyc.ok = true;
-  qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
-                                    &awc->commitment,
-                                    &found,
-                                    &balance_ok,
-                                    &ruuid);
-  if (0 > qs)
+
+  /* KYC requirement fulfilled, do the age-withdraw transaction */
   {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "do_age_withdraw");
-    return qs;
-  }
-  else if (! found)
-  {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  else if (! balance_ok)
-  {
-    TEH_plugin->rollback (TEH_plugin->cls);
-    *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
-      connection,
-      TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
-      &awc->commitment.amount_with_fee,
-      &awc->commitment.reserve_pub);
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    bool found = false;
+    bool balance_ok = false;
+    bool age_ok = false;
+    bool conflict = false;
+    uint16_t allowed_maximum_age = 0;
+    uint64_t ruuid;
+
+    qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
+                                      &awc->commitment,
+                                      awc->now,
+                                      &found,
+                                      &balance_ok,
+                                      &age_ok,
+                                      &allowed_maximum_age,
+                                      &conflict,
+                                      &ruuid);
+    if (0 > qs)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                            "do_age_withdraw");
+      return qs;
+    }
+    else if (! found)
+    {
+      *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                          TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
+                                          NULL);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    else if (! balance_ok)
+    {
+      TEH_plugin->rollback (TEH_plugin->cls);
+
+      *mhd_ret = TEH_RESPONSE_reply_reserve_insufficient_balance (
+        connection,
+        TALER_EC_EXCHANGE_AGE_WITHDRAW_INSUFFICIENT_FUNDS,
+        &awc->commitment.amount_with_fee,
+        &awc->commitment.reserve_pub);
+
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    else if (! age_ok)
+    {
+      enum TALER_ErrorCode ec =
+        TALER_EC_EXCHANGE_AGE_WITHDRAW_MAXIMUM_AGE_TOO_LARGE;
+
+      *mhd_ret =
+        TALER_MHD_REPLY_JSON_PACK (
+          connection,
+          TALER_ErrorCode_get_http_status_safe (ec),
+          TALER_MHD_PACK_EC (ec),
+          GNUNET_JSON_pack_uint64 ("allowed_maximum_age",
+                                   allowed_maximum_age));
+
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    else if (conflict)
+    {
+      /* do_age_withdraw signaled a conflict, so there MUST be an entry
+       * in the DB.  Put that into the response */
+      bool ok = request_is_idempotent (connection,
+                                       awc,
+                                       mhd_ret);
+      GNUNET_assert (ok);
+      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    }
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -271,48 +810,107 @@ age_withdraw_transaction (void *cls,
 
 
 /**
- * Check if the @a rc is replayed and we already have an
- * answer. If so, replay the existing answer and return the
- * HTTP response.
+ * @brief Sign the chosen blinded coins, debit the reserve and persist
+ * the commitment.
  *
- * @param rc request context
- * @param[in,out] awc parsed request data
- * @param[out] mret HTTP status, set if we return true
- * @return true if the request is idempotent with an existing request
- *    false if we did not find the request in the DB and did not set @a mret
+ * On conflict, the noreveal_index from the previous, existing
+ * commitment is returned to the client, returning success.
+ *
+ * On error (like, insufficient funds), the client is notified.
+ *
+ * Note that on success, there are two possible states:
+ *  1.) KYC is required (awc.kyc.ok == false) or
+ *  2.) age withdraw was successful.
+ *
+ * @param connection HTTP-connection to the client
+ * @param h_commitment Original commitment
+ * @param num_coins Number of coins
+ * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
+ * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
+ * @param[out] result On error, a HTTP-response will be queued and result set accordingly
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */
-static bool
-request_is_idempotent (struct TEH_RequestContext *rc,
-                       struct AgeWithdrawContext *awc,
-                       MHD_RESULT *mret)
+static enum GNUNET_GenericReturnValue
+sign_and_do_age_withdraw (
+  struct MHD_Connection *connection,
+  struct AgeWithdrawContext *awc,
+  MHD_RESULT *result)
 {
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_AgeWithdrawCommitment commitment;
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+  struct TALER_BlindedCoinHashP h_coin_evs[awc->num_coins];
+  struct TALER_BlindedDenominationSignature denom_sigs[awc->num_coins];
+  uint8_t noreveal_index;
 
-  qs = TEH_plugin->get_age_withdraw_info (TEH_plugin->cls,
-                                          &awc->commitment.reserve_pub,
-                                          &awc->commitment.h_commitment,
-                                          &commitment);
-  if (0 > qs)
+  awc->now = GNUNET_TIME_timestamp_get ();
+
+  /* Pick the challenge */
+  awc->commitment.noreveal_index =
+    noreveal_index =
+      GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
+                                TALER_CNC_KAPPA);
+
+  /* Choose and sign the coins */
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mret = TALER_MHD_reply_with_error (rc->connection,
-                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                          "get_age_withdraw_info");
-    return true; /* well, kind-of */
+    struct TEH_CoinSignData csds[awc->num_coins];
+    enum TALER_ErrorCode ec;
+
+    /* Pick the chosen blinded coins */
+    for (uint32_t i = 0; i<awc->num_coins; i++)
+    {
+      csds[i].bp = &awc->coin_evs[TALER_CNC_KAPPA * i + noreveal_index];
+      csds[i].h_denom_pub = &awc->denom_hs[i];
+    }
+
+    ec = TEH_keys_denomination_batch_sign (csds,
+                                           awc->num_coins,
+                                           false,
+                                           denom_sigs);
+    if (TALER_EC_NONE != ec)
+    {
+      GNUNET_break (0);
+      *result = TALER_MHD_reply_with_ec (connection,
+                                         ec,
+                                         NULL);
+      return GNUNET_SYSERR;
+    }
   }
 
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    return false;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Signatures ready, starting DB interaction\n");
 
-  /* generate idempotent reply */
-  TEH_METRICS_num_requests[TEH_MT_REQUEST_IDEMPOTENT_AGE_WITHDRAW]++;
-  *mret = reply_age_withdraw_success (rc->connection,
-                                      &commitment.h_commitment,
-                                      commitment.noreveal_index);
-  return true;
+  /* Prepare the hashes of the coins for insertion */
+  for (uint32_t i = 0; i<awc->num_coins; i++)
+  {
+    TALER_coin_ev_hash (&awc->coin_evs[i],
+                        &awc->denom_hs[i],
+                        &h_coin_evs[i]);
+  }
+
+  /* Run the transaction */
+  awc->commitment.h_coin_evs = h_coin_evs;
+  awc->commitment.denom_sigs = denom_sigs;
+  ret = TEH_DB_run_transaction (connection,
+                                "run age withdraw",
+                                TEH_MT_REQUEST_AGE_WITHDRAW,
+                                result,
+                                &age_withdraw_transaction,
+                                awc);
+
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    *result = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_UNEXPECTED_REQUEST_ERROR,
+                                          NULL);
+  }
+
+  /* Free resources */
+  awc->commitment.h_coin_evs = NULL;
+  awc->commitment.denom_sigs = NULL;
+  for (unsigned int i = 0; i<awc->num_coins; i++)
+    TALER_blinded_denom_sig_free (&denom_sigs[i]);
+  return ret;
 }
 
 
@@ -322,17 +920,18 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
                           const json_t *root)
 {
   MHD_RESULT mhd_ret;
+  const json_t *j_denoms_h;
+  const json_t *j_blinded_coins_evs;
   struct AgeWithdrawContext awc = {0};
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &awc.commitment.reserve_sig),
-    GNUNET_JSON_spec_fixed_auto ("h_commitment",
-                                 &awc.commitment.h_commitment),
-    TALER_JSON_spec_amount ("amount",
-                            TEH_currency,
-                            &awc.commitment.amount_with_fee),
+    GNUNET_JSON_spec_array_const ("denoms_h",
+                                  &j_denoms_h),
+    GNUNET_JSON_spec_array_const ("blinded_coins_evs",
+                                  &j_blinded_coins_evs),
     GNUNET_JSON_spec_uint16 ("max_age",
                              &awc.commitment.max_age),
+    GNUNET_JSON_spec_fixed_auto ("reserve_sig",
+                                 &awc.commitment.reserve_sig),
     GNUNET_JSON_spec_end ()
   };
 
@@ -351,53 +950,71 @@ TEH_handler_age_withdraw (struct TEH_RequestContext *rc,
   }
 
   do {
-    /* If request was made before successfully, return the previous answer */
-    if (request_is_idempotent (rc,
-                               &awc,
-                               &mhd_ret))
-      break;
+    /* Note: If we break the statement here at any point,
+     * a response to the client MUST have been populated
+     * with an appropriate answer and mhd_ret MUST have
+     * been set accordingly.
+     */
 
-    /* Verify the signature of the request body with the reserve key */
-    TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
+    /* Parse denoms_h and blinded_coins_evs, partially fill awc */
     if (GNUNET_OK !=
-        TALER_wallet_age_withdraw_verify (&awc.commitment.h_commitment,
-                                          &awc.commitment.amount_with_fee,
-                                          awc.commitment.max_age,
-                                          &awc.commitment.reserve_pub,
-                                          &awc.commitment.reserve_sig))
-    {
-      GNUNET_break_op (0);
-      mhd_ret = TALER_MHD_reply_with_error (rc->connection,
-                                            MHD_HTTP_FORBIDDEN,
-                                            TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                                            NULL);
+        parse_age_withdraw_json (rc->connection,
+                                 j_denoms_h,
+                                 j_blinded_coins_evs,
+                                 &awc,
+                                 &mhd_ret))
       break;
-    }
 
-    /* Run the transaction */
+    /* Ensure validity of denoms and calculate amounts and fees */
     if (GNUNET_OK !=
-        TEH_DB_run_transaction (rc->connection,
-                                "run age withdraw",
-                                TEH_MT_REQUEST_AGE_WITHDRAW,
-                                &mhd_ret,
-                                &age_withdraw_transaction,
-                                &awc))
+        are_denominations_valid (rc->connection,
+                                 awc.num_coins,
+                                 awc.denom_hs,
+                                 awc.coin_evs,
+                                 &awc.commitment.denom_serials,
+                                 &awc.commitment.amount_with_fee,
+                                 &mhd_ret))
       break;
 
-    /* Clean up and send back final response */
-    GNUNET_JSON_parse_free (spec);
+    /* Now that amount_with_fee is calculated, verify the signature of
+     * the request body with the reserve key.
+     */
+    if (GNUNET_OK !=
+        verify_reserve_signature (rc->connection,
+                                  &awc.commitment,
+                                  &mhd_ret))
+      break;
 
+    /* Sign the chosen blinded coins, persist the commitment and
+     * charge the reserve.
+     * On error (like, insufficient funds), the client is notified.
+     * On conflict, the noreveal_index from the previous, existing
+     * commitment is returned to the client, returning success.
+     * Note that on success, there are two possible states:
+     *    KYC is required (awc.kyc.ok == false) or
+     *    age withdraw was successful.
+     */
+    if (GNUNET_OK !=
+        sign_and_do_age_withdraw (rc->connection,
+                                  &awc,
+                                  &mhd_ret))
+      break;
+
+    /* Send back final response, depending on the outcome of
+     * the DB-transaction */
     if (! awc.kyc.ok)
-      return TEH_RESPONSE_reply_kyc_required (rc->connection,
-                                              &awc.h_payto,
-                                              &awc.kyc);
+      mhd_ret = TEH_RESPONSE_reply_kyc_required (rc->connection,
+                                                 &awc.h_payto,
+                                                 &awc.kyc);
+    else
+      mhd_ret = reply_age_withdraw_success (rc->connection,
+                                            &awc.commitment.h_commitment,
+                                            awc.commitment.noreveal_index);
 
-    return reply_age_withdraw_success (rc->connection,
-                                       &awc.commitment.h_commitment,
-                                       awc.commitment.noreveal_index);
   } while(0);
 
   GNUNET_JSON_parse_free (spec);
+  free_age_withdraw_context_resources (&awc);
   return mhd_ret;
 
 }

@@ -76,7 +76,7 @@ TALER_age_commitment_hash (
  * defined by the given mask.
  */
 uint8_t
-get_age_group (
+TALER_get_age_group (
   const struct TALER_AgeMask *mask,
   uint8_t age)
 {
@@ -92,6 +92,27 @@ get_age_group (
     age--;
   }
   return i;
+}
+
+
+uint8_t
+TALER_get_lowest_age (
+  const struct TALER_AgeMask *mask,
+  uint8_t age)
+{
+  uint32_t m = mask->bits;
+  uint8_t group = TALER_get_age_group (mask, age);
+  uint8_t lowest = 0;
+
+  while (group > 0)
+  {
+    m = m >> 1;
+    if (m & 1)
+      group--;
+    lowest++;
+  }
+
+  return lowest;
 }
 
 
@@ -150,7 +171,7 @@ TALER_age_restriction_commit (
   GNUNET_assert (mask->bits & 1); /* first bit must have been set */
 
   num_pub = __builtin_popcount (mask->bits) - 1;
-  num_priv = get_age_group (mask, age);
+  num_priv = TALER_get_age_group (mask, age);
 
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);
@@ -335,8 +356,8 @@ TALER_age_commitment_attest (
   GNUNET_assert (NULL != attest);
   GNUNET_assert (NULL != cp);
 
-  group = get_age_group (&cp->commitment.mask,
-                         age);
+  group = TALER_get_age_group (&cp->commitment.mask,
+                               age);
 
   GNUNET_assert (group < 32);
 
@@ -386,8 +407,8 @@ TALER_age_commitment_verify (
   GNUNET_assert (NULL != attest);
   GNUNET_assert (NULL != comm);
 
-  group = get_age_group (&comm->mask,
-                         age);
+  group = TALER_get_age_group (&comm->mask,
+                               age);
 
   GNUNET_assert (group < 32);
 
@@ -604,7 +625,7 @@ TALER_age_restriction_from_secret (
   GNUNET_assert (mask->bits & 1); /* fist bit must have been set */
 
   num_pub = __builtin_popcount (mask->bits) - 1;
-  num_priv = get_age_group (mask, max_age);
+  num_priv = TALER_get_age_group (mask, max_age);
 
   GNUNET_assert (31 > num_priv);
   GNUNET_assert (num_priv <= num_pub);

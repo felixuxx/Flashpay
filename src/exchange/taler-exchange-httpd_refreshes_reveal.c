@@ -511,7 +511,7 @@ resolve_refreshes_reveal_denominations (
     }
   }
 
-  old_dk = TEH_keys_denomination_by_hash2 (
+  old_dk = TEH_keys_denomination_by_hash_from_state (
     ksh,
     &rctx->melt.session.coin.denom_pub_hash,
     connection,
@@ -536,10 +536,10 @@ resolve_refreshes_reveal_denominations (
                                       -1);
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-    dks[i] = TEH_keys_denomination_by_hash2 (ksh,
-                                             &rrcs[i].h_denom_pub,
-                                             connection,
-                                             &ret);
+    dks[i] = TEH_keys_denomination_by_hash_from_state (ksh,
+                                                       &rrcs[i].h_denom_pub,
+                                                       connection,
+                                                       &ret);
     if (NULL == dks[i])
       return ret;
     if ( (TALER_DENOMINATION_CS == dks[i]->denom_pub.cipher) &&

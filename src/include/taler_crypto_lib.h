@@ -3728,7 +3728,8 @@ TALER_wallet_withdraw_verify (
  *
  * @param h_commitment hash all n*kappa blinded coins in the commitment for the age-withdraw
  * @param amount_with_fee amount to debit the reserve for
- * @param max_age_group maximum age group that the withdrawn coins must be restricted to
+ * @param mask the mask that defines the age groups
+ * @param max_age maximum age from which the age group is derived, that the withdrawn coins must be restricted to.
  * @param reserve_priv private key to sign with
  * @param[out] reserve_sig resulting signature
  */
@@ -3736,7 +3737,8 @@ void
 TALER_wallet_age_withdraw_sign (
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_Amount *amount_with_fee,
-  uint32_t max_age_group,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig);
 
@@ -3745,7 +3747,8 @@ TALER_wallet_age_withdraw_sign (
  *
  * @param h_commitment hash all n*kappa blinded coins in the commitment for the age-withdraw
  * @param amount_with_fee amount to debit the reserve for
- * @param max_age_group maximum age group that the withdrawn coins must be restricted to
+ * @param mask the mask that defines the age groups
+ * @param max_age maximum age from which the age group is derived, that the withdrawn coins must be restricted to.
  * @param reserve_pub public key of the reserve
  * @param reserve_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
@@ -3754,7 +3757,8 @@ enum GNUNET_GenericReturnValue
 TALER_wallet_age_withdraw_verify (
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_Amount *amount_with_fee,
-  uint32_t max_age_group,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
 

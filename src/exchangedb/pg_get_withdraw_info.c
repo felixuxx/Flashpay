@@ -27,7 +27,7 @@
 
 
 enum GNUNET_DB_QueryStatus
-TEH_PG_get_withdraw_info (
+TEH_PG_get_withdraw (
   void *cls,
   const struct TALER_BlindedCoinHashP *bch,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)

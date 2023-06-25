@@ -1085,6 +1085,20 @@ TEH_RESPONSE_reply_reserve_insufficient_balance (
 
 
 MHD_RESULT
+TEH_RESPONSE_reply_reserve_age_restriction_required (
+  struct MHD_Connection *connection,
+  uint16_t maximum_allowed_age)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_BAD_REQUEST,
+    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_RESERVES_AGE_RESTRICTION_REQUIRED),
+    GNUNET_JSON_pack_uint64 ("maximum_allowed_age",
+                             maximum_allowed_age));
+}
+
+
+MHD_RESULT
 TEH_RESPONSE_reply_purse_created (
   struct MHD_Connection *connection,
   struct GNUNET_TIME_Timestamp exchange_timestamp,

@@ -25,8 +25,7 @@ SET search_path TO exchange;
 #include "0003-aml_status.sql"
 #include "0003-aml_staff.sql"
 #include "0003-aml_history.sql"
-#include "0003-age_withdraw_commitments.sql"
-#include "0003-age_withdraw_reveals.sql"
+#include "0003-age_withdraw.sql"
 
 
 COMMIT;

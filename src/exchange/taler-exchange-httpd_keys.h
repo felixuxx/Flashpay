@@ -234,8 +234,8 @@ TEH_keys_denomination_by_hash (
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash2 (
-  struct TEH_KeyStateHandle *ksh,
+TEH_keys_denomination_by_hash_from_state (
+  const struct TEH_KeyStateHandle *ksh,
   const struct TALER_DenominationHashP *h_denom_pub,
   struct MHD_Connection *conn,
   MHD_RESULT *mret);

@@ -72,6 +72,8 @@ dominations_cb_helper (void *cls,
     struct TALER_DenominationHashP h_denom_pub = {0};
     bool revoked;
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
+                                    &meta.serial),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &master_sig),
       GNUNET_PQ_result_spec_bool ("revoked",
@@ -145,7 +147,8 @@ TEH_PG_iterate_denominations (void *cls,
   PREPARE (pg,
            "select_denominations",
            "SELECT"
-           " denominations.master_sig"
+           " denominations_serial"
+           ",denominations.master_sig"
            ",denom_revocations_serial_id IS NOT NULL AS revoked"
            ",valid_from"
            ",expire_withdraw"

@@ -127,10 +127,10 @@ TEH_handler_csr_melt (struct TEH_RequestContext *rc,
                                                TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                                NULL);
           }
-          dk = TEH_keys_denomination_by_hash2 (ksh,
-                                               denom_pub_hash,
-                                               NULL,
-                                               NULL);
+          dk = TEH_keys_denomination_by_hash_from_state (ksh,
+                                                         denom_pub_hash,
+                                                         NULL,
+                                                         NULL);
           if (NULL == dk)
           {
             return TEH_RESPONSE_reply_unknown_denom_pub_hash (
@@ -262,10 +262,10 @@ TEH_handler_csr_withdraw (struct TEH_RequestContext *rc,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                          NULL);
     }
-    dk = TEH_keys_denomination_by_hash2 (ksh,
-                                         &denom_pub_hash,
-                                         NULL,
-                                         NULL);
+    dk = TEH_keys_denomination_by_hash_from_state (ksh,
+                                                   &denom_pub_hash,
+                                                   NULL,
+                                                   NULL);
     if (NULL == dk)
     {
       return TEH_RESPONSE_reply_unknown_denom_pub_hash (

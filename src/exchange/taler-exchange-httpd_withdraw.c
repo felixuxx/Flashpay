@@ -488,10 +488,13 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-    dk = TEH_keys_denomination_by_hash2 (ksh,
-                                         &wc.collectable.denom_pub_hash,
-                                         NULL,
-                                         NULL);
+
+    dk = TEH_keys_denomination_by_hash_from_state (
+      ksh,
+      &wc.collectable.denom_pub_hash,
+      NULL,
+      NULL);
+
     if (NULL == dk)
     {
       if (! check_request_idempotent (rc,

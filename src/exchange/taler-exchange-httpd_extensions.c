@@ -148,7 +148,7 @@ extension_update_event_cb (void *cls,
     TEH_age_restriction_enabled = false;
     if (NULL != conf)
     {
-      TEH_age_restriction_enabled = true;
+      TEH_age_restriction_enabled = extension->enabled;
       TEH_age_restriction_config = *conf;
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "[age restriction] DB event has changed the config to %s with mask: %s\n",

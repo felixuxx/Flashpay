@@ -14,14 +14,11 @@
 -- TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 --
 
-
--- TODO[oec]: add min. age requirements handling
-
 CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw_insert(
   IN cs_nonce BYTEA,
   IN amount_val INT8,
   IN amount_frac INT4,
-  IN h_denom_pub BYTEA,
+  IN h_denom_pub BYTEA, -- FIXME: denom_serials should really be a parameter to this FUNCTION.
   IN ruuid INT8,
   IN reserve_sig BYTEA,
   IN h_coin_envelope BYTEA,
@@ -44,6 +41,8 @@ BEGIN
 out_denom_unknown=TRUE;
 out_conflict=TRUE;
 out_nonce_reuse=TRUE;
+
+-- FIXME: denom_serials should really be a parameter to this FUNCTION.
 
 SELECT denominations_serial
   INTO denom_serial

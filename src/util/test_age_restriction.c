@@ -21,11 +21,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
-
-extern uint8_t
-get_age_group (
-  const struct TALER_AgeMask *mask,
-  uint8_t age);
+#include <gnunet/gnunet_common.h>
 
 /**
  * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
@@ -113,10 +109,10 @@ test_groups (void)
 
     for (uint8_t i = 0; i < 32; i++)
     {
-      uint8_t r = get_age_group (&mask, i);
+      uint8_t r = TALER_get_age_group (&mask, i);
       char *m = age_mask_to_string (&mask);
 
-      printf ("get_age_group(%s, %2d) = %d vs %d (exp)\n",
+      printf ("TALER_get_age_group(%s, %2d) = %d vs %d (exp)\n",
               m,
               i,
               r,
@@ -127,6 +123,52 @@ test_groups (void)
 
       GNUNET_free (m);
     }
+  }
+
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+test_lowest (void)
+{
+  struct TALER_AgeMask mask = {
+    .bits = 1 | 1 << 5 | 1 << 9 | 1 << 13 | 1 << 17 | 1 << 21
+  };
+
+  struct { uint8_t age; uint8_t expected; }
+  test [] = {
+    {.age = 1, .expected = 0 },
+    {.age = 2, .expected = 0 },
+    {.age = 3, .expected = 0 },
+    {.age = 4, .expected = 0 },
+    {.age = 5, .expected = 5 },
+    {.age = 6, .expected = 5 },
+    {.age = 7, .expected = 5 },
+    {.age = 8, .expected = 5 },
+    {.age = 9, .expected = 9 },
+    {.age = 10, .expected = 9 },
+    {.age = 11, .expected = 9 },
+    {.age = 12, .expected = 9 },
+    {.age = 13, .expected = 13 },
+    {.age = 14, .expected = 13 },
+    {.age = 15, .expected = 13 },
+    {.age = 16, .expected = 13 },
+    {.age = 17, .expected = 17 },
+    {.age = 18, .expected = 17 },
+    {.age = 19, .expected = 17 },
+    {.age = 20, .expected = 17 },
+    {.age = 21, .expected = 21 },
+    {.age = 22, .expected = 21 },
+  };
+
+  for (uint8_t n = 0; n < 21; n++)
+  {
+    uint8_t l = TALER_get_lowest_age (&mask, test[n].age);
+    printf ("lowest[%d] for age %d, expected lowest: %d, got: %d\n",
+            n, test[n].age, test[n].expected, l);
+    if (test[n].expected != l)
+      return GNUNET_SYSERR;
   }
 
   return GNUNET_OK;
@@ -146,7 +188,7 @@ test_attestation (void)
     enum GNUNET_GenericReturnValue ret;
     struct TALER_AgeCommitmentProof acp[3] = {0};
     struct TALER_AgeAttestation at = {0};
-    uint8_t age_group = get_age_group (&age_mask, age);
+    uint8_t age_group = TALER_get_age_group (&age_mask, age);
     struct GNUNET_HashCode seed;
 
 
@@ -183,7 +225,7 @@ test_attestation (void)
     {
       for (uint8_t min = 0; min < 22; min++)
       {
-        uint8_t min_group = get_age_group (&age_mask, min);
+        uint8_t min_group = TALER_get_age_group (&age_mask, min);
 
         ret = TALER_age_commitment_attest (&acp[i],
                                            min,
@@ -259,10 +301,12 @@ main (int argc,
                     NULL);
   if (GNUNET_OK != test_groups ())
     return 1;
+  if (GNUNET_OK != test_lowest ())
+    return 2;
   if (GNUNET_OK != test_attestation ())
   {
     GNUNET_break (0);
-    return 2;
+    return 3;
   }
   return 0;
 }

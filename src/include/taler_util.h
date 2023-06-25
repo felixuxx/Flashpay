@@ -558,6 +558,18 @@ char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask);
 
+/*
+ * @brief returns the age group of a given age for a given age mask
+ *
+ * @param mask Age mask
+ * @param age The given age
+ * @return age group
+ */
+uint8_t
+TALER_get_age_group (
+  const struct TALER_AgeMask *mask,
+  uint8_t age);
+
 /**
  * @brief Parses a JSON object { "age_groups": "a:b:...y:z" }.
  *
@@ -569,6 +581,18 @@ enum GNUNET_GenericReturnValue
 TALER_JSON_parse_age_groups (const json_t *root,
                              struct TALER_AgeMask *mask);
 
+
+/* @brief Return the lowest age in the corresponding group for a given age
+ * according the given age mask.
+ *
+ * @param[IN] mask age mask
+ * @param[IN] age age to check
+ * @return lowest age in corresponding age group
+ */
+uint8_t
+TALER_get_lowest_age (
+  const struct TALER_AgeMask *mask,
+  uint8_t age);
 
 /**
  * Handle to an external process that will assist

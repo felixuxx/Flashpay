@@ -160,7 +160,7 @@ BEGIN
       ',current_balance_frac INT4 NOT NULL DEFAULT(0)'
       ',purses_active INT8 NOT NULL DEFAULT(0)'
       ',purses_allowed INT8 NOT NULL DEFAULT(0)'
-      ',max_age INT4 NOT NULL DEFAULT(120)'
+      ',birthdate INT4 NOT NULL DEFAULT(0)' -- 0 means: no age restriction.
       ',expiration_date INT8 NOT NULL'
       ',gc_date INT8 NOT NULL'
     ') %s ;'

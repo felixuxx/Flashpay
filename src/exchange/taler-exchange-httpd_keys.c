@@ -1364,7 +1364,6 @@ denomination_info_cb (
                                        &dk->h_denom_pub.hash,
                                        dk,
                                        GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
-
 }
 
 
@@ -1753,7 +1752,7 @@ wallet_threshold_cb (void *cls,
  *
  * @param[in,out] ksh key state handle we build @a krd for
  * @param[in] denom_keys_hash hash over all the denomination keys in @a denoms
- * @param last_cpd timestamp to use
+ * @param last_cherry_pick_date timestamp to use
  * @param signkeys list of sign keys to return
  * @param recoup list of revoked keys to return
  * @param denoms list of denominations to return
@@ -1764,7 +1763,7 @@ wallet_threshold_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 create_krd (struct TEH_KeyStateHandle *ksh,
             const struct GNUNET_HashCode *denom_keys_hash,
-            struct GNUNET_TIME_Timestamp last_cpd,
+            struct GNUNET_TIME_Timestamp last_cherry_pick_date,
             json_t *signkeys,
             json_t *recoup,
             json_t *denoms,
@@ -1778,7 +1777,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   struct TALER_ExchangeSignatureP grouped_exchange_sig;
   json_t *keys;
 
-  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time));
+  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
+                   last_cherry_pick_date.abs_time));
   GNUNET_assert (NULL != signkeys);
   GNUNET_assert (NULL != recoup);
   GNUNET_assert (NULL != denoms);
@@ -1788,7 +1788,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   GNUNET_assert (NULL != TEH_currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating /keys at cherry pick date %s\n",
-              GNUNET_TIME_timestamp2s (last_cpd));
+              GNUNET_TIME_timestamp2s (last_cherry_pick_date));
 
   /* Sign hash over denomination keys */
   {
@@ -1799,7 +1799,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
            TALER_exchange_online_key_set_sign (
              &TEH_keys_exchange_sign2_,
              ksh,
-             last_cpd,
+             last_cherry_pick_date,
              denom_keys_hash,
              &exchange_pub,
              &exchange_sig)))
@@ -1820,7 +1820,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
            TALER_exchange_online_key_set_sign (
              &TEH_keys_exchange_sign2_,
              ksh,
-             last_cpd,
+             last_cherry_pick_date,
              h_grouped,
              &grouped_exchange_pub,
              &grouped_exchange_sig)))
@@ -1876,7 +1876,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_array_incref ("global_fees",
                                    ksh->global_fees),
     GNUNET_JSON_pack_timestamp ("list_issue_date",
-                                last_cpd),
+                                last_cherry_pick_date),
     GNUNET_JSON_pack_data_auto ("eddsa_pub",
                                 &exchange_pub),
     GNUNET_JSON_pack_data_auto ("eddsa_sig",
@@ -2034,7 +2034,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                            etag));
     krd.etag = GNUNET_strdup (etag);
   }
-  krd.cherry_pick_date = last_cpd;
+  krd.cherry_pick_date = last_cherry_pick_date;
   GNUNET_array_append (ksh->krd_array,
                        ksh->krd_array_length,
                        krd);
@@ -2054,14 +2054,17 @@ create_krd (struct TEH_KeyStateHandle *ksh,
 static enum GNUNET_GenericReturnValue
 finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
   json_t *recoup;
   struct SignKeyCtx sctx;
   json_t *denoms = NULL;
   json_t *grouped_denominations = NULL;
-  struct GNUNET_TIME_Timestamp last_cpd;
+  struct GNUNET_TIME_Timestamp last_cherry_pick_date;
   struct GNUNET_CONTAINER_Heap *heap;
   struct GNUNET_HashContext *hash_context = NULL;
   struct GNUNET_HashCode grouped_hash_xor = {0};
+  /* Remember if we have any denomination with age restriction */
+  bool has_age_restricted_denomination = false;
 
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
@@ -2094,7 +2097,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   grouped_denominations = json_array ();
   GNUNET_assert (NULL != grouped_denominations);
 
-  last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
+  last_cherry_pick_date = GNUNET_TIME_UNIT_ZERO_TS;
 
   // FIXME: This block contains the implementation of the DEPRECATED
   // "denom_pubs" array along with the new grouped "denominations".
@@ -2124,13 +2127,13 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     /* heap = min heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
     {
-      if (GNUNET_TIME_timestamp_cmp (last_cpd,
+      if (GNUNET_TIME_timestamp_cmp (last_cherry_pick_date,
                                      !=,
                                      dk->meta.start) &&
-          (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time)) )
+          (! GNUNET_TIME_absolute_is_zero (last_cherry_pick_date.abs_time)) )
       {
         /*
-         * This is not the first entry in the heap (because last_cpd !=
+         * This is not the first entry in the heap (because last_cherry_pick_date !=
          * GNUNET_TIME_UNIT_ZERO_TS) and the previous entry had a different
          * start time.  Therefore, we create a new entry in ksh.
          */
@@ -2143,7 +2146,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         if (GNUNET_OK !=
             create_krd (ksh,
                         &hc,
-                        last_cpd,
+                        last_cherry_pick_date,
                         sctx.signkeys,
                         recoup,
                         denoms,
@@ -2152,21 +2155,17 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                       "Failed to generate key response data for %s\n",
-                      GNUNET_TIME_timestamp2s (last_cpd));
+                      GNUNET_TIME_timestamp2s (last_cherry_pick_date));
           GNUNET_CRYPTO_hash_context_abort (hash_context);
           /* drain heap before destroying it */
           while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
             /* intentionally empty */;
           GNUNET_CONTAINER_heap_destroy (heap);
-          json_decref (denoms);
-          json_decref (grouped_denominations);
-          json_decref (sctx.signkeys);
-          json_decref (recoup);
-          return GNUNET_SYSERR;
+          goto CLEANUP;
         }
       }
 
-      last_cpd = dk->meta.start;
+      last_cherry_pick_date = dk->meta.start;
 
       {
         json_t *denom;
@@ -2264,7 +2263,11 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             int r = json_object_set_new (group->json,
                                          "age_mask",
                                          json_integer (meta.age_mask.bits));
+
             GNUNET_assert (0 == r);
+
+            /* Remember that we have found at least _one_ age restricted denomination */
+            has_age_restricted_denomination = true;
           }
 
           /* Create a new array for the denominations in this group */
@@ -2386,7 +2389,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   }
 
   GNUNET_CONTAINER_heap_destroy (heap);
-  if (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time))
+  if (! GNUNET_TIME_absolute_is_zero (last_cherry_pick_date.abs_time))
   {
     struct GNUNET_HashCode hc;
 
@@ -2395,7 +2398,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     if (GNUNET_OK !=
         create_krd (ksh,
                     &hc,
-                    last_cpd,
+                    last_cherry_pick_date,
                     sctx.signkeys,
                     recoup,
                     denoms,
@@ -2404,14 +2407,25 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to generate key response data for %s\n",
-                  GNUNET_TIME_timestamp2s (last_cpd));
-      json_decref (denoms);
-      json_decref (grouped_denominations);
-      json_decref (sctx.signkeys);
-      json_decref (recoup);
-      return GNUNET_SYSERR;
+                  GNUNET_TIME_timestamp2s (last_cherry_pick_date));
+      goto CLEANUP;
     }
     ksh->management_only = false;
+
+    /* Sanity check:  Make sure that age restriction is enabled IFF at least
+     * one age restricted denomination exist */
+    if (! has_age_restricted_denomination && TEH_age_restriction_enabled)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Age restriction is enabled, but NO denominations with age restriction found!\n");
+      goto CLEANUP;
+    }
+    else if (has_age_restricted_denomination && ! TEH_age_restriction_enabled)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Age restriction is NOT enabled, but denominations with age restriction found!\n");
+      goto CLEANUP;
+    }
   }
   else
   {
@@ -2419,11 +2433,15 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                 "No denomination keys available. Refusing to generate /keys response.\n");
     GNUNET_CRYPTO_hash_context_abort (hash_context);
   }
+
+  ret = GNUNET_OK;
+
+CLEANUP:
   json_decref (grouped_denominations);
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -2733,16 +2751,16 @@ TEH_keys_denomination_by_hash (
     return NULL;
   }
 
-  return TEH_keys_denomination_by_hash2 (ksh,
-                                         h_denom_pub,
-                                         conn,
-                                         mret);
+  return TEH_keys_denomination_by_hash_from_state (ksh,
+                                                   h_denom_pub,
+                                                   conn,
+                                                   mret);
 }
 
 
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash2 (
-  struct TEH_KeyStateHandle *ksh,
+TEH_keys_denomination_by_hash_from_state (
+  const struct TEH_KeyStateHandle *ksh,
   const struct TALER_DenominationHashP *h_denom_pub,
   struct MHD_Connection *conn,
   MHD_RESULT *mret)

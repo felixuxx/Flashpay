@@ -61,7 +61,7 @@ UPDATE exchange.legitimization_processes
 out_ok = FOUND;
 
 -- FIXME-Oec: update exchange reserve table to store in_birthday here!
--- UPDATE exchange.reserves SET max_age=in_birthday WHERE reserve_pub=X;
+-- UPDATE exchange.reserves SET birthday=in_birthday WHERE reserve_pub=X;
 
 IF in_require_aml
 THEN

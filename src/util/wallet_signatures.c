@@ -634,9 +634,14 @@ struct TALER_AgeWithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
+   * The mask that defines the age groups
+   */
+  struct TALER_AgeMask mask;
+
+  /**
    * Maximum age group that the coins are going to be restricted to.
    */
-  uint32_t max_age_group;
+  uint8_t max_age_group;
 };
 
 
@@ -646,7 +651,8 @@ void
 TALER_wallet_age_withdraw_sign (
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_Amount *amount_with_fee,
-  uint32_t max_age_group,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -654,7 +660,8 @@ TALER_wallet_age_withdraw_sign (
     .purpose.size = htonl (sizeof (req)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW),
     .h_commitment = *h_commitment,
-    .max_age_group = max_age_group
+    .mask = *mask,
+    .max_age_group = TALER_get_age_group (mask, max_age)
   };
 
   TALER_amount_hton (&req.amount_with_fee,
@@ -669,7 +676,8 @@ enum GNUNET_GenericReturnValue
 TALER_wallet_age_withdraw_verify (
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   const struct TALER_Amount *amount_with_fee,
-  uint32_t max_age_group,
+  const struct TALER_AgeMask *mask,
+  uint8_t max_age,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig)
 {
@@ -677,7 +685,8 @@ TALER_wallet_age_withdraw_verify (
     .purpose.size = htonl (sizeof (awsrd)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW),
     .h_commitment = *h_commitment,
-    .max_age_group = max_age_group
+    .mask = *mask,
+    .max_age_group = TALER_get_age_group (mask, max_age)
   };
 
   TALER_amount_hton (&awsrd.amount_with_fee,
