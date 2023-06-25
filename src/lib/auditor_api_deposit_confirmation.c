@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -25,9 +25,10 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
+#include "taler_util.h"
+#include "taler_curl_lib.h"
 #include "taler_json_lib.h"
 #include "taler_auditor_service.h"
-#include "auditor_api_handle.h"
 #include "taler_signatures.h"
 #include "auditor_api_curl_defaults.h"
 
@@ -37,11 +38,6 @@
  */
 struct TALER_AUDITOR_DepositConfirmationHandle
 {
-
-  /**
-   * The connection to auditor this request handle will use
-   */
-  struct TALER_AUDITOR_Handle *auditor;
 
   /**
    * The url for this request.
@@ -87,64 +83,64 @@ handle_deposit_confirmation_finished (void *cls,
 {
   const json_t *json = djson;
   struct TALER_AUDITOR_DepositConfirmationHandle *dh = cls;
-  struct TALER_AUDITOR_HttpResponse hr = {
-    .reply = json,
-    .http_status = (unsigned int) response_code
+  struct TALER_AUDITOR_DepositConfirmationResponse dcr = {
+    .hr.reply = json,
+    .hr.http_status = (unsigned int) response_code
   };
 
   dh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dcr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    hr.ec = TALER_EC_NONE;
+    dcr.hr.ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_BAD_REQUEST:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* This should never happen, either us or the auditor is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, auditor says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_GONE:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Nothing really to verify, auditor says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    dcr.hr.ec = TALER_JSON_get_error_code (json);
+    dcr.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for auditor deposit confirmation\n",
                 (unsigned int) response_code,
-                hr.ec);
+                dcr.hr.ec);
     break;
   }
   dh->cb (dh->cb_cls,
-          &hr);
+          &dcr);
   TALER_AUDITOR_deposit_confirmation_cancel (dh);
 }
 
@@ -237,7 +233,8 @@ verify_signatures (const struct TALER_MerchantWireHashP *h_wire,
 
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
-  struct TALER_AUDITOR_Handle *auditor,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -258,12 +255,9 @@ TALER_AUDITOR_deposit_confirmation (
   void *cb_cls)
 {
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
-  struct GNUNET_CURL_Context *ctx;
   json_t *deposit_confirmation_obj;
   CURL *eh;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_AUDITOR_handle_is_ready_ (auditor));
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_policy,
@@ -322,18 +316,17 @@ TALER_AUDITOR_deposit_confirmation (
         GNUNET_JSON_pack_data_auto ("exchange_pub",
                                     exchange_pub));
   dh = GNUNET_new (struct TALER_AUDITOR_DepositConfirmationHandle);
-  dh->auditor = auditor;
   dh->cb = cb;
   dh->cb_cls = cb_cls;
-  dh->url = TALER_AUDITOR_path_to_url_ (auditor,
-                                        "/deposit-confirmation");
+  dh->url = TALER_url_join (url,
+                            "deposit-confirmation",
+                            NULL);
   if (NULL == dh->url)
   {
     GNUNET_free (dh);
     return NULL;
   }
   eh = TALER_AUDITOR_curl_easy_get_ (dh->url);
-
   if ( (NULL == eh) ||
        (CURLE_OK !=
         curl_easy_setopt (eh,
@@ -356,7 +349,6 @@ TALER_AUDITOR_deposit_confirmation (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for deposit-confirmation: `%s'\n",
               dh->url);
-  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   dh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   dh->ctx.headers,

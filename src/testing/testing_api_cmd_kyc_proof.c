@@ -127,13 +127,16 @@ proof_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const struct TALER_PaytoHashP *h_payto;
   char *uargs;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   kps->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   res_cmd = TALER_TESTING_interpreter_lookup_command (
     kps->is,
     kps->payment_target_reference);
@@ -157,12 +160,14 @@ proof_kyc_run (void *cls,
     GNUNET_asprintf (&uargs,
                      "&code=%s",
                      kps->code);
-  kps->kph = TALER_EXCHANGE_kyc_proof (exchange,
-                                       h_payto,
-                                       kps->logic,
-                                       uargs,
-                                       &proof_kyc_cb,
-                                       kps);
+  kps->kph = TALER_EXCHANGE_kyc_proof (
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    h_payto,
+    kps->logic,
+    uargs,
+    &proof_kyc_cb,
+    kps);
   GNUNET_free (uargs);
   GNUNET_assert (NULL != kps->kph);
 }

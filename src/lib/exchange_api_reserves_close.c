@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -37,11 +37,6 @@
  */
 struct TALER_EXCHANGE_ReservesCloseHandle
 {
-
-  /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 
   /**
    * The url for this request.
@@ -269,26 +264,19 @@ handle_reserves_close_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesCloseHandle *
 TALER_EXCHANGE_reserves_close (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const char *target_payto_uri,
   TALER_EXCHANGE_ReservesCloseCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesCloseHandle *rch;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
   struct TALER_PaytoHashP h_payto;
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   rch = GNUNET_new (struct TALER_EXCHANGE_ReservesCloseHandle);
-  rch->exchange = exchange;
   rch->cb = cb;
   rch->cb_cls = cb_cls;
   rch->ts = GNUNET_TIME_timestamp_get ();
@@ -306,11 +294,12 @@ TALER_EXCHANGE_reserves_close (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/close",
+                     "reserves/%s/close",
                      pub_str);
   }
-  rch->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  rch->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == rch->url)
   {
     GNUNET_free (rch);
@@ -357,7 +346,6 @@ TALER_EXCHANGE_reserves_close (
     }
     json_decref (close_obj);
   }
-  ctx = TEAH_handle_to_context (exchange);
   rch->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    rch->post_ctx.headers,

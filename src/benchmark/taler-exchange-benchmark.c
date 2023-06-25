@@ -514,7 +514,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   /* We always wait for the exchange, no matter if it's running locally or
      remotely */
-  if (0 != TALER_TESTING_wait_exchange_ready (ec.exchange_url))
+  if (0 != TALER_TESTING_wait_httpd_ready (ec.exchange_url))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to detect running exchange at `%s'\n",

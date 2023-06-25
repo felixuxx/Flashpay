@@ -182,11 +182,7 @@ recoup_run (void *cls,
   char *cref;
   unsigned int idx;
   const struct TALER_ExchangeWithdrawValues *ewv;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   ps->is = is;
   if (GNUNET_OK !=
       TALER_TESTING_parse_coin_reference (
@@ -259,13 +255,16 @@ recoup_run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to recoup denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
-  ps->ph = TALER_EXCHANGE_recoup (exchange,
-                                  denom_pub,
-                                  coin_sig,
-                                  ewv,
-                                  planchet,
-                                  &recoup_cb,
-                                  ps);
+  ps->ph = TALER_EXCHANGE_recoup (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    denom_pub,
+    coin_sig,
+    ewv,
+    planchet,
+    &recoup_cb,
+    ps);
   GNUNET_assert (NULL != ps->ph);
 }
 

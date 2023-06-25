@@ -34,9 +34,9 @@ struct HistoryParseContext
 {
 
   /**
-   * Exchange we use.
+   * Keys of the exchange we use.
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Our reserve public key.
@@ -187,7 +187,7 @@ parse_withdraw (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     const struct TALER_EXCHANGE_Keys *key_state;
     const struct TALER_EXCHANGE_DenomPublicKey *dki;
 
-    key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+    key_state = uc->keys;
     dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
                                                        &h_denom_pub);
     if ( (GNUNET_YES !=
@@ -275,7 +275,7 @@ parse_recoup (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+  key_state = uc->keys;
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
                                        &rh->details.
@@ -349,7 +349,7 @@ parse_closing (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  key_state = TALER_EXCHANGE_get_keys (uc->exchange);
+  key_state = uc->keys;
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (
         key_state,
@@ -647,7 +647,7 @@ parse_close (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
 
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct TALER_EXCHANGE_Keys *keys,
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,
@@ -673,7 +673,7 @@ TALER_EXCHANGE_parse_reserve_history (
   };
   struct GNUNET_HashCode uuid[history_length];
   struct HistoryParseContext uc = {
-    .exchange = exchange,
+    .keys = keys,
     .reserve_pub = reserve_pub,
     .uuids = uuid,
     .total_in = total_in,

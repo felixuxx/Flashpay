@@ -198,12 +198,8 @@ track_transaction_run (void *cls,
   struct TALER_MerchantWireHashP h_wire_details;
   struct TALER_PrivateContractHashP h_contract_terms;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   tts->cmd = cmd;
-  if (NULL == exchange)
-    return;
   tts->is = is;
   transaction_cmd
     = TALER_TESTING_interpreter_lookup_command (tts->is,
@@ -275,14 +271,17 @@ track_transaction_run (void *cls,
     return;
   }
 
-  tts->tth = TALER_EXCHANGE_deposits_get (exchange,
-                                          merchant_priv,
-                                          &h_wire_details,
-                                          &h_contract_terms,
-                                          &coin_pub,
-                                          GNUNET_TIME_UNIT_ZERO,
-                                          &deposit_wtid_cb,
-                                          tts);
+  tts->tth = TALER_EXCHANGE_deposits_get (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    merchant_priv,
+    &h_wire_details,
+    &h_contract_terms,
+    &coin_pub,
+    GNUNET_TIME_UNIT_ZERO,
+    &deposit_wtid_cb,
+    tts);
   GNUNET_assert (NULL != tts->tth);
 }
 

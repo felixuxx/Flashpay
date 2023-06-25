@@ -218,14 +218,15 @@ reserve_batch_withdraw_payment_required (
     }
 
     if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (wh->exchange,
-                                              history,
-                                              &wh->reserve_pub,
-                                              balance.currency,
-                                              &total_in_from_history,
-                                              &total_out_from_history,
-                                              len,
-                                              rhistory))
+        TALER_EXCHANGE_parse_reserve_history (
+          TALER_EXCHANGE_get_keys (wh->exchange),
+          history,
+          &wh->reserve_pub,
+          balance.currency,
+          &total_in_from_history,
+          &total_out_from_history,
+          len,
+          rhistory))
     {
       GNUNET_break_op (0);
       TALER_EXCHANGE_free_reserve_history (rhistory,

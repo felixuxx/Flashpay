@@ -54,11 +54,6 @@ struct RefundState
   uint64_t refund_transaction_id;
 
   /**
-   * Connection to the exchange.
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Handle to the refund operation.
    */
   struct TALER_EXCHANGE_RefundHandle *rh;
@@ -116,9 +111,6 @@ refund_run (void *cls,
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;
 
-  rs->exchange = TALER_TESTING_get_exchange (is);
-  if (NULL == rs->exchange)
-    return;
   rs->is = is;
   if (GNUNET_OK !=
       TALER_string_to_amount (rs->refund_amount,
@@ -172,14 +164,17 @@ refund_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  rs->rh = TALER_EXCHANGE_refund (rs->exchange,
-                                  &refund_amount,
-                                  &h_contract_terms,
-                                  &coin,
-                                  rs->refund_transaction_id,
-                                  merchant_priv,
-                                  &refund_cb,
-                                  rs);
+  rs->rh = TALER_EXCHANGE_refund (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    &refund_amount,
+    &h_contract_terms,
+    &coin,
+    rs->refund_transaction_id,
+    merchant_priv,
+    &refund_cb,
+    rs);
   GNUNET_assert (NULL != rs->rh);
 }
 

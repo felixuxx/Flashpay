@@ -27,7 +27,8 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_json_lib.h"
 #include "taler_auditor_service.h"
-#include "auditor_api_handle.h"
+#include "taler_util.h"
+#include "taler_curl_lib.h"
 #include "taler_signatures.h"
 #include "auditor_api_curl_defaults.h"
 
@@ -43,11 +44,6 @@
  */
 struct TALER_AUDITOR_ListExchangesHandle
 {
-
-  /**
-   * The connection to auditor this request handle will use
-   */
-  struct TALER_AUDITOR_Handle *auditor;
 
   /**
    * The url for this request.
@@ -89,16 +85,16 @@ handle_exchanges_finished (void *cls,
   const json_t *ja;
   unsigned int ja_len;
   struct TALER_AUDITOR_ListExchangesHandle *leh = cls;
-  struct TALER_AUDITOR_HttpResponse hr = {
-    .reply = json,
-    .http_status = (unsigned int) response_code
+  struct TALER_AUDITOR_ListExchangesResponse ler = {
+    .hr.reply = json,
+    .hr.http_status = (unsigned int) response_code
   };
 
   leh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    ler.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     ja = json_object_get (json,
@@ -107,8 +103,8 @@ handle_exchanges_finished (void *cls,
          (! json_is_array (ja)) )
     {
       GNUNET_break (0);
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      hr.http_status = 0;
+      ler.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      ler.hr.http_status = 0;
       break;
     }
 
@@ -116,20 +112,21 @@ handle_exchanges_finished (void *cls,
     if (ja_len > MAX_EXCHANGES)
     {
       GNUNET_break (0);
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      hr.http_status = 0;
+      ler.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      ler.hr.http_status = 0;
       break;
     }
     {
-      struct TALER_AUDITOR_ExchangeInfo ei[ja_len];
-      bool ok;
+      struct TALER_AUDITOR_ExchangeInfo ei[GNUNET_NZL (ja_len)];
+      bool ok = true;
 
-      ok = true;
       for (unsigned int i = 0; i<ja_len; i++)
       {
         struct GNUNET_JSON_Specification spec[] = {
-          GNUNET_JSON_spec_fixed_auto ("master_pub", &ei[i].master_pub),
-          GNUNET_JSON_spec_string ("exchange_url", &ei[i].exchange_url),
+          GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                       &ei[i].master_pub),
+          GNUNET_JSON_spec_string ("exchange_url",
+                                   &ei[i].exchange_url),
           GNUNET_JSON_spec_end ()
         };
 
@@ -141,76 +138,71 @@ handle_exchanges_finished (void *cls,
         {
           GNUNET_break_op (0);
           ok = false;
-          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          hr.http_status = 0;
+          ler.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+          ler.hr.http_status = 0;
           break;
         }
       }
       if (! ok)
         break;
+      ler.details.ok.ei = ei;
+      ler.details.ok.num_exchanges = ja_len;
       leh->cb (leh->cb_cls,
-               &hr,
-               ja_len,
-               ei);
+               &ler);
       TALER_AUDITOR_list_exchanges_cancel (leh);
       return;
     }
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the auditor is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    ler.hr.ec = TALER_JSON_get_error_code (json);
+    ler.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    ler.hr.ec = TALER_JSON_get_error_code (json);
+    ler.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    ler.hr.ec = TALER_JSON_get_error_code (json);
+    ler.hr.hint = TALER_JSON_get_error_hint (json);
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
+    ler.hr.ec = TALER_JSON_get_error_code (json);
+    ler.hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for auditor list-exchanges request\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) ler.hr.ec);
     GNUNET_break_op (0);
     break;
   }
   if (NULL != leh->cb)
     leh->cb (leh->cb_cls,
-             &hr,
-             0,
-             NULL);
+             &ler);
   TALER_AUDITOR_list_exchanges_cancel (leh);
 }
 
 
 struct TALER_AUDITOR_ListExchangesHandle *
-TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
+TALER_AUDITOR_list_exchanges (struct GNUNET_CURL_Context *ctx,
+                              const char *url,
                               TALER_AUDITOR_ListExchangesResultCallback cb,
                               void *cb_cls)
 {
   struct TALER_AUDITOR_ListExchangesHandle *leh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_AUDITOR_handle_is_ready_ (auditor));
-
   leh = GNUNET_new (struct TALER_AUDITOR_ListExchangesHandle);
-  leh->auditor = auditor;
   leh->cb = cb;
   leh->cb_cls = cb_cls;
-  leh->url = TALER_AUDITOR_path_to_url_ (auditor,
-                                         "/exchanges");
+  leh->url = TALER_url_join (url,
+                             "exchanges",
+                             NULL);
   if (NULL == leh->url)
   {
     GNUNET_free (leh);
@@ -227,7 +219,6 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
     GNUNET_free (leh);
     return NULL;
   }
-  ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   leh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_exchanges_finished,

@@ -514,7 +514,7 @@ typedef void
  * Iterates over all of the top-level commands of an
  * interpreter.
  *
- * @param[in] interpreter to iterate over
+ * @param[in] is interpreter to iterate over
  * @param asc true in execution order, false for reverse execution order
  * @param cb function to call on each command
  * @param cb_cls closure for cb
@@ -2692,9 +2692,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
-  op (auditor, struct TALER_AUDITOR_Handle)                        \
   op (exchange, struct TALER_EXCHANGE_Handle)                      \
   op (fakebank, struct TALER_FAKEBANK_Handle)                      \
+  op (keys, struct TALER_EXCHANGE_Keys)                            \
   op (process, struct GNUNET_OS_Process *)
 
 
@@ -2739,6 +2739,28 @@ TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
  */
 struct TALER_EXCHANGE_Handle *
 TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Get exchange URL from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange URL, or NULL on error
+ */
+const char *
+TALER_TESTING_get_exchange_url (
+  struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Get exchange keys from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange keys, or NULL on error
+ */
+struct TALER_EXCHANGE_Keys *
+TALER_TESTING_get_keys (
+  struct TALER_TESTING_Interpreter *is);
 
 
 #endif

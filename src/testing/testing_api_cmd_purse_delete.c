@@ -97,12 +97,15 @@ purse_delete_run (void *cls,
   struct PurseDeleteState *pds = cls;
   const struct TALER_PurseContractPrivateKeyP *purse_priv;
   const struct TALER_TESTING_Command *ref;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
   (void) cmd;
-  if (NULL == exchange)
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
     return;
+  }
   ref = TALER_TESTING_interpreter_lookup_command (is,
                                                   pds->purse_cmd);
   if (NULL == ref)
@@ -121,7 +124,8 @@ purse_delete_run (void *cls,
   }
   pds->is = is;
   pds->pdh = TALER_EXCHANGE_purse_delete (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
     purse_priv,
     &purse_delete_cb,
     pds);

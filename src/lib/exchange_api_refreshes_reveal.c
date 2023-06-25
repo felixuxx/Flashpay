@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2022 Taler Systems SA
+  Copyright (C) 2015-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -38,11 +38,6 @@
  */
 struct TALER_EXCHANGE_RefreshesRevealHandle
 {
-
-  /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 
   /**
    * The url for this request.
@@ -310,7 +305,8 @@ handle_refresh_reveal_finished (void *cls,
 
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
@@ -327,7 +323,6 @@ TALER_EXCHANGE_refreshes_reveal (
   json_t *link_sigs;
   json_t *old_age_commitment = NULL;
   CURL *eh;
-  struct GNUNET_CURL_Context *ctx;
   struct MeltData md;
   char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
   bool send_rms = false;
@@ -339,12 +334,6 @@ TALER_EXCHANGE_refreshes_reveal (
        disclose all the transfer keys. Note that this error should
        have been caught way earlier when the exchange replied, but maybe
        we had some internal corruption that changed the value... */
-    GNUNET_break (0);
-    return NULL;
-  }
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
     GNUNET_break (0);
     return NULL;
   }
@@ -467,22 +456,22 @@ TALER_EXCHANGE_refreshes_reveal (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/refreshes/%s/reveal",
+                     "refreshes/%s/reveal",
                      pub_str);
   }
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_EXCHANGE_RefreshesRevealHandle);
-  rrh->exchange = exchange;
   rrh->noreveal_index = noreveal_index;
   rrh->reveal_cb = reveal_cb;
   rrh->reveal_cb_cls = reveal_cb_cls;
   rrh->md = md;
-  rrh->alg_values = GNUNET_memdup (alg_values,
-                                   md.num_fresh_coins
-                                   * sizeof (struct
-                                             TALER_ExchangeWithdrawValues));
-  rrh->url = TEAH_path_to_url (rrh->exchange,
-                               arg_str);
+  rrh->alg_values
+    = GNUNET_memdup (alg_values,
+                     md.num_fresh_coins
+                     * sizeof (struct TALER_ExchangeWithdrawValues));
+  rrh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == rrh->url)
   {
     json_decref (reveal_obj);
@@ -510,7 +499,6 @@ TALER_EXCHANGE_refreshes_reveal (
     return NULL;
   }
   json_decref (reveal_obj);
-  ctx = TEAH_handle_to_context (rrh->exchange);
   rrh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    rrh->ctx.headers,

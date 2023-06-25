@@ -152,12 +152,15 @@ attest_run (void *cls,
 {
   struct AttestState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url;
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
+  exchange_url = TALER_TESTING_get_exchange_url (is);
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
+    return;
+  }
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 ss->reserve_reference);
@@ -179,12 +182,14 @@ attest_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ss->reserve_priv->eddsa_priv,
                                       &ss->reserve_pub.eddsa_pub);
-  ss->rsh = TALER_EXCHANGE_reserves_attest (exchange,
-                                            ss->reserve_priv,
-                                            ss->attrs_len,
-                                            ss->attrs,
-                                            &reserve_attest_cb,
-                                            ss);
+  ss->rsh = TALER_EXCHANGE_reserves_attest (
+    TALER_TESTING_interpreter_get_context (is),
+    exchange_url,
+    ss->reserve_priv,
+    ss->attrs_len,
+    ss->attrs,
+    &reserve_attest_cb,
+    ss);
 }
 
 

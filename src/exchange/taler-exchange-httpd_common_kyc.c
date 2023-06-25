@@ -147,6 +147,10 @@ kyc_aml_finished (void *cls,
     ea,
     0 != code);
   GNUNET_free (ea);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Stored encrypted KYC process #%llu attributes: %d\n",
+              (unsigned long long) kat->process_row,
+              qs);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);

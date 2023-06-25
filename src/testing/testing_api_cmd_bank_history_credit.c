@@ -288,8 +288,7 @@ command_cb (void *cls,
  * to be allocated, and the second to actually populate every
  * element.
  *
- * @param is interpreter state (supposedly having the
- *        current CMD pointing at a "history" CMD).
+ * @param hs history state
  * @param[out] rh history array to initialize.
  * @return number of entries in @a rh.
  */

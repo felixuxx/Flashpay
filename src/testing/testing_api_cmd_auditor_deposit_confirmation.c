@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018, 2021 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -132,13 +132,15 @@ do_retry (void *cls)
  * to check if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
+ * @param dcr response details
  */
 static void
-deposit_confirmation_cb (void *cls,
-                         const struct TALER_AUDITOR_HttpResponse *hr)
+deposit_confirmation_cb (
+  void *cls,
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr)
 {
   struct DepositConfirmationState *dcs = cls;
+  const struct TALER_AUDITOR_HttpResponse *hr = &dcr->hr;
 
   dcs->dc = NULL;
   if (dcs->expected_response_code != hr->http_status)
@@ -208,7 +210,7 @@ deposit_confirmation_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
-  struct TALER_AUDITOR_Handle *auditor;
+  const char *auditor_url;
   struct TALER_EXCHANGE_Handle *exchange
     = TALER_TESTING_get_exchange (is);
 
@@ -229,9 +231,14 @@ deposit_confirmation_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_auditor (auditor_cmd,
-                                                    &auditor));
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_auditor_url (auditor_cmd,
+                                             &auditor_url))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
   }
   deposit_cmd
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -317,25 +324,27 @@ deposit_confirmation_run (void *cls,
     if (GNUNET_TIME_absolute_is_zero (refund_deadline.abs_time))
       refund_deadline = timestamp;
   }
-  dcs->dc = TALER_AUDITOR_deposit_confirmation (auditor,
-                                                &h_wire,
-                                                &no_h_policy,
-                                                &h_contract_terms,
-                                                *exchange_timestamp,
-                                                *wire_deadline,
-                                                refund_deadline,
-                                                &amount_without_fee,
-                                                &coin_pub,
-                                                &merchant_pub,
-                                                exchange_pub,
-                                                exchange_sig,
-                                                &keys->master_pub,
-                                                spk->valid_from,
-                                                spk->valid_until,
-                                                spk->valid_legal,
-                                                &spk->master_sig,
-                                                &deposit_confirmation_cb,
-                                                dcs);
+  dcs->dc = TALER_AUDITOR_deposit_confirmation (
+    TALER_TESTING_interpreter_get_context (is),
+    auditor_url,
+    &h_wire,
+    &no_h_policy,
+    &h_contract_terms,
+    *exchange_timestamp,
+    *wire_deadline,
+    refund_deadline,
+    &amount_without_fee,
+    &coin_pub,
+    &merchant_pub,
+    exchange_pub,
+    exchange_sig,
+    &keys->master_pub,
+    spk->valid_from,
+    spk->valid_until,
+    spk->valid_legal,
+    &spk->master_sig,
+    &deposit_confirmation_cb,
+    dcs);
 
   if (NULL == dcs->dc)
   {

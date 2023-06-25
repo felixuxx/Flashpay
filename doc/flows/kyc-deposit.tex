@@ -61,11 +61,13 @@
 
 
 \begin{table}[h!]
-  \caption{Settings for the deposit trigger}
+  \caption{Settings for the deposit trigger. Note that the operation
+  must satisfy all of the given rules.}
   \begin{tabular}{l|l|r}
     {\bf Setting}                 & {\bf Type}         & {\bf Value}    \\ \hline \hline
     Allowed bank accounts         & RFC 8905 RegEx     & {\em CH*}      \\ \hline
-    KYC deposit threshold         & Amount             & {\em 1000 CHF} \\
-    Default AML deposit threshold & Amount             & {\em 2500 CHF} \\
+    KYC deposit threshold         & Amount/month       & {\em  5000 CHF} \\
+    KYC deposit threshold         & Amount/year        & {\em 15000 CHF} \\
+    Default AML deposit threshold & Amount/month       & {\em  2500 CHF} \\
   \end{tabular}
 \end{table}

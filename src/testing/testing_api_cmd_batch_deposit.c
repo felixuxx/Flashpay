@@ -251,12 +251,15 @@ batch_deposit_run (void *cls,
                                  &wire_salt),
     GNUNET_JSON_spec_end ()
   };
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  const char *exchange_url
+    = TALER_TESTING_get_exchange_url (is);
 
   (void) cmd;
-  if (NULL == exchange)
+  if (NULL == exchange_url)
+  {
+    GNUNET_break (0);
     return;
+  }
   memset (cdds,
           0,
           sizeof (cdds));
@@ -383,13 +386,16 @@ batch_deposit_run (void *cls,
       .refund_deadline = ds->refund_deadline
     };
 
-    ds->dh = TALER_EXCHANGE_batch_deposit (exchange,
-                                           &dcd,
-                                           ds->num_coins,
-                                           cdds,
-                                           &batch_deposit_cb,
-                                           ds,
-                                           &ec);
+    ds->dh = TALER_EXCHANGE_batch_deposit (
+      TALER_TESTING_interpreter_get_context (is),
+      exchange_url,
+      TALER_TESTING_get_keys (is),
+      &dcd,
+      ds->num_coins,
+      cdds,
+      &batch_deposit_cb,
+      ds,
+      &ec);
   }
   if (NULL == ds->dh)
   {

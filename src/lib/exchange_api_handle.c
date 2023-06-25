@@ -110,17 +110,7 @@ struct TEAH_AuditorListEntry
   /**
    * Handle to the auditor.
    */
-  struct TALER_AUDITOR_Handle *ah;
-
-  /**
-   * Head of DLL of interactions with this auditor.
-   */
-  struct TEAH_AuditorInteractionEntry *ai_head;
-
-  /**
-   * Tail of DLL of interactions with this auditor.
-   */
-  struct TEAH_AuditorInteractionEntry *ai_tail;
+  struct TALER_AUDITOR_GetConfigHandle *ah;
 
   /**
    * Public key of the auditor.
@@ -168,57 +158,24 @@ struct KeysRequest
 
 
 void
-TEAH_acc_confirmation_cb (void *cls,
-                          const struct TALER_AUDITOR_HttpResponse *hr)
-{
-  struct TEAH_AuditorInteractionEntry *aie = cls;
-  struct TEAH_AuditorListEntry *ale = aie->ale;
-
-  if (MHD_HTTP_OK != hr->http_status)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n",
-                ale->auditor_url,
-                hr->http_status,
-                hr->ec);
-  }
-  GNUNET_CONTAINER_DLL_remove (ale->ai_head,
-                               ale->ai_tail,
-                               aie);
-  GNUNET_free (aie);
-}
-
-
-void
-TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
+TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Keys *keys,
                           TEAH_AuditorCallback ac,
                           void *ac_cls)
 {
-  if (NULL == h->auditors_head)
+  if (0 == keys->num_auditors)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No auditor available for exchange `%s'. Not submitting deposit confirmations.\n",
-                h->url);
+                "No auditor available. Not submitting deposit confirmations.\n");
     return;
   }
-  for (struct TEAH_AuditorListEntry *ale = h->auditors_head;
-       NULL != ale;
-       ale = ale->next)
+  for (unsigned int i = 0; i<keys->num_auditors; i++)
   {
-    struct TEAH_AuditorInteractionEntry *aie;
+    const struct TALER_EXCHANGE_AuditorInformation *auditor
+      = &keys->auditors[i];
 
-    if (! ale->is_up)
-      continue;
-    aie = ac (ac_cls,
-              ale->ah,
-              &ale->auditor_pub);
-    if (NULL != aie)
-    {
-      aie->ale = ale;
-      GNUNET_CONTAINER_DLL_insert (ale->ai_head,
-                                   ale->ai_tail,
-                                   aie);
-    }
+    ac (ac_cls,
+        auditor->auditor_url,
+        &auditor->auditor_pub);
   }
 }
 
@@ -579,21 +536,18 @@ parse_global_fee (struct TALER_EXCHANGE_GlobalFee *gf,
  * auditor as 'up'.
  *
  * @param cls closure, a `struct TEAH_AuditorListEntry *`
- * @param hr http response from the auditor
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response from the auditor
  */
 static void
-auditor_version_cb (
+auditor_config_cb (
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat)
+  const struct TALER_AUDITOR_ConfigResponse *vr)
 {
   struct TEAH_AuditorListEntry *ale = cls;
+  enum TALER_AUDITOR_VersionCompatibility compat;
 
-  (void) hr;
-  if (NULL == vi)
+  ale->ah = NULL;
+  if (MHD_HTTP_OK != vr->hr.http_status)
   {
     /* In this case, we don't mark the auditor as 'up' */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -601,7 +555,7 @@ auditor_version_cb (
                 ale->auditor_url);
     return;
   }
-
+  compat = vr->details.ok.compat;
   if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -667,10 +621,10 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
     GNUNET_CONTAINER_DLL_insert (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
-    ale->ah = TALER_AUDITOR_connect (exchange->ctx,
-                                     ale->auditor_url,
-                                     &auditor_version_cb,
-                                     ale);
+    ale->ah = TALER_AUDITOR_get_config (exchange->ctx,
+                                        ale->auditor_url,
+                                        &auditor_config_cb,
+                                        ale);
   }
 }
 
@@ -2123,26 +2077,14 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 
   while (NULL != (ale = exchange->auditors_head))
   {
-    struct TEAH_AuditorInteractionEntry *aie;
-
-    while (NULL != (aie = ale->ai_head))
-    {
-      GNUNET_assert (aie->ale == ale);
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n",
-                  ale->auditor_url);
-      TALER_AUDITOR_deposit_confirmation_cancel (aie->dch);
-      GNUNET_CONTAINER_DLL_remove (ale->ai_head,
-                                   ale->ai_tail,
-                                   aie);
-      GNUNET_free (aie);
-    }
     GNUNET_CONTAINER_DLL_remove (exchange->auditors_head,
                                  exchange->auditors_tail,
                                  ale);
-    TALER_LOG_DEBUG ("Disconnecting the auditor `%s'\n",
-                     ale->auditor_url);
-    TALER_AUDITOR_disconnect (ale->ah);
+    if (NULL != ale->ah)
+    {
+      TALER_AUDITOR_get_config_cancel (ale->ah);
+      ale->ah = NULL;
+    }
     GNUNET_free (ale->auditor_url);
     GNUNET_free (ale);
   }
@@ -2275,7 +2217,7 @@ TALER_EXCHANGE_get_denomination_key_by_hash (
 }
 
 
-const struct TALER_EXCHANGE_Keys *
+struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
@@ -2294,6 +2236,35 @@ TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
                                             NULL,
                                             NULL);
   return json_deep_copy (exchange->key_data_raw);
+}
+
+
+/**
+ * Obtain the keys from the exchange in the raw JSON format.
+ *
+ * @param keys the keys structure
+ * @return the keys in raw JSON
+ */
+json_t *
+TALER_EXCHANGE_keys_to_json (struct TALER_EXCHANGE_Keys *keys)
+{
+  // FIXME!
+  return NULL;
+}
+
+
+struct TALER_EXCHANGE_Keys *
+TALER_EXCHANGE_keys_incref (struct TALER_EXCHANGE_Keys *keys)
+{
+  // FIXME
+  return keys;
+}
+
+
+void
+TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys)
+{
+  // FIXME
 }
 
 

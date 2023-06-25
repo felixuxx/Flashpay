@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -41,14 +41,19 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
    */
   char *url;
+
+  /**
+   * The exchange base URL.
+   */
+  char *exchange_url;
 
   /**
    * Context for #TEH_curl_easy_post(). Keeps the data that must
@@ -157,7 +162,6 @@ handle_purse_create_with_merge_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_TIME_Timestamp etime;
       struct TALER_Amount total_deposited;
       struct TALER_ExchangeSignatureP exchange_sig;
@@ -184,9 +188,8 @@ handle_purse_create_with_merge_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      key_state = TALER_EXCHANGE_get_keys (pcm->exchange);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
+          TALER_EXCHANGE_test_signing_key (pcm->keys,
                                            &exchange_pub))
       {
         GNUNET_break_op (0);
@@ -253,7 +256,7 @@ handle_purse_create_with_merge_finished (void *cls,
             &pcm->merge_sig,
             &pcm->merge_pub,
             &pcm->purse_pub,
-            pcm->exchange->url,
+            pcm->exchange_url,
             j))
       {
         GNUNET_break_op (0);
@@ -340,7 +343,9 @@ handle_purse_create_with_merge_finished (void *cls,
 
 struct TALER_EXCHANGE_PurseCreateMergeHandle *
 TALER_EXCHANGE_purse_create_with_merge (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
@@ -353,7 +358,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_PurseCreateMergeHandle *pcm;
-  struct GNUNET_CURL_Context *ctx;
   json_t *create_with_merge_obj;
   CURL *eh;
   char arg_str[sizeof (pcm->reserve_pub) * 2 + 32];
@@ -362,7 +366,6 @@ TALER_EXCHANGE_purse_create_with_merge (
   enum TALER_WalletAccountMergeFlags flags;
 
   pcm = GNUNET_new (struct TALER_EXCHANGE_PurseCreateMergeHandle);
-  pcm->exchange = exchange;
   pcm->cb = cb;
   pcm->cb_cls = cb_cls;
   if (GNUNET_OK !=
@@ -409,7 +412,7 @@ TALER_EXCHANGE_purse_create_with_merge (
     const struct TALER_EXCHANGE_GlobalFee *gf;
 
     gf = TALER_EXCHANGE_get_global_fee (
-      TALER_EXCHANGE_get_keys (exchange),
+      keys,
       GNUNET_TIME_timestamp_get ());
     purse_fee = gf->fees.purse;
     flags = TALER_WAMF_MODE_CREATE_WITH_PURSE_FEE;
@@ -422,8 +425,6 @@ TALER_EXCHANGE_purse_create_with_merge (
     flags = TALER_WAMF_MODE_CREATE_FROM_PURSE_QUOTA;
   }
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   {
     char pub_str[sizeof (pcm->reserve_pub) * 2];
     char *end;
@@ -436,11 +437,12 @@ TALER_EXCHANGE_purse_create_with_merge (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/purse",
+                     "reserves/%s/purse",
                      pub_str);
   }
-  pcm->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  pcm->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == pcm->url)
   {
     GNUNET_break (0);
@@ -457,7 +459,7 @@ TALER_EXCHANGE_purse_create_with_merge (
   {
     char *payto_uri;
 
-    payto_uri = TALER_reserve_make_payto (exchange->url,
+    payto_uri = TALER_reserve_make_payto (url,
                                           &pcm->reserve_pub);
     TALER_wallet_purse_merge_sign (payto_uri,
                                    merge_timestamp,
@@ -546,7 +548,8 @@ TALER_EXCHANGE_purse_create_with_merge (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for purse create_with_merge: `%s'\n",
               pcm->url);
-  ctx = TEAH_handle_to_context (exchange);
+  pcm->keys = TALER_EXCHANGE_keys_incref (keys);
+  pcm->exchange_url = GNUNET_strdup (url);
   pcm->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    pcm->ctx.headers,
@@ -566,7 +569,9 @@ TALER_EXCHANGE_purse_create_with_merge_cancel (
     pcm->job = NULL;
   }
   GNUNET_free (pcm->url);
+  GNUNET_free (pcm->exchange_url);
   TALER_curl_easy_post_finished (&pcm->ctx);
+  TALER_EXCHANGE_keys_decref (pcm->keys);
   GNUNET_free (pcm->econtract.econtract);
   GNUNET_free (pcm);
 }

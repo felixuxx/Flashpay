@@ -32,7 +32,6 @@ libtalerexchange_la_SOURCES = \
   exchange_api_csr_melt.c \
   exchange_api_csr_withdraw.c \
   exchange_api_handle.c exchange_api_handle.h \
-  exchange_api_deposit.c \
   exchange_api_deposits_get.c \
   exchange_api_kyc_check.c \
   exchange_api_kyc_proof.c \
@@ -96,7 +95,7 @@ libtalerauditor_la_LDFLAGS = \
   -no-undefined
 libtalerauditor_la_SOURCES = \
   auditor_api_curl_defaults.c auditor_api_curl_defaults.h \
-  auditor_api_handle.c auditor_api_handle.h \
+  auditor_api_get_config.c \
   auditor_api_deposit_confirmation.c \
   auditor_api_exchanges.c
 libtalerauditor_la_LIBADD = \

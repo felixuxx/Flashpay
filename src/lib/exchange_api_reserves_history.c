@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -39,9 +39,9 @@ struct TALER_EXCHANGE_ReservesHistoryHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -131,7 +131,7 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
     rhistory = GNUNET_new_array (len,
                                  struct TALER_EXCHANGE_ReserveHistoryEntry);
     if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (rsh->exchange,
+        TALER_EXCHANGE_parse_reserve_history (rsh->keys,
                                               history,
                                               &rsh->reserve_pub,
                                               rs.details.ok.balance.currency,
@@ -250,26 +250,19 @@ handle_reserves_history_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesHistoryHandle *
 TALER_EXCHANGE_reserves_history (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   TALER_EXCHANGE_ReservesHistoryCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesHistoryHandle *rsh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
-  const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_GlobalFee *gf;
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   rsh = GNUNET_new (struct TALER_EXCHANGE_ReservesHistoryHandle);
-  rsh->exchange = exchange;
   rsh->cb = cb;
   rsh->cb_cls = cb_cls;
   rsh->ts = GNUNET_TIME_timestamp_get ();
@@ -287,11 +280,12 @@ TALER_EXCHANGE_reserves_history (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/history",
+                     "reserves/%s/history",
                      pub_str);
   }
-  rsh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  rsh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == rsh->url)
   {
     GNUNET_free (rsh);
@@ -301,15 +295,6 @@ TALER_EXCHANGE_reserves_history (
   if (NULL == eh)
   {
     GNUNET_break (0);
-    GNUNET_free (rsh->url);
-    GNUNET_free (rsh);
-    return NULL;
-  }
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  if (NULL == keys)
-  {
-    GNUNET_break (0);
-    curl_easy_cleanup (eh);
     GNUNET_free (rsh->url);
     GNUNET_free (rsh);
     return NULL;
@@ -349,7 +334,7 @@ TALER_EXCHANGE_reserves_history (
     }
     json_decref (history_obj);
   }
-  ctx = TEAH_handle_to_context (exchange);
+  rsh->keys = TALER_EXCHANGE_keys_incref (keys);
   rsh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    rsh->post_ctx.headers,
@@ -370,6 +355,7 @@ TALER_EXCHANGE_reserves_history_cancel (
   }
   TALER_curl_easy_post_finished (&rsh->post_ctx);
   GNUNET_free (rsh->url);
+  TALER_EXCHANGE_keys_decref (rsh->keys);
   GNUNET_free (rsh);
 }
 

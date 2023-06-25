@@ -40,9 +40,9 @@ struct TALER_EXCHANGE_RecoupHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -143,10 +143,8 @@ handle_recoup_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
-  const struct TALER_EXCHANGE_Keys *keys;
 
   ph->job = NULL;
-  keys = TALER_EXCHANGE_get_keys (ph->exchange);
   switch (response_code)
   {
   case 0:
@@ -177,7 +175,7 @@ handle_recoup_finished (void *cls,
       rr.hr.ec = TALER_JSON_get_error_code (j);
       rr.hr.hint = TALER_JSON_get_error_hint (j);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_get_min_denomination_ (keys,
+          TALER_EXCHANGE_get_min_denomination_ (ph->keys,
                                                 &min_key))
       {
         GNUNET_break (0);
@@ -187,7 +185,7 @@ handle_recoup_finished (void *cls,
       }
       if (GNUNET_OK !=
           TALER_EXCHANGE_check_coin_conflict_ (
-            keys,
+            ph->keys,
             j,
             &ph->pk,
             &ph->coin_pub,
@@ -244,16 +242,18 @@ handle_recoup_finished (void *cls,
 
 
 struct TALER_EXCHANGE_RecoupHandle *
-TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
-                       const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                       const struct TALER_DenominationSignature *denom_sig,
-                       const struct TALER_ExchangeWithdrawValues *exchange_vals,
-                       const struct TALER_PlanchetMasterSecretP *ps,
-                       TALER_EXCHANGE_RecoupResultCallback recoup_cb,
-                       void *recoup_cb_cls)
+TALER_EXCHANGE_recoup (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
+  const struct TALER_PlanchetMasterSecretP *ps,
+  TALER_EXCHANGE_RecoupResultCallback recoup_cb,
+  void *recoup_cb_cls)
 {
   struct TALER_EXCHANGE_RecoupHandle *ph;
-  struct GNUNET_CURL_Context *ctx;
   struct TALER_DenominationHashP h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
@@ -261,8 +261,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
   TALER_planchet_setup_coin_priv (ps,
                                   exchange_vals,
@@ -319,19 +317,19 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/coins/%s/recoup",
+                     "coins/%s/recoup",
                      pub_str);
   }
 
-  ph->exchange = exchange;
   ph->pk = *pk;
   memset (&ph->pk.key,
           0,
           sizeof (ph->pk.key)); /* zero out, as lifetime cannot be warranted */
   ph->cb = recoup_cb;
   ph->cb_cls = recoup_cb_cls;
-  ph->url = TEAH_path_to_url (exchange,
-                              arg_str);
+  ph->url = TALER_url_join (url,
+                            arg_str,
+                            NULL);
   if (NULL == ph->url)
   {
     json_decref (recoup_obj);
@@ -357,7 +355,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for recoup: `%s'\n",
               ph->url);
-  ctx = TEAH_handle_to_context (exchange);
+  ph->keys = TALER_EXCHANGE_keys_incref (keys);
   ph->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   ph->ctx.headers,
@@ -377,6 +375,7 @@ TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph)
   }
   GNUNET_free (ph->url);
   TALER_curl_easy_post_finished (&ph->ctx);
+  TALER_EXCHANGE_keys_decref (ph->keys);
   GNUNET_free (ph);
 }
 

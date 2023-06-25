@@ -142,8 +142,8 @@ run (void *cls,
         "fetch-transactions-at-nexus",
         "exchange", /* from taler-nexus-prepare */
         "x", /* from taler-nexus-prepare */
-        "http://localhost:5001",
-        "my-bank-account") /* from taler-nexus-prepare */
+        "http://localhost:8082",
+        "exchange-nexus") /* from taler-nexus-prepare */
       : TALER_TESTING_cmd_sleep ("nop",
                                  0),
       TALER_TESTING_cmd_bank_debits ("history-2b",

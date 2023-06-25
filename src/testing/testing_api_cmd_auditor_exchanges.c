@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -127,11 +127,10 @@ do_retry (void *cls)
  */
 static void
 exchanges_cb (void *cls,
-              const struct TALER_AUDITOR_HttpResponse *hr,
-              unsigned int num_exchanges,
-              const struct TALER_AUDITOR_ExchangeInfo *ei)
+              const struct TALER_AUDITOR_ListExchangesResponse *ler)
 {
   struct ExchangesState *es = cls;
+  const struct TALER_AUDITOR_HttpResponse *hr = &ler->hr;
 
   es->leh = NULL;
   if (es->expected_response_code != hr->http_status)
@@ -164,24 +163,30 @@ exchanges_cb (void *cls,
                                      hr->http_status);
     return;
   }
+  if (MHD_HTTP_OK != hr->http_status)
+  {
+    TALER_TESTING_interpreter_next (es->is);
+    return;
+  }
   if (NULL != es->exchange_url)
   {
-    unsigned int found = GNUNET_NO;
+    bool found = false;
+    unsigned int num_exchanges = ler->details.ok.num_exchanges;
+    const struct TALER_AUDITOR_ExchangeInfo *ei = ler->details.ok.ei;
 
     for (unsigned int i = 0;
          i<num_exchanges;
          i++)
       if (0 == strcmp (es->exchange_url,
                        ei[i].exchange_url))
-        found = GNUNET_YES;
-    if (GNUNET_NO == found)
+        found = true;
+    if (! found)
     {
       TALER_LOG_ERROR ("Exchange '%s' doesn't exist at this auditor\n",
                        es->exchange_url);
       TALER_TESTING_interpreter_fail (es->is);
       return;
     }
-
     TALER_LOG_DEBUG ("Exchange '%s' exists at this auditor!\n",
                      es->exchange_url);
   }
@@ -203,7 +208,7 @@ exchanges_run (void *cls,
 {
   struct ExchangesState *es = cls;
   const struct TALER_TESTING_Command *auditor_cmd;
-  struct TALER_AUDITOR_Handle *auditor;
+  const char *auditor_url;
 
   (void) cmd;
   auditor_cmd = TALER_TESTING_interpreter_get_command (is,
@@ -214,15 +219,20 @@ exchanges_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_auditor (auditor_cmd,
-                                                  &auditor));
-
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_auditor_url (auditor_cmd,
+                                           &auditor_url))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   es->is = is;
-  es->leh = TALER_AUDITOR_list_exchanges (auditor,
-                                          &exchanges_cb,
-                                          es);
-
+  es->leh = TALER_AUDITOR_list_exchanges (
+    TALER_TESTING_interpreter_get_context (is),
+    auditor_url,
+    &exchanges_cb,
+    es);
   if (NULL == es->leh)
   {
     GNUNET_break (0);
@@ -287,14 +297,6 @@ exchanges_traits (void *cls,
 }
 
 
-/**
- * Create a "list exchanges" command.
- *
- * @param label command label.
- * @param auditor auditor connection.
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges (const char *label,
                              unsigned int expected_response_code)
@@ -318,16 +320,6 @@ TALER_TESTING_cmd_exchanges (const char *label,
 }
 
 
-/**
- * Create a "list exchanges" command and check whether
- * a particular exchange belongs to the returned bundle.
- *
- * @param label command label.
- * @param expected_response_code expected HTTP response code.
- * @param exchange_url URL of the exchange supposed to
- *  be included in the response.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges_with_url (const char *label,
                                       unsigned int expected_response_code,

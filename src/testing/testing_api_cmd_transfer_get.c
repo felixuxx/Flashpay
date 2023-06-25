@@ -345,10 +345,13 @@ track_transfer_run (void *cls,
     }
     GNUNET_assert (NULL != wtid_ptr);
   }
-  tts->tth = TALER_EXCHANGE_transfers_get (exchange,
-                                           wtid_ptr,
-                                           &track_transfer_cb,
-                                           tts);
+  tts->tth = TALER_EXCHANGE_transfers_get (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    wtid_ptr,
+    &track_transfer_cb,
+    tts);
   GNUNET_assert (NULL != tts->tth);
 }
 

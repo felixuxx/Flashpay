@@ -369,10 +369,13 @@ history_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ss->reserve_priv->eddsa_priv,
                                       &ss->reserve_pub.eddsa_pub);
-  ss->rsh = TALER_EXCHANGE_reserves_history (exchange,
-                                             ss->reserve_priv,
-                                             &reserve_history_cb,
-                                             ss);
+  ss->rsh = TALER_EXCHANGE_reserves_history (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    ss->reserve_priv,
+    &reserve_history_cb,
+    ss);
 }
 
 

@@ -37,11 +37,6 @@ struct TALER_EXCHANGE_LinkHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -451,25 +446,18 @@ handle_link_finished (void *cls,
 
 
 struct TALER_EXCHANGE_LinkHandle *
-TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                     const struct
-                     TALER_AgeCommitmentProof *age_commitment_proof,
-                     TALER_EXCHANGE_LinkCallback link_cb,
-                     void *link_cb_cls)
+TALER_EXCHANGE_link (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_AgeCommitmentProof *age_commitment_proof,
+  TALER_EXCHANGE_LinkCallback link_cb,
+  void *link_cb_cls)
 {
   struct TALER_EXCHANGE_LinkHandle *lh;
   CURL *eh;
-  struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
-
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
 
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
@@ -485,17 +473,17 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/coins/%s/link",
+                     "coins/%s/link",
                      pub_str);
   }
   lh = GNUNET_new (struct TALER_EXCHANGE_LinkHandle);
-  lh->exchange = exchange;
   lh->link_cb = link_cb;
   lh->link_cb_cls = link_cb_cls;
   lh->coin_priv = *coin_priv;
   lh->age_commitment_proof = age_commitment_proof;
-  lh->url = TEAH_path_to_url (exchange,
-                              arg_str);
+  lh->url = TALER_url_join (url,
+                            arg_str,
+                            NULL);
   if (NULL == lh->url)
   {
     GNUNET_free (lh);
@@ -509,7 +497,6 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (lh);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
   lh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                               eh,
                                               &handle_link_finished,

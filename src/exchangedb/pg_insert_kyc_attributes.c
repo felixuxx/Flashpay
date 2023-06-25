@@ -25,6 +25,9 @@
 #include "pg_insert_kyc_attributes.h"
 #include "pg_helper.h"
 
+void
+event_do_poll (struct GNUNET_PQ_Context *db);
+
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_attributes (
@@ -81,6 +84,9 @@ TEH_PG_insert_kyc_attributes (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Inserting KYC attributes, wake up on %s\n",
+              kyc_completed_notify_s);
   PREPARE (pg,
            "insert_kyc_attributes",
            "SELECT "
@@ -92,6 +98,8 @@ TEH_PG_insert_kyc_attributes (
                                                  params,
                                                  rs);
   GNUNET_free (kyc_completed_notify_s);
+  GNUNET_PQ_event_do_poll (pg->conn);
+
   if (qs < 0)
     return qs;
   if (! ok)

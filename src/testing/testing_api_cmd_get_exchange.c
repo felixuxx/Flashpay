@@ -189,7 +189,7 @@ get_exchange_traits (void *cls,
 {
   struct GetExchangeState *ges = cls;
   unsigned int off = (NULL == ges->master_priv_file) ? 1 : 0;
-  const struct TALER_EXCHANGE_Keys *keys
+  struct TALER_EXCHANGE_Keys *keys
     = TALER_EXCHANGE_get_keys (ges->exchange);
 
   if (NULL != keys)
@@ -198,6 +198,7 @@ get_exchange_traits (void *cls,
       TALER_TESTING_make_trait_master_priv (&ges->master_priv),
       TALER_TESTING_make_trait_master_pub (&keys->master_pub),
       TALER_TESTING_make_trait_exchange (ges->exchange),
+      TALER_TESTING_make_trait_keys (keys),
       TALER_TESTING_make_trait_exchange_url (ges->exchange_url),
       TALER_TESTING_trait_end ()
     };

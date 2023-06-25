@@ -39,11 +39,6 @@ struct TALER_EXCHANGE_ReservesGetAttestHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -211,22 +206,16 @@ handle_reserves_get_attestable_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesGetAttestHandle *
 TALER_EXCHANGE_reserves_get_attestable (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   TALER_EXCHANGE_ReservesGetAttestCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesGetAttestHandle *rgah;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   {
     char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
     char *end;
@@ -239,16 +228,16 @@ TALER_EXCHANGE_reserves_get_attestable (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves-attest/%s",
+                     "reserves-attest/%s",
                      pub_str);
   }
   rgah = GNUNET_new (struct TALER_EXCHANGE_ReservesGetAttestHandle);
-  rgah->exchange = exchange;
   rgah->cb = cb;
   rgah->cb_cls = cb_cls;
   rgah->reserve_pub = *reserve_pub;
-  rgah->url = TEAH_path_to_url (exchange,
-                                arg_str);
+  rgah->url = TALER_url_join (url,
+                              arg_str,
+                              NULL);
   if (NULL == rgah->url)
   {
     GNUNET_free (rgah);
@@ -262,7 +251,6 @@ TALER_EXCHANGE_reserves_get_attestable (
     GNUNET_free (rgah);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
   rgah->job = GNUNET_CURL_job_add (ctx,
                                    eh,
                                    &handle_reserves_get_attestable_finished,

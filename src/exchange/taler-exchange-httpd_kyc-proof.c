@@ -221,6 +221,9 @@ proof_cb (
                             &old_scope);
   if (TALER_KYCLOGIC_STATUS_SUCCESS == status)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "KYC process #%llu succeeded with KYC provider\n",
+                (unsigned long long) kpc->process_row);
     kpc->kat = TEH_kyc_finished (&rc->async_scope_id,
                                  kpc->process_row,
                                  &kpc->h_payto,

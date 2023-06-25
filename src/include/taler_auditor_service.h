@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,12 +28,12 @@
 #include <gnunet/gnunet_curl_lib.h>
 
 
-/* *********************  /version *********************** */
+/* *********************  /config *********************** */
 
 /**
- * @brief Information we get from the auditor about auditors.
+ * @brief Information we get from the auditor about itself.
  */
-struct TALER_AUDITOR_VersionInformation
+struct TALER_AUDITOR_ConfigInformation
 {
   /**
    * Public key of the auditing institution.  Wallets and merchants
@@ -147,57 +147,90 @@ struct TALER_AUDITOR_HttpResponse
 
 
 /**
+ * Response to /config request.
+ */
+struct TALER_AUDITOR_ConfigResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+
+  /**
+   * Details depending on HTTP status.
+   */
+  union
+  {
+
+    /**
+     * Details for #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Protocol compatibility evaluation.
+       */
+      enum TALER_AUDITOR_VersionCompatibility compat;
+
+      /**
+       * Config data returned by /config.
+       */
+      struct TALER_AUDITOR_ConfigInformation vi;
+
+    } ok;
+
+  } details;
+
+};
+
+
+/**
  * Function called with information about the auditor.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param vi basic information about the auditor
- * @param compat protocol compatibility information
+ * @param vr response data
  */
-// FIXME: bad API!
 typedef void
-(*TALER_AUDITOR_VersionCallback) (
+(*TALER_AUDITOR_ConfigCallback) (
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  const struct TALER_AUDITOR_VersionInformation *vi,
-  enum TALER_AUDITOR_VersionCompatibility compat);
+  const struct TALER_AUDITOR_ConfigResponse *vr);
 
 
 /**
  * @brief Handle to the auditor.  This is where we interact with
  * a particular auditor and keep the per-auditor information.
  */
-struct TALER_AUDITOR_Handle;
+struct TALER_AUDITOR_GetConfigHandle;
 
 
 /**
- * Initialise a connection to the auditor. Will connect to the
+ * Obtain meta data about an auditor. Will connect to the
  * auditor and obtain information about the auditor's master public
  * key and the auditor's auditor.  The respective information will
- * be passed to the @a version_cb once available, and all future
- * interactions with the auditor will be checked to be signed
- * (where appropriate) by the respective master key.
+ * be passed to the @a config_cb once available.
  *
- * @param ctx the context
+ * @param ctx the context for CURL requests
  * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the auditor's version information
- * @param version_cb_cls closure for @a version_cb
+ * @param config_cb function to call with the auditor's config information
+ * @param config_cb_cls closure for @a config_cb
  * @return the auditor handle; NULL upon error
  */
-struct TALER_AUDITOR_Handle *
-TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
-                       const char *url,
-                       TALER_AUDITOR_VersionCallback version_cb,
-                       void *version_cb_cls);
+struct TALER_AUDITOR_GetConfigHandle *
+TALER_AUDITOR_get_config (struct GNUNET_CURL_Context *ctx,
+                          const char *url,
+                          TALER_AUDITOR_ConfigCallback config_cb,
+                          void *config_cb_cls);
 
 
 /**
- * Disconnect from the auditor.
+ * Cancel auditor config request.
  *
  * @param auditor the auditor handle
  */
 void
-TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor);
+TALER_AUDITOR_get_config_cancel (struct
+                                 TALER_AUDITOR_GetConfigHandle *auditor);
 
 
 /**
@@ -207,16 +240,28 @@ struct TALER_AUDITOR_DepositConfirmationHandle;
 
 
 /**
+ * Response to /deposit-confirmation request.
+ */
+struct TALER_AUDITOR_DepositConfirmationResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+};
+
+
+/**
  * Signature of functions called with the result from our call to the
  * auditor's /deposit-confirmation handler.
  *
  * @param cls closure
- * @param hr HTTP response data
+ * @param dcr response data
  */
 typedef void
 (*TALER_AUDITOR_DepositConfirmationResultCallback)(
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr);
+  const struct TALER_AUDITOR_DepositConfirmationResponse *dcr);
 
 
 /**
@@ -226,13 +271,13 @@ typedef void
  * that the response is well-formed.  If the auditor's reply is not
  * well-formed, we return an HTTP status code of zero to @a cb.
  *
- * We also verify that the @a exchange_sig is valid for this deposit-confirmation
- * request, and that the @a master_sig is a valid signature for @a
- * exchange_pub.  Also, the @a auditor must be ready to operate (i.e.  have
- * finished processing the /version reply).  If either check fails, we do
- * NOT initiate the transaction with the auditor and instead return NULL.
+ * We also verify that the @a exchange_sig is valid for this
+ * deposit-confirmation request, and that the @a master_sig is a valid
+ * signature for @a exchange_pub.  If the check fails, we do NOT initiate the
+ * transaction with the auditor and instead return NULL.
  *
- * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param ctx the context for CURL requests
+ * @param url HTTP base URL for the auditor
  * @param h_wire hash of merchant wire details
  * @param h_policy hash over the policy, if any
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
@@ -256,7 +301,8 @@ typedef void
  */
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
-  struct TALER_AUDITOR_Handle *auditor,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_ExtensionPolicyHashP *h_policy,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -314,33 +360,69 @@ struct TALER_AUDITOR_ExchangeInfo
 
 
 /**
+ * Response to GET /exchanges request.
+ */
+struct TALER_AUDITOR_ListExchangesResponse
+{
+  /**
+   * HTTP response.
+   */
+  struct TALER_AUDITOR_HttpResponse hr;
+
+  /**
+   * Details depending on HTTP status.
+   */
+  union
+  {
+
+    /**
+     * Details for #MHD_HTTP_OK.
+     */
+    struct
+    {
+
+      /**
+       * Length of the @e ei array.
+       */
+      unsigned int num_exchanges;
+
+      /**
+       * Array with information about exchanges
+       * audited by this auditor.
+       */
+      const struct TALER_AUDITOR_ExchangeInfo *ei;
+    } ok;
+  } details;
+};
+
+
+/**
  * Function called with the result from /exchanges.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param num_exchanges length of array at @a ei
- * @param ei information about exchanges returned by the auditor
+ * @param ler response data
  */
 typedef void
 (*TALER_AUDITOR_ListExchangesResultCallback)(
   void *cls,
-  const struct TALER_AUDITOR_HttpResponse *hr,
-  unsigned int num_exchanges,
-  const struct TALER_AUDITOR_ExchangeInfo *ei);
+  const struct TALER_AUDITOR_ListExchangesResponse *ler);
+
 
 /**
  * Submit an /exchanges request to the auditor and get the
  * auditor's response.  If the auditor's reply is not
  * well-formed, we return an HTTP status code of zero to @a cb.
  *
- * @param auditor the auditor handle; the auditor must be ready to operate
+ * @param ctx the context for CURL requests
+ * @param url HTTP base URL for the auditor
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_AUDITOR_ListExchangesHandle *
-TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
+TALER_AUDITOR_list_exchanges (struct GNUNET_CURL_Context *ctx,
+                              const char *url,
                               TALER_AUDITOR_ListExchangesResultCallback cb,
                               void *cb_cls);
 

@@ -39,9 +39,9 @@ struct TALER_EXCHANGE_DepositGetHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -131,7 +131,7 @@ handle_deposit_wtid_finished (void *cls,
       };
       const struct TALER_EXCHANGE_Keys *key_state;
 
-      key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
+      key_state = dwh->keys;
       GNUNET_assert (NULL != key_state);
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -255,7 +255,9 @@ handle_deposit_wtid_finished (void *cls,
 
 struct TALER_EXCHANGE_DepositGetHandle *
 TALER_EXCHANGE_deposits_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_MerchantPrivateKeyP *merchant_priv,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -267,7 +269,6 @@ TALER_EXCHANGE_deposits_get (
   struct TALER_MerchantPublicKeyP merchant;
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_EXCHANGE_DepositGetHandle *dwh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[(sizeof (struct TALER_CoinSpendPublicKeyP)
                 + sizeof (struct TALER_MerchantWireHashP)
@@ -275,12 +276,6 @@ TALER_EXCHANGE_deposits_get (
                 + sizeof (struct TALER_PrivateContractHashP)
                 + sizeof (struct TALER_MerchantSignatureP)) * 2 + 48];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant.eddsa_pub);
   TALER_merchant_deposit_sign (h_contract_terms,
@@ -339,7 +334,7 @@ TALER_EXCHANGE_deposits_get (
 
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/deposits/%s/%s/%s/%s?merchant_sig=%s%s%s",
+                     "deposits/%s/%s/%s/%s?merchant_sig=%s%s%s",
                      whash_str,
                      mpub_str,
                      chash_str,
@@ -352,11 +347,11 @@ TALER_EXCHANGE_deposits_get (
   }
 
   dwh = GNUNET_new (struct TALER_EXCHANGE_DepositGetHandle);
-  dwh->exchange = exchange;
   dwh->cb = cb;
   dwh->cb_cls = cb_cls;
-  dwh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  dwh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == dwh->url)
   {
     GNUNET_free (dwh);
@@ -365,7 +360,6 @@ TALER_EXCHANGE_deposits_get (
   dwh->h_wire = *h_wire;
   dwh->h_contract_terms = *h_contract_terms;
   dwh->coin_pub = *coin_pub;
-
   eh = TALER_EXCHANGE_curl_easy_get_ (dwh->url);
   if (NULL == eh)
   {
@@ -374,11 +368,11 @@ TALER_EXCHANGE_deposits_get (
     GNUNET_free (dwh);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
   dwh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_deposit_wtid_finished,
                                   dwh);
+  dwh->keys = TALER_EXCHANGE_keys_incref (keys);
   return dwh;
 }
 
@@ -393,6 +387,7 @@ TALER_EXCHANGE_deposits_get_cancel (struct TALER_EXCHANGE_DepositGetHandle *dwh)
   }
   GNUNET_free (dwh->url);
   TALER_curl_easy_post_finished (&dwh->ctx);
+  TALER_EXCHANGE_keys_decref (dwh->keys);
   GNUNET_free (dwh);
 }
 

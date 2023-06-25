@@ -189,12 +189,8 @@ deposit_run (void *cls,
 {
   struct PurseCreateDepositState *ds = cls;
   struct TALER_EXCHANGE_PurseDeposit deposits[ds->num_coin_references];
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   ds->is = is;
   for (unsigned int i = 0; i<ds->num_coin_references; i++)
   {
@@ -259,7 +255,9 @@ deposit_run (void *cls,
                    "pay_deadline",
                    GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->dh = TALER_EXCHANGE_purse_create_with_deposit (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
     &ds->purse_priv,
     &ds->merge_priv,
     &ds->contract_priv,

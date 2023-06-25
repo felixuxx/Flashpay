@@ -142,11 +142,7 @@ close_run (void *cls,
 {
   struct CloseState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -169,11 +165,13 @@ close_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ss->reserve_priv->eddsa_priv,
                                       &ss->reserve_pub.eddsa_pub);
-  ss->rsh = TALER_EXCHANGE_reserves_close (exchange,
-                                           ss->reserve_priv,
-                                           ss->target_account,
-                                           &reserve_close_cb,
-                                           ss);
+  ss->rsh = TALER_EXCHANGE_reserves_close (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    ss->reserve_priv,
+    ss->target_account,
+    &reserve_close_cb,
+    ss);
 }
 
 

@@ -89,6 +89,7 @@ TEH_PG_insert_aml_decision (
                                                  params,
                                                  rs);
   GNUNET_free (notify_s);
+  GNUNET_PQ_event_do_poll (pg->conn);
   if (NULL != kyc_s)
     free (kyc_s);
   return qs;

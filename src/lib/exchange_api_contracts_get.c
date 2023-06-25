@@ -39,11 +39,6 @@ struct TALER_EXCHANGE_ContractsGetHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -194,7 +189,8 @@ handle_contract_get_finished (void *cls,
 
 struct TALER_EXCHANGE_ContractsGetHandle *
 TALER_EXCHANGE_contract_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   TALER_EXCHANGE_ContractGetCallback cb,
   void *cb_cls)
@@ -203,14 +199,7 @@ TALER_EXCHANGE_contract_get (
   CURL *eh;
   char arg_str[sizeof (cgh->cpub) * 2 + 48];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   cgh = GNUNET_new (struct TALER_EXCHANGE_ContractsGetHandle);
-  cgh->exchange = exchange;
   cgh->cb = cb;
   cgh->cb_cls = cb_cls;
   GNUNET_CRYPTO_ecdhe_key_get_public (&contract_priv->ecdhe_priv,
@@ -226,12 +215,13 @@ TALER_EXCHANGE_contract_get (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/contracts/%s",
+                     "contracts/%s",
                      cpub_str);
   }
 
-  cgh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  cgh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == cgh->url)
   {
     GNUNET_free (cgh);
@@ -247,7 +237,7 @@ TALER_EXCHANGE_contract_get (
     GNUNET_free (cgh);
     return NULL;
   }
-  cgh->job = GNUNET_CURL_job_add (TEAH_handle_to_context (exchange),
+  cgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_contract_get_finished,
                                   cgh);

@@ -39,11 +39,6 @@ struct TALER_EXCHANGE_ReservesGetHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -186,23 +181,17 @@ handle_reserves_get_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesGetHandle *
 TALER_EXCHANGE_reserves_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_ReservesGetCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesGetHandle *rgh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16 + 32];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   {
     char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
     char *end;
@@ -223,22 +212,22 @@ TALER_EXCHANGE_reserves_get (
     if (GNUNET_TIME_relative_is_zero (timeout))
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
-                       "/reserves/%s",
+                       "reserves/%s",
                        pub_str);
     else
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
-                       "/reserves/%s?timeout_ms=%s",
+                       "reserves/%s?timeout_ms=%s",
                        pub_str,
                        timeout_str);
   }
   rgh = GNUNET_new (struct TALER_EXCHANGE_ReservesGetHandle);
-  rgh->exchange = exchange;
   rgh->cb = cb;
   rgh->cb_cls = cb_cls;
   rgh->reserve_pub = *reserve_pub;
-  rgh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  rgh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == rgh->url)
   {
     GNUNET_free (rgh);
@@ -252,7 +241,6 @@ TALER_EXCHANGE_reserves_get (
     GNUNET_free (rgh);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
   rgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_reserves_get_finished,
