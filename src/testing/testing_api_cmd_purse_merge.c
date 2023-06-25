@@ -201,12 +201,8 @@ merge_run (void *cls,
   const struct TALER_PurseMergePrivateKeyP *merge_priv;
   const json_t *ct;
   const struct TALER_TESTING_Command *ref;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->merge_ref);
@@ -322,7 +318,9 @@ merge_run (void *cls,
                                       &ds->merge_pub.eddsa_pub);
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
   ds->dh = TALER_EXCHANGE_account_merge (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
     NULL, /* no wad */
     &ds->reserve_priv,
     &ds->purse_pub,

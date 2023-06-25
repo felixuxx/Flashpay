@@ -183,11 +183,7 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_purse;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
   create_purse
     = TALER_TESTING_interpreter_lookup_command (is,
@@ -202,12 +198,15 @@ status_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  ss->pgh = TALER_EXCHANGE_purse_get (exchange,
-                                      ss->purse_pub,
-                                      ss->timeout,
-                                      ss->wait_for_merge,
-                                      &purse_status_cb,
-                                      ss);
+  ss->pgh = TALER_EXCHANGE_purse_get (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    ss->purse_pub,
+    ss->timeout,
+    ss->wait_for_merge,
+    &purse_status_cb,
+    ss);
   if (! GNUNET_TIME_relative_is_zero (ss->timeout))
   {
     TALER_TESTING_interpreter_next (is);

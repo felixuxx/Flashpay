@@ -38,10 +38,6 @@
  */
 struct TALER_EXCHANGE_CsRMeltHandle
 {
-  /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
 
   /**
    * Function to call with the result.
@@ -220,12 +216,14 @@ handle_csr_finished (void *cls,
 
 
 struct TALER_EXCHANGE_CsRMeltHandle *
-TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
-                         const struct TALER_RefreshMasterSecretP *rms,
-                         unsigned int nks_len,
-                         struct TALER_EXCHANGE_NonceKey *nks,
-                         TALER_EXCHANGE_CsRMeltCallback res_cb,
-                         void *res_cb_cls)
+TALER_EXCHANGE_csr_melt (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_RefreshMasterSecretP *rms,
+  unsigned int nks_len,
+  struct TALER_EXCHANGE_NonceKey *nks,
+  TALER_EXCHANGE_CsRMeltCallback res_cb,
+  void *res_cb_cls)
 {
   struct TALER_EXCHANGE_CsRMeltHandle *csrh;
   json_t *csr_arr;
@@ -242,7 +240,6 @@ TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
       return NULL;
     }
   csrh = GNUNET_new (struct TALER_EXCHANGE_CsRMeltHandle);
-  csrh->exchange = exchange;
   csrh->cb = res_cb;
   csrh->cb_cls = res_cb_cls;
   csr_arr = json_array ();
@@ -262,8 +259,9 @@ TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
                    json_array_append_new (csr_arr,
                                           csr_obj));
   }
-  csrh->url = TEAH_path_to_url (exchange,
-                                "/csr-melt");
+  csrh->url = TALER_url_join (url,
+                              "csr-melt",
+                              NULL);
   if (NULL == csrh->url)
   {
     json_decref (csr_arr);
@@ -272,7 +270,6 @@ TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
   }
   {
     CURL *eh;
-    struct GNUNET_CURL_Context *ctx;
     json_t *req;
 
     req = GNUNET_JSON_PACK (
@@ -280,7 +277,6 @@ TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
                                   rms),
       GNUNET_JSON_pack_array_steal ("nks",
                                     csr_arr));
-    ctx = TEAH_handle_to_context (exchange);
     eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
     if ( (NULL == eh) ||
          (GNUNET_OK !=

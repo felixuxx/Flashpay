@@ -184,11 +184,7 @@ recoup_refresh_run (void *cls,
   const struct TALER_ExchangeWithdrawValues *ewv;
   char *cref;
   unsigned int idx;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   rrs->is = is;
   if (GNUNET_OK !=
       TALER_TESTING_parse_coin_reference (
@@ -273,15 +269,18 @@ recoup_refresh_run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to recoup_refresh denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
-  rrs->ph = TALER_EXCHANGE_recoup_refresh (exchange,
-                                           denom_pub,
-                                           coin_sig,
-                                           ewv,
-                                           rplanchet,
-                                           planchet,
-                                           idx,
-                                           &recoup_refresh_cb,
-                                           rrs);
+  rrs->ph = TALER_EXCHANGE_recoup_refresh (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    denom_pub,
+    coin_sig,
+    ewv,
+    rplanchet,
+    planchet,
+    idx,
+    &recoup_refresh_cb,
+    rrs);
   GNUNET_assert (NULL != rrs->ph);
 }
 

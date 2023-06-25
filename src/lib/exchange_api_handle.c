@@ -2239,6 +2239,20 @@ TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 }
 
 
+/**
+ * Obtain the keys from the exchange in the raw JSON format.
+ *
+ * @param keys the keys structure
+ * @return the keys in raw JSON
+ */
+json_t *
+TALER_EXCHANGE_keys_to_json (struct TALER_EXCHANGE_Keys *keys)
+{
+  // FIXME!
+  return NULL;
+}
+
+
 struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_keys_incref (struct TALER_EXCHANGE_Keys *keys)
 {

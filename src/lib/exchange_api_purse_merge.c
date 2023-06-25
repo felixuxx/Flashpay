@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -41,9 +41,9 @@ struct TALER_EXCHANGE_AccountMergeHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -148,7 +148,6 @@ handle_purse_merge_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      const struct TALER_EXCHANGE_Keys *key_state;
       struct TALER_Amount total_deposited;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -173,9 +172,8 @@ handle_purse_merge_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      key_state = TALER_EXCHANGE_get_keys (pch->exchange);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
+          TALER_EXCHANGE_test_signing_key (pch->keys,
                                            &dr.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
@@ -302,7 +300,9 @@ handle_purse_merge_finished (void *cls,
 
 struct TALER_EXCHANGE_AccountMergeHandle *
 TALER_EXCHANGE_account_merge (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const char *reserve_exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
@@ -316,14 +316,12 @@ TALER_EXCHANGE_account_merge (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_AccountMergeHandle *pch;
-  struct GNUNET_CURL_Context *ctx;
   json_t *merge_obj;
   CURL *eh;
   char arg_str[sizeof (pch->purse_pub) * 2 + 32];
   char *reserve_url;
 
   pch = GNUNET_new (struct TALER_EXCHANGE_AccountMergeHandle);
-  pch->exchange = exchange;
   pch->merge_priv = *merge_priv;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
@@ -332,14 +330,12 @@ TALER_EXCHANGE_account_merge (
   pch->purse_expiration = purse_expiration;
   pch->purse_value_after_fees = *purse_value_after_fees;
   if (NULL == reserve_exchange_url)
-    pch->provider_url = GNUNET_strdup (exchange->url);
+    pch->provider_url = GNUNET_strdup (url);
   else
     pch->provider_url = GNUNET_strdup (reserve_exchange_url);
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &pch->reserve_pub.eddsa_pub);
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   {
     char pub_str[sizeof (*purse_pub) * 2];
     char *end;
@@ -352,7 +348,7 @@ TALER_EXCHANGE_account_merge (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/purses/%s/merge",
+                     "purses/%s/merge",
                      pub_str);
   }
   reserve_url = TALER_reserve_make_payto (pch->provider_url,
@@ -364,8 +360,9 @@ TALER_EXCHANGE_account_merge (
     GNUNET_free (pch);
     return NULL;
   }
-  pch->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  pch->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == pch->url)
   {
     GNUNET_break (0);
@@ -426,7 +423,7 @@ TALER_EXCHANGE_account_merge (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for purse merge: `%s'\n",
               pch->url);
-  ctx = TEAH_handle_to_context (exchange);
+  pch->keys = TALER_EXCHANGE_keys_incref (keys);
   pch->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    pch->ctx.headers,
@@ -448,6 +445,7 @@ TALER_EXCHANGE_account_merge_cancel (
   GNUNET_free (pch->url);
   GNUNET_free (pch->provider_url);
   TALER_curl_easy_post_finished (&pch->ctx);
+  TALER_EXCHANGE_keys_decref (pch->keys);
   GNUNET_free (pch);
 }
 

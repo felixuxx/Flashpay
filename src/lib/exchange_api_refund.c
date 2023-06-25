@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -39,9 +39,9 @@ struct TALER_EXCHANGE_RefundHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -117,7 +117,6 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             struct TALER_ExchangePublicKeyP *exchange_pub,
                             struct TALER_ExchangeSignatureP *exchange_sig)
 {
-  const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                  exchange_sig),
@@ -134,9 +133,8 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  key_state = TALER_EXCHANGE_get_keys (rh->exchange);
   if (GNUNET_OK !=
-      TALER_EXCHANGE_test_signing_key (key_state,
+      TALER_EXCHANGE_test_signing_key (rh->keys,
                                        exchange_pub))
   {
     GNUNET_break_op (0);
@@ -672,7 +670,9 @@ handle_refund_finished (void *cls,
 
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_Amount *amount,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -684,13 +684,10 @@ TALER_EXCHANGE_refund (
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_EXCHANGE_RefundHandle *rh;
-  struct GNUNET_CURL_Context *ctx;
   json_t *refund_obj;
   CURL *eh;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant_pub.eddsa_pub);
   TALER_merchant_refund_sign (coin_pub,
@@ -711,7 +708,7 @@ TALER_EXCHANGE_refund (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/coins/%s/refund",
+                     "coins/%s/refund",
                      pub_str);
   }
   refund_obj = GNUNET_JSON_PACK (
@@ -726,11 +723,11 @@ TALER_EXCHANGE_refund (
     GNUNET_JSON_pack_data_auto ("merchant_sig",
                                 &merchant_sig));
   rh = GNUNET_new (struct TALER_EXCHANGE_RefundHandle);
-  rh->exchange = exchange;
   rh->cb = cb;
   rh->cb_cls = cb_cls;
-  rh->url = TEAH_path_to_url (exchange,
-                              arg_str);
+  rh->url = TALER_url_join (url,
+                            arg_str,
+                            NULL);
   if (NULL == rh->url)
   {
     json_decref (refund_obj);
@@ -761,7 +758,7 @@ TALER_EXCHANGE_refund (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for refund: `%s'\n",
               rh->url);
-  ctx = TEAH_handle_to_context (exchange);
+  rh->keys = TALER_EXCHANGE_keys_incref (keys);
   rh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   rh->ctx.headers,
@@ -781,6 +778,7 @@ TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund)
   }
   GNUNET_free (refund->url);
   TALER_curl_easy_post_finished (&refund->ctx);
+  TALER_EXCHANGE_keys_decref (refund->keys);
   GNUNET_free (refund);
 }
 

@@ -245,7 +245,9 @@ purse_run (void *cls,
                    GNUNET_JSON_from_timestamp (ds->purse_expiration)));
   ds->merge_timestamp = GNUNET_TIME_timestamp_get ();
   ds->dh = TALER_EXCHANGE_purse_create_with_merge (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
     &ds->reserve_priv,
     &ds->purse_priv,
     &ds->merge_priv,

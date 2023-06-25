@@ -256,7 +256,9 @@ open_run (void *cls,
     cpi->h_denom_pub = denom_pub->h_key;
   }
   ss->rsh = TALER_EXCHANGE_reserves_open (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
     ss->reserve_priv,
     &ss->reserve_pay,
     ss->cpl,

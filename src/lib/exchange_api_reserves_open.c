@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2022 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -67,9 +67,9 @@ struct TALER_EXCHANGE_ReservesOpenHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -321,7 +321,6 @@ handle_reserves_open_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     {
-      const struct TALER_EXCHANGE_Keys *keys;
       const struct CoinData *cd = NULL;
       struct TALER_CoinSpendPublicKeyP coin_pub;
       const struct TALER_EXCHANGE_DenomPublicKey *dk;
@@ -331,8 +330,6 @@ handle_reserves_open_finished (void *cls,
         GNUNET_JSON_spec_end ()
       };
 
-      keys = TALER_EXCHANGE_get_keys (roh->exchange);
-      GNUNET_assert (NULL != keys);
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
                              spec,
@@ -362,7 +359,7 @@ handle_reserves_open_finished (void *cls,
         rs.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      dk = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
+      dk = TALER_EXCHANGE_get_denomination_key_by_hash (roh->keys,
                                                         &cd->h_denom_pub);
       if (NULL == dk)
       {
@@ -372,7 +369,7 @@ handle_reserves_open_finished (void *cls,
         break;
       }
       if (GNUNET_OK !=
-          TALER_EXCHANGE_check_coin_conflict_ (keys,
+          TALER_EXCHANGE_check_coin_conflict_ (roh->keys,
                                                j,
                                                dk,
                                                &coin_pub,
@@ -427,7 +424,9 @@ handle_reserves_open_finished (void *cls,
 
 struct TALER_EXCHANGE_ReservesOpenHandle *
 TALER_EXCHANGE_reserves_open (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_Amount *reserve_contribution,
   unsigned int coin_payments_length,
@@ -438,20 +437,11 @@ TALER_EXCHANGE_reserves_open (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesOpenHandle *roh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
-  const struct TALER_EXCHANGE_Keys *keys;
   json_t *cpa;
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   roh = GNUNET_new (struct TALER_EXCHANGE_ReservesOpenHandle);
-  roh->exchange = exchange;
   roh->cb = cb;
   roh->cb_cls = cb_cls;
   roh->ts = GNUNET_TIME_timestamp_get ();
@@ -469,11 +459,12 @@ TALER_EXCHANGE_reserves_open (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/open",
+                     "reserves/%s/open",
                      pub_str);
   }
-  roh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  roh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == roh->url)
   {
     GNUNET_free (roh);
@@ -483,15 +474,6 @@ TALER_EXCHANGE_reserves_open (
   if (NULL == eh)
   {
     GNUNET_break (0);
-    GNUNET_free (roh->url);
-    GNUNET_free (roh);
-    return NULL;
-  }
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  if (NULL == keys)
-  {
-    GNUNET_break (0);
-    curl_easy_cleanup (eh);
     GNUNET_free (roh->url);
     GNUNET_free (roh);
     return NULL;
@@ -578,7 +560,7 @@ TALER_EXCHANGE_reserves_open (
     }
     json_decref (open_obj);
   }
-  ctx = TEAH_handle_to_context (exchange);
+  roh->keys = TALER_EXCHANGE_keys_incref (keys);
   roh->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    roh->post_ctx.headers,
@@ -600,6 +582,7 @@ TALER_EXCHANGE_reserves_open_cancel (
   TALER_curl_easy_post_finished (&roh->post_ctx);
   GNUNET_free (roh->coins);
   GNUNET_free (roh->url);
+  TALER_EXCHANGE_keys_decref (roh->keys);
   GNUNET_free (roh);
 }
 

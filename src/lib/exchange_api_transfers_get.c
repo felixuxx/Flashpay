@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -38,9 +38,9 @@ struct TALER_EXCHANGE_TransfersGetHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -130,7 +130,7 @@ check_transfers_get_response_ok (
   }
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (
-        TALER_EXCHANGE_get_keys (wdh->exchange),
+        wdh->keys,
         &td->exchange_pub))
   {
     GNUNET_break_op (0);
@@ -320,25 +320,18 @@ handle_transfers_get_finished (void *cls,
 
 struct TALER_EXCHANGE_TransfersGetHandle *
 TALER_EXCHANGE_transfers_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   TALER_EXCHANGE_TransfersGetCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_TransfersGetHandle *wdh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[sizeof (struct TALER_WireTransferIdentifierRawP) * 2 + 32];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
   wdh = GNUNET_new (struct TALER_EXCHANGE_TransfersGetHandle);
-  wdh->exchange = exchange;
   wdh->cb = cb;
   wdh->cb_cls = cb_cls;
 
@@ -354,11 +347,12 @@ TALER_EXCHANGE_transfers_get (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/transfers/%s",
+                     "transfers/%s",
                      wtid_str);
   }
-  wdh->url = TEAH_path_to_url (wdh->exchange,
-                               arg_str);
+  wdh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == wdh->url)
   {
     GNUNET_free (wdh);
@@ -372,7 +366,7 @@ TALER_EXCHANGE_transfers_get (
     GNUNET_free (wdh);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
+  wdh->keys = TALER_EXCHANGE_keys_incref (keys);
   wdh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                                eh,
                                                &handle_transfers_get_finished,
@@ -397,6 +391,7 @@ TALER_EXCHANGE_transfers_get_cancel (
     wdh->job = NULL;
   }
   GNUNET_free (wdh->url);
+  TALER_EXCHANGE_keys_decref (wdh->keys);
   GNUNET_free (wdh);
 }
 

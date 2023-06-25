@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2022 Taler Systems SA
+   Copyright (C) 2022-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free Software
@@ -73,9 +73,9 @@ struct TALER_EXCHANGE_PurseDepositHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -144,10 +144,9 @@ handle_purse_deposit_finished (void *cls,
     .hr.reply = j,
     .hr.http_status = (unsigned int) response_code
   };
-  const struct TALER_EXCHANGE_Keys *keys;
+  const struct TALER_EXCHANGE_Keys *keys = pch->keys;
 
   pch->job = NULL;
-  keys = TALER_EXCHANGE_get_keys (pch->exchange);
   switch (response_code)
   {
   case 0:
@@ -447,7 +446,9 @@ handle_purse_deposit_finished (void *cls,
 
 struct TALER_EXCHANGE_PurseDepositHandle *
 TALER_EXCHANGE_purse_deposit (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const char *purse_exchange_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint8_t min_age,
@@ -457,7 +458,6 @@ TALER_EXCHANGE_purse_deposit (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_PurseDepositHandle *pch;
-  struct GNUNET_CURL_Context *ctx;
   json_t *create_obj;
   json_t *deposit_arr;
   CURL *eh;
@@ -470,11 +470,8 @@ TALER_EXCHANGE_purse_deposit (
     GNUNET_break (0);
     return NULL;
   }
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
   pch = GNUNET_new (struct TALER_EXCHANGE_PurseDepositHandle);
   pch->purse_pub = *purse_pub;
-  pch->exchange = exchange;
   pch->cb = cb;
   pch->cb_cls = cb_cls;
   {
@@ -489,11 +486,12 @@ TALER_EXCHANGE_purse_deposit (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/purses/%s/deposit",
+                     "purses/%s/deposit",
                      pub_str);
   }
-  pch->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  pch->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == pch->url)
   {
     GNUNET_break (0);
@@ -502,8 +500,7 @@ TALER_EXCHANGE_purse_deposit (
   }
   deposit_arr = json_array ();
   GNUNET_assert (NULL != deposit_arr);
-  pch->base_url = TEAH_path_to_url (exchange,
-                                    "/");
+  pch->base_url = GNUNET_strdup (url);
   pch->num_deposits = num_deposits;
   pch->coins = GNUNET_new_array (num_deposits,
                                  struct Coin);
@@ -594,7 +591,7 @@ TALER_EXCHANGE_purse_deposit (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for purse deposit: `%s'\n",
               pch->url);
-  ctx = TEAH_handle_to_context (exchange);
+  pch->keys = TALER_EXCHANGE_keys_incref (keys);
   pch->job = GNUNET_CURL_job_add2 (ctx,
                                    eh,
                                    pch->ctx.headers,
@@ -616,6 +613,7 @@ TALER_EXCHANGE_purse_deposit_cancel (
   GNUNET_free (pch->base_url);
   GNUNET_free (pch->url);
   GNUNET_free (pch->coins);
+  TALER_EXCHANGE_keys_decref (pch->keys);
   TALER_curl_easy_post_finished (&pch->ctx);
   GNUNET_free (pch);
 }

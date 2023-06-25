@@ -192,7 +192,8 @@ reserve_withdraw_payment_required (
     }
 
     if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (wh->exchange,
+        TALER_EXCHANGE_parse_reserve_history (TALER_EXCHANGE_get_keys (
+                                                wh->exchange),
                                               history,
                                               &wh->reserve_pub,
                                               balance.currency,

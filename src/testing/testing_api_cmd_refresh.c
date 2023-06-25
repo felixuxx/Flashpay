@@ -496,12 +496,8 @@ refresh_reveal_run (void *cls,
   struct RefreshRevealState *rrs = cls;
   struct RefreshMeltState *rms;
   const struct TALER_TESTING_Command *melt_cmd;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   rrs->cmd = cmd;
-  if (NULL == exchange)
-    return;
   rrs->is = is;
   melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        rrs->melt_reference);
@@ -518,14 +514,16 @@ refresh_reveal_run (void *cls,
 
     for (unsigned int i = 0; i<rms->num_fresh_coins; i++)
       alg_values[i] = rms->mbds[i].alg_value;
-    rrs->rrh = TALER_EXCHANGE_refreshes_reveal (exchange,
-                                                &rms->rms,
-                                                &rms->refresh_data,
-                                                rms->num_fresh_coins,
-                                                alg_values,
-                                                rms->noreveal_index,
-                                                &reveal_cb,
-                                                rrs);
+    rrs->rrh = TALER_EXCHANGE_refreshes_reveal (
+      TALER_TESTING_interpreter_get_context (is),
+      TALER_TESTING_get_exchange_url (is),
+      &rms->rms,
+      &rms->refresh_data,
+      rms->num_fresh_coins,
+      alg_values,
+      rms->noreveal_index,
+      &reveal_cb,
+      rrs);
   }
   if (NULL == rrs->rrh)
   {
@@ -913,12 +911,8 @@ melt_cb (void *cls,
 {
   struct RefreshMeltState *rms = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &mr->hr;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (rms->is);
 
   rms->rmh = NULL;
-  if (NULL == exchange)
-    return;
   if (rms->expected_response_code != hr->http_status)
   {
     if (0 != rms->do_retry)
@@ -978,11 +972,14 @@ melt_cb (void *cls,
   {
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->cmd->label);
-    rms->rmh = TALER_EXCHANGE_melt (exchange,
-                                    &rms->rms,
-                                    &rms->refresh_data,
-                                    &melt_cb,
-                                    rms);
+    rms->rmh = TALER_EXCHANGE_melt (
+      TALER_TESTING_interpreter_get_context (rms->is),
+      TALER_TESTING_get_exchange_url (rms->is),
+      TALER_TESTING_get_keys (rms->is),
+      &rms->rms,
+      &rms->refresh_data,
+      &melt_cb,
+      rms);
     rms->double_melt = false;
     return;
   }
@@ -1154,11 +1151,14 @@ melt_run (void *cls,
     GNUNET_assert (age_restricted ==
                    (NULL != age_commitment_proof));
 
-    rms->rmh = TALER_EXCHANGE_melt (exchange,
-                                    &rms->rms,
-                                    &rms->refresh_data,
-                                    &melt_cb,
-                                    rms);
+    rms->rmh = TALER_EXCHANGE_melt (
+      TALER_TESTING_interpreter_get_context (is),
+      TALER_TESTING_get_exchange_url (is),
+      TALER_TESTING_get_keys (is),
+      &rms->rms,
+      &rms->refresh_data,
+      &melt_cb,
+      rms);
 
     if (NULL == rms->rmh)
     {

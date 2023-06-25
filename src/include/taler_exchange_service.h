@@ -604,8 +604,9 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys);
  * @param last_denom_new new last denomination time.
  */
 void
-TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
-                               struct GNUNET_TIME_Timestamp last_denom_new);
+TALER_EXCHANGE_set_last_denom (
+  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_TIME_Timestamp last_denom_new);
 
 
 /**
@@ -653,10 +654,11 @@ enum TALER_EXCHANGE_CheckKeysFlags
  * @return until when the existing response is current, 0 if we are re-downloading now
  */
 struct GNUNET_TIME_Timestamp
-TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   enum TALER_EXCHANGE_CheckKeysFlags flags,
-                                   TALER_EXCHANGE_CertificationCallback cb,
-                                   void *cb_cls);
+TALER_EXCHANGE_check_keys_current (
+  struct TALER_EXCHANGE_Handle *exchange,
+  enum TALER_EXCHANGE_CheckKeysFlags flags,
+  TALER_EXCHANGE_CertificationCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -667,6 +669,16 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
  */
 json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange);
+
+
+/**
+ * Obtain the keys from the exchange in the raw JSON format.
+ *
+ * @param keys the keys structure
+ * @return the keys in raw JSON
+ */
+json_t *
+TALER_EXCHANGE_keys_to_json (struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
@@ -1055,9 +1067,10 @@ struct TALER_EXCHANGE_WireHandle;
  * @return a handle for this request
  */
 struct TALER_EXCHANGE_WireHandle *
-TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
-                     TALER_EXCHANGE_WireCallback wire_cb,
-                     void *wire_cb_cls);
+TALER_EXCHANGE_wire (
+  struct TALER_EXCHANGE_Handle *exchange,
+  TALER_EXCHANGE_WireCallback wire_cb,
+  void *wire_cb_cls);
 
 
 /**
@@ -1377,7 +1390,9 @@ typedef void
  * finished processing the /keys reply).  If this check fails, we do
  * NOT initiate the transaction with the exchange and instead return NULL.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
@@ -1395,7 +1410,9 @@ typedef void
  */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_Amount *amount,
   const struct TALER_PrivateContractHashP *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1504,7 +1521,8 @@ struct TALER_EXCHANGE_NonceKey
 /**
  * Get a set of CS R values using a /csr-melt request.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
  * @param rms master key used for the derivation of the CS values
  * @param nks_len length of the @a nks array
  * @param nks array of denominations and nonces
@@ -1515,12 +1533,14 @@ struct TALER_EXCHANGE_NonceKey
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_CsRMeltHandle *
-TALER_EXCHANGE_csr_melt (struct TALER_EXCHANGE_Handle *exchange,
-                         const struct TALER_RefreshMasterSecretP *rms,
-                         unsigned int nks_len,
-                         struct TALER_EXCHANGE_NonceKey *nks,
-                         TALER_EXCHANGE_CsRMeltCallback res_cb,
-                         void *res_cb_cls);
+TALER_EXCHANGE_csr_melt (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_RefreshMasterSecretP *rms,
+  unsigned int nks_len,
+  struct TALER_EXCHANGE_NonceKey *nks,
+  TALER_EXCHANGE_CsRMeltCallback res_cb,
+  void *res_cb_cls);
 
 
 /**
@@ -1608,11 +1628,12 @@ typedef void
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_CsRWithdrawHandle *
-TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                             const struct TALER_CsNonce *nonce,
-                             TALER_EXCHANGE_CsRWithdrawCallback res_cb,
-                             void *res_cb_cls);
+TALER_EXCHANGE_csr_withdraw (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_CsNonce *nonce,
+  TALER_EXCHANGE_CsRWithdrawCallback res_cb,
+  void *res_cb_cls);
 
 
 /**
@@ -2132,7 +2153,9 @@ typedef void
 /**
  * Submit a request to obtain the reserve status.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param reserve_priv private key of the reserve to inspect
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
@@ -2141,7 +2164,9 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesStatusHandle *
 TALER_EXCHANGE_reserves_status (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   TALER_EXCHANGE_ReservesStatusCallback cb,
   void *cb_cls);
@@ -2250,7 +2275,9 @@ typedef void
 /**
  * Submit a request to obtain the reserve history.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param reserve_priv private key of the reserve to inspect
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
@@ -2259,7 +2286,9 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesHistoryHandle *
 TALER_EXCHANGE_reserves_history (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   TALER_EXCHANGE_ReservesHistoryCallback cb,
   void *cb_cls);
@@ -2649,11 +2678,12 @@ struct TALER_EXCHANGE_Withdraw2Handle;
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_Withdraw2Handle *
-TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
-                          const struct TALER_PlanchetDetail *pd,
-                          const struct TALER_ReservePrivateKeyP *reserve_priv,
-                          TALER_EXCHANGE_Withdraw2Callback res_cb,
-                          void *res_cb_cls);
+TALER_EXCHANGE_withdraw2 (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_PlanchetDetail *pd,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  TALER_EXCHANGE_Withdraw2Callback res_cb,
+  void *res_cb_cls);
 
 
 /**
@@ -2911,7 +2941,9 @@ typedef void
  * argument @a rd should be committed to persistent storage
  * prior to calling this function.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param rms the fresh secret that defines the refresh operation
  * @param rd the refresh data specifying the characteristics of the operation
  * @param melt_cb the callback to call with the result
@@ -2920,11 +2952,14 @@ typedef void
  *         In this case, neither callback will be called.
  */
 struct TALER_EXCHANGE_MeltHandle *
-TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_RefreshMasterSecretP *rms,
-                     const struct TALER_EXCHANGE_RefreshData *rd,
-                     TALER_EXCHANGE_MeltCallback melt_cb,
-                     void *melt_cb_cls);
+TALER_EXCHANGE_melt (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_RefreshMasterSecretP *rms,
+  const struct TALER_EXCHANGE_RefreshData *rd,
+  TALER_EXCHANGE_MeltCallback melt_cb,
+  void *melt_cb_cls);
 
 
 /**
@@ -3044,7 +3079,9 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  * arguments should have been committed to persistent storage
  * prior to calling this function.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param rms the fresh secret that defines the refresh operation
  * @param rd the refresh data that characterizes the refresh operation
  * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, must match value in @a rd
@@ -3059,7 +3096,8 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  */
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
@@ -3311,7 +3349,9 @@ typedef void
  * Query the exchange about which transactions were combined
  * to create a wire transfer.
  *
- * @param exchange exchange to query
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param wtid raw wire transfer identifier to get information about
  * @param cb callback to call
  * @param cb_cls closure for @a cb
@@ -3319,7 +3359,9 @@ typedef void
  */
 struct TALER_EXCHANGE_TransfersGetHandle *
 TALER_EXCHANGE_transfers_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   TALER_EXCHANGE_TransfersGetCallback cb,
   void *cb_cls);
@@ -3449,7 +3491,9 @@ typedef void
  * which aggregate wire transfer the deposit operation identified by @a coin_pub,
  * @a merchant_priv and @a h_contract_terms contributed to.
  *
- * @param exchange the exchange to query
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param merchant_priv the merchant's private key
  * @param h_wire hash of merchant's wire transfer details
  * @param h_contract_terms hash of the proposal data
@@ -3461,7 +3505,9 @@ typedef void
  */
 struct TALER_EXCHANGE_DepositGetHandle *
 TALER_EXCHANGE_deposits_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_MerchantPrivateKeyP *merchant_priv,
   const struct TALER_MerchantWireHashP *h_wire,
   const struct TALER_PrivateContractHashP *h_contract_terms,
@@ -3504,7 +3550,7 @@ TALER_EXCHANGE_verify_coin_history (
  * Parse history given in JSON format and return it in binary
  * format.
  *
- * @param exchange connection to the exchange we can use
+ * @param keys exchange keys
  * @param history JSON array with the history
  * @param reserve_pub public key of the reserve to inspect
  * @param currency currency we expect the balance to be in
@@ -3519,7 +3565,7 @@ TALER_EXCHANGE_verify_coin_history (
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct TALER_EXCHANGE_Keys *keys,
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,
@@ -3601,7 +3647,9 @@ typedef void
  * the emergency recoup protocol for a given denomination.  The value
  * of the coin will be refunded to the original customer (without fees).
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param exchange_vals contribution from the exchange on the withdraw
@@ -3613,13 +3661,16 @@ typedef void
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_RecoupHandle *
-TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
-                       const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                       const struct TALER_DenominationSignature *denom_sig,
-                       const struct TALER_ExchangeWithdrawValues *exchange_vals,
-                       const struct TALER_PlanchetMasterSecretP *ps,
-                       TALER_EXCHANGE_RecoupResultCallback recoup_cb,
-                       void *recoup_cb_cls);
+TALER_EXCHANGE_recoup (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
+  const struct TALER_PlanchetMasterSecretP *ps,
+  TALER_EXCHANGE_RecoupResultCallback recoup_cb,
+  void *recoup_cb_cls);
 
 
 /**
@@ -3692,7 +3743,9 @@ typedef void
  * revoked coin was refreshed from. The original coin is then
  * considered a zombie.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param exchange_vals contribution from the exchange on the withdraw
@@ -3707,7 +3760,9 @@ typedef void
  */
 struct TALER_EXCHANGE_RecoupRefreshHandle *
 TALER_EXCHANGE_recoup_refresh (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
@@ -4258,10 +4313,11 @@ struct TALER_EXCHANGE_ManagementGetKeysHandle;
  * @return the request handle; NULL upon error
  */
 struct TALER_EXCHANGE_ManagementGetKeysHandle *
-TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
-                                    const char *url,
-                                    TALER_EXCHANGE_ManagementGetKeysCallback cb,
-                                    void *cb_cls);
+TALER_EXCHANGE_get_management_keys (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  TALER_EXCHANGE_ManagementGetKeysCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -5787,7 +5843,9 @@ struct TALER_EXCHANGE_PurseGetHandle;
 /**
  * Request information about a purse from the exchange.
  *
- * @param exchange exchange handle
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param purse_pub public key of the purse
  * @param timeout how long to wait for a change to happen
  * @param wait_for_merge true to wait for a merge event, otherwise wait for a deposit event
@@ -5797,7 +5855,9 @@ struct TALER_EXCHANGE_PurseGetHandle;
  */
 struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct GNUNET_TIME_Relative timeout,
   bool wait_for_merge,
@@ -5911,7 +5971,9 @@ struct TALER_EXCHANGE_PurseDeposit
  * Inform the exchange that a purse should be created
  * and coins deposited into it.
  *
- * @param exchange the exchange to interact with
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param purse_priv private key of the purse
  * @param merge_priv the merge credential
  * @param contract_priv key needed to obtain and decrypt the contract
@@ -5927,7 +5989,9 @@ struct TALER_EXCHANGE_PurseDeposit
  */
 struct TALER_EXCHANGE_PurseCreateDepositHandle *
 TALER_EXCHANGE_purse_create_with_deposit (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
   const struct TALER_ContractDiffiePrivateP *contract_priv,
@@ -6091,7 +6155,9 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  * Inform the exchange that a purse should be merged
  * with a reserve.
  *
- * @param exchange the exchange hosting the purse
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param reserve_exchange_url base URL of the exchange with the reserve
  * @param reserve_priv private key of the reserve to merge into
  * @param purse_pub public key of the purse to merge
@@ -6107,7 +6173,9 @@ struct TALER_EXCHANGE_AccountMergeHandle;
  */
 struct TALER_EXCHANGE_AccountMergeHandle *
 TALER_EXCHANGE_account_merge (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const char *reserve_exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
@@ -6199,7 +6267,9 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  * Inform the exchange that a purse should be created
  * and merged with a reserve.
  *
- * @param exchange the exchange hosting the reserve
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param reserve_priv private key of the reserve
  * @param purse_priv private key of the purse
  * @param merge_priv private key of the merge capability
@@ -6214,7 +6284,9 @@ struct TALER_EXCHANGE_PurseCreateMergeHandle;
  */
 struct TALER_EXCHANGE_PurseCreateMergeHandle *
 TALER_EXCHANGE_purse_create_with_merge (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PurseContractPrivateKeyP *purse_priv,
   const struct TALER_PurseMergePrivateKeyP *merge_priv,
@@ -6306,7 +6378,9 @@ struct TALER_EXCHANGE_PurseDepositHandle;
  * Inform the exchange that a deposit should be made into
  * a purse.
  *
- * @param exchange the exchange that issued the coins
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param purse_exchange_url base URL of the exchange hosting the purse
  * @param purse_pub public key of the purse to merge
  * @param min_age minimum age we need to prove for the purse
@@ -6318,7 +6392,9 @@ struct TALER_EXCHANGE_PurseDepositHandle;
  */
 struct TALER_EXCHANGE_PurseDepositHandle *
 TALER_EXCHANGE_purse_deposit (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const char *purse_exchange_url,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint8_t min_age,
@@ -6442,7 +6518,9 @@ typedef void
 /**
  * Submit a request to open a reserve.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys exchange keys
  * @param reserve_priv private key of the reserve to open
  * @param reserve_contribution amount to pay from the reserve's balance for the operation
  * @param coin_payments_length length of the @a coin_payments array
@@ -6456,7 +6534,9 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesOpenHandle *
 TALER_EXCHANGE_reserves_open (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_Amount *reserve_contribution,
   unsigned int coin_payments_length,
@@ -6760,7 +6840,8 @@ typedef void
 /**
  * Submit a request to close a reserve.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
  * @param reserve_priv private key of the reserve to close
  * @param target_payto_uri where to send the payment, NULL to send to reserve origin
  * @param cb the callback to call when a reply for this request is available
@@ -6770,7 +6851,8 @@ typedef void
  */
 struct TALER_EXCHANGE_ReservesCloseHandle *
 TALER_EXCHANGE_reserves_close (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const char *target_payto_uri,
   TALER_EXCHANGE_ReservesCloseCallback cb,

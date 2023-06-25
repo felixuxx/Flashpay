@@ -259,11 +259,7 @@ deposit_run (void *cls,
   struct TALER_EXCHANGE_PurseDeposit deposits[ds->num_coin_references];
   const struct TALER_PurseContractPublicKeyP *purse_pub;
   const struct TALER_TESTING_Command *purse_cmd;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   (void) cmd;
   ds->is = is;
   purse_cmd = TALER_TESTING_interpreter_lookup_command (is,
@@ -321,7 +317,9 @@ deposit_run (void *cls,
   }
 
   ds->dh = TALER_EXCHANGE_purse_deposit (
-    exchange,
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
     NULL, /* FIXME #7271: WADs support: purse exchange URL */
     &ds->purse_pub,
     ds->min_age,

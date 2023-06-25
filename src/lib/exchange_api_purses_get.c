@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2022 Taler Systems SA
+  Copyright (C) 2022-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -39,9 +39,9 @@ struct TALER_EXCHANGE_PurseGetHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -117,7 +117,6 @@ handle_purse_get_finished (void *cls,
                                      &exchange_sig),
         GNUNET_JSON_spec_end ()
       };
-      const struct TALER_EXCHANGE_Keys *key_state;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -130,9 +129,8 @@ handle_purse_get_finished (void *cls,
         break;
       }
 
-      key_state = TALER_EXCHANGE_get_keys (pgh->exchange);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
+          TALER_EXCHANGE_test_signing_key (pgh->keys,
                                            &exchange_pub))
       {
         GNUNET_break_op (0);
@@ -207,7 +205,9 @@ handle_purse_get_finished (void *cls,
 
 struct TALER_EXCHANGE_PurseGetHandle *
 TALER_EXCHANGE_purse_get (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   struct GNUNET_TIME_Relative timeout,
   bool wait_for_merge,
@@ -218,14 +218,7 @@ TALER_EXCHANGE_purse_get (
   CURL *eh;
   char arg_str[sizeof (*purse_pub) * 2 + 64];
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   pgh = GNUNET_new (struct TALER_EXCHANGE_PurseGetHandle);
-  pgh->exchange = exchange;
   pgh->cb = cb;
   pgh->cb_cls = cb_cls;
   {
@@ -247,19 +240,20 @@ TALER_EXCHANGE_purse_get (
     if (GNUNET_TIME_relative_is_zero (timeout))
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
-                       "/purses/%s/%s",
+                       "purses/%s/%s",
                        cpub_str,
                        wait_for_merge ? "merge" : "deposit");
     else
       GNUNET_snprintf (arg_str,
                        sizeof (arg_str),
-                       "/purses/%s/%s?timeout_ms=%s",
+                       "purses/%s/%s?timeout_ms=%s",
                        cpub_str,
                        wait_for_merge ? "merge" : "deposit",
                        timeout_str);
   }
-  pgh->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  pgh->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   if (NULL == pgh->url)
   {
     GNUNET_free (pgh);
@@ -273,10 +267,11 @@ TALER_EXCHANGE_purse_get (
     GNUNET_free (pgh);
     return NULL;
   }
-  pgh->job = GNUNET_CURL_job_add (TEAH_handle_to_context (exchange),
+  pgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
                                   &handle_purse_get_finished,
                                   pgh);
+  pgh->keys = TALER_EXCHANGE_keys_incref (keys);
   return pgh;
 }
 
@@ -291,6 +286,7 @@ TALER_EXCHANGE_purse_get_cancel (
     pgh->job = NULL;
   }
   GNUNET_free (pgh->url);
+  TALER_EXCHANGE_keys_decref (pgh->keys);
   GNUNET_free (pgh);
 }
 
