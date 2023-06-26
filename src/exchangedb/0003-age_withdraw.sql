@@ -32,8 +32,8 @@ BEGIN
       ',reserve_pub BYTEA NOT NULL CONSTRAINT reserve_pub_length CHECK(LENGTH(reserve_pub)=32)'
       ',reserve_sig BYTEA NOT NULL CONSTRAINT reserve_sig_length CHECK(LENGTH(reserve_sig)=64)'
       ',noreveal_index SMALLINT NOT NULL CONSTRAINT noreveal_index_positive CHECK(noreveal_index>=0)'
-      ',h_blind_evs BYTEA[] NOT NULL CONSTRAINT h_blind_evs_length CHECK(cardinality(h_blind_evs)=cardinality(denomination_serials))'
-      ',denom_serials INT8[] NOT NULL CONSTRAINT denominations_serial_array_length CHECK(cardinality(denom_serials)=cardinality(denom_sigs))'
+      ',h_blind_evs BYTEA[] NOT NULL CONSTRAINT h_blind_evs_length CHECK(cardinality(h_blind_evs)=cardinality(denom_serials))'
+      ',denom_serials INT8[] NOT NULL CONSTRAINT denom_serials_array_length CHECK(cardinality(denom_serials)=cardinality(denom_sigs))'
       ',denom_sigs BYTEA[] NOT NULL CONSTRAINT denom_sigs_array_length CHECK(cardinality(denom_sigs)=cardinality(denom_serials))'
     ') %s ;'
     ,table_name
