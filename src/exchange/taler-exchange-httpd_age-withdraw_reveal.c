@@ -586,6 +586,7 @@ TEH_handler_age_withdraw_reveal (
 
   } while(0);
 
+  GNUNET_JSON_parse_free (spec);
   GNUNET_free (actx.disclosed_coin_secrets);
   return result;
 }
