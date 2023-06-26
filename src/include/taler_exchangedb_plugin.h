@@ -3856,7 +3856,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] age_ok set to true if age requirements were met
    * @param[out] allowed_maximum_age if @e age_ok is FALSE, this is set to the allowed maximum age
-   * @param[out] ruuid set to the reserve's UUID (reserves table row)
    * @return query execution status
    */
   enum GNUNET_DB_QueryStatus
@@ -3868,8 +3867,7 @@ struct TALER_EXCHANGEDB_Plugin
     bool *balance_ok,
     bool *age_ok,
     uint16_t *allowed_maximum_age,
-    bool *conflict,
-    uint64_t *ruuid);
+    bool *conflict);
 
   /**
    * Retrieve the details to a policy given by its hash_code

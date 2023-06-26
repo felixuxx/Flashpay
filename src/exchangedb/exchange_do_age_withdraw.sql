@@ -32,8 +32,7 @@ CREATE OR REPLACE FUNCTION exchange_do_age_withdraw(
   OUT balance_ok BOOLEAN,
   OUT age_ok BOOLEAN,
   OUT required_age INT2, -- in years ϵ [0,1..)
-  OUT conflict BOOLEAN,
-  OUT ruuid INT8)
+  OUT conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -55,13 +54,11 @@ SELECT
   ,current_balance_frac
   ,gc_date
   ,birthday
-  ,reserve_uuid
  INTO
    reserve_val
   ,reserve_frac
   ,reserve_gc
   ,reserve_birthday
-  ,ruuid
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
 
@@ -73,7 +70,6 @@ THEN
   age_ok=FALSE;
   required_age=0;
   conflict=FALSE;
-  ruuid=2;
   RETURN;
 END IF;
 

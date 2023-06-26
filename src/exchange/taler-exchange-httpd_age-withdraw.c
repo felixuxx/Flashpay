@@ -740,7 +740,6 @@ age_withdraw_transaction (void *cls,
     bool age_ok = false;
     bool conflict = false;
     uint16_t allowed_maximum_age = 0;
-    uint64_t ruuid;
 
     qs = TEH_plugin->do_age_withdraw (TEH_plugin->cls,
                                       &awc->commitment,
@@ -749,8 +748,7 @@ age_withdraw_transaction (void *cls,
                                       &balance_ok,
                                       &age_ok,
                                       &allowed_maximum_age,
-                                      &conflict,
-                                      &ruuid);
+                                      &conflict);
     if (0 > qs)
     {
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
