@@ -91,7 +91,11 @@ free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
   GNUNET_free (awc->denom_hs);
   GNUNET_free (awc->coin_evs);
   GNUNET_free (awc->commitment.denom_serials);
-  /* commitment.denom_serials and .h_coin_evs are stack allocated */
+  /*
+   * Note:
+   * awc->commitment.denom_sigs and .h_coin_evs were stack allocated and
+   * .denom_pub_hashes is NULL for this context.
+   */
 }
 
 
@@ -419,8 +423,6 @@ are_denominations_valid (
   struct TALER_Amount total_fee;
   struct TEH_KeyStateHandle *ksh;
   uint64_t *serials;
-
-  GNUNET_assert (*denom_serials == NULL);
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)

@@ -1245,7 +1245,7 @@ struct TALER_EXCHANGEDB_AgeWithdraw
   uint64_t *denom_serials;
 
   /**
-   * Array of @a num_coins hashes of the public keys of the denominations
+   * [out]-Array of @a num_coins hashes of the public keys of the denominations
    * identified by @e denom_serials.  This field is set when calling
    * get_age_withdraw
    */
