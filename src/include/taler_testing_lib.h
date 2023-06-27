@@ -2243,14 +2243,25 @@ TALER_TESTING_cmd_proof_kyc_oauth2 (
 
 /**
  * Starts a fake OAuth 2.0 service on @a port for testing
- * KYC processes.
+ * KYC processes which also provides a @a birthdate in a response
  *
  * @param label command label
  * @param port the TCP port to listen on
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_oauth (const char *label,
-                         uint16_t port);
+TALER_TESTING_cmd_oauth_with_birthdate (const char *label,
+                                        const char *birthdate,
+                                        uint16_t port);
+
+/**
+ * Starts a fake OAuth 2.0 service on @a port for testing
+ * KYC processes.
+ *
+ * @param label command label
+ * @param port the TCP port to listen on
+ */
+#define TALER_TESTING_cmd_oauth(label, port) \
+  TALER_TESTING_cmd_oauth_with_birthdate ((label), NULL, (port))
 
 
 /* ****************** P2P payment commands ****************** */

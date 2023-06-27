@@ -40,6 +40,11 @@ struct OAuthState
   struct MHD_Daemon *mhd;
 
   /**
+   * Birthdate that the oauth server should return in a response, may be NULL
+   */
+  const char *birthdate;
+
+  /**
    * Port to listen on.
    */
   uint16_t port;
@@ -172,28 +177,33 @@ handler_cb (void *cls,
             void **con_cls)
 {
   struct RequestCtx *rc = *con_cls;
+  struct OAuthState *oas = cls;
   unsigned int hc;
   json_t *body;
 
-  (void) cls;
   (void) version;
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_GET))
   {
+    json_t *data =
+      GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("id",
+                                 "XXXID12345678"),
+        GNUNET_JSON_pack_string ("first_name",
+                                 "Bob"),
+        GNUNET_JSON_pack_string ("last_name",
+                                 "Builder"));
+    if (NULL != oas->birthdate)
+      json_object_set_new (data,
+                           "birthdate",
+                           json_string_nocheck (oas->birthdate));
+
     body = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string (
         "status",
         "success"),
       GNUNET_JSON_pack_object_steal (
-        "data",
-        GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("id",
-                                   "XXXID12345678"),
-          GNUNET_JSON_pack_string ("first_name",
-                                   "Bob"),
-          GNUNET_JSON_pack_string ("last_name",
-                                   "Builder")
-          )));
+        "data", data));
     return TALER_MHD_reply_json_steal (connection,
                                        body,
                                        MHD_HTTP_OK);
@@ -368,13 +378,15 @@ oauth_cleanup (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_oauth (const char *label,
-                         uint16_t port)
+TALER_TESTING_cmd_oauth_with_birthdate (const char *label,
+                                        const char *birthdate,
+                                        uint16_t port)
 {
   struct OAuthState *oas;
 
   oas = GNUNET_new (struct OAuthState);
   oas->port = port;
+  oas->birthdate = birthdate;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = oas,
