@@ -130,6 +130,77 @@ test_groups (void)
 
 
 enum GNUNET_GenericReturnValue
+test_dates (void)
+{
+  struct TALER_AgeMask mask = {
+    .bits = 1 | 1 << 5 | 1 << 9 | 1 << 13 | 1 << 17 | 1 << 21
+  };
+
+  struct
+  {
+    char *date;
+    uint32_t expected;
+    enum GNUNET_GenericReturnValue ret;
+  }
+  test [] = {
+    {.date = "abcd-00-00", .expected = 0, .ret = GNUNET_SYSERR},
+    {.date = "1900-00-01", .expected = 0, .ret = GNUNET_SYSERR},
+    {.date = "19000001",   .expected = 0, .ret = GNUNET_SYSERR},
+    {.date = "2001-33-05", .expected = 0, .ret = GNUNET_SYSERR},
+    {.date = "2001-33-35", .expected = 0, .ret = GNUNET_SYSERR},
+
+    {.date = "1900-00-00", .expected = 0, .ret = GNUNET_OK},
+    {.date = "2001-00-00", .expected = 0, .ret = GNUNET_OK},
+    {.date = "2001-03-00", .expected = 0, .ret = GNUNET_OK},
+    {.date = "2001-03-05", .expected = 0, .ret = GNUNET_OK},
+
+    /* These dates should be far enough for the near future so that
+     * the expected values are correct. Will need adjustment in 2044 :) */
+    {.date = "2023-06-26", .expected = 19533, .ret = GNUNET_OK },
+    {.date = "2023-06-01", .expected = 19508, .ret = GNUNET_OK },
+    {.date = "2023-06-00", .expected = 19508, .ret = GNUNET_OK },
+    {.date = "2023-01-01", .expected = 19357, .ret = GNUNET_OK },
+    {.date = "2023-00-00", .expected = 19357, .ret = GNUNET_OK },
+  };
+
+  for (uint8_t t = 0; t < sizeof(test) / sizeof(test[0]); t++)
+  {
+    uint32_t d;
+    enum GNUNET_GenericReturnValue ret;
+
+    ret = TALER_parse_coarse_date (test[t].date,
+                                   &mask,
+                                   &d);
+    if (ret != test[t].ret)
+    {
+      printf (
+        "dates[%d] for date `%s` expected parser to return: %d, got: %d\n",
+        t, test[t].date, test[t].ret, ret);
+      return GNUNET_SYSERR;
+    }
+
+    if (ret == GNUNET_SYSERR)
+      continue;
+
+    if (d != test[t].expected)
+    {
+      printf (
+        "dates[%d] for date `%s` expected value %d, but got %d\n",
+        t, test[t].date, test[t].expected, d);
+      return GNUNET_SYSERR;
+    }
+
+    printf ("dates[%d] for date `%s` got expected value %d\n",
+            t, test[t].date, d);
+  }
+
+  printf ("done with dates\n");
+
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
 test_lowest (void)
 {
   struct TALER_AgeMask mask = {
@@ -308,6 +379,8 @@ main (int argc,
     GNUNET_break (0);
     return 3;
   }
+  if (GNUNET_OK != test_dates ())
+    return 4;
   return 0;
 }
 

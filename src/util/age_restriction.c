@@ -710,4 +710,57 @@ TALER_age_restriction_from_secret (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_parse_coarse_date (
+  const char *in,
+  const struct TALER_AgeMask *mask,
+  uint32_t *out)
+{
+  struct tm date = {0};
+  struct tm limit = {0};
+  time_t seconds;
+
+  if (NULL == in)
+  {
+    /* FIXME[oec]: correct behaviour? */
+    *out = 0;
+    return GNUNET_OK;
+  }
+
+  GNUNET_assert (NULL !=mask);
+  GNUNET_assert (NULL !=out);
+
+  if (NULL == strptime (in, "%Y-%0m-%0d", &date))
+  {
+    if (NULL == strptime (in, "%Y-%0m-00", &date))
+      if (NULL == strptime (in, "%Y-00-00", &date))
+        return GNUNET_SYSERR;
+
+    /* turns out that the day is off by one in the last two cases */
+    date.tm_mday += 1;
+  }
+
+  seconds = mktime (&date);
+  if (-1 == seconds)
+    return GNUNET_SYSERR;
+
+  /* calculate the limit date for the largest age group */
+  localtime_r (&(time_t){time (NULL)}, &limit);
+  limit.tm_year -= TALER_get_lowest_age (mask, 255);
+  GNUNET_assert (-1 != mktime (&limit));
+
+  if ((limit.tm_year < date.tm_year)
+      || ((limit.tm_year == date.tm_year)
+          && (limit.tm_mon < date.tm_mon))
+      || ((limit.tm_year == date.tm_year)
+          && (limit.tm_mon == date.tm_mon)
+          && (limit.tm_mday < date.tm_mday)))
+    *out = seconds / 60 / 60 / 24;
+  else
+    *out = 0;
+
+  return GNUNET_OK;
+}
+
+
 /* end util/age_restriction.c */

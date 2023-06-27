@@ -21,6 +21,7 @@
 #ifndef TALER_UTIL_H
 #define TALER_UTIL_H
 
+#include <gnunet/gnunet_common.h>
 #define __TALER_UTIL_LIB_H_INSIDE__
 
 #include <gnunet/gnunet_util_lib.h>
@@ -509,6 +510,33 @@ TALER_yna_to_string (enum TALER_EXCHANGE_YesNoAll yna);
 char *strchrnul (const char *s, int c);
 
 #endif
+
+/**
+ * @brief Parses a date information into days after 1970-01-01 (or 0)
+ *
+ * The input MUST be of the form
+ *
+ *   1) YYYY-MM-DD, representing a valid date
+ *   2) YYYY-MM-00, representing a valid month in a particular year
+ *   3) YYYY-00-00, representing a valid year.
+ *
+ * In the cases 2) and 3) the out parameter is set to the beginning of the
+ * time, f.e. 1950-00-00 == 1950-01-01 and 1888-03-00 == 1888-03-01
+ *
+ * The output will set to the number of days after 1970-01-01 or 0, if the input
+ * represents a date belonging to the largest allowed age group.
+ *
+ * @param in Input string representation of the date
+ * @param mask Age mask
+ * @param[out] out Where to write the result
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+enum GNUNET_GenericReturnValue
+TALER_parse_coarse_date (
+  const char *in,
+  const struct TALER_AgeMask *mask,
+  uint32_t *out);
+
 
 /**
  * @brief Parses a string as a list of age groups.

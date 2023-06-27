@@ -19,9 +19,12 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_common_kyc.h"
 #include "taler_attributes.h"
+#include "taler_error_codes.h"
 #include "taler_exchangedb_plugin.h"
+#include <gnunet/gnunet_common.h>
 
 struct TEH_KycAmlTrigger
 {
@@ -114,7 +117,7 @@ kyc_aml_finished (void *cls,
   size_t eas;
   void *ea;
   const char *birthdate;
-  unsigned int birthday;
+  unsigned int birthday = 0;
   struct GNUNET_ShortHashCode kyc_prox;
   struct GNUNET_AsyncScopeSave old_scope;
 
@@ -125,9 +128,29 @@ kyc_aml_finished (void *cls,
                                        &kyc_prox);
   birthdate = json_string_value (json_object_get (kat->attributes,
                                                   TALER_ATTRIBUTE_BIRTHDATE));
-  birthday = 0; (void) birthdate;  // FIXME-Oec: calculate birthday here...
-  // Convert 'birthdate' to time after 1970, then compute days.
-  // Then compare against max age-restriction, and if before, set to 0.
+
+  if (TEH_age_restriction_enabled)
+  {
+    enum GNUNET_GenericReturnValue ret;
+
+    ret = TALER_parse_coarse_date (birthdate,
+                                   &TEH_age_restriction_config.mask,
+                                   &birthday);
+
+    if (GNUNET_OK != ret)
+    {
+      GNUNET_break (0);
+      if (NULL != kat->response)
+        MHD_destroy_response (kat->response);
+      kat->http_status = MHD_HTTP_BAD_REQUEST;
+      kat->response = TALER_MHD_make_error (
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        TALER_ATTRIBUTE_BIRTHDATE);
+
+      /* FIXME-Christian: shouldn't we return in the error case? */
+    }
+  }
+
   TALER_CRYPTO_kyc_attributes_encrypt (&TEH_attribute_key,
                                        kat->attributes,
                                        &ea,
@@ -159,6 +182,8 @@ kyc_aml_finished (void *cls,
     kat->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     kat->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
                                           "do_insert_kyc_attributes");
+
+    /* FIXME-Christian: shouldn't we return in the error case? */
   }
   /* Finally, return result to main handler */
   kat->cb (kat->cb_cls,
