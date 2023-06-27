@@ -30,6 +30,8 @@
 #include "taler_kyclogic_lib.h"
 #include "taler_templating_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_age-withdraw.h"
+#include "taler-exchange-httpd_age-withdraw_reveal.h"
 #include "taler-exchange-httpd_aml-decision.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_batch-deposit.h"
@@ -572,6 +574,46 @@ handle_get_aml (struct TEH_RequestContext *rc,
 
 
 /**
+ * Handle a "/age-withdraw/$ACH/reveal" POST request.  Parses the "ACH"
+ * hash of the commitment from a previous call to
+ * /reserves/$reserve_pub/age-withdraw
+ *
+ * @param rc request context
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_age_withdraw (struct TEH_RequestContext *rc,
+                          const json_t *root,
+                          const char *const args[2])
+{
+  struct TALER_AgeWithdrawCommitmentHashP ach;
+
+  if (0 != strcmp ("reveal", args[1]))
+    return r404 (rc->connection,
+                 args[1]);
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &ach,
+                                     sizeof (ach)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_RESERVE_PUB_MALFORMED,
+                                       args[0]);
+  }
+
+  return TEH_handler_age_withdraw_reveal (rc,
+                                          &ach,
+                                          root);
+}
+
+
+/**
  * Signature of functions that handle operations on reserves.
  *
  * @param rc request context
@@ -616,6 +658,10 @@ handle_post_reserves (struct TEH_RequestContext *rc,
     {
       .op = "batch-withdraw",
       .handler = &TEH_handler_batch_withdraw
+    },
+    {
+      .op = "age-withdraw",
+      .handler = &TEH_handler_age_withdraw
     },
     {
       .op = "withdraw",
@@ -1452,6 +1498,12 @@ handle_mhd_request (void *cls,
       .url = "reserves",
       .method = MHD_HTTP_METHOD_POST,
       .handler.post = &handle_post_reserves,
+      .nargs = 2
+    },
+    {
+      .url = "age-withdraw",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_age_withdraw,
       .nargs = 2
     },
     {
