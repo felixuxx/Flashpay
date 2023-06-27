@@ -18,8 +18,8 @@
  * @brief Handle /age-withdraw/$ACH/reveal requests
  * @author Özgür Kesim
  */
-#ifndef TALER_EXCHANGE_HTTPD_AGE_WITHDRAW_H
-#define TALER_EXCHANGE_HTTPD_AGE_WITHDRAW_H
+#ifndef TALER_EXCHANGE_HTTPD_AGE_WITHDRAW_REVEAL_H
+#define TALER_EXCHANGE_HTTPD_AGE_WITHDRAW_REVEAL_H
 
 #include <microhttpd.h>
 #include "taler-exchange-httpd.h"
