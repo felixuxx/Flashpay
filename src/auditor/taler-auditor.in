@@ -83,7 +83,9 @@ optcheck "$@"
 ARGS=("$@")
 ARGS=(${ARGS[@]/$INF})
 
-DIR=`mktemp -d reportXXXXXX`
+DATE=`date +%F_%H:%M:%S`
+DIR="report_$DATE"
+mkdir $DIR
 for n in aggregation coins deposits purses reserves
 do
   taler-helper-auditor-$n ${ARGS[*]} > ${DIR}/$n.json
