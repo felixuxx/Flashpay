@@ -45,9 +45,9 @@ TEH_PG_do_batch_withdraw (
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    GNUNET_PQ_query_param_bool (do_age_check),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_bool (do_age_check),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -77,10 +77,10 @@ TEH_PG_do_batch_withdraw (
            " reserve_found"
            ",balance_ok"
            ",age_ok"
-           ",required_age"
+           ",allowed_maximum_age"
            ",ruuid"
            " FROM exchange_do_batch_withdraw"
-           " ($1,$2,$3,$4,$5);");
+           " ($1,$2,$3,$4,$5,$6);");
   return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "call_batch_withdraw",
                                                    params,

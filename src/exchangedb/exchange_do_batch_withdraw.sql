@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION exchange_do_batch_withdraw(
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT age_ok BOOLEAN,
-  OUT allowed_maximum_age INT4, -- in years
+  OUT allowed_maximum_age INT2, -- in years
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
@@ -74,7 +74,7 @@ END IF;
 -- Check if age requirements are present
 IF ((NOT do_age_check) OR (reserve_birthday = 0))
 THEN
-  age_ok = OK;
+  age_ok = TRUE;
   allowed_maximum_age = -1;
 ELSE
   -- Age requirements are formally not met:  The exchange is setup to support

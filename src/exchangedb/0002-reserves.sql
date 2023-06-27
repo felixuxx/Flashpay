@@ -31,7 +31,7 @@ BEGIN
       ',current_balance_frac INT4 NOT NULL DEFAULT(0)'
       ',purses_active INT8 NOT NULL DEFAULT(0)'
       ',purses_allowed INT8 NOT NULL DEFAULT(0)'
-      ',birthdate INT4 NOT NULL DEFAULT(0)'
+      ',birthday INT4 NOT NULL DEFAULT(0)'
       ',expiration_date INT8 NOT NULL'
       ',gc_date INT8 NOT NULL'
     ') %s ;'
@@ -82,7 +82,7 @@ BEGIN
   );
   PERFORM comment_partitioned_column(
      'Birthday of the user in days after 1970, or 0 if user is an adult and is not subject to age restrictions'
-    ,'birthdate'
+    ,'birthday'
     ,table_name
     ,partition_suffix
   );
