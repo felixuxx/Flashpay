@@ -23,6 +23,7 @@
 #include "taler_signatures.h"
 #include <gnunet/gnunet_json_lib.h>
 #include <gcrypt.h>
+#include <stdint.h>
 
 struct
 #ifndef AGE_RESTRICTION_WITH_ECDSA
@@ -746,7 +747,7 @@ TALER_parse_coarse_date (
 
   /* calculate the limit date for the largest age group */
   localtime_r (&(time_t){time (NULL)}, &limit);
-  limit.tm_year -= TALER_get_lowest_age (mask, 255);
+  limit.tm_year -= TALER_adult_age (mask);
   GNUNET_assert (-1 != mktime (&limit));
 
   if ((limit.tm_year < date.tm_year)

@@ -622,6 +622,14 @@ TALER_get_lowest_age (
   const struct TALER_AgeMask *mask,
   uint8_t age);
 
+/* @brief Get the lowest age for the largest age group
+ *
+ * @param mask the age mask
+ * @return lowest age for the largest age group
+ */
+#define TALER_adult_age(mask) \
+  sizeof((mask)->bits) * 8 - __builtin_clz ((mask)->bits) - 1
+
 /**
  * Handle to an external process that will assist
  * with some JSON-to-JSON conversion.

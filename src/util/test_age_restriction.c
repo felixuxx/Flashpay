@@ -233,7 +233,7 @@ test_lowest (void)
     {.age = 22, .expected = 21 },
   };
 
-  for (uint8_t n = 0; n < 21; n++)
+  for (uint8_t n = 0; n < sizeof(test) / sizeof(test[0]); n++)
   {
     uint8_t l = TALER_get_lowest_age (&mask, test[n].age);
     printf ("lowest[%d] for age %d, expected lowest: %d, got: %d\n",
@@ -241,6 +241,36 @@ test_lowest (void)
     if (test[n].expected != l)
       return GNUNET_SYSERR;
   }
+
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+test_adult (void)
+{
+  struct { struct TALER_AgeMask mask; uint8_t expected; }
+  test[] = {
+    { .mask = {.bits = 1 | 1 << 2},
+      .expected = 2 },
+    { .mask = {.bits = 1 | 1 << 2 | 1 << 3},
+      .expected = 3 },
+    { .mask = {.bits = 1 | 1 << 3},
+      .expected = 3 },
+    { .mask = {.bits = 1 | 1 << 22},
+      .expected = 22 },
+    { .mask = {.bits = 1 | 1 << 10 | 1 << 16 | 1 << 22},
+      .expected = 22 },
+  };
+  for (uint8_t n = 0; n < sizeof(test) / sizeof(test[0]); n++)
+  {
+    uint8_t l = TALER_adult_age (&test[n].mask);
+    printf ("adult[%d] for mask %s, expected: %d, got: %d\n",
+            n, TALER_age_mask_to_string (&test[n].mask), test[n].expected, l);
+    if (test[n].expected != l)
+      return GNUNET_SYSERR;
+  }
+  printf ("done with adult\n");
 
   return GNUNET_OK;
 }
@@ -381,6 +411,8 @@ main (int argc,
   }
   if (GNUNET_OK != test_dates ())
     return 4;
+  if (GNUNET_OK != test_adult ())
+    return 5;
   return 0;
 }
 
