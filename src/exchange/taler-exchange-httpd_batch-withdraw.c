@@ -311,7 +311,7 @@ batch_withdraw_transaction (void *cls,
   bool found = false;
   bool balance_ok = false;
   bool age_ok = false;
-  uint16_t required_age = 0;
+  uint16_t allowed_maximum_age = 0;
   char *kyc_required;
   struct TALER_PaytoHashP reserve_h_payto;
 
@@ -479,7 +479,7 @@ batch_withdraw_transaction (void *cls,
                                       &found,
                                       &balance_ok,
                                       &age_ok,
-                                      &required_age,
+                                      &allowed_maximum_age,
                                       &ruuid);
   if (0 > qs)
   {
@@ -508,7 +508,7 @@ batch_withdraw_transaction (void *cls,
      * of the required age */
     uint16_t lowest_age = TALER_get_lowest_age (
       &TEH_age_restriction_config.mask,
-      required_age);
+      allowed_maximum_age);
 
     TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret = TEH_RESPONSE_reply_reserve_age_restriction_required (
