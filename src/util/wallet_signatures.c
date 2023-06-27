@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021, 2022 Taler Systems SA
+  Copyright (C) 2021-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file wallet_signatures.c
  * @brief Utility functions for Taler wallet signatures
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #include "platform.h"
 #include "taler_util.h"
