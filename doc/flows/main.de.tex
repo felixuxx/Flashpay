@@ -4,6 +4,7 @@
 \documentclass[10pt,a4paper,oneside]{book}
 \usepackage[utf8]{inputenc}
 \usepackage{url}
+\usepackage{enumitem}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{qrcode}
@@ -20,7 +21,9 @@
 
 \tableofcontents
 
-
+\newcommand\TALER{TALER OPERATIONS AG}
+\newcommand\CURRENCY{CHF}
+\newcommand\LAND{der Schweiz}
 
 \section{Transaktionen im Taler-Bezahlsystem}\label{sec:Transaktionen}
 
@@ -73,7 +76,7 @@ lassen
 %(siehe Abschnitte~\ref{sec:push} und~\ref{sec:pull})
 \item die Coins in ihrem Wallet, das verloren ging oder zerst\"ort wurde,
 durch Ablauf der G\"ultigkeit entwerten lassen (dies w\"are ebenso der Fall
-bei einer langen Zeit ohne Internet-Anbindung oder Installation),
+bei einer langen Zeit ohne Internet-Anbindung oder ohne Installation),
 \item den Wert der Coins im Wallet durch Zahlung von Geb\"uhren f\"ur
 die Verl\"angerung ihrer G\"ultigkeit langsam verringern lassen.
 %(siehe Abschnitt~\ref{sec:fees:coin})
@@ -96,14 +99,14 @@ keine weitere Abhebung \"uber diesen Grenzwert hinaus bewirken kann.
 F\"ur {\bf Verk\"aufer} beginnt ein gesch\"aftliches Nutzungsverh\"altnis
 mit \TALER{}, sobald sie Geldeing\"ange auf ihren IBAN-Bankkonten erhalten,
 die als Zahlungen von Nutzern des Taler-Bezahlsystems ausgel\"ost wurden
-(siehe Abschnitt~\ref{sec:deposit}). Sollten die die Summen der Eing\"ange
+(siehe Abschnitt~\ref{sec:deposit}). Sollten die Summen der Eing\"ange
 5.000 \CURRENCY{} pro Monat bzw. 15.000 \CURRENCY{} pro Jahr \"ubersteigen,
 kommt es zu einer KYB-Pr\"ufung, die dem Begriff ``Er\"offnen'' eines
 Kontos entspricht und die eine aktualisierte KYB-Information sowie
 die Pr\"ufung von Sanktionslisten erfordert, sofern der Verk\"aufer
 innerhalb von 24 Monaten wenigstens einen Geldeingang erhielt.
 
-Im Gegensatz zu normalen Kunden k\"onnen Verk\"aufer im Prinzip
+Im Gegensatz zu normalen Nutzern k\"onnen Verk\"aufer im Prinzip
 Zahlungen ohne Limit empfangen. Allerdings m\"ussen diese Transaktionen
 auch wirklich als Eing\"ange auf dem Bankkonto des Unternehmens verzeichnet
 werden (im Kontoauszug). In Abh\"angigkeit von den an das Gesch\"aftskonto
@@ -115,12 +118,14 @@ Das Taler-Bezahlsystem transferiert lediglich Gelder auf die bestehenden
 Bankkonten der Verk\"aufer, die f\"ur ihre G\"uterleistungen Zahlungen
 der Nutzer erhalten, f\"ur die bereits bei der \"Uberweisung von deren
 Kundenkonten eine KYC-Pr\"ufung erfolgte. Daher wird unseres Erachtens
-der Betreiber eines Taler-Exchange keine Mittelherkunft nachweisen m\"ussen
-\footnote{Wenn Unternehmen Taler ihrerseits f\"ur Zahlungen nutzen wollen,
-m\"ussen sie genauso wie alle anderen Kunden digitale M\"unzen von
-ihrem Bankkonto an einen Taler-Exchange \"uberweisen, eine KYC-Pr\"ufung
-durchf\"uhren und ihr Wallet elektronische M\"unzen abheben lassen.
-Die Limits für Kunden gelten ebenfalls f\"ur die gesch\"aftlichen K\"aufer.}.
+der Betreiber eines Taler-Exchange keine Mittelherkunft verlangen bzw. 
+nachweisen m\"ussen
+\footnote{Wenn Unternehmen das Taler-Bezahlsystem ihrerseits f\"ur 
+Zahlungen nutzen wollen, m\"ussen sie genauso wie alle anderen Nutzer 
+zuerst Geld von ihrem Bankkonto an einen Taler-Exchange \"uberweisen, 
+eine KYC-Pr\"ufung absolvieren und dann ihr Wallet Coins abheben lassen.
+F\"ur die gesch\"aftlichen K\"aufer gelten ebenfalls die Limits wie 
+f\"ur alle anderen Nutzer.}.
 
 
 \include{int-withdraw}
