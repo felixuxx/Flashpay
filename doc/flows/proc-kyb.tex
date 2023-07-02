@@ -43,9 +43,13 @@
 \end{figure}
 
 At the beginning of the KYB process, the user needs to specify whether they
-are an {\bf individual} (not incorporated) or a {\bf business}. This then
+are an {\bf individual} (not incorporated) or a {\bf business}.\footnote{ In
+pratice, we expect most owners of bank accounts crossing the KYB threshold to
+be businesses, but in principle such a bank account could be owned by an
+individual operating a business without a separate legal entity.}  This then
 determines which types of attributes are collected in the KYB process
-(Table~\ref{table:proc:kyb:individual} vs. Table~\ref{table:proc:kyb:business}).
+(Table~\ref{table:proc:kyb:individual}
+vs. Table~\ref{table:proc:kyb:business}).
 
 \begin{table}
   \caption{Information collected for unincorporated individuals}
@@ -77,7 +81,7 @@ determines which types of attributes are collected in the KYB process
       {\bf Type}                      & {\bf Required} & {\bf Example}        \\ \hline \hline
       Company name                    & yes        & Mega AG \\
       Registered office               & yes        & Seestrasse 4, 8008 Zuerich \\
-      Company identification document & yes        & PDF file \\ 
+      Company identification document & yes        & PDF file \\
       Power of attorney arrangement   & yes        & PDF file  \\
       Business registration number    & yes        &  \\
       Business registration document  & yes        & PDF file \\
@@ -85,7 +89,7 @@ determines which types of attributes are collected in the KYB process
       Contact person name             & yes        & Max Mustermann \\
       Identification document         & yes        & JPG image \\
       Date of birth                   & yes        & 1.1.1980  \\
-      Nationality                     & yes        & Swiss     \\ 
+      Nationality                     & yes        & Swiss     \\
       E-mail                          & yes        & me@example.com \\
       Phone number                    & no         & +41-123456789  \\
   \end{tabular}
