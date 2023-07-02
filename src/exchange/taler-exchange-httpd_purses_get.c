@@ -385,7 +385,10 @@ TEH_handler_purses_get (struct TEH_RequestContext *rc,
     if (0 <
         TALER_amount_cmp (&gc->amount,
                           &gc->deposited))
+    {
+      /* amount > deposited: not yet fully paid */
       dt = GNUNET_TIME_UNIT_ZERO_TS;
+    }
     if (TALER_EC_NONE !=
         (ec = TALER_exchange_online_purse_status_sign (
            &TEH_keys_exchange_sign_,
