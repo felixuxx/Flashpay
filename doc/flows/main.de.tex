@@ -1,0 +1,234 @@
+% This is a (partial) translation of main.tex into
+% German. Please keep the structure as parallel as
+% possible when improving / expanding the translation!
+\documentclass[10pt,a4paper,oneside]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{qrcode}
+\usepackage{pgf-umlsd}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+\usetikzlibrary{quotes}
+\author{Christian Grothoff}
+\title{Flows in the GNU Taler System}
+
+\begin{document}
+
+\tableofcontents
+
+
+
+\section{Transaktionen im Taler-Bezahlsystem}\label{sec:Transaktionen}
+
+Dieser Abschnitt stellt die Transaktionen im Taler-Bezahlsystem
+vor. Die Grafiken geben wieder, in welcher Reihenfolge die beteiligten
+Parteien interagieren. \\
+F\"ur jede einzelne Transaktion ist die automatische Ausl\"osung von
+Compliance-Prozessen durch den Taler-Exchange einstellbar.
+Die im Rahmen des jeweiligen Compliance-Prozesses erzwungenen
+Pr\"ufschritte beschreibt Abschnitt~\ref{sec:triggers}.
+
+Folgende Transaktionen kommen als Ausl\"oser f\"ur AML- und KYC-Prozesse
+in Betracht:
+\begin{description}[noitemsep]
+  \item[withdraw] Ein Nutzer hebt digitales Bargeld (e-money) in Form von
+  Taler-Coins in ein Taler-Wallet ab
+  \item[reimburse] Ein Nutzer l\"asst den Gegenwert von Taler-Coins vom
+  Taler-Exchange an das urspr\"ungliche IBAN-Bankkonto zur\"uck\"uberweisen
+  \item[pay] Ein Nutzer zahlt zugunsten eines IBAN-Bankkontos des Empf\"angers
+  \item[refund] Ein Verk\"aufer erteilt einem Zahlenden die R\"uckerstattung
+  eines Zahlbetrags
+  \item[push] Ein Nutzer sendet einen Zahlbetrag an ein anderes Taler-Wallet
+  \item[pull] Ein Nutzer stellt einem anderen Taler-Wallet eine Rechnung aus
+  und fordert eine Zahlung von diesem Wallet
+  \item[shutdown] Der Betreiber des Taler-Exchange informiert die Inhaber von
+  Coins, die diese von jenem Exchange abgehoben hatten, dass der Exchange
+  geplant eingestellt und die Gegenwerte der Coins restituiert werden
+\end{description}
+
+Die Nutzer beginnen ein gesch\"aftliches Nutzungsverh\"altnis mit
+\TALER{}, wenn sie ihre Taler-Wallets anweisen, eine Abhebung durchzuf\"uhren.
+Das Taler-Bezahlsystem verwendet jedoch keine Konten, sondern wert-basierte
+Token und explizit keine konten-basierten Geld-\"Aquivalente.
+Taler soll digitales Bargeld sein und erlaubt technisch bedingt
+kein Nachvollziehen der Transaktionen seiner Nutzer, wie es Konten mit
+Eing\"angen und Ausg\"angen von Zahlungen erm\"oglichen w\"urden.
+Es gibt daher kein ``Er\"offnen'' oder ``Schliessen'' von Konten der Nutzer.
+Die Begriffe ``opening'' und ``closing'' lassen sich deshalb auch nicht auf
+das System anwenden oder \"ubertragen. \\
+
+Die Nutzer k\"onnen
+\begin{enumerate}[noitemsep]
+\item die treuh\"andisch verwalteten Einlagen gezielt auf ein bestimmtes
+Bankkonto auszahlen lassen,
+%(siehe Abschnitt~\ref{sec:deposit})
+\item an einen Verk\"aufer zahlen,
+%(siehe Abschnitt~\ref{sec:deposit})
+\item einem anderen Empf\"anger mittels peer-to-peer-Verfahren Coins zukommen
+lassen
+%(siehe Abschnitte~\ref{sec:push} und~\ref{sec:pull})
+\item die Coins in ihrem Wallet, das verloren ging oder zerst\"ort wurde,
+durch Ablauf der G\"ultigkeit entwerten lassen (dies w\"are ebenso der Fall
+bei einer langen Zeit ohne Internet-Anbindung oder Installation),
+\item den Wert der Coins im Wallet durch Zahlung von Geb\"uhren f\"ur
+die Verl\"angerung ihrer G\"ultigkeit langsam verringern lassen.
+%(siehe Abschnitt~\ref{sec:fees:coin})
+\end{enumerate}
+
+Das Taler-Bezahlsystem verwehrt den Nutzern kategorisch die Abhebung
+von h\"oheren Betr\"agen als 5.000 \CURRENCY{} pro Monat bzw. von
+mehr als 15.000 \CURRENCY{} pro Jahr. Damit wird gew\"ahrleistet,
+dass die Nutzer stets unterhalb der Grenzwerte bleiben, ab denen die
+meisten Pr\"ufschritte aufgrund regulatorischer Bestimmungen erforderlich
+werden. \TALER{} stellt dar\"uber hinaus sicher, dass die Nutzer
+ausschliesslich in \LAND{} ans\"assig sind
+(siehe Abschnitt~\ref{sec:proc:domestic}), da auf ihrer Seite ein Bankkonto
+in \LAND{} f\"ur die \"Uberweisungen an den Taler-Exchange und/oder
+eine Telefonnummer mit entsprechender Vorwahl (++41) ben\"otigt werden.
+Zus\"atzlich setzt das Taler-Wallet zu jeder Zeit eine Obergrenze
+von 5.000 \CURRENCY{} auf die Coin-Betr\"age in Summe fest, so dass es
+keine weitere Abhebung \"uber diesen Grenzwert hinaus bewirken kann.
+
+F\"ur {\bf Verk\"aufer} beginnt ein gesch\"aftliches Nutzungsverh\"altnis
+mit \TALER{}, sobald sie Geldeing\"ange auf ihren IBAN-Bankkonten erhalten,
+die als Zahlungen von Nutzern des Taler-Bezahlsystems ausgel\"ost wurden
+(siehe Abschnitt~\ref{sec:deposit}). Sollten die die Summen der Eing\"ange
+5.000 \CURRENCY{} pro Monat bzw. 15.000 \CURRENCY{} pro Jahr \"ubersteigen,
+kommt es zu einer KYB-Pr\"ufung, die dem Begriff ``Er\"offnen'' eines
+Kontos entspricht und die eine aktualisierte KYB-Information sowie
+die Pr\"ufung von Sanktionslisten erfordert, sofern der Verk\"aufer
+innerhalb von 24 Monaten wenigstens einen Geldeingang erhielt.
+
+Im Gegensatz zu normalen Kunden k\"onnen Verk\"aufer im Prinzip
+Zahlungen ohne Limit empfangen. Allerdings m\"ussen diese Transaktionen
+auch wirklich als Eing\"ange auf dem Bankkonto des Unternehmens verzeichnet
+werden (im Kontoauszug). In Abh\"angigkeit von den an das Gesch\"aftskonto
+\"uberwiesenen Betr\"agen wird der Verk\"aufer einer KYB-Pr\"ufung unterzogen
+(siehe Abschnitt~\ref{sec:KYB}). Dies gilt ebenso f\"ur
+Geldw\"asche-\"Uberpr\"ufungen (AML checks).
+
+Das Taler-Bezahlsystem transferiert lediglich Gelder auf die bestehenden
+Bankkonten der Verk\"aufer, die f\"ur ihre G\"uterleistungen Zahlungen
+der Nutzer erhalten, f\"ur die bereits bei der \"Uberweisung von deren
+Kundenkonten eine KYC-Pr\"ufung erfolgte. Daher wird unseres Erachtens
+der Betreiber eines Taler-Exchange keine Mittelherkunft nachweisen m\"ussen
+\footnote{Wenn Unternehmen Taler ihrerseits f\"ur Zahlungen nutzen wollen,
+m\"ussen sie genauso wie alle anderen Kunden digitale M\"unzen von
+ihrem Bankkonto an einen Taler-Exchange \"uberweisen, eine KYC-Pr\"ufung
+durchf\"uhren und ihr Wallet elektronische M\"unzen abheben lassen.
+Die Limits für Kunden gelten ebenfalls f\"ur die gesch\"aftlichen K\"aufer.}.
+
+
+\include{int-withdraw}
+\include{int-deposit}
+\include{int-pay}
+\include{int-refund}
+\include{int-push}
+\include{int-pull}
+\include{int-shutdown}
+
+
+
+\chapter{Regulatory Triggers} \label{chap:triggers}
+
+In this chapter we show decision diagrams for regulatory processes of the
+various core operations of the GNU Taler payment system.  In each case, the
+{\bf start} state refers to one of the interactions described in the previous
+chapter.  The payment system will then use the process to arrive at an {\bf
+  allow} decision which permits the transaction to go through, or at a {\bf
+  deny} decision which ensures that the funds are not moved.
+
+The specific {\em decisions} (in green) depend on the risk profile and the
+regulatory environment. The tables in each section list the specific values
+that are to be configured.
+
+There are five types if interactions that can trigger regulatory processes:
+
+\begin{description}
+  \item[withdraw] a customer withdraws digital cash from their {\bf bank account}
+  \item[deposit] a merchant's {\bf bank account} is designated to receive a payment in digital cash
+  \item[push] a {\bf wallet} accepts a payment from another wallet
+  \item[pull] a {\bf wallet} requests a payment from another wallet
+  \item[balance] a withdraw or P2P payment causes the balance of a {\bf wallet} to exceed a given threshold
+\end{description}
+
+We note in bold the {\bf anchor} for the regulator process. The anchor is used
+to link the interaction to an identity.  Once an identity has been established
+for a particular anchor, that link is considered established for all types of
+activities involving that anchor.  A wallet is uniquely identified in the
+system by its unique cryptographic key.  A bank account is uniquely identified
+in the system by its (RFC 8905) bank routing data (usually including BIC, IBAN
+and account owner name).
+
+The KYC and AML processes themselves are described in
+Chapter~\ref{chap:regproc}.
+
+\include{kyc-withdraw}
+\include{kyc-deposit}
+\include{kyc-push}
+\include{kyc-pull}
+\include{kyc-balance}
+
+\chapter{Regulatory Processes} \label{chap:regproc}
+
+This chapter describes the interactions between the customer, exchange and
+organizations or staff assisting with regulatory processes designed to ensure
+that customers are residents in the area of operation of the payment service
+provider, are properly identified, and do not engage in money laundering.
+
+The three main regulatory processes are:
+
+\begin{description}
+\item[domestic check] This process establishes that a user is generally
+  eligible to use the payment system.  The process checks that the user has an
+  eligible address, but stops short of establishing the user's identity.
+\item[kyc] This process establishes a user's legal identity, possibly
+  using external providers to review documents and check against blacklists.
+\item[aml] The AML process reviews suspicious payment activities for
+  money laundering. Here AML staff reviews all collected information.
+\end{description}
+
+\include{proc-domestic}
+%\include{proc-kyc}
+\include{proc-kyb}
+\include{proc-aml}
+
+\chapter{Fees} \label{chap:fees}
+
+The business model for operating a Taler exchange is to charge transaction
+fees.  Fees are charged on certain operations by the exchange.  There are two
+types of fees, {\bf wire fees} and {\bf coin fees}.  This chapter describes
+the fee structure.
+
+Fixed, amount-independent {\bf wire fees} are charged on wire transfers using
+the core banking system.  Details on wire fees are described in
+Section~\ref{sec:fees:wire}.
+
+Coin fees are more complex, as they do not exactly follow neither the usual
+percentage of volume model of other payment systems.  Instead, coin fees are
+applied per coin, resulting in a {\em logarithmic} fee structure.  As a
+result, the effective fee {\em percentage} for tiny transactions is high (for
+example 50\% for transactions of 0.0025 CHF) while the effective fee
+percentage for large transactions is nominal (for example $\approx$ 0.05\% for
+transactions of $\approx$ 40 CHF). Details on coin fees are described in
+Section~\ref{sec:fees:coin}.
+
+Fees are configurable (and that fee types beyond those described here are
+supported by the software). Thus, the specific fees may be adjusted in the
+future based on business decisions.  However, changes to the fees are never
+retroactively applied to coins already in circulation.  Wire fees that have
+been publicly announced for a particular time period also cannot be changed.
+Finally, any change to the terms of service must also be explicitly accepted
+by the users before they withdraw additional funds.
+
+
+\include{fees-wire}
+\include{fees-coins}
+%\include{fees-other}
+
+
+\end{document}
