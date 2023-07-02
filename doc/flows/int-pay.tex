@@ -1,4 +1,4 @@
-\section{Pay}
+\section{Pay} \label{sec:pay}
 
 \begin{figure}[h!]
   \begin{sequencediagram}
@@ -29,7 +29,7 @@
     \mess[0]{merchant}{Commercial offer}{wallet}
     \begin{callself}{wallet}{Review offer}{}
     \end{callself}
-    \mess[0]{wallet}{Send payment {(Coins)}}{merchant}
+    \mess[0]{wallet}{Pay {(Coins)}}{merchant}
     \mess[0]{merchant}{Deposit {(Coins)}}{exchange}
     \begin{sdblock}{Acceptable account?}{}
     \mess[0]{exchange}{{Refuse deposit}}{merchant}
@@ -45,8 +45,10 @@
     \end{sdblock}
     \mess[0]{exchange}{{Initiate transfer}}{bank}
   \end{sequencediagram}
-  \caption{Deposit interactions between customer, merchant,
-    Taler exchange (payment service provider) and merchant bank.}
+  \caption{Payments from a customer to merchant result in
+    depositing coins at the Taler exchange (payment service provider)
+    which then credits the merchant's bank account.
+    The KYC/AML checks are described in Section~\ref{sec:kyc:deposit}}
   \label{fig:int:pay}
 \end{figure}
 

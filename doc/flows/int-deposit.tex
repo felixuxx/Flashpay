@@ -1,8 +1,5 @@
 \section{Deposit} \label{sec:deposit}
 
-% FIXME: split up between deposit to merchant
-% and deposit to customer's (own) bank account!
-
 \begin{figure}[h!]
   \begin{sequencediagram}
     \newinst{wallet}{\shortstack{Customer wallet \\
@@ -16,7 +13,7 @@
         \node at (1.5,0) {\shortstack{{{\tiny Database}}}};
        \end{tikzpicture}
     }}
-    \newinst[2]{bank}{\shortstack{Customer bank \\
+    \newinst[2]{bank}{\shortstack{Retail bank \\
       \\ \begin{tikzpicture}
         \node [fill=gray!20,draw=black,thick,align=center] {Checking \\ Accounts};
       \end{tikzpicture}
@@ -41,8 +38,10 @@
     \mess[0]{exchange}{{Initiate transfer}}{bank}
 
 \end{sequencediagram}
-  \caption{Deposit interactions between customer, Taler exchange (payment
-    service provider) and customer's bank.}
+  \caption{A customer deposits the coins issued by a Taler exchange (payment
+    service provider) into a bank account.  Even if the
+    bank account is owned by the same customer, the
+    KYC checks from Section~\ref{sec:kyc:deposit} apply.}
   \label{fig:int:deposit}
 \end{figure}
 

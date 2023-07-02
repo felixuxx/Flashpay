@@ -43,7 +43,7 @@ The main interactions of the system are:
 In the analysis of the legal requirements, it is important to differenciate
 between transactions between wallets (customer-to-customer) and transactions
 where money flows from a wallet into a bank account (customer-to-merchant) as
-these have different limits: When digital coins are deposited at a business in
+these have different limits: When digital coins are used to pay at a business in
 Taler, the business never actually receives usable digital coins but instead
 the amount is always directly credited to their bank account.  Depending on
 the transacted amounts, the business will nevertheless be subject to KYB
@@ -54,7 +54,7 @@ digital cash.  Taler has no accounts (this is digital cash) and thus there is
 no ``opening'' or ``closing'' of accounts for consumers.  Given digital cash,
 the customers can either (1) deposit the funds explicitly into a bank account
 (see Section~\ref{sec:deposit}), (2) pay a merchant (see
-Section~\ref{sec:deposit}), (3) pay another customer using a peer-to-peer
+Section~\ref{sec:pay}), (3) pay another customer using a peer-to-peer
 transfer (see Sections~\ref{sec:push} and~\ref{sec:pull}), or (4) the coins
 will expire if the wallet was lost (including offline for a long time or
 uninstalled).  Finally, if a wallet remains (occasionally) online but a user
@@ -75,7 +75,7 @@ account and/or Swiss phone number (+41-prefix).
 
 For {\bf merchants}, the Taler equivalent of ``opening'' an account and thus
 establishing an ongoing business relationship is for a business to receive
-payments (see Section~\ref{sec:deposit}) exceeding CHF 5'000/month or CHF
+payments (see Section~\ref{sec:pay}) exceeding CHF 5'000/month or CHF
 25'000/year.  We will consider the account ``open'' (and require up-to-date KYB
 information and check sanction lists) as long as the business has made any
 transactions within the last 24 months.
@@ -120,7 +120,9 @@ There are five types if interactions that can trigger regulatory processes:
 
 \begin{description}
   \item[withdraw] a customer withdraws digital cash from their {\bf bank account}
-  \item[deposit] a merchant's {\bf bank account} is designated to receive a payment in digital cash
+  \item[deposit] a customer or merchant's {\bf bank account} is
+    designated to receive a payment due someone paying with or
+    depositing digital cash
   \item[push] a {\bf wallet} accepts a payment from another wallet
   \item[pull] a {\bf wallet} requests a payment from another wallet
 %  \item[balance] a withdraw or P2P payment causes the balance of a {\bf wallet} to exceed a given threshold
