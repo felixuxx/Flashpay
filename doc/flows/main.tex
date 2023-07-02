@@ -37,6 +37,15 @@ The main interactions of the system are:
   \item[shutdown] the Taler payment system operator informs the customers that the system is being shut down for good
 \end{description}
 
+In the analysis of the legal requirements, it is important to differenciate
+between transactions between wallets (customer-to-customer) and transactions
+where money flows from a wallet into a bank account (customer-to-merchant) as
+these have different limits: When digital coins are deposited at a business in
+Taler, the business never actually receives usable digital coins but instead
+the amount is always directly credited to their bank account.  Depending on
+the transacted amounts, the business will nevertheless be subject to KYB
+(Section~\ref{sec:proc:kyb}) and AML checks.
+
 {\bf Customers} begin their business relationship with us when they withdraw
 digital cash.  Taler has no accounts (this is digital cash) and thus there is
 no ``opening'' or ``closing'' of accounts for consumers.  Given digital cash,
@@ -51,33 +60,33 @@ fees (see Section~\ref{sec:fees:coin}) that apply to prevent the coins from
 expiring outright.
 
 For customers, we will categorically limit of digital cash withdrawn per month
-to less than CHF 5000 per month and less than CHF 15000 per year, thus
+to less than CHF 5'000 per month and less than CHF 25'000 per year, thus
 ensuring that consumers remain below the thresholds where most regulatory
-processes become applicable. We will, however, ensure that customers are Swiss
+processes become applicable.  Payments between users will be limited
+to receiving less than CHF 1'000 per month and less than CHF 5'000 per year.
+We will ensure that customers are Swiss
 (see Section~\ref{sec:proc:domestic}) by requiring them to have a Swiss bank
-account and/or Swiss phone number (+41-prefix).  Furthermore, the wallet will
-impose an upper limit of CHF 5000 on its balance at any point in time.
+account and/or Swiss phone number (+41-prefix).
+%Furthermore, the wallet will
+%impose an upper limit of CHF 5000 on its balance at any point in time.
 
 For {\bf merchants}, the Taler equivalent of ``opening'' an account and thus
 establishing an ongoing business relationship is for a business to receive
-payments (see Section~\ref{sec:deposit}) exceeding CHF 5000/month or CHF
-15000/year.  We will consider the account ``open'' (and require up-to-date KYB
+payments (see Section~\ref{sec:deposit}) exceeding CHF 5'000/month or CHF
+25'000/year.  We will consider the account ``open'' (and require up-to-date KYB
 information and check sanction lists) as long as the business has made any
 transactions within the last 24 months.
 
-In contrast to normal customers, merchants can in principle {\bf receive}
-payments without limit. However, these transactions must go into the bank
-account of the business: when digital coins are deposited at a business in
-Taler, the business never actually receives usable digital coins but instead
-the amount is always directly credited to their bank account.  Depending on
-the transacted amounts, the business will be subject to KYB
-(Section~\ref{sec:proc:kyb}) and AML checks. As we will only transfer money
-into the existing bank accounts of the merchants to compensate them for sales
-made using the Taler payment system, we do not need to check the origin of
-funds for those merchants as they will only receive funds from
-us.\footnote{Should businesses want to use Taler for expenditures, they will
-need to withdraw digital coins from their bank account just like customers,
-and the limits for customers will continue to apply.}
+As we will only transfer money into the existing bank accounts of the
+merchants to compensate them for sales made using the Taler payment system, we
+do not need to check the origin of funds for those merchants as they will only
+receive funds from us.\footnote{Should businesses want to use Taler for
+expenditures, they will need to withdraw digital coins from their bank account
+just like customers, and the limits for customers will continue to apply.}
+
+For individual {\bf transactions}, we will impose a limit of CHF
+1'000/transaction (even though our reading of the regulations would permit
+individual transactions up to CHF 15'000).
 
 The following sections describe the respective processes for each of these
 interactions.
@@ -111,7 +120,7 @@ There are five types if interactions that can trigger regulatory processes:
   \item[deposit] a merchant's {\bf bank account} is designated to receive a payment in digital cash
   \item[push] a {\bf wallet} accepts a payment from another wallet
   \item[pull] a {\bf wallet} requests a payment from another wallet
-  \item[balance] a withdraw or P2P payment causes the balance of a {\bf wallet} to exceed a given threshold
+%  \item[balance] a withdraw or P2P payment causes the balance of a {\bf wallet} to exceed a given threshold
 \end{description}
 
 We note in bold the {\bf anchor} for the regulator process. The anchor is used
@@ -129,7 +138,7 @@ Chapter~\ref{chap:regproc}.
 \include{kyc-deposit}
 \include{kyc-push}
 \include{kyc-pull}
-\include{kyc-balance}
+%\include{kyc-balance}
 
 \chapter{Regulatory Processes} \label{chap:regproc}
 
@@ -151,7 +160,7 @@ The three main regulatory processes are:
 \end{description}
 
 \include{proc-domestic}
-%\include{proc-kyc}
+\include{proc-kyc}
 \include{proc-kyb}
 \include{proc-aml}
 

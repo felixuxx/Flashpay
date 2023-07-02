@@ -14,8 +14,8 @@
     ]
  \node (start) [start] {Start};
  \node (country) [decision,below=of start,text width=2.5cm] {Target account in allowed country?};
- \node (amount) [decision, below=of country,text width=2.5cm] {Target account received less than KYC threshold?};
- \node (kyc) [process, right=of amount] {KYC process};
+ \node (amount) [decision, below=of country,text width=2.5cm] {Target account received less than KYB threshold?};
+ \node (kyc) [process, right=of amount] {KYB process};
  \node (high) [decision, below=of amount,text width=2.5cm] {Target account received more than its AML threshold?};
  \node (aml) [process, right=of high] {AML process};
  \node (dummy) [below right=of aml] {};
@@ -66,8 +66,15 @@
   \begin{tabular}{l|l|r}
     {\bf Setting}                 & {\bf Type}         & {\bf Value}    \\ \hline \hline
     Allowed bank accounts         & RFC 8905 RegEx     & {\em CH*}      \\ \hline
-    KYC deposit threshold         & Amount/month       & {\em  5000 CHF} \\
-    KYC deposit threshold         & Amount/year        & {\em 15000 CHF} \\
+    KYB deposit threshold         & Amount/month       & {\em  5000 CHF} \\
+    KYB deposit threshold         & Amount/year        & {\em 25000 CHF} \\
     Default AML deposit threshold & Amount/month       & {\em  2500 CHF} \\
   \end{tabular}
 \end{table}
+
+The KYB deposit threshold of 5'000 \CURRENCY{} per month and than 25'000
+\CURRENCY{} per year ensure compliance with article 48-1b.
+
+Additionally, our terms of service will prohibit businesses to receive
+amounts exceeding 1'000 \CURRENCY{} per transaction (well below the
+15'000 \CURRENCY{} threshold defined in article 24-1c).
