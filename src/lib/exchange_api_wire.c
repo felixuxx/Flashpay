@@ -38,9 +38,9 @@ struct TALER_EXCHANGE_WireHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The keys of the exchange this request handle will use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -199,7 +199,6 @@ handle_wire_finished (void *cls,
   {
   case 0:
     wr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
-    wh->exchange->wire_error_count++;
     break;
   case MHD_HTTP_OK:
     {
@@ -220,7 +219,6 @@ handle_wire_finished (void *cls,
         GNUNET_JSON_spec_end ()
       };
 
-      wh->exchange->wire_error_count = 0;
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
                              spec,
@@ -232,19 +230,14 @@ handle_wire_finished (void *cls,
         wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
+      if (0 != GNUNET_memcmp (&wh->keys->master_pub,
+                              &master_pub))
       {
-        const struct TALER_EXCHANGE_Keys *key_state;
-
-        key_state = TALER_EXCHANGE_get_keys (wh->exchange);
-        if (0 != GNUNET_memcmp (&key_state->master_pub,
-                                &master_pub))
-        {
-          /* bogus reply: master public key in /wire differs from that in /keys */
-          GNUNET_break_op (0);
-          wr.hr.http_status = 0;
-          wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-          break;
-        }
+        /* bogus reply: master public key in /wire differs from that in /keys */
+        GNUNET_break_op (0);
+        wr.hr.http_status = 0;
+        wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
       }
 
       wr.details.ok.accounts_len
@@ -321,8 +314,6 @@ handle_wire_finished (void *cls,
     break;
   default:
     /* unexpected response code */
-    if (MHD_HTTP_GATEWAY_TIMEOUT == response_code)
-      wh->exchange->wire_error_count++;
     GNUNET_break_op (0);
     wr.hr.ec = TALER_JSON_get_error_code (j);
     wr.hr.hint = TALER_JSON_get_error_hint (j);
@@ -339,61 +330,23 @@ handle_wire_finished (void *cls,
 }
 
 
-/**
- * Compute the network timeout for the next request to /wire.
- *
- * @param exchange the exchange handle
- * @returns the timeout in seconds (for use by CURL)
- */
-static long
-get_wire_timeout_seconds (struct TALER_EXCHANGE_Handle *exchange)
-{
-  return GNUNET_MIN (60,
-                     5 + (1L << exchange->wire_error_count));
-}
-
-
-/**
- * Obtain information about a exchange's wire instructions.
- * A exchange may provide wire instructions for creating
- * a reserve.  The wire instructions also indicate
- * which wire formats merchants may use with the exchange.
- * This API is typically used by a wallet for wiring
- * funds, and possibly by a merchant to determine
- * supported wire formats.
- *
- * Note that while we return the (main) response verbatim to the
- * caller for further processing, we do already verify that the
- * response is well-formed (i.e. that signatures included in the
- * response are all valid).  If the exchange's reply is not well-formed,
- * we return an HTTP status code of zero to @a cb.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param wire_cb the callback to call when a reply for this request is available
- * @param wire_cb_cls closure for the above callback
- * @return a handle for this request
- */
 struct TALER_EXCHANGE_WireHandle *
-TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
-                     TALER_EXCHANGE_WireCallback wire_cb,
-                     void *wire_cb_cls)
+TALER_EXCHANGE_wire (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  TALER_EXCHANGE_WireCallback wire_cb,
+  void *wire_cb_cls)
 {
   struct TALER_EXCHANGE_WireHandle *wh;
-  struct GNUNET_CURL_Context *ctx;
   CURL *eh;
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   wh = GNUNET_new (struct TALER_EXCHANGE_WireHandle);
-  wh->exchange = exchange;
   wh->cb = wire_cb;
   wh->cb_cls = wire_cb_cls;
-  wh->url = TEAH_path_to_url (exchange,
-                              "/wire");
+  wh->url = TALER_url_join (url,
+                            "wire",
+                            NULL);
   if (NULL == wh->url)
   {
     GNUNET_free (wh);
@@ -410,8 +363,8 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_TIMEOUT,
-                                  get_wire_timeout_seconds (wh->exchange)));
-  ctx = TEAH_handle_to_context (exchange);
+                                  60 /* seconds */));
+  wh->keys = TALER_EXCHANGE_keys_incref (keys);
   wh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                               eh,
                                               &handle_wire_finished,
@@ -420,14 +373,9 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a wire information request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param wh the wire information request handle
- */
 void
-TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh)
+TALER_EXCHANGE_wire_cancel (
+  struct TALER_EXCHANGE_WireHandle *wh)
 {
   if (NULL != wh->job)
   {
@@ -435,6 +383,7 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh)
     wh->job = NULL;
   }
   GNUNET_free (wh->url);
+  TALER_EXCHANGE_keys_decref (wh->keys);
   GNUNET_free (wh);
 }
 

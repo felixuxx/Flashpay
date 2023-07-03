@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -191,16 +191,15 @@ wire_run (void *cls,
           struct TALER_TESTING_Interpreter *is)
 {
   struct WireState *ws = cls;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   ws->cmd = cmd;
-  if (NULL == exchange)
-    return;
   ws->is = is;
-  ws->wh = TALER_EXCHANGE_wire (exchange,
-                                &wire_cb,
-                                ws);
+  ws->wh = TALER_EXCHANGE_wire (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    &wire_cb,
+    ws);
 }
 
 
@@ -228,17 +227,6 @@ wire_cleanup (void *cls,
 }
 
 
-/**
- * Create a "wire" command.
- *
- * @param label the command label.
- * @param expected_method which wire-transfer method is expected
- *        to be offered by the exchange.
- * @param expected_fee the fee the exchange should charge.
- * @param expected_response_code the HTTP response the exchange
- *        should return.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire (const char *label,
                         const char *expected_method,

@@ -1062,14 +1062,18 @@ struct TALER_EXCHANGE_WireHandle;
  * response are all valid).  If the exchange's reply is not
  * well-formed, we return an HTTP status code of zero to @a cb.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param ctx curl context
+ * @param url exchange base URL
+ * @param keys the keys of the exchange
  * @param wire_cb the callback to call when a reply for this request is available
  * @param wire_cb_cls closure for the above callback
  * @return a handle for this request
  */
 struct TALER_EXCHANGE_WireHandle *
 TALER_EXCHANGE_wire (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
   TALER_EXCHANGE_WireCallback wire_cb,
   void *wire_cb_cls);
 
