@@ -39,9 +39,19 @@ struct TALER_EXCHANGE_WithdrawHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The curl context to use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct GNUNET_CURL_Context *curl_ctx;
+
+  /**
+   * The base-URL to the exchange
+   */
+  const char *exchange_url;
+
+  /**
+   * The /keys material from the exchange
+   */
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Handle for the actual (internal) withdraw operation.
@@ -232,7 +242,9 @@ withdraw_cs_stage_two_callback (
       GNUNET_break (0);
       break;
     }
-    wh->wh2 = TALER_EXCHANGE_withdraw2 (wh->exchange,
+    wh->wh2 = TALER_EXCHANGE_withdraw2 (wh->curl_ctx,
+                                        wh->exchange_url,
+                                        wh->keys,
                                         &wh->pd,
                                         wh->reserve_priv,
                                         &handle_reserve_withdraw_finished,
@@ -249,7 +261,9 @@ withdraw_cs_stage_two_callback (
 
 struct TALER_EXCHANGE_WithdrawHandle *
 TALER_EXCHANGE_withdraw (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_EXCHANGE_WithdrawCoinInput *wci,
   TALER_EXCHANGE_WithdrawCallback res_cb,
@@ -258,7 +272,9 @@ TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_WithdrawHandle *wh;
 
   wh = GNUNET_new (struct TALER_EXCHANGE_WithdrawHandle);
-  wh->exchange = exchange;
+  wh->keys = TALER_EXCHANGE_keys_incref (keys);
+  wh->exchange_url = exchange_url;
+  wh->curl_ctx = curl_ctx;
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
@@ -292,7 +308,9 @@ TALER_EXCHANGE_withdraw (
         GNUNET_free (wh);
         return NULL;
       }
-      wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
+      wh->wh2 = TALER_EXCHANGE_withdraw2 (curl_ctx,
+                                          exchange_url,
+                                          keys,
                                           &wh->pd,
                                           wh->reserve_priv,
                                           &handle_reserve_withdraw_finished,
@@ -309,7 +327,8 @@ TALER_EXCHANGE_withdraw (
          will be done after the /csr-withdraw request! */
       wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       wh->csrh = TALER_EXCHANGE_csr_withdraw (
-        exchange,
+        curl_ctx,
+        exchange_url,
         &wh->pk,
         &wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce,
         &withdraw_cs_stage_two_callback,
@@ -339,6 +358,7 @@ TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
     TALER_EXCHANGE_withdraw2_cancel (wh->wh2);
     wh->wh2 = NULL;
   }
+  TALER_EXCHANGE_keys_decref (wh->keys);
   TALER_denom_pub_free (&wh->pk.key);
   GNUNET_free (wh);
 }

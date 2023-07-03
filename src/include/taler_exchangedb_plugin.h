@@ -1215,8 +1215,7 @@ struct TALER_EXCHANGEDB_AgeWithdraw
 
   /**
    * Signature confirming the age withdrawal commitment, matching @e
-   * reserve_pub, @e maximum_age_group and @e h_commitment and @e
-   * total_amount_with_fee.
+   * reserve_pub, @e max_age and @e h_commitment and @e amount_with_fee.
    */
   struct TALER_ReserveSignatureP reserve_sig;
 

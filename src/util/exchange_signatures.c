@@ -413,6 +413,34 @@ TALER_exchange_online_age_withdraw_confirmation_sign (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_age_withdraw_confirmation_verify (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint32_t noreveal_index,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig)
+{
+  struct TALER_AgeWithdrawConfirmationPS confirm = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_AGE_WITHDRAW),
+    .purpose.size = htonl (sizeof (confirm)),
+    .h_commitment = *h_commitment,
+    .noreveal_index = htonl (noreveal_index)
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (
+        TALER_SIGNATURE_EXCHANGE_CONFIRM_AGE_WITHDRAW,
+        &confirm,
+        &exchange_sig->eddsa_signature,
+        &exchange_pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 /* TODO:oec: add signature for age-withdraw, age-reveal */
 
 

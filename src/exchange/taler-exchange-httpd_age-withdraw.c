@@ -69,6 +69,7 @@ struct AgeWithdrawContext
 
   /**
    * kappa * #num_coins hashes of blinded coin planchets.
+   * FIXME[oec]: Make the [][] structure more explicit.
    */
   struct TALER_BlindedPlanchet *coin_evs;
 

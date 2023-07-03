@@ -410,7 +410,7 @@ withdraw_run (void *cls,
 
   if (NULL == ws->pk)
   {
-    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
+    dpk = TALER_TESTING_find_pk (TALER_TESTING_get_keys (is),
                                  &ws->amount,
                                  ws->age > 0);
     if (NULL == dpk)
@@ -443,11 +443,14 @@ withdraw_run (void *cls,
       .ps = &ws->ps,
       .ach = ws->h_age_commitment
     };
-    ws->wsh = TALER_EXCHANGE_withdraw (exchange,
-                                       rp,
-                                       &wci,
-                                       &reserve_withdraw_cb,
-                                       ws);
+    ws->wsh = TALER_EXCHANGE_withdraw (
+      TALER_TESTING_interpreter_get_context (is),
+      TALER_TESTING_get_exchange_url (is),
+      TALER_TESTING_get_keys (is),
+      rp,
+      &wci,
+      &reserve_withdraw_cb,
+      ws);
   }
   if (NULL == ws->wsh)
   {

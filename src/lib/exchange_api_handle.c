@@ -1229,6 +1229,8 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   bool force_download = 0 != (flags & TALER_EXCHANGE_CKF_FORCE_DOWNLOAD);
   bool pull_all_keys = 0 != (flags & TALER_EXCHANGE_CKF_PULL_ALL_KEYS);
 
+  GNUNET_assert (NULL != exchange);
+
   if ( (NULL != cb) &&
        ( (exchange->cert_cb != cb) ||
          (exchange->cert_cb_cls != cb_cls) ) )

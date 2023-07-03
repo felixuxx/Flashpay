@@ -504,6 +504,7 @@ csr_cb (void *cls,
 }
 
 
+/* FIXME: refactor this to use struct TALER_EXCHANGE_Handle */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (
   struct GNUNET_CURL_Context *ctx,

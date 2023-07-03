@@ -439,7 +439,9 @@ struct TALER_AgeCommitmentPublicKeyP
 
 
 /*
- * @brief Hash to represent the commitment to n*kappa blinded keys during a age-withdrawal.
+ * @brief Hash to represent the commitment to n*kappa blinded keys during a
+ * age-withdrawal. It is the running SHA512 hash over the hashes of the blinded
+ * envelopes of n*kappa coins.
  */
 struct TALER_AgeWithdrawCommitmentHashP
 {
@@ -3726,7 +3728,7 @@ TALER_wallet_withdraw_verify (
 /**
  * Sign age-withdraw request.
  *
- * @param h_commitment hash all n*kappa blinded coins in the commitment for the age-withdraw
+ * @param h_commitment hash over all n*kappa blinded coins in the commitment for the age-withdraw
  * @param amount_with_fee amount to debit the reserve for
  * @param mask the mask that defines the age groups
  * @param max_age maximum age from which the age group is derived, that the withdrawn coins must be restricted to.
@@ -3761,7 +3763,6 @@ TALER_wallet_age_withdraw_verify (
   uint8_t max_age,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_ReserveSignatureP *reserve_sig);
-
 
 /**
  * Verify exchange melt confirmation.
@@ -4869,6 +4870,22 @@ TALER_exchange_online_age_withdraw_confirmation_sign (
   uint32_t noreveal_index,
   struct TALER_ExchangePublicKeyP *pub,
   struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Verfiy an exchange age-withdraw confirmation
+ *
+ * @param h_commitment Commitment over all n*kappa coin candidates from the original request to age-withdraw
+ * @param noreveal_index The index returned by the exchange
+ * @param exchange_pub The public key used for signing
+ * @param exchange_sig The signature from the exchange
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_online_age_withdraw_confirmation_verify (
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint32_t noreveal_index,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig);
 
 
 /* ********************* offline signing ************************** */

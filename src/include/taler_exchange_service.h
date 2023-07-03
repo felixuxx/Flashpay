@@ -18,6 +18,7 @@
  * @brief C interface of libtalerexchange, a C library to use exchange's HTTP API
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
  * @author Christian Grothoff
+ * @author Özgür Kesim
  */
 #ifndef _TALER_EXCHANGE_SERVICE_H
 #define _TALER_EXCHANGE_SERVICE_H
@@ -1618,7 +1619,8 @@ typedef void
 /**
  * Get a CS R using a /csr-withdraw request.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param curl_ctx The curl context to use for the requests
+ * @param exchange_url Base-URL to the excnange
  * @param pk Which denomination key is the /csr request for
  * @param nonce client nonce for the request
  * @param res_cb the callback to call when the final result for this request is available
@@ -1629,7 +1631,8 @@ typedef void
  */
 struct TALER_EXCHANGE_CsRWithdrawHandle *
 TALER_EXCHANGE_csr_withdraw (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_CsNonce *nonce,
   TALER_EXCHANGE_CsRWithdrawCallback res_cb,
@@ -2448,7 +2451,9 @@ typedef void
  * disk before calling, and be ready to repeat the request with the
  * same arguments in case of failures.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param curl_ctx The curl context to use
+ * @param exchange_url The base-URL of the exchange
+ * @param keys The /keys material from the exchange
  * @param reserve_priv private key of the reserve to withdraw from
  * @param wci inputs that determine the planchet
  * @param res_cb the callback to call when the final result for this request is available
@@ -2459,7 +2464,9 @@ typedef void
  */
 struct TALER_EXCHANGE_WithdrawHandle *
 TALER_EXCHANGE_withdraw (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_EXCHANGE_WithdrawCoinInput *wci,
   TALER_EXCHANGE_WithdrawCallback res_cb,
@@ -2575,7 +2582,9 @@ typedef void
  * disk before calling, and be ready to repeat the request with the
  * same arguments in case of failures.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param curl_ctx The curl context to use
+ * @param exchange_url The base-URL of the exchange
+ * @param keys The /keys material from the exchange
  * @param reserve_priv private key of the reserve to withdraw from
  * @param wcis inputs that determine the planchets
  * @param wci_length number of entries in @a wcis
@@ -2587,7 +2596,9 @@ typedef void
  */
 struct TALER_EXCHANGE_BatchWithdrawHandle *
 TALER_EXCHANGE_batch_withdraw (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_EXCHANGE_WithdrawCoinInput *wcis,
   unsigned int wci_length,
@@ -2668,7 +2679,9 @@ struct TALER_EXCHANGE_Withdraw2Handle;
  * disk before calling, and be ready to repeat the request with the
  * same arguments in case of failures.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param curl_ctx The curl-context to use
+ * @param exchange_url The base-URL of the exchange
+ * @param keys The /keys material from the exchange
  * @param pd planchet details of the planchet to withdraw
  * @param reserve_priv private key of the reserve to withdraw from
  * @param res_cb the callback to call when the final result for this request is available
@@ -2679,7 +2692,9 @@ struct TALER_EXCHANGE_Withdraw2Handle;
  */
 struct TALER_EXCHANGE_Withdraw2Handle *
 TALER_EXCHANGE_withdraw2 (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_PlanchetDetail *pd,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   TALER_EXCHANGE_Withdraw2Callback res_cb,
@@ -2765,7 +2780,9 @@ struct TALER_EXCHANGE_BatchWithdraw2Handle;
  * disk before calling, and be ready to repeat the request with the
  * same arguments in case of failures.
  *
- * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param curl_ctx The curl context to use
+ * @param exchange_url The base-URL of the exchange
+ * @param keys The /keys material from the exchange
  * @param pds array of planchet details of the planchet to withdraw
  * @param pds_length number of entries in the @a pds array
  * @param reserve_priv private key of the reserve to withdraw from
@@ -2777,7 +2794,9 @@ struct TALER_EXCHANGE_BatchWithdraw2Handle;
  */
 struct TALER_EXCHANGE_BatchWithdraw2Handle *
 TALER_EXCHANGE_batch_withdraw2 (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PlanchetDetail *pds,
   unsigned int pds_length,
@@ -2794,6 +2813,119 @@ TALER_EXCHANGE_batch_withdraw2 (
 void
 TALER_EXCHANGE_batch_withdraw2_cancel (
   struct TALER_EXCHANGE_BatchWithdraw2Handle *wh);
+
+
+/* ********************* /reserve/$RESERVE_PUB/age-withdraw *************** */
+
+/**
+ * @brief Information needed to withdraw age restricted coins.
+ */
+struct TALER_EXCHANGE_AgeWithdrawCoinInput
+{
+  /* The master secret from which we derive all other relevant values for
+   * the coin: private key, nonces (if applicable) and age restriction
+   */
+  const struct TALER_PlanchetMasterSecretP secret[TALER_CNC_KAPPA];
+
+  /* The denomination of the coin.  Must support age restriction, i.e
+   * its .keys.age_mask MUST not be 0 */
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+};
+
+/**
+ * @brief A handle to a /reserves/$RESERVE_PUB/age-withdraw request
+ */
+struct TALER_EXCHANGE_AgeWithdrawHandle;
+
+/**
+ * @brief Details about the response for a age withdraw request.
+ */
+struct TALER_EXCHANGE_AgeWithdrawResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Index that should not be revealed during the age-withdraw reveal phase.
+       * The struct TALER_PlanchetMasterSecretP * from the request
+       * with this index are the ones to keep.
+       */
+      uint8_t noreveal_index;
+
+      /**
+       * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Key used by the exchange for @e exchange_sig
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+    } ok;
+    /* FIXME[oec]: error cases */
+  } details;
+};
+
+typedef void
+(*TALER_EXCHANGE_AgeWithdrawCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_AgeWithdrawResponse *awr);
+
+/**
+ * Submit an age-withdraw request to the exchange and get the exchange's
+ * response.
+ *
+ * This API is typically used by a wallet.  Note that to ensure that
+ * no money is lost in case of hardware failures, the provided
+ * argument @a rd should be committed to persistent storage
+ * prior to calling this function.
+ *
+ * @param curl_ctx The curl context
+ * @param exchange_url The base url of the exchange
+ * @parm keys The denomination keys from the exchange
+ * @param reserve_priv The pivate key to the reserve
+ * @param coin_inputs The input for the coins to withdraw
+ * @param num_coins The number of elements in @e coin_inputs
+ * @param max_age The maximum age we commit to.
+ * @param res_cb A callback for the result, maybe NULL
+ * @param res_cb_cls A closure for @e res_cb, maybe NULL
+ * @return a handle for this request; NULL if the argument was invalid.
+ *         In this case, the callback will not be called.
+ */
+struct TALER_EXCHANGE_AgeWithdrawHandle *
+TALER_EXCHANGE_age_withdraw (
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coin_inputs,
+  size_t num_coins,
+  uint8_t max_age,
+  TALER_EXCHANGE_AgeWithdrawCallback res_cb,
+  void *res_cb_cls);
+
+/**
+ * Cancel a age-withdraw request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param awh the age-withdraw handle
+ */
+void
+TALER_EXCHANGE_age_withdraw_cancel (
+  struct TALER_EXCHANGE_AgeWithdrawHandle *awh);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */
@@ -3565,7 +3697,7 @@ TALER_EXCHANGE_verify_coin_history (
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
-  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_EXCHANGE_Keys *keys,
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,

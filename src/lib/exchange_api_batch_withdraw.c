@@ -97,9 +97,20 @@ struct TALER_EXCHANGE_BatchWithdrawHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The curl context to use
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct GNUNET_CURL_Context *curl_ctx;
+
+  /**
+   * The base URL to the exchange
+   */
+  const char *exchange_url;
+
+  /**
+   * The /keys information from the exchange
+   */
+  const struct TALER_EXCHANGE_Keys *keys;
+
 
   /**
    * Handle for the actual (internal) batch withdraw operation.
@@ -255,7 +266,9 @@ phase_two (struct TALER_EXCHANGE_BatchWithdrawHandle *wh)
     pds[i] = cd->pd;
   }
   wh->wh2 = TALER_EXCHANGE_batch_withdraw2 (
-    wh->exchange,
+    wh->curl_ctx,
+    wh->exchange_url,
+    wh->keys,
     wh->reserve_priv,
     pds,
     wh->num_coins,
@@ -322,7 +335,9 @@ withdraw_cs_stage_two_callback (
 
 struct TALER_EXCHANGE_BatchWithdrawHandle *
 TALER_EXCHANGE_batch_withdraw (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_EXCHANGE_WithdrawCoinInput *wcis,
   unsigned int wci_length,
@@ -332,7 +347,9 @@ TALER_EXCHANGE_batch_withdraw (
   struct TALER_EXCHANGE_BatchWithdrawHandle *wh;
 
   wh = GNUNET_new (struct TALER_EXCHANGE_BatchWithdrawHandle);
-  wh->exchange = exchange;
+  wh->curl_ctx = curl_ctx;
+  wh->exchange_url = exchange_url;
+  wh->keys = keys;
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
@@ -386,7 +403,8 @@ TALER_EXCHANGE_batch_withdraw (
            will be done after the /csr-withdraw request! */
         cd->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
         cd->csrh = TALER_EXCHANGE_csr_withdraw (
-          exchange,
+          curl_ctx,
+          exchange_url,
           &cd->pk,
           &cd->pd.blinded_planchet.details.cs_blinded_planchet.nonce,
           &withdraw_cs_stage_two_callback,

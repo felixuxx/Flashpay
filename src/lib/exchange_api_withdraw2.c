@@ -39,9 +39,9 @@ struct TALER_EXCHANGE_Withdraw2Handle
 {
 
   /**
-   * The connection to exchange this request handle will use
+   * The /keys material from the exchange
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * The url for this request.
@@ -192,8 +192,7 @@ reserve_withdraw_payment_required (
     }
 
     if (GNUNET_OK !=
-        TALER_EXCHANGE_parse_reserve_history (TALER_EXCHANGE_get_keys (
-                                                wh->exchange),
+        TALER_EXCHANGE_parse_reserve_history (wh->keys,
                                               history,
                                               &wh->reserve_pub,
                                               balance.currency,
@@ -361,25 +360,21 @@ handle_reserve_withdraw_finished (void *cls,
 
 struct TALER_EXCHANGE_Withdraw2Handle *
 TALER_EXCHANGE_withdraw2 (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_PlanchetDetail *pd,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   TALER_EXCHANGE_Withdraw2Callback res_cb,
   void *res_cb_cls)
 {
   struct TALER_EXCHANGE_Withdraw2Handle *wh;
-  const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
   struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
   struct TALER_BlindedCoinHashP bch;
 
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  if (NULL == keys)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (NULL != keys);
   dk = TALER_EXCHANGE_get_denomination_key_by_hash (keys,
                                                     &pd->denom_pub_hash);
   if (NULL == dk)
@@ -388,7 +383,7 @@ TALER_EXCHANGE_withdraw2 (
     return NULL;
   }
   wh = GNUNET_new (struct TALER_EXCHANGE_Withdraw2Handle);
-  wh->exchange = exchange;
+  wh->keys = TALER_EXCHANGE_keys_incref (keys);
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   /* Compute how much we expected to charge to the reserve */
@@ -418,7 +413,7 @@ TALER_EXCHANGE_withdraw2 (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/withdraw",
+                     "reserves/%s/withdraw",
                      pub_str);
   }
 
@@ -448,8 +443,9 @@ TALER_EXCHANGE_withdraw2 (
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Attempting to withdraw from reserve %s\n",
                 TALER_B2S (&wh->reserve_pub));
-    wh->url = TEAH_path_to_url (exchange,
-                                arg_str);
+    wh->url = TALER_url_join (exchange_url,
+                              arg_str,
+                              NULL);
     if (NULL == wh->url)
     {
       json_decref (withdraw_obj);
@@ -458,9 +454,7 @@ TALER_EXCHANGE_withdraw2 (
     }
     {
       CURL *eh;
-      struct GNUNET_CURL_Context *ctx;
 
-      ctx = TEAH_handle_to_context (exchange);
       eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
       if ( (NULL == eh) ||
            (GNUNET_OK !=
@@ -477,7 +471,7 @@ TALER_EXCHANGE_withdraw2 (
         return NULL;
       }
       json_decref (withdraw_obj);
-      wh->job = GNUNET_CURL_job_add2 (ctx,
+      wh->job = GNUNET_CURL_job_add2 (curl_ctx,
                                       eh,
                                       wh->post_ctx.headers,
                                       &handle_reserve_withdraw_finished,
@@ -498,5 +492,6 @@ TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh)
   }
   GNUNET_free (wh->url);
   TALER_curl_easy_post_finished (&wh->post_ctx);
+  TALER_EXCHANGE_keys_decref (wh->keys);
   GNUNET_free (wh);
 }

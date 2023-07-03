@@ -39,11 +39,6 @@
 struct TALER_EXCHANGE_CsRWithdrawHandle
 {
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * Function to call with the result.
    */
   TALER_EXCHANGE_CsRWithdrawCallback cb;
@@ -204,11 +199,13 @@ handle_csr_finished (void *cls,
 
 
 struct TALER_EXCHANGE_CsRWithdrawHandle *
-TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                             const struct TALER_CsNonce *nonce,
-                             TALER_EXCHANGE_CsRWithdrawCallback res_cb,
-                             void *res_cb_cls)
+TALER_EXCHANGE_csr_withdraw (
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_CsNonce *nonce,
+  TALER_EXCHANGE_CsRWithdrawCallback res_cb,
+  void *res_cb_cls)
 {
   struct TALER_EXCHANGE_CsRWithdrawHandle *csrh;
 
@@ -218,11 +215,11 @@ TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   csrh = GNUNET_new (struct TALER_EXCHANGE_CsRWithdrawHandle);
-  csrh->exchange = exchange;
   csrh->cb = res_cb;
   csrh->cb_cls = res_cb_cls;
-  csrh->url = TEAH_path_to_url (exchange,
-                                "/csr-withdraw");
+  csrh->url = TALER_url_join (exchange_url,
+                              "csr-withdraw",
+                              NULL);
   if (NULL == csrh->url)
   {
     GNUNET_free (csrh);
@@ -231,7 +228,6 @@ TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
 
   {
     CURL *eh;
-    struct GNUNET_CURL_Context *ctx;
     json_t *req;
 
     req = GNUNET_JSON_PACK (
@@ -242,7 +238,6 @@ TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
                                      &pk->h_key,
                                      sizeof(struct TALER_DenominationHashP)));
     GNUNET_assert (NULL != req);
-    ctx = TEAH_handle_to_context (exchange);
     eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
     if ( (NULL == eh) ||
          (GNUNET_OK !=
@@ -259,7 +254,7 @@ TALER_EXCHANGE_csr_withdraw (struct TALER_EXCHANGE_Handle *exchange,
       return NULL;
     }
     json_decref (req);
-    csrh->job = GNUNET_CURL_job_add2 (ctx,
+    csrh->job = GNUNET_CURL_job_add2 (curl_ctx,
                                       eh,
                                       csrh->post_ctx.headers,
                                       &handle_csr_finished,

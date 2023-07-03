@@ -321,12 +321,15 @@ batch_withdraw_run (void *cls,
     wci->ps = &cs->ps;
     wci->ach = cs->h_age_commitment;
   }
-  ws->wsh = TALER_EXCHANGE_batch_withdraw (exchange,
-                                           rp,
-                                           wcis,
-                                           ws->num_coins,
-                                           &reserve_batch_withdraw_cb,
-                                           ws);
+  ws->wsh = TALER_EXCHANGE_batch_withdraw (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    rp,
+    wcis,
+    ws->num_coins,
+    &reserve_batch_withdraw_cb,
+    ws);
   if (NULL == ws->wsh)
   {
     GNUNET_break (0);

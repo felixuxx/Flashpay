@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include <gnunet/gnunet_common.h>
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
@@ -621,9 +622,9 @@ struct TALER_AgeWithdrawRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash of the commitment of n*kappa coins
+   * The reserve's public key
    */
-  struct TALER_AgeWithdrawCommitmentHashP h_commitment GNUNET_PACKED;
+  struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
    * Value of the coin being exchanged (matching the denomination key)
@@ -635,7 +636,12 @@ struct TALER_AgeWithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * The mask that defines the age groups
+   * Running SHA512 hash of the commitment of n*kappa coins
+   */
+  struct TALER_AgeWithdrawCommitmentHashP h_commitment;
+
+  /**
+   * The mask that defines the age groups.  MUST be the same for all denominations.
    */
   struct TALER_AgeMask mask;
 
@@ -665,6 +671,8 @@ TALER_wallet_age_withdraw_sign (
     .max_age_group = TALER_get_age_group (mask, max_age)
   };
 
+  GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
+                                      &req.reserve_pub.eddsa_pub);
   TALER_amount_hton (&req.amount_with_fee,
                      amount_with_fee);
   GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
@@ -685,6 +693,7 @@ TALER_wallet_age_withdraw_verify (
   struct TALER_AgeWithdrawRequestPS awsrd = {
     .purpose.size = htonl (sizeof (awsrd)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_AGE_WITHDRAW),
+    .reserve_pub = *reserve_pub,
     .h_commitment = *h_commitment,
     .mask = *mask,
     .max_age_group = TALER_get_age_group (mask, max_age)

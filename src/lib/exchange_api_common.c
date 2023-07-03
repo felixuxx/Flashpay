@@ -36,7 +36,7 @@ struct HistoryParseContext
   /**
    * Keys of the exchange we use.
    */
-  struct TALER_EXCHANGE_Keys *keys;
+  const struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Our reserve public key.
@@ -647,7 +647,7 @@ parse_close (struct TALER_EXCHANGE_ReserveHistoryEntry *rh,
 
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
-  struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_EXCHANGE_Keys *keys,
   const json_t *history,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const char *currency,

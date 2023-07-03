@@ -39,14 +39,14 @@ struct TALER_EXCHANGE_BatchWithdraw2Handle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
+
+  /**
+   * The /keys material from the exchange
+   */
+  const struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Handle for the request.
@@ -219,7 +219,7 @@ reserve_batch_withdraw_payment_required (
 
     if (GNUNET_OK !=
         TALER_EXCHANGE_parse_reserve_history (
-          TALER_EXCHANGE_get_keys (wh->exchange),
+          wh->keys,
           history,
           &wh->reserve_pub,
           balance.currency,
@@ -387,7 +387,9 @@ handle_reserve_batch_withdraw_finished (void *cls,
 
 struct TALER_EXCHANGE_BatchWithdraw2Handle *
 TALER_EXCHANGE_batch_withdraw2 (
-  struct TALER_EXCHANGE_Handle *exchange,
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_PlanchetDetail *pds,
   unsigned int pds_length,
@@ -395,21 +397,15 @@ TALER_EXCHANGE_batch_withdraw2 (
   void *res_cb_cls)
 {
   struct TALER_EXCHANGE_BatchWithdraw2Handle *wh;
-  const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
   struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
   struct TALER_BlindedCoinHashP bch;
   json_t *jc;
 
-  keys = TALER_EXCHANGE_get_keys (exchange);
-  if (NULL == keys)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (NULL != keys);
   wh = GNUNET_new (struct TALER_EXCHANGE_BatchWithdraw2Handle);
-  wh->exchange = exchange;
+  wh->keys = keys;
   wh->cb = res_cb;
   wh->cb_cls = res_cb_cls;
   wh->num_coins = pds_length;
@@ -430,14 +426,15 @@ TALER_EXCHANGE_batch_withdraw2 (
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/reserves/%s/batch-withdraw",
+                     "reserves/%s/batch-withdraw",
                      pub_str);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Attempting to batch-withdraw from reserve %s\n",
               TALER_B2S (&wh->reserve_pub));
-  wh->url = TEAH_path_to_url (exchange,
-                              arg_str);
+  wh->url = TALER_url_join (exchange_url,
+                            arg_str,
+                            NULL);
   if (NULL == wh->url)
   {
     GNUNET_break (0);
@@ -513,13 +510,11 @@ TALER_EXCHANGE_batch_withdraw2 (
   }
   {
     CURL *eh;
-    struct GNUNET_CURL_Context *ctx;
     json_t *req;
 
     req = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_array_steal ("planchets",
                                     jc));
-    ctx = TEAH_handle_to_context (exchange);
     eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
     if ( (NULL == eh) ||
          (GNUNET_OK !=
@@ -535,7 +530,7 @@ TALER_EXCHANGE_batch_withdraw2 (
       return NULL;
     }
     json_decref (req);
-    wh->job = GNUNET_CURL_job_add2 (ctx,
+    wh->job = GNUNET_CURL_job_add2 (curl_ctx,
                                     eh,
                                     wh->post_ctx.headers,
                                     &handle_reserve_batch_withdraw_finished,

@@ -25,7 +25,6 @@
 #define _TALER_CURL_DEFAULTS_H
 
 
-#include "platform.h"
 #include <gnunet/gnunet_curl_lib.h>
 
 

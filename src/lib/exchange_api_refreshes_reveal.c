@@ -303,6 +303,7 @@ handle_refresh_reveal_finished (void *cls,
 }
 
 
+/* FIXME: refactor this to use struct TALER_EXCHANGE_Handle */
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct GNUNET_CURL_Context *ctx,
