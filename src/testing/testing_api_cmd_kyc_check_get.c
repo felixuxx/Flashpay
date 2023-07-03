@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -114,16 +114,12 @@ check_kyc_run (void *cls,
   const struct TALER_TESTING_Command *res_cmd;
   const uint64_t *requirement_row;
   const struct TALER_PaytoHashP *h_payto;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   kcg->is = is;
-  res_cmd = TALER_TESTING_interpreter_lookup_command (kcg->is,
-                                                      kcg->
-                                                      payment_target_reference);
+  res_cmd = TALER_TESTING_interpreter_lookup_command (
+    kcg->is,
+    kcg->payment_target_reference);
   if (NULL == res_cmd)
   {
     GNUNET_break (0);
@@ -152,13 +148,16 @@ check_kyc_run (void *cls,
     TALER_TESTING_interpreter_fail (kcg->is);
     return;
   }
-  kcg->kwh = TALER_EXCHANGE_kyc_check (exchange,
-                                       *requirement_row,
-                                       h_payto,
-                                       TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
-                                       GNUNET_TIME_UNIT_SECONDS,
-                                       &check_kyc_cb,
-                                       kcg);
+  kcg->kwh = TALER_EXCHANGE_kyc_check (
+    TALER_TESTING_interpreter_get_context (is),
+    TALER_TESTING_get_exchange_url (is),
+    TALER_TESTING_get_keys (is),
+    *requirement_row,
+    h_payto,
+    TALER_KYCLOGIC_KYC_UT_INDIVIDUAL,
+    GNUNET_TIME_UNIT_SECONDS,
+    &check_kyc_cb,
+    kcg);
   GNUNET_assert (NULL != kcg->kwh);
 }
 

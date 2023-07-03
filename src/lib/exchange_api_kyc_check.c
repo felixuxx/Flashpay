@@ -37,14 +37,14 @@ struct TALER_EXCHANGE_KycCheckHandle
 {
 
   /**
-   * The connection to exchange this request handle will use
-   */
-  struct TALER_EXCHANGE_Handle *exchange;
-
-  /**
    * The url for this request.
    */
   char *url;
+
+  /**
+   * Keys of the exchange.
+   */
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * Handle for the request.
@@ -111,7 +111,6 @@ handle_kyc_check_finished (void *cls,
                                  &status),
         GNUNET_JSON_spec_end ()
       };
-      const struct TALER_EXCHANGE_Keys *key_state;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -126,9 +125,8 @@ handle_kyc_check_finished (void *cls,
       ks.details.ok.kyc_details = kyc_details;
       ks.details.ok.aml_status
         = (enum TALER_AmlDecisionState) status;
-      key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=
-          TALER_EXCHANGE_test_signing_key (key_state,
+          TALER_EXCHANGE_test_signing_key (kch->keys,
                                            &ks.details.ok.exchange_pub))
       {
         GNUNET_break_op (0);
@@ -249,25 +247,21 @@ handle_kyc_check_finished (void *cls,
 
 
 struct TALER_EXCHANGE_KycCheckHandle *
-TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
-                          uint64_t requirement_row,
-                          const struct TALER_PaytoHashP *h_payto,
-                          enum TALER_KYCLOGIC_KycUserType ut,
-                          struct GNUNET_TIME_Relative timeout,
-                          TALER_EXCHANGE_KycStatusCallback cb,
-                          void *cb_cls)
+TALER_EXCHANGE_kyc_check (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_KYCLOGIC_KycUserType ut,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_EXCHANGE_KycStatusCallback cb,
+  void *cb_cls)
 {
   struct TALER_EXCHANGE_KycCheckHandle *kch;
   CURL *eh;
-  struct GNUNET_CURL_Context *ctx;
   char *arg_str;
 
-  if (GNUNET_YES !=
-      TEAH_handle_is_ready (exchange))
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
   {
     char payto_str[sizeof (*h_payto) * 2];
     char *end;
@@ -282,19 +276,19 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
     timeout_ms = timeout.rel_value_us
                  / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
     GNUNET_asprintf (&arg_str,
-                     "/kyc-check/%llu/%s/%s?timeout_ms=%llu",
+                     "kyc-check/%llu/%s/%s?timeout_ms=%llu",
                      (unsigned long long) requirement_row,
                      payto_str,
                      TALER_KYCLOGIC_kyc_user_type2s (ut),
                      timeout_ms);
   }
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
-  kch->exchange = exchange;
   kch->h_payto = *h_payto;
   kch->cb = cb;
   kch->cb_cls = cb_cls;
-  kch->url = TEAH_path_to_url (exchange,
-                               arg_str);
+  kch->url = TALER_url_join (url,
+                             arg_str,
+                             NULL);
   GNUNET_free (arg_str);
   if (NULL == kch->url)
   {
@@ -309,7 +303,7 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (kch);
     return NULL;
   }
-  ctx = TEAH_handle_to_context (exchange);
+  kch->keys = TALER_EXCHANGE_keys_incref (keys);
   kch->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                                eh,
                                                &handle_kyc_check_finished,
@@ -326,6 +320,7 @@ TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kch)
     GNUNET_CURL_job_cancel (kch->job);
     kch->job = NULL;
   }
+  TALER_EXCHANGE_keys_decref (kch->keys);
   GNUNET_free (kch->url);
   GNUNET_free (kch);
 }

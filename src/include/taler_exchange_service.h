@@ -4030,7 +4030,9 @@ typedef void
  * Run interaction with exchange to check KYC status
  * of a merchant.
  *
- * @param eh exchange handle to use
+ * @param ctx CURL context
+ * @param url exchange base URL
+ * @param keys keys of the exchange
  * @param requirement_row number identifying the KYC requirement
  * @param h_payto hash of the payto:// URI at @a payment_target
  * @param ut type of the entity performing the KYC check
@@ -4040,13 +4042,16 @@ typedef void
  * @return NULL on error
  */
 struct TALER_EXCHANGE_KycCheckHandle *
-TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
-                          uint64_t requirement_row,
-                          const struct TALER_PaytoHashP *h_payto,
-                          enum TALER_KYCLOGIC_KycUserType ut,
-                          struct GNUNET_TIME_Relative timeout,
-                          TALER_EXCHANGE_KycStatusCallback cb,
-                          void *cb_cls);
+TALER_EXCHANGE_kyc_check (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *keys,
+  uint64_t requirement_row,
+  const struct TALER_PaytoHashP *h_payto,
+  enum TALER_KYCLOGIC_KycUserType ut,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_EXCHANGE_KycStatusCallback cb,
+  void *cb_cls);
 
 
 /**
