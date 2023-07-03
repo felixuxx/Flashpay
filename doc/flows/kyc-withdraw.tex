@@ -1,4 +1,4 @@
-\section{KYC: Withdraw}
+\section{KYC: Withdraw} \label{sec:kyc:withdraw}
 
 \begin{figure}[h!]
   \begin{center}
@@ -43,8 +43,13 @@
   \begin{tabular}{l|l|r}
     {\bf Setting}            & {\bf Type}         &  {\bf Value} \\ \hline \hline
     Allowed bank accounts    & RFC 8905 RegEx     &  {\em CH*} \\ \hline
-    Withdraw maximum         & Amount/month       &  {\em 5000 CHF} \\
-    Withdraw maximum         & Amount/year        &  {\em 15000 CHF} \\
+    SMS-Identification       & Amount/month       &  {\em 200 CHF} \\
+    Withdraw limit           & Amount/month       &  {\em 5000 CHF} \\
+    Withdraw limit           & Amount/year        &  {\em 25000 CHF} \\
     Bounce period            & Delay              &  1 month \\
   \end{tabular}
 \end{table}
+
+The limit of 200 \CURRENCY{} results from article 48-2.  Strictly limiting
+withdrawals to less than 5'000 \CURRENCY{} per month and less than 25'000
+\CURRENCY{} per year assures compliance with article 48-1c.
