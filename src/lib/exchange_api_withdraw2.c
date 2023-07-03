@@ -202,12 +202,12 @@ reserve_withdraw_payment_required (
                                               rhistory))
     {
       GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
+      TALER_EXCHANGE_free_reserve_history (len,
+                                           rhistory);
       return GNUNET_SYSERR;
     }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
+    TALER_EXCHANGE_free_reserve_history (len,
+                                         rhistory);
   }
 
   /* Check that funds were really insufficient */

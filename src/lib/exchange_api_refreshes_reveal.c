@@ -311,7 +311,7 @@ TALER_EXCHANGE_refreshes_reveal (
   const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
-  const struct TALER_ExchangeWithdrawValues *alg_values,
+  const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls)

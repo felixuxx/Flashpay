@@ -270,8 +270,8 @@ phase_two (struct TALER_EXCHANGE_BatchWithdrawHandle *wh)
     wh->exchange_url,
     wh->keys,
     wh->reserve_priv,
-    pds,
     wh->num_coins,
+    pds,
     &handle_reserve_batch_withdraw_finished,
     wh);
 }
@@ -339,8 +339,8 @@ TALER_EXCHANGE_batch_withdraw (
   const char *exchange_url,
   const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_EXCHANGE_WithdrawCoinInput *wcis,
   unsigned int wci_length,
+  const struct TALER_EXCHANGE_WithdrawCoinInput wcis[static wci_length],
   TALER_EXCHANGE_BatchWithdrawCallback res_cb,
   void *res_cb_cls)
 {

@@ -453,7 +453,7 @@ TALER_EXCHANGE_purse_deposit (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint8_t min_age,
   unsigned int num_deposits,
-  const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  const struct TALER_EXCHANGE_PurseDeposit deposits[static num_deposits],
   TALER_EXCHANGE_PurseDepositCallback cb,
   void *cb_cls)
 {

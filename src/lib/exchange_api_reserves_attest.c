@@ -229,7 +229,7 @@ TALER_EXCHANGE_reserves_attest (
   const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
-  const char *const*attributes,
+  const char *attributes[const static attributes_length],
   TALER_EXCHANGE_ReservesPostAttestCallback cb,
   void *cb_cls)
 {

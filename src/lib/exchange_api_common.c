@@ -654,7 +654,7 @@ TALER_EXCHANGE_parse_reserve_history (
   struct TALER_Amount *total_in,
   struct TALER_Amount *total_out,
   unsigned int history_length,
-  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory)
+  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static history_length])
 {
   const struct
   {
@@ -753,8 +753,8 @@ TALER_EXCHANGE_parse_reserve_history (
 
 void
 TALER_EXCHANGE_free_reserve_history (
-  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory,
-  unsigned int len)
+  unsigned int len,
+  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static len])
 {
   for (unsigned int i = 0; i<len; i++)
   {
@@ -2281,10 +2281,11 @@ fail:
 
 
 enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
-                               const json_t *accounts,
-                               struct TALER_EXCHANGE_WireAccount was[],
-                               unsigned int was_length)
+TALER_EXCHANGE_parse_accounts (
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const json_t *accounts,
+  unsigned int was_length,
+  struct TALER_EXCHANGE_WireAccount was[static was_length])
 {
   memset (was,
           0,
@@ -2370,8 +2371,9 @@ TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
 
 
 void
-TALER_EXCHANGE_free_accounts (struct TALER_EXCHANGE_WireAccount *was,
-                              unsigned int was_len)
+TALER_EXCHANGE_free_accounts (
+  unsigned int was_len,
+  struct TALER_EXCHANGE_WireAccount was[static was_len])
 {
   for (unsigned int i = 0; i<was_len; i++)
   {

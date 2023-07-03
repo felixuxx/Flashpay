@@ -961,10 +961,11 @@ struct TALER_EXCHANGE_WireAccount
  * @return #GNUNET_OK if parsing @a accounts succeeded
  */
 enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
-                               const json_t *accounts,
-                               struct TALER_EXCHANGE_WireAccount was[],
-                               unsigned int was_length);
+TALER_EXCHANGE_parse_accounts (
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const json_t *accounts,
+  unsigned int was_length,
+  struct TALER_EXCHANGE_WireAccount was[static was_length]);
 
 
 /**
@@ -974,8 +975,9 @@ TALER_EXCHANGE_parse_accounts (const struct TALER_MasterPublicKeyP *master_pub,
  * @param was_len length of the @a was array
  */
 void
-TALER_EXCHANGE_free_accounts (struct TALER_EXCHANGE_WireAccount *was,
-                              unsigned int was_len);
+TALER_EXCHANGE_free_accounts (
+  unsigned int was_len,
+  struct TALER_EXCHANGE_WireAccount was[static was_len]);
 
 
 /**
@@ -1302,7 +1304,7 @@ TALER_EXCHANGE_batch_deposit (
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_EXCHANGE_DepositContractDetail *dcd,
   unsigned int num_cdds,
-  const struct TALER_EXCHANGE_CoinDepositDetail *cdds,
+  const struct TALER_EXCHANGE_CoinDepositDetail cdds[static num_cdds],
   TALER_EXCHANGE_BatchDepositResultCallback cb,
   void *cb_cls,
   enum TALER_ErrorCode *ec);
@@ -1312,7 +1314,7 @@ TALER_EXCHANGE_batch_deposit (
  * Change the chance that our deposit confirmation will be given to the
  * auditor to 100%.
  *
- * @param deposit the batch deposit permission request handle
+ * @param[in,out] deposit the batch deposit permission request handle
  */
 void
 TALER_EXCHANGE_batch_deposit_force_dc (
@@ -1323,7 +1325,7 @@ TALER_EXCHANGE_batch_deposit_force_dc (
  * Cancel a batch deposit permission request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param deposit the deposit permission request handle
+ * @param[in] deposit the deposit permission request handle
  */
 void
 TALER_EXCHANGE_batch_deposit_cancel (
@@ -1543,7 +1545,7 @@ TALER_EXCHANGE_csr_melt (
   const char *url,
   const struct TALER_RefreshMasterSecretP *rms,
   unsigned int nks_len,
-  struct TALER_EXCHANGE_NonceKey *nks,
+  struct TALER_EXCHANGE_NonceKey nks[static nks_len],
   TALER_EXCHANGE_CsRMeltCallback res_cb,
   void *res_cb_cls);
 
@@ -2590,8 +2592,8 @@ typedef void
  * @param exchange_url The base-URL of the exchange
  * @param keys The /keys material from the exchange
  * @param reserve_priv private key of the reserve to withdraw from
- * @param wcis inputs that determine the planchets
  * @param wci_length number of entries in @a wcis
+ * @param wcis inputs that determine the planchets
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL
@@ -2604,8 +2606,8 @@ TALER_EXCHANGE_batch_withdraw (
   const char *exchange_url,
   const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_EXCHANGE_WithdrawCoinInput *wcis,
   unsigned int wci_length,
+  const struct TALER_EXCHANGE_WithdrawCoinInput wcis[static wci_length],
   TALER_EXCHANGE_BatchWithdrawCallback res_cb,
   void *res_cb_cls);
 
@@ -2802,8 +2804,8 @@ TALER_EXCHANGE_batch_withdraw2 (
   const char *exchange_url,
   const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_PlanchetDetail *pds,
   unsigned int pds_length,
+  const struct TALER_PlanchetDetail pds[static pds_length],
   TALER_EXCHANGE_BatchWithdraw2Callback res_cb,
   void *res_cb_cls);
 
@@ -2901,8 +2903,8 @@ typedef void
  * @param exchange_url The base url of the exchange
  * @parm keys The denomination keys from the exchange
  * @param reserve_priv The pivate key to the reserve
- * @param coin_inputs The input for the coins to withdraw
  * @param num_coins The number of elements in @e coin_inputs
+ * @param coin_inputs The input for the coins to withdraw
  * @param max_age The maximum age we commit to.
  * @param res_cb A callback for the result, maybe NULL
  * @param res_cb_cls A closure for @e res_cb, maybe NULL
@@ -2915,8 +2917,9 @@ TALER_EXCHANGE_age_withdraw (
   const char *exchange_url,
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coin_inputs,
   size_t num_coins,
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
+    const static num_coins],
   uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawCallback res_cb,
   void *res_cb_cls);
@@ -3237,7 +3240,7 @@ TALER_EXCHANGE_refreshes_reveal (
   const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
-  const struct TALER_ExchangeWithdrawValues *alg_values,
+  const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls);
@@ -3708,19 +3711,19 @@ TALER_EXCHANGE_parse_reserve_history (
   struct TALER_Amount *total_in,
   struct TALER_Amount *total_out,
   unsigned int history_length,
-  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory);
+  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static history_length]);
 
 
 /**
  * Free memory (potentially) allocated by #TALER_EXCHANGE_parse_reserve_history().
  *
- * @param rhistory result to free
  * @param len number of entries in @a rhistory
+ * @param[in] rhistory result to free
  */
 void
 TALER_EXCHANGE_free_reserve_history (
-  struct TALER_EXCHANGE_ReserveHistoryEntry *rhistory,
-  unsigned int len);
+  unsigned int len,
+  struct TALER_EXCHANGE_ReserveHistoryEntry rhistory[static len]);
 
 
 /* ********************* /recoup *********************** */
@@ -6138,7 +6141,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   unsigned int num_deposits,
-  const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  const struct TALER_EXCHANGE_PurseDeposit deposits[static num_deposits],
   bool upload_contract,
   TALER_EXCHANGE_PurseCreateDepositCallback cb,
   void *cb_cls);
@@ -6540,7 +6543,7 @@ TALER_EXCHANGE_purse_deposit (
   const struct TALER_PurseContractPublicKeyP *purse_pub,
   uint8_t min_age,
   unsigned int num_deposits,
-  const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  const struct TALER_EXCHANGE_PurseDeposit deposits[static num_deposits],
   TALER_EXCHANGE_PurseDepositCallback cb,
   void *cb_cls);
 
@@ -6681,7 +6684,8 @@ TALER_EXCHANGE_reserves_open (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_Amount *reserve_contribution,
   unsigned int coin_payments_length,
-  const struct TALER_EXCHANGE_PurseDeposit *coin_payments,
+  const struct TALER_EXCHANGE_PurseDeposit coin_payments[
+    static coin_payments_length],
   struct GNUNET_TIME_Timestamp expiration_time,
   uint32_t min_purses,
   TALER_EXCHANGE_ReservesOpenCallback cb,
@@ -6692,7 +6696,7 @@ TALER_EXCHANGE_reserves_open (
  * Cancel a reserve status request.  This function cannot be used
  * on a request handle if a response is already served for it.
  *
- * @param roh the reserve open request handle
+ * @param[in] roh the reserve open request handle
  */
 void
 TALER_EXCHANGE_reserves_open_cancel (
@@ -6886,7 +6890,7 @@ TALER_EXCHANGE_reserves_attest (
   const char *url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   unsigned int attributes_length,
-  const char *const*attributes,
+  const char *attributes[const static attributes_length],
   TALER_EXCHANGE_ReservesPostAttestCallback cb,
   void *cb_cls);
 

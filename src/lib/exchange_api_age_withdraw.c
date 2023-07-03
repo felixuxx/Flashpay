@@ -356,12 +356,12 @@ reserve_age_withdraw_payment_required (
           rhistory))
     {
       GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
+      TALER_EXCHANGE_free_reserve_history (len,
+                                           rhistory);
       return GNUNET_SYSERR;
     }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
+    TALER_EXCHANGE_free_reserve_history (len,
+                                         rhistory);
   }
 
   /* Check that funds were really insufficient */
@@ -769,17 +769,17 @@ csr_withdraw_done (
  * csr-parameter via /csr-withdraw.
  *
  * @param awh The handler to the age-withdraw
- * @param coin_inputs The input for the individial coin(-candidates)
  * @param num_coins The number of coins in @e coin_inputs
- *
+ * @param coin_inputs The input for the individial coin(-candidates)
  * @return GNUNET_OK on success, GNUNET_SYSERR on failure
  */
 static
 enum GNUNET_GenericReturnValue
 prepare_coins (
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coin_inputs,
-  size_t num_coins)
+  size_t num_coins,
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
+    static num_coins])
 {
 
   if (GNUNET_OK != TALER_amount_set_zero (
@@ -949,8 +949,9 @@ TALER_EXCHANGE_age_withdraw (
   const char *exchange_url,
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coin_inputs,
   size_t num_coins,
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
+    const static num_coins],
   uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawCallback res_cb,
   void *res_cb_cls)
@@ -976,8 +977,8 @@ TALER_EXCHANGE_age_withdraw (
     return NULL;
 
   if (GNUNET_OK != prepare_coins (awh,
-                                  coin_inputs,
-                                  num_coins))
+                                  num_coins,
+                                  coin_inputs))
     return NULL;
 
   /* If there were no CS denominations, we can now perform the actual

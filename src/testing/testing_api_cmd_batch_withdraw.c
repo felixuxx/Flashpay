@@ -326,8 +326,8 @@ batch_withdraw_run (void *cls,
     TALER_TESTING_get_exchange_url (is),
     TALER_TESTING_get_keys (is),
     rp,
-    wcis,
     ws->num_coins,
+    wcis,
     &reserve_batch_withdraw_cb,
     ws);
   if (NULL == ws->wsh)

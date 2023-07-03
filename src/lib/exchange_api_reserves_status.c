@@ -129,8 +129,8 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rsh,
                                               rhistory))
     {
       GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
+      TALER_EXCHANGE_free_reserve_history (len,
+                                           rhistory);
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
@@ -142,8 +142,8 @@ handle_reserves_status_ok (struct TALER_EXCHANGE_ReservesStatusHandle *rsh,
                &rs);
       rsh->cb = NULL;
     }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
+    TALER_EXCHANGE_free_reserve_history (len,
+                                         rhistory);
   }
   return GNUNET_OK;
 }

@@ -273,8 +273,8 @@ handle_wire_finished (void *cls,
         if (GNUNET_OK !=
             TALER_EXCHANGE_parse_accounts (&master_pub,
                                            accounts,
-                                           was,
-                                           wr.details.ok.accounts_len))
+                                           wr.details.ok.accounts_len,
+                                           was))
         {
           GNUNET_break_op (0);
           wr.hr.http_status = 0;
@@ -286,8 +286,9 @@ handle_wire_finished (void *cls,
                   &wr);
           wh->cb = NULL;
         }
-        TALER_EXCHANGE_free_accounts (was,
-                                      wr.details.ok.accounts_len);
+        TALER_EXCHANGE_free_accounts (
+          wr.details.ok.accounts_len,
+          was);
       } /* end of 'parse accounts */
       free_fees (fbm,
                  wr.details.ok.fees_len);

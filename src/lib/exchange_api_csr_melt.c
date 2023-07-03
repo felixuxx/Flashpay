@@ -221,7 +221,7 @@ TALER_EXCHANGE_csr_melt (
   const char *url,
   const struct TALER_RefreshMasterSecretP *rms,
   unsigned int nks_len,
-  struct TALER_EXCHANGE_NonceKey *nks,
+  struct TALER_EXCHANGE_NonceKey nks[static nks_len],
   TALER_EXCHANGE_CsRMeltCallback res_cb,
   void *res_cb_cls)
 {

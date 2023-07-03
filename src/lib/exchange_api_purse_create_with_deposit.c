@@ -506,7 +506,7 @@ TALER_EXCHANGE_purse_create_with_deposit (
   const struct TALER_ContractDiffiePrivateP *contract_priv,
   const json_t *contract_terms,
   unsigned int num_deposits,
-  const struct TALER_EXCHANGE_PurseDeposit *deposits,
+  const struct TALER_EXCHANGE_PurseDeposit deposits[static num_deposits],
   bool upload_contract,
   TALER_EXCHANGE_PurseCreateDepositCallback cb,
   void *cb_cls)

@@ -229,12 +229,12 @@ reserve_batch_withdraw_payment_required (
           rhistory))
     {
       GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
+      TALER_EXCHANGE_free_reserve_history (len,
+                                           rhistory);
       return GNUNET_SYSERR;
     }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
+    TALER_EXCHANGE_free_reserve_history (len,
+                                         rhistory);
   }
 
   /* Check that funds were really insufficient */
@@ -391,8 +391,8 @@ TALER_EXCHANGE_batch_withdraw2 (
   const char *exchange_url,
   const struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_PlanchetDetail *pds,
   unsigned int pds_length,
+  const struct TALER_PlanchetDetail pds[static pds_length],
   TALER_EXCHANGE_BatchWithdraw2Callback res_cb,
   void *res_cb_cls)
 {

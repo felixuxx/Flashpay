@@ -559,7 +559,7 @@ TALER_EXCHANGE_batch_deposit (
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_EXCHANGE_DepositContractDetail *dcd,
   unsigned int num_cdds,
-  const struct TALER_EXCHANGE_CoinDepositDetail *cdds,
+  const struct TALER_EXCHANGE_CoinDepositDetail cdds[static num_cdds],
   TALER_EXCHANGE_BatchDepositResultCallback cb,
   void *cb_cls,
   enum TALER_ErrorCode *ec)

@@ -430,7 +430,8 @@ TALER_EXCHANGE_reserves_open (
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   const struct TALER_Amount *reserve_contribution,
   unsigned int coin_payments_length,
-  const struct TALER_EXCHANGE_PurseDeposit *coin_payments,
+  const struct TALER_EXCHANGE_PurseDeposit coin_payments[
+    static coin_payments_length],
   struct GNUNET_TIME_Timestamp expiration_time,
   uint32_t min_purses,
   TALER_EXCHANGE_ReservesOpenCallback cb,

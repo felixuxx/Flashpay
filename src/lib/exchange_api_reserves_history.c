@@ -141,8 +141,8 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
                                               rhistory))
     {
       GNUNET_break_op (0);
-      TALER_EXCHANGE_free_reserve_history (rhistory,
-                                           len);
+      TALER_EXCHANGE_free_reserve_history (len,
+                                           rhistory);
       return GNUNET_SYSERR;
     }
     if (NULL != rsh->cb)
@@ -153,8 +153,8 @@ handle_reserves_history_ok (struct TALER_EXCHANGE_ReservesHistoryHandle *rsh,
                &rs);
       rsh->cb = NULL;
     }
-    TALER_EXCHANGE_free_reserve_history (rhistory,
-                                         len);
+    TALER_EXCHANGE_free_reserve_history (len,
+                                         rhistory);
   }
   return GNUNET_OK;
 }
