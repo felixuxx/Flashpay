@@ -1281,6 +1281,10 @@ header_cb (char *buffer,
     return total;
   val = GNUNET_strndup (&buffer[strlen (MHD_HTTP_HEADER_EXPIRES ": ")],
                         total - strlen (MHD_HTTP_HEADER_EXPIRES ": "));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Found %s header `%s'\n",
+              MHD_HTTP_HEADER_EXPIRES,
+              val);
   if (GNUNET_OK !=
       parse_date_string (val,
                          &kr->expire))
@@ -1541,7 +1545,8 @@ TALER_EXCHANGE_keys_from_json (const json_t *j)
   const json_t *jkeys;
   const char *url;
   uint32_t version;
-  struct GNUNET_TIME_Timestamp expire;
+  struct GNUNET_TIME_Timestamp expire
+    = GNUNET_TIME_UNIT_ZERO_TS;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("version",
                              &version),
@@ -1549,8 +1554,10 @@ TALER_EXCHANGE_keys_from_json (const json_t *j)
                                   &jkeys),
     GNUNET_JSON_spec_string ("exchange_url",
                              &url),
-    GNUNET_JSON_spec_timestamp ("expire",
-                                &expire),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_timestamp ("expire",
+                                  &expire),
+      NULL),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys *keys;
@@ -1747,8 +1754,9 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("version",
                              EXCHANGE_SERIALIZATION_FORMAT_VERSION),
-    GNUNET_JSON_pack_timestamp ("expire",
-                                kd->key_data_expiration),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_timestamp ("expire",
+                                  kd->key_data_expiration)),
     GNUNET_JSON_pack_string ("exchange_url",
                              kd->exchange_url),
     GNUNET_JSON_pack_object_steal ("keys",

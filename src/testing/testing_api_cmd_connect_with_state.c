@@ -67,6 +67,7 @@ cert_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = cwss->is;
   const struct TALER_EXCHANGE_HttpResponse *hr = &kr->hr;
 
+  cwss->exchange = NULL;
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:

@@ -73,6 +73,7 @@ keys_cb (void *cls,
 {
   struct CheckKeysState *cks = cls;
 
+  cks->gkh = NULL;
   if (MHD_HTTP_OK != kr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (cks->is,
