@@ -80,7 +80,7 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                               config_file),
 #endif
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
+    // FIXME: TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     /**
      * Fill reserve with EUR:10.02, as withdraw fee is 1 ct per
      * config.

@@ -26,6 +26,9 @@
 #include "taler_testing_lib.h"
 
 
+// FIXME: this is now duplicated with testing_api_cmd_check_keys!
+// FIXME: this is now duplicated with testing_api_cmd_get_exchange!
+
 /**
  * Internal state for a connect-with-state CMD.
  */
@@ -46,13 +49,19 @@ struct ConnectWithStateState
   /**
    * New exchange handle.
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_GetKeysHandle *exchange;
+
+  /**
+   * Keys handle.
+   */
+  struct TALER_EXCHANGE_Keys *keys;
 };
 
 
 static void
 cert_cb (void *cls,
-         const struct TALER_EXCHANGE_KeysResponse *kr)
+         const struct TALER_EXCHANGE_KeysResponse *kr,
+         struct TALER_EXCHANGE_Keys *keys)
 {
   struct ConnectWithStateState *cwss = cls;
   struct TALER_TESTING_Interpreter *is = cwss->is;
@@ -72,6 +81,7 @@ cert_cb (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  cwss->keys = keys;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Got %d DK from /keys\n",
               kr->details.ok.keys->num_denom_keys);
@@ -113,14 +123,12 @@ connect_with_state_run (void *cls,
                  TALER_TESTING_get_trait_exchange_url (state_cmd,
                                                        &exchange_url));
   cwss->exchange
-    = TALER_EXCHANGE_connect (
+    = TALER_EXCHANGE_get_keys (
         TALER_TESTING_interpreter_get_context (is),
         exchange_url,
+        TALER_EXCHANGE_keys_from_json (serialized_keys),
         &cert_cb,
-        cwss,
-        TALER_EXCHANGE_OPTION_DATA,
-        serialized_keys,
-        TALER_EXCHANGE_OPTION_END);
+        cwss);
 }
 
 
@@ -141,7 +149,8 @@ connect_with_state_traits (void *cls,
 {
   struct ConnectWithStateState *cwss = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_exchange (cwss->exchange),
+    TALER_TESTING_make_trait_keys (cwss->keys),
+    // FIXME: also expose exchange_url as trait
     TALER_TESTING_trait_end ()
   };
 
@@ -165,6 +174,13 @@ connect_with_state_cleanup (void *cls,
 {
   struct ConnectWithStateState *cwss = cls;
 
+  TALER_EXCHANGE_keys_decref (cwss->keys);
+  cwss->keys = NULL;
+  if (NULL != cwss->exchange)
+  {
+    TALER_EXCHANGE_get_keys_cancel (cwss->exchange);
+    cwss->exchange = NULL;
+  }
   GNUNET_free (cwss);
 }
 

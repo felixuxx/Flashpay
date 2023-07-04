@@ -347,7 +347,6 @@ withdraw_run (void *cls,
   const struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
-  struct TALER_EXCHANGE_Handle *exchange;
 
   ws->cmd = cmd;
   ws->is = is;
@@ -369,12 +368,9 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  exchange = TALER_TESTING_get_exchange (is);
-  if (NULL == exchange)
-    return;
   if (NULL == ws->exchange_url)
     ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (exchange));
+      = GNUNET_strdup (TALER_TESTING_get_exchange_url (is));
   ws->reserve_priv = *rp;
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);

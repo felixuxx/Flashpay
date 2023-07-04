@@ -46,7 +46,12 @@ struct GetExchangeState
   /**
    * Exchange handle we produced.
    */
-  struct TALER_EXCHANGE_Handle *exchange;
+  struct TALER_EXCHANGE_GetKeysHandle *exchange;
+
+  /**
+   * Keys of the exchange.
+   */
+  struct TALER_EXCHANGE_Keys *keys;
 
   /**
    * URL of the exchange.
@@ -67,12 +72,15 @@ struct GetExchangeState
 
 static void
 cert_cb (void *cls,
-         const struct TALER_EXCHANGE_KeysResponse *kr)
+         const struct TALER_EXCHANGE_KeysResponse *kr,
+         struct TALER_EXCHANGE_Keys *keys)
 {
   struct GetExchangeState *ges = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &kr->hr;
   struct TALER_TESTING_Interpreter *is = ges->is;
 
+  ges->exchange = NULL;
+  ges->keys = keys;
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
@@ -85,8 +93,9 @@ cert_cb (void *cls,
     return;
   default:
     GNUNET_break (0);
-    TALER_EXCHANGE_disconnect (ges->exchange);
-    ges->exchange = NULL;
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "/keys responded with HTTP status %u\n",
+                hr->http_status);
     if (ges->wait_for_keys)
     {
       ges->wait_for_keys = false;
@@ -133,11 +142,11 @@ get_exchange_run (void *cls,
   }
   ges->is = is;
   ges->exchange
-    = TALER_EXCHANGE_connect (TALER_TESTING_interpreter_get_context (is),
-                              ges->exchange_url,
-                              &cert_cb,
-                              ges,
-                              TALER_EXCHANGE_OPTION_END);
+    = TALER_EXCHANGE_get_keys (TALER_TESTING_interpreter_get_context (is),
+                               ges->exchange_url,
+                               NULL,
+                               &cert_cb,
+                               ges);
   if (NULL == ges->exchange)
   {
     GNUNET_break (0);
@@ -163,9 +172,11 @@ get_exchange_cleanup (void *cls,
 
   if (NULL != ges->exchange)
   {
-    TALER_EXCHANGE_disconnect (ges->exchange);
+    TALER_EXCHANGE_get_keys_cancel (ges->exchange);
     ges->exchange = NULL;
   }
+  TALER_EXCHANGE_keys_decref (ges->keys);
+  ges->keys = NULL;
   GNUNET_free (ges->master_priv_file);
   GNUNET_free (ges->exchange_url);
   GNUNET_free (ges);
@@ -189,16 +200,13 @@ get_exchange_traits (void *cls,
 {
   struct GetExchangeState *ges = cls;
   unsigned int off = (NULL == ges->master_priv_file) ? 1 : 0;
-  struct TALER_EXCHANGE_Keys *keys
-    = TALER_EXCHANGE_get_keys (ges->exchange);
 
-  if (NULL != keys)
+  if (NULL != ges->keys)
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_master_priv (&ges->master_priv),
-      TALER_TESTING_make_trait_master_pub (&keys->master_pub),
-      TALER_TESTING_make_trait_exchange (ges->exchange),
-      TALER_TESTING_make_trait_keys (keys),
+      TALER_TESTING_make_trait_master_pub (&ges->keys->master_pub),
+      TALER_TESTING_make_trait_keys (ges->keys),
       TALER_TESTING_make_trait_exchange_url (ges->exchange_url),
       TALER_TESTING_trait_end ()
     };
@@ -212,7 +220,6 @@ get_exchange_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_master_priv (&ges->master_priv),
-      TALER_TESTING_make_trait_exchange (ges->exchange),
       TALER_TESTING_make_trait_exchange_url (ges->exchange_url),
       TALER_TESTING_trait_end ()
     };

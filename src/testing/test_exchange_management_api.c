@@ -145,7 +145,7 @@ run (void *cls,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("download-future-keys",
                                               config_file),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
+    // FIXME: TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     TALER_TESTING_cmd_end ()
   };
 

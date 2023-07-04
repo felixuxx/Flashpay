@@ -58,12 +58,12 @@ serialize_keys_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   struct SerializeKeysState *sks = cls;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
+  struct TALER_EXCHANGE_Keys *keys
+    = TALER_TESTING_get_keys (is);
 
-  if (NULL == exchange)
+  if (NULL == keys)
     return;
-  sks->keys = TALER_EXCHANGE_serialize_data (exchange);
+  sks->keys = TALER_EXCHANGE_keys_to_json (keys);
   if (NULL == sks->keys)
   {
     GNUNET_break (0);
@@ -71,7 +71,7 @@ serialize_keys_run (void *cls,
   }
   sks->exchange_url
     = GNUNET_strdup (
-        TALER_EXCHANGE_get_base_url (exchange));
+        TALER_TESTING_get_exchange_url (is));
   TALER_TESTING_interpreter_next (is);
 }
 

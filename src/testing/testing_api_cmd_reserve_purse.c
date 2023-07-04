@@ -184,12 +184,8 @@ purse_run (void *cls,
   struct ReservePurseState *ds = cls;
   const struct TALER_ReservePrivateKeyP *reserve_priv;
   const struct TALER_TESTING_Command *ref;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   ds->is = is;
   ref = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                   ds->reserve_ref);

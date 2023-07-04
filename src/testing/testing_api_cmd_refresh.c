@@ -371,12 +371,8 @@ reveal_cb (void *cls,
   struct RefreshRevealState *rrs = cls;
   const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
   const struct TALER_TESTING_Command *melt_cmd;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (rrs->is);
 
   rrs->rrh = NULL;
-  if (NULL == exchange)
-    return;
   if (rrs->expected_response_code != hr->http_status)
   {
     if (0 != rrs->do_retry)
@@ -1006,12 +1002,8 @@ melt_run (void *cls,
     NULL
   };
   const char **melt_fresh_amounts;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   rms->cmd = cmd;
-  if (NULL == exchange)
-    return;
   if (NULL == (melt_fresh_amounts = rms->melt_fresh_amounts))
     melt_fresh_amounts = default_melt_fresh_amounts;
   rms->is = is;
@@ -1115,7 +1107,7 @@ melt_run (void *cls,
         TALER_TESTING_interpreter_fail (rms->is);
         return;
       }
-      fresh_pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
+      fresh_pk = TALER_TESTING_find_pk (TALER_TESTING_get_keys (rms->is),
                                         &fresh_amount,
                                         age_restricted);
       if (NULL == fresh_pk)

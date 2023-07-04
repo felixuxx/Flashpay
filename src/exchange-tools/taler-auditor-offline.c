@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020-2021 Taler Systems SA
+  Copyright (C) 2020-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -174,7 +174,7 @@ static struct DenominationAddRequest *dar_tail;
 /**
  * Handle to the exchange, used to request /keys.
  */
-static struct TALER_EXCHANGE_Handle *exchange;
+static struct TALER_EXCHANGE_GetKeysHandle *exchange;
 
 
 /**
@@ -219,7 +219,7 @@ do_shutdown (void *cls)
   }
   if (NULL != exchange)
   {
-    TALER_EXCHANGE_disconnect (exchange);
+    TALER_EXCHANGE_get_keys_cancel (exchange);
     exchange = NULL;
   }
   if (NULL != nxt)
@@ -646,22 +646,23 @@ do_upload (char *const *args)
  *
  * @param cls closure with the `char **` remaining args
  * @param kr response data
+ * @param keys key data from the exchange
  */
 static void
 keys_cb (
   void *cls,
-  const struct TALER_EXCHANGE_KeysResponse *kr)
+  const struct TALER_EXCHANGE_KeysResponse *kr,
+  struct TALER_EXCHANGE_Keys *keys)
 {
   char *const *args = cls;
 
+  exchange = NULL;
   switch (kr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    if (! json_is_object (kr->hr.reply))
+    if (NULL == kr->hr.reply)
     {
       GNUNET_break (0);
-      TALER_EXCHANGE_disconnect (exchange);
-      exchange = NULL;
       test_shutdown ();
       global_ret = EXIT_FAILURE;
       return;
@@ -673,8 +674,6 @@ keys_cb (
              kr->hr.hint,
              kr->hr.http_status,
              (unsigned int) kr->hr.ec);
-    TALER_EXCHANGE_disconnect (exchange);
-    exchange = NULL;
     test_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
@@ -692,9 +691,8 @@ keys_cb (
     json_decref (in);
     in = NULL;
   }
-  TALER_EXCHANGE_disconnect (exchange);
-  exchange = NULL;
   next (args);
+  TALER_EXCHANGE_keys_decref (keys);
 }
 
 
@@ -721,11 +719,11 @@ do_download (char *const *args)
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
-  exchange = TALER_EXCHANGE_connect (ctx,
-                                     exchange_url,
-                                     &keys_cb,
-                                     (void *) args,
-                                     TALER_EXCHANGE_OPTION_END);
+  exchange = TALER_EXCHANGE_get_keys (ctx,
+                                      exchange_url,
+                                      NULL,
+                                      &keys_cb,
+                                      (void *) args);
   GNUNET_free (exchange_url);
 }
 

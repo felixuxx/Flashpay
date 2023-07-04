@@ -32,27 +32,6 @@
 
 /* *********************  /keys *********************** */
 
-/**
- * List of possible options to be passed to
- * #TALER_EXCHANGE_connect().
- */
-enum TALER_EXCHANGE_Option
-{
-  /**
-   * Terminator (end of option list).
-   */
-  TALER_EXCHANGE_OPTION_END = 0,
-
-  /**
-   * Followed by a "const json_t *" that was previously returned for
-   * this exchange URL by #TALER_EXCHANGE_serialize_data().  Used to
-   * resume a connection to an exchange without having to re-download
-   * /keys data (or at least only download the deltas).
-   */
-  TALER_EXCHANGE_OPTION_DATA
-
-};
-
 
 /**
  * @brief Exchange's signature key
@@ -294,11 +273,18 @@ struct TALER_EXCHANGE_Keys
   char *currency;
 
   /**
-   * How long after a reserve went idle will the exchange close it?
-   * This is an approximate number, not cryptographically signed by
-   * the exchange (advisory-only, may change anytime).
+   * What is the base URL of the exchange that returned
+   * these keys?
    */
-  struct GNUNET_TIME_Relative reserve_closing_delay;
+  char *exchange_url;
+
+  /**
+   * Asset type used by the exchange. Typical values
+   * are "fiat" or "crypto" or "regional" or "stock".
+   * Wallets should adjust their UI/UX based on this
+   * value.
+   */
+  char *asset_type;
 
   /**
    * Array of amounts a wallet is allowed to hold from
@@ -307,15 +293,21 @@ struct TALER_EXCHANGE_Keys
   struct TALER_Amount *wallet_balance_limit_without_kyc;
 
   /**
-   * Length of the @e wallet_balance_limit_without_kyc
-   * array.
+   * How long after a reserve went idle will the exchange close it?
+   * This is an approximate number, not cryptographically signed by
+   * the exchange (advisory-only, may change anytime).
    */
-  unsigned int wblwk_length;
+  struct GNUNET_TIME_Relative reserve_closing_delay;
 
   /**
    * Timestamp indicating the /keys generation.
    */
   struct GNUNET_TIME_Timestamp list_issue_date;
+
+  /**
+   * When does this keys data expire?
+   */
+  struct GNUNET_TIME_Timestamp key_data_expiration;
 
   /**
    * Timestamp indicating the creation time of the last
@@ -328,6 +320,12 @@ struct TALER_EXCHANGE_Keys
    * If age restriction is enabled on the exchange, we get an non-zero age_mask
    */
   struct TALER_AgeMask age_mask;
+
+  /**
+   * Length of the @e wallet_balance_limit_without_kyc
+   * array.
+   */
+  unsigned int wblwk_length;
 
   /**
    * Length of the @e global_fees array.
@@ -360,12 +358,10 @@ struct TALER_EXCHANGE_Keys
   unsigned int denom_keys_size;
 
   /**
-   * Asset type used by the exchange. Typical values
-   * are "fiat" or "crypto" or "regional" or "stock".
-   * Wallets should adjust their UI/UX based on this
-   * value.
+   * Reference counter for this structure.
+   * Freed when it reaches 0.
    */
-  char *asset_type;
+  unsigned int rc;
 
   /**
    * Set to true if tipping is allowed at this exchange.
@@ -505,77 +501,82 @@ struct TALER_EXCHANGE_KeysResponse
 /**
  * Function called with information about who is auditing
  * a particular exchange and what keys the exchange is using.
+ * The ownership over the @a keys object is passed to
+ * the callee, thus it is given explicitly and not
+ * (only) via @a kr.
  *
  * @param cls closure
  * @param kr response from /keys
+ * @param[in] keys keys object passed to callback with
+ *  reference counter of 1. Must be freed by callee
+ *  using #TALER_EXCHANGE_keys_decref(). NULL on failure.
  */
 typedef void
-(*TALER_EXCHANGE_CertificationCallback) (
+(*TALER_EXCHANGE_GetKeysCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_KeysResponse *kr);
+  const struct TALER_EXCHANGE_KeysResponse *kr,
+  struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
- * @brief Handle to the exchange.  This is where we interact with
- * a particular exchange and keep the per-exchange information.
+ * @brief Handle for a GET /keys request.
  */
-struct TALER_EXCHANGE_Handle;
+struct TALER_EXCHANGE_GetKeysHandle;
 
 
 /**
- * Initialise a connection to the exchange.  Will connect to the
- * exchange and obtain information about the exchange's master public
- * key and the exchange's auditor.  The respective information will
- * be passed to the @a cert_cb once available, and all future
- * interactions with the exchange will be checked to be signed
- * (where appropriate) by the respective master key.
+ * Fetch the main /keys resources from ane exchange.  Does an incremental
+ * fetch if @a last_keys is given.  The obtained information will be passed to
+ * the @a cert_cb (possibly after first merging it with @a last_keys to
+ * produce a full picture; expired keys (for deposit) will be removed from @a
+ * last_keys if there are any).
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
+ * @param[in,out] last_keys previous keys object, NULL for none
  * @param cert_cb function to call with the exchange's certification information,
  *                possibly called repeatedly if the information changes
  * @param cert_cb_cls closure for @a cert_cb
- * @param ... list of additional arguments, terminated by #TALER_EXCHANGE_OPTION_END.
  * @return the exchange handle; NULL upon error
  */
-struct TALER_EXCHANGE_Handle *
-TALER_EXCHANGE_connect (struct GNUNET_CURL_Context *ctx,
-                        const char *url,
-                        TALER_EXCHANGE_CertificationCallback cert_cb,
-                        void *cert_cb_cls,
-                        ...);
+struct TALER_EXCHANGE_GetKeysHandle *
+TALER_EXCHANGE_get_keys (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  struct TALER_EXCHANGE_Keys *last_keys,
+  TALER_EXCHANGE_GetKeysCallback cert_cb,
+  void *cert_cb_cls);
 
 
 /**
- * Serialize the latest key data from @a exchange to be persisted
- * on disk (to be used with #TALER_EXCHANGE_OPTION_DATA to more
- * efficiently recover the state).
+ * Serialize the latest data from @a keys to be persisted
+ * (for example, to be used as @a last_keys later).
  *
- * @param exchange which exchange's key and wire data should be serialized
- * @return NULL on error (i.e. no current data available); otherwise
- *         json object owned by the caller
+ * @param kd the key data to serialize
+ * @return NULL on error; otherwise JSON object owned by the caller
  */
 json_t *
-TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd);
 
 
 /**
- * Disconnect from the exchange.
+ * Deserialize keys data stored in @a j.
  *
- * @param exchange the exchange handle
- */
-void
-TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange);
-
-
-/**
- * Obtain the keys from the exchange.
- *
- * @param exchange the exchange handle
- * @return the exchange's key set
+ * @param j JSON keys data previously returned from #TALER_EXCHANGE_keys_to_json()
+ * @return NULL on error (i.e. invalid JSON); otherwise
+ *         keys object with reference counter 1 owned by the caller
  */
 struct TALER_EXCHANGE_Keys *
-TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_keys_from_json (const json_t *j);
+
+
+/**
+ * Cancel GET /keys operation.
+ *
+ * @param[in] gkh the GET /keys handle
+ */
+void
+TALER_EXCHANGE_get_keys_cancel (struct TALER_EXCHANGE_GetKeysHandle *gkh);
 
 
 /**
@@ -599,90 +600,6 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys);
 
 
 /**
- * Let the user set the last valid denomination time manually.
- *
- * @param exchange the exchange handle.
- * @param last_denom_new new last denomination time.
- */
-void
-TALER_EXCHANGE_set_last_denom (
-  struct TALER_EXCHANGE_Handle *exchange,
-  struct GNUNET_TIME_Timestamp last_denom_new);
-
-
-/**
- * Flags for #TALER_EXCHANGE_check_keys_current().
- */
-enum TALER_EXCHANGE_CheckKeysFlags
-{
-  /**
-   * No special options.
-   */
-  TALER_EXCHANGE_CKF_NONE,
-
-  /**
-   * Force downloading /keys now, even if /keys is still valid
-   * (that is, the period advertised by the exchange for re-downloads
-   * has not yet expired).
-   */
-  TALER_EXCHANGE_CKF_FORCE_DOWNLOAD = 1,
-
-  /**
-   * Pull all keys again, resetting the client state to the original state.
-   * Using this flag disables the incremental download, and also prevents using
-   * the context until the re-download has completed.
-   */
-  TALER_EXCHANGE_CKF_PULL_ALL_KEYS = 2,
-
-  /**
-   * Force downloading all keys now.
-   */
-  TALER_EXCHANGE_CKF_FORCE_ALL_NOW = TALER_EXCHANGE_CKF_FORCE_DOWNLOAD
-                                     | TALER_EXCHANGE_CKF_PULL_ALL_KEYS
-
-};
-
-
-/**
- * Check if our current response for /keys is valid, and if
- * not, trigger /keys download.  If @a cb is given, changes
- * the @a exchange callback for the /keys response.
- *
- * @param exchange exchange to check keys for
- * @param flags options controlling when to download what
- * @param cb function to call with the /keys response, can be NULL
- * @param cb_cls closure for @a cb
- * @return until when the existing response is current, 0 if we are re-downloading now
- */
-struct GNUNET_TIME_Timestamp
-TALER_EXCHANGE_check_keys_current (
-  struct TALER_EXCHANGE_Handle *exchange,
-  enum TALER_EXCHANGE_CheckKeysFlags flags,
-  TALER_EXCHANGE_CertificationCallback cb,
-  void *cb_cls);
-
-
-/**
- * Obtain the keys from the exchange in the raw JSON format.
- *
- * @param exchange the exchange handle
- * @return the exchange's keys in raw JSON
- */
-json_t *
-TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange);
-
-
-/**
- * Obtain the keys from the exchange in the raw JSON format.
- *
- * @param keys the keys structure
- * @return the keys in raw JSON
- */
-json_t *
-TALER_EXCHANGE_keys_to_json (struct TALER_EXCHANGE_Keys *keys);
-
-
-/**
  * Test if the given @a pub is a the current signing key from the exchange
  * according to @a keys.
  *
@@ -691,18 +608,9 @@ TALER_EXCHANGE_keys_to_json (struct TALER_EXCHANGE_Keys *keys);
  * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
  */
 enum GNUNET_GenericReturnValue
-TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
-                                 const struct TALER_ExchangePublicKeyP *pub);
-
-
-/**
- * Get exchange's base URL.
- *
- * @param exchange exchange handle.
- * @return the base URL from the handle.
- */
-const char *
-TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange);
+TALER_EXCHANGE_test_signing_key (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_ExchangePublicKeyP *pub);
 
 
 /**
@@ -736,7 +644,8 @@ TALER_EXCHANGE_get_global_fee (
  * Create a copy of a denomination public key.
  *
  * @param key key to copy
- * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
+ * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key()
+ * @deprecated
  */
 struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_copy_denomination_key (
@@ -745,9 +654,10 @@ TALER_EXCHANGE_copy_denomination_key (
 
 /**
  * Destroy a denomination public key.
- * Should only be called with keys created by #TALER_EXCHANGE_copy_denomination_key.
+ * Should only be called with keys created by #TALER_EXCHANGE_copy_denomination_key().
  *
  * @param key key to destroy.
+ * @deprecated
  */
 void
 TALER_EXCHANGE_destroy_denomination_key (

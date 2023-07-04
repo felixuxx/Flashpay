@@ -314,11 +314,7 @@ status_run (void *cls,
 {
   struct StatusState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,

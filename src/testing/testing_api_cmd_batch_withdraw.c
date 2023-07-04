@@ -253,12 +253,8 @@ batch_withdraw_run (void *cls,
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
   struct TALER_EXCHANGE_WithdrawCoinInput wcis[ws->num_coins];
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   ws->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (
@@ -281,7 +277,7 @@ batch_withdraw_run (void *cls,
   }
   if (NULL == ws->exchange_url)
     ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (exchange));
+      = GNUNET_strdup (TALER_TESTING_get_exchange_url (is));
   ws->reserve_priv = *rp;
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);
@@ -295,7 +291,7 @@ batch_withdraw_run (void *cls,
     struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
 
     TALER_planchet_master_setup_random (&cs->ps);
-    dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (exchange),
+    dpk = TALER_TESTING_find_pk (TALER_TESTING_get_keys (is),
                                  &cs->amount,
                                  ws->age > 0);
     if (NULL == dpk)

@@ -211,12 +211,8 @@ deposit_confirmation_run (void *cls,
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
   const char *auditor_url;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   (void) cmd;
-  if (NULL == exchange)
-    return;
   dcs->is = is;
   GNUNET_assert (NULL != dcs->deposit_reference);
   {
@@ -267,7 +263,7 @@ deposit_confirmation_run (void *cls,
                                                         dcs->coin_index,
                                                         &wire_deadline));
   GNUNET_assert (NULL != exchange_timestamp);
-  keys = TALER_EXCHANGE_get_keys (exchange);
+  keys = TALER_TESTING_get_keys (is);
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_signing_key_info (keys,
                                              exchange_pub);

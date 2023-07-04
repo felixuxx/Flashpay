@@ -71,7 +71,7 @@ run (void *cls,
                                     cred.cfg,
                                     true,
                                     true),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
+    // FIXME: TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     TALER_TESTING_cmd_check_keys ("first-download"),
     /* Causes GET /keys?last_denom_issue=0 */
     TALER_TESTING_cmd_check_keys_with_last_denom ("second-download",

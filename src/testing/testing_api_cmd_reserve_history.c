@@ -230,19 +230,15 @@ reserve_history_cb (void *cls,
   struct HistoryState *ss = cls;
   struct TALER_TESTING_Interpreter *is = ss->is;
   struct TALER_Amount eb;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   ss->rsh = NULL;
-  if (NULL == exchange)
-    return;
   if (MHD_HTTP_OK == rs->hr.http_status)
   {
-    const struct TALER_EXCHANGE_Keys *keys;
+    struct TALER_EXCHANGE_Keys *keys;
     const struct TALER_EXCHANGE_GlobalFee *gf;
 
     ss->reserve_history.type = TALER_EXCHANGE_RTT_HISTORY;
-    keys = TALER_EXCHANGE_get_keys (exchange);
+    keys = TALER_TESTING_get_keys (is);
     GNUNET_assert (NULL != keys);
     gf = TALER_EXCHANGE_get_global_fee (keys,
                                         rs->ts);
@@ -343,11 +339,7 @@ history_run (void *cls,
 {
   struct HistoryState *ss = cls;
   const struct TALER_TESTING_Command *create_reserve;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
-  if (NULL == exchange)
-    return;
   ss->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (is,

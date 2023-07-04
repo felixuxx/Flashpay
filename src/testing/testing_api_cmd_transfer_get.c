@@ -309,12 +309,8 @@ track_transfer_run (void *cls,
   struct TrackTransferState *tts = cls;
   struct TALER_WireTransferIdentifierRawP wtid;
   const struct TALER_WireTransferIdentifierRawP *wtid_ptr;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (is);
 
   tts->cmd = cmd;
-  if (NULL == exchange)
-    return;
   /* If no reference is given, we'll use a all-zeros
    * WTID */
   memset (&wtid,

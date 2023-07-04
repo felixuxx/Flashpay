@@ -75,33 +75,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 }
 
 
-struct TALER_EXCHANGE_Handle *
-TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is)
-{
-  struct TALER_EXCHANGE_Handle *exchange;
-  const struct TALER_TESTING_Command *exchange_cmd;
-
-  exchange_cmd
-    = TALER_TESTING_interpreter_get_command (is,
-                                             "exchange");
-  if (NULL == exchange_cmd)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return NULL;
-  }
-  if (GNUNET_OK !=
-      TALER_TESTING_get_trait_exchange (exchange_cmd,
-                                        &exchange))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return NULL;
-  }
-  return exchange;
-}
-
-
 const char *
 TALER_TESTING_get_exchange_url (struct TALER_TESTING_Interpreter *is)
 {

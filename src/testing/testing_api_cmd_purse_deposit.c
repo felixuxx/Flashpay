@@ -133,11 +133,8 @@ deposit_cb (void *cls,
             const struct TALER_EXCHANGE_PurseDepositResponse *dr)
 {
   struct PurseDepositState *ds = cls;
-  struct TALER_EXCHANGE_Handle *exchange
-    = TALER_TESTING_get_exchange (ds->is);
 
   ds->dh = NULL;
-  GNUNET_assert (NULL != exchange);
   if (ds->expected_response_code != dr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (ds->is,
@@ -197,10 +194,10 @@ deposit_cb (void *cls,
       /* Deposits complete, create trait! */
       ds->reserve_history.type = TALER_EXCHANGE_RTT_MERGE;
       {
-        const struct TALER_EXCHANGE_Keys *keys;
+        struct TALER_EXCHANGE_Keys *keys;
         const struct TALER_EXCHANGE_GlobalFee *gf;
 
-        keys = TALER_EXCHANGE_get_keys (exchange);
+        keys = TALER_TESTING_get_keys (ds->is);
         GNUNET_assert (NULL != keys);
         gf = TALER_EXCHANGE_get_global_fee (keys,
                                             *merge_timestamp);

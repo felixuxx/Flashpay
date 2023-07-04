@@ -1798,17 +1798,6 @@ TALER_TESTING_cmd_check_keys (const char *label);
 
 
 /**
- * Make a "check keys" command that forcedly does NOT cherry pick;
- * just redownload the whole /keys.
- *
- * @param label command label
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label);
-
-
-/**
  * Make a "check keys" command.  It lets the user set a last denom issue date to be
  * used in the request for /keys.
  *
@@ -2703,7 +2692,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
-  op (exchange, struct TALER_EXCHANGE_Handle)                      \
   op (fakebank, struct TALER_FAKEBANK_Handle)                      \
   op (keys, struct TALER_EXCHANGE_Keys)                            \
   op (process, struct GNUNET_OS_Process *)
@@ -2741,16 +2729,6 @@ TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
 
 
 /* ****************** convenience functions ************** */
-
-/**
- * Get exchange handle from interpreter. Convenience function.
- *
- * @param is interpreter state.
- * @return the exchange handle, or NULL on error
- */
-struct TALER_EXCHANGE_Handle *
-TALER_TESTING_get_exchange (struct TALER_TESTING_Interpreter *is);
-
 
 /**
  * Get exchange URL from interpreter. Convenience function.
