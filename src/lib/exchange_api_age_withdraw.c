@@ -781,20 +781,24 @@ prepare_coins (
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
     static num_coins])
 {
-
-  if (GNUNET_OK != TALER_amount_set_zero (
-        awh->keys->currency,
-        &awh->amount_with_fee))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  awh->coin_data = GNUNET_new_array (awh->num_coins,
-                                     struct CoinData);
+#define FAIL_IF(cond) \
+  do { \
+    if ((cond)) \
+    { \
+      GNUNET_break (! (cond)); \
+      goto ERROR; \
+    } \
+  } while(0)
 
   GNUNET_assert (0 < num_coins);
   awh->age_mask = coin_inputs[0].denom_pub->key.age_mask;
+
+  FAIL_IF (GNUNET_OK !=
+           TALER_amount_set_zero (awh->keys->currency,
+                                  &awh->amount_with_fee));
+
+  awh->coin_data = GNUNET_new_array (awh->num_coins,
+                                     struct CoinData);
 
   for (size_t i = 0; i < num_coins; i++)
   {
@@ -803,12 +807,7 @@ prepare_coins (
     cd->denom_pub = *input->denom_pub;
 
     /* The mask must be the same for all coins */
-    if (awh->age_mask.bits != input->denom_pub->key.age_mask.bits)
-    {
-      GNUNET_break (0);
-      TALER_EXCHANGE_age_withdraw_cancel (awh);
-      return GNUNET_SYSERR;
-    }
+    FAIL_IF (awh->age_mask.bits != input->denom_pub->key.age_mask.bits);
 
     TALER_denom_pub_deep_copy (&cd->denom_pub.key,
                                &input->denom_pub->key);
@@ -817,26 +816,15 @@ prepare_coins (
     {
       struct TALER_Amount coin_total;
 
-      if (0 >
-          TALER_amount_add (&coin_total,
-                            &cd->denom_pub.fees.withdraw,
-                            &cd->denom_pub.value))
-      {
-        GNUNET_break (0);
-        TALER_EXCHANGE_age_withdraw_cancel (awh);
-        return GNUNET_SYSERR;
-      }
+      FAIL_IF (0 >
+               TALER_amount_add (&coin_total,
+                                 &cd->denom_pub.fees.withdraw,
+                                 &cd->denom_pub.value));
 
-      if (0 >
-          TALER_amount_add (&awh->amount_with_fee,
-                            &awh->amount_with_fee,
-                            &coin_total))
-      {
-        /* Overflow here? Very strange, our CPU must be fried... */
-        GNUNET_break (0);
-        TALER_EXCHANGE_age_withdraw_cancel (awh);
-        return GNUNET_SYSERR;
-      }
+      FAIL_IF (0 >
+               TALER_amount_add (&awh->amount_with_fee,
+                                 &awh->amount_with_fee,
+                                 &coin_total));
     }
 
     for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
@@ -847,12 +835,13 @@ prepare_coins (
 
       /* Derive the age restriction from the given secret and
        * the maximum age */
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_age_restriction_from_secret (
-                       &can->secret,
-                       &input->denom_pub->key.age_mask,
-                       awh->max_age,
-                       &can->age_commitment_proof));
+      FAIL_IF (GNUNET_OK !=
+               TALER_age_restriction_from_secret (
+                 &can->secret,
+                 &input->denom_pub->key.age_mask,
+                 awh->max_age,
+                 &can->age_commitment_proof));
+
       TALER_age_commitment_hash (&can->age_commitment_proof.commitment,
                                  &can->h_age_commitment);
 
@@ -867,28 +856,18 @@ prepare_coins (
           TALER_planchet_blinding_secret_create (&can->secret,
                                                  &can->alg_values,
                                                  &can->blinding_key);
-          if (GNUNET_OK !=
-              TALER_planchet_prepare (&cd->denom_pub.key,
-                                      &can->alg_values,
-                                      &can->blinding_key,
-                                      &can->coin_priv,
-                                      &can->h_age_commitment,
-                                      &can->h_coin_pub,
-                                      &can->planchet_detail))
-          {
-            GNUNET_break (0);
-            TALER_EXCHANGE_age_withdraw_cancel (awh);
-            return GNUNET_SYSERR;
-          }
-          if (GNUNET_OK !=
-              TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
-                                  &can->planchet_detail.denom_pub_hash,
-                                  &can->blinded_coin_h))
-          {
-            GNUNET_break (0);
-            TALER_EXCHANGE_age_withdraw_cancel (awh);
-            return GNUNET_SYSERR;
-          }
+          FAIL_IF (GNUNET_OK !=
+                   TALER_planchet_prepare (&cd->denom_pub.key,
+                                           &can->alg_values,
+                                           &can->blinding_key,
+                                           &can->coin_priv,
+                                           &can->h_age_commitment,
+                                           &can->h_coin_pub,
+                                           &can->planchet_detail));
+          FAIL_IF (GNUNET_OK !=
+                   TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
+                                       &can->planchet_detail.denom_pub_hash,
+                                       &can->blinded_coin_h));
           break;
         }
       case TALER_DENOMINATION_CS:
@@ -911,36 +890,33 @@ prepare_coins (
              of the blinded_planchet here; the other part
              will be done after the /csr-withdraw request! */
           can->planchet_detail.blinded_planchet.cipher = TALER_DENOMINATION_CS;
-          can->csr_withdraw_handle = NULL;
-          TALER_EXCHANGE_csr_withdraw (
-            awh->curl_ctx,
-            awh->exchange_url,
-            &cd->denom_pub,
-            &can->planchet_detail
-            .blinded_planchet
-            .details
-            .cs_blinded_planchet
-            .nonce,
-            &csr_withdraw_done,
-            &can);
-          if (NULL == can->csr_withdraw_handle)
-          {
-            GNUNET_break (0);
-            TALER_EXCHANGE_age_withdraw_cancel (awh);
-            return GNUNET_SYSERR;
-          }
+          can->csr_withdraw_handle =
+            TALER_EXCHANGE_csr_withdraw (awh->curl_ctx,
+                                         awh->exchange_url,
+                                         &cd->denom_pub,
+                                         &can->planchet_detail
+                                         .blinded_planchet
+                                         .details
+                                         .cs_blinded_planchet
+                                         .nonce,
+                                         &csr_withdraw_done,
+                                         &can);
+          FAIL_IF (NULL == can->csr_withdraw_handle);
 
           awh->csr_pending++;
           break;
         }
       default:
-        GNUNET_break (0);
-        TALER_EXCHANGE_age_withdraw_cancel (awh);
-        return GNUNET_SYSERR;
+        FAIL_IF (1);
       }
     }
   }
   return GNUNET_OK;
+
+ERROR:
+  TALER_EXCHANGE_age_withdraw_cancel (awh);
+  return GNUNET_SYSERR;
+#undef FAIL_IF
 };
 
 struct TALER_EXCHANGE_AgeWithdrawHandle *
@@ -950,8 +926,8 @@ TALER_EXCHANGE_age_withdraw (
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   size_t num_coins,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
-    const static num_coins],
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[const static
+                                                               num_coins],
   uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawCallback res_cb,
   void *res_cb_cls)
