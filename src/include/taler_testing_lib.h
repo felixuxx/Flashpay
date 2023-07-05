@@ -623,6 +623,7 @@ TALER_TESTING_cmd_system_start (
  *
  * @param label command label
  * @param cfg configuration to use
+ * @param last_keys_ref reference to command with prior /keys response, NULL for none
  * @param wait_for_keys block until we got /keys
  * @param load_private_key obtain private key from file indicated in @a cfg
  * @return the command.
@@ -631,6 +632,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_get_exchange (
   const char *label,
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *last_keys_ref,
   bool wait_for_keys,
   bool load_private_key);
 
@@ -1786,34 +1788,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_wait_service (const char *label,
                                 const char *url);
 
-
-/**
- * Make a "check keys" command.
- *
- * @param label command label
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys (const char *label);
-
-
-/**
- * Make a "check keys" command.  It lets the user set a last denom issue date to be
- * used in the request for /keys.
- *
- * @param label command label
- * @param last_denom_date_ref previous /keys command to use to
- *        obtain the "last_denom_date" value from; "zero" can be used
- *        as a special value to force an absolute time of zero to be
- *        given to as an argument
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_last_denom (
-  const char *label,
-  const char *last_denom_date_ref);
-
-
 /**
  * Create a "batch" command.  Such command takes a
  * end_CMD-terminated array of CMDs and executed them.
@@ -1870,31 +1844,6 @@ TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
 void
 TALER_TESTING_cmd_batch_set_current (const struct TALER_TESTING_Command *cmd,
                                      unsigned int new_ip);
-
-
-/**
- * Make a serialize-keys CMD.
- *
- * @param label CMD label
- * @return the CMD.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_serialize_keys (const char *label);
-
-
-/**
- * Make a connect-with-state CMD.  This command
- * will use a serialized key state to reconnect
- * to the exchange.
- *
- * @param label command label
- * @param state_reference label of a CMD offering
- *        a serialized key state.
- * @return the CMD.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_connect_with_state (const char *label,
-                                      const char *state_reference);
 
 
 /**
@@ -2671,7 +2620,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (bank_auth_data, const struct TALER_BANK_AuthenticationData)  \
   op (contract_terms, const json_t)                                \
   op (wire_details, const json_t)                                  \
-  op (exchange_keys, const json_t)                                 \
   op (exchange_url, const char)                                    \
   op (auditor_url, const char)                                     \
   op (exchange_bank_account_url, const char)                       \

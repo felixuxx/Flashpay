@@ -67,20 +67,9 @@ run (void *cls,
                                     NULL),
     TALER_TESTING_cmd_get_exchange ("get-exchange",
                                     cred.cfg,
+                                    NULL,
                                     true,
                                     true),
-#if 0
-    TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
-                                   MHD_HTTP_NO_CONTENT,
-                                   false),
-    TALER_TESTING_cmd_wire_add ("add-wire-account",
-                                "payto://x-taler-bank/localhost/2?receiver-name=2",
-                                MHD_HTTP_NO_CONTENT,
-                                false),
-    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              config_file),
-#endif
-    // FIXME: TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys"),
     /**
      * Fill reserve with EUR:10.02, as withdraw fee is 1 ct per
      * config.

@@ -279,6 +279,11 @@ parse_denomination_group (void *cls,
                          &emsg,
                          &eline))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to parse %s at %u: %s\n",
+                spec[eline].field,
+                eline,
+                emsg);
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }

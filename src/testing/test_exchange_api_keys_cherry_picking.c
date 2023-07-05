@@ -65,22 +65,21 @@ run (void *cls,
                                     NULL),
     TALER_TESTING_cmd_get_exchange ("get-exchange",
                                     cred.cfg,
+                                    NULL,
                                     true,
                                     true),
-    // FIXME: TALER_TESTING_cmd_check_keys_pull_all_keys ("initial-/keys"),
     TALER_TESTING_cmd_sleep ("sleep",
                              6 /* seconds */),
-    TALER_TESTING_cmd_check_keys ("check-keys-1"),
-    TALER_TESTING_cmd_check_keys_with_last_denom ("check-keys-2",
-                                                  "check-keys-1"),
-    TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
-    TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
-                                          "serialize-keys"),
-    /**
-     * Make sure we have the same keys situation as
-     * it was before the serialization.
-     */
-    TALER_TESTING_cmd_check_keys ("check-keys-after-deserialization"),
+    TALER_TESTING_cmd_get_exchange ("get-exchange-1",
+                                    cred.cfg,
+                                    "get-exchange",
+                                    true,
+                                    true),
+    TALER_TESTING_cmd_get_exchange ("get-exchange-2",
+                                    cred.cfg,
+                                    "get-exchange-1",
+                                    true,
+                                    true),
     /**
      * Use one of the deserialized keys.
      */
