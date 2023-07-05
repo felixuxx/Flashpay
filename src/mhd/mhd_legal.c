@@ -131,7 +131,7 @@ mime_matches (const char *accept_pattern,
   if ( (NULL == da) ||
        (NULL == dm) )
     return (0 == strcmp ("*", accept_pattern));
-  /* Note: technically, we might want to parse the "q=$FLOAT"
+  /* FIXME: eventually, we might want to parse the "q=$FLOAT"
      part after the ';' and figure out which one is the
      best/preferred match instead of returning a boolean... */
   end = strchr (da, ';');
