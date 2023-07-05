@@ -157,7 +157,7 @@ TALER_MHD_xmime_matches (const char *accept_pattern,
 
   for (const char *tok = strtok_r (ap, ",", &sptr);
        NULL != tok;
-       tok = strtok_r (NULL, ";", &sptr))
+       tok = strtok_r (NULL, ",", &sptr))
   {
     if (mime_matches (tok,
                       mime))
