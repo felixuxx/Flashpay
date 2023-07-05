@@ -69,6 +69,13 @@
  */
 #define DEFAULT_EXPIRATION GNUNET_TIME_UNIT_HOURS
 
+/**
+ * If the "Expire" cache control header is missing, for
+ * how long do we assume the reply to be valid at least?
+ */
+#define MINIMUM_EXPIRATION GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MINUTES, 2)
+
 
 /**
  * Handle for a GET /keys request.
@@ -1109,6 +1116,20 @@ keys_completed_cb (void *cls,
       break;
     }
     kd->rc = 1;
+    kd->key_data_expiration = gkh->expire;
+    if (GNUNET_TIME_relative_cmp (
+          GNUNET_TIME_absolute_get_remaining (gkh->expire.abs_time),
+          <,
+          MINIMUM_EXPIRATION))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Exchange returned keys with expiration time below %s. Compensating.\n",
+                  GNUNET_TIME_relative2s (MINIMUM_EXPIRATION,
+                                          true));
+      kd->key_data_expiration
+        = GNUNET_TIME_relative_to_timestamp (MINIMUM_EXPIRATION);
+    }
+
     kresp.details.ok.keys = kd;
     break;
   case MHD_HTTP_BAD_REQUEST:

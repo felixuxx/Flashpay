@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020-2022 Taler Systems SA
+   Copyright (C) 2020-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -1701,8 +1701,10 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
     TALER_MHD_get_date_string (m.abs_time,
                                dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Setting /keys 'Expires' header to '%s'\n",
-                dat);
+                "Setting /keys 'Expires' header to '%s' (rekey frequency is %s)\n",
+                dat,
+                GNUNET_TIME_relative2s (ksh->rekey_frequency,
+                                        false));
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_EXPIRES,
