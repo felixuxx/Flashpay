@@ -126,10 +126,14 @@ mime_matches (const char *accept_pattern,
 {
   const char *da = strchr (accept_pattern, '/');
   const char *dm = strchr (mime, '/');
+  const char *end;
 
   if ( (NULL == da) ||
        (NULL == dm) )
     return (0 == strcmp ("*", accept_pattern));
+  end = strchr (da, ';');
+  if (NULL == end)
+    end = &da[strlen (da)];
   return
     ( ( (1 == da - accept_pattern) &&
         ('*' == *accept_pattern) ) ||
@@ -138,8 +142,9 @@ mime_matches (const char *accept_pattern,
                            mime,
                            da - accept_pattern)) ) ) &&
     ( (0 == strcmp (da, "/*")) ||
-      (0 == strcasecmp (da,
-                        dm)) );
+      (0 == strncasecmp (da,
+                         dm,
+                         end - da)) );
 }
 
 
@@ -150,7 +155,7 @@ TALER_MHD_xmime_matches (const char *accept_pattern,
   char *ap = GNUNET_strdup (accept_pattern);
   char *sptr;
 
-  for (const char *tok = strtok_r (ap, ";", &sptr);
+  for (const char *tok = strtok_r (ap, ",", &sptr);
        NULL != tok;
        tok = strtok_r (NULL, ";", &sptr))
   {
