@@ -182,8 +182,7 @@ kyc_aml_finished (void *cls,
     kat->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
     kat->response = TALER_MHD_make_error (TALER_EC_GENERIC_DB_STORE_FAILED,
                                           "do_insert_kyc_attributes");
-
-    /* FIXME-Christian: shouldn't we return in the error case? */
+    /* Continued below to return the response */
   }
   /* Finally, return result to main handler */
   kat->cb (kat->cb_cls,
