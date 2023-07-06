@@ -94,7 +94,7 @@ age_restriction_load_config (
   ext->config = &AR_config;
   ext->enabled = true;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "loaded new age restriction config with age groups: %s\n",
               TALER_age_mask_to_string (&mask));
 
@@ -112,7 +112,6 @@ static json_t *
 age_restriction_manifest (
   const struct TALER_Extension *ext)
 {
-  char *mask_str;
   json_t *conf;
 
   GNUNET_assert (NULL != ext);
@@ -124,12 +123,11 @@ age_restriction_manifest (
     return json_null ();
   }
 
-  mask_str = TALER_age_mask_to_string (&AR_config.mask);
   conf = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("age_groups", mask_str)
+    GNUNET_JSON_pack_string ("age_groups",
+                             TALER_age_mask_to_string (&AR_config.mask))
     );
 
-  free (mask_str);
 
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_bool ("critical", ext->critical),
