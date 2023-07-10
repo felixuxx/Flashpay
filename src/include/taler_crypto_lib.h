@@ -829,9 +829,9 @@ struct TALER_CoinPubHashP
 
 
 /**
- * @brief Value that uniquely identifies a tip.
+ * @brief Value that uniquely identifies a reward.
  */
-struct TALER_TipIdentifierP
+struct TALER_RewardIdentifierP
 {
   /**
    * The tip identifier is a SHA-512 hash code.
