@@ -402,7 +402,8 @@ reveal_cb (void *cls,
       }
     }
     TALER_TESTING_unexpected_status (rrs->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     rrs->expected_response_code);
     return;
   }
   melt_cmd = TALER_TESTING_interpreter_lookup_command (rrs->is,
@@ -646,7 +647,8 @@ link_cb (void *cls,
       }
     }
     TALER_TESTING_unexpected_status (rls->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     rls->expected_response_code);
     return;
   }
   reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
@@ -937,8 +939,10 @@ melt_cb (void *cls,
         return;
       }
     }
-    TALER_TESTING_unexpected_status (rms->is,
-                                     hr->http_status);
+    TALER_TESTING_unexpected_status_with_body (rms->is,
+                                               hr->http_status,
+                                               rms->expected_response_code,
+                                               hr->reply);
     return;
   }
   if (MHD_HTTP_OK == hr->http_status)

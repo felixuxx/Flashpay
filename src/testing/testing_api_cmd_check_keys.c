@@ -77,7 +77,8 @@ keys_cb (void *cls,
   if (MHD_HTTP_OK != kr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (cks->is,
-                                     kr->hr.http_status);
+                                     kr->hr.http_status,
+                                     MHD_HTTP_OK);
     return;
   }
   cks->my_denom_date = kr->details.ok.keys->last_denom_issue_date;

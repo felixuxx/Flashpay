@@ -75,7 +75,8 @@ purse_delete_cb (void *cls,
   if (pds->expected_response_code != pdr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (pds->is,
-                                     pdr->hr.http_status);
+                                     pdr->hr.http_status,
+                                     pds->expected_response_code);
     return;
   }
   TALER_TESTING_interpreter_next (pds->is);

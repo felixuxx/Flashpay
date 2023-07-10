@@ -90,7 +90,8 @@ wire_add_cb (void *cls,
   if (ds->expected_response_code != hr->http_status)
   {
     TALER_TESTING_unexpected_status (ds->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     ds->expected_response_code);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);

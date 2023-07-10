@@ -117,7 +117,8 @@ deposit_wtid_cb (void *cls,
   if (tts->expected_response_code != dr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     dr->hr.http_status);
+                                     dr->hr.http_status,
+                                     tts->expected_response_code);
     return;
   }
   switch (dr->hr.http_status)

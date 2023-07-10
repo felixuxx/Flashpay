@@ -90,7 +90,8 @@ recoup_cb (void *cls,
   if (ps->expected_response_code != hr->http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     ps->expected_response_code);
     return;
   }
 

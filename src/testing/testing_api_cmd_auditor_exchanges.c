@@ -160,7 +160,8 @@ exchanges_cb (void *cls,
       }
     }
     TALER_TESTING_unexpected_status (es->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     es->expected_response_code);
     return;
   }
   if (MHD_HTTP_OK != hr->http_status)

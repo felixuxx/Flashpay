@@ -83,7 +83,8 @@ refund_cb (void *cls,
   if (rs->expected_response_code != hr->http_status)
   {
     TALER_TESTING_unexpected_status (rs->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     rs->expected_response_code);
     return;
   }
   TALER_TESTING_interpreter_next (rs->is);

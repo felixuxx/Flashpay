@@ -170,7 +170,8 @@ deposit_confirmation_cb (
       }
     }
     TALER_TESTING_unexpected_status (dcs->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     dcs->expected_response_code);
     return;
   }
   TALER_TESTING_interpreter_next (dcs->is);

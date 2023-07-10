@@ -80,7 +80,8 @@ check_aml_decisions_cb (void *cls,
   if (ds->expected_http_status != adr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (ds->is,
-                                     adr->hr.http_status);
+                                     adr->hr.http_status,
+                                     ds->expected_http_status);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);

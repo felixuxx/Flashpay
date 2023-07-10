@@ -199,7 +199,8 @@ confirmation_cb (void *cls,
       }
     }
     TALER_TESTING_unexpected_status (is,
-                                     tr->http_status);
+                                     tr->http_status,
+                                     MHD_HTTP_OK);
     return;
   }
 

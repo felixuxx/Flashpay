@@ -109,7 +109,8 @@ wallet_kyc_cb (void *cls,
   if (kwg->expected_response_code != wkr->http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     wkr->http_status);
+                                     wkr->http_status,
+                                     kwg->expected_response_code);
     return;
   }
   switch (wkr->http_status)

@@ -154,7 +154,8 @@ purse_cb (void *cls,
   if (ds->expected_response_code != dr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (ds->is,
-                                     dr->hr.http_status);
+                                     dr->hr.http_status,
+                                     ds->expected_response_code);
     return;
   }
   switch (dr->hr.http_status)

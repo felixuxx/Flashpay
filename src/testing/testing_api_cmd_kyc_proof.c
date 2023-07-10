@@ -88,7 +88,8 @@ proof_kyc_cb (void *cls,
   if (kcg->expected_response_code != kpr->http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     kpr->http_status);
+                                     kpr->http_status,
+                                     kcg->expected_response_code);
     return;
   }
   switch (kpr->http_status)

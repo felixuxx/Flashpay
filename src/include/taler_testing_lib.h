@@ -57,15 +57,41 @@
  *
  * @param is interpreter to fail
  * @param status unexpected HTTP status code received
+ * @param expected expected HTTP status code
  */
-#define TALER_TESTING_unexpected_status(is,status)                      \
+#define TALER_TESTING_unexpected_status(is,status, expected)            \
   do {                                                                  \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
-                "Unexpected response code %u to command %s in %s:%u\n", \
+                "Unexpected response code %u (expected: %u) to command %s in %s:%u\n", \
                 status,                                                 \
+                expected,                                               \
                 TALER_TESTING_interpreter_get_current_label (is),       \
                 __FILE__,                                               \
                 __LINE__);                                              \
+    TALER_TESTING_interpreter_fail (is);                                \
+  } while (0)
+
+/**
+ * Log an error message about us receiving an unexpected HTTP
+ * status code at the current command and fail the test and print the response
+ * body (expected as json).
+ *
+ * @param is interpreter to fail
+ * @param status unexpected HTTP status code received
+ * @param expected expected HTTP status code
+ * @param body received JSON-reply
+ */
+#define TALER_TESTING_unexpected_status_with_body(is,status, expected, body) \
+  do {                                                                  \
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
+                "Unexpected response code %u (expected: %u) to "        \
+                "command %s in %s:%u\nwith body:\n>>%s<<\n",            \
+                status,                                                 \
+                expected,                                               \
+                TALER_TESTING_interpreter_get_current_label (is),       \
+                __FILE__,                                               \
+                __LINE__,                                               \
+                json_dumps (body, JSON_INDENT (2)));                    \
     TALER_TESTING_interpreter_fail (is);                                \
   } while (0)
 

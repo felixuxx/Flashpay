@@ -133,7 +133,8 @@ track_transfer_cb (void *cls,
   if (tts->expected_response_code != hr->http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     tts->expected_response_code);
     return;
   }
 

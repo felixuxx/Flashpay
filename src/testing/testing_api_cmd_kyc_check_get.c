@@ -78,7 +78,8 @@ check_kyc_cb (void *cls,
   if (kcg->expected_response_code != ks->http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     ks->http_status);
+                                     ks->http_status,
+                                     kcg->expected_response_code);
     return;
   }
   switch (ks->http_status)

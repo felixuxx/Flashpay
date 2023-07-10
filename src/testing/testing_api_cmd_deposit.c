@@ -248,8 +248,12 @@ deposit_cb (void *cls,
         return;
       }
     }
-    TALER_TESTING_unexpected_status (ds->is,
-                                     dr->hr.http_status);
+    TALER_TESTING_unexpected_status_with_body (
+      ds->is,
+      dr->hr.http_status,
+      ds->expected_response_code,
+      dr->hr.reply);
+
     return;
   }
   if (MHD_HTTP_OK == dr->hr.http_status)

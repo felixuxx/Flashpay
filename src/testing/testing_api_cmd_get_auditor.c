@@ -83,7 +83,8 @@ version_cb (
   if (MHD_HTTP_OK != vr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (gas->is,
-                                     vr->hr.http_status);
+                                     vr->hr.http_status,
+                                     MHD_HTTP_OK);
     return;
   }
   if ( (NULL != gas->priv_file) &&

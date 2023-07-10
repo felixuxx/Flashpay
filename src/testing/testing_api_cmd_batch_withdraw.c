@@ -190,7 +190,8 @@ reserve_batch_withdraw_cb (void *cls,
   if (ws->expected_response_code != wr->hr.http_status)
   {
     TALER_TESTING_unexpected_status (is,
-                                     wr->hr.http_status);
+                                     wr->hr.http_status,
+                                     ws->expected_response_code);
     return;
   }
   switch (wr->hr.http_status)

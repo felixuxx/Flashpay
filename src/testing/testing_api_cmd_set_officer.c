@@ -98,7 +98,8 @@ set_officer_cb (void *cls,
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     TALER_TESTING_unexpected_status (ds->is,
-                                     hr->http_status);
+                                     hr->http_status,
+                                     MHD_HTTP_NO_CONTENT);
     return;
   }
   TALER_TESTING_interpreter_next (ds->is);
