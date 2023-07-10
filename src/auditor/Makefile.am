@@ -218,6 +218,7 @@ EXTRA_DIST = \
   taler-auditor.in \
   taler-helper-auditor-render.py \
   auditor.conf \
+  setup.sh \
   test-sync-in.conf \
   test-sync-out.conf \
   generate-auditor-basedb.sh \

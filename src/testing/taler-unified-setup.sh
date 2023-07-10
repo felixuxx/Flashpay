@@ -251,7 +251,7 @@ then
     echo -n "Configuring sandbox "
     libeufin-sandbox config --currency "$CURRENCY" default &> libeufin-sandbox-config.log
     echo "DONE"
-    echo -n "Launching sandbox "
+    echo -n "Launching sandbox ... "
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
     libeufin-sandbox serve \
       --port "$SANDBOX_PORT" \
@@ -660,6 +660,8 @@ then
           enable-account "$EXCHANGE_PAYTO_URI" \
           upload &> "taler-exchange-offline-account.log"
         echo " OK"
+    else
+        echo "WARNING: Account ${USE_ACCOUNT} not enabled (set to: '$ENABLED')"
     fi
     if [ "1" = "$START_AUDITOR" ]
     then

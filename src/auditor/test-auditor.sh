@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #  This file is part of TALER
-#  Copyright (C) 2014-2022 Taler Systems SA
+#  Copyright (C) 2014-2023 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software
@@ -49,17 +49,7 @@ VALGRIND=""
 # history request.
 LIBEUFIN_SETTLE_TIME=1
 
-# Exit, with status code "skip" (no 'real' failure)
-function exit_skip() {
-    echo "SKIPPING test: $1"
-    exit 77
-}
-
-# Exit, with error message (hard failure)
-function exit_fail() {
-    echo "FAILING test: $1"
-    exit 1
-}
+. setup.sh
 
 # Stop libeufin sandbox and nexus (if running)
 function stop_libeufin()
@@ -2002,12 +1992,12 @@ function check_with_database()
 {
     BASEDB=$1
     CONF=$1.conf
-    ORIGIN=`pwd`
-    MY_TMP_DIR=`dirname $1`
+    ORIGIN=$(pwd)
+    MY_TMP_DIR=$(dirname $1)
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE=${BASEDB}.mpriv
     taler-config -f -c ${CONF} -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
-    MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
+    MASTER_PUB=$(gnunet-ecc -p $MASTER_PRIV_FILE)
 
     echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
@@ -2037,7 +2027,7 @@ function check_with_database()
 
 # ####### Setup globals ######
 # Postgres database to use
-export DB=auditor-basedb
+export DB="auditor-basedb"
 
 # test required commands exist
 echo "Testing for jq"
@@ -2059,12 +2049,12 @@ INITDB_BIN=$(command -v initdb) || true
 if [[ ! -z "$INITDB_BIN" ]]; then
   echo " FOUND (in path) at" $INITDB_BIN
 else
-  HAVE_INITDB=`find /usr -name "initdb" | head -1 2> /dev/null | grep postgres` || exit_skip " MISSING"
-  echo " FOUND at" `dirname $HAVE_INITDB`
-  INITDB_BIN=`echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1`
+  HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
+  echo " FOUND at" $(dirname $HAVE_INITDB)
+  INITDB_BIN=$(echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1)
 fi
-POSTGRES_PATH=`dirname $INITDB_BIN`
-MYDIR=`mktemp -d /tmp/taler-auditor-basedbXXXXXX`
+POSTGRES_PATH=$(dirname $INITDB_BIN)
+MYDIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
 echo "Using $MYDIR for logging and temporary data"
 TMPDIR="$MYDIR/postgres/"
 mkdir -p $TMPDIR
@@ -2089,9 +2079,9 @@ PGHOST="$TMPDIR/sockets"
 export PGHOST
 
 echo "Generating fresh database at $MYDIR"
-if faketime -f '-1 d' ./generate-auditor-basedb.sh $MYDIR/$DB
+if faketime -f '-1 d' ./generate-auditor-basedb.sh "$MYDIR/$DB"
 then
-    check_with_database $MYDIR/$DB
+    check_with_database "$MYDIR/$DB"
     if test x$fail != x0
     then
         exit $fail
