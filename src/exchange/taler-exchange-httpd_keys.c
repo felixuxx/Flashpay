@@ -801,7 +801,7 @@ destroy_key_helpers (struct HelperState *hs)
  *    denomination.
  */
 static struct TALER_AgeMask
-load_age_mask (const char*section_name)
+load_age_mask (const char *section_name)
 {
   static const struct TALER_AgeMask null_mask = {0};
   enum GNUNET_GenericReturnValue ret;
