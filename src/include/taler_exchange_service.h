@@ -374,9 +374,9 @@ struct TALER_EXCHANGE_Keys
   unsigned int rc;
 
   /**
-   * Set to true if tipping is allowed at this exchange.
+   * Set to true if rewards are allowed at this exchange.
    */
-  bool tipping_allowed;
+  bool rewards_allowed;
 };
 
 

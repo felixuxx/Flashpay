@@ -161,9 +161,9 @@ char *TEH_currency;
 char *TEH_kyc_aml_trigger;
 
 /**
- * Option set to #GNUNET_YES if tipping is enabled.
+ * Option set to #GNUNET_YES if rewards are enabled.
  */
-int TEH_enable_tipping;
+int TEH_enable_rewards;
 
 /**
  * What is the largest amount we allow a peer to
@@ -1943,15 +1943,15 @@ exchange_serve_process_config (void)
                 "Amount in section `exchange' under `AML_THRESHOLD' uses the wrong currency!\n");
     return GNUNET_SYSERR;
   }
-  TEH_enable_tipping
+  TEH_enable_rewards
     = GNUNET_CONFIGURATION_get_value_yesno (
         TEH_cfg,
         "exchange",
-        "ENABLE_TIPPING");
-  if (GNUNET_SYSERR == TEH_enable_tipping)
+        "ENABLE_REWARDS");
+  if (GNUNET_SYSERR == TEH_enable_rewards)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Need YES or NO in section `exchange' under `ENABLE_TIPPING'\n");
+                "Need YES or NO in section `exchange' under `ENABLE_REWARDS'\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=

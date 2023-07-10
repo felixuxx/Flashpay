@@ -65,9 +65,9 @@ extern int TEH_check_invariants_flag;
 extern int TEH_allow_keys_timetravel;
 
 /**
- * Option set to #GNUNET_YES if tipping is enabled.
+ * Option set to #GNUNET_YES if rewards are allowed.
  */
-extern int TEH_enable_tipping;
+extern int TEH_enable_rewards;
 
 /**
  * Main directory with revocation data.

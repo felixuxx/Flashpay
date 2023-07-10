@@ -639,8 +639,8 @@ decode_keys_json (const json_t *resp_obj,
         &auditors_array),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_bool (
-          "tipping_allowed",
-          &key_data->tipping_allowed),
+          "rewards_allowed",
+          &key_data->rewards_allowed),
         NULL),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_object_const ("extensions",
@@ -1983,8 +1983,8 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                     recoup)),
     GNUNET_JSON_pack_array_steal ("auditors",
                                   auditors),
-    GNUNET_JSON_pack_bool ("tipping_allowed",
-                           kd->tipping_allowed),
+    GNUNET_JSON_pack_bool ("rewards_allowed",
+                           kd->rewards_allowed),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_object_incref ("extensions",
                                       kd->extensions)),
