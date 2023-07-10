@@ -101,10 +101,9 @@ struct FreshCoinData
 
   /**
    * Arrays of age commitments and proofs to be created, one for each
-   * cut-and-choose dimension.  The entries in each list might be NULL and
-   * indicate no age commitment/restriction on the particular coin.
+   * cut-and-choose dimension.  NULL if age restriction is not applicable.
    */
-  struct TALER_AgeCommitmentProof *age_commitment_proof[TALER_CNC_KAPPA];
+  struct TALER_AgeCommitmentProof *age_commitment_proofs[TALER_CNC_KAPPA];
 
   /**
    * Blinding key secrets for the coins, depending on the

@@ -336,13 +336,14 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   }
   TALER_denom_pub_hash (&mh->md.melted_coin.pub_key,
                         &h_denom_pub);
-  TALER_wallet_melt_sign (&mh->md.melted_coin.melt_amount_with_fee,
-                          &mh->md.melted_coin.fee_melt,
-                          &mh->md.rc,
-                          &h_denom_pub,
-                          mh->md.melted_coin.h_age_commitment,
-                          &mh->md.melted_coin.coin_priv,
-                          &mh->coin_sig);
+  TALER_wallet_melt_sign (
+    &mh->md.melted_coin.melt_amount_with_fee,
+    &mh->md.melted_coin.fee_melt,
+    &mh->md.rc,
+    &h_denom_pub,
+    mh->md.melted_coin.h_age_commitment,
+    &mh->md.melted_coin.coin_priv,
+    &mh->coin_sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&mh->md.melted_coin.coin_priv.eddsa_priv,
                                       &mh->coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
@@ -357,7 +358,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
     GNUNET_JSON_pack_data_auto ("rc",
                                 &mh->md.rc),
     GNUNET_JSON_pack_allow_null (
-      mh->md.melted_coin.h_age_commitment
+      (NULL != mh->md.melted_coin.h_age_commitment)
       ? GNUNET_JSON_pack_data_auto ("age_commitment_hash",
                                     mh->md.melted_coin.h_age_commitment)
       : GNUNET_JSON_pack_string ("age_commitment_hash",
@@ -504,7 +505,6 @@ csr_cb (void *cls,
 }
 
 
-/* FIXME: refactor this to use struct TALER_EXCHANGE_Handle */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (
   struct GNUNET_CURL_Context *ctx,

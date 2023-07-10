@@ -184,7 +184,7 @@ configure_extension (
 {
   struct LoadConfClosure *col = cls;
   const char *name;
-  char *lib_name;
+  char lib_name[1024] = {0};
   struct TALER_Extension *extension;
 
   if (GNUNET_OK != col->error)
@@ -199,17 +199,16 @@ configure_extension (
 
 
   /* Load the extension library */
-  GNUNET_asprintf (&lib_name,
+  GNUNET_snprintf (lib_name,
+                   sizeof(lib_name),
                    "libtaler_extension_%s",
                    name);
   /* Lower-case extension name, config is case-insensitive */
   for (unsigned int i = 0; i < strlen (lib_name); i++)
-  {
     lib_name[i] = tolower (lib_name[i]);
-  }
-  extension = GNUNET_PLUGIN_load (
-    lib_name,
-    (void *) col->cfg);
+
+  extension = GNUNET_PLUGIN_load (lib_name,
+                                  (void *) col->cfg);
   if (NULL == extension)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

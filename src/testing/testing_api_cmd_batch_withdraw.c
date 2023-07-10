@@ -79,10 +79,10 @@ struct CoinState
 
   /**
    * If age > 0, put here the corresponding age commitment with its proof and
-   * its hash, respectivelly, NULL otherwise.
+   * its hash, respectivelly.
    */
-  struct TALER_AgeCommitmentProof *age_commitment_proof;
-  struct TALER_AgeCommitmentHash *h_age_commitment;
+  struct TALER_AgeCommitmentProof age_commitment_proof;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * Reserve history entry that corresponds to this coin.
@@ -316,7 +316,7 @@ batch_withdraw_run (void *cls,
 
     wci->pk = cs->pk;
     wci->ps = &cs->ps;
-    wci->ach = cs->h_age_commitment;
+    wci->ach = &cs->h_age_commitment;
   }
   ws->wsh = TALER_EXCHANGE_batch_withdraw (
     TALER_TESTING_interpreter_get_context (is),
@@ -366,13 +366,8 @@ batch_withdraw_cleanup (void *cls,
       TALER_EXCHANGE_destroy_denomination_key (cs->pk);
       cs->pk = NULL;
     }
-    if (NULL != cs->age_commitment_proof)
-    {
-      TALER_age_commitment_proof_free (cs->age_commitment_proof);
-      cs->age_commitment_proof = NULL;
-    }
-    if (NULL != cs->h_age_commitment)
-      GNUNET_free (cs->h_age_commitment);
+    if (0 < ws->age)
+      TALER_age_commitment_proof_free (&cs->age_commitment_proof);
   }
   GNUNET_free (ws->coins);
   GNUNET_free (ws->exchange_url);
@@ -424,9 +419,13 @@ batch_withdraw_traits (void *cls,
     TALER_TESTING_make_trait_payto_uri (ws->reserve_payto_uri),
     TALER_TESTING_make_trait_exchange_url (ws->exchange_url),
     TALER_TESTING_make_trait_age_commitment_proof (index,
-                                                   cs->age_commitment_proof),
+                                                   ws->age > 0 ?
+                                                   &cs->age_commitment_proof:
+                                                   NULL),
     TALER_TESTING_make_trait_h_age_commitment (index,
-                                               cs->h_age_commitment),
+                                               ws->age > 0 ?
+                                               &cs->h_age_commitment :
+                                               NULL),
     TALER_TESTING_trait_end ()
   };
 
@@ -473,13 +472,9 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
 
     if (0 < age)
     {
-      struct TALER_AgeCommitmentProof *acp;
-      struct TALER_AgeCommitmentHash *hac;
       struct GNUNET_HashCode seed;
       struct TALER_AgeMask mask;
 
-      acp = GNUNET_new (struct TALER_AgeCommitmentProof);
-      hac = GNUNET_new (struct TALER_AgeCommitmentHash);
       mask = TALER_extensions_get_age_restriction_mask ();
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   &seed,
@@ -490,7 +485,7 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
             &mask,
             age,
             &seed,
-            acp))
+            &cs->age_commitment_proof))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Failed to generate age commitment for age %d at %s\n",
@@ -499,10 +494,8 @@ TALER_TESTING_cmd_batch_withdraw (const char *label,
         GNUNET_assert (0);
       }
 
-      TALER_age_commitment_hash (&acp->commitment,
-                                 hac);
-      cs->age_commitment_proof = acp;
-      cs->h_age_commitment = hac;
+      TALER_age_commitment_hash (&cs->age_commitment_proof.commitment,
+                                 &cs->h_age_commitment);
     }
 
     if (GNUNET_OK !=

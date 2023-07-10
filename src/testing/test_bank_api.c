@@ -78,6 +78,9 @@ run (void *cls,
   case TALER_TESTING_BS_IBAN:
     ssoptions = "-ns";
     break;
+  default:
+    ssoptions = NULL;
+    break;
   }
   memset (&wtid,
           42,

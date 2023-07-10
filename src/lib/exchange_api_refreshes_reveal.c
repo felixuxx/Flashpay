@@ -125,8 +125,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
   }
   for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
   {
-    struct TALER_EXCHANGE_RevealedCoinInfo *rci =
-      &rcis[i];
+    struct TALER_EXCHANGE_RevealedCoinInfo *rci = &rcis[i];
     const struct FreshCoinData *fcd = &rrh->md.fcds[i];
     const struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
@@ -140,25 +139,25 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     };
     struct TALER_FreshCoin coin;
     union TALER_DenominationBlindingKeyP bks;
+    const struct TALER_AgeCommitmentHash *pach = NULL;
 
     rci->ps = fcd->ps[rrh->noreveal_index];
     rci->bks = fcd->bks[rrh->noreveal_index];
-    rci->age_commitment_proof = fcd->age_commitment_proof[rrh->noreveal_index];
-    rci->h_age_commitment = NULL;
+    rci->age_commitment_proof = NULL;
+
     pk = &fcd->fresh_pk;
     jsonai = json_array_get (jsona, i);
 
     GNUNET_assert (NULL != jsonai);
-    GNUNET_assert (
-      (NULL != rrh->md.melted_coin.age_commitment_proof) ==
-      (NULL != rci->age_commitment_proof));
 
-    if (NULL != rci->age_commitment_proof)
+    if (NULL != rrh->md.melted_coin.age_commitment_proof)
     {
-      rci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
-      TALER_age_commitment_hash (
-        &rci->age_commitment_proof->commitment,
-        rci->h_age_commitment);
+      rci->age_commitment_proof =
+        fcd->age_commitment_proofs[rrh->noreveal_index];
+
+      TALER_age_commitment_hash (&rci->age_commitment_proof->commitment,
+                                 &rci->h_age_commitment);
+      pach = &rci->h_age_commitment;
     }
 
     if (GNUNET_OK !=
@@ -180,18 +179,20 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
        hence recomputing it here... */
     GNUNET_CRYPTO_eddsa_key_get_public (&rci->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    TALER_coin_pub_hash (&coin_pub,
-                         rci->h_age_commitment,
-                         &coin_hash);
+    TALER_coin_pub_hash (
+      &coin_pub,
+      pach,
+      &coin_hash);
     if (GNUNET_OK !=
-        TALER_planchet_to_coin (pk,
-                                &blind_sig,
-                                &bks,
-                                &rci->coin_priv,
-                                rci->h_age_commitment,
-                                &coin_hash,
-                                &rrh->alg_values[i],
-                                &coin))
+        TALER_planchet_to_coin (
+          pk,
+          &blind_sig,
+          &bks,
+          &rci->coin_priv,
+          pach,
+          &coin_hash,
+          &rrh->alg_values[i],
+          &coin))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
@@ -257,7 +258,10 @@ handle_refresh_reveal_finished (void *cls,
         rrh->reveal_cb = NULL;
       }
       for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
+      {
         TALER_denom_sig_free (&rcis[i].sig);
+        TALER_age_commitment_proof_free (rcis[i].age_commitment_proof);
+      }
       TALER_EXCHANGE_refreshes_reveal_cancel (rrh);
       return;
     }
@@ -303,7 +307,6 @@ handle_refresh_reveal_finished (void *cls,
 }
 
 
-/* FIXME: refactor this to use struct TALER_EXCHANGE_Handle */
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct GNUNET_CURL_Context *ctx,
@@ -408,20 +411,19 @@ TALER_EXCHANGE_refreshes_reveal (
   }
 
   /* build array of old age commitment, if applicable */
-  GNUNET_assert ((NULL == rd->melt_age_commitment_proof) ==
-                 (NULL == rd->melt_h_age_commitment));
   if (NULL != rd->melt_age_commitment_proof)
   {
+    GNUNET_assert (NULL != rd->melt_h_age_commitment);
     GNUNET_assert (NULL != (old_age_commitment = json_array ()));
 
     for (size_t i = 0; i < rd->melt_age_commitment_proof->commitment.num; i++)
     {
-      GNUNET_assert (0 ==
-                     json_array_append_new (
-                       old_age_commitment,
-                       GNUNET_JSON_from_data_auto (
-                         &rd->melt_age_commitment_proof->
-                         commitment.keys[i])));
+      enum GNUNET_GenericReturnValue ret;
+      ret = json_array_append_new (
+        old_age_commitment,
+        GNUNET_JSON_from_data_auto (
+          &rd->melt_age_commitment_proof->commitment.keys[i]));
+      GNUNET_assert (0 == ret);
     }
   }
 

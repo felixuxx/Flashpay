@@ -45,6 +45,11 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
       struct FreshCoinData *fcd = &md->fcds[j];
 
       TALER_denom_pub_free (&fcd->fresh_pk);
+      for (size_t i = 0; i < TALER_CNC_KAPPA; i++)
+      {
+        TALER_age_commitment_proof_free (fcd->age_commitment_proofs[i]);
+        GNUNET_free (fcd->age_commitment_proofs[i]);
+      }
     }
     GNUNET_free (md->fcds);
   }
@@ -168,7 +173,8 @@ TALER_EXCHANGE_get_melt_data_ (
       union TALER_DenominationBlindingKeyP *bks = &fcd->bks[i];
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHashP c_hash;
-      struct TALER_AgeCommitmentHash *ach = NULL;
+      struct TALER_AgeCommitmentHash ach;
+      struct TALER_AgeCommitmentHash *pach = NULL;
 
       TALER_transfer_secret_to_planchet_secret (&trans_sec,
                                                 j,
@@ -182,22 +188,21 @@ TALER_EXCHANGE_get_melt_data_ (
                                              &alg_values[j],
                                              bks);
 
-      /* Handle age commitment, if present */
-      if (NULL != md->melted_coin.age_commitment_proof)
+      if (NULL != rd->melt_age_commitment_proof)
       {
-        fcd->age_commitment_proof[i] = GNUNET_new (struct
-                                                   TALER_AgeCommitmentProof);
-        ach = GNUNET_new (struct TALER_AgeCommitmentHash);
+        fcd->age_commitment_proofs[i] = GNUNET_new (struct
+                                                    TALER_AgeCommitmentProof);
 
         GNUNET_assert (GNUNET_OK ==
                        TALER_age_commitment_derive (
                          md->melted_coin.age_commitment_proof,
                          &trans_sec.key,
-                         fcd->age_commitment_proof[i]));
+                         fcd->age_commitment_proofs[i]));
 
         TALER_age_commitment_hash (
-          &fcd->age_commitment_proof[i]->commitment,
-          ach);
+          &fcd->age_commitment_proofs[i]->commitment,
+          &ach);
+        pach = &ach;
       }
 
       if (TALER_DENOMINATION_CS == alg_values[j].cipher)
@@ -208,7 +213,7 @@ TALER_EXCHANGE_get_melt_data_ (
                                   &alg_values[j],
                                   bks,
                                   coin_priv,
-                                  ach,
+                                  pach,
                                   &c_hash,
                                   &pd))
       {

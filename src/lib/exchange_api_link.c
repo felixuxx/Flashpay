@@ -114,6 +114,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHashP c_hash;
+  struct TALER_AgeCommitmentHash *pach = NULL;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -137,34 +138,35 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                          &alg_values,
                                          &bks);
 
-  lci->age_commitment_proof = NULL;
-  lci->h_age_commitment = NULL;
+  lci->has_age_commitment = false;
 
   /* Derive the age commitment and calculate the hash */
   if (NULL != lh->age_commitment_proof)
   {
-    lci->age_commitment_proof = GNUNET_new (struct TALER_AgeCommitmentProof);
-    lci->h_age_commitment = GNUNET_new (struct TALER_AgeCommitmentHash);
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_age_commitment_derive (
                      lh->age_commitment_proof,
                      &secret.key,
-                     lci->age_commitment_proof));
+                     &lci->age_commitment_proof));
 
     TALER_age_commitment_hash (
-      &(lci->age_commitment_proof->commitment),
-      lci->h_age_commitment);
+      &lci->age_commitment_proof.commitment,
+      &lci->h_age_commitment);
+
+    lci->has_age_commitment = true;
+    pach = &lci->h_age_commitment;
   }
 
   if (GNUNET_OK !=
-      TALER_planchet_prepare (&rpub,
-                              &alg_values,
-                              &bks,
-                              &lci->coin_priv,
-                              lci->h_age_commitment,
-                              &c_hash,
-                              &pd))
+      TALER_planchet_prepare (
+        &rpub,
+        &alg_values,
+        &bks,
+        &lci->coin_priv,
+        pach,
+        &c_hash,
+        &pd))
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
@@ -364,6 +366,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
     {
       TALER_denom_sig_free (&lcis[i].sig);
       TALER_denom_pub_free (&lcis[i].pub);
+      if (lcis[i].has_age_commitment)
+        TALER_age_commitment_proof_free (&lcis[i].age_commitment_proof);
     }
   }
   return ret;
@@ -513,6 +517,7 @@ TALER_EXCHANGE_link_cancel (struct TALER_EXCHANGE_LinkHandle *lh)
     GNUNET_CURL_job_cancel (lh->job);
     lh->job = NULL;
   }
+
   GNUNET_free (lh->url);
   GNUNET_free (lh);
 }

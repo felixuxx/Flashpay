@@ -660,7 +660,6 @@ run (void *cls,
                             "refresh-reveal-age-1",
                             MHD_HTTP_CONFLICT,
                             NULL),
-
     TALER_TESTING_cmd_end ()
   };
 

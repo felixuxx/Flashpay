@@ -464,6 +464,9 @@ void
 TALER_age_proof_free (
   struct TALER_AgeProof *proof)
 {
+  if (NULL == proof)
+    return;
+
   if (NULL != proof->keys)
   {
     GNUNET_CRYPTO_zero_keys (
@@ -479,23 +482,68 @@ TALER_age_proof_free (
 
 void
 TALER_age_commitment_proof_free (
-  struct TALER_AgeCommitmentProof *cp)
+  struct TALER_AgeCommitmentProof *acp)
 {
-  if (NULL != cp->proof.keys)
+  if (NULL == acp)
+    return;
+
+  if (NULL != acp->proof.keys)
   {
     GNUNET_CRYPTO_zero_keys (
-      cp->proof.keys,
-      sizeof(*cp->proof.keys) * cp->proof.num);
+      acp->proof.keys,
+      sizeof(*acp->proof.keys) * acp->proof.num);
 
-    GNUNET_free (cp->proof.keys);
-    cp->proof.keys = NULL;
+    GNUNET_free (acp->proof.keys);
+    acp->proof.keys = NULL;
   }
 
-  if (NULL != cp->commitment.keys)
+  if (NULL != acp->commitment.keys)
   {
-    GNUNET_free (cp->commitment.keys);
-    cp->commitment.keys = NULL;
+    GNUNET_free (acp->commitment.keys);
+    acp->commitment.keys = NULL;
   }
+}
+
+
+struct TALER_AgeCommitmentProof *
+TALER_age_commitment_proof_duplicate (
+  const struct TALER_AgeCommitmentProof *acp)
+{
+  struct TALER_AgeCommitmentProof *nacp;
+
+  GNUNET_assert (NULL != acp);
+  GNUNET_assert (__builtin_popcount (acp->commitment.mask.bits) - 1 ==
+                 (int) acp->commitment.num);
+
+  nacp = GNUNET_new (struct TALER_AgeCommitmentProof);
+
+  TALER_age_commitment_proof_deep_copy (acp,nacp);
+  return nacp;
+}
+
+
+void
+TALER_age_commitment_proof_deep_copy (
+  const struct TALER_AgeCommitmentProof *acp,
+  struct TALER_AgeCommitmentProof *nacp)
+{
+  GNUNET_assert (NULL != acp);
+  GNUNET_assert (__builtin_popcount (acp->commitment.mask.bits) - 1 ==
+                 (int) acp->commitment.num);
+
+  *nacp = *acp;
+  nacp->commitment.keys =
+    GNUNET_new_array (acp->commitment.num,
+                      struct TALER_AgeCommitmentPublicKeyP);
+  nacp->proof.keys =
+    GNUNET_new_array (acp->proof.num,
+                      struct TALER_AgeCommitmentPrivateKeyP);
+
+  for (size_t i = 0; i < acp->commitment.num; i++)
+    nacp->commitment.keys[i] = acp->commitment.keys[i];
+
+  for (size_t i = 0; i < acp->proof.num; i++)
+    nacp->proof.keys[i] = acp->proof.keys[i];
 }
 
 
@@ -571,19 +619,16 @@ TALER_parse_age_group_string (
 }
 
 
-char *
+const char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask)
 {
+  static char buf[256] = {0};
   uint32_t bits = mask->bits;
   unsigned int n = 0;
-  char *buf = GNUNET_malloc (32 * 3); // max characters possible
   char *pos = buf;
 
-  if (NULL == buf)
-  {
-    return buf;
-  }
+  memset (buf, 0, sizeof(buf));
 
   while (bits != 0)
   {

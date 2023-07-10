@@ -3043,7 +3043,7 @@ struct TALER_EXCHANGE_RevealedCoinInfo
    * Age commitment and its hash of the coin, might be NULL.
    */
   struct TALER_AgeCommitmentProof *age_commitment_proof;
-  struct TALER_AgeCommitmentHash *h_age_commitment;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * Blinding keys used to blind the fresh coin.
@@ -3187,10 +3187,11 @@ struct TALER_EXCHANGE_LinkedCoinInfo
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Age commitment and its hash, if applicable.  Might be NULL.
+   * Age commitment and its hash, if applicable.
    */
-  struct TALER_AgeCommitmentProof *age_commitment_proof;
-  struct TALER_AgeCommitmentHash *h_age_commitment;
+  bool has_age_commitment;
+  struct TALER_AgeCommitmentProof age_commitment_proof;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * Master secret of this coin.

@@ -578,11 +578,14 @@ TALER_parse_age_group_string (
 /**
  * @brief Encodes the age mask into a string, like "8:10:12:14:16:18:21"
  *
+ * NOTE: This function uses a static buffer.  It is not safe to call this
+ * function concurrently.
+ *
  * @param mask Age mask
- * @return String representation of the age mask, allocated by GNUNET_malloc.
+ * @return String representation of the age mask.
  *         Can be used as value in the TALER config.
  */
-char *
+const char *
 TALER_age_mask_to_string (
   const struct TALER_AgeMask *mask);
 

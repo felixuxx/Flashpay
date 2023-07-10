@@ -5947,32 +5947,53 @@ TALER_age_commitment_verify (
 /**
  * @brief helper function to free memory of a struct TALER_AgeCommitment
  *
- * @param p the commitment from which all memory should be freed.
+ * @param ac the commitment from which all memory should be freed.
  */
 void
 TALER_age_commitment_free (
-  struct TALER_AgeCommitment *p);
+  struct TALER_AgeCommitment *ac);
 
 
 /**
  * @brief helper function to free memory of a struct TALER_AgeProof
  *
- * @param p the proof of commitment from which all memory should be freed.
+ * @param ap the proof of commitment from which all memory should be freed.
  */
 void
 TALER_age_proof_free (
-  struct TALER_AgeProof *p);
+  struct TALER_AgeProof *ap);
 
 
 /**
  * @brief helper function to free memory of a struct TALER_AgeCommitmentProof
  *
- * @param p the commitment and its proof from which all memory should be freed.
+ * @param acp the commitment and its proof from which all memory should be freed.
  */
 void
 TALER_age_commitment_proof_free (
-  struct TALER_AgeCommitmentProof *p);
+  struct TALER_AgeCommitmentProof *acp);
 
+
+/**
+ * @brief helper function to allocate and copy a struct TALER_AgeCommitmentProof
+ *
+ * @param[in] acp The original age commitment proof
+ * @return The deep copy of @e acp, allocated
+ */
+struct TALER_AgeCommitmentProof *
+TALER_age_commitment_proof_duplicate (
+  const struct TALER_AgeCommitmentProof *acp);
+
+/**
+ * @brief helper function to copy a struct TALER_AgeCommitmentProof
+ *
+ * @param[in] acp The original age commitment proof
+ * @param[out] nacp The struct to copy the data into, with freshly allocated and copied keys.
+ */
+void
+TALER_age_commitment_proof_deep_copy (
+  const struct TALER_AgeCommitmentProof *acp,
+  struct TALER_AgeCommitmentProof *nacp);
 
 /**
  * @brief For age-withdraw, clients have to prove that the public keys for all

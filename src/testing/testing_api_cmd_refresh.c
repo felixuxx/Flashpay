@@ -75,7 +75,7 @@ struct TALER_TESTING_FreshCoinData
    * applicable.
    */
   struct TALER_AgeCommitmentProof *age_commitment_proof;
-  struct TALER_AgeCommitmentHash *h_age_commitment;
+  struct TALER_AgeCommitmentHash h_age_commitment;
 
   /**
    * The blinding key (needed for recoup operations).
@@ -440,8 +440,13 @@ reveal_cb (void *cls,
         return;
       }
       fc->coin_priv = coin->coin_priv;
-      fc->age_commitment_proof = coin->age_commitment_proof;
-      fc->h_age_commitment = coin->h_age_commitment;
+
+      if (NULL != coin->age_commitment_proof)
+      {
+        fc->age_commitment_proof =
+          TALER_age_commitment_proof_duplicate (coin->age_commitment_proof);
+        fc->h_age_commitment = coin->h_age_commitment;
+      }
 
       TALER_denom_sig_deep_copy (&fc->sig,
                                  &coin->sig);
@@ -559,7 +564,11 @@ refresh_reveal_cleanup (void *cls,
   }
 
   for (unsigned int j = 0; j < rrs->num_fresh_coins; j++)
+  {
     TALER_denom_sig_free (&rrs->fresh_coins[j].sig);
+    TALER_age_commitment_proof_free (rrs->fresh_coins[j].age_commitment_proof);
+    GNUNET_free (rrs->fresh_coins[j].age_commitment_proof);
+  }
 
   GNUNET_free (rrs->fresh_coins);
   GNUNET_free (rrs->psa);
@@ -1024,12 +1033,12 @@ melt_run (void *cls,
   {
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
-    const struct TALER_AgeCommitmentProof *age_commitment_proof;
-    const struct TALER_AgeCommitmentHash *h_age_commitment;
+    const struct TALER_AgeCommitmentProof *age_commitment_proof = NULL;
+    const struct TALER_AgeCommitmentHash *h_age_commitment = NULL;
     const struct TALER_DenominationSignature *melt_sig;
     const struct TALER_EXCHANGE_DenomPublicKey *melt_denom_pub;
     const struct TALER_TESTING_Command *coin_command;
-    bool age_restricted;
+    bool age_restricted_denom;
 
     if (NULL == (coin_command
                    = TALER_TESTING_interpreter_lookup_command (
@@ -1094,7 +1103,10 @@ melt_run (void *cls,
     /* Melt amount starts with the melt fee of the old coin; we'll add the
        values and withdraw fees of the fresh coins next */
     melt_amount = melt_denom_pub->fees.refresh;
-    age_restricted = melt_denom_pub->key.age_mask.bits != 0;
+    age_restricted_denom = melt_denom_pub->key.age_mask.bits != 0;
+    GNUNET_assert (age_restricted_denom == (NULL != age_commitment_proof));
+    GNUNET_assert ((NULL == age_commitment_proof) ||
+                   (0 < age_commitment_proof->commitment.num));
     for (unsigned int i = 0; i<num_fresh_coins; i++)
     {
       const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
@@ -1113,7 +1125,7 @@ melt_run (void *cls,
       }
       fresh_pk = TALER_TESTING_find_pk (TALER_TESTING_get_keys (rms->is),
                                         &fresh_amount,
-                                        age_restricted);
+                                        age_restricted_denom);
       if (NULL == fresh_pk)
       {
         GNUNET_break (0);
@@ -1139,13 +1151,20 @@ melt_run (void *cls,
     rms->refresh_data.melt_amount = melt_amount;
     rms->refresh_data.melt_sig = *melt_sig;
     rms->refresh_data.melt_pk = *melt_denom_pub;
-    rms->refresh_data.melt_age_commitment_proof = age_commitment_proof;
-    rms->refresh_data.melt_h_age_commitment = h_age_commitment;
+
+    if (NULL != age_commitment_proof)
+    {
+      GNUNET_assert (NULL != h_age_commitment);
+      rms->refresh_data.melt_age_commitment_proof = age_commitment_proof;
+      rms->refresh_data.melt_h_age_commitment = h_age_commitment;
+    }
     rms->refresh_data.fresh_pks = rms->fresh_pks;
     rms->refresh_data.fresh_pks_len = num_fresh_coins;
 
-    GNUNET_assert (age_restricted ==
+    GNUNET_assert (age_restricted_denom ==
                    (NULL != age_commitment_proof));
+    GNUNET_assert ((NULL == age_commitment_proof) ||
+                   (0 < age_commitment_proof->commitment.num));
 
     rms->rmh = TALER_EXCHANGE_melt (
       TALER_TESTING_interpreter_get_context (is),
@@ -1198,6 +1217,7 @@ melt_cleanup (void *cls,
       TALER_denom_pub_free (&rms->fresh_pks[i].key);
     GNUNET_free (rms->fresh_pks);
   }
+
   GNUNET_free (rms->mbds);
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
@@ -1409,7 +1429,7 @@ refresh_reveal_traits (void *cls,
         rrs->fresh_coins[index].age_commitment_proof),
       TALER_TESTING_make_trait_h_age_commitment (
         index,
-        rrs->fresh_coins[index].h_age_commitment),
+        &rrs->fresh_coins[index].h_age_commitment),
       TALER_TESTING_make_trait_denom_pub (
         index,
         rrs->fresh_coins[index].pk),
@@ -1427,6 +1447,7 @@ refresh_reveal_traits (void *cls,
                                                  &rrs->psa[index]),
       TALER_TESTING_trait_end ()
     };
+
     return TALER_TESTING_get_trait (traits,
                                     ret,
                                     trait,
