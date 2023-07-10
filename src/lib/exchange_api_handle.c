@@ -69,6 +69,13 @@
  */
 #define DEFAULT_EXPIRATION GNUNET_TIME_UNIT_HOURS
 
+/**
+ * If the "Expire" cache control header is missing, for
+ * how long do we assume the reply to be valid at least?
+ */
+#define MINIMUM_EXPIRATION GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MINUTES, 2)
+
 
 /**
  * Handle for a GET /keys request.
@@ -527,7 +534,6 @@ decode_keys_json (const json_t *resp_obj,
   const json_t *denominations_by_group;
   const json_t *auditors_array;
   const json_t *recoup_array = NULL;
-  struct TALER_MasterSignatureP extensions_sig = {0};
   const json_t *manifests = NULL;
   bool no_extensions = false;
   bool no_signature = false;
@@ -643,7 +649,7 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_fixed_auto (
           "extensions_sig",
-          &extensions_sig),
+          &key_data->extensions_sig),
         &no_signature),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_array_const (
@@ -659,6 +665,8 @@ decode_keys_json (const json_t *resp_obj,
                                NULL, NULL));
     key_data->currency = GNUNET_strdup (currency);
     key_data->asset_type = GNUNET_strdup (asset_type);
+    if (! no_extensions)
+      key_data->extensions = json_incref ((json_t *) manifests);
   }
 
   /* parse the global fees */
@@ -743,7 +751,7 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (GNUNET_OK !=
               TALER_extensions_verify_manifests_signature (
                 manifests,
-                &extensions_sig,
+                &key_data->extensions_sig,
                 &key_data->master_pub));
 
       /* Parse and set the the configuration of the extensions accordingly */
@@ -819,7 +827,7 @@ decode_keys_json (const json_t *resp_obj,
 
           /* Build the running xor of the SHA512-hash of the public keys */
           {
-            struct TALER_DenominationHashP hc = {0};
+            struct TALER_DenominationHashP hc;
 
             TALER_denom_pub_hash (&dk.key,
                                   &hc);
@@ -1109,6 +1117,20 @@ keys_completed_cb (void *cls,
       break;
     }
     kd->rc = 1;
+    kd->key_data_expiration = gkh->expire;
+    if (GNUNET_TIME_relative_cmp (
+          GNUNET_TIME_absolute_get_remaining (gkh->expire.abs_time),
+          <,
+          MINIMUM_EXPIRATION))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Exchange returned keys with expiration time below %s. Compensating.\n",
+                  GNUNET_TIME_relative2s (MINIMUM_EXPIRATION,
+                                          true));
+      kd->key_data_expiration
+        = GNUNET_TIME_relative_to_timestamp (MINIMUM_EXPIRATION);
+    }
+
     kresp.details.ok.keys = kd;
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -1529,6 +1551,7 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys)
   GNUNET_array_grow (keys->auditors,
                      keys->auditors_size,
                      0);
+  json_decref (keys->extensions);
   GNUNET_free (keys->wallet_balance_limit_without_kyc);
   GNUNET_free (keys->version);
   GNUNET_free (keys->currency);
@@ -1550,8 +1573,8 @@ TALER_EXCHANGE_keys_from_json (const json_t *j)
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("version",
                              &version),
-    GNUNET_JSON_spec_array_const ("keys",
-                                  &jkeys),
+    GNUNET_JSON_spec_object_const ("keys",
+                                   &jkeys),
     GNUNET_JSON_spec_string ("exchange_url",
                              &url),
     GNUNET_JSON_spec_mark_optional (
@@ -1594,14 +1617,98 @@ TALER_EXCHANGE_keys_from_json (const json_t *j)
 }
 
 
+/**
+ * Data we track per denomination group.
+ */
+struct GroupData
+{
+  /**
+   * The json blob with the group meta-data and list of denominations
+   */
+  json_t *json;
+
+  /**
+   * xor of all hashes of denominations in that group
+   */
+  struct GNUNET_HashCode hash_xor;
+
+  /**
+   * Meta data for this group.
+   */
+  struct TALER_DenominationGroup meta;
+};
+
+
+/**
+ * Add denomination group represented by @a value
+ * to list of denominations in @a cls. Also frees
+ * the @a value.
+ *
+ * @param[in,out] cls a `json_t *` with an array to build
+ * @param key unused
+ * @param value a `struct GroupData *`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static enum GNUNET_GenericReturnValue
+add_grp (void *cls,
+         const struct GNUNET_HashCode *key,
+         void *value)
+{
+  json_t *denominations_by_group = cls;
+  struct GroupData *gd = value;
+  const char *cipher;
+  json_t *ge;
+  bool age_restricted = gd->meta.age_mask.bits != 0;
+
+  (void) key;
+  switch (gd->meta.cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    cipher = age_restricted ? "RSA+age_restricted" : "RSA";
+    break;
+  case TALER_DENOMINATION_CS:
+    cipher = age_restricted ? "CS+age_restricted" : "CS";
+    break;
+  default:
+    GNUNET_assert (false);
+  }
+
+  ge = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("hash",
+                                &gd->hash_xor),
+    GNUNET_JSON_pack_string ("cipher",
+                             cipher),
+    GNUNET_JSON_pack_array_steal ("denoms",
+                                  gd->json),
+    TALER_JSON_PACK_DENOM_FEES ("fee",
+                                &gd->meta.fees),
+    GNUNET_JSON_pack_allow_null (
+      age_restricted
+          ? GNUNET_JSON_pack_uint64 ("age_mask",
+                                     gd->meta.age_mask.bits)
+          : GNUNET_JSON_pack_string ("dummy",
+                                     NULL)),
+    TALER_JSON_pack_amount ("value",
+                            &gd->meta.value));
+  GNUNET_assert (0 ==
+                 json_array_append_new (denominations_by_group,
+                                        ge));
+  GNUNET_free (gd);
+  return GNUNET_OK;
+}
+
+
 json_t *
 TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
 {
   struct GNUNET_TIME_Timestamp now;
   json_t *keys;
   json_t *signkeys;
-  json_t *denoms;
+  json_t *denominations_by_group;
   json_t *auditors;
+  json_t *recoup;
+  json_t *global_fees;
+  json_t *wblwk = NULL;
 
   now = GNUNET_TIME_timestamp_get ();
   signkeys = json_array ();
@@ -1644,43 +1751,113 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
       return NULL;
     }
   }
-  denoms = json_array ();
-  if (NULL == denoms)
+  denominations_by_group = json_array ();
+  if (NULL == denominations_by_group)
   {
     GNUNET_break (0);
     json_decref (signkeys);
     return NULL;
   }
-  for (unsigned int i = 0; i<kd->num_denom_keys; i++)
+  // FIXME: construct denominations_by_group analogous
+  // to taler-exchange-httpd_keys!
   {
-    const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
-    json_t *denom;
+    struct GNUNET_CONTAINER_MultiHashMap *dbg;
 
-    if (GNUNET_TIME_timestamp_cmp (now,
-                                   >,
-                                   dk->expire_deposit))
-      continue; /* skip keys that have expired */
-    denom = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
-                                  dk->expire_deposit),
-      GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
-                                  dk->withdraw_valid_until),
-      GNUNET_JSON_pack_timestamp ("stamp_start",
-                                  dk->valid_from),
-      GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
-                                  dk->expire_legal),
-      TALER_JSON_pack_amount ("value",
-                              &dk->value),
-      TALER_JSON_PACK_DENOM_FEES ("fee",
-                                  &dk->fees),
-      GNUNET_JSON_pack_data_auto ("master_sig",
-                                  &dk->master_sig),
-      TALER_JSON_pack_denom_pub ("denom_pub",
-                                 &dk->key));
-    GNUNET_assert (0 ==
-                   json_array_append_new (denoms,
-                                          denom));
+    dbg = GNUNET_CONTAINER_multihashmap_create (128,
+                                                false);
+    for (unsigned int i = 0; i<kd->num_denom_keys; i++)
+    {
+      const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
+      struct TALER_DenominationGroup meta = {
+        .cipher = dk->key.cipher,
+        .value = dk->value,
+        .fees = dk->fees,
+        .age_mask = kd->age_mask
+      };
+      struct GNUNET_HashCode key;
+      struct GroupData *gd;
+      json_t *denom;
+      struct GNUNET_JSON_PackSpec key_spec;
+
+      if (GNUNET_TIME_timestamp_cmp (now,
+                                     >,
+                                     dk->expire_deposit))
+        continue; /* skip keys that have expired */
+      GNUNET_CRYPTO_hash (&meta,
+                          sizeof(meta),
+                          &key);
+      gd = GNUNET_CONTAINER_multihashmap_get (dbg,
+                                              &key);
+      if (NULL == gd)
+      {
+        gd = GNUNET_new (struct GroupData);
+        gd->meta = meta;
+        gd->json = json_array ();
+        GNUNET_assert (NULL != gd->json);
+        GNUNET_assert (
+          GNUNET_OK ==
+          GNUNET_CONTAINER_multihashmap_put (dbg,
+                                             &key,
+                                             gd,
+                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+
+        /* Build the running xor of the SHA512-hash of the public keys */
+      }
+      {
+        struct TALER_DenominationHashP hc;
+
+        TALER_denom_pub_hash (&dk->key,
+                              &hc);
+        GNUNET_CRYPTO_hash_xor (&hc.hash,
+                                &gd->hash_xor,
+                                &gd->hash_xor);
+      }
+
+      switch (meta.cipher)
+      {
+      case TALER_DENOMINATION_RSA:
+        key_spec =
+          GNUNET_JSON_pack_rsa_public_key (
+            "rsa_pub",
+            dk->key.details.rsa_public_key);
+        break;
+      case TALER_DENOMINATION_CS:
+        key_spec =
+          GNUNET_JSON_pack_data_varsize (
+            "cs_pub",
+            &dk->key.details.cs_public_key,
+            sizeof (dk->key.details.cs_public_key));
+        break;
+      default:
+        GNUNET_assert (false);
+      }
+      denom = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
+                                    dk->expire_deposit),
+        GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
+                                    dk->withdraw_valid_until),
+        GNUNET_JSON_pack_timestamp ("stamp_start",
+                                    dk->valid_from),
+        GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
+                                    dk->expire_legal),
+        TALER_JSON_pack_amount ("value",
+                                &dk->value),
+        TALER_JSON_PACK_DENOM_FEES ("fee",
+                                    &dk->fees),
+        GNUNET_JSON_pack_data_auto ("master_sig",
+                                    &dk->master_sig),
+        key_spec
+        );
+      GNUNET_assert (0 ==
+                     json_array_append_new (gd->json,
+                                            denom));
+    }
+    GNUNET_CONTAINER_multihashmap_iterate (dbg,
+                                           &add_grp,
+                                           denominations_by_group);
+    GNUNET_CONTAINER_multihashmap_destroy (dbg);
   }
+
   auditors = json_array ();
   GNUNET_assert (NULL != auditors);
   for (unsigned int i = 0; i<kd->num_auditors; i++)
@@ -1690,14 +1867,7 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
     json_t *adenoms;
 
     adenoms = json_array ();
-    if (NULL == adenoms)
-    {
-      GNUNET_break (0);
-      json_decref (denoms);
-      json_decref (signkeys);
-      json_decref (auditors);
-      return NULL;
-    }
+    GNUNET_assert (NULL != adenoms);
     for (unsigned int j = 0; j<ai->num_denom_keys; j++)
     {
       const struct TALER_EXCHANGE_AuditorDenominationInfo *adi =
@@ -1732,6 +1902,63 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                    json_array_append_new (auditors,
                                           a));
   }
+
+  global_fees = json_array ();
+  GNUNET_assert (NULL != global_fees);
+  for (unsigned int i = 0; i<kd->num_global_fees; i++)
+  {
+    const struct TALER_EXCHANGE_GlobalFee *gf
+      = &kd->global_fees[i];
+
+    if (GNUNET_TIME_absolute_is_past (gf->end_date.abs_time))
+      continue;
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        global_fees,
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_timestamp ("start_date",
+                                      gf->start_date),
+          GNUNET_JSON_pack_timestamp ("end_date",
+                                      gf->end_date),
+          TALER_JSON_PACK_GLOBAL_FEES (&gf->fees),
+          GNUNET_JSON_pack_time_rel ("history_expiration",
+                                     gf->history_expiration),
+          GNUNET_JSON_pack_time_rel ("purse_timeout",
+                                     gf->purse_timeout),
+          GNUNET_JSON_pack_uint64 ("purse_account_limit",
+                                   gf->purse_account_limit),
+          GNUNET_JSON_pack_data_auto ("master_sig",
+                                      &gf->master_sig))));
+  }
+  recoup = json_array ();
+  GNUNET_assert (NULL != recoup);
+  for (unsigned int i = 0; i<kd->num_denom_keys; i++)
+  {
+    const struct TALER_EXCHANGE_DenomPublicKey *dk
+      = &kd->denom_keys[i];
+    if (! dk->revoked)
+      continue;
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     recoup,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                   &dk->h_key))));
+  }
+
+  wblwk = json_array ();
+  GNUNET_assert (NULL != wblwk);
+  for (unsigned int i = 0; i<kd->wblwk_length; i++)
+  {
+    const struct TALER_Amount *a = &kd->wallet_balance_limit_without_kyc[i];
+
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     wblwk,
+                     TALER_JSON_from_amount (a)));
+  }
+
   keys = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("version",
                              kd->version),
@@ -1745,12 +1972,33 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                kd->reserve_closing_delay),
     GNUNET_JSON_pack_timestamp ("list_issue_date",
                                 kd->list_issue_date),
+    GNUNET_JSON_pack_array_steal ("global_fees",
+                                  global_fees),
     GNUNET_JSON_pack_array_steal ("signkeys",
                                   signkeys),
-    GNUNET_JSON_pack_array_steal ("denoms",
-                                  denoms),
+    GNUNET_JSON_pack_array_steal ("denominations",
+                                  denominations_by_group),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_array_steal ("recoup",
+                                    recoup)),
     GNUNET_JSON_pack_array_steal ("auditors",
-                                  auditors));
+                                  auditors),
+    GNUNET_JSON_pack_bool ("tipping_allowed",
+                           kd->tipping_allowed),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_object_incref ("extensions",
+                                      kd->extensions)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_is_zero (&kd->extensions_sig)
+      ? GNUNET_JSON_pack_string ("dummy",
+                                 NULL)
+      : GNUNET_JSON_pack_data_auto ("extensions_sig",
+                                    &kd->extensions_sig)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_array_steal ("wallet_balance_limit_without_kyc",
+                                    wblwk))
+
+    );
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("version",
                              EXCHANGE_SERIALIZATION_FORMAT_VERSION),

@@ -197,6 +197,7 @@ TALER_TESTING_cmd_run_fakebank (
     GNUNET_free (exchange_xtalerbank_account);
     GNUNET_free (exchange_payto_uri);
   }
+  GNUNET_free (exchange_payto_uri);
   rfs->ba.method = TALER_BANK_AUTH_NONE;
   {
     struct TALER_TESTING_Command cmd = {

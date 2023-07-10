@@ -64,12 +64,31 @@ struct GetExchangeState
   char *master_priv_file;
 
   /**
+   * Label of a command to use to obtain existing
+   * keys.
+   */
+  const char *last_keys_ref;
+
+  /**
+   * Last denomination date we received when doing this request.
+   */
+  struct GNUNET_TIME_Timestamp my_denom_date;
+
+  /**
    * Are we waiting for /keys before continuing?
    */
   bool wait_for_keys;
 };
 
 
+/**
+ * Function called with information about who is auditing
+ * a particular exchange and what keys the exchange is using.
+ *
+ * @param cls closure
+ * @param kr response from /keys
+ * @param[in] keys the keys of the exchange
+ */
 static void
 cert_cb (void *cls,
          const struct TALER_EXCHANGE_KeysResponse *kr,
@@ -90,6 +109,7 @@ cert_cb (void *cls,
       TALER_TESTING_interpreter_next (is);
       return;
     }
+    ges->my_denom_date = kr->details.ok.keys->last_denom_issue_date;
     return;
   default:
     GNUNET_break (0);
@@ -120,6 +140,7 @@ get_exchange_run (void *cls,
                   struct TALER_TESTING_Interpreter *is)
 {
   struct GetExchangeState *ges = cls;
+  struct TALER_EXCHANGE_Keys *xkeys = NULL;
 
   (void) cmd;
   if (NULL == ges->exchange_url)
@@ -127,6 +148,72 @@ get_exchange_run (void *cls,
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
+  }
+  if (NULL != ges->last_keys_ref)
+  {
+    const struct TALER_TESTING_Command *state_cmd;
+    struct TALER_EXCHANGE_Keys *old_keys;
+    const char *exchange_url;
+    json_t *s_keys;
+
+    state_cmd
+      = TALER_TESTING_interpreter_lookup_command (is,
+                                                  ges->last_keys_ref);
+    if (NULL == state_cmd)
+    {
+      /* Command providing serialized keys not found.  */
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_keys (state_cmd,
+                                      &old_keys))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (NULL == old_keys)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_exchange_url (state_cmd,
+                                              &exchange_url))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if (0 != strcmp (exchange_url,
+                     ges->exchange_url))
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    s_keys = TALER_EXCHANGE_keys_to_json (old_keys);
+    if (NULL == s_keys)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    xkeys = TALER_EXCHANGE_keys_from_json (s_keys);
+    if (NULL == xkeys)
+    {
+      GNUNET_break (0);
+      json_dumpf (s_keys,
+                  stderr,
+                  JSON_INDENT (2));
+      json_decref (s_keys);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    json_decref (s_keys);
   }
   if (NULL != ges->master_priv_file)
   {
@@ -136,6 +223,7 @@ get_exchange_run (void *cls,
                                            &ges->master_priv.eddsa_priv))
     {
       GNUNET_break (0);
+      TALER_EXCHANGE_keys_decref (xkeys);
       TALER_TESTING_interpreter_fail (is);
       return;
     }
@@ -144,9 +232,10 @@ get_exchange_run (void *cls,
   ges->exchange
     = TALER_EXCHANGE_get_keys (TALER_TESTING_interpreter_get_context (is),
                                ges->exchange_url,
-                               NULL,
+                               xkeys,
                                &cert_cb,
                                ges);
+  TALER_EXCHANGE_keys_decref (xkeys);
   if (NULL == ges->exchange)
   {
     GNUNET_break (0);
@@ -208,6 +297,8 @@ get_exchange_traits (void *cls,
       TALER_TESTING_make_trait_master_pub (&ges->keys->master_pub),
       TALER_TESTING_make_trait_keys (ges->keys),
       TALER_TESTING_make_trait_exchange_url (ges->exchange_url),
+      TALER_TESTING_make_trait_timestamp (0,
+                                          &ges->my_denom_date),
       TALER_TESTING_trait_end ()
     };
 
@@ -221,6 +312,8 @@ get_exchange_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_master_priv (&ges->master_priv),
       TALER_TESTING_make_trait_exchange_url (ges->exchange_url),
+      TALER_TESTING_make_trait_timestamp (0,
+                                          &ges->my_denom_date),
       TALER_TESTING_trait_end ()
     };
 
@@ -291,6 +384,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_get_exchange (
   const char *label,
   const struct GNUNET_CONFIGURATION_Handle *cfg,
+  const char *last_keys_ref,
   bool wait_for_keys,
   bool load_private_key)
 {
@@ -298,6 +392,7 @@ TALER_TESTING_cmd_get_exchange (
 
   ges = GNUNET_new (struct GetExchangeState);
   ges->exchange_url = get_exchange_base_url (cfg);
+  ges->last_keys_ref = last_keys_ref;
   if (load_private_key)
     ges->master_priv_file = get_exchange_master_priv_file (cfg);
   ges->wait_for_keys = wait_for_keys;

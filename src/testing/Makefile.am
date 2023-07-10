@@ -59,9 +59,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_batch_withdraw.c \
   testing_api_cmd_check_aml_decision.c \
   testing_api_cmd_check_aml_decisions.c \
-  testing_api_cmd_check_keys.c \
   testing_api_cmd_common.c \
-  testing_api_cmd_connect_with_state.c \
   testing_api_cmd_contract_get.c \
   testing_api_cmd_deposit.c \
   testing_api_cmd_deposits_get.c \
@@ -106,7 +104,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_revoke_denom_key.c \
   testing_api_cmd_revoke_sign_key.c \
   testing_api_cmd_run_fakebank.c \
-  testing_api_cmd_serialize_keys.c \
   testing_api_cmd_set_officer.c \
   testing_api_cmd_set_wire_fee.c \
   testing_api_cmd_signal.c \

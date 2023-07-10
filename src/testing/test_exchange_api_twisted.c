@@ -255,6 +255,7 @@ run (void *cls,
                                     NULL),
     TALER_TESTING_cmd_get_exchange ("get-exchange",
                                     cred.cfg,
+                                    NULL,
                                     true,
                                     true),
     TALER_TESTING_cmd_batch (

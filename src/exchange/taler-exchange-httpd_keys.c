@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020-2022 Taler Systems SA
+   Copyright (C) 2020-2023 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -1701,8 +1701,10 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
     TALER_MHD_get_date_string (m.abs_time,
                                dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Setting /keys 'Expires' header to '%s'\n",
-                dat);
+                "Setting /keys 'Expires' header to '%s' (rekey frequency is %s)\n",
+                dat,
+                GNUNET_TIME_relative2s (ksh->rekey_frequency,
+                                        false));
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_EXPIRES,
@@ -2221,10 +2223,13 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           .age_mask = dk->meta.age_mask,
         };
 
-        memset (&meta.hash, 0, sizeof(meta.hash));
-
+        memset (&meta.hash,
+                0,
+                sizeof(meta.hash));
         /* Search the group/JSON-blob for the key */
-        GNUNET_CRYPTO_hash (&meta, sizeof(meta), &key);
+        GNUNET_CRYPTO_hash (&meta,
+                            sizeof(meta),
+                            &key);
 
         group =
           (struct groupData *) GNUNET_CONTAINER_multihashmap_get (
@@ -2235,7 +2240,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         {
           /* There is no group for this meta-data yet, so we create a new group */
           bool age_restricted = meta.age_mask.bits != 0;
-          char *cipher;
+          const char *cipher;
 
           group = GNUNET_new (struct groupData);
           memset (group, 0, sizeof(*group));
@@ -2294,17 +2299,16 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           {
           case TALER_DENOMINATION_RSA:
             key_spec =
-              GNUNET_JSON_pack_rsa_public_key ("rsa_pub",
-                                               dk->denom_pub.details.
-                                               rsa_public_key);
+              GNUNET_JSON_pack_rsa_public_key (
+                "rsa_pub",
+                dk->denom_pub.details.rsa_public_key);
             break;
           case TALER_DENOMINATION_CS:
             key_spec =
-              GNUNET_JSON_pack_data_varsize ("cs_pub",
-                                             &dk->denom_pub.details.
-                                             cs_public_key,
-                                             sizeof (dk->denom_pub.details.
-                                                     cs_public_key));
+              GNUNET_JSON_pack_data_varsize (
+                "cs_pub",
+                &dk->denom_pub.details.cs_public_key,
+                sizeof (dk->denom_pub.details.cs_public_key));
             break;
           default:
             GNUNET_assert (false);
@@ -2544,9 +2548,9 @@ build_key_state (struct HelperState *hs,
     ksh->helpers = hs;
   }
   ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                            GNUNET_YES);
+                                                            true);
   ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
-                                                           GNUNET_NO /* MUST be NO! */);
+                                                           false /* MUST be false! */);
   ksh->auditors = json_array ();
   GNUNET_assert (NULL != ksh->auditors);
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */

@@ -240,6 +240,11 @@ struct TALER_EXCHANGE_Keys
   struct TALER_MasterPublicKeyP master_pub;
 
   /**
+   * Signature over extension configuration data, if any.
+   */
+  struct TALER_MasterSignatureP extensions_sig;
+
+  /**
    * Array of the exchange's online signing keys.
    */
   struct TALER_EXCHANGE_SigningPublicKey *sign_keys;
@@ -258,6 +263,11 @@ struct TALER_EXCHANGE_Keys
    * Array with the global fees of the exchange.
    */
   struct TALER_EXCHANGE_GlobalFee *global_fees;
+
+  /**
+   * Configuration data for extensions.
+   */
+  json_t *extensions;
 
   /**
    * Supported Taler protocol version by the exchange.
