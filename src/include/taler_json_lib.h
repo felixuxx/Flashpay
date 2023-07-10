@@ -380,26 +380,6 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
   TALER_JSON_pack_amount ("account_fee", &(gfs)->account),     \
   TALER_JSON_pack_amount ("purse_fee", &(gfs)->purse)
 
-/**
- * Group of Denominations.  These are the common fields of an array of
- * denominations.
- *
- * The corresponding JSON-blob will also contain an array of particular
- * denominations with only the timestamps, cipher-specific public key and the
- * master signature.
- *
- **/
-struct TALER_DenominationGroup
-{
-  enum TALER_DenominationCipher cipher;
-  struct TALER_Amount value;
-  struct TALER_DenomFeeSet fees;
-  struct TALER_AgeMask age_mask;
-
-  // hash is/should be the XOR of all SHA-512 hashes of the public keys in this
-  // group
-  struct GNUNET_HashCode hash;
-};
 
 /**
  * Generate a parser for a group of denominations.

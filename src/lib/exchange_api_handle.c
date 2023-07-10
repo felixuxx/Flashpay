@@ -763,7 +763,7 @@ decode_keys_json (const json_t *resp_obj,
     key_data->age_mask = TALER_extensions_get_age_restriction_mask ();
   }
 
-  /**
+  /*
    * Parse the denomination keys, merging with the
    * possibly EXISTING array as required (/keys cherry picking).
    *
@@ -793,6 +793,9 @@ decode_keys_json (const json_t *resp_obj,
                                       &denom_keys_array),
         GNUNET_JSON_spec_end ()
       };
+      json_t *denom_key_obj;
+      unsigned int index;
+
       EXITIF (GNUNET_SYSERR ==
               GNUNET_JSON_parse (group_obj,
                                  group_spec,
@@ -800,78 +803,73 @@ decode_keys_json (const json_t *resp_obj,
                                  NULL));
 
       /* Now, parse the individual denominations */
+      json_array_foreach (denom_keys_array, index, denom_key_obj)
       {
-        json_t *denom_key_obj;
-        unsigned int index;
+        /* Set the common fields from the group for this particular
+           denomination.  Required to make the validity check inside
+           parse_json_denomkey_partially pass */
+        struct TALER_EXCHANGE_DenomPublicKey dk = {
+          .key.cipher = group.cipher,
+          .value = group.value,
+          .fees = group.fees,
+          .key.age_mask = group.age_mask
+        };
+        bool found = false;
 
-        json_array_foreach (denom_keys_array, index, denom_key_obj)
+        EXITIF (GNUNET_SYSERR ==
+                parse_json_denomkey_partially (&dk,
+                                               group.cipher,
+                                               check_sig,
+                                               denom_key_obj,
+                                               &key_data->master_pub,
+                                               check_sig ? &hash_xor : NULL));
+
+        /* Build the running xor of the SHA512-hash of the public keys for the group */
+        GNUNET_CRYPTO_hash_xor (&dk.h_key.hash,
+                                &group_hash_xor,
+                                &group_hash_xor);
+        for (unsigned int j = 0;
+             j<key_data->num_denom_keys;
+             j++)
         {
-          /* Set the common fields from the group for this particular
-             denomination.  Required to make the validity check inside
-             parse_json_denomkey_partially pass */
-          struct TALER_EXCHANGE_DenomPublicKey dk = {
-            .key.cipher = group.cipher,
-            .value = group.value,
-            .fees = group.fees,
-            .key.age_mask = group.age_mask
-          };
-          bool found = false;
-
-          EXITIF (GNUNET_SYSERR ==
-                  parse_json_denomkey_partially (&dk,
-                                                 group.cipher,
-                                                 check_sig,
-                                                 denom_key_obj,
-                                                 &key_data->master_pub,
-                                                 check_sig ? &hash_xor : NULL));
-
-          /* Build the running xor of the SHA512-hash of the public keys for the group */
-          GNUNET_CRYPTO_hash_xor (&dk.h_key.hash,
-                                  &group_hash_xor,
-                                  &group_hash_xor);
-          for (unsigned int j = 0;
-               j<key_data->num_denom_keys;
-               j++)
+          if (0 == denoms_cmp (&dk,
+                               &key_data->denom_keys[j]))
           {
-            if (0 == denoms_cmp (&dk,
-                                 &key_data->denom_keys[j]))
-            {
-              found = true;
-              break;
-            }
+            found = true;
+            break;
           }
+        }
 
-          if (found)
-          {
-            /* 0:0:0 did not support /keys cherry picking */
-            TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
-            TALER_denom_pub_free (&dk.key);
-            continue;
-          }
+        if (found)
+        {
+          /* 0:0:0 did not support /keys cherry picking */
+          TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
+          TALER_denom_pub_free (&dk.key);
+          continue;
+        }
 
-          if (key_data->denom_keys_size == key_data->num_denom_keys)
-            GNUNET_array_grow (key_data->denom_keys,
-                               key_data->denom_keys_size,
-                               key_data->denom_keys_size * 2 + 2);
-          key_data->denom_keys[key_data->num_denom_keys++] = dk;
+        if (key_data->denom_keys_size == key_data->num_denom_keys)
+          GNUNET_array_grow (key_data->denom_keys,
+                             key_data->denom_keys_size,
+                             key_data->denom_keys_size * 2 + 2);
+        key_data->denom_keys[key_data->num_denom_keys++] = dk;
 
-          /* Update "last_denom_issue_date" */
-          TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
-                           GNUNET_TIME_timestamp2s (dk.valid_from));
-          key_data->last_denom_issue_date
-            = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
-                                         dk.valid_from);
-        }; /* end of json_array_foreach over denominations */
+        /* Update "last_denom_issue_date" */
+        TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
+                         GNUNET_TIME_timestamp2s (dk.valid_from));
+        key_data->last_denom_issue_date
+          = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
+                                       dk.valid_from);
+      };   /* end of json_array_foreach over denominations */
 
-        /* The calculated group_hash_xor must be the same as group.hash from
-           the JSON. */
-        EXITIF (0 !=
-                GNUNET_CRYPTO_hash_cmp (&group_hash_xor,
-                                        &group.hash));
+      /* The calculated group_hash_xor must be the same as group.hash from
+         the JSON. */
+      EXITIF (0 !=
+              GNUNET_CRYPTO_hash_cmp (&group_hash_xor,
+                                      &group.hash));
 
-      } /* end of block for parsing individual denominations */
     } /* end of json_array_foreach over groups of denominations */
-  }
+  } /* end of scope for group_ojb/group_idx */
 
   /* parse the auditor information */
   {
@@ -1621,11 +1619,6 @@ struct GroupData
   json_t *json;
 
   /**
-   * xor of all hashes of denominations in that group
-   */
-  struct GNUNET_HashCode hash_xor;
-
-  /**
    * Meta data for this group.
    */
   struct TALER_DenominationGroup meta;
@@ -1668,7 +1661,7 @@ add_grp (void *cls,
 
   ge = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("hash",
-                                &gd->hash_xor),
+                                &gd->meta.hash),
     GNUNET_JSON_pack_string ("cipher",
                              cipher),
     GNUNET_JSON_pack_array_steal ("denoms",
@@ -1751,8 +1744,7 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
     json_decref (signkeys);
     return NULL;
   }
-  // FIXME: construct denominations_by_group analogous
-  // to taler-exchange-httpd_keys!
+
   {
     struct GNUNET_CONTAINER_MultiHashMap *dbg;
 
@@ -1776,9 +1768,8 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                      >,
                                      dk->expire_deposit))
         continue; /* skip keys that have expired */
-      GNUNET_CRYPTO_hash (&meta,
-                          sizeof(meta),
-                          &key);
+      TALER_denomination_group_get_key (&meta,
+                                        &key);
       gd = GNUNET_CONTAINER_multihashmap_get (dbg,
                                               &key);
       if (NULL == gd)
@@ -1794,18 +1785,11 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                              gd,
                                              GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 
-        /* Build the running xor of the SHA512-hash of the public keys */
       }
-      {
-        struct TALER_DenominationHashP hc;
-
-        TALER_denom_pub_hash (&dk->key,
-                              &hc);
-        GNUNET_CRYPTO_hash_xor (&hc.hash,
-                                &gd->hash_xor,
-                                &gd->hash_xor);
-      }
-
+      /* Build the running xor of the SHA512-hash of the public keys */
+      GNUNET_CRYPTO_hash_xor (&dk->h_key.hash,
+                              &gd->meta.hash,
+                              &gd->meta.hash);
       switch (meta.cipher)
       {
       case TALER_DENOMINATION_RSA:
@@ -1833,10 +1817,6 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                     dk->valid_from),
         GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
                                     dk->expire_legal),
-        TALER_JSON_pack_amount ("value",
-                                &dk->value),
-        TALER_JSON_PACK_DENOM_FEES ("fee",
-                                    &dk->fees),
         GNUNET_JSON_pack_data_auto ("master_sig",
                                     &dk->master_sig),
         key_spec

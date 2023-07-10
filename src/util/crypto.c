@@ -461,4 +461,54 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
 }
 
 
+GNUNET_NETWORK_STRUCT_BEGIN
+/**
+ * Structure we hash to compute the group key for
+ * a denomination group.
+ */
+struct DenominationGroupP
+{
+  /**
+   * Value of coins in this denomination group.
+   */
+  struct TALER_AmountNBO value;
+
+  /**
+   * Fee structure for all coins in the group.
+   */
+  struct TALER_DenomFeeSetNBOP fees;
+
+  /**
+   * Age mask for the denomiation, in NBO.
+   */
+  uint32_t age_mask GNUNET_PACKED;
+
+  /**
+   * Cipher used for the denomination, in NBO.
+   */
+  uint32_t cipher GNUNET_PACKED;
+};
+GNUNET_NETWORK_STRUCT_END
+
+
+void
+TALER_denomination_group_get_key (
+  const struct TALER_DenominationGroup *dg,
+  struct GNUNET_HashCode *key)
+{
+  struct DenominationGroupP dgp = {
+    .age_mask = htonl (dg->age_mask.bits),
+    .cipher = htonl (dg->cipher)
+  };
+
+  TALER_amount_hton (&dgp.value,
+                     &dg->value);
+  TALER_denom_fee_set_hton (&dgp.fees,
+                            &dg->fees);
+  GNUNET_CRYPTO_hash (&dgp,
+                      sizeof (dgp),
+                      key);
+}
+
+
 /* end of crypto.c */

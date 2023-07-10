@@ -2110,8 +2110,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   {
     struct TEH_DenominationKey *dk;
     struct GNUNET_CONTAINER_MultiHashMap *denominations_by_group;
-    /* groupData is the value we store for each group meta-data */
-    struct groupData
+    /* GroupData is the value we store for each group meta-data */
+    struct GroupData
     {
       /**
        * The json blob with the group meta-data and list of denominations
@@ -2215,7 +2215,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
        */
       {
         static const char *denoms_key = "denoms";
-        struct groupData *group;
+        struct GroupData *group;
         json_t *list;
         json_t *entry;
         struct GNUNET_HashCode key;
@@ -2226,28 +2226,19 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           .age_mask = dk->meta.age_mask,
         };
 
-        memset (&meta.hash,
-                0,
-                sizeof(meta.hash));
         /* Search the group/JSON-blob for the key */
-        GNUNET_CRYPTO_hash (&meta,
-                            sizeof(meta),
-                            &key);
-
-        group =
-          (struct groupData *) GNUNET_CONTAINER_multihashmap_get (
-            denominations_by_group,
-            &key);
-
+        TALER_denomination_group_get_key (&meta,
+                                          &key);
+        group = GNUNET_CONTAINER_multihashmap_get (
+          denominations_by_group,
+          &key);
         if (NULL == group)
         {
           /* There is no group for this meta-data yet, so we create a new group */
           bool age_restricted = meta.age_mask.bits != 0;
           const char *cipher;
 
-          group = GNUNET_new (struct groupData);
-          memset (group, 0, sizeof(*group));
-
+          group = GNUNET_new (struct GroupData);
           switch (meta.cipher)
           {
           case TALER_DENOMINATION_RSA:
@@ -2261,9 +2252,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           }
 
           group->json = GNUNET_JSON_PACK (
-            GNUNET_JSON_pack_string ("cipher", cipher),
-            TALER_JSON_PACK_DENOM_FEES ("fee", &meta.fees),
-            TALER_JSON_pack_amount ("value", &meta.value));
+            GNUNET_JSON_pack_string ("cipher",
+                                     cipher),
+            TALER_JSON_PACK_DENOM_FEES ("fee",
+                                        &meta.fees),
+            TALER_JSON_pack_amount ("value",
+                                    &meta.value));
           GNUNET_assert (NULL != group->json);
 
           if (age_restricted)
@@ -2354,7 +2348,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         GNUNET_CONTAINER_multihashmap_size (denominations_by_group))
     {
       struct GNUNET_CONTAINER_MultiHashMapIterator *iter;
-      struct groupData *group = NULL;
+      struct GroupData *group = NULL;
 
       iter =
         GNUNET_CONTAINER_multihashmap_iterator_create (denominations_by_group);

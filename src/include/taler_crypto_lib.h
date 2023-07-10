@@ -6032,4 +6032,56 @@ TALER_age_restriction_from_secret (
   struct TALER_AgeCommitmentProof *comm_proof);
 
 
+/**
+ * Group of Denominations.  These are the common fields of an array of
+ * denominations.
+ *
+ * The corresponding JSON-blob will also contain an array of particular
+ * denominations with only the timestamps, cipher-specific public key and the
+ * master signature.
+ */
+struct TALER_DenominationGroup
+{
+
+  /**
+   * XOR of all SHA-512 hashes of the public keys in this
+   * group.
+   */
+  struct GNUNET_HashCode hash;
+
+  /**
+   * Value of coins in this denomination group.
+   */
+  struct TALER_Amount value;
+
+  /**
+   * Fee structure for all coins in the group.
+   */
+  struct TALER_DenomFeeSet fees;
+
+  /**
+   * Cipher used for the denomination.
+   */
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Age mask for the denomiation.
+   */
+  struct TALER_AgeMask age_mask;
+
+};
+
+
+/**
+ * Compute a unique key for the meta data of a denomination group.
+ *
+ * @param dg denomination group to evaluate
+ * @param[out] key key to set
+ */
+void
+TALER_denomination_group_get_key (
+  const struct TALER_DenominationGroup *dg,
+  struct GNUNET_HashCode *key);
+
+
 #endif
