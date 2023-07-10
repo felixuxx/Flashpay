@@ -770,7 +770,7 @@ csr_withdraw_done (
  *
  * @param awh The handler to the age-withdraw
  * @param num_coins The number of coins in @e coin_inputs
- * @param coin_inputs The input for the individial coin(-candidates)
+ * @param coin_inputs The input for the individual coin(-candidates)
  * @return GNUNET_OK on success, GNUNET_SYSERR on failure
  */
 static
