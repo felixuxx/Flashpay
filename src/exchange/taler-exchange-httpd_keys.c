@@ -2379,15 +2379,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                        json_array_append_new (
                          grouped_denominations,
                          group->json));
-
         /* Build the running XOR over all hash(_xor) */
         GNUNET_CRYPTO_hash_xor (&group->hash_xor,
                                 &grouped_hash_xor,
                                 &grouped_hash_xor);
-
         GNUNET_free (group);
       }
-
       GNUNET_CONTAINER_multihashmap_iterator_destroy (iter);
 
     }

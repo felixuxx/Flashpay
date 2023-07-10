@@ -825,17 +825,10 @@ decode_keys_json (const json_t *resp_obj,
                                                  &key_data->master_pub,
                                                  check_sig ? &hash_xor : NULL));
 
-          /* Build the running xor of the SHA512-hash of the public keys */
-          {
-            struct TALER_DenominationHashP hc;
-
-            TALER_denom_pub_hash (&dk.key,
-                                  &hc);
-            GNUNET_CRYPTO_hash_xor (&hc.hash,
-                                    &group_hash_xor,
-                                    &group_hash_xor);
-          }
-
+          /* Build the running xor of the SHA512-hash of the public keys for the group */
+          GNUNET_CRYPTO_hash_xor (&dk.h_key.hash,
+                                  &group_hash_xor,
+                                  &group_hash_xor);
           for (unsigned int j = 0;
                j<key_data->num_denom_keys;
                j++)
