@@ -125,6 +125,7 @@ struct TALER_EXCHANGE_DenomPublicKey
    * revoked by the exchange.
    */
   bool revoked;
+
 };
 
 
@@ -2748,13 +2749,16 @@ TALER_EXCHANGE_batch_withdraw2_cancel (
  */
 struct TALER_EXCHANGE_AgeWithdrawCoinInput
 {
-  /* The master secret from which we derive all other relevant values for
+  /**
+   * The master secret from which we derive all other relevant values for
    * the coin: private key, nonces (if applicable) and age restriction
    */
   const struct TALER_PlanchetMasterSecretP secret[TALER_CNC_KAPPA];
 
-  /* The denomination of the coin.  Must support age restriction, i.e
-   * its .keys.age_mask MUST not be 0 */
+  /**
+   * The denomination of the coin.  Must support age restriction, i.e
+   * its .keys.age_mask MUST not be 0
+   */
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
 };
 

@@ -1757,7 +1757,7 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
         .cipher = dk->key.cipher,
         .value = dk->value,
         .fees = dk->fees,
-        .age_mask = kd->age_mask
+        .age_mask = dk->key.age_mask
       };
       struct GNUNET_HashCode key;
       struct GroupData *gd;
