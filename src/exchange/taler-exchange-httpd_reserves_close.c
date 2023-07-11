@@ -27,7 +27,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
-#include "taler-exchange-httpd_wire.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_close.h"
 #include "taler-exchange-httpd_responses.h"
 

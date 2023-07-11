@@ -34,7 +34,6 @@
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
-#include "taler-exchange-httpd_wire.h"
 
 
 /**

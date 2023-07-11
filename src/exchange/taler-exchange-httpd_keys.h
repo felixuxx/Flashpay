@@ -154,6 +154,60 @@ struct TEH_KeyStateHandle;
 void
 TEH_check_invariants (void);
 
+/**
+ * Clean up wire subsystem.
+ */
+void
+TEH_wire_done (void);
+
+
+/**
+ * Look up wire fee structure by @a ts.
+ *
+ * @param ts timestamp to lookup wire fees at
+ * @param method wire method to lookup fees for
+ * @return the wire fee details, or
+ *         NULL if none are configured for @a ts and @a method
+ */
+const struct TALER_WireFeeSet *
+TEH_wire_fees_by_time (
+  struct GNUNET_TIME_Timestamp ts,
+  const char *method);
+
+
+/**
+ * Initialize wire subsystem.
+ *
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TEH_wire_init (void);
+
+
+/**
+ * Something changed in the database. Rebuild the wire replies.  This function
+ * should be called if the exchange learns about a new signature from our
+ * master key.
+ *
+ * (We do not do so immediately, but merely signal to all threads that they
+ * need to rebuild their wire state upon the next call to
+ * #TEH_handler_wire()).
+ */
+void
+TEH_wire_update_state (void);
+
+
+/**
+ * Handle a "/wire" request.
+ *
+ * @param rc request context
+ * @param args array of additional options (must be empty for this function)
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_wire (struct TEH_RequestContext *rc,
+                  const char *const args[]);
+
 
 /**
  * Return the current key state for this thread.  Possibly re-builds the key
