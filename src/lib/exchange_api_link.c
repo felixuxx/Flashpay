@@ -114,7 +114,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHashP c_hash;
-  struct TALER_AgeCommitmentHash *pach = NULL;
+  struct TALER_AgeCommitmentHash *pah = NULL;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -155,7 +155,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
       &lci->h_age_commitment);
 
     lci->has_age_commitment = true;
-    pach = &lci->h_age_commitment;
+    pah = &lci->h_age_commitment;
   }
 
   if (GNUNET_OK !=
@@ -164,7 +164,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
         &alg_values,
         &bks,
         &lci->coin_priv,
-        pach,
+        pah,
         &c_hash,
         &pd))
   {

@@ -405,7 +405,7 @@ denomination_is_valid (
  * @param denom_hs array of hashes of denomination public keys
  * @param coin_evs array of blinded coin planchets
  * @param[out] denom_serials On success, will be filled with the serial-id's of the denomination keys.  Caller must deallocate.
- * @param[out] amount_with_fee On succes, will contain the committed amount including fees
+ * @param[out] amount_with_fee On success, will contain the committed amount including fees
  * @param[out] result In the error cases, a response will be queued with MHD and this will be the result.
  * @return GNUNET_OK if the denominations are valid and support age-restriction
  *   GNUNET_SYSERR otherwise

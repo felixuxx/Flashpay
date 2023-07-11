@@ -536,7 +536,7 @@ struct TALER_EXCHANGE_GetKeysHandle;
 
 
 /**
- * Fetch the main /keys resources from ane exchange.  Does an incremental
+ * Fetch the main /keys resources from an exchange.  Does an incremental
  * fetch if @a last_keys is given.  The obtained information will be passed to
  * the @a cert_cb (possibly after first merging it with @a last_keys to
  * produce a full picture; expired keys (for deposit) will be removed from @a

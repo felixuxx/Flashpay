@@ -139,7 +139,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     };
     struct TALER_FreshCoin coin;
     union TALER_DenominationBlindingKeyP bks;
-    const struct TALER_AgeCommitmentHash *pach = NULL;
+    const struct TALER_AgeCommitmentHash *pah = NULL;
 
     rci->ps = fcd->ps[rrh->noreveal_index];
     rci->bks = fcd->bks[rrh->noreveal_index];
@@ -157,7 +157,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
 
       TALER_age_commitment_hash (&rci->age_commitment_proof->commitment,
                                  &rci->h_age_commitment);
-      pach = &rci->h_age_commitment;
+      pah = &rci->h_age_commitment;
     }
 
     if (GNUNET_OK !=
@@ -181,7 +181,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                                         &coin_pub.eddsa_pub);
     TALER_coin_pub_hash (
       &coin_pub,
-      pach,
+      pah,
       &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (
@@ -189,7 +189,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
           &blind_sig,
           &bks,
           &rci->coin_priv,
-          pach,
+          pah,
           &coin_hash,
           &rrh->alg_values[i],
           &coin))

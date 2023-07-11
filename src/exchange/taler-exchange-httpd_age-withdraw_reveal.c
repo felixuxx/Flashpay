@@ -221,7 +221,7 @@ find_original_commitment (
       return GNUNET_SYSERR;
     }
   }
-  /* after unsuccessfull retries*/
+  /* after unsuccessful retries*/
   *result = TALER_MHD_reply_with_ec (connection,
                                      TALER_EC_GENERIC_DB_FETCH_FAILED,
                                      "get_age_withdraw_info");

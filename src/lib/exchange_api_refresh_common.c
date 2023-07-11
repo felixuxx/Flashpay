@@ -174,7 +174,7 @@ TALER_EXCHANGE_get_melt_data_ (
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHashP c_hash;
       struct TALER_AgeCommitmentHash ach;
-      struct TALER_AgeCommitmentHash *pach = NULL;
+      struct TALER_AgeCommitmentHash *pah = NULL;
 
       TALER_transfer_secret_to_planchet_secret (&trans_sec,
                                                 j,
@@ -202,7 +202,7 @@ TALER_EXCHANGE_get_melt_data_ (
         TALER_age_commitment_hash (
           &fcd->age_commitment_proofs[i]->commitment,
           &ach);
-        pach = &ach;
+        pah = &ach;
       }
 
       if (TALER_DENOMINATION_CS == alg_values[j].cipher)
@@ -213,7 +213,7 @@ TALER_EXCHANGE_get_melt_data_ (
                                   &alg_values[j],
                                   bks,
                                   coin_priv,
-                                  pach,
+                                  pah,
                                   &c_hash,
                                   &pd))
       {
