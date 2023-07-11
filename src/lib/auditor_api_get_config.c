@@ -95,7 +95,7 @@ struct TALER_AUDITOR_GetConfigHandle
  * in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
- * @param[in,out] auditor where to store the results we decoded
+ * @param[in,out] vi where to store the results we decoded
  * @param[out] vc where to store config compatibility data
  * @return #TALER_EC_NONE on success
  */

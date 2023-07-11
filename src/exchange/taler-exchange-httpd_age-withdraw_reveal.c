@@ -81,8 +81,6 @@ struct AgeRevealContext
  * memory for those.
  *
  * @param connection The MHD connection to handle
- * @param j_denoms_h Array of hashes of the denominations for the withdrawal, in JSON format
- * @param j_coin_evs The blinded envelopes in JSON format for the coins that are not revealed and will be signed on success
  * @param j_disclosed_coin_secrets The n*(kappa-1) disclosed coins' private keys in JSON format, from which all other attributes (age restriction, blinding, nonce) will be derived from
  * @param[out] actx The context of the operation, only partially built at call time
  * @param[out] mhd_ret The result if a reply is queued for MHD
@@ -235,11 +233,11 @@ find_original_commitment (
  * @brief Derives a age-restricted planchet from a given secret and calculates the hash
  *
  * @param connection Connection to the client
- * @param ksh The denomination keys in memory
+ * @param keys The denomination keys in memory
  * @param secret The secret to a planchet
  * @param denom_pub_h The hash of the denomination for the planchet
  * @param max_age The maximum age allowed
- * @param[out] hc Hashcode to write
+ * @param[out] bch Hashcode to write
  * @param[out] result On error, a HTTP-response will be queued and result set accordingly
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise, with an error message
  * written to the client and @e result set.

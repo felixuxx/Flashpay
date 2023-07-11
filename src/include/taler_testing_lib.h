@@ -59,7 +59,7 @@
  * @param status unexpected HTTP status code received
  * @param expected expected HTTP status code
  */
-#define TALER_TESTING_unexpected_status(is,status, expected)            \
+#define TALER_TESTING_unexpected_status(is,status,expected)             \
   do {                                                                  \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
                 "Unexpected response code %u (expected: %u) to command %s in %s:%u\n", \
@@ -81,7 +81,7 @@
  * @param expected expected HTTP status code
  * @param body received JSON-reply
  */
-#define TALER_TESTING_unexpected_status_with_body(is,status, expected, body) \
+#define TALER_TESTING_unexpected_status_with_body(is,status,expected,body) \
   do {                                                                  \
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,                                \
                 "Unexpected response code %u (expected: %u) to "        \
@@ -111,7 +111,7 @@
                 __FILE__,                                               \
                 __LINE__,                                               \
                 TALER_TESTING_interpreter_get_current_label (is));      \
-  }while (0)
+  } while (0)
 
 
 /**
@@ -2210,6 +2210,7 @@ TALER_TESTING_cmd_proof_kyc_oauth2 (
  * KYC processes which also provides a @a birthdate in a response
  *
  * @param label command label
+ * @param birthdate fixed birthdate, such as "2022-03-04", "2022-03-00", "2022-00-00"
  * @param port the TCP port to listen on
  */
 struct TALER_TESTING_Command
@@ -2463,6 +2464,30 @@ TALER_TESTING_cmd_check_aml_decisions (
   unsigned int expected_http_status);
 
 
+/* ****************** convenience functions ************** */
+
+/**
+ * Get exchange URL from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange URL, or NULL on error
+ */
+const char *
+TALER_TESTING_get_exchange_url (
+  struct TALER_TESTING_Interpreter *is);
+
+
+/**
+ * Get exchange keys from interpreter. Convenience function.
+ *
+ * @param is interpreter state.
+ * @return the exchange keys, or NULL on error
+ */
+struct TALER_EXCHANGE_Keys *
+TALER_TESTING_get_keys (
+  struct TALER_TESTING_Interpreter *is);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 
@@ -2621,13 +2646,13 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (bank_row, const uint64_t)                                    \
   op (officer_pub, const struct TALER_AmlOfficerPublicKeyP)        \
   op (officer_priv, const struct TALER_AmlOfficerPrivateKeyP)      \
-  op (officer_name, const char)                                  \
+  op (officer_name, const char)                                    \
   op (aml_decision, enum TALER_AmlDecisionState)                   \
-  op (aml_justification, const char)                             \
-  op (auditor_priv, const struct TALER_AuditorPrivateKeyP)     \
-  op (auditor_pub, const struct TALER_AuditorPublicKeyP)       \
-  op (master_priv, const struct TALER_MasterPrivateKeyP)     \
-  op (master_pub, const struct TALER_MasterPublicKeyP)       \
+  op (aml_justification, const char)                               \
+  op (auditor_priv, const struct TALER_AuditorPrivateKeyP)         \
+  op (auditor_pub, const struct TALER_AuditorPublicKeyP)           \
+  op (master_priv, const struct TALER_MasterPrivateKeyP)           \
+  op (master_pub, const struct TALER_MasterPublicKeyP)             \
   op (purse_priv, const struct TALER_PurseContractPrivateKeyP)     \
   op (purse_pub, const struct TALER_PurseContractPublicKeyP)       \
   op (merge_priv, const struct TALER_PurseMergePrivateKeyP)        \
@@ -2700,30 +2725,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
 
 TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
-
-
-/* ****************** convenience functions ************** */
-
-/**
- * Get exchange URL from interpreter. Convenience function.
- *
- * @param is interpreter state.
- * @return the exchange URL, or NULL on error
- */
-const char *
-TALER_TESTING_get_exchange_url (
-  struct TALER_TESTING_Interpreter *is);
-
-
-/**
- * Get exchange keys from interpreter. Convenience function.
- *
- * @param is interpreter state.
- * @return the exchange keys, or NULL on error
- */
-struct TALER_EXCHANGE_Keys *
-TALER_TESTING_get_keys (
-  struct TALER_TESTING_Interpreter *is);
 
 
 #endif

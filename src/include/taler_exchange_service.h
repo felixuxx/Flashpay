@@ -2825,7 +2825,7 @@ typedef void
  *
  * @param curl_ctx The curl context
  * @param exchange_url The base url of the exchange
- * @parm keys The denomination keys from the exchange
+ * @param keys The denomination keys from the exchange
  * @param reserve_priv The pivate key to the reserve
  * @param num_coins The number of elements in @e coin_inputs
  * @param coin_inputs The input for the coins to withdraw
@@ -2842,8 +2842,8 @@ TALER_EXCHANGE_age_withdraw (
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   size_t num_coins,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[
-    const static num_coins],
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[const static
+                                                               num_coins],
   uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawCallback res_cb,
   void *res_cb_cls);
@@ -3144,7 +3144,6 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  *
  * @param ctx curl context
  * @param url exchange base URL
- * @param keys exchange keys
  * @param rms the fresh secret that defines the refresh operation
  * @param rd the refresh data that characterizes the refresh operation
  * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, must match value in @a rd

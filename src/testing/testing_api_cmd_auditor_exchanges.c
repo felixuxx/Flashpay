@@ -120,10 +120,8 @@ do_retry (void *cls)
 /**
  * Callback to analyze the /exchanges response.
  *
- * @param cls closure.
- * @param hr HTTP response details
- * @param num_exchanges length of the @a ei array
- * @param ei array with information about the exchanges
+ * @param cls closure of type struct ExchangesState*
+ * @param ler Response to the GET /exchanges request
  */
 static void
 exchanges_cb (void *cls,

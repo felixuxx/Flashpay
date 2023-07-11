@@ -106,7 +106,7 @@ free_age_withdraw_context_resources (struct AgeWithdrawContext *awc)
  * @param connection The MHD connection to handle
  * @param j_denoms_h Array of n hashes of the denominations for the withdrawal, in JSON format
  * @param j_blinded_coin_evs Array of n arrays of kappa blinded envelopes of in JSON format for the coins.
- * @param[out] aws The context of the operation, only partially built at call time
+ * @param[out] awc The context of the operation, only partially built at call time
  * @param[out] mhd_ret The result if a reply is queued for MHD
  * @return true on success, false on failure, with a reply already queued for MHD
  */
@@ -315,7 +315,7 @@ EXIT:
  * @param connection HTTP-connection to the client
  * @param ksh The handle to the current state of (denomination) keys in the exchange
  * @param denom_h Hash of the denomination key to check
- * @param[out] dk On success, will contain the denomination key details
+ * @param[out] pdk On success, will contain the denomination key details
  * @param[out] result On failure, an MHD-response will be qeued and result will be set to accordingly
  * @return true on success (denomination valid), false otherwise
  */
@@ -402,7 +402,7 @@ denomination_is_valid (
  *
  * @param connection The HTTP connection to the client
  * @param len The lengths of the array @a denoms_h
- * @param denoms_h array of hashes of denomination public keys
+ * @param denom_hs array of hashes of denomination public keys
  * @param coin_evs array of blinded coin planchets
  * @param[out] denom_serials On success, will be filled with the serial-id's of the denomination keys.  Caller must deallocate.
  * @param[out] amount_with_fee On succes, will contain the committed amount including fees
@@ -511,8 +511,7 @@ static enum GNUNET_GenericReturnValue
 verify_reserve_signature (
   struct MHD_Connection *connection,
   const struct TALER_EXCHANGEDB_AgeWithdraw *commitment,
-  enum MHD_Result *mhd_ret
-  )
+  enum MHD_Result *mhd_ret)
 {
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
@@ -824,10 +823,7 @@ age_withdraw_transaction (void *cls,
  *  2.) age withdraw was successful.
  *
  * @param connection HTTP-connection to the client
- * @param h_commitment Original commitment
- * @param num_coins Number of coins
- * @param coin_evs The Hashes of the undisclosed, blinded coins, @a num_coins many
- * @param denom_keys The array of denomination keys, @a num_coins. Needed to detect Clause-Schnorr-based denominations
+ * @param awc The context for the current age withdraw request
  * @param[out] result On error, a HTTP-response will be queued and result set accordingly
  * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
  */

@@ -382,7 +382,8 @@ reserve_age_withdraw_payment_required (
  * HTTP /reserves/$RESERVE_PUB/age-withdraw request.
  *
  * @param cls the `struct TALER_EXCHANGE_AgeWithdrawHandle`
- * @param aw2r response data
+ * @param response_code The HTTP response code
+ * @param response response data
  */
 static void
 handle_reserve_age_withdraw_finished (
@@ -651,6 +652,7 @@ ERROR:
  * Prepares the request URL for the age-withdraw request
  *
  * @param awh The handler
+ * @param exchange_url The base-URL to the exchange
  */
 static
 enum GNUNET_GenericReturnValue
