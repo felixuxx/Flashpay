@@ -2960,8 +2960,18 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         /* Now that we have found/created the right group, add the
            denomination to the list */
         {
+          struct HelperDenomination *hd;
           struct GNUNET_JSON_PackSpec key_spec;
+          bool private_key_lost;
 
+          hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                                  &dk->h_denom_pub.hash);
+          private_key_lost
+            = (NULL == hd) ||
+              GNUNET_TIME_absolute_is_past (
+                GNUNET_TIME_absolute_add (
+                  hd->start_time.abs_time,
+                  hd->validity_duration));
           switch (meta.cipher)
           {
           case TALER_DENOMINATION_RSA:
@@ -2984,6 +2994,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           entry = GNUNET_JSON_PACK (
             GNUNET_JSON_pack_data_auto ("master_sig",
                                         &dk->master_sig),
+            GNUNET_JSON_pack_allow_null (
+              private_key_lost
+              ? GNUNET_JSON_pack_bool ("lost",
+                                       true)
+              : GNUNET_JSON_pack_string ("dummy",
+                                         NULL)),
             GNUNET_JSON_pack_timestamp ("stamp_start",
                                         dk->meta.start),
             GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",

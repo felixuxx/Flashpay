@@ -246,6 +246,10 @@ parse_json_denomkey_partially (
                                 &denom_key->valid_from),
     GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
                                 &denom_key->expire_legal),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_bool ("lost",
+                             &denom_key->lost),
+      NULL),
     TALER_JSON_spec_denom_pub_cipher (NULL,
                                       cipher,
                                       &denom_key->key),

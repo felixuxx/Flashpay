@@ -121,6 +121,13 @@ struct TALER_EXCHANGE_DenomPublicKey
   struct TALER_DenomFeeSet fees;
 
   /**
+   * Set to true if the private denomination key has been
+   * lost by the exchange and thus the key cannot be
+   * used for withdrawing at this time.
+   */
+  bool lost;
+
+  /**
    * Set to true if this denomination key has been
    * revoked by the exchange.
    */
