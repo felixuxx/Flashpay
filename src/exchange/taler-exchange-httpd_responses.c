@@ -23,6 +23,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include <microhttpd.h>
 #include <zlib.h>
 #include "taler-exchange-httpd_responses.h"
 #include "taler_util.h"
@@ -1091,7 +1092,7 @@ TEH_RESPONSE_reply_reserve_age_restriction_required (
 {
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
-    MHD_HTTP_BAD_REQUEST,
+    MHD_HTTP_CONFLICT,
     TALER_JSON_pack_ec (TALER_EC_EXCHANGE_RESERVES_AGE_RESTRICTION_REQUIRED),
     GNUNET_JSON_pack_uint64 ("maximum_allowed_age",
                              maximum_allowed_age));
