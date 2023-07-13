@@ -75,8 +75,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_reserves_status.c \
   exchange_api_transfers_get.c \
   exchange_api_withdraw.c \
-  exchange_api_withdraw2.c \
-  exchange_api_wire.c
+  exchange_api_withdraw2.c
 libtalerexchange_la_LIBADD = \
   libtalerauditor.la \
   $(top_builddir)/src/json/libtalerjson.la \

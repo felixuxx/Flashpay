@@ -107,21 +107,6 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   /**
-   * Checks made against /wire response.
-   */
-  struct TALER_TESTING_Command wire[] = {
-    /**
-     * Check if 'x-taler-bank' wire method is offered
-     * by the exchange.
-     */
-    TALER_TESTING_cmd_wire ("wire-taler-bank-1",
-                            "x-taler-bank",
-                            NULL,
-                            MHD_HTTP_OK),
-    TALER_TESTING_cmd_end ()
-  };
-
-  /**
    * Test withdrawal plus spending.
    */
   struct TALER_TESTING_Command withdraw[] = {
@@ -1238,8 +1223,6 @@ run (void *cls,
                                       NULL,
                                       true,
                                       true),
-      TALER_TESTING_cmd_batch ("wire",
-                               wire),
       TALER_TESTING_cmd_batch ("withdraw",
                                withdraw),
       TALER_TESTING_cmd_batch ("spend",

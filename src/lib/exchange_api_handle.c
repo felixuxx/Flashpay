@@ -123,6 +123,115 @@ struct TALER_EXCHANGE_GetKeysHandle
 };
 
 
+/**
+ * Frees @a wfm array.
+ *
+ * @param wfm fee array to release
+ * @param wfm_len length of the @a wfm array
+ */
+static void
+free_fees (struct TALER_EXCHANGE_WireFeesByMethod *wfm,
+           unsigned int wfm_len)
+{
+  for (unsigned int i = 0; i<wfm_len; i++)
+  {
+    struct TALER_EXCHANGE_WireFeesByMethod *wfmi = &wfm[i];
+
+    while (NULL != wfmi->fees_head)
+    {
+      struct TALER_EXCHANGE_WireAggregateFees *fe
+        = wfmi->fees_head;
+
+      wfmi->fees_head = fe->next;
+      GNUNET_free (fe);
+    }
+    GNUNET_free (wfmi->method);
+  }
+  GNUNET_free (wfm);
+}
+
+
+/**
+ * Parse wire @a fees and return array.
+ *
+ * @param master_pub master public key to use to check signatures
+ * @param fees json AggregateTransferFee to parse
+ * @param[out] fees_len set to length of returned array
+ * @return NULL on error
+ */
+static struct TALER_EXCHANGE_WireFeesByMethod *
+parse_fees (const struct TALER_MasterPublicKeyP *master_pub,
+            const json_t *fees,
+            unsigned int *fees_len)
+{
+  struct TALER_EXCHANGE_WireFeesByMethod *fbm;
+  unsigned int fbml = json_object_size (fees);
+  unsigned int i = 0;
+  const char *key;
+  const json_t *fee_array;
+
+  fbm = GNUNET_new_array (fbml,
+                          struct TALER_EXCHANGE_WireFeesByMethod);
+  *fees_len = fbml;
+  json_object_foreach ((json_t *) fees, key, fee_array) {
+    struct TALER_EXCHANGE_WireFeesByMethod *fe = &fbm[i++];
+    unsigned int idx;
+    json_t *fee;
+
+    fe->method = GNUNET_strdup (key);
+    fe->fees_head = NULL;
+    json_array_foreach (fee_array, idx, fee)
+    {
+      struct TALER_EXCHANGE_WireAggregateFees *wa
+        = GNUNET_new (struct TALER_EXCHANGE_WireAggregateFees);
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("sig",
+                                     &wa->master_sig),
+        TALER_JSON_spec_amount_any ("wire_fee",
+                                    &wa->fees.wire),
+        TALER_JSON_spec_amount_any ("closing_fee",
+                                    &wa->fees.closing),
+        GNUNET_JSON_spec_timestamp ("start_date",
+                                    &wa->start_date),
+        GNUNET_JSON_spec_timestamp ("end_date",
+                                    &wa->end_date),
+        GNUNET_JSON_spec_end ()
+      };
+
+      wa->next = fe->fees_head;
+      fe->fees_head = wa;
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (fee,
+                             spec,
+                             NULL,
+                             NULL))
+      {
+        GNUNET_break_op (0);
+        free_fees (fbm,
+                   i);
+        return NULL;
+      }
+      if (GNUNET_OK !=
+          TALER_exchange_offline_wire_fee_verify (
+            key,
+            wa->start_date,
+            wa->end_date,
+            &wa->fees,
+            master_pub,
+            &wa->master_sig))
+      {
+        GNUNET_break_op (0);
+        free_fees (fbm,
+                   i);
+        return NULL;
+      }
+    } /* for all fees over time */
+  } /* for all methods */
+  GNUNET_assert (i == fbml);
+  return fbm;
+}
+
+
 void
 TEAH_get_auditors_for_dc (
   struct TALER_EXCHANGE_Keys *keys,
@@ -541,6 +650,9 @@ decode_keys_json (const json_t *resp_obj,
   const json_t *manifests = NULL;
   bool no_extensions = false;
   bool no_signature = false;
+  const json_t *accounts;
+  const json_t *fees;
+  const json_t *wads;
 
   if (JSON_OBJECT != json_typeof (resp_obj))
   {
@@ -612,6 +724,12 @@ decode_keys_json (const json_t *resp_obj,
       GNUNET_JSON_spec_fixed_auto (
         "master_public_key",
         &key_data->master_pub),
+      GNUNET_JSON_spec_array_const ("accounts",
+                                    &accounts),
+      GNUNET_JSON_spec_object_const ("wire_fees",
+                                     &fees),
+      GNUNET_JSON_spec_array_const ("wads",
+                                    &wads),
       GNUNET_JSON_spec_timestamp (
         "list_issue_date",
         &key_data->list_issue_date),
@@ -739,6 +857,26 @@ decode_keys_json (const json_t *resp_obj,
                                  NULL, NULL));
     }
   }
+
+  /* Parse wire accounts */
+  key_data->fees = parse_fees (&key_data->master_pub,
+                               fees,
+                               &key_data->fees_len);
+  EXITIF (NULL == key_data->fees);
+  /* parse accounts */
+  GNUNET_array_grow (key_data->accounts,
+                     key_data->accounts_len,
+                     json_array_size (accounts));
+  EXITIF (GNUNET_OK !=
+          TALER_EXCHANGE_parse_accounts (&key_data->master_pub,
+                                         accounts,
+                                         key_data->accounts_len,
+                                         key_data->accounts));
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Parsed %u wire accounts from JSON\n",
+              (unsigned int) json_array_size (accounts));
+
 
   /* Parse the supported extension(s): age-restriction. */
   /* TODO: maybe lift all this into a FP in TALER_Extension ? */
@@ -1546,6 +1684,13 @@ TALER_EXCHANGE_keys_decref (struct TALER_EXCHANGE_Keys *keys)
   GNUNET_array_grow (keys->auditors,
                      keys->auditors_size,
                      0);
+  TALER_EXCHANGE_free_accounts (keys->accounts_len,
+                                keys->accounts);
+  GNUNET_array_grow (keys->accounts,
+                     keys->accounts_len,
+                     0);
+  free_fees (keys->fees,
+             keys->fees_len);
   json_decref (keys->extensions);
   GNUNET_free (keys->wallet_balance_limit_without_kyc);
   GNUNET_free (keys->version);
@@ -1688,6 +1833,66 @@ add_grp (void *cls,
 }
 
 
+/**
+ * Convert array of account restrictions @a ars to JSON.
+ *
+ * @param ar_len length of @a ars
+ * @param ars account restrictions to convert
+ * @return JSON representation
+ */
+static json_t *
+ar_to_json (unsigned int ar_len,
+            const struct TALER_EXCHANGE_AccountRestriction ars[static ar_len])
+{
+  json_t *rval;
+
+  rval = json_array ();
+  GNUNET_assert (NULL != rval);
+  for (unsigned int i = 0; i<ar_len; i++)
+  {
+    const struct TALER_EXCHANGE_AccountRestriction *ar = &ars[i];
+
+    switch (ar->type)
+    {
+    case TALER_EXCHANGE_AR_INVALID:
+      GNUNET_break (0);
+      json_decref (rval);
+      return NULL;
+    case TALER_EXCHANGE_AR_DENY:
+      GNUNET_assert (
+        0 ==
+        json_array_append_new (
+          rval,
+          GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_string ("type",
+                                     "deny"))));
+      break;
+    case TALER_EXCHANGE_AR_REGEX:
+      GNUNET_assert (
+        0 ==
+        json_array_append_new (
+          rval,
+          GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_string (
+              "type",
+              "regex"),
+            GNUNET_JSON_pack_string (
+              "regex",
+              ar->details.regex.posix_egrep),
+            GNUNET_JSON_pack_string (
+              "human_hint",
+              ar->details.regex.human_hint),
+            GNUNET_JSON_pack_object_incref (
+              "human_hint_i18n",
+              (json_t *) ar->details.regex.human_hint_i18n)
+            )));
+      break;
+    }
+  }
+  return rval;
+}
+
+
 json_t *
 TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
 {
@@ -1697,16 +1902,14 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
   json_t *denominations_by_group;
   json_t *auditors;
   json_t *recoup;
+  json_t *wire_fees;
+  json_t *accounts;
   json_t *global_fees;
   json_t *wblwk = NULL;
 
   now = GNUNET_TIME_timestamp_get ();
   signkeys = json_array ();
-  if (NULL == signkeys)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
+  GNUNET_assert (NULL != signkeys);
   for (unsigned int i = 0; i<kd->num_sign_keys; i++)
   {
     const struct TALER_EXCHANGE_SigningPublicKey *sk = &kd->sign_keys[i];
@@ -1727,28 +1930,14 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                   sk->valid_until),
       GNUNET_JSON_pack_timestamp ("stamp_end",
                                   sk->valid_legal));
-    if (NULL == signkey)
-    {
-      GNUNET_break (0);
-      continue;
-    }
-    if (0 != json_array_append_new (signkeys,
-                                    signkey))
-    {
-      GNUNET_break (0);
-      json_decref (signkey);
-      json_decref (signkeys);
-      return NULL;
-    }
-  }
-  denominations_by_group = json_array ();
-  if (NULL == denominations_by_group)
-  {
-    GNUNET_break (0);
-    json_decref (signkeys);
-    return NULL;
+    GNUNET_assert (NULL != signkey);
+    GNUNET_assert (0 ==
+                   json_array_append_new (signkeys,
+                                          signkey));
   }
 
+  denominations_by_group = json_array ();
+  GNUNET_assert (NULL != denominations_by_group);
   {
     struct GNUNET_CONTAINER_MultiHashMap *dbg;
 
@@ -1908,6 +2097,82 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
           GNUNET_JSON_pack_data_auto ("master_sig",
                                       &gf->master_sig))));
   }
+
+  accounts = json_array ();
+  GNUNET_assert (NULL != accounts);
+  for (unsigned int i = 0; i<kd->accounts_len; i++)
+  {
+    const struct TALER_EXCHANGE_WireAccount *acc
+      = &kd->accounts[i];
+    json_t *credit_restrictions;
+    json_t *debit_restrictions;
+
+    credit_restrictions
+      = ar_to_json (acc->credit_restrictions_length,
+                    acc->credit_restrictions);
+    GNUNET_assert (NULL != credit_restrictions);
+    debit_restrictions
+      = ar_to_json (acc->debit_restrictions_length,
+                    acc->debit_restrictions);
+    GNUNET_assert (NULL != debit_restrictions);
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        accounts,
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("payto_uri",
+                                   acc->payto_uri),
+          GNUNET_JSON_pack_allow_null (
+            GNUNET_JSON_pack_string ("conversion_url",
+                                     acc->conversion_url)),
+          GNUNET_JSON_pack_array_steal ("debit_restrictions",
+                                        debit_restrictions),
+          GNUNET_JSON_pack_array_steal ("credit_restrictions",
+                                        credit_restrictions),
+          GNUNET_JSON_pack_data_auto ("master_sig",
+                                      &acc->master_sig))));
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Serialized %u/%u wire accounts to JSON\n",
+              (unsigned int) json_array_size (accounts),
+              kd->accounts_len);
+
+  wire_fees = json_object ();
+  GNUNET_assert (NULL != wire_fees);
+  for (unsigned int i = 0; i<kd->fees_len; i++)
+  {
+    const struct TALER_EXCHANGE_WireFeesByMethod *fbw
+      = &kd->fees[i];
+    json_t *wf;
+
+    wf = json_array ();
+    GNUNET_assert (NULL != wf);
+    for (struct TALER_EXCHANGE_WireAggregateFees *p = fbw->fees_head;
+         NULL != p;
+         p = p->next)
+    {
+      GNUNET_assert (
+        0 ==
+        json_array_append_new (
+          wf,
+          GNUNET_JSON_PACK (
+            TALER_JSON_pack_amount ("wire_fee",
+                                    &p->fees.wire),
+            TALER_JSON_pack_amount ("closing_fee",
+                                    &p->fees.closing),
+            GNUNET_JSON_pack_timestamp ("start_date",
+                                        p->start_date),
+            GNUNET_JSON_pack_timestamp ("end_date",
+                                        p->end_date),
+            GNUNET_JSON_pack_data_auto ("sig",
+                                        &p->master_sig))));
+    }
+    GNUNET_assert (0 ==
+                   json_object_set_new (wire_fees,
+                                        fbw->method,
+                                        wf));
+  }
+
   recoup = json_array ();
   GNUNET_assert (NULL != recoup);
   for (unsigned int i = 0; i<kd->num_denom_keys; i++)
@@ -1953,6 +2218,12 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
                                   global_fees),
     GNUNET_JSON_pack_array_steal ("signkeys",
                                   signkeys),
+    GNUNET_JSON_pack_object_steal ("wire_fees",
+                                   wire_fees),
+    GNUNET_JSON_pack_array_steal ("accounts",
+                                  accounts),
+    GNUNET_JSON_pack_array_steal ("wads",
+                                  json_array ()),
     GNUNET_JSON_pack_array_steal ("denominations",
                                   denominations_by_group),
     GNUNET_JSON_pack_allow_null (

@@ -621,6 +621,8 @@ wire_update_event_cb (void *cls,
               "Received /wire update event\n");
   TEH_check_invariants ();
   wire_generation++;
+  key_generation++;
+  TEH_resume_keys_requests (false);
 }
 
 
@@ -827,15 +829,9 @@ build_wire_state (void)
                               "get_wire_accounts");
     return wsh;
   }
-  if (0 == json_array_size (wire_accounts_array))
-  {
-    json_decref (wire_accounts_array);
-    wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    wsh->wire_reply
-      = TALER_MHD_make_error (TALER_EC_EXCHANGE_WIRE_NO_ACCOUNTS_CONFIGURED,
-                              NULL);
-    return wsh;
-  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Build /wire data with %u accounts\n",
+              (unsigned int) json_array_size (wire_accounts_array));
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
   wsh->cache_expiration = GNUNET_TIME_UNIT_FOREVER_ABS;
@@ -995,6 +991,7 @@ TEH_wire_update_state (void)
                             NULL,
                             0);
   wire_generation++;
+  key_generation++;
 }
 
 
@@ -1016,6 +1013,11 @@ get_wire_state (void)
   {
     struct WireStateHandle *wsh;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Rebuilding /wire, generation upgrade from %llu to %llu\n",
+                (unsigned long long) (NULL == old_wsh) ? 0LL :
+                old_wsh->wire_generation,
+                (unsigned long long) wire_generation);
     TEH_check_invariants ();
     wsh = build_wire_state ();
     wire_state = wsh;
@@ -2506,6 +2508,12 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                                         ksh->signature_expires);
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Build /keys data with %u wire accounts\n",
+              (unsigned int) json_array_size (
+                json_object_get (wsh->json_reply,
+                                 "accounts")));
+
   keys = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("version",
                              EXCHANGE_PROTOCOL_VERSION),
@@ -2530,8 +2538,15 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    recoup),
     GNUNET_JSON_pack_array_incref ("denoms",
                                    denoms),
-    GNUNET_JSON_pack_object_incref ("wire",
-                                    wsh->json_reply),
+    GNUNET_JSON_pack_array_incref ("wads",
+                                   json_object_get (wsh->json_reply,
+                                                    "wads")),
+    GNUNET_JSON_pack_array_incref ("accounts",
+                                   json_object_get (wsh->json_reply,
+                                                    "accounts")),
+    GNUNET_JSON_pack_object_incref ("wire_fees",
+                                    json_object_get (wsh->json_reply,
+                                                     "fees")),
     GNUNET_JSON_pack_array_incref ("denominations",
                                    grouped_denominations),
     GNUNET_JSON_pack_array_incref ("auditors",
@@ -3352,7 +3367,7 @@ keys_get_state (bool management_only)
   if ( (old_ksh->key_generation < key_generation) ||
        (GNUNET_TIME_absolute_is_past (old_ksh->signature_expires.abs_time)) )
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
                 (unsigned long long) old_ksh->key_generation,
                 (unsigned long long) key_generation);

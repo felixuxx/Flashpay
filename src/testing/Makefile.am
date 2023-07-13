@@ -113,7 +113,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_take_aml_decision.c \
   testing_api_cmd_transfer_get.c \
   testing_api_cmd_wait.c \
-  testing_api_cmd_wire.c \
   testing_api_cmd_wire_add.c \
   testing_api_cmd_wire_del.c \
   testing_api_cmd_withdraw.c \
