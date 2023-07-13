@@ -2745,7 +2745,7 @@ TALER_EXCHANGE_batch_withdraw2_cancel (
 /* ********************* /reserve/$RESERVE_PUB/age-withdraw *************** */
 
 /**
- * @brief Information needed to withdraw age restricted coins.
+ * @brief Information needed to withdraw (and reveal) age restricted coins.
  */
 struct TALER_EXCHANGE_AgeWithdrawCoinInput
 {
@@ -2753,7 +2753,7 @@ struct TALER_EXCHANGE_AgeWithdrawCoinInput
    * The master secret from which we derive all other relevant values for
    * the coin: private key, nonces (if applicable) and age restriction
    */
-  const struct TALER_PlanchetMasterSecretP secret[TALER_CNC_KAPPA];
+  const struct TALER_PlanchetMasterSecretP secrets[TALER_CNC_KAPPA];
 
   /**
    * The denomination of the coin.  Must support age restriction, i.e
@@ -2793,6 +2793,11 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
        * with this index are the ones to keep.
        */
       uint8_t noreveal_index;
+
+      /**
+       * The commitment of the call to /age-withdraw
+       */
+      struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
       /**
        * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
@@ -2842,7 +2847,7 @@ TALER_EXCHANGE_age_withdraw (
   struct TALER_EXCHANGE_Keys *keys,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   size_t num_coins,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[const static
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[static
                                                                num_coins],
   uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawCallback res_cb,
@@ -2857,6 +2862,103 @@ TALER_EXCHANGE_age_withdraw (
 void
 TALER_EXCHANGE_age_withdraw_cancel (
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh);
+
+
+/* ********************* /age-withdraw/$ACH/reveal ************************ */
+
+/**
+ * @brief A handle to a /age-withdraw/$ACH/reveal request
+ */
+struct TALER_EXCHANGE_AgeWithdrawRevealHandle;
+
+
+/**
+ *
+ */
+
+struct TALER_EXCHANGE_AgeWithdrawRevealResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Number of coins returned.
+       */
+      unsigned int num_coins;
+
+      /**
+       * Array of @e num_coins values about the coins obtained via the reveal
+       * operation.  The array give thes coins in the same order (and should
+       * have the same length) in which the original age-withdraw request
+       * specified the respective denomination keys.
+       */
+      const struct TALER_EXCHANGE_RevealedCoinInfo *coins;
+
+    } ok;
+    /* FIXME[oec]: error cases */
+  } details;
+
+};
+
+typedef void
+(*TALER_EXCHANGE_AgeWithdrawRevealCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_AgeWithdrawRevealResponse *awr);
+
+/**
+ * Submit an age-withdraw-reveal request to the exchange and get the exchange's
+ * response.
+ *
+ * This API is typically used by a wallet.  Note that to ensure that
+ * no money is lost in case of hardware failures, the provided
+ * argument @a rd should be committed to persistent storage
+ * prior to calling this function.
+ *
+ * @param curl_ctx The curl context
+ * @param exchange_url The base url of the exchange
+ * @param reserve_priv The pivate key to the reserve
+ * @param num_coins The number of elements in @e coin_inputs
+ * @param coins_input The input for the coins to withdraw
+ * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
+ * @param h_commitment The commmitment from the previous call to /age-withdraw
+ * @param res_cb A callback for the result, maybe NULL
+ * @param res_cb_cls A closure for @e res_cb, maybe NULL
+ * @return a handle for this request; NULL if the argument was invalid.
+ *         In this case, the callback will not be called.
+ */
+struct TALER_EXCHANGE_AgeWithdrawRevealHandle *
+TALER_EXCHANGE_age_withdraw_reveal (
+  struct GNUNET_CURL_Context *curl_ctx,
+  const char *exchange_url,
+  size_t num_coins,
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coins_input[static
+                                                               num_coins],
+  uint8_t noreveal_index,
+  const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  TALER_EXCHANGE_AgeWithdrawRevealCallback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * @brief Cancel an age-withdraw-reveal request
+ *
+ * @param awrh Handle to an age-withdraw-reqveal request
+ */
+void
+TALER_EXCHANGE_age_withdraw_reveal_cancel (
+  struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */

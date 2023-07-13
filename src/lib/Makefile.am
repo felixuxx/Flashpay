@@ -23,6 +23,7 @@ libtalerexchange_la_LDFLAGS = \
 libtalerexchange_la_SOURCES = \
   exchange_api_add_aml_decision.c \
   exchange_api_age_withdraw.c \
+  exchange_api_age_withdraw_reveal.c \
   exchange_api_auditor_add_denomination.c \
   exchange_api_batch_deposit.c \
   exchange_api_batch_withdraw.c \

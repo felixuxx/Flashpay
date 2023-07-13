@@ -235,7 +235,8 @@ reserve_age_withdraw_ok (
 {
   struct TALER_EXCHANGE_AgeWithdrawResponse response = {
     .hr.reply = j_response,
-    .hr.http_status = MHD_HTTP_OK
+    .hr.http_status = MHD_HTTP_OK,
+    .details.ok.h_commitment = awh->h_commitment
   };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint8 ("noreaveal_index",
@@ -568,12 +569,13 @@ perform_protocol (
 
       /* Build the candidate array */
       {
-        const struct CoinCandidate *can = awh->coin_data[i].coin_candidates;
         json_t *j_can = json_array ();
         FAIL_IF (NULL == j_can);
 
         for (size_t k = 0; k < TALER_CNC_KAPPA; k++)
         {
+          const struct CoinCandidate *can =
+            &awh->coin_data[i].coin_candidates[k];
           json_t *jc = GNUNET_JSON_PACK (
             TALER_JSON_pack_blinded_planchet (
               NULL,
@@ -591,20 +593,17 @@ perform_protocol (
     }
   }
 
+  /* Build the hash of the commitment */
+  GNUNET_CRYPTO_hash_context_finish (coins_hctx,
+                                     &awh->h_commitment.hash);
+
   /* Sign the request */
-  {
-    struct TALER_AgeWithdrawCommitmentHashP coins_commitment_h;
-
-    GNUNET_CRYPTO_hash_context_finish (coins_hctx,
-                                       &coins_commitment_h.hash);
-
-    TALER_wallet_age_withdraw_sign (&coins_commitment_h,
-                                    &awh->amount_with_fee,
-                                    &awh->age_mask,
-                                    awh->max_age,
-                                    awh->reserve_priv,
-                                    &awh->reserve_sig);
-  }
+  TALER_wallet_age_withdraw_sign (&awh->h_commitment,
+                                  &awh->amount_with_fee,
+                                  &awh->age_mask,
+                                  awh->max_age,
+                                  awh->reserve_priv,
+                                  &awh->reserve_sig);
 
   /* Initiate the POST-request */
   j_request_body = GNUNET_JSON_PACK (
@@ -833,7 +832,7 @@ prepare_coins (
     {
       struct CoinCandidate *can = &cd->coin_candidates[k];
 
-      can->secret = input->secret[k];
+      can->secret = input->secrets[k];
 
       /* Derive the age restriction from the given secret and
        * the maximum age */
