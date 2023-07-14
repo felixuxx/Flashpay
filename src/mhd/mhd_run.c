@@ -162,8 +162,8 @@ TALER_MHD_daemon_trigger (void)
   if (NULL != mhd_task)
   {
     GNUNET_SCHEDULER_cancel (mhd_task);
-    mhd_task = NULL;
-    run_daemon (NULL);
+    mhd_task = GNUNET_SCHEDULER_add_now (&run_daemon,
+                                         NULL);
   }
   else
   {

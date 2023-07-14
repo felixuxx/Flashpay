@@ -70,7 +70,6 @@
 #include "taler-exchange-httpd_reserves_status.h"
 #include "taler-exchange-httpd_terms.h"
 #include "taler-exchange-httpd_transfers_get.h"
-#include "taler-exchange-httpd_wire.h"
 #include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"

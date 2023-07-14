@@ -2241,15 +2241,17 @@ parse_restrictions (const json_t *jresta,
     if (0 == strcmp (type,
                      "regex"))
     {
+      const char *regex;
+      const char *hint;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_string (
           "payto_regex",
-          &ar->details.regex.posix_egrep),
+          &regex),
         GNUNET_JSON_spec_string (
           "human_hint",
-          &ar->details.regex.human_hint),
+          &hint),
         GNUNET_JSON_spec_mark_optional (
-          GNUNET_JSON_spec_object_const (
+          GNUNET_JSON_spec_json (
             "human_hint_i18n",
             &ar->details.regex.human_hint_i18n),
           NULL),
@@ -2266,6 +2268,8 @@ parse_restrictions (const json_t *jresta,
         goto fail;
       }
       ar->type = TALER_EXCHANGE_AR_REGEX;
+      ar->details.regex.posix_egrep = GNUNET_strdup (regex);
+      ar->details.regex.human_hint = GNUNET_strdup (hint);
       continue;
     }
     /* unsupported type */
@@ -2297,14 +2301,16 @@ TALER_EXCHANGE_parse_accounts (
        i++)
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
+    const char *payto_uri;
+    const char *conversion_url;
     const json_t *credit_restrictions;
     const json_t *debit_restrictions;
     struct GNUNET_JSON_Specification spec_account[] = {
       GNUNET_JSON_spec_string ("payto_uri",
-                               &wa->payto_uri),
+                               &payto_uri),
       GNUNET_JSON_spec_mark_optional (
         GNUNET_JSON_spec_string ("conversion_url",
-                                 &wa->conversion_url),
+                                 &conversion_url),
         NULL),
       GNUNET_JSON_spec_array_const ("credit_restrictions",
                                     &credit_restrictions),
@@ -2330,7 +2336,7 @@ TALER_EXCHANGE_parse_accounts (
     {
       char *err;
 
-      err = TALER_payto_validate (wa->payto_uri);
+      err = TALER_payto_validate (payto_uri);
       if (NULL != err)
       {
         GNUNET_break_op (0);
@@ -2341,12 +2347,13 @@ TALER_EXCHANGE_parse_accounts (
 
     if ( (NULL != master_pub) &&
          (GNUNET_OK !=
-          TALER_exchange_wire_signature_check (wa->payto_uri,
-                                               wa->conversion_url,
-                                               debit_restrictions,
-                                               credit_restrictions,
-                                               master_pub,
-                                               &wa->master_sig)) )
+          TALER_exchange_wire_signature_check (
+            payto_uri,
+            conversion_url,
+            debit_restrictions,
+            credit_restrictions,
+            master_pub,
+            &wa->master_sig)) )
     {
       /* bogus reply */
       GNUNET_break_op (0);
@@ -2365,8 +2372,41 @@ TALER_EXCHANGE_parse_accounts (
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
+    wa->payto_uri = GNUNET_strdup (payto_uri);
+    if (NULL != conversion_url)
+      wa->conversion_url = GNUNET_strdup (conversion_url);
   }       /* end 'for all accounts */
   return GNUNET_OK;
+}
+
+
+/**
+ * Free array of account restrictions.
+ *
+ * @param ar_len length of @a ar
+ * @param[in] ar array to free contents of (but not @a ar itself)
+ */
+static void
+free_restrictions (unsigned int ar_len,
+                   struct TALER_EXCHANGE_AccountRestriction ar[static ar_len])
+{
+  for (unsigned int i = 0; i<ar_len; i++)
+  {
+    struct TALER_EXCHANGE_AccountRestriction *a = &ar[i];
+    switch (a->type)
+    {
+    case TALER_EXCHANGE_AR_INVALID:
+      GNUNET_break (0);
+      break;
+    case TALER_EXCHANGE_AR_DENY:
+      break;
+    case TALER_EXCHANGE_AR_REGEX:
+      GNUNET_free (ar->details.regex.posix_egrep);
+      GNUNET_free (ar->details.regex.human_hint);
+      json_decref (ar->details.regex.human_hint_i18n);
+      break;
+    }
+  }
 }
 
 
@@ -2379,8 +2419,18 @@ TALER_EXCHANGE_free_accounts (
   {
     struct TALER_EXCHANGE_WireAccount *wa = &was[i];
 
-    GNUNET_free (wa->credit_restrictions);
-    GNUNET_free (wa->debit_restrictions);
+    GNUNET_free (wa->payto_uri);
+    GNUNET_free (wa->conversion_url);
+    free_restrictions (wa->credit_restrictions_length,
+                       wa->credit_restrictions);
+    GNUNET_array_grow (wa->credit_restrictions,
+                       wa->credit_restrictions_length,
+                       0);
+    free_restrictions (wa->debit_restrictions_length,
+                       wa->debit_restrictions);
+    GNUNET_array_grow (wa->debit_restrictions,
+                       wa->debit_restrictions_length,
+                       0);
   }
 }
 

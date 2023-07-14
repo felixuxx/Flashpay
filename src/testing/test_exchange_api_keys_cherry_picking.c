@@ -80,13 +80,6 @@ run (void *cls,
                                     "get-exchange-1",
                                     true,
                                     true),
-    /**
-     * Use one of the deserialized keys.
-     */
-    TALER_TESTING_cmd_wire ("wire-with-serialized-keys",
-                            "x-taler-bank",
-                            NULL,
-                            MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 

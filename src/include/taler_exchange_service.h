@@ -121,6 +121,13 @@ struct TALER_EXCHANGE_DenomPublicKey
   struct TALER_DenomFeeSet fees;
 
   /**
+   * Set to true if the private denomination key has been
+   * lost by the exchange and thus the key cannot be
+   * used for withdrawing at this time.
+   */
+  bool lost;
+
+  /**
    * Set to true if this denomination key has been
    * revoked by the exchange.
    */
@@ -230,6 +237,173 @@ struct TALER_EXCHANGE_GlobalFee
 
 
 /**
+ * List sorted by @a start_date with fees to be paid for aggregate wire transfers.
+ */
+struct TALER_EXCHANGE_WireAggregateFees
+{
+  /**
+   * This is a linked list.
+   */
+  struct TALER_EXCHANGE_WireAggregateFees *next;
+
+  /**
+   * Fee to be paid whenever the exchange wires funds to the merchant.
+   */
+  struct TALER_WireFeeSet fees;
+
+  /**
+   * Time when this fee goes into effect (inclusive)
+   */
+  struct GNUNET_TIME_Timestamp start_date;
+
+  /**
+   * Time when this fee stops being in effect (exclusive).
+   */
+  struct GNUNET_TIME_Timestamp end_date;
+
+  /**
+   * Signature affirming the above fee structure.
+   */
+  struct TALER_MasterSignatureP master_sig;
+};
+
+
+/**
+ * Information about wire fees by wire method.
+ */
+struct TALER_EXCHANGE_WireFeesByMethod
+{
+  /**
+   * Wire method with the given @e fees.
+   */
+  char *method;
+
+  /**
+   * Linked list of wire fees the exchange charges for
+   * accounts of the wire @e method.
+   */
+  struct TALER_EXCHANGE_WireAggregateFees *fees_head;
+
+};
+
+
+/**
+ * Type of an account restriction.
+ */
+enum TALER_EXCHANGE_AccountRestrictionType
+{
+  /**
+   * Invalid restriction.
+   */
+  TALER_EXCHANGE_AR_INVALID = 0,
+
+  /**
+   * Account must not be used for this operation.
+   */
+  TALER_EXCHANGE_AR_DENY = 1,
+
+  /**
+   * Other account must match given regular expression.
+   */
+  TALER_EXCHANGE_AR_REGEX = 2
+};
+
+/**
+ * Restrictions that apply to using a given exchange bank account.
+ */
+struct TALER_EXCHANGE_AccountRestriction
+{
+
+  /**
+   * Type of the account restriction.
+   */
+  enum TALER_EXCHANGE_AccountRestrictionType type;
+
+  /**
+   * Restriction details depending on @e type.
+   */
+  union
+  {
+    /**
+     * Details if type is #TALER_EXCHANGE_AR_REGEX.
+     */
+    struct
+    {
+      /**
+       * Regular expression that the payto://-URI of the partner account must
+       * follow.  The regular expression should follow posix-egrep, but
+       * without support for character classes, GNU extensions,
+       * back-references or intervals. See
+       * https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002degrep-regular-expression-syntax.html
+       * for a description of the posix-egrep syntax. Applications may support
+       * regexes with additional features, but exchanges must not use such
+       * regexes.
+       */
+      char *posix_egrep;
+
+      /**
+       * Hint for a human to understand the restriction.
+       */
+      char *human_hint;
+
+      /**
+       * Internationalizations for the @e human_hint.  Map from IETF BCP 47
+       * language tax to localized human hints.
+       */
+      json_t *human_hint_i18n;
+    } regex;
+  } details;
+
+};
+
+
+/**
+ * Information about a wire account of the exchange.
+ */
+struct TALER_EXCHANGE_WireAccount
+{
+  /**
+   * payto://-URI of the exchange.
+   */
+  char *payto_uri;
+
+  /**
+   * URL of a conversion service in case using this account is subject to
+   * currency conversion.  NULL for no conversion needed.
+   */
+  char *conversion_url;
+
+  /**
+   * Array of restrictions that apply when crediting
+   * this account.
+   */
+  struct TALER_EXCHANGE_AccountRestriction *credit_restrictions;
+
+  /**
+   * Array of restrictions that apply when debiting
+   * this account.
+   */
+  struct TALER_EXCHANGE_AccountRestriction *debit_restrictions;
+
+  /**
+   * Length of the @e credit_restrictions array.
+   */
+  unsigned int credit_restrictions_length;
+
+  /**
+   * Length of the @e debit_restrictions array.
+   */
+  unsigned int debit_restrictions_length;
+
+  /**
+   * Signature of the exchange over the account (was checked by the API).
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+};
+
+
+/**
  * @brief Information about keys from the exchange.
  */
 struct TALER_EXCHANGE_Keys
@@ -304,6 +478,16 @@ struct TALER_EXCHANGE_Keys
   struct TALER_Amount *wallet_balance_limit_without_kyc;
 
   /**
+   * Array of accounts of the exchange.
+   */
+  struct TALER_EXCHANGE_WireAccount *accounts;
+
+  /**
+   * Array of wire fees by wire method.
+   */
+  struct TALER_EXCHANGE_WireFeesByMethod *fees;
+
+  /**
    * How long after a reserve went idle will the exchange close it?
    * This is an approximate number, not cryptographically signed by
    * the exchange (advisory-only, may change anytime).
@@ -331,6 +515,16 @@ struct TALER_EXCHANGE_Keys
    * If age restriction is enabled on the exchange, we get an non-zero age_mask
    */
   struct TALER_AgeMask age_mask;
+
+  /**
+   * Length of @e accounts array.
+   */
+  unsigned int accounts_len;
+
+  /**
+   * Length of @e fees array.
+   */
+  unsigned int fees_len;
 
   /**
    * Length of the @e wallet_balance_limit_without_kyc
@@ -702,174 +896,7 @@ TALER_EXCHANGE_get_signing_key_info (
   const struct TALER_ExchangePublicKeyP *exchange_pub);
 
 
-/* *********************  /wire *********************** */
-
-
-/**
- * List sorted by @a start_date with fees to be paid for aggregate wire transfers.
- */
-struct TALER_EXCHANGE_WireAggregateFees
-{
-  /**
-   * This is a linked list.
-   */
-  struct TALER_EXCHANGE_WireAggregateFees *next;
-
-  /**
-   * Fee to be paid whenever the exchange wires funds to the merchant.
-   */
-  struct TALER_WireFeeSet fees;
-
-  /**
-   * Time when this fee goes into effect (inclusive)
-   */
-  struct GNUNET_TIME_Timestamp start_date;
-
-  /**
-   * Time when this fee stops being in effect (exclusive).
-   */
-  struct GNUNET_TIME_Timestamp end_date;
-
-  /**
-   * Signature affirming the above fee structure.
-   */
-  struct TALER_MasterSignatureP master_sig;
-};
-
-
-/**
- * Information about wire fees by wire method.
- */
-struct TALER_EXCHANGE_WireFeesByMethod
-{
-  /**
-   * Wire method with the given @e fees.
-   */
-  const char *method;
-
-  /**
-   * Linked list of wire fees the exchange charges for
-   * accounts of the wire @e method.
-   */
-  struct TALER_EXCHANGE_WireAggregateFees *fees_head;
-
-};
-
-
-/**
- * Type of an account restriction.
- */
-enum TALER_EXCHANGE_AccountRestrictionType
-{
-  /**
-   * Invalid restriction.
-   */
-  TALER_EXCHANGE_AR_INVALID = 0,
-
-  /**
-   * Account must not be used for this operation.
-   */
-  TALER_EXCHANGE_AR_DENY = 1,
-
-  /**
-   * Other account must match given regular expression.
-   */
-  TALER_EXCHANGE_AR_REGEX = 2
-};
-
-/**
- * Restrictions that apply to using a given exchange bank account.
- */
-struct TALER_EXCHANGE_AccountRestriction
-{
-
-  /**
-   * Type of the account restriction.
-   */
-  enum TALER_EXCHANGE_AccountRestrictionType type;
-
-  /**
-   * Restriction details depending on @e type.
-   */
-  union
-  {
-    /**
-     * Details if type is #TALER_EXCHANGE_AR_REGEX.
-     */
-    struct
-    {
-      /**
-       * Regular expression that the payto://-URI of the partner account must
-       * follow.  The regular expression should follow posix-egrep, but
-       * without support for character classes, GNU extensions,
-       * back-references or intervals. See
-       * https://www.gnu.org/software/findutils/manual/html_node/find_html/posix_002degrep-regular-expression-syntax.html
-       * for a description of the posix-egrep syntax. Applications may support
-       * regexes with additional features, but exchanges must not use such
-       * regexes.
-       */
-      const char *posix_egrep;
-
-      /**
-       * Hint for a human to understand the restriction.
-       */
-      const char *human_hint;
-
-      /**
-       * Internationalizations for the @e human_hint.  Map from IETF BCP 47
-       * language tax to localized human hints.
-       */
-      const json_t *human_hint_i18n;
-    } regex;
-  } details;
-
-};
-
-
-/**
- * Information about a wire account of the exchange.
- */
-struct TALER_EXCHANGE_WireAccount
-{
-  /**
-   * payto://-URI of the exchange.
-   */
-  const char *payto_uri;
-
-  /**
-   * URL of a conversion service in case using this account is subject to
-   * currency conversion.  NULL for no conversion needed.
-   */
-  const char *conversion_url;
-
-  /**
-   * Array of restrictions that apply when crediting
-   * this account.
-   */
-  struct TALER_EXCHANGE_AccountRestriction *credit_restrictions;
-
-  /**
-   * Array of restrictions that apply when debiting
-   * this account.
-   */
-  struct TALER_EXCHANGE_AccountRestriction *debit_restrictions;
-
-  /**
-   * Length of the @e credit_restrictions array.
-   */
-  unsigned int credit_restrictions_length;
-
-  /**
-   * Length of the @e debit_restrictions array.
-   */
-  unsigned int debit_restrictions_length;
-
-  /**
-   * Signature of the exchange over the account (was checked by the API).
-   */
-  struct TALER_MasterSignatureP master_sig;
-
-};
+/* *********************  wire helpers *********************** */
 
 
 /**
@@ -899,116 +926,6 @@ void
 TALER_EXCHANGE_free_accounts (
   unsigned int was_len,
   struct TALER_EXCHANGE_WireAccount was[static was_len]);
-
-
-/**
- * Response to a /wire request.
- */
-struct TALER_EXCHANGE_WireResponse
-{
-  /**
-   * HTTP response details.
-   */
-  struct TALER_EXCHANGE_HttpResponse hr;
-
-  /**
-   * Response details depending on status.
-   */
-  union
-  {
-
-    /**
-     * Details for #MHD_HTTP_OK.
-     */
-    struct
-    {
-
-      /**
-       * Array of accounts of the exchange.
-       */
-      const struct TALER_EXCHANGE_WireAccount *accounts;
-
-      /**
-       * Array of wire fees by wire method.
-       */
-      const struct TALER_EXCHANGE_WireFeesByMethod *fees;
-
-      /**
-       * Length of @e accounts array.
-       */
-      unsigned int accounts_len;
-
-      /**
-       * Length of @e fees array.
-       */
-      unsigned int fees_len;
-
-    } ok;
-
-  } details;
-};
-
-
-/**
- * Callbacks of this type are used to serve the result of submitting a wire
- * format inquiry request to a exchange.
- *
- * If the request fails to generate a valid response from the
- * exchange, the http_status will also be zero.
- *
- * @param cls closure
- * @param wr response data
- */
-typedef void
-(*TALER_EXCHANGE_WireCallback) (
-  void *cls,
-  const struct TALER_EXCHANGE_WireResponse *wr);
-
-
-/**
- * @brief A Wire format inquiry handle
- */
-struct TALER_EXCHANGE_WireHandle;
-
-
-/**
- * Obtain information about a exchange's wire instructions.  A
- * exchange may provide wire instructions for creating a reserve.  The
- * wire instructions also indicate which wire formats merchants may
- * use with the exchange.  This API is typically used by a wallet for
- * wiring funds, and possibly by a merchant to determine supported
- * wire formats.
- *
- * Note that while we return the (main) response verbatim to the
- * caller for further processing, we do already verify that the
- * response is well-formed (i.e. that signatures included in the
- * response are all valid).  If the exchange's reply is not
- * well-formed, we return an HTTP status code of zero to @a cb.
- *
- * @param ctx curl context
- * @param url exchange base URL
- * @param keys the keys of the exchange
- * @param wire_cb the callback to call when a reply for this request is available
- * @param wire_cb_cls closure for the above callback
- * @return a handle for this request
- */
-struct TALER_EXCHANGE_WireHandle *
-TALER_EXCHANGE_wire (
-  struct GNUNET_CURL_Context *ctx,
-  const char *url,
-  struct TALER_EXCHANGE_Keys *keys,
-  TALER_EXCHANGE_WireCallback wire_cb,
-  void *wire_cb_cls);
-
-
-/**
- * Cancel a wire information request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param wh the wire information request handle
- */
-void
-TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
 
 
 /* *********************  /coins/$COIN_PUB/deposit *********************** */

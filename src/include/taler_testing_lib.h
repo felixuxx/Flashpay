@@ -1175,24 +1175,6 @@ TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd);
 
 
 /**
- * Create a "wire" command.
- *
- * @param label the command label.
- * @param expected_method which wire-transfer method is expected
- *        to be offered by the exchange.
- * @param expected_fee the fee the exchange should charge.
- * @param expected_response_code the HTTP response the exchange
- *        should return.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_wire (const char *label,
-                        const char *expected_method,
-                        const char *expected_fee,
-                        unsigned int expected_response_code);
-
-
-/**
  * Create a GET "reserves" command.
  *
  * @param label the command label.

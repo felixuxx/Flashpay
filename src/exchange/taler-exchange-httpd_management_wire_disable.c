@@ -28,7 +28,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_wire.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
