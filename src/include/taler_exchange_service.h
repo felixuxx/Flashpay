@@ -2717,6 +2717,18 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
       struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
       /**
+       * The algorithm specific values (for CS) need for the coins that were
+       * retrieved from /csr-withdraw.
+       */
+      struct TALER_ExchangeWithdrawValues *alg_values;
+
+      /**
+       * Number of elements in @e alg_values, same as number coin candidates.from
+       * the request.
+       */
+      size_t num_alg_values;
+
+      /**
        * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
        */
       struct TALER_ExchangeSignatureP exchange_sig;
@@ -2788,11 +2800,9 @@ TALER_EXCHANGE_age_withdraw_cancel (
  */
 struct TALER_EXCHANGE_AgeWithdrawRevealHandle;
 
-
 /**
- *
+ * The response from a /age-withdraw/$ACH/reveal request
  */
-
 struct TALER_EXCHANGE_AgeWithdrawRevealResponse
 {
   /**
@@ -2821,7 +2831,7 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
        * have the same length) in which the original age-withdraw request
        * specified the respective denomination keys.
        */
-      const struct TALER_EXCHANGE_RevealedCoinInfo *coins;
+      const struct TALER_EXCHANGE_RevealedCoinInfo *revealed_coins;
 
     } ok;
     /* FIXME[oec]: error cases */
@@ -2846,8 +2856,9 @@ typedef void
  * @param curl_ctx The curl context
  * @param exchange_url The base url of the exchange
  * @param reserve_priv The pivate key to the reserve
- * @param num_coins The number of elements in @e coin_inputs
- * @param coins_input The input for the coins to withdraw
+ * @param num_coins The number of elements in @e coin_inputs and @e alg_values
+ * @param coins_input The input for the coins to withdraw, same as in the previous call to /age-withdraw
+ * @param alg_values The algorithm specific parameters per coin, from the result to the previous call to /age-withdraw
  * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
  * @param h_commitment The commmitment from the previous call to /age-withdraw
  * @param res_cb A callback for the result, maybe NULL
@@ -2862,6 +2873,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   size_t num_coins,
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coins_input[static
                                                                num_coins],
+  const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   TALER_EXCHANGE_AgeWithdrawRevealCallback res_cb,

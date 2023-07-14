@@ -50,8 +50,12 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
   /* Number of coins */
   size_t num_coins;
 
-  /* The n*kappa coin secrets from the age-withdraw commitment */
+  /* The @e num_coins * kappa coin secrets from the age-withdraw commitment */
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput *coins_input;
+
+  /* The @e num_coins algorithm- and coin-specific parameters from the
+   * previous call to /age-withdraw. */
+  const struct TALER_ExchangeWithdrawValues *alg_values;
 
   /* The curl context for the request */
   struct GNUNET_CURL_Context *curl_ctx;
@@ -83,17 +87,20 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
  *
  * @param awrh operation handle
  * @param j_response reply from the exchange
+ * @param num_coins The (expected) number of revealed coins
+ * @param[in,out] revealed_coins The @e num_coins revealed coins to populate
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
 age_withdraw_reveal_ok (
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh,
-  const json_t *j_response)
+  const json_t *j_response,
+  size_t num_coins,
+  struct TALER_EXCHANGE_RevealedCoinInfo revealed_coins[static num_coins])
 {
   struct TALER_EXCHANGE_AgeWithdrawRevealResponse response = {
     .hr.reply = j_response,
     .hr.http_status = MHD_HTTP_OK,
-    .details.ok.num_coins = awrh->num_coins
   };
   const json_t *j_sigs;
   struct GNUNET_JSON_Specification spec[] = {
@@ -111,18 +118,22 @@ age_withdraw_reveal_ok (
     return GNUNET_SYSERR;
   }
 
-  if (awrh->num_coins != json_array_size (j_sigs))
+  GNUNET_assert (num_coins == awrh->num_coins);
+  if (num_coins != json_array_size (j_sigs))
   {
     /* Number of coins generated does not match our expectation */
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
 
-  for (size_t n = 0; n < awrh->num_coins; n++)
+
+  for (size_t n = 0; n < num_coins; n++)
   {
     // TODO[oec] extract the individual coins.
   }
 
+  response.details.ok.num_coins = num_coins;
+  response.details.ok.revealed_coins = revealed_coins;
   awrh->callback (awrh->callback_cls,
                   &response);
   /* make sure the callback isn't called again */
@@ -160,18 +171,25 @@ handle_age_withdraw_reveal_finished (
     awr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    if (GNUNET_OK !=
-        age_withdraw_reveal_ok (awrh,
-                                j_response))
     {
-      GNUNET_break_op (0);
-      awr.hr.http_status = 0;
-      awr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      break;
+      enum GNUNET_GenericReturnValue ret;
+      struct TALER_EXCHANGE_RevealedCoinInfo revealed_coins[awrh->num_coins];
+
+      ret = age_withdraw_reveal_ok (awrh,
+                                    j_response,
+                                    awrh->num_coins,
+                                    revealed_coins);
+      if (GNUNET_OK != ret)
+      {
+        GNUNET_break_op (0);
+        awr.hr.http_status = 0;
+        awr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      GNUNET_assert (NULL == awrh->callback);
+      TALER_EXCHANGE_age_withdraw_reveal_cancel (awrh);
+      return;
     }
-    GNUNET_assert (NULL == awrh->callback);
-    TALER_EXCHANGE_age_withdraw_reveal_cancel (awrh);
-    return;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* only validate reply is well-formed */
     {
@@ -396,6 +414,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   size_t num_coins,
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coins_input[static
                                                                num_coins],
+  const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
   TALER_EXCHANGE_AgeWithdrawRevealCallback reveal_cb,
@@ -410,6 +429,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   awrh->h_commitment = *h_commitment;
   awrh->num_coins = num_coins;
   awrh->coins_input = coins_input;
+  awrh->alg_values = alg_values;
 
 
   if (GNUNET_OK !=
@@ -429,6 +449,7 @@ TALER_EXCHANGE_age_withdraw_reveal_cancel (
 {
   /* FIXME[oec] */
   (void) awrh;
+  #pragma message "need to implement TALER_EXCHANGE_age_withdraw_reveal_cancel"
 }
 
 
