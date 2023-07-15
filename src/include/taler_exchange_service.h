@@ -2739,7 +2739,6 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
       struct TALER_ExchangePublicKeyP exchange_pub;
 
     } ok;
-    /* FIXME[oec]: error cases */
   } details;
 };
 
@@ -2772,8 +2771,8 @@ typedef void
 struct TALER_EXCHANGE_AgeWithdrawHandle *
 TALER_EXCHANGE_age_withdraw (
   struct GNUNET_CURL_Context *curl_ctx,
-  const char *exchange_url,
   struct TALER_EXCHANGE_Keys *keys,
+  const char *exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   size_t num_coins,
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[static
@@ -2791,6 +2790,145 @@ TALER_EXCHANGE_age_withdraw (
 void
 TALER_EXCHANGE_age_withdraw_cancel (
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh);
+
+
+/**++++++ age-withdraw with pre-blinded planchets ***************************/
+
+/**
+ * @brief Information needed to withdraw (and reveal) age restricted coins.
+ */
+struct TALER_EXCHANGE_AgeWithdrawBlindedInput
+{
+  /**
+   * The denomination of the coin.  Must support age restriction, i.e
+   * its .keys.age_mask MUST not be 0
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+
+  /**
+   * Blinded Planchets
+   */
+  struct TALER_PlanchetDetail planchet_details[TALER_CNC_KAPPA];
+
+};
+
+/**
+ * Response from an age-withdraw request with pre-blinded planchets
+ */
+struct TALER_EXCHANGE_AgeWithdrawBlindedResponse
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Response details depending on the HTTP status.
+   */
+  union
+  {
+    /**
+     * Details if HTTP status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Index that should not be revealed during the age-withdraw reveal phase.
+       * The struct TALER_PlanchetMasterSecretP * from the request
+       * with this index are the ones to keep.
+       */
+      uint8_t noreveal_index;
+
+      /**
+       * The commitment of the call to /age-withdraw
+       */
+      struct TALER_AgeWithdrawCommitmentHashP h_commitment;
+
+      /**
+       * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+      /**
+       * Key used by the exchange for @e exchange_sig
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+    } ok;
+  } details;
+
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting an
+ * age-withdraw request to a exchange with pre-blinded planchets
+ * without the (un)blinding factor.
+ *
+ * @param cls closure
+ * @param awbr response data
+ */
+typedef void
+(*TALER_EXCHANGE_AgeWithdrawBlindedCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_AgeWithdrawBlindedResponse *awbr);
+
+
+/**
+ * @brief A /reserves/$RESERVE_PUB/age-withdraw Handle, 2nd variant with
+ * pre-blinded planchets.
+ *
+ * This variant does not do the blinding/unblinding and only
+ * fetches the blind signatures on the already blinded planchets.
+ * Used internally by the `struct TALER_EXCHANGE_BatchWithdrawHandle`
+ * implementation as well as for the reward logic of merchants.
+ */
+struct TALER_EXCHANGE_BatchWithdraw2Handle;
+
+/**
+ * Withdraw age-restricted coins from the exchange using a
+ * /reserves/$RESERVE_PUB/age-withdraw request.  This API is typically used
+ * by a merchant to withdraw a reward where the planchets are pre-blinded and
+ * the blinding factor is unknown to the merchant.
+ *
+ * Note that to ensure that no money is lost in case of hardware
+ * failures, the caller must have committed (most of) the arguments to
+ * disk before calling, and be ready to repeat the request with the
+ * same arguments in case of failures.
+ *
+ * @param curl_ctx The curl context to use
+ * @param exchange_url The base-URL of the exchange
+ * @param keys The /keys material from the exchange
+ * @param num_input number of entries in the @a blinded_input array
+ * @param blinded_input array of planchet details of the planchet to withdraw
+ * @param reserve_priv private key of the reserve to withdraw from
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for @a res_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *
+TALER_EXCHANGE_age_withdraw_blinded (
+  struct GNUNET_CURL_Context *curl_ctx,
+  struct TALER_EXCHANGE_Keys *keys,
+  const char *exchange_url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  unsigned int num_input,
+  const struct TALER_EXCHANGE_AgeWithdrawBlindedInput blinded_input[static
+                                                                    num_input],
+  TALER_EXCHANGE_AgeWithdrawBlindedCallback res_cb,
+  void *res_cb_cls);
+
+
+/**
+ * Cancel an age-withdraw request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param awbh the age-withdraw handle
+ */
+void
+TALER_EXCHANGE_age_withdraw_blinded_cancel (
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh);
 
 
 /* ********************* /age-withdraw/$ACH/reveal ************************ */

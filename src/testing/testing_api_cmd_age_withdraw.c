@@ -142,9 +142,9 @@ TALER_TESTING_cmd_age_withdraw (const char *label,
     struct TALER_TESTING_Command cmd = {
       .cls = ws,
       .label = label,
-      .run = &batch_withdraw_run,
-      .cleanup = &batch_withdraw_cleanup,
-      .traits = &batch_withdraw_traits
+      .run = &age_withdraw_run,
+      .cleanup = &age_withdraw_cleanup,
+      .traits = &age_withdraw_traits
     };
 
     return cmd;

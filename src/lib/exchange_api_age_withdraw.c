@@ -27,6 +27,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <gnunet/gnunet_json_lib.h>
 #include <gnunet/gnunet_curl_lib.h>
+#include <sys/wait.h>
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
@@ -35,6 +36,9 @@
 #include "taler_signatures.h"
 #include "exchange_api_curl_defaults.h"
 
+/**
+ * A CoinCandidate is populated from a master secret
+ */
 struct CoinCandidate
 {
   /**
@@ -64,11 +68,6 @@ struct CoinCandidate
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * Details of the planchet.
-   */
-  struct TALER_PlanchetDetail planchet_detail;
-
-  /**
    * Values of the @cipher selected
    */
   struct TALER_ExchangeWithdrawValues alg_values;
@@ -78,36 +77,51 @@ struct CoinCandidate
    */
   struct TALER_CoinPubHashP h_coin_pub;
 
-  /* Blinded hash of the coin */
+
+  /**
+   * Blinded hash of the coin
+   **/
   struct TALER_BlindedCoinHashP blinded_coin_h;
-
-  /**
-   * The following fields are needed as closure for the call to /csr-withdrwaw
-   * per coin-candidate.
-   */
-
-  /* Denomination information, needed for CS coins for the step after /csr-withdraw */
-  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
-
-  /**
-   * Handler for the CS R request (only used for TALER_DENOMINATION_CS denominations)
-   */
-  struct TALER_EXCHANGE_CsRWithdrawHandle *csr_withdraw_handle;
-
-  /* Needed in the closure for csr-withdraw calls */
-  struct TALER_EXCHANGE_AgeWithdrawHandle *age_withdraw_handle;
 
 };
 
+
+/**
+ * Closure for a call to /csr-withdraw, contains data that is needed to process
+ * the result.
+ */
+struct CSRClosure
+{
+  /* Points to the actual candidate in CoinData.coin_candidates, to continue
+   * to build its contents based on the results from /csr-withdraw */
+  struct CoinCandidate *candidate;
+
+  /* The planchet to finally generate.  Points to the corresponding candidate
+   * in CoindData.planchet_details */
+  struct TALER_PlanchetDetail *planchet;
+
+  /* Handler to the originating call to /age-withdraw, needed to either
+   * cancel the running age-withdraw request (on failure of the current call
+   * to /csr-withdraw), or to eventually perform the protocol, once all
+   * csr-withdraw requests have successfully finished. */
+  struct TALER_EXCHANGE_AgeWithdrawHandle *age_withdraw_handle;
+
+  /* Denomination information, needed for CS coins for the
+   * step after /csr-withdraw */
+  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+
+  /* Handler for the CS R request */
+  struct TALER_EXCHANGE_CsRWithdrawHandle *csr_withdraw_handle;
+};
 
 /**
  * Data we keep per coin in the batch.
  */
 struct CoinData
 {
-
   /**
-   * Denomination key we are withdrawing.
+   * The denomination of the coin.  Must support age restriction, i.e
+   * its .keys.age_mask MUST not be 0
    */
   struct TALER_EXCHANGE_DenomPublicKey denom_pub;
 
@@ -116,13 +130,23 @@ struct CoinData
    */
   struct CoinCandidate coin_candidates[TALER_CNC_KAPPA];
 
+  /**
+   * Details of the planchet(s).
+   */
+  struct TALER_PlanchetDetail planchet_details[TALER_CNC_KAPPA];
+
+  /**
+   * Closure for each candidate of type CS for the preflight request to
+   * /csr-withdraw
+   */
+  struct CSRClosure csr_cls[TALER_CNC_KAPPA];
 };
 
-
 /**
- * @brief A /reserves/$RESERVE_PUB/age-withdraw request-handle
+ * A /reserves/$RESERVE_PUB/age-withdraw request-handle for calls with
+ * pre-blinded planchets.  Returned by TALER_EXCHANGE_age_withdraw_blinded.
  */
-struct TALER_EXCHANGE_AgeWithdrawHandle
+struct TALER_EXCHANGE_AgeWithdrawBlindedHandle
 {
 
   /**
@@ -147,11 +171,6 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   struct TALER_EXCHANGE_Keys *keys;
 
   /**
-   * The base-URL of the exchange.
-   */
-  const char *exchange_url;
-
-  /**
    * The age mask, extacted from the denominations.
    * MUST be the same for all denominations
    *
@@ -164,16 +183,6 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   uint8_t max_age;
 
   /**
-   * Length of the @e coin_data Array
-   */
-  size_t num_coins;
-
-  /**
-   * Array of per-coin data
-   */
-  struct CoinData *coin_data;
-
-  /**
    * The commitment calculated as SHA512 hash over all blinded_coin_h
    */
   struct TALER_AgeWithdrawCommitmentHashP h_commitment;
@@ -184,9 +193,15 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   struct TALER_Amount amount_with_fee;
 
   /**
-   * Number of /csr-withdraw requests still pending.
+   * Length of the @e blinded_input Array
    */
-  unsigned int csr_pending;
+  size_t num_input;
+
+  /**
+   * The blinded planchet input for the call to /age-withdraw via
+   * TALER_EXCHANGE_age_withdraw_blinded
+   */
+  const struct TALER_EXCHANGE_AgeWithdrawBlindedInput *blinded_input;
 
   /**
    * The url for this request.
@@ -211,6 +226,91 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   /**
    * Function to call with age-withdraw response results.
    */
+  TALER_EXCHANGE_AgeWithdrawBlindedCallback callback;
+
+  /**
+   * Closure for @e blinded_callback
+   */
+  void *callback_cls;
+};
+
+/**
+ * A /reserves/$RESERVE_PUB/age-withdraw request-handle for calls from
+ * a wallet, i. e. when blinding data is available.
+ */
+struct TALER_EXCHANGE_AgeWithdrawHandle
+{
+
+  /**
+   * Length of the @e coin_data Array
+   */
+  size_t num_coins;
+
+  /**
+   * The base-URL of the exchange.
+   */
+  const char *exchange_url;
+
+  /**
+   * Reserve private key.
+   */
+  const struct TALER_ReservePrivateKeyP *reserve_priv;
+
+  /**
+   * Reserve public key, calculated
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Signature of the reserve for the request, calculated after all
+   * parameters for the coins are collected.
+   */
+  struct TALER_ReserveSignatureP reserve_sig;
+
+  /*
+   * The denomination keys of the exchange
+   */
+  struct TALER_EXCHANGE_Keys *keys;
+
+  /**
+   * The age mask, extacted from the denominations.
+   * MUST be the same for all denominations
+   *
+   */
+  struct TALER_AgeMask age_mask;
+
+  /**
+   * Maximum age to commit to.
+   */
+  uint8_t max_age;
+
+  /**
+   * Array of per-coin data
+   */
+  struct CoinData *coin_data;
+
+  /**
+   * Context for curl.
+   */
+  struct GNUNET_CURL_Context *curl_ctx;
+
+  struct
+  {
+    /**
+     * Number of /csr-withdraw requests still pending.
+     */
+    unsigned int pending;
+
+    /**
+     * CURL handle for the request job.
+     */
+    struct GNUNET_CURL_Job *job;
+  } csr;
+
+
+  /**
+   * Function to call with age-withdraw response results.
+   */
   TALER_EXCHANGE_AgeWithdrawCallback callback;
 
   /**
@@ -218,6 +318,8 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
    */
   void *callback_cls;
 
+  /* The Handler for the actual call to the exchange */
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *protocol_handler;
 };
 
 /**
@@ -230,13 +332,13 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
  */
 static enum GNUNET_GenericReturnValue
 reserve_age_withdraw_ok (
-  struct TALER_EXCHANGE_AgeWithdrawHandle *awh,
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh,
   const json_t *j_response)
 {
-  struct TALER_EXCHANGE_AgeWithdrawResponse response = {
+  struct TALER_EXCHANGE_AgeWithdrawBlindedResponse response = {
     .hr.reply = j_response,
     .hr.http_status = MHD_HTTP_OK,
-    .details.ok.h_commitment = awh->h_commitment
+    .details.ok.h_commitment = awbh->h_commitment
   };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint8 ("noreaveal_index",
@@ -258,7 +360,7 @@ reserve_age_withdraw_ok (
 
   if (GNUNET_OK !=
       TALER_exchange_online_age_withdraw_confirmation_verify (
-        &awh->h_commitment,
+        &awbh->h_commitment,
         response.details.ok.noreveal_index,
         &response.details.ok.exchange_pub,
         &response.details.ok.exchange_sig))
@@ -267,10 +369,10 @@ reserve_age_withdraw_ok (
     return GNUNET_SYSERR;
 
   }
-  awh->callback (awh->callback_cls,
-                 &response);
+  awbh->callback (awbh->callback_cls,
+                  &response);
   /* make sure the callback isn't called again */
-  awh->callback = NULL;
+  awbh->callback = NULL;
 
   return GNUNET_OK;
 }
@@ -387,36 +489,36 @@ reserve_age_withdraw_payment_required (
  * @param response response data
  */
 static void
-handle_reserve_age_withdraw_finished (
+handle_reserve_age_withdraw_blinded_finished (
   void *cls,
   long response_code,
   const void *response)
 {
-  struct TALER_EXCHANGE_AgeWithdrawHandle *awh = cls;
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh = cls;
   const json_t *j_response = response;
-  struct TALER_EXCHANGE_AgeWithdrawResponse awr = {
+  struct TALER_EXCHANGE_AgeWithdrawBlindedResponse awbr = {
     .hr.reply = j_response,
     .hr.http_status = (unsigned int) response_code
   };
 
-  awh->job = NULL;
+  awbh->job = NULL;
   switch (response_code)
   {
   case 0:
-    awr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    awbr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        reserve_age_withdraw_ok (awh,
+        reserve_age_withdraw_ok (awbh,
                                  j_response))
     {
       GNUNET_break_op (0);
-      awr.hr.http_status = 0;
-      awr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      awbr.hr.http_status = 0;
+      awbr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
-    GNUNET_assert (NULL == awh->callback);
-    TALER_EXCHANGE_age_withdraw_cancel (awh);
+    GNUNET_assert (NULL == awbh->callback);
+    TALER_EXCHANGE_age_withdraw_blinded_cancel (awbh);
     return;
   case MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS:
     /* only validate reply is well-formed */
@@ -434,50 +536,50 @@ handle_reserve_age_withdraw_finished (
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        awr.hr.http_status = 0;
-        awr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        awbr.hr.http_status = 0;
+        awbr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
     }
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_FORBIDDEN:
     GNUNET_break_op (0);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, the exchange basically just says
        that it doesn't know this reserve.  Can happen if we
        query before the wire transfer went through.
        We should simply pass the JSON reply to the application. */
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_CONFLICT:
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
-        reserve_age_withdraw_payment_required (awh->keys,
-                                               &awh->reserve_pub,
-                                               &awh->amount_with_fee,
+        reserve_age_withdraw_payment_required (awbh->keys,
+                                               &awbh->reserve_pub,
+                                               &awbh->amount_with_fee,
                                                j_response))
     {
       GNUNET_break_op (0);
-      awr.hr.http_status = 0;
-      awr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      awbr.hr.http_status = 0;
+      awbr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     else
     {
-      awr.hr.ec = TALER_JSON_get_error_code (j_response);
-      awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+      awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+      awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     }
     break;
   case MHD_HTTP_GONE:
@@ -485,41 +587,40 @@ handle_reserve_age_withdraw_finished (
     /* Note: one might want to check /keys for revocation
        signature here, alas tricky in case our /keys
        is outdated => left to clients */
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    awr.hr.ec = TALER_JSON_get_error_code (j_response);
-    awr.hr.hint = TALER_JSON_get_error_hint (j_response);
+    awbr.hr.ec = TALER_JSON_get_error_code (j_response);
+    awbr.hr.hint = TALER_JSON_get_error_hint (j_response);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange age-withdraw\n",
                 (unsigned int) response_code,
-                (int) awr.hr.ec);
+                (int) awbr.hr.ec);
     break;
   }
-  awh->callback (awh->callback_cls,
-                 &awr);
-  TALER_EXCHANGE_age_withdraw_cancel (awh);
+  awbh->callback (awbh->callback_cls,
+                  &awbr);
+  TALER_EXCHANGE_age_withdraw_blinded_cancel (awbh);
 }
 
 
 /**
- * Runs the actual age-withdraw operation. If there were CS-denominations
- * involved, started once the all calls to /csr-withdraw are done.
+ * Runs the actual age-withdraw operation with the blinded planchets.
  *
  * @param[in,out] awh age withdraw handler
  */
 static void
 perform_protocol (
-  struct TALER_EXCHANGE_AgeWithdrawHandle *awh)
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh)
 {
 #define FAIL_IF(cond) \
   do { \
@@ -536,13 +637,30 @@ perform_protocol (
   json_t *j_request_body = NULL;
   CURL *curlh = NULL;
 
+  FAIL_IF (GNUNET_OK !=
+           TALER_amount_set_zero (awbh->keys->currency,
+                                  &awbh->amount_with_fee));
+  /* Accumulate total value with fees */
+  for (size_t i = 0; i < awbh->num_input; i++)
+  {
+    struct TALER_Amount coin_total;
+    const struct TALER_EXCHANGE_DenomPublicKey *dpub =
+      awbh->blinded_input[i].denom_pub;
 
-  GNUNET_assert (0 == awh->csr_pending);
+    FAIL_IF (0 >
+             TALER_amount_add (&coin_total,
+                               &dpub->fees.withdraw,
+                               &dpub->value));
+    FAIL_IF (0 >
+             TALER_amount_add (&awbh->amount_with_fee,
+                               &awbh->amount_with_fee,
+                               &coin_total));
+  }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Attempting to age-withdraw from reserve %s with maximum age %d\n",
-              TALER_B2S (&awh->reserve_pub),
-              awh->max_age);
+              TALER_B2S (&awbh->reserve_pub),
+              awbh->max_age);
 
   coins_hctx = GNUNET_CRYPTO_hash_context_start ();
   FAIL_IF (NULL == coins_hctx);
@@ -553,12 +671,12 @@ perform_protocol (
   FAIL_IF ((NULL == j_denoms) ||
            (NULL == j_array_candidates));
 
-  for (size_t i  = 0; i< awh->num_coins; i++)
+  for (size_t i  = 0; i< awbh->num_input; i++)
   {
     /* Build the denomination array */
     {
-      struct TALER_EXCHANGE_DenomPublicKey *denom =
-        &awh->coin_data[i].denom_pub;
+      const struct TALER_EXCHANGE_DenomPublicKey *denom =
+        awbh->blinded_input[i].denom_pub;
       json_t *jdenom = GNUNET_JSON_PACK (
         TALER_JSON_pack_denom_pub (NULL,
                                    &denom->key));
@@ -574,20 +692,25 @@ perform_protocol (
 
         for (size_t k = 0; k < TALER_CNC_KAPPA; k++)
         {
-          const struct CoinCandidate *can =
-            &awh->coin_data[i].coin_candidates[k];
+          struct TALER_BlindedCoinHashP bch;
+          const struct TALER_PlanchetDetail *planchet =
+            &awbh->blinded_input[i].planchet_details[k];
           json_t *jc = GNUNET_JSON_PACK (
             TALER_JSON_pack_blinded_planchet (
               NULL,
-              &can->planchet_detail.blinded_planchet));
+              &planchet->blinded_planchet));
 
           FAIL_IF (NULL == jc);
           FAIL_IF (0 < json_array_append_new (j_can,
                                               jc));
 
+          TALER_coin_ev_hash (&planchet->blinded_planchet,
+                              &planchet->denom_pub_hash,
+                              &bch);
+
           GNUNET_CRYPTO_hash_context_read (coins_hctx,
-                                           &can->blinded_coin_h,
-                                           sizeof(can->blinded_coin_h));
+                                           &bch,
+                                           sizeof(bch));
         }
       }
     }
@@ -595,39 +718,40 @@ perform_protocol (
 
   /* Build the hash of the commitment */
   GNUNET_CRYPTO_hash_context_finish (coins_hctx,
-                                     &awh->h_commitment.hash);
+                                     &awbh->h_commitment.hash);
 
   /* Sign the request */
-  TALER_wallet_age_withdraw_sign (&awh->h_commitment,
-                                  &awh->amount_with_fee,
-                                  &awh->age_mask,
-                                  awh->max_age,
-                                  awh->reserve_priv,
-                                  &awh->reserve_sig);
+  TALER_wallet_age_withdraw_sign (&awbh->h_commitment,
+                                  &awbh->amount_with_fee,
+                                  &awbh->age_mask,
+                                  awbh->max_age,
+                                  awbh->reserve_priv,
+                                  &awbh->reserve_sig);
 
   /* Initiate the POST-request */
   j_request_body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("denoms_h", j_denoms),
     GNUNET_JSON_pack_array_steal ("blinded_coin_evs", j_array_candidates),
-    GNUNET_JSON_pack_uint64 ("max_age", awh->max_age),
-    GNUNET_JSON_pack_data_auto ("reserve_sig", &awh->reserve_sig));
+    GNUNET_JSON_pack_uint64 ("max_age", awbh->max_age),
+    GNUNET_JSON_pack_data_auto ("reserve_sig", &awbh->reserve_sig));
   FAIL_IF (NULL == j_request_body);
 
-  curlh = TALER_EXCHANGE_curl_easy_get_ (awh->request_url);
+  curlh = TALER_EXCHANGE_curl_easy_get_ (awbh->request_url);
   FAIL_IF (NULL == curlh);
   FAIL_IF (GNUNET_OK !=
-           TALER_curl_easy_post (&awh->post_ctx,
+           TALER_curl_easy_post (&awbh->post_ctx,
                                  curlh,
                                  j_request_body));
   json_decref (j_request_body);
   j_request_body = NULL;
 
-  awh->job = GNUNET_CURL_job_add2 (awh->curl_ctx,
-                                   curlh,
-                                   awh->post_ctx.headers,
-                                   &handle_reserve_age_withdraw_finished,
-                                   awh);
-  FAIL_IF (NULL == awh->job);
+  awbh->job = GNUNET_CURL_job_add2 (
+    awbh->curl_ctx,
+    curlh,
+    awbh->post_ctx.headers,
+    &handle_reserve_age_withdraw_blinded_finished,
+    awbh);
+  FAIL_IF (NULL == awbh->job);
 
   /* No errors, return */
   return;
@@ -641,9 +765,79 @@ ERROR:
     json_decref (j_request_body);
   if (NULL != curlh)
     curl_easy_cleanup (curlh);
-  TALER_EXCHANGE_age_withdraw_cancel (awh);
+  TALER_EXCHANGE_age_withdraw_blinded_cancel (awbh);
   return;
 #undef FAIL_IF
+}
+
+
+/**
+ * @brief Callback to copy the results from the call to TALER_age_withdraw_blinded
+ * to the result for the originating call from TALER_age_withdraw.
+ *
+ * @param cls struct TALER_AgeWithdrawHandle
+ * @param awbr The response
+ */
+static void
+copy_results (
+  void *cls,
+  const struct TALER_EXCHANGE_AgeWithdrawBlindedResponse *awbr)
+{
+  struct TALER_EXCHANGE_AgeWithdrawHandle *awh = cls;
+  uint8_t idx =  awbr->details.ok.noreveal_index;
+  struct TALER_ExchangeWithdrawValues alg_values[awh->num_coins];
+  struct TALER_EXCHANGE_AgeWithdrawResponse resp = {
+    .hr = awbr->hr,
+    .details = {
+      .ok = { .noreveal_index = awbr->details.ok.noreveal_index,
+              .h_commitment = awbr->details.ok.h_commitment,
+              .exchange_pub = awbr->details.ok.exchange_pub,
+              .exchange_sig = awbr->details.ok.exchange_sig,
+              .num_alg_values = awh->num_coins,
+              .alg_values = alg_values},
+    },
+  };
+
+  for (size_t n = 0; n< awh->num_coins; n++)
+    alg_values[n] = awh->coin_data[n].coin_candidates[idx].alg_values;
+
+  awh->callback (awh->callback_cls,
+                 &resp);
+
+  awh->callback = NULL;
+}
+
+
+/**
+ * @brief Prepares and executes TALER_EXCHANGE_age_withdraw_blinded.
+ * If there were CS-denominations involved, started once the all calls
+ * to /csr-withdraw are done.
+ */
+static void
+call_age_withdraw_blinded (
+  struct TALER_EXCHANGE_AgeWithdrawHandle *awh)
+{
+  struct TALER_EXCHANGE_AgeWithdrawBlindedInput blinded_input[awh->num_coins];
+
+  /* Prepare the blinded planchets as input */
+  for (size_t n = 0; n < awh->num_coins; n++)
+  {
+    blinded_input[n].denom_pub = &awh->coin_data[n].denom_pub;
+    for (uint8_t i = 0; i < TALER_CNC_KAPPA; i++)
+      blinded_input[n].planchet_details[i] =
+        awh->coin_data[n].planchet_details[i];
+  }
+
+  awh->protocol_handler =
+    TALER_EXCHANGE_age_withdraw_blinded (
+      awh->curl_ctx,
+      awh->keys,
+      awh->exchange_url,
+      awh->reserve_priv,
+      awh->num_coins,
+      blinded_input,
+      copy_results,
+      awh);
 }
 
 
@@ -656,7 +850,7 @@ ERROR:
 static
 enum GNUNET_GenericReturnValue
 prepare_url (
-  struct TALER_EXCHANGE_AgeWithdrawHandle *awh,
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh,
   const char *exchange_url)
 {
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
@@ -664,8 +858,8 @@ prepare_url (
   char *end;
 
   end = GNUNET_STRINGS_data_to_string (
-    &awh->reserve_pub,
-    sizeof (awh->reserve_pub),
+    &awbh->reserve_pub,
+    sizeof (awbh->reserve_pub),
     pub_str,
     sizeof (pub_str));
   *end = '\0';
@@ -674,13 +868,13 @@ prepare_url (
                    "reserves/%s/age-withdraw",
                    pub_str);
 
-  awh->request_url = TALER_url_join (exchange_url,
-                                     arg_str,
-                                     NULL);
-  if (NULL == awh->request_url)
+  awbh->request_url = TALER_url_join (exchange_url,
+                                      arg_str,
+                                      NULL);
+  if (NULL == awbh->request_url)
   {
     GNUNET_break (0);
-    TALER_EXCHANGE_age_withdraw_cancel (awh);
+    TALER_EXCHANGE_age_withdraw_blinded_cancel (awbh);
     return GNUNET_SYSERR;
   }
 
@@ -691,7 +885,7 @@ prepare_url (
 /**
  * @brief Function called when CSR withdraw retrieval is finished
  *
- * @param cls the `struct CoinCandidate *`
+ * @param cls the `struct CSRClosure *`
  * @param csrr replies from the /csr-withdraw request
  */
 static void
@@ -699,11 +893,21 @@ csr_withdraw_done (
   void *cls,
   const struct TALER_EXCHANGE_CsRWithdrawResponse *csrr)
 {
-  struct CoinCandidate *can = cls;
-  struct TALER_EXCHANGE_AgeWithdrawHandle *awh = can->age_withdraw_handle;
-  struct TALER_EXCHANGE_AgeWithdrawResponse awr = { .hr = csrr->hr };
+  struct CSRClosure *csr = cls;
+  struct CoinCandidate *can;
+  struct TALER_PlanchetDetail *planchet;
+  struct TALER_EXCHANGE_AgeWithdrawHandle *awh;
 
-  can->csr_withdraw_handle = NULL;
+  GNUNET_assert (NULL != csr);
+  awh = csr->age_withdraw_handle;
+  planchet = csr->planchet;
+  can = csr->candidate;
+
+  GNUNET_assert (NULL != can);
+  GNUNET_assert (NULL != planchet);
+  GNUNET_assert (NULL != awh);
+
+  csr->csr_withdraw_handle = NULL;
 
   switch (csrr->hr.http_status)
   {
@@ -722,13 +926,13 @@ csr_withdraw_done (
          can->planchet_detail.blinded_planchet! */
       do {
         if (GNUNET_OK !=
-            TALER_planchet_prepare (&can->denom_pub->key,
+            TALER_planchet_prepare (&csr->denom_pub->key,
                                     &can->alg_values,
                                     &can->blinding_key,
                                     &can->coin_priv,
                                     &can->h_age_commitment,
                                     &can->h_coin_pub,
-                                    &can->planchet_detail))
+                                    planchet))
         {
           GNUNET_break (0);
           TALER_EXCHANGE_age_withdraw_cancel (awh);
@@ -736,8 +940,8 @@ csr_withdraw_done (
         }
 
         if (GNUNET_OK !=
-            TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
-                                &can->planchet_detail.denom_pub_hash,
+            TALER_coin_ev_hash (&planchet->blinded_planchet,
+                                &planchet->denom_pub_hash,
                                 &can->blinded_coin_h))
         {
           GNUNET_break (0);
@@ -748,20 +952,18 @@ csr_withdraw_done (
         success = true;
       } while(0);
 
-      awh->csr_pending--;
+      awh->csr.pending--;
 
       /* No more pending requests to /csr-withdraw, we can now perform the
        * actual age-withdraw operation */
-      if (0 == awh->csr_pending && success)
-        perform_protocol (awh);
+      if (0 == awh->csr.pending && success)
+        call_age_withdraw_blinded (awh);
       return;
     }
   default:
     break;
   }
 
-  awh->callback (awh->callback_cls,
-                 &awr);
   TALER_EXCHANGE_age_withdraw_cancel (awh);
 }
 
@@ -798,10 +1000,6 @@ prepare_coins (
   GNUNET_assert (0 < num_coins);
   awh->age_mask = coin_inputs[0].denom_pub->key.age_mask;
 
-  FAIL_IF (GNUNET_OK !=
-           TALER_amount_set_zero (awh->keys->currency,
-                                  &awh->amount_with_fee));
-
   awh->coin_data = GNUNET_new_array (awh->num_coins,
                                      struct CoinData);
 
@@ -817,24 +1015,10 @@ prepare_coins (
     TALER_denom_pub_deep_copy (&cd->denom_pub.key,
                                &input->denom_pub->key);
 
-    /* Accumulate total value with fees */
-    {
-      struct TALER_Amount coin_total;
-
-      FAIL_IF (0 >
-               TALER_amount_add (&coin_total,
-                                 &cd->denom_pub.fees.withdraw,
-                                 &cd->denom_pub.value));
-
-      FAIL_IF (0 >
-               TALER_amount_add (&awh->amount_with_fee,
-                                 &awh->amount_with_fee,
-                                 &coin_total));
-    }
-
     for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
     {
       struct CoinCandidate *can = &cd->coin_candidates[k];
+      struct TALER_PlanchetDetail *planchet = &cd->planchet_details[k];
 
       can->secret = input->secrets[k];
 
@@ -868,47 +1052,43 @@ prepare_coins (
                                            &can->coin_priv,
                                            &can->h_age_commitment,
                                            &can->h_coin_pub,
-                                           &can->planchet_detail));
+                                           planchet));
           FAIL_IF (GNUNET_OK !=
-                   TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
-                                       &can->planchet_detail.denom_pub_hash,
+                   TALER_coin_ev_hash (&planchet->blinded_planchet,
+                                       &planchet->denom_pub_hash,
                                        &can->blinded_coin_h));
           break;
         }
       case TALER_DENOMINATION_CS:
         {
+          struct CSRClosure *cls = &cd->csr_cls[k];
           /**
            * Save the handler and the denomination for the callback
            * after the call to csr-withdraw */
-          can->age_withdraw_handle = awh;
-          can->denom_pub = &cd->denom_pub;
+          cls->age_withdraw_handle = awh;
+          cls->candidate = can;
+          cls->planchet = planchet;
+          cls->denom_pub = &cd->denom_pub;
 
           TALER_cs_withdraw_nonce_derive (
             &can->secret,
-            &can->planchet_detail
-            .blinded_planchet
-            .details
-            .cs_blinded_planchet
-            .nonce);
+            &planchet->blinded_planchet.details.cs_blinded_planchet.nonce);
 
           /* Note that we only initialize the first half
              of the blinded_planchet here; the other part
              will be done after the /csr-withdraw request! */
-          can->planchet_detail.blinded_planchet.cipher = TALER_DENOMINATION_CS;
-          can->csr_withdraw_handle =
-            TALER_EXCHANGE_csr_withdraw (awh->curl_ctx,
-                                         awh->exchange_url,
-                                         &cd->denom_pub,
-                                         &can->planchet_detail
-                                         .blinded_planchet
-                                         .details
-                                         .cs_blinded_planchet
-                                         .nonce,
-                                         &csr_withdraw_done,
-                                         &can);
-          FAIL_IF (NULL == can->csr_withdraw_handle);
+          planchet->blinded_planchet.cipher = TALER_DENOMINATION_CS;
+          cls->csr_withdraw_handle =
+            TALER_EXCHANGE_csr_withdraw (
+              awh->curl_ctx,
+              awh->exchange_url,
+              &cd->denom_pub,
+              &planchet->blinded_planchet.details.cs_blinded_planchet.nonce,
+              &csr_withdraw_done,
+              &cls);
+          FAIL_IF (NULL == cls->csr_withdraw_handle);
 
-          awh->csr_pending++;
+          awh->csr.pending++;
           break;
         }
       default:
@@ -927,8 +1107,8 @@ ERROR:
 struct TALER_EXCHANGE_AgeWithdrawHandle *
 TALER_EXCHANGE_age_withdraw (
   struct GNUNET_CURL_Context *curl_ctx,
-  const char *exchange_url,
   struct TALER_EXCHANGE_Keys *keys,
+  const char *exchange_url,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   size_t num_coins,
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[const static
@@ -941,7 +1121,7 @@ TALER_EXCHANGE_age_withdraw (
 
   awh = GNUNET_new (struct TALER_EXCHANGE_AgeWithdrawHandle);
   awh->exchange_url = exchange_url;
-  awh->keys = TALER_EXCHANGE_keys_incref (keys);
+  awh->keys = keys;
   awh->curl_ctx = curl_ctx;
   awh->reserve_priv = reserve_priv;
   awh->callback = res_cb;
@@ -949,13 +1129,6 @@ TALER_EXCHANGE_age_withdraw (
   awh->num_coins = num_coins;
   awh->max_age = max_age;
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&awh->reserve_priv->eddsa_priv,
-                                      &awh->reserve_pub.eddsa_pub);
-
-
-  if (GNUNET_OK != prepare_url (awh,
-                                exchange_url))
-    return NULL;
 
   if (GNUNET_OK != prepare_coins (awh,
                                   num_coins,
@@ -967,8 +1140,8 @@ TALER_EXCHANGE_age_withdraw (
    * in flight and once they finish, the age-withdraw-protocol will be
    * called from within the csr_withdraw_done-function.
    */
-  if (0 == awh->csr_pending)
-    perform_protocol (awh);
+  if (0 == awh->csr.pending)
+    call_age_withdraw_blinded (awh);
 
   return awh;
 }
@@ -985,30 +1158,71 @@ TALER_EXCHANGE_age_withdraw_cancel (
 
     for (uint8_t k = 0; k < TALER_CNC_KAPPA; k++)
     {
-      struct CoinCandidate *can = &cd->coin_candidates[k];
+      struct TALER_PlanchetDetail *planchet = &cd->planchet_details[k];
+      struct CSRClosure *cls = &cd->csr_cls[k];
 
-      if (NULL != can->csr_withdraw_handle)
+      if (NULL != cls->csr_withdraw_handle)
       {
-        TALER_EXCHANGE_csr_withdraw_cancel (can->csr_withdraw_handle);
-        can->csr_withdraw_handle = NULL;
+        TALER_EXCHANGE_csr_withdraw_cancel (cls->csr_withdraw_handle);
+        cls->csr_withdraw_handle = NULL;
       }
-      TALER_blinded_planchet_free (&can->planchet_detail.blinded_planchet);
+      TALER_blinded_planchet_free (&planchet->blinded_planchet);
     }
     TALER_denom_pub_free (&cd->denom_pub.key);
   }
   GNUNET_free (awh->coin_data);
 
-  /* Cleanup CURL job data */
-  if (NULL != awh->job)
-  {
-    GNUNET_CURL_job_cancel (awh->job);
-    awh->job = NULL;
-  }
-  TALER_curl_easy_post_finished (&awh->post_ctx);
-  TALER_EXCHANGE_keys_decref (awh->keys);
-  GNUNET_free (awh->request_url);
+  TALER_EXCHANGE_age_withdraw_blinded_cancel (awh->protocol_handler);
+  awh->protocol_handler = NULL;
   GNUNET_free (awh);
+}
 
+
+struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *
+TALER_EXCHANGE_age_withdraw_blinded (
+  struct GNUNET_CURL_Context *curl_ctx,
+  struct TALER_EXCHANGE_Keys *keys,
+  const char *exchange_url,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  unsigned int num_input,
+  const struct TALER_EXCHANGE_AgeWithdrawBlindedInput blinded_input[static
+                                                                    num_input],
+  TALER_EXCHANGE_AgeWithdrawBlindedCallback res_cb,
+  void *res_cb_cls)
+{
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh =
+    GNUNET_new (struct TALER_EXCHANGE_AgeWithdrawBlindedHandle);
+
+  awbh->num_input = num_input;
+  awbh->blinded_input = blinded_input;
+  awbh->keys = TALER_EXCHANGE_keys_incref (keys);
+  awbh->curl_ctx = curl_ctx;
+  awbh->reserve_priv = reserve_priv;
+  awbh->callback = res_cb;
+  awbh->callback_cls = res_cb_cls;
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&awbh->reserve_priv->eddsa_priv,
+                                      &awbh->reserve_pub.eddsa_pub);
+
+  if (GNUNET_OK != prepare_url (awbh,
+                                exchange_url))
+    return NULL;
+
+  perform_protocol (awbh);
+  return awbh;
+}
+
+
+void
+TALER_EXCHANGE_age_withdraw_blinded_cancel (
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *awbh)
+{
+  if (NULL == awbh)
+    return;
+
+  // TODO[oec]: curl stuff Cleanup
+
+  TALER_EXCHANGE_keys_decref (awbh->keys);
 }
 
 
