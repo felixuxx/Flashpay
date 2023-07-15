@@ -849,6 +849,9 @@ build_wire_state (void)
       wire_method = TALER_payto_get_method (payto_uri);
       if (NULL == wire_method)
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "No wire method in `%s'\n",
+                    payto_uri);
         wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
         wsh->wire_reply
           = TALER_MHD_make_error (
@@ -888,25 +891,20 @@ build_wire_state (void)
           GNUNET_CRYPTO_hash_context_abort (hc);
           return wsh;
         }
-        if (0 == json_array_size (ac.a))
+        if (0 != json_array_size (ac.a))
+        {
+          wsh->cache_expiration
+            = GNUNET_TIME_absolute_min (ac.max_seen,
+                                        wsh->cache_expiration);
+          GNUNET_assert (0 ==
+                         json_object_set_new (wire_fee_object,
+                                              wire_method,
+                                              ac.a));
+        }
+        else
         {
           json_decref (ac.a);
-          json_decref (wire_accounts_array);
-          json_decref (wire_fee_object);
-          wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-          wsh->wire_reply
-            = TALER_MHD_make_error (TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
-                                    wire_method);
-          GNUNET_free (wire_method);
-          GNUNET_CRYPTO_hash_context_abort (hc);
-          return wsh;
         }
-        wsh->cache_expiration = GNUNET_TIME_absolute_min (ac.max_seen,
-                                                          wsh->cache_expiration);
-        GNUNET_assert (0 ==
-                       json_object_set_new (wire_fee_object,
-                                            wire_method,
-                                            ac.a));
       }
       GNUNET_free (wire_method);
     }
@@ -2438,6 +2436,11 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   json_t *keys;
 
   wsh = get_wire_state ();
+  if (MHD_HTTP_OK != wsh->http_status)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   GNUNET_assert (! GNUNET_TIME_absolute_is_zero (
                    last_cherry_pick_date.abs_time));
   GNUNET_assert (NULL != signkeys);
