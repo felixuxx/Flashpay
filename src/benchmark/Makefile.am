@@ -12,9 +12,8 @@ endif
 
 bin_PROGRAMS = \
   taler-aggregator-benchmark \
-  taler-bank-benchmark
-
-# taler-exchange-benchmark
+  taler-bank-benchmark \
+  taler-exchange-benchmark
 
 
 taler_aggregator_benchmark_SOURCES = \
