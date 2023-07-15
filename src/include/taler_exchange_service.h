@@ -2882,7 +2882,7 @@ typedef void
  * Used internally by the `struct TALER_EXCHANGE_BatchWithdrawHandle`
  * implementation as well as for the reward logic of merchants.
  */
-struct TALER_EXCHANGE_BatchWithdrawBlindedHandle;
+struct TALER_EXCHANGE_AgeWithdrawBlindedHandle;
 
 /**
  * Withdraw age-restricted coins from the exchange using a
