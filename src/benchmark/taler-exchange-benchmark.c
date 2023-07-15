@@ -28,25 +28,7 @@
 #include <microhttpd.h>
 #include <sys/resource.h>
 #include "taler_util.h"
-#include "taler_signatures.h"
-#include "taler_exchangedb_lib.h"
-#include "taler_exchange_service.h"
-#include "taler_json_lib.h"
-#include "taler_bank_service.h"
-#include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include "taler_error_codes.h"
-
-/* Error codes.  */
-enum BenchmarkError
-{
-  MISSING_BANK_URL,
-  FAILED_TO_LAUNCH_BANK,
-  BAD_CLI_ARG,
-  BAD_CONFIG_FILE,
-  NO_CONFIG_FILE_GIVEN
-};
-
 
 /**
  * The whole benchmark is a repetition of a "unit".  Each
@@ -55,51 +37,11 @@ enum BenchmarkError
  */
 #define UNITY_SIZE 6
 
-#define FIRST_INSTRUCTION -1
-
 
 /**
- * What mode should the benchmark run in?
+ * Credentials to use for the benchmark.
  */
-enum BenchmarkMode
-{
-  /**
-   * Run as client (with fakebank), also starts a remote exchange.
-   */
-  MODE_CLIENT = 1,
-
-  /**
-   * Run the the exchange.
-   */
-  MODE_EXCHANGE = 2,
-
-  /**
-   * Run both, for a local benchmark.
-   */
-  MODE_BOTH = 3,
-};
-
-
-/**
- * Hold information regarding which bank has the exchange account.
- */
-static const struct TALER_EXCHANGEDB_AccountInfo *exchange_bank_account;
-
-/**
- * Hold information about a user at the bank.
- */
-static char *user_payto_uri;
-
-/**
- * Time snapshot taken right before executing the CMDs.
- */
-static struct GNUNET_TIME_Absolute start_time;
-
-/**
- * Benchmark duration time taken right after the CMD interpreter
- * returns.
- */
-static struct GNUNET_TIME_Relative duration;
+static struct TALER_TESTING_Credentials cred;
 
 /**
  * Array of all the commands the benchmark is running.
@@ -110,16 +52,6 @@ static struct TALER_TESTING_Command *all_commands;
  * Name of our configuration file.
  */
 static char *cfg_filename;
-
-/**
- * Exit code.
- */
-static enum GNUNET_GenericReturnValue result;
-
-/**
- * Use the fakebank instead of the Python bank.
- */
-static int use_fakebank;
 
 /**
  * How many coins we want to create per client and reserve.
@@ -152,16 +84,6 @@ static char *loglev;
 static char *logfile;
 
 /**
- * Benchmarking mode (run as client, exchange, both) as string.
- */
-static char *mode_str;
-
-/**
- * Benchmarking mode (run as client, exchange, both).
- */
-static enum BenchmarkMode mode;
-
-/**
  * Configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -172,19 +94,20 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
 static int reserves_first;
 
 /**
+ * Are we running against 'fakebank'?
+ */
+static int use_fakebank;
+
+/**
+ * Section with the configuration data for the exchange
+ * bank account.
+ */
+static char *exchange_bank_section = "exchange-account-1";
+
+/**
  * Currency used.
  */
 static char *currency;
-
-/**
- * Remote host that runs the exchange.
- */
-static char *remote_host;
-
-/**
- * Remote benchmarking directory.
- */
-static char *remote_dir;
 
 /**
  * Array of command labels.
@@ -202,8 +125,7 @@ static unsigned int label_len;
 static unsigned int label_off;
 
 /**
- * Don't kill exchange/fakebank/wirewatch until
- * requested by the user explicitly.
+ * Linger around until stop is requested by the user explicitly by key stroke.
  */
 static int linger;
 
@@ -246,8 +168,8 @@ cmd_transfer_to_exchange (const char *label,
   return TALER_TESTING_cmd_admin_add_incoming_retry (
     TALER_TESTING_cmd_admin_add_incoming (label,
                                           amount,
-                                          exchange_bank_account->auth,
-                                          user_payto_uri));
+                                          &cred.ba,
+                                          cred.user42_payto));
 }
 
 
@@ -288,11 +210,12 @@ run (void *cls,
   char *amount_1;
 
   (void) cls;
-  all_commands = GNUNET_new_array (howmany_reserves * (1     /* Withdraw block */
-                                                       + howmany_coins)   /* All units */
-                                   + 1 /* stat CMD */
-                                   + 1 /* End CMD */,
-                                   struct TALER_TESTING_Command);
+  all_commands = GNUNET_new_array (
+    howmany_reserves * (1                /* Withdraw block */
+                        + howmany_coins) /* All units */
+    + 1                                /* stat CMD */
+    + 1 /* End CMD */,
+    struct TALER_TESTING_Command);
   GNUNET_asprintf (&amount_5, "%s:5", currency);
   GNUNET_asprintf (&amount_4, "%s:4", currency);
   GNUNET_asprintf (&amount_1, "%s:1", currency);
@@ -350,25 +273,25 @@ run (void *cls,
       wl = add_label (withdraw_label);
       GNUNET_asprintf (&order_enc,
                        "{\"nonce\": %llu}",
-                       ((unsigned long long) i) + (howmany_coins
-                                                   * (unsigned long long) j));
+                       ((unsigned long long) i)
+                       + (howmany_coins * (unsigned long long) j));
       unit[0] =
-        TALER_TESTING_cmd_withdraw_with_retry
-          (TALER_TESTING_cmd_withdraw_amount (wl,
-                                              create_reserve_label,
-                                              amount_5,
-                                              0, /* age restriction off */
-                                              MHD_HTTP_OK));
+        TALER_TESTING_cmd_withdraw_with_retry (
+          TALER_TESTING_cmd_withdraw_amount (wl,
+                                             create_reserve_label,
+                                             amount_5,
+                                             0,  /* age restriction off */
+                                             MHD_HTTP_OK));
       unit[1] =
-        TALER_TESTING_cmd_deposit_with_retry
-          (TALER_TESTING_cmd_deposit ("deposit",
-                                      wl,
-                                      0, /* Index of the one withdrawn coin in the traits.  */
-                                      user_payto_uri,
-                                      add_label (order_enc),
-                                      GNUNET_TIME_UNIT_ZERO,
-                                      amount_1,
-                                      MHD_HTTP_OK));
+        TALER_TESTING_cmd_deposit_with_retry (
+          TALER_TESTING_cmd_deposit ("deposit",
+                                     wl,
+                                     0,  /* Index of the one withdrawn coin in the traits.  */
+                                     cred.user43_payto,
+                                     add_label (order_enc),
+                                     GNUNET_TIME_UNIT_ZERO,
+                                     amount_1,
+                                     MHD_HTTP_OK));
       if (eval_probability (refresh_rate / 100.0))
       {
         char *melt_label;
@@ -387,21 +310,21 @@ run (void *cls,
                          j);
         rl = add_label (reveal_label);
         unit[2] =
-          TALER_TESTING_cmd_melt_with_retry
-            (TALER_TESTING_cmd_melt (ml,
-                                     wl,
-                                     MHD_HTTP_OK,
-                                     NULL));
+          TALER_TESTING_cmd_melt_with_retry (
+            TALER_TESTING_cmd_melt (ml,
+                                    wl,
+                                    MHD_HTTP_OK,
+                                    NULL));
         unit[3] =
-          TALER_TESTING_cmd_refresh_reveal_with_retry
-            (TALER_TESTING_cmd_refresh_reveal (rl,
-                                               ml,
-                                               MHD_HTTP_OK));
+          TALER_TESTING_cmd_refresh_reveal_with_retry (
+            TALER_TESTING_cmd_refresh_reveal (rl,
+                                              ml,
+                                              MHD_HTTP_OK));
         unit[4] =
-          TALER_TESTING_cmd_refresh_link_with_retry
-            (TALER_TESTING_cmd_refresh_link ("link",
-                                             rl,
-                                             MHD_HTTP_OK));
+          TALER_TESTING_cmd_refresh_link_with_retry (
+            TALER_TESTING_cmd_refresh_link ("link",
+                                            rl,
+                                            MHD_HTTP_OK));
         unit[5] = TALER_TESTING_cmd_end ();
       }
       else
@@ -429,7 +352,6 @@ run (void *cls,
   GNUNET_free (amount_4);
   GNUNET_free (amount_5);
   GNUNET_free (withdraw_fee_str);
-  result = GNUNET_OK;
 }
 
 
@@ -446,10 +368,10 @@ print_stats (void)
 
     total = GNUNET_strdup (
       GNUNET_STRINGS_relative_time_to_string (timings[i].total_duration,
-                                              GNUNET_YES));
+                                              true));
     latency = GNUNET_strdup (
       GNUNET_STRINGS_relative_time_to_string (timings[i].success_latency,
-                                              GNUNET_YES));
+                                              true));
     fprintf (stderr,
              "%s-%d took %s in total with %s for latency for %u executions (%u repeats)\n",
              timings[i].prefix,
@@ -480,135 +402,66 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 {
   enum GNUNET_GenericReturnValue result = GNUNET_OK;
   pid_t cpids[howmany_clients];
-  pid_t fakebank = -1;
-  int wstatus;
 
-  if (MODE_CLIENT == mode)
+  if (1 == howmany_clients)
   {
-    char *remote_cmd;
-
-    GNUNET_asprintf (&remote_cmd,
-                     ("cd '%s'; "
-                      "taler-exchange-benchmark --mode=exchange -c '%s'"),
-                     remote_dir,
-                     config_file);
-
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "remote command: %s\n",
-                remote_cmd);
-
-    GNUNET_assert (NULL != (exchange_slave_pipe =
-                              GNUNET_DISK_pipe (GNUNET_DISK_PF_BLOCKING_RW)));
-
-    exchange_slave = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_OUT_AND_ERR,
-                                              exchange_slave_pipe, NULL, NULL,
-                                              "ssh",
-                                              "ssh",
-                                              /* Don't ask for pw/passphrase, rather fail */
-                                              "-oBatchMode=yes",
-                                              remote_host,
-                                              remote_cmd,
-                                              NULL);
-    GNUNET_free (remote_cmd);
+    result = TALER_TESTING_loop (main_cb,
+                                 main_cb_cls);
+    print_stats ();
   }
-
-  /* We always wait for the exchange, no matter if it's running locally or
-     remotely */
-  if (0 != TALER_TESTING_wait_httpd_ready (ec.exchange_url))
+  else
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to detect running exchange at `%s'\n",
-                ec.exchange_url);
-    return 77;
-  }
-  if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
-  {
-    start_time = GNUNET_TIME_absolute_get ();
-    result = GNUNET_OK;
-    if (1 == howmany_clients)
+    for (unsigned int i = 0; i<howmany_clients; i++)
     {
-      result = TALER_TESTING_run (main_cb,
-                                  main_cb_cls);
-      print_stats ();
-    }
-    else
-    {
-      for (unsigned int i = 0; i<howmany_clients; i++)
+      if (0 == (cpids[i] = fork ()))
       {
-        if (0 == (cpids[i] = fork ()))
-        {
-          /* I am the child, do the work! */
-          GNUNET_log_setup ("benchmark-worker",
-                            NULL == loglev ? "INFO" : loglev,
-                            logfile);
-
-          result = TALER_TESTING_run (main_cb,
-                                      main_cb_cls);
-          print_stats ();
-          if (GNUNET_OK != result)
-            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                        "Failure in child process test suite!\n");
-          if (GNUNET_OK == result)
-            exit (0);
-          else
-            exit (1);
-        }
-        if (-1 == cpids[i])
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                               "fork");
-          howmany_clients = i;
-          result = GNUNET_SYSERR;
-          break;
-        }
-        /* fork() success, continue starting more processes! */
+        /* I am the child, do the work! */
+        GNUNET_log_setup ("benchmark-worker",
+                          NULL == loglev ? "INFO" : loglev,
+                          logfile);
+        result = TALER_TESTING_loop (main_cb,
+                                     main_cb_cls);
+        print_stats ();
+        if (GNUNET_OK != result)
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Failure in child process %u test suite!\n",
+                      i);
+        if (GNUNET_OK == result)
+          exit (0);
+        else
+          exit (1);
       }
-      /* collect all children */
-      for (unsigned int i = 0; i<howmany_clients; i++)
+      if (-1 == cpids[i])
       {
-        waitpid (cpids[i],
-                 &wstatus,
-                 0);
-        if ( (! WIFEXITED (wstatus)) ||
-             (0 != WEXITSTATUS (wstatus)) )
-        {
-          GNUNET_break (0);
-          result = GNUNET_SYSERR;
-        }
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fork");
+        howmany_clients = i;
+        result = GNUNET_SYSERR;
+        break;
+      }
+      /* fork() success, continue starting more processes! */
+    }
+    /* collect all children */
+    for (unsigned int i = 0; i<howmany_clients; i++)
+    {
+      int wstatus;
+
+      waitpid (cpids[i],
+               &wstatus,
+               0);
+      if ( (! WIFEXITED (wstatus)) ||
+           (0 != WEXITSTATUS (wstatus)) )
+      {
+        GNUNET_break (0);
+        result = GNUNET_SYSERR;
       }
     }
   }
-
-  /* Wait for our master to die or to tell us to die */
-  if (MODE_EXCHANGE == mode)
-    (void) getchar ();
-
-  if ( (GNUNET_YES == linger) &&
-       ( ((mode == MODE_BOTH) ||
-          (mode == MODE_CLIENT) ) ) )
+  if (GNUNET_YES == linger)
   {
     printf ("press ENTER to stop\n");
     (void) getchar ();
   }
-
-  if (MODE_CLIENT == mode)
-  {
-    char c = 'q';
-
-    GNUNET_assert (NULL != exchange_slave);
-
-    /* Write a character to the pipe to end the exchange slave.
-     * We can't send a signal here, as it would just kill SSH and
-     * not necessarily the process on the other machine. */
-    GNUNET_DISK_file_write (GNUNET_DISK_pipe_handle
-                              (exchange_slave_pipe, GNUNET_DISK_PIPE_END_WRITE),
-                            &c, sizeof (c));
-
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_OS_process_wait (exchange_slave));
-    GNUNET_OS_process_destroy (exchange_slave);
-  }
-
   return result;
 }
 
@@ -625,55 +478,70 @@ main (int argc,
       char *const *argv)
 {
   struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_mandatory
-      (GNUNET_GETOPT_option_cfgfile (&cfg_filename)),
-    GNUNET_GETOPT_option_version (PACKAGE_VERSION " " VCS_VERSION),
-    GNUNET_GETOPT_option_help ("Exchange benchmark"),
-    GNUNET_GETOPT_option_loglevel (&loglev),
-    GNUNET_GETOPT_option_uint ('n',
-                               "coins-number",
-                               "CN",
-                               "How many coins we should instantiate per reserve",
-                               &howmany_coins),
-    GNUNET_GETOPT_option_uint ('p',
-                               "parallelism",
-                               "NPROCS",
-                               "How many client processes we should run",
-                               &howmany_clients),
-    GNUNET_GETOPT_option_uint ('r',
-                               "reserves",
-                               "NRESERVES",
-                               "How many reserves per client we should create",
-                               &howmany_reserves),
-    GNUNET_GETOPT_option_uint ('R',
-                               "refresh-rate",
-                               "RATE",
-                               "Probability of refresh per coin (0-100)",
-                               &refresh_rate),
-    GNUNET_GETOPT_option_string ('m',
-                                 "mode",
-                                 "MODE",
-                                 "run as exchange, clients or both",
-                                 &mode_str),
-    GNUNET_GETOPT_option_string ('l',
-                                 "logfile",
-                                 "LF",
-                                 "will log to file LF",
-                                 &logfile),
-    GNUNET_GETOPT_option_flag ('f',
-                               "fakebank",
-                               "start a fakebank instead of the Python bank",
-                               &use_fakebank),
-    GNUNET_GETOPT_option_flag ('F',
-                               "reserves-first",
-                               "should all reserves be created first, before starting normal operations",
-                               &reserves_first),
-    GNUNET_GETOPT_option_flag ('K',
-                               "linger",
-                               "linger around until key press",
-                               &linger),
+    GNUNET_GETOPT_option_mandatory (
+      GNUNET_GETOPT_option_cfgfile (
+        &cfg_filename)),
+    GNUNET_GETOPT_option_version (
+      PACKAGE_VERSION " " VCS_VERSION),
+    GNUNET_GETOPT_option_help (
+      "Exchange benchmark"),
+    GNUNET_GETOPT_option_loglevel (
+      &loglev),
+    GNUNET_GETOPT_option_uint (
+      'n',
+      "coins-number",
+      "CN",
+      "How many coins we should instantiate per reserve",
+      &howmany_coins),
+    GNUNET_GETOPT_option_uint (
+      'p',
+      "parallelism",
+      "NPROCS",
+      "How many client processes we should run",
+      &howmany_clients),
+    GNUNET_GETOPT_option_uint (
+      'r',
+      "reserves",
+      "NRESERVES",
+      "How many reserves per client we should create",
+      &howmany_reserves),
+    GNUNET_GETOPT_option_uint (
+      'R',
+      "refresh-rate",
+      "RATE",
+      "Probability of refresh per coin (0-100)",
+      &refresh_rate),
+    GNUNET_GETOPT_option_string (
+      'l',
+      "logfile",
+      "LF",
+      "will log to file LF",
+      &logfile),
+    GNUNET_GETOPT_option_string (
+      'u',
+      "exchange-account-section",
+      "SECTION",
+      "use exchange bank account configuration from the given SECTION",
+      &exchange_bank_section),
+    GNUNET_GETOPT_option_flag (
+      'f',
+      "fakebank",
+      "use fakebank for the banking system",
+      &use_fakebank),
+    GNUNET_GETOPT_option_flag (
+      'F',
+      "reserves-first",
+      "should all reserves be created first, before starting normal operations",
+      &reserves_first),
+    GNUNET_GETOPT_option_flag (
+      'K',
+      "linger",
+      "linger around until key press",
+      &linger),
     GNUNET_GETOPT_OPTION_END
   };
+  enum GNUNET_GenericReturnValue result;
+  struct GNUNET_TIME_Relative duration;
 
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
@@ -686,29 +554,13 @@ main (int argc,
     GNUNET_free (cfg_filename);
     if (GNUNET_NO == result)
       return 0;
-    return BAD_CLI_ARG;
+    return EXIT_INVALIDARGUMENT;
   }
   GNUNET_log_setup ("taler-exchange-benchmark",
-                    NULL == loglev ? "INFO" : loglev,
+                    NULL == loglev
+                    ? "INFO"
+                    : loglev,
                     logfile);
-  if (NULL == mode_str)
-    mode = MODE_BOTH;
-  else if (0 == strcmp (mode_str,
-                        "exchange"))
-    mode = MODE_EXCHANGE;
-  else if (0 == strcmp (mode_str,
-                        "client"))
-    mode = MODE_CLIENT;
-  else if (0 == strcmp (mode_str,
-                        "both"))
-    mode = MODE_BOTH;
-  else
-  {
-    TALER_LOG_ERROR ("Unknown mode given: '%s'\n",
-                     mode_str);
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
   if (NULL == cfg_filename)
     cfg_filename = GNUNET_CONFIGURATION_default_filename ();
   if (NULL == cfg_filename)
@@ -724,7 +576,7 @@ main (int argc,
   {
     TALER_LOG_ERROR ("Could not parse configuration\n");
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_NOTCONFIGURED;
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
@@ -732,96 +584,45 @@ main (int argc,
   {
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_NOTCONFIGURED;
   }
   if (howmany_clients > 10240)
   {
     TALER_LOG_ERROR ("-p option value given is too large\n");
-    return BAD_CLI_ARG;
+    return EXIT_INVALIDARGUMENT;
   }
   if (0 == howmany_clients)
   {
     TALER_LOG_ERROR ("-p option value must not be zero\n");
     GNUNET_free (cfg_filename);
-    return BAD_CLI_ARG;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "benchmark",
-                                             "USER_PAYTO_URI",
-                                             &user_payto_uri))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "benchmark",
-                               "USER_PAYTO_URI");
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_INVALIDARGUMENT;
   }
 
   if (GNUNET_OK !=
-      TALER_EXCHANGEDB_load_accounts (cfg,
-                                      TALER_EXCHANGEDB_ALO_AUTHDATA
-                                      | TALER_EXCHANGEDB_ALO_CREDIT))
+      TALER_TESTING_get_credentials (
+        cfg_filename,
+        exchange_bank_section,
+        use_fakebank
+        ? TALER_TESTING_BS_FAKEBANK
+        : TALER_TESTING_BS_IBAN,
+        &cred))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Configuration fails to provide exchange bank details\n");
+                "Required bank credentials not given in configuration\n");
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
-
-  exchange_bank_account
-    = TALER_EXCHANGEDB_find_account_by_method ("x-taler-bank");
-  if (NULL == exchange_bank_account)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No bank account for `x-taler-bank` given in configuration\n");
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_NOTCONFIGURED;
   }
 
   {
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "benchmark-remote-exchange",
-                                               "host",
-                                               &remote_host))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "benchmark-remote-exchange",
-                                 "host");
-      GNUNET_CONFIGURATION_destroy (cfg);
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
+    struct GNUNET_TIME_Absolute start_time;
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
-                                               "benchmark-remote-exchange",
-                                               "dir",
-                                               &remote_dir))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "benchmark-remote-exchange",
-                                 "dir");
-      GNUNET_CONFIGURATION_destroy (cfg);
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
+    start_time = GNUNET_TIME_absolute_get ();
+    result = parallel_benchmark (&run,
+                                 NULL,
+                                 cfg_filename);
+    duration = GNUNET_TIME_absolute_get_duration (start_time);
   }
 
-  result = parallel_benchmark (&run,
-                               NULL,
-                               cfg_filename);
-  TALER_EXCHANGEDB_unload_accounts ();
-  GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_free (cfg_filename);
-
-  /* If we're the exchange worker, we're done now.  No need to print results */
-  if (MODE_EXCHANGE == mode)
-  {
-    return (GNUNET_OK == result) ? 0 : result;
-  }
-  duration = GNUNET_TIME_absolute_get_duration (start_time);
   if (GNUNET_OK == result)
   {
     struct rusage usage;
@@ -829,39 +630,45 @@ main (int argc,
     GNUNET_assert (0 == getrusage (RUSAGE_CHILDREN,
                                    &usage));
     fprintf (stdout,
-             "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f) * Reserve=%u * Parallel=%u, operations in %s\n",
+             "Executed (Withdraw=%u, Deposit=%u, Refresh~=%5.2f)"
+             " * Reserve=%u * Parallel=%u, operations in %s\n",
              howmany_coins,
              howmany_coins,
              (float) howmany_coins * (refresh_rate / 100.0),
              howmany_reserves,
              howmany_clients,
-             GNUNET_STRINGS_relative_time_to_string
-               (duration,
-               GNUNET_NO));
+             GNUNET_STRINGS_relative_time_to_string (
+               duration,
+               false));
     fprintf (stdout,
              "(approximately %s/coin)\n",
-             GNUNET_STRINGS_relative_time_to_string
-               (GNUNET_TIME_relative_divide (duration,
-                                             (unsigned long long) howmany_coins
-                                             * howmany_reserves
-                                             * howmany_clients),
-               GNUNET_YES));
+             GNUNET_STRINGS_relative_time_to_string (
+               GNUNET_TIME_relative_divide (
+                 duration,
+                 (unsigned long long) howmany_coins
+                 * howmany_reserves
+                 * howmany_clients),
+               true));
     fprintf (stdout,
              "RAW: %04u %04u %04u %16llu\n",
              howmany_coins,
              howmany_reserves,
              howmany_clients,
              (unsigned long long) duration.rel_value_us);
-    fprintf (stdout, "cpu time: sys %llu user %llu\n", \
+    fprintf (stdout,
+             "cpu time: sys %llu user %llu\n",
              (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000
                                    + usage.ru_stime.tv_usec),
              (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
                                    + usage.ru_utime.tv_usec));
   }
+
   for (unsigned int i = 0; i<label_off; i++)
     GNUNET_free (labels[i]);
   GNUNET_array_grow (labels,
                      label_len,
                      0);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_free (cfg_filename);
   return (GNUNET_OK == result) ? 0 : result;
 }
