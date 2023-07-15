@@ -2318,6 +2318,7 @@ add_denom_key_cb (void *cls,
  * Add the headers we want to set for every /keys response.
  *
  * @param ksh the key state to use
+ * @param wsh wire state to use
  * @param[in,out] response the response to modify
  * @return #GNUNET_OK on success
  */
