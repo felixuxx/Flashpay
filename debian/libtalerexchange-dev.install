@@ -4,6 +4,7 @@ usr/bin/taler-exchange-benchmark
 usr/bin/taler-fakebank-run
 usr/bin/taler-bank-benchmark
 usr/bin/taler-exchange-kyc-tester
+usr/bin/taler-unified-setup.sh
 
 # Only used in test cases.  Maybe these
 # shouldn't even be installed?
@@ -28,4 +29,5 @@ usr/lib/*/libtalerfakebank.so
 
 # Documentation
 usr/share/man/man1/taler-exchange-benchmark*
+usr/share/man/man1/taler-unified-setup
 usr/share/info/taler-developer-manual*
