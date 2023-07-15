@@ -39,7 +39,8 @@ man_MANS = \
   prebuilt/man/taler-helper-auditor-deposits.1\
   prebuilt/man/taler-helper-auditor-purses.1\
   prebuilt/man/taler-helper-auditor-reserves.1\
-  prebuilt/man/taler-helper-auditor-wire.1
+  prebuilt/man/taler-helper-auditor-wire.1 \
+  prebuilt/man/taler-unified-setup.1
 
 info_TEXINFOS = \
   prebuilt/texinfo/taler-auditor.texi \

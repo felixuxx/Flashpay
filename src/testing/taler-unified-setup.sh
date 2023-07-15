@@ -74,7 +74,7 @@ LOGLEVEL="DEBUG"
 DEFAULT_SLEEP="0.2"
 
 # Parse command-line options
-while getopts ':abc:d:efghl:mnr:stu:vwW' OPTION; do
+while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
     case "$OPTION" in
         a)
             START_AUDITOR="1"
@@ -103,7 +103,7 @@ while getopts ':abc:d:efghl:mnr:stu:vwW' OPTION; do
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
             echo '  -h           -- print this help'
-            echo '  -l $LOGLEVEL -- set log level'
+            echo '  -L $LOGLEVEL -- set log level'
             echo '  -m           -- start merchant'
             echo '  -n           -- start nexus'
             echo '  -r $MEX      -- which exchange to use at the merchant (optional)'
@@ -117,7 +117,7 @@ while getopts ':abc:d:efghl:mnr:stu:vwW' OPTION; do
         g)
             START_AGGREGATOR="1"
             ;;
-        l)
+        L)
             LOGLEVEL="$OPTARG"
             ;;
         m)
