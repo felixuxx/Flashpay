@@ -131,7 +131,7 @@ analyze_command (void *cls,
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *cur;
-    struct TALER_TESTING_Command **bcmd;
+    struct TALER_TESTING_Command *bcmd;
 
     cur = TALER_TESTING_cmd_batch_get_current (cmd);
     if (GNUNET_OK !=
@@ -142,9 +142,9 @@ analyze_command (void *cls,
       ac->failure = true;
       return;
     }
-    for (unsigned int i = 0; NULL != (*bcmd)[i].label; i++)
+    for (unsigned int i = 0; NULL != bcmd[i].label; i++)
     {
-      struct TALER_TESTING_Command *step = &(*bcmd)[i];
+      struct TALER_TESTING_Command *step = &bcmd[i];
 
       analyze_command (ac,
                        step);

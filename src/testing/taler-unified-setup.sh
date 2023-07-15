@@ -102,6 +102,7 @@ while getopts ':abc:d:efghL:mnr:stu:vwW' OPTION; do
             echo '  -d $METHOD   -- use wire method (default: x-taler-bank)'
             echo '  -e           -- start exchange'
             echo '  -f           -- start fakebank'
+            echo '  -g           -- start aggregator'
             echo '  -h           -- print this help'
             echo '  -L $LOGLEVEL -- set log level'
             echo '  -m           -- start merchant'
@@ -249,7 +250,11 @@ then
 
     # Create the default demobank.
     echo -n "Configuring sandbox "
-    libeufin-sandbox config --currency "$CURRENCY" default &> libeufin-sandbox-config.log
+    libeufin-sandbox config \
+                     --currency "$CURRENCY" \
+                     --users-debt-limit 99999999 \
+                     --bank-debt-limit 99999999 \
+       default &> libeufin-sandbox-config.log
     echo "DONE"
     echo -n "Launching sandbox ... "
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
@@ -456,7 +461,11 @@ fi
 if [ "1" = "$START_WIREWATCH" ]
 then
     echo -n "Starting wirewatch ..."
-    $USE_VALGRIND taler-exchange-wirewatch -c "$CONF" 2> taler-exchange-wirewatch.log &
+    $USE_VALGRIND taler-exchange-wirewatch \
+                  --account="$USE_ACCOUNT" \
+                  -c "$CONF" \
+                  --longpoll-timeout="1 s" \
+                  2> taler-exchange-wirewatch.log &
     WIREWATCH_PID=$!
     echo " DONE"
 fi

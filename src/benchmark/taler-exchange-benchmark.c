@@ -102,7 +102,7 @@ static int use_fakebank;
  * Section with the configuration data for the exchange
  * bank account.
  */
-static char *exchange_bank_section = "exchange-account-1";
+static char *exchange_bank_section;
 
 /**
  * Currency used.
@@ -211,11 +211,18 @@ run (void *cls,
 
   (void) cls;
   all_commands = GNUNET_new_array (
-    howmany_reserves * (1                /* Withdraw block */
-                        + howmany_coins) /* All units */
+    1                                /* exchange CMD */
+    + howmany_reserves * (1                /* Withdraw block */
+                          + howmany_coins) /* All units */
     + 1                                /* stat CMD */
     + 1 /* End CMD */,
     struct TALER_TESTING_Command);
+  all_commands[0]
+    = TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                      cred.cfg,
+                                      NULL,
+                                      true,
+                                      true);
   GNUNET_asprintf (&amount_5, "%s:5", currency);
   GNUNET_asprintf (&amount_4, "%s:4", currency);
   GNUNET_asprintf (&amount_1, "%s:1", currency);
@@ -252,9 +259,9 @@ run (void *cls,
       GNUNET_asprintf (&batch_label,
                        "batch-start-%u",
                        j);
-      all_commands[reserves_first
-                   ? j
-                   : j * (howmany_coins + 1)]
+      all_commands[1 + (reserves_first
+                        ? j
+                        : j * (howmany_coins + 1))]
         = TALER_TESTING_cmd_batch (add_label (batch_label),
                                    make_reserve);
     }
@@ -334,16 +341,16 @@ run (void *cls,
                        "unit-%u-%u",
                        i,
                        j);
-      all_commands[reserves_first
-                   ? howmany_reserves + j * howmany_coins + i
-                   : j * (howmany_coins + 1) + (1 + i)]
+      all_commands[1 + (reserves_first
+                        ? howmany_reserves + j * howmany_coins + i
+                        : j * (howmany_coins + 1) + (1 + i))]
         = TALER_TESTING_cmd_batch (add_label (unit_label),
                                    unit);
     }
   }
-  all_commands[howmany_reserves * (1 + howmany_coins)]
+  all_commands[1 + howmany_reserves * (1 + howmany_coins)]
     = TALER_TESTING_cmd_stat (timings);
-  all_commands[howmany_reserves * (1 + howmany_coins) + 1]
+  all_commands[1 + howmany_reserves * (1 + howmany_coins) + 1]
     = TALER_TESTING_cmd_end ();
   TALER_TESTING_run2 (is,
                       all_commands,
@@ -417,7 +424,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       {
         /* I am the child, do the work! */
         GNUNET_log_setup ("benchmark-worker",
-                          NULL == loglev ? "INFO" : loglev,
+                          loglev,
                           logfile);
         result = TALER_TESTING_loop (main_cb,
                                      main_cb_cls);
@@ -556,10 +563,12 @@ main (int argc,
       return 0;
     return EXIT_INVALIDARGUMENT;
   }
+  if (NULL == exchange_bank_section)
+    exchange_bank_section = "exchange-account-1";
+  if (NULL == loglev)
+    loglev = "INFO";
   GNUNET_log_setup ("taler-exchange-benchmark",
-                    NULL == loglev
-                    ? "INFO"
-                    : loglev,
+                    loglev,
                     logfile);
   if (NULL == cfg_filename)
     cfg_filename = GNUNET_CONFIGURATION_default_filename ();

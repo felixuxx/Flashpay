@@ -28,6 +28,19 @@
 
 
 /**
+ * Run a "stat" CMD.
+ *
+ * @param cls closure.
+ * @param cmd the command being run.
+ * @param is the interpreter state.
+ */
+static void
+stat_run (void *cls,
+          const struct TALER_TESTING_Command *cmd,
+          struct TALER_TESTING_Interpreter *is);
+
+
+/**
  * Add the time @a cmd took to the respective duration in @a timings.
  *
  * @param timings where to add up times
@@ -40,9 +53,20 @@ stat_cmd (struct TALER_TESTING_Timer *timings,
   struct GNUNET_TIME_Relative duration;
   struct GNUNET_TIME_Relative lat;
 
-  if (cmd->start_time.abs_value_us > cmd->finish_time.abs_value_us)
+  if (GNUNET_TIME_absolute_cmp (cmd->start_time,
+                                >,
+                                cmd->finish_time))
   {
-    GNUNET_break (0);
+    /* This is a problem, except of course for
+       this command itself, as we clearly did not yet
+       finish... */
+    if (cmd->run != &stat_run)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Bad timings for `%s'\n",
+                  cmd->label);
+      GNUNET_break (0);
+    }
     return;
   }
   duration = GNUNET_TIME_absolute_get_difference (cmd->start_time,
@@ -85,7 +109,7 @@ do_stat (void *cls,
 
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
-    struct TALER_TESTING_Command **bcmd;
+    struct TALER_TESTING_Command *bcmd;
 
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_batch_cmds (cmd,
@@ -94,18 +118,15 @@ do_stat (void *cls,
       GNUNET_break (0);
       return;
     }
-
     for (unsigned int j = 0;
-         NULL != (*bcmd)[j].label;
+         NULL != bcmd[j].label;
          j++)
       do_stat (timings,
-               &(*bcmd)[j]);
+               &bcmd[j]);
+    return;
   }
-  else
-  {
-    stat_cmd (timings,
-              cmd);
-  }
+  stat_cmd (timings,
+            cmd);
 }
 
 
@@ -136,7 +157,7 @@ TALER_TESTING_cmd_stat (struct TALER_TESTING_Timer *timers)
 {
   struct TALER_TESTING_Command cmd = {
     .label = "stat",
-    .run = stat_run,
+    .run = &stat_run,
     .cls = (void *) timers
   };
 
@@ -144,4 +165,4 @@ TALER_TESTING_cmd_stat (struct TALER_TESTING_Timer *timers)
 }
 
 
-/* end of testing_api_cmd_sleep.c  */
+/* end of testing_api_cmd_stat.c  */

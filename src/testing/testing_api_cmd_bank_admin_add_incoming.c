@@ -225,8 +225,9 @@ confirmation_cb (void *cls,
   }
   if (air->http_status != fts->expected_http_status)
   {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
+    TALER_TESTING_unexpected_status (is,
+                                     air->http_status,
+                                     fts->expected_http_status);
     return;
   }
   switch (air->http_status)

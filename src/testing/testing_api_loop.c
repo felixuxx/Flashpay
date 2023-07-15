@@ -107,7 +107,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 
     if (TALER_TESTING_cmd_is_batch (cmd))
     {
-      struct TALER_TESTING_Command **batch;
+      struct TALER_TESTING_Command *batch;
       struct TALER_TESTING_Command *current;
       struct TALER_TESTING_Command *icmd;
       const struct TALER_TESTING_Command *match;
@@ -119,7 +119,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
       /* We must do the loop forward, but we can find the last match */
       match = NULL;
       for (unsigned int j = 0;
-           NULL != (icmd = &(*batch)[j])->label;
+           NULL != (icmd = &batch[j])->label;
            j++)
       {
         if (current == icmd)
@@ -205,8 +205,9 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
     if (TALER_TESTING_cmd_batch_next (is,
                                       cmd->cls))
     {
+      /* batch is done */
       cmd->finish_time = GNUNET_TIME_absolute_get ();
-      is->ip++; /* batch is done */
+      is->ip++;
     }
   }
   else
@@ -221,7 +222,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
                   "Interpreter executed 1000 instructions in %s\n",
                   GNUNET_STRINGS_relative_time_to_string (
                     GNUNET_TIME_absolute_get_duration (last_report),
-                    GNUNET_YES));
+                    true));
     last_report = GNUNET_TIME_absolute_get ();
   }
   ipc++;
@@ -733,7 +734,7 @@ seek_batch (struct TALER_TESTING_Interpreter *is,
             const struct TALER_TESTING_Command *target)
 {
   unsigned int new_ip;
-  struct TALER_TESTING_Command **batch;
+  struct TALER_TESTING_Command *batch;
   struct TALER_TESTING_Command *current;
   struct TALER_TESTING_Command *icmd;
   struct TALER_TESTING_Command *match;
@@ -744,7 +745,7 @@ seek_batch (struct TALER_TESTING_Interpreter *is,
                                                      &batch));
   match = NULL;
   for (new_ip = 0;
-       NULL != (icmd = &(*batch)[new_ip]);
+       NULL != (icmd = &batch[new_ip]);
        new_ip++)
   {
     if (current == target)

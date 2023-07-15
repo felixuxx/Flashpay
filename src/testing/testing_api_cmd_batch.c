@@ -128,7 +128,7 @@ batch_traits (void *cls,
 {
   struct BatchState *bs = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_batch_cmds (&bs->batch),
+    TALER_TESTING_make_trait_batch_cmds (bs->batch),
     TALER_TESTING_trait_end ()
   };
 

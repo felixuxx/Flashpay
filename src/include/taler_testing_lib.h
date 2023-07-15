@@ -2668,7 +2668,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (order_id, const char)                                        \
   op (amount, const struct TALER_Amount)                           \
   op (amount_with_fee, const struct TALER_Amount)                  \
-  op (batch_cmds, struct TALER_TESTING_Command *)                  \
+  op (batch_cmds, struct TALER_TESTING_Command)                    \
   op (uuid, const struct GNUNET_Uuid)                              \
   op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \

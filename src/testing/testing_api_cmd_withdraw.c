@@ -349,7 +349,8 @@ withdraw_run (void *cls,
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
 
-  ws->cmd = cmd;
+  if (NULL != cmd)
+    ws->cmd = cmd;
   ws->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (
