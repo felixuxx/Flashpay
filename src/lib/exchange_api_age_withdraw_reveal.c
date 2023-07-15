@@ -47,6 +47,9 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
   /* The age-withdraw commitment */
   struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
+  /* The maximum age */
+  uint8_t max_age;
+
   /* Number of coins */
   size_t num_coins;
 
@@ -56,9 +59,6 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
   /* The @e num_coins algorithm- and coin-specific parameters from the
    * previous call to /age-withdraw. */
   const struct TALER_ExchangeWithdrawValues *alg_values;
-
-  /* The curl context for the request */
-  struct GNUNET_CURL_Context *curl_ctx;
 
   /* The url for the reveal request */
   const char *request_url;
@@ -81,6 +81,82 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
 };
 
 
+static enum GNUNET_GenericReturnValue
+reveal_coin (
+  const struct TALER_PlanchetMasterSecretP *secret,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  const struct TALER_BlindedDenominationSignature *blind_sig,
+  uint8_t max_age,
+  struct TALER_EXCHANGE_RevealedCoinInfo *revealed_coin)
+{
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
+
+#define BREAK_ON_FAILURE(call) \
+  do { \
+    if (GNUNET_OK != (call)) { GNUNET_break (0); break; } \
+  } while(0)
+
+  do {
+    struct TALER_CoinPubHashP h_coin_pub;
+    struct TALER_PlanchetDetail planchet_detail;
+    const struct TALER_AgeCommitmentHash *hac = NULL;
+    struct TALER_FreshCoin fresh_coin;
+
+    TALER_planchet_setup_coin_priv (secret,
+                                    alg_values,
+                                    &revealed_coin->coin_priv);
+
+    TALER_planchet_blinding_secret_create (secret,
+                                           alg_values,
+                                           &revealed_coin->bks);
+
+    revealed_coin->age_commitment_proof = NULL;
+    if (0 < max_age)
+    {
+      BREAK_ON_FAILURE (
+        TALER_age_restriction_from_secret (
+          secret,
+          &denom_pub->age_mask,
+          max_age,
+          revealed_coin->age_commitment_proof));
+
+      TALER_age_commitment_hash (
+        &revealed_coin->age_commitment_proof->commitment,
+        &revealed_coin->h_age_commitment);
+
+      hac = &revealed_coin->h_age_commitment;
+    }
+
+    BREAK_ON_FAILURE (
+      TALER_planchet_prepare (denom_pub,
+                              alg_values,
+                              &revealed_coin->bks,
+                              &revealed_coin->coin_priv,
+                              hac,
+                              &h_coin_pub,
+                              &planchet_detail));
+
+    BREAK_ON_FAILURE (
+      TALER_planchet_to_coin (denom_pub,
+                              blind_sig,
+                              &revealed_coin->bks,
+                              &revealed_coin->coin_priv,
+                              &revealed_coin->h_age_commitment,
+                              &h_coin_pub,
+                              alg_values,
+                              &fresh_coin));
+
+    /* success */
+    revealed_coin->sig = fresh_coin.sig;
+    ret = GNUNET_OK;
+  } while(0);
+
+  return ret;
+#undef BREAK_ON_FAILURE
+}
+
+
 /**
  * We got a 200 OK response for the /age-withdraw/$ACH/reveal operation.
  * Extract the signed blindedcoins and return it to the caller.
@@ -94,9 +170,7 @@ struct TALER_EXCHANGE_AgeWithdrawRevealHandle
 static enum GNUNET_GenericReturnValue
 age_withdraw_reveal_ok (
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh,
-  const json_t *j_response,
-  size_t num_coins,
-  struct TALER_EXCHANGE_RevealedCoinInfo revealed_coins[static num_coins])
+  const json_t *j_response)
 {
   struct TALER_EXCHANGE_AgeWithdrawRevealResponse response = {
     .hr.reply = j_response,
@@ -109,35 +183,61 @@ age_withdraw_reveal_ok (
     GNUNET_JSON_spec_end ()
   };
 
-  if (GNUNET_OK!=
-      GNUNET_JSON_parse (j_response,
-                         spec,
-                         NULL, NULL))
+  if (GNUNET_OK != GNUNET_JSON_parse (j_response,
+                                      spec,
+                                      NULL, NULL))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
 
-  GNUNET_assert (num_coins == awrh->num_coins);
-  if (num_coins != json_array_size (j_sigs))
+  if (awrh->num_coins != json_array_size (j_sigs))
   {
     /* Number of coins generated does not match our expectation */
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
 
-
-  for (size_t n = 0; n < num_coins; n++)
   {
-    // TODO[oec] extract the individual coins.
-  }
+    struct TALER_EXCHANGE_RevealedCoinInfo revealed_coins[awrh->num_coins];
 
-  response.details.ok.num_coins = num_coins;
-  response.details.ok.revealed_coins = revealed_coins;
-  awrh->callback (awrh->callback_cls,
-                  &response);
-  /* make sure the callback isn't called again */
-  awrh->callback = NULL;
+    /* Reconstruct the coins and unblind the signatures */
+    for (size_t n = 0; n < awrh->num_coins; n++)
+    {
+      enum GNUNET_GenericReturnValue ret;
+      struct TALER_BlindedDenominationSignature blinded_sig;
+      json_t *j_sig = json_array_get (j_sigs, n);
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("", &blinded_sig),
+        GNUNET_JSON_spec_end ()
+      };
+
+      GNUNET_assert (NULL != j_sig);
+      if (GNUNET_OK != GNUNET_JSON_parse (j_sig,
+                                          spec,
+                                          NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      ret = reveal_coin (&awrh->coins_input[n].secrets[awrh->noreveal_index],
+                         &awrh->coins_input[n].denom_pub->key,
+                         &awrh->alg_values[n],
+                         &blinded_sig,
+                         awrh->max_age,
+                         &revealed_coins[n]);
+
+      if (GNUNET_OK != ret)
+        return ret;
+    }
+
+    response.details.ok.num_coins = awrh->num_coins;
+    response.details.ok.revealed_coins = revealed_coins;
+    awrh->callback (awrh->callback_cls,
+                    &response);
+    /* Make sure the callback isn't called again */
+    awrh->callback = NULL;
+  }
 
   return GNUNET_OK;
 }
@@ -165,6 +265,7 @@ handle_age_withdraw_reveal_finished (
   };
 
   awrh->job = NULL;
+  /* FIXME[oec]: Only handle response-codes that are in the spec */
   switch (response_code)
   {
   case 0:
@@ -173,12 +274,9 @@ handle_age_withdraw_reveal_finished (
   case MHD_HTTP_OK:
     {
       enum GNUNET_GenericReturnValue ret;
-      struct TALER_EXCHANGE_RevealedCoinInfo revealed_coins[awrh->num_coins];
 
       ret = age_withdraw_reveal_ok (awrh,
-                                    j_response,
-                                    awrh->num_coins,
-                                    revealed_coins);
+                                    j_response);
       if (GNUNET_OK != ret)
       {
         GNUNET_break_op (0);
@@ -317,13 +415,14 @@ prepare_url (
 /**
  * Call /age-withdraw/$ACH/reveal
  *
+ * @param curl_ctx The context for CURL
  * @param awrh The handler
- * @param num_coins Number of coin candidates in reveal_inputs
  * @param reveal_inputs The secrets of the coin candidates
  */
 static
 void
 perform_protocol (
+  struct GNUNET_CURL_Context *curl_ctx,
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh)
 {
   CURL *curlh = NULL;
@@ -380,7 +479,7 @@ perform_protocol (
   json_decref (j_request_body);
   j_request_body = NULL;
 
-  awrh->job = GNUNET_CURL_job_add2 (awrh->curl_ctx,
+  awrh->job = GNUNET_CURL_job_add2 (curl_ctx,
                                     curlh,
                                     awrh->post_ctx.headers,
                                     &handle_age_withdraw_reveal_finished,
@@ -417,12 +516,12 @@ TALER_EXCHANGE_age_withdraw_reveal (
   const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawRevealCallback reveal_cb,
   void *reveal_cb_cls)
 {
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh =
     GNUNET_new (struct TALER_EXCHANGE_AgeWithdrawRevealHandle);
-  awrh->curl_ctx = curl_ctx;
   awrh->noreveal_index = noreveal_index;
   awrh->callback = reveal_cb;
   awrh->callback_cls = reveal_cb_cls;
@@ -430,6 +529,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   awrh->num_coins = num_coins;
   awrh->coins_input = coins_input;
   awrh->alg_values = alg_values;
+  awrh->max_age = max_age;
 
 
   if (GNUNET_OK !=
@@ -437,7 +537,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
                    awrh))
     return NULL;
 
-  perform_protocol (awrh);
+  perform_protocol (curl_ctx, awrh);
 
   return awrh;
 }
@@ -447,9 +547,14 @@ void
 TALER_EXCHANGE_age_withdraw_reveal_cancel (
   struct TALER_EXCHANGE_AgeWithdrawRevealHandle *awrh)
 {
-  /* FIXME[oec] */
-  (void) awrh;
-  #pragma message "need to implement TALER_EXCHANGE_age_withdraw_reveal_cancel"
+  if (NULL != awrh->job)
+  {
+    GNUNET_CURL_job_cancel (awrh->job);
+    awrh->job = NULL;
+  }
+  TALER_curl_easy_post_finished (&awrh->post_ctx);
+  /* FIXME[oec]: anything else left to cleanup!? */
+  GNUNET_free (awrh);
 }
 
 

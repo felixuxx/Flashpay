@@ -709,7 +709,7 @@ csr_withdraw_done (
   {
   case MHD_HTTP_OK:
     {
-      bool success = true;
+      bool success = false;
       /* Complete the initialization of the coin with CS denomination */
       can->alg_values = csrr->details.ok.alg_values;
       TALER_planchet_setup_coin_priv (&can->secret,
@@ -720,29 +720,33 @@ csr_withdraw_done (
                                              &can->blinding_key);
       /* This initializes the 2nd half of the
          can->planchet_detail.blinded_planchet! */
-      if (GNUNET_OK !=
-          TALER_planchet_prepare (&can->denom_pub->key,
-                                  &can->alg_values,
-                                  &can->blinding_key,
-                                  &can->coin_priv,
-                                  &can->h_age_commitment,
-                                  &can->h_coin_pub,
-                                  &can->planchet_detail))
-      {
-        GNUNET_break (0);
-        success = false;
-        TALER_EXCHANGE_age_withdraw_cancel (awh);
-      }
+      do {
+        if (GNUNET_OK !=
+            TALER_planchet_prepare (&can->denom_pub->key,
+                                    &can->alg_values,
+                                    &can->blinding_key,
+                                    &can->coin_priv,
+                                    &can->h_age_commitment,
+                                    &can->h_coin_pub,
+                                    &can->planchet_detail))
+        {
+          GNUNET_break (0);
+          TALER_EXCHANGE_age_withdraw_cancel (awh);
+          break;
+        }
 
-      if (GNUNET_OK !=
-          TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
-                              &can->planchet_detail.denom_pub_hash,
-                              &can->blinded_coin_h))
-      {
-        GNUNET_break (0);
-        success = false;
-        TALER_EXCHANGE_age_withdraw_cancel (awh);
-      }
+        if (GNUNET_OK !=
+            TALER_coin_ev_hash (&can->planchet_detail.blinded_planchet,
+                                &can->planchet_detail.denom_pub_hash,
+                                &can->blinded_coin_h))
+        {
+          GNUNET_break (0);
+          TALER_EXCHANGE_age_withdraw_cancel (awh);
+          break;
+        }
+
+        success = true;
+      } while(0);
 
       awh->csr_pending--;
 

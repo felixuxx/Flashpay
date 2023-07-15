@@ -2861,6 +2861,7 @@ typedef void
  * @param alg_values The algorithm specific parameters per coin, from the result to the previous call to /age-withdraw
  * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
  * @param h_commitment The commmitment from the previous call to /age-withdraw
+ * @param max_age maximum age, as used in the to /age-withdraw
  * @param res_cb A callback for the result, maybe NULL
  * @param res_cb_cls A closure for @e res_cb, maybe NULL
  * @return a handle for this request; NULL if the argument was invalid.
@@ -2876,6 +2877,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
+  uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawRevealCallback res_cb,
   void *res_cb_cls);
 
