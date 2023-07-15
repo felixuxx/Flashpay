@@ -296,7 +296,7 @@ add_account_cb (void *cls,
   if (! in_ai->credit_enabled)
     return; /* not enabled for us, skip */
   if ( (NULL != account_section) &&
-       (0 != strcasecmp (ai->section_name,
+       (0 != strcasecmp (in_ai->section_name,
                          account_section)) )
     return; /* not enabled for us, skip */
   if (NULL != ai)
