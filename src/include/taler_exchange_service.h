@@ -2965,14 +2965,13 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
 
       /**
        * Array of @e num_coins values about the coins obtained via the reveal
-       * operation.  The array give thes coins in the same order (and should
+       * operation.  The array give these coins in the same order (and should
        * have the same length) in which the original age-withdraw request
        * specified the respective denomination keys.
        */
       const struct TALER_EXCHANGE_RevealedCoinInfo *revealed_coins;
 
     } ok;
-    /* FIXME[oec]: error cases */
   } details;
 
 };
