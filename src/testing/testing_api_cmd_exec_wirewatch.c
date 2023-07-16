@@ -75,7 +75,6 @@ wirewatch_run (void *cls,
                                "-S", "1",
                                "-w", "0",
                                "-t", /* exit when done */
-                               "-L", "DEBUG",
                                (NULL == ws->account_section)
                                ? NULL
                                : "-a",

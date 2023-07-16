@@ -125,11 +125,6 @@ static unsigned int label_len;
 static unsigned int label_off;
 
 /**
- * Linger around until stop is requested by the user explicitly by key stroke.
- */
-static int linger;
-
-/**
  * Performance counters.
  */
 static struct TALER_TESTING_Timer timings[] = {
@@ -465,11 +460,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       }
     }
   }
-  if (GNUNET_YES == linger)
-  {
-    printf ("press ENTER to stop\n");
-    (void) getchar ();
-  }
   return result;
 }
 
@@ -491,8 +481,24 @@ main (int argc,
         &cfg_filename)),
     GNUNET_GETOPT_option_version (
       PACKAGE_VERSION " " VCS_VERSION),
+    GNUNET_GETOPT_option_flag (
+      'f',
+      "fakebank",
+      "use fakebank for the banking system",
+      &use_fakebank),
+    GNUNET_GETOPT_option_flag (
+      'F',
+      "reserves-first",
+      "should all reserves be created first, before starting normal operations",
+      &reserves_first),
     GNUNET_GETOPT_option_help (
       "Exchange benchmark"),
+    GNUNET_GETOPT_option_string (
+      'l',
+      "logfile",
+      "LF",
+      "will log to file LF",
+      &logfile),
     GNUNET_GETOPT_option_loglevel (
       &loglev),
     GNUNET_GETOPT_option_uint (
@@ -520,32 +526,11 @@ main (int argc,
       "Probability of refresh per coin (0-100)",
       &refresh_rate),
     GNUNET_GETOPT_option_string (
-      'l',
-      "logfile",
-      "LF",
-      "will log to file LF",
-      &logfile),
-    GNUNET_GETOPT_option_string (
       'u',
       "exchange-account-section",
       "SECTION",
       "use exchange bank account configuration from the given SECTION",
       &exchange_bank_section),
-    GNUNET_GETOPT_option_flag (
-      'f',
-      "fakebank",
-      "use fakebank for the banking system",
-      &use_fakebank),
-    GNUNET_GETOPT_option_flag (
-      'F',
-      "reserves-first",
-      "should all reserves be created first, before starting normal operations",
-      &reserves_first),
-    GNUNET_GETOPT_option_flag (
-      'K',
-      "linger",
-      "linger around until key press",
-      &linger),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue result;

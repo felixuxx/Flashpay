@@ -72,7 +72,6 @@ aggregator_run (void *cls,
                                "taler-exchange-aggregator",
                                "taler-exchange-aggregator",
                                "-c", as->config_filename,
-                               "-L", "INFO",
                                "-t", /* exit when done */
                                (as->kyc_on)
                                ? NULL
