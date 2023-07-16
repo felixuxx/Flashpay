@@ -1,18 +1,22 @@
 # Benchmarks, only install them for the dev package.
 usr/bin/taler-aggregator-benchmark
-usr/bin/taler-exchange-benchmark
-usr/bin/taler-fakebank-run
 usr/bin/taler-bank-benchmark
+usr/bin/taler-exchange-benchmark
 usr/bin/taler-exchange-kyc-tester
+usr/bin/taler-fakebank-run
 usr/bin/taler-unified-setup.sh
 
 # Only used in test cases.  Maybe these
 # shouldn't even be installed?
-usr/bin/taler-nexus-prepare
 usr/bin/taler-bank-manage-testing
+usr/bin/taler-nexus-prepare
 
 # Man pages
 usr/share/man/man1/taler-exchange-kyc-tester*
+usr/share/man/man1/taler-aggregator-benchmark*
+usr/share/man/man1/taler-bank-benchmark*
+usr/share/man/man1/taler-exchange-benchmark*
+usr/share/man/man1/taler-unified-setup*
 
 
 # Headers
@@ -28,6 +32,4 @@ usr/lib/*/libtalertesting.so
 usr/lib/*/libtalerfakebank.so
 
 # Documentation
-usr/share/man/man1/taler-exchange-benchmark*
-usr/share/man/man1/taler-unified-setup
 usr/share/info/taler-developer-manual*
