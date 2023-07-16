@@ -319,14 +319,14 @@ struct TALER_EXCHANGE_AgeWithdrawHandle
   void *callback_cls;
 
   /* The Handler for the actual call to the exchange */
-  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *protocol_handler;
+  struct TALER_EXCHANGE_AgeWithdrawBlindedHandle *procotol_handle;
 };
 
 /**
  * We got a 200 OK response for the /reserves/$RESERVE_PUB/age-withdraw operation.
  * Extract the noreveal_index and return it to the caller.
  *
- * @param awh operation handle
+ * @param awbh operation handle
  * @param j_response reply from the exchange
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
@@ -616,7 +616,7 @@ handle_reserve_age_withdraw_blinded_finished (
 /**
  * Runs the actual age-withdraw operation with the blinded planchets.
  *
- * @param[in,out] awh age withdraw handler
+ * @param[in,out] awbh age withdraw handler
  */
 static void
 perform_protocol (
@@ -828,7 +828,7 @@ call_age_withdraw_blinded (
         awh->coin_data[n].planchet_details[i];
   }
 
-  awh->protocol_handler =
+  awh->procotol_handle =
     TALER_EXCHANGE_age_withdraw_blinded (
       awh->curl_ctx,
       awh->keys,
@@ -844,7 +844,7 @@ call_age_withdraw_blinded (
 /**
  * Prepares the request URL for the age-withdraw request
  *
- * @param awh The handler
+ * @param awbh The handler
  * @param exchange_url The base-URL to the exchange
  */
 static
@@ -1121,7 +1121,7 @@ TALER_EXCHANGE_age_withdraw (
 
   awh = GNUNET_new (struct TALER_EXCHANGE_AgeWithdrawHandle);
   awh->exchange_url = exchange_url;
-  awh->keys = keys;
+  awh->keys = TALER_EXCHANGE_keys_incref (keys);
   awh->curl_ctx = curl_ctx;
   awh->reserve_priv = reserve_priv;
   awh->callback = res_cb;
@@ -1171,9 +1171,9 @@ TALER_EXCHANGE_age_withdraw_cancel (
     TALER_denom_pub_free (&cd->denom_pub.key);
   }
   GNUNET_free (awh->coin_data);
-
-  TALER_EXCHANGE_age_withdraw_blinded_cancel (awh->protocol_handler);
-  awh->protocol_handler = NULL;
+  TALER_EXCHANGE_keys_decref (awh->keys);
+  TALER_EXCHANGE_age_withdraw_blinded_cancel (awh->procotol_handle);
+  awh->procotol_handle = NULL;
   GNUNET_free (awh);
 }
 
@@ -1220,9 +1220,15 @@ TALER_EXCHANGE_age_withdraw_blinded_cancel (
   if (NULL == awbh)
     return;
 
-  // TODO[oec]: curl stuff Cleanup
-
+  if (NULL != awbh->job)
+  {
+    GNUNET_CURL_job_cancel (awbh->job);
+    awbh->job = NULL;
+  }
+  GNUNET_free (awbh->request_url);
   TALER_EXCHANGE_keys_decref (awbh->keys);
+  TALER_curl_easy_post_finished (&awbh->post_ctx);
+  GNUNET_free (awbh);
 }
 
 

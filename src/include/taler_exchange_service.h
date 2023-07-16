@@ -2993,9 +2993,8 @@ typedef void
  *
  * @param curl_ctx The curl context
  * @param exchange_url The base url of the exchange
- * @param reserve_priv The pivate key to the reserve
  * @param num_coins The number of elements in @e coin_inputs and @e alg_values
- * @param coins_input The input for the coins to withdraw, same as in the previous call to /age-withdraw
+ * @param coin_inputs The input for the coins to withdraw, same as in the previous call to /age-withdraw
  * @param alg_values The algorithm specific parameters per coin, from the result to the previous call to /age-withdraw
  * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
  * @param h_commitment The commmitment from the previous call to /age-withdraw
@@ -3010,7 +3009,7 @@ TALER_EXCHANGE_age_withdraw_reveal (
   struct GNUNET_CURL_Context *curl_ctx,
   const char *exchange_url,
   size_t num_coins,
-  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coins_input[static
+  const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[static
                                                                num_coins],
   const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,

@@ -163,8 +163,6 @@ reveal_coin (
  *
  * @param awrh operation handle
  * @param j_response reply from the exchange
- * @param num_coins The (expected) number of revealed coins
- * @param[in,out] revealed_coins The @e num_coins revealed coins to populate
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
@@ -417,7 +415,6 @@ prepare_url (
  *
  * @param curl_ctx The context for CURL
  * @param awrh The handler
- * @param reveal_inputs The secrets of the coin candidates
  */
 static
 void
