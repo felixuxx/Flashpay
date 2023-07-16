@@ -97,8 +97,6 @@ TEH_PG_insert_deposit (void *cls,
              "    FROM known_coins"
              "   WHERE coin_pub=$1"
              " ON CONFLICT DO NOTHING;");
-
-
     return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "insert_deposit",
                                                params);

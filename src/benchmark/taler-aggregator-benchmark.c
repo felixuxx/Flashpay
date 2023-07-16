@@ -251,7 +251,7 @@ add_refund (const struct Merchant *m,
   r.details.rtransaction_id = 42;
   make_amount (0, 5000000, &r.details.refund_amount);
   make_amount (0, 5, &r.details.refund_fee);
-  if (0 <=
+  if (0 >=
       plugin->insert_refund (plugin->cls,
                              &r))
   {
@@ -307,8 +307,13 @@ add_deposit (const struct Merchant *m)
   deposit.wire_salt = m->wire_salt;
   deposit.receiver_wire_account = m->payto_uri;
   deposit.timestamp = random_time ();
-  deposit.refund_deadline = random_time ();
-  deposit.wire_deadline = random_time ();
+  do {
+    deposit.refund_deadline = random_time ();
+    deposit.wire_deadline = random_time ();
+  } while (GNUNET_TIME_timestamp_cmp (deposit.wire_deadline,
+                                      <,
+                                      deposit.refund_deadline));
+
   make_amount (1, 0, &deposit.amount_with_fee);
   make_amount (0, 5, &deposit.deposit_fee);
   if (0 >=
@@ -446,6 +451,9 @@ run (void *cls,
   }
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
+  memset (&issue,
+          0,
+          sizeof (issue));
   RANDOMIZE (&issue.signature);
   issue.start
     = start;
@@ -478,6 +486,7 @@ run (void *cls,
                                             TALER_DENOMINATION_RSA,
                                             1024));
     alg_values.cipher = TALER_DENOMINATION_RSA;
+    denom_pub.age_mask = issue.age_mask;
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     make_amount (2, 0, &issue.value);
@@ -496,7 +505,6 @@ run (void *cls,
       global_ret = EXIT_FAILURE;
       return;
     }
-
 
     TALER_planchet_blinding_secret_create (&ps,
                                            &alg_values,

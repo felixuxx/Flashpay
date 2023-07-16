@@ -26,6 +26,7 @@
 #include "pg_helper.h"
 #include "pg_get_wire_fee.h"
 
+
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_wire_fee (void *cls,
                         const char *type,

@@ -45,16 +45,15 @@ TEH_PG_insert_refund (void *cls,
                  TALER_amount_cmp_currency (&refund->details.refund_amount,
                                             &refund->details.refund_fee));
 
-  /* Used in #postgres_insert_refund() to store refund information */
   PREPARE (pg,
            "insert_refund",
            "INSERT INTO refunds "
-           "(coin_pub "
+           "(coin_pub"
            ",deposit_serial_id"
-           ",merchant_sig "
-           ",rtransaction_id "
-           ",amount_with_fee_val "
-           ",amount_with_fee_frac "
+           ",merchant_sig"
+           ",rtransaction_id"
+           ",amount_with_fee_val"
+           ",amount_with_fee_frac"
            ") SELECT $1, deposit_serial_id, $3, $5, $6, $7"
            "    FROM deposits"
            "   WHERE coin_pub=$1"
