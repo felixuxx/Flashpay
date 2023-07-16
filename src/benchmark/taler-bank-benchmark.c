@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2014-2021 Taler Systems SA
+  (C) 2014-2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU Affero General Public License as
@@ -39,64 +39,15 @@
 #include "taler_error_codes.h"
 
 
-/* Error codes.  */
-enum BenchmarkError
-{
-  MISSING_BANK_URL,
-  FAILED_TO_LAUNCH_BANK,
-  BAD_CLI_ARG,
-  BAD_CONFIG_FILE,
-  NO_CONFIG_FILE_GIVEN
-};
-
-
 /**
- * What mode should the benchmark run in?
+ * Credentials to use for the benchmark.
  */
-enum BenchmarkMode
-{
-  /**
-   * Run as client against the bank.
-   */
-  MODE_CLIENT = 1,
-
-  /**
-   * Run the bank.
-   */
-  MODE_BANK = 2,
-
-  /**
-   * Run both, for a local benchmark.
-   */
-  MODE_BOTH = 3,
-};
-
-
-/**
- * Hold information regarding which bank has the exchange account.
- */
-static const struct TALER_EXCHANGEDB_AccountInfo *exchange_bank_account;
-
-/**
- * Time snapshot taken right before executing the CMDs.
- */
-static struct GNUNET_TIME_Absolute start_time;
-
-/**
- * Benchmark duration time taken right after the CMD interpreter
- * returns.
- */
-static struct GNUNET_TIME_Relative duration;
+static struct TALER_TESTING_Credentials cred;
 
 /**
  * Array of all the commands the benchmark is running.
  */
 static struct TALER_TESTING_Command *all_commands;
-
-/**
- * Dummy keepalive task.
- */
-static struct GNUNET_SCHEDULER_Task *keepalive;
 
 /**
  * Name of our configuration file.
@@ -105,26 +56,13 @@ static char *cfg_filename;
 
 /**
  * Use the fakebank instead of LibEuFin.
- * NOTE: LibEuFin not yet supported! Set
- * to 0 once we do support it!
  */
-static int use_fakebank = 1;
-
-/**
- * Number of taler-exchange-wirewatchers to launch.
- */
-static unsigned int start_wirewatch;
+static int use_fakebank;
 
 /**
  * Verbosity level.
  */
 static unsigned int verbose;
-
-/**
- * Size of the transaction history the fakebank
- * should keep in RAM.
- */
-static unsigned long long history_size = 65536;
 
 /**
  * How many reserves we want to create per client.
@@ -142,6 +80,11 @@ static unsigned int howmany_clients = 1;
 static unsigned int howmany_threads;
 
 /**
+ * How many wirewatch processes do we want to create.
+ */
+static unsigned int start_wirewatch;
+
+/**
  * Log level used during the run.
  */
 static char *loglev;
@@ -152,30 +95,15 @@ static char *loglev;
 static char *logfile;
 
 /**
- * Benchmarking mode (run as client, exchange, both) as string.
- */
-static char *mode_str;
-
-/**
- * Benchmarking mode (run as client, bank, both).
- */
-static enum BenchmarkMode mode;
-
-/**
- * Don't kill exchange/fakebank/wirewatch until
- * requested by the user explicitly.
- */
-static int linger;
-
-/**
- * Do not initialize or reset the database.
- */
-static int incremental;
-
-/**
  * Configuration.
  */
 static struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * Section with the configuration data for the exchange
+ * bank account.
+ */
+static char *exchange_bank_section;
 
 /**
  * Currency used.
@@ -237,10 +165,10 @@ print_stats (void)
 
     total = GNUNET_strdup (
       GNUNET_STRINGS_relative_time_to_string (timings[i].total_duration,
-                                              GNUNET_YES));
+                                              true));
     latency = GNUNET_strdup (
       GNUNET_STRINGS_relative_time_to_string (timings[i].success_latency,
-                                              GNUNET_YES));
+                                              true));
     fprintf (stderr,
              "%s-%d took %s in total with %s for latency for %u executions (%u repeats)\n",
              timings[i].prefix,
@@ -270,38 +198,39 @@ run (void *cls,
 
   (void) cls;
   len = howmany_reserves + 2;
-  all_commands = GNUNET_malloc_large (len
+  all_commands = GNUNET_malloc_large ((1 + len)
                                       * sizeof (struct TALER_TESTING_Command));
   GNUNET_assert (NULL != all_commands);
+  all_commands[0]
+    = TALER_TESTING_cmd_get_exchange ("get-exchange",
+                                      cred.cfg,
+                                      NULL,
+                                      true,
+                                      true);
+
   GNUNET_asprintf (&total_reserve_amount,
                    "%s:5",
                    currency);
   for (unsigned int j = 0; j < howmany_reserves; j++)
   {
     char *create_reserve_label;
-    char *user_payto_uri;
 
-    // FIXME: vary user accounts more...
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONFIGURATION_get_value_string (cfg,
-                                                          "benchmark",
-                                                          "USER_PAYTO_URI",
-                                                          &user_payto_uri));
     GNUNET_asprintf (&create_reserve_label,
                      "createreserve-%u",
                      j);
-    all_commands[j]
+    // TODO: vary user accounts more...
+    all_commands[1 + j]
       = TALER_TESTING_cmd_admin_add_incoming_retry (
           TALER_TESTING_cmd_admin_add_incoming (add_label (
                                                   create_reserve_label),
                                                 total_reserve_amount,
-                                                exchange_bank_account->auth,
-                                                add_label (user_payto_uri)));
+                                                &cred.ba,
+                                                cred.user42_payto));
   }
   GNUNET_free (total_reserve_amount);
-  all_commands[howmany_reserves]
+  all_commands[1 + howmany_reserves]
     = TALER_TESTING_cmd_stat (timings);
-  all_commands[howmany_reserves + 1]
+  all_commands[1 + howmany_reserves + 1]
     = TALER_TESTING_cmd_end ();
   TALER_TESTING_run2 (is,
                       all_commands,
@@ -318,7 +247,6 @@ launch_clients (void)
   enum GNUNET_GenericReturnValue result = GNUNET_OK;
   pid_t cpids[howmany_clients];
 
-  start_time = GNUNET_TIME_absolute_get ();
   if (1 == howmany_clients)
   {
     /* do everything in this process */
@@ -388,78 +316,6 @@ again:
 
 
 /**
- * Stop the fakebank.
- *
- * @param cls fakebank handle
- */
-static void
-stop_fakebank (void *cls)
-{
-  struct TALER_FAKEBANK_Handle *fakebank = cls;
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Stopping fakebank\n");
-  TALER_FAKEBANK_stop (fakebank);
-  GNUNET_SCHEDULER_cancel (keepalive);
-  keepalive = NULL;
-}
-
-
-/**
- * Dummy task that is never run.
- */
-static void
-never_task (void *cls)
-{
-  (void) cls;
-  GNUNET_assert (0);
-}
-
-
-/**
- * Start the fakebank.
- *
- * @param cls NULL
- */
-static void
-launch_fakebank (void *cls)
-{
-  struct TALER_FAKEBANK_Handle *fakebank;
-  unsigned long long pnum;
-
-  (void) cls;
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (cfg,
-                                             "bank",
-                                             "HTTP_PORT",
-                                             &pnum))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "bank",
-                               "HTTP_PORT",
-                               "must be valid port number");
-    return;
-  }
-  fakebank
-    = TALER_FAKEBANK_start2 ((uint16_t) pnum,
-                             currency,
-                             history_size,
-                             howmany_threads);
-  if (NULL == fakebank)
-  {
-    GNUNET_break (0);
-    return;
-  }
-  keepalive
-    = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
-                                    &never_task,
-                                    NULL);
-  GNUNET_SCHEDULER_add_shutdown (&stop_fakebank,
-                                 fakebank);
-}
-
-
-/**
  * Run the benchmark in parallel in many (client) processes
  * and summarize result.
  *
@@ -469,278 +325,94 @@ static enum GNUNET_GenericReturnValue
 parallel_benchmark (void)
 {
   enum GNUNET_GenericReturnValue result = GNUNET_OK;
-  pid_t fakebank = -1;
-  struct GNUNET_OS_Process *bankd = NULL;
   struct GNUNET_OS_Process *wirewatch[GNUNET_NZL (start_wirewatch)];
 
   memset (wirewatch,
           0,
           sizeof (wirewatch));
-  if ( (MODE_BANK == mode) ||
-       (MODE_BOTH == mode) )
+  /* start exchange wirewatch */
+  for (unsigned int w = 0; w<start_wirewatch; w++)
   {
-    if (use_fakebank)
-    {
-      unsigned long long pnum;
-
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_number (cfg,
-                                                 "bank",
-                                                 "HTTP_PORT",
-                                                 &pnum))
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   "bank",
-                                   "HTTP_PORT",
-                                   "must be valid port number");
-        return GNUNET_SYSERR;
-      }
-      /* start fakebank */
-      fakebank = fork ();
-      if (0 == fakebank)
-      {
-        GNUNET_log_setup ("benchmark-fakebank",
-                          NULL == loglev ? "INFO" : loglev,
-                          logfile);
-        GNUNET_SCHEDULER_run (&launch_fakebank,
-                              NULL);
-        exit (0);
-      }
-      if (-1 == fakebank)
-      {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-        return GNUNET_SYSERR;
-      }
-      /* wait for fakebank to be ready */
-      {
-        char *bank_url;
-        int ret;
-
-        GNUNET_asprintf (&bank_url,
-                         "http://localhost:%u/",
-                         (unsigned int) (uint16_t) pnum);
-        ret = TALER_TESTING_wait_httpd_ready (bank_url);
-        GNUNET_free (bank_url);
-        if (0 != ret)
-        {
-          int wstatus;
-
-          kill (fakebank,
-                SIGTERM);
-          if (fakebank !=
-              waitpid (fakebank,
-                       &wstatus,
-                       0))
-          {
-            GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                                 "waitpid");
-          }
-          fakebank = -1;
-          exit (ret);
-        }
-      }
-    }
-    else
+    wirewatch[w] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                            NULL, NULL, NULL,
+                                            "taler-exchange-wirewatch",
+                                            "taler-exchange-wirewatch",
+                                            "-c", cfg_filename,
+                                            (NULL != loglev) ? "-L" : NULL,
+                                            loglev,
+                                            NULL);
+    if (NULL == wirewatch[w])
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "FIXME #7273: launching LibEuFin not yet supported\n");
-      bankd = NULL; // FIXME #7273
-      return GNUNET_SYSERR;
-    }
-
-    if (0 == incremental)
-    {
-      struct GNUNET_OS_Process *dbinit;
-
-      dbinit = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                        NULL, NULL, NULL,
-                                        "taler-exchange-dbinit",
-                                        "taler-exchange-dbinit",
-                                        "-c", cfg_filename,
-                                        "-r",
-                                        (NULL != loglev) ? "-L" : NULL,
-                                        loglev,
-                                        NULL);
-      if (NULL == dbinit)
-      {
-        if (NULL != bankd)
-        {
-          GNUNET_OS_process_kill (bankd,
-                                  SIGTERM);
-          GNUNET_OS_process_destroy (bankd);
-          bankd = NULL;
-        }
-        return GNUNET_SYSERR;
-      }
-      GNUNET_break (GNUNET_OK ==
-                    GNUNET_OS_process_wait (dbinit));
-      GNUNET_OS_process_destroy (dbinit);
-    }
-    /* start exchange wirewatch */
-    for (unsigned int w = 0; w<start_wirewatch; w++)
-    {
-      wirewatch[w] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                              NULL, NULL, NULL,
-                                              "taler-exchange-wirewatch",
-                                              "taler-exchange-wirewatch",
-                                              "-c", cfg_filename,
-                                              (NULL != loglev) ? "-L" : NULL,
-                                              loglev,
-                                              NULL);
-      if (NULL == wirewatch[w])
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Failed to launch wirewatch, aborting benchmark\n");
-        for (unsigned int x = 0; x<w; x++)
-        {
-          GNUNET_break (0 ==
-                        GNUNET_OS_process_kill (wirewatch[x],
-                                                SIGTERM));
-          GNUNET_break (GNUNET_OK ==
-                        GNUNET_OS_process_wait (wirewatch[x]));
-          GNUNET_OS_process_destroy (wirewatch[x]);
-          wirewatch[x] = NULL;
-        }
-        if (-1 != fakebank)
-        {
-          int wstatus;
-
-          kill (fakebank,
-                SIGTERM);
-          if (fakebank !=
-              waitpid (fakebank,
-                       &wstatus,
-                       0))
-          {
-            GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                                 "waitpid");
-          }
-          fakebank = -1;
-        }
-        if (NULL != bankd)
-        {
-          GNUNET_OS_process_kill (bankd,
-                                  SIGTERM);
-          GNUNET_OS_process_destroy (bankd);
-          bankd = NULL;
-        }
-        return GNUNET_SYSERR;
-      }
-    }
-  }
-
-  if ( (MODE_CLIENT == mode) ||
-       (MODE_BOTH == mode) )
-    result = launch_clients ();
-  if ( (GNUNET_YES == linger) ||
-       (MODE_BANK == mode) )
-  {
-    printf ("Press ENTER to stop!\n");
-    if (MODE_BANK != mode)
-      duration = GNUNET_TIME_absolute_get_duration (start_time);
-    (void) getchar ();
-    if (MODE_BANK == mode)
-      duration = GNUNET_TIME_absolute_get_duration (start_time);
-  }
-
-  if ( (MODE_BANK == mode) ||
-       (MODE_BOTH == mode) )
-  {
-    /* Ensure wirewatch runs to completion! */
-    if (0 != start_wirewatch)
-    {
-      /* replace ONE of the wirewatchers with one that is in test-mode */
-      GNUNET_break (0 ==
-                    GNUNET_OS_process_kill (wirewatch[0],
-                                            SIGTERM));
-      GNUNET_break (GNUNET_OK ==
-                    GNUNET_OS_process_wait (wirewatch[0]));
-      GNUNET_OS_process_destroy (wirewatch[0]);
-      wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                              NULL, NULL, NULL,
-                                              "taler-exchange-wirewatch",
-                                              "taler-exchange-wirewatch",
-                                              "-c", cfg_filename,
-                                              "-t",
-                                              (NULL != loglev) ? "-L" : NULL,
-                                              loglev,
-                                              NULL);
-      /* wait for it to finish! */
-      GNUNET_break (GNUNET_OK ==
-                    GNUNET_OS_process_wait (wirewatch[0]));
-      GNUNET_OS_process_destroy (wirewatch[0]);
-      wirewatch[0] = NULL;
-      /* Then stop the rest, which should basically also be finished */
-      for (unsigned int w = 1; w<start_wirewatch; w++)
+                  "Failed to launch wirewatch, aborting benchmark\n");
+      for (unsigned int x = 0; x<w; x++)
       {
         GNUNET_break (0 ==
-                      GNUNET_OS_process_kill (wirewatch[w],
+                      GNUNET_OS_process_kill (wirewatch[x],
                                               SIGTERM));
         GNUNET_break (GNUNET_OK ==
-                      GNUNET_OS_process_wait (wirewatch[w]));
-        GNUNET_OS_process_destroy (wirewatch[w]);
+                      GNUNET_OS_process_wait (wirewatch[x]));
+        GNUNET_OS_process_destroy (wirewatch[x]);
+        wirewatch[x] = NULL;
       }
-
-      /* But be extra sure we did finish all shards by doing one more */
-      GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                  "Shard check phase\n");
-      wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
-                                              NULL, NULL, NULL,
-                                              "taler-exchange-wirewatch",
-                                              "taler-exchange-wirewatch",
-                                              "-c", cfg_filename,
-                                              "-t",
-                                              (NULL != loglev) ? "-L" : NULL,
-                                              loglev,
-                                              NULL);
-      /* wait for it to finish! */
-      GNUNET_break (GNUNET_OK ==
-                    GNUNET_OS_process_wait (wirewatch[0]));
-      GNUNET_OS_process_destroy (wirewatch[0]);
-      wirewatch[0] = NULL;
-    }
-
-    /* Now stop the time, if this was the right mode */
-    if ( (GNUNET_YES != linger) &&
-         (MODE_BANK != mode) )
-      duration = GNUNET_TIME_absolute_get_duration (start_time);
-
-    /* stop fakebank */
-    if (-1 != fakebank)
-    {
-      int wstatus;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Telling fakebank to shut down\n");
-      kill (fakebank,
-            SIGTERM);
-      if (fakebank !=
-          waitpid (fakebank,
-                   &wstatus,
-                   0))
-      {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "waitpid");
-      }
-      else
-      {
-        if ( (! WIFEXITED (wstatus)) ||
-             (0 != WEXITSTATUS (wstatus)) )
-        {
-          GNUNET_break (0);
-          result = GNUNET_SYSERR;
-        }
-      }
-      fakebank = -1;
-    }
-    if (NULL != bankd)
-    {
-      GNUNET_OS_process_kill (bankd,
-                              SIGTERM);
-      GNUNET_OS_process_destroy (bankd);
+      return GNUNET_SYSERR;
     }
   }
+  result = launch_clients ();
+  /* Ensure wirewatch runs to completion! */
+  if (0 != start_wirewatch)
+  {
+    /* replace ONE of the wirewatchers with one that is in test-mode */
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (wirewatch[0],
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (wirewatch[0]));
+    GNUNET_OS_process_destroy (wirewatch[0]);
+    wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                            NULL, NULL, NULL,
+                                            "taler-exchange-wirewatch",
+                                            "taler-exchange-wirewatch",
+                                            "-c", cfg_filename,
+                                            "-t",
+                                            (NULL != loglev) ? "-L" : NULL,
+                                            loglev,
+                                            NULL);
+    /* wait for it to finish! */
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (wirewatch[0]));
+    GNUNET_OS_process_destroy (wirewatch[0]);
+    wirewatch[0] = NULL;
+    /* Then stop the rest, which should basically also be finished */
+    for (unsigned int w = 1; w<start_wirewatch; w++)
+    {
+      GNUNET_break (0 ==
+                    GNUNET_OS_process_kill (wirewatch[w],
+                                            SIGTERM));
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_OS_process_wait (wirewatch[w]));
+      GNUNET_OS_process_destroy (wirewatch[w]);
+    }
+
+    /* But be extra sure we did finish all shards by doing one more */
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Shard check phase\n");
+    wirewatch[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                            NULL, NULL, NULL,
+                                            "taler-exchange-wirewatch",
+                                            "taler-exchange-wirewatch",
+                                            "-c", cfg_filename,
+                                            "-t",
+                                            (NULL != loglev) ? "-L" : NULL,
+                                            loglev,
+                                            NULL);
+    /* wait for it to finish! */
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (wirewatch[0]));
+    GNUNET_OS_process_destroy (wirewatch[0]);
+    wirewatch[0] = NULL;
+  }
+
   return result;
 }
 
@@ -760,32 +432,17 @@ main (int argc,
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory (
       GNUNET_GETOPT_option_cfgfile (&cfg_filename)),
-#if FIXME_SUPPORT_LIBEUFIN
     GNUNET_GETOPT_option_flag ('f',
                                "fakebank",
-                               "start a fakebank instead of the Python bank",
+                               "we are using fakebank",
                                &use_fakebank),
-#endif
     GNUNET_GETOPT_option_help ("taler-bank benchmark"),
-    GNUNET_GETOPT_option_flag ('K',
-                               "linger",
-                               "linger around until key press",
-                               &linger),
-    GNUNET_GETOPT_option_flag ('i',
-                               "incremental",
-                               "skip initializing and resetting the database",
-                               &incremental),
     GNUNET_GETOPT_option_string ('l',
                                  "logfile",
                                  "LF",
                                  "will log to file LF",
                                  &logfile),
     GNUNET_GETOPT_option_loglevel (&loglev),
-    GNUNET_GETOPT_option_string ('m',
-                                 "mode",
-                                 "MODE",
-                                 "run as bank, client or both",
-                                 &mode_str),
     GNUNET_GETOPT_option_uint ('p',
                                "worker-parallelism",
                                "NPROCS",
@@ -801,11 +458,12 @@ main (int argc,
                                "NRESERVES",
                                "How many reserves per client we should create",
                                &howmany_reserves),
-    GNUNET_GETOPT_option_ulong ('s',
-                                "size",
-                                "HISTORY_SIZE",
-                                "Maximum history size kept in memory by the fakebank",
-                                &history_size),
+    GNUNET_GETOPT_option_string (
+      'u',
+      "exchange-account-section",
+      "SECTION",
+      "use exchange bank account configuration from the given SECTION",
+      &exchange_bank_section),
     GNUNET_GETOPT_option_version (PACKAGE_VERSION " " VCS_VERSION),
     GNUNET_GETOPT_option_verbose (&verbose),
     GNUNET_GETOPT_option_uint ('w',
@@ -815,6 +473,7 @@ main (int argc,
                                &start_wirewatch),
     GNUNET_GETOPT_OPTION_END
   };
+  struct GNUNET_TIME_Relative duration;
 
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
@@ -827,35 +486,15 @@ main (int argc,
     GNUNET_free (cfg_filename);
     if (GNUNET_NO == result)
       return 0;
-    return BAD_CLI_ARG;
+    return EXIT_INVALIDARGUMENT;
   }
+  if (NULL == exchange_bank_section)
+    exchange_bank_section = "exchange-account-1";
+  if (NULL == loglev)
+    loglev = "INFO";
   GNUNET_log_setup ("taler-bank-benchmark",
-                    NULL == loglev ? "INFO" : loglev,
+                    loglev,
                     logfile);
-  if (history_size < 10)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "History size too small, this can hardly work\n");
-    return BAD_CLI_ARG;
-  }
-  if (NULL == mode_str)
-    mode = MODE_BOTH;
-  else if (0 == strcasecmp (mode_str,
-                            "bank"))
-    mode = MODE_BANK;
-  else if (0 == strcasecmp (mode_str,
-                            "client"))
-    mode = MODE_CLIENT;
-  else if (0 == strcasecmp (mode_str,
-                            "both"))
-    mode = MODE_BOTH;
-  else
-  {
-    TALER_LOG_ERROR ("Unknown mode given: '%s'\n",
-                     mode_str);
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
   if (NULL == cfg_filename)
     cfg_filename = GNUNET_CONFIGURATION_default_filename ();
   if (NULL == cfg_filename)
@@ -871,7 +510,7 @@ main (int argc,
   {
     TALER_LOG_ERROR ("Could not parse configuration\n");
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_NOTCONFIGURED;
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
@@ -879,52 +518,30 @@ main (int argc,
   {
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
-  if (MODE_BANK != mode)
-  {
-    if (howmany_clients > 10240)
-    {
-      TALER_LOG_ERROR ("-p option value given is too large\n");
-      return BAD_CLI_ARG;
-    }
-    if (0 == howmany_clients)
-    {
-      TALER_LOG_ERROR ("-p option value must not be zero\n");
-      GNUNET_free (cfg_filename);
-      return BAD_CLI_ARG;
-    }
+    return EXIT_NOTCONFIGURED;
   }
 
   if (GNUNET_OK !=
-      TALER_EXCHANGEDB_load_accounts (cfg,
-                                      TALER_EXCHANGEDB_ALO_AUTHDATA
-                                      | TALER_EXCHANGEDB_ALO_CREDIT))
+      TALER_TESTING_get_credentials (
+        cfg_filename,
+        exchange_bank_section,
+        use_fakebank
+        ? TALER_TESTING_BS_FAKEBANK
+        : TALER_TESTING_BS_IBAN,
+        &cred))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Configuration fails to provide exchange bank details\n");
+                "Required bank credentials not given in configuration\n");
     GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
+    return EXIT_NOTCONFIGURED;
   }
 
-  exchange_bank_account
-    = TALER_EXCHANGEDB_find_account_by_method ("x-taler-bank");
-  if (NULL == exchange_bank_account)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No bank account for `x-taler-bank` given in configuration\n");
-    GNUNET_free (cfg_filename);
-    return BAD_CONFIG_FILE;
-  }
-  result = parallel_benchmark ();
-  TALER_EXCHANGEDB_unload_accounts ();
-  GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_free (cfg_filename);
+    struct GNUNET_TIME_Absolute start_time;
 
-  if (MODE_BANK == mode)
-  {
-    /* If we're the bank, we're done now.  No need to print results. */
-    return (GNUNET_OK == result) ? 0 : result;
+    start_time = GNUNET_TIME_absolute_get ();
+    result = parallel_benchmark ();
+    duration = GNUNET_TIME_absolute_get_duration (start_time);
   }
 
   if (GNUNET_OK == result)
@@ -952,7 +569,7 @@ main (int argc,
                tps);
     }
     fprintf (stdout,
-             "CPU time: sys %llu user %llu\n",                          \
+             "CPU time: sys %llu user %llu\n",
              (unsigned long long) (usage.ru_stime.tv_sec * 1000 * 1000
                                    + usage.ru_stime.tv_usec),
              (unsigned long long) (usage.ru_utime.tv_sec * 1000 * 1000
@@ -963,5 +580,7 @@ main (int argc,
   GNUNET_array_grow (labels,
                      label_len,
                      0);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  GNUNET_free (cfg_filename);
   return (GNUNET_OK == result) ? 0 : result;
 }

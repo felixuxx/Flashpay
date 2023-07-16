@@ -210,13 +210,14 @@ run (void *cls,
   char *amount_1;
 
   (void) cls;
-  all_commands = GNUNET_new_array (
-    1                                /* exchange CMD */
-    + howmany_reserves * (1                /* Withdraw block */
-                          + howmany_coins) /* All units */
-    + 1                                /* stat CMD */
-    + 1 /* End CMD */,
-    struct TALER_TESTING_Command);
+  all_commands = GNUNET_malloc_large (
+    (1 /* exchange CMD */
+     + howmany_reserves
+     * (1 /* Withdraw block */
+        + howmany_coins) /* All units */
+     + 1 /* stat CMD */
+     + 1 /* End CMD */) * sizeof (struct TALER_TESTING_Command));
+  GNUNET_assert (NULL != all_commands);
   all_commands[0]
     = TALER_TESTING_cmd_get_exchange ("get-exchange",
                                       cred.cfg,
