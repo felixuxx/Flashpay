@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2023 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -43,6 +43,11 @@ struct WirewatchState
    * Configuration file used by the wirewatcher.
    */
   const char *config_filename;
+
+  /**
+   * Account section to be used by the wirewatcher.
+   */
+  const char *account_section;
 };
 
 
@@ -71,6 +76,10 @@ wirewatch_run (void *cls,
                                "-w", "0",
                                "-t", /* exit when done */
                                "-L", "DEBUG",
+                               (NULL == ws->account_section)
+                               ? NULL
+                               : "-a",
+                               ws->account_section,
                                NULL);
   if (NULL == ws->wirewatch_proc)
   {
@@ -138,14 +147,15 @@ wirewatch_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_exec_wirewatch (const char *label,
-                                  const char *config_filename)
+TALER_TESTING_cmd_exec_wirewatch2 (const char *label,
+                                   const char *config_filename,
+                                   const char *account_section)
 {
   struct WirewatchState *ws;
 
   ws = GNUNET_new (struct WirewatchState);
   ws->config_filename = config_filename;
-
+  ws->account_section = account_section;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ws,
@@ -157,6 +167,16 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
     return cmd;
   }
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wirewatch (const char *label,
+                                  const char *config_filename)
+{
+  return TALER_TESTING_cmd_exec_wirewatch2 (label,
+                                            config_filename,
+                                            NULL);
 }
 
 

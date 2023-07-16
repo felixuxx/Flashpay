@@ -944,6 +944,20 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
 
 /**
+ * Make a "wirewatch" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param account section to run wirewatch against
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_wirewatch2 (const char *label,
+                                   const char *config_filename,
+                                   const char *account_section);
+
+
+/**
  * Request URL via "wget".
  *
  * @param label command label.
