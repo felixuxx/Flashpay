@@ -1275,30 +1275,31 @@ function test_13() {
     COIN_PUB=$(echo "SELECT old_coin_pub FROM exchange.refresh_commitments LIMIT 1;"  | psql "$DB" -Aqt)
     OLD_SIG=$(echo "SELECT old_coin_sig FROM exchange.refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql "$DB" -Aqt)
     NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
-    echo "UPDATE exchange.refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt "$DB"
+    echo "UPDATE exchange.refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" \
+        | psql -Aqt "$DB"
 
     run_audit
 
     echo -n "Testing inconsistency detection... "
 
     OP=$(jq -er .bad_sig_losses[0].operation < test-audit-coins.json)
-    if test x$OP != xmelt
+    if [ "$OP" != "melt" ]
     then
         exit_fail "Operation wrong, got $OP"
     fi
 
     LOSS=$(jq -er .bad_sig_losses[0].loss < test-audit-coins.json)
     TOTAL_LOSS=$(jq -er .irregular_loss < test-audit-coins.json)
-    if test x$LOSS != x$TOTAL_LOSS
+    if [ "$LOSS" != "$TOTAL_LOSS" ]
     then
         exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
     fi
-    if test x$TOTAL_LOSS = TESTKUDOS:0
+    if [ "$TOTAL_LOSS" = "TESTKUDOS:0" ]
     then
         exit_fail "Loss zero"
     fi
 
-    echo PASS
+    echo "PASS"
 
     # cannot easily undo DELETE, hence full reload
     full_reload
@@ -1314,22 +1315,23 @@ function test_14() {
     # actual outgoing wire transfers, so we need to run the
     # aggregator here.
     pre_audit aggregator
-    echo "UPDATE exchange.wire_fee SET wire_fee_frac=100;" | psql -Aqt "$DB"
+    echo "UPDATE exchange.wire_fee SET wire_fee_frac=100;" \
+        | psql -Aqt "$DB"
     audit_only
     post_audit
 
     echo -n "Testing inconsistency detection... "
     TABLE=$(jq -r .row_inconsistencies[0].table < test-audit-aggregation.json)
-    if test "x$TABLE" != "xwire-fee"
+    if [ "$TABLE" != "wire-fee" ]
     then
         exit_fail "Reported table wrong: $TABLE"
     fi
     DIAG=$(jq -r .row_inconsistencies[0].diagnostic < test-audit-aggregation.json)
-    if test "x$DIAG" != "xwire fee signature invalid at given time"
+    if [ "$DIAG" != "wire fee signature invalid at given time" ]
     then
         exit_fail "Reported diagnostic wrong: $DIAG"
     fi
-    echo PASS
+    echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -1350,14 +1352,15 @@ function test_15() {
 
     echo -n "Testing inconsistency detection... "
     OP=$(jq -r .bad_sig_losses[0].operation < test-audit-coins.json)
-    if test "x$OP" != "xdeposit"
+    if [ "$OP" != "deposit" ]
     then
         exit_fail "Reported operation wrong: $OP"
     fi
-    echo PASS
+    echo "PASS"
 
     # Restore DB
-    echo "UPDATE exchange.deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" | psql -Aqt "$DB"
+    echo "UPDATE exchange.deposits SET wire_salt='$SALT' WHERE deposit_serial_id=1;" \
+        | psql -Aqt "$DB"
 
 }
 
@@ -1375,64 +1378,66 @@ function test_16() {
     stop_libeufin
     OLD_AMOUNT=$(echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | psql "${DB}")
     NEW_AMOUNT="TESTKUDOS:50"
-    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | psql "${DB}"
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
+        | psql "${DB}"
     launch_libeufin
     audit_only
 
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json)
-    if test "x$AMOUNT" != "x$OLD_AMOUNT"
+    if [ "$AMOUNT" != "$OLD_AMOUNT" ]
     then
         exit_fail "Reported justified amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json)
-    if test "x$AMOUNT" != "x$NEW_AMOUNT"
+    if [ "$AMOUNT" != "$NEW_AMOUNT" ]
     then
         exit_fail "Reported wired amount wrong: $AMOUNT"
     fi
     TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json)
-    if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
+    if [ "$TOTAL_AMOUNT" != "TESTKUDOS:0" ]
     then
         exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT"
     fi
     TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
-    if test "x$TOTAL_AMOUNT" = "xTESTKUDOS:0"
+    if [ "$TOTAL_AMOUNT" = "TESTKUDOS:0" ]
     then
         exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
     fi
-    echo PASS
+    echo "PASS"
 
     stop_libeufin
     echo "Second modification: wire nothing"
     NEW_AMOUNT="TESTKUDOS:0"
-    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" | psql "${DB}"
+    echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
+        | psql "${DB}"
     launch_libeufin
     audit_only
     stop_libeufin
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json)
-    if test "x$AMOUNT" != "x$OLD_AMOUNT"
+    if [ "$AMOUNT" != "$OLD_AMOUNT" ]
     then
         exit_fail "Reported justified amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json)
-    if test "x$AMOUNT" != "x$NEW_AMOUNT"
+    if [ "$AMOUNT" != "$NEW_AMOUNT" ]
     then
         exit_fail "Reported wired amount wrong: $AMOUNT"
     fi
     TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-wire.json)
-    if test "x$TOTAL_AMOUNT" != "x$OLD_AMOUNT"
+    if [ "$TOTAL_AMOUNT" != "$OLD_AMOUNT" ]
     then
         exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
     fi
     TOTAL_AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-wire.json)
-    if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
+    if [ "$TOTAL_AMOUNT" != "TESTKUDOS:0" ]
     then
         exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
     fi
-    echo PASS
+    echo "PASS"
 
     post_audit
 
@@ -1455,27 +1460,27 @@ function test_17() {
     OLD_DATE=$(echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}")
     # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
     # (due to rounding, if this machine is fast...)
-    NOW_1HR=$(expr $(date +%s) - 3600)
+    NOW_1HR=$(( $(date +%s) - 3600))
     echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" \
         | psql "${DB}"
     launch_libeufin
-    echo DONE
+    echo "DONE"
     audit_only
     post_audit
 
     echo -n "Testing inconsistency detection... "
     TABLE=$(jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json)
-    if test "x$TABLE" != "xwire_out"
+    if [ "$TABLE" != "wire_out" ]
     then
         exit_fail "Reported table wrong: $TABLE"
     fi
     DIAG=$(jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json)
     DIAG=$(echo "$DIAG" | awk '{print $1 " " $2 " " $3}')
-    if test "x$DIAG" != "xexecution date mismatch"
+    if [ "$DIAG" != "execution date mismatch" ]
     then
         exit_fail "Reported diagnostic wrong: $DIAG"
     fi
-    echo PASS
+    echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -1488,34 +1493,42 @@ function test_17() {
 function test_18() {
     echo "===========18: emergency================="
 
-    echo "DELETE FROM exchange.reserves_out;" | psql -Aqt "$DB"
+    echo "DELETE FROM exchange.reserves_out;" \
+        | psql -Aqt "$DB"
 
     run_audit
 
     echo -n "Testing emergency detection... "
-
-    jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
-
-    jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency not detected"
-    jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency by count not detected"
-    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
-
-    echo PASS
+    jq -e .reserve_balance_summary_wrong_inconsistencies[0] \
+       < test-audit-reserves.json \
+       > /dev/null \
+        || exit_fail "Reserve balance inconsistency not detected"
+    jq -e .emergencies[0] \
+       < test-audit-coins.json \
+       > /dev/null \
+        || exit_fail "Emergency not detected"
+    jq -e .emergencies_by_count[0] \
+       < test-audit-coins.json \
+       > /dev/null \
+        || exit_fail "Emergency by count not detected"
+    jq -e .amount_arithmetic_inconsistencies[0] \
+       < test-audit-coins.json \
+       > /dev/null \
+        || exit_fail "Escrow balance calculation impossibility not detected"
+    echo "PASS"
 
     echo -n "Testing loss calculation... "
-
     AMOUNT=$(jq -r .emergencies_loss < test-audit-coins.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .emergencies_loss_by_count < test-audit-coins.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
-
-    echo  PASS
+    echo "PASS"
 
     # cannot easily undo broad DELETE operation, hence full reload
     full_reload
@@ -1532,11 +1545,13 @@ function test_19() {
     RES_PUB=$(echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql "$DB" -Aqt)
     OLD_EXP=$(echo "SELECT expiration_date FROM exchange.reserves WHERE reserve_pub='${RES_PUB}';" | psql "$DB" -Aqt)
     VAL_DELTA=1
-    NEW_TIME=$(expr $OLD_TIME - 3024000000000 || true)  # 5 weeks
-    NEW_EXP=$(expr $OLD_EXP - 3024000000000 || true)  # 5 weeks
-    NEW_CREDIT=$(expr $OLD_VAL + $VAL_DELTA || true)
-    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt "$DB"
-    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt "$DB"
+    NEW_TIME=$(( OLD_TIME - 3024000000000))  # 5 weeks
+    NEW_EXP=$(( OLD_EXP - 3024000000000))  # 5 weeks
+    NEW_CREDIT=$(( OLD_VAL + VAL_DELTA))
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" \
+        | psql -Aqt "$DB"
+    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" \
+        | psql -Aqt "$DB"
 
     # Need to run with the aggregator so the reserve closure happens
     run_audit aggregator
@@ -1564,27 +1579,34 @@ function test_20() {
     OLD_TIME=$(echo "SELECT execution_date FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql "$DB" -Aqt)
     OLD_VAL=$(echo "SELECT credit_val FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql "$DB" -Aqt)
     RES_PUB=$(echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql "$DB" -Aqt)
-    NEW_TIME=$(expr $OLD_TIME - 3024000000000 || true)  # 5 weeks
-    NEW_CREDIT=$(expr $OLD_VAL + 100 || true)
-    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt "$DB"
-    echo "UPDATE exchange.reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt "$DB"
+    NEW_TIME=$(( OLD_TIME - 3024000000000 ))  # 5 weeks
+    NEW_CREDIT=$(( OLD_VAL + 100 ))
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" \
+        | psql -Aqt "$DB"
+    echo "UPDATE exchange.reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" \
+        | psql -Aqt "$DB"
 
     # This time, run without the aggregator so the reserve closure is skipped!
     run_audit
 
     echo -n "Testing reserve closure missing detected... "
-    jq -e .reserve_not_closed_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
+    jq -e .reserve_not_closed_inconsistencies[0] \
+       < test-audit-reserves.json \
+       > /dev/null  \
+        || exit_fail "Reserve not closed inconsistency not detected"
     echo "PASS"
 
     AMOUNT=$(jq -r .total_balance_reserve_not_closed < test-audit-reserves.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
     # Undo
-    echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt "$DB"
-    echo "UPDATE exchange.reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt "$DB"
+    echo "UPDATE exchange.reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" \
+        | psql -Aqt "$DB"
+    echo "UPDATE exchange.reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" \
+        | psql -Aqt "$DB"
 
 }
 
@@ -1598,33 +1620,39 @@ function test_21() {
     RES_PUB=$(echo "SELECT reserve_pub FROM exchange.reserves_in WHERE reserve_in_serial_id=1;" | psql "$DB" -Aqt)
     OLD_EXP=$(echo "SELECT expiration_date FROM exchange.reserves WHERE reserve_pub='${RES_PUB}';" | psql "$DB" -Aqt)
     VAL_DELTA=1
-    NEW_TIME=$(expr $OLD_TIME - 3024000000000 || true)  # 5 weeks
-    NEW_EXP=$(expr $OLD_EXP - 3024000000000 || true)  # 5 weeks
-    NEW_CREDIT=$(expr $OLD_VAL + $VAL_DELTA || true)
-    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt "$DB"
-    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt "$DB"
+    NEW_TIME=$(( OLD_TIME - 3024000000000 ))  # 5 weeks
+    NEW_EXP=$(( OLD_EXP - 3024000000000 ))  # 5 weeks
+    NEW_CREDIT=$(( OLD_VAL + VAL_DELTA ))
+    echo "UPDATE exchange.reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" \
+        | psql -Aqt "$DB"
+    echo "UPDATE exchange.reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" \
+        | psql -Aqt "$DB"
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
     stop_libeufin
     # remove transaction from bank DB
     # Currently emulating this (to be deleted):
-    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" | psql "${DB}"
+    echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" \
+        | psql "${DB}"
     launch_libeufin
     audit_only
     post_audit
 
     echo -n "Testing lack of reserve closure transaction detected... "
 
-    jq -e .reserve_lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Reserve closure lag not detected"
+    jq -e .reserve_lag_details[0] \
+       < test-audit-wire.json \
+       > /dev/null \
+        || exit_fail "Reserve closure lag not detected"
 
     AMOUNT=$(jq -r .reserve_lag_details[0].amount < test-audit-wire.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
+    if [ "$AMOUNT" != "TESTKUDOS:${VAL_DELTA}" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .total_closure_amount_lag < test-audit-wire.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
+    if [ "$AMOUNT" != "TESTKUDOS:${VAL_DELTA}" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
@@ -1655,7 +1683,7 @@ function test_22() {
     echo -n "Testing inconsistency detection... "
     jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency for $S_DENOM not detected"
 
-    echo PASS
+    echo "PASS"
 
     # Undo modification
     echo "UPDATE exchange.denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt "$DB"
@@ -1672,15 +1700,19 @@ function test_23() {
     pre_audit aggregator
 
     OLD_AMOUNT=$(echo "SELECT amount_frac FROM exchange.wire_out WHERE wireout_uuid=1;" | psql "$DB" -Aqt)
-    NEW_AMOUNT=$(expr $OLD_AMOUNT - 1000000 || true)
-    echo "UPDATE exchange.wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt "$DB"
+    NEW_AMOUNT=$(( OLD_AMOUNT - 1000000 ))
+    echo "UPDATE exchange.wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" \
+        | psql -Aqt "$DB"
 
     audit_only
     post_audit
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Wire out inconsistency not detected"
+    jq -e .wire_out_inconsistencies[0] \
+       < test-audit-aggregation.json \
+       > /dev/null \
+        || exit_fail "Wire out inconsistency not detected"
 
     ROW=$(jq .wire_out_inconsistencies[0].rowid < test-audit-aggregation.json)
     if [ "$ROW" != 1 ]
@@ -1688,19 +1720,19 @@ function test_23() {
         exit_fail "Row wrong"
     fi
     AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-aggregation.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    if [ "$AMOUNT" != "TESTKUDOS:0" ]
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-aggregation.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:0.01"
+    if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
-    echo PASS
+    echo "PASS"
 
     echo "Second pass: changing how amount is wrong to other direction"
-    NEW_AMOUNT=$(expr $OLD_AMOUNT + 1000000 || true)
+    NEW_AMOUNT=$(( OLD_AMOUNT + 1000000 ))
     echo "UPDATE exchange.wire_out SET amount_frac=${NEW_AMOUNT} WHERE wireout_uuid=1;" | psql -Aqt "$DB"
 
     pre_audit
@@ -1717,16 +1749,16 @@ function test_23() {
         exit_fail "Row wrong"
     fi
     AMOUNT=$(jq -r .total_wire_out_delta_minus < test-audit-aggregation.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:0"
+    if [ "$AMOUNT" != "TESTKUDOS:0" ]
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
     AMOUNT=$(jq -r .total_wire_out_delta_plus < test-audit-aggregation.json)
-    if test "x$AMOUNT" != "xTESTKUDOS:0.01"
+    if [ "$AMOUNT" != "TESTKUDOS:0.01" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
-    echo PASS
+    echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -1740,31 +1772,35 @@ function test_24() {
     echo "===========24: deposits missing ==========="
     # Modify denom_sig, so it is wrong
     CNT=$(echo "SELECT COUNT(*) FROM auditor.deposit_confirmations;" | psql -Aqt "$DB")
-    if test x$CNT = x0
+    if [ "$CNT" = "0" ]
     then
         echo "Skipping deposits missing test: no deposit confirmations in database!"
     else
         echo "DELETE FROM exchange.deposits;" | psql -Aqt "$DB"
-        echo "DELETE FROM exchange.deposits WHERE deposit_serial_id=1;" | psql -Aqt "$DB"
+        echo "DELETE FROM exchange.deposits WHERE deposit_serial_id=1;" \
+            | psql -Aqt "$DB"
 
         run_audit
 
         echo -n "Testing inconsistency detection... "
 
-        jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
+        jq -e .deposit_confirmation_inconsistencies[0] \
+           < test-audit-deposits.json \
+           > /dev/null \
+            || exit_fail "Deposit confirmation inconsistency NOT detected"
 
         AMOUNT=$(jq -er .missing_deposit_confirmation_total < test-audit-deposits.json)
-        if test x$AMOUNT = xTESTKUDOS:0
+        if [ "$AMOUNT" = "TESTKUDOS:0" ]
         then
             exit_fail "Expected non-zero total missing deposit confirmation amount"
         fi
         COUNT=$(jq -er .missing_deposit_confirmation_count < test-audit-deposits.json)
-        if test x$AMOUNT = x0
+        if [ "$AMOUNT" = "0" ]
         then
             exit_fail "Expected non-zero total missing deposit confirmation count"
         fi
 
-        echo PASS
+        echo "PASS"
 
         # cannot easily undo DELETE, hence full reload
         full_reload
@@ -1778,31 +1814,38 @@ function test_25() {
     echo "=========25: inconsistent coin history========="
 
     # Drop refund, so coin history is bogus.
-    echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" | psql -Aqt "$DB"
+    echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" \
+        | psql -Aqt "$DB"
 
     run_audit aggregator
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .coin_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
+    jq -e .coin_inconsistencies[0] \
+       < test-audit-aggregation.json \
+       > /dev/null \
+        || exit_fail "Coin inconsistency NOT detected"
 
     # Note: if the wallet withdrew much more than it spent, this might indeed
     # go legitimately unnoticed.
-    jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
+    jq -e .emergencies[0] \
+       < test-audit-coins.json \
+       > /dev/null \
+        || exit_fail "Denomination value emergency NOT reported"
 
     AMOUNT=$(jq -er .total_coin_delta_minus < test-audit-aggregation.json)
-    if test x$AMOUNT = xTESTKUDOS:0
+    if [ "$AMOUNT" = "TESTKUDOS:0" ]
     then
         exit_fail "Expected non-zero total inconsistency amount from coins"
     fi
     # Note: if the wallet withdrew much more than it spent, this might indeed
     # go legitimately unnoticed.
     COUNT=$(jq -er .emergencies_risk_by_amount < test-audit-coins.json)
-    if test x$AMOUNT = xTESTKUDOS:0
+    if [ "$COUNT" = "TESTKUDOS:0" ]
     then
         exit_fail "Expected non-zero emergency-by-amount"
     fi
-    echo PASS
+    echo "PASS"
 
     # cannot easily undo DELETE, hence full reload
     full_reload
@@ -1829,7 +1872,7 @@ function test_26() {
     jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
 
     ROW=$(jq -e .bad_sig_losses[0].row < test-audit-coins.json)
-    if [ "$ROW" != ${SERIAL} ]
+    if [ "$ROW" != "${SERIAL}" ]
     then
         exit_fail "Row wrong, got $ROW"
     fi
@@ -1866,11 +1909,10 @@ function test_27() {
     stop_libeufin
     # Obtain data to duplicate.
     WTID=$(echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | psql "${DB}")
-    echo WTID=$WTID
     OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}")
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
-    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(expr $(date +%s) + 2),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" \
+    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" \
         | psql "${DB}"
     echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" \
         | psql "${DB}"
@@ -1881,13 +1923,13 @@ function test_27() {
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=$(jq -r .wire_format_inconsistencies[0].amount < test-audit-wire.json)
-    if test "${AMOUNT}" != "TESTKUDOS:1"
+    if [ "${AMOUNT}" != "TESTKUDOS:1" ]
     then
         exit_fail "Amount wrong, got ${AMOUNT}"
     fi
 
     AMOUNT=$(jq -r .total_wire_format_amount < test-audit-wire.json)
-    if test "${AMOUNT}" != "TESTKUDOS:1"
+    if [ "${AMOUNT}" != "TESTKUDOS:1" ]
     then
         exit_fail "Wrong total wire format amount, got $AMOUNT"
     fi
@@ -1926,7 +1968,7 @@ function test_28() {
         exit_fail "Wrong operation, got $OP"
     fi
     TAB=$(jq -r .row_inconsistencies[0].table < test-audit-aggregation.json)
-    if test $TAB != "deposit"
+    if [ "$TAB" != "deposit" ]
     then
         exit_fail "Wrong table for row inconsistency, got $TAB"
     fi
@@ -1955,13 +1997,13 @@ function test_29() {
 
     echo -n "Testing inconsistency detection... "
     AMOUNT=$(jq -r .total_balance_summary_delta_minus < test-audit-reserves.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
     PROFIT=$(jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json)
-    if test "x$PROFIT" != "x-1"
+    if [ "$PROFIT" != "-1" ]
     then
         exit_fail "Reported wrong profitability: $PROFIT"
     fi
@@ -1982,13 +2024,13 @@ function test_30() {
     run_audit
     echo -n "Testing inconsistency detection... "
     AMOUNT=$(jq -r .bad_sig_losses[0].loss < test-audit-coins.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
     PROFIT=$(jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json)
-    if test "x$PROFIT" != "x-1"
+    if [ "$PROFIT" != "-1" ]
     then
         exit_fail "Reported profitability wrong: $PROFIT"
     fi
@@ -2012,13 +2054,13 @@ function test_31() {
     run_audit aggregator
     echo -n "Testing inconsistency detection... "
     AMOUNT=$(jq -r .irregular_loss < test-audit-coins.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
     OP=$(jq -r --arg dep "deposit" '.bad_sig_losses[] | select(.operation == $dep) | .operation'< test-audit-coins.json | head -n1)
-    if test "x$OP" != "xdeposit"
+    if [ "$OP" != "deposit" ]
     then
         exit_fail "Reported wrong operation: $OP"
     fi
@@ -2047,13 +2089,13 @@ function test_32() {
     echo -n "Testing inconsistency detection... "
 
     AMOUNT=$(jq -r .total_bad_sig_loss < test-audit-aggregation.json)
-    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    if [ "$AMOUNT" == "TESTKUDOS:0" ]
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
     OP=$(jq -r .bad_sig_losses[0].operation < test-audit-aggregation.json)
-    if test "x$OP" != "xwire"
+    if [ "$OP" != "wire" ]
     then
         exit_fail "Reported wrong operation: $OP"
     fi
@@ -2172,19 +2214,31 @@ function test_33() {
     fi
 
     DRAINED=$(jq -r .total_drained < test-audit-wire.json)
-    if test $DRAINED != "TESTKUDOS:0.1"
+    if [ "$DRAINED" != "TESTKUDOS:0.1" ]
     then
         exit_fail "Wrong amount drained, got unexpected drain of $DRAINED"
     fi
 
-    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
-    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
-    jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
-    echo PASS
+    jq -e .amount_arithmetic_inconsistencies[0] \
+       < test-audit-aggregation.json \
+       > /dev/null \
+        && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] \
+       < test-audit-coins.json \
+       > /dev/null \
+        && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
+    jq -e .amount_arithmetic_inconsistencies[0] \
+       < test-audit-reserves.json \
+       > /dev/null \
+        && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
+    echo "PASS"
 
     echo -n "Checking for unexpected wire out differences "
-    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
-    echo PASS
+    jq -e .wire_out_inconsistencies[0] \
+       < test-audit-aggregation.json \
+       > /dev/null \
+        && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+    echo "PASS"
 
     # cannot easily undo aggregator, hence full reload
     full_reload
@@ -2202,11 +2256,16 @@ function check_with_database()
     BASEDB="$1"
     CONF="$1.conf"
     ORIGIN=$(pwd)
-    MY_TMP_DIR=$(dirname $1)
+    MY_TMP_DIR=$(dirname "$1")
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
-    taler-config -f -c "${CONF}" -s exchange-offline -o MASTER_PRIV_FILE -V ${MASTER_PRIV_FILE}
-    MASTER_PUB=$(gnunet-ecc -p $MASTER_PRIV_FILE)
+    taler-config \
+        -f \
+        -c "${CONF}" \
+        -s exchange-offline \
+        -o MASTER_PRIV_FILE \
+        -V "${MASTER_PRIV_FILE}"
+    MASTER_PUB=$(gnunet-ecc -p "$MASTER_PRIV_FILE")
 
     echo "MASTER PUB is ${MASTER_PUB} using file ${MASTER_PRIV_FILE}"
 
@@ -2217,7 +2276,7 @@ function check_with_database()
     fail=0
     for i in $TESTS
     do
-        test_$i
+        "test_$i"
         if test 0 != $fail
         then
             break
@@ -2253,24 +2312,30 @@ taler-wallet-cli -h >/dev/null </dev/null 2>/dev/null || exit_skip "taler-wallet
 echo -n "Testing for Postgres"
 # Available directly in path?
 INITDB_BIN=$(command -v initdb) || true
-if [[ ! -z "$INITDB_BIN" ]]; then
-  echo " FOUND (in path) at" $INITDB_BIN
+if [[ -n "$INITDB_BIN" ]]; then
+  echo " FOUND (in path) at $INITDB_BIN"
 else
-  HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) || exit_skip " MISSING"
-  echo " FOUND at" $(dirname $HAVE_INITDB)
-  INITDB_BIN=$(echo $HAVE_INITDB | grep bin/initdb | grep postgres | sort -n | tail -n1)
+    HAVE_INITDB=$(find /usr -name "initdb" | head -1 2> /dev/null | grep postgres) \
+        || exit_skip " MISSING"
+  echo " FOUND at $(dirname "$HAVE_INITDB")"
+  INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
 fi
-POSTGRES_PATH=$(dirname $INITDB_BIN)
+POSTGRES_PATH=$(dirname "$INITDB_BIN")
 MYDIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
 echo "Using $MYDIR for logging and temporary data"
 TMPDIR="$MYDIR/postgres/"
-mkdir -p $TMPDIR
+mkdir -p "$TMPDIR"
 echo -n "Setting up Postgres DB at $TMPDIR ..."
-$INITDB_BIN --no-sync --auth=trust -D ${TMPDIR} > ${MYDIR}/postgres-dbinit.log 2> ${MYDIR}/postgres-dbinit.err
+$INITDB_BIN \
+    --no-sync \
+    --auth=trust \
+    -D "${TMPDIR}" \
+    > "${MYDIR}/postgres-dbinit.log" \
+    2> "${MYDIR}/postgres-dbinit.err"
 echo "DONE"
-mkdir ${TMPDIR}/sockets
+mkdir "${TMPDIR}/sockets"
 echo -n "Launching Postgres service"
-cat - >> $TMPDIR/postgresql.conf <<EOF
+cat - >> "$TMPDIR/postgresql.conf" <<EOF
 unix_socket_directories='${TMPDIR}/sockets'
 fsync=off
 max_wal_senders=0
@@ -2278,9 +2343,16 @@ synchronous_commit=off
 wal_level=minimal
 listen_addresses=''
 EOF
-cat $TMPDIR/pg_hba.conf | grep -v host > $TMPDIR/pg_hba.conf.new
-mv $TMPDIR/pg_hba.conf.new  $TMPDIR/pg_hba.conf
-${POSTGRES_PATH}/pg_ctl -D $TMPDIR -l /dev/null start > ${MYDIR}/postgres-start.log 2> ${MYDIR}/postgres-start.err
+grep -v host \
+     < "$TMPDIR/pg_hba.conf" \
+     > "$TMPDIR/pg_hba.conf.new"
+mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
+"${POSTGRES_PATH}/pg_ctl" \
+                -D "$TMPDIR" \
+                -l /dev/null \
+                start \
+                > "${MYDIR}/postgres-start.log" \
+                2> "${MYDIR}/postgres-start.err"
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
@@ -2301,12 +2373,12 @@ echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-auditor-basedb.sh "$MYDIR/$DB"
 then
     check_with_database "$MYDIR/$DB"
-    if test x$fail != x0
+    if [ "$fail" != "0" ]
     then
-        exit $fail
+        exit "$fail"
     else
         echo "Cleaning up $MYDIR..."
-        rm -rf $MYDIR || echo "Removing $MYDIR failed"
+        rm -rf "$MYDIR" || echo "Removing $MYDIR failed"
     fi
 else
     echo "Generation failed"
