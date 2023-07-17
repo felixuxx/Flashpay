@@ -58,24 +58,24 @@ LIBEUFIN_SETTLE_TIME=1
 # Stop libeufin sandbox and nexus (if running)
 function stop_libeufin()
 {
-    echo "Stopping libeufin..."
-    if test -f ${MYDIR:-/}/libeufin-sandbox.pid
+    echo -n "Stopping libeufin... "
+    if test -f ${MY_TMP_DIR:-/}/libeufin-sandbox.pid
     then
-        PID=$(cat ${MYDIR}/libeufin-sandbox.pid 2> /dev/null)
+        PID=$(cat ${MY_TMP_DIR}/libeufin-sandbox.pid 2> /dev/null)
         echo "Killing libeufin sandbox $PID"
-        rm "${MYDIR}/libeufin-sandbox.pid"
+        rm "${MY_TMP_DIR}/libeufin-sandbox.pid"
         kill "$PID" 2> /dev/null || true
         wait "$PID" || true
     fi
-    if test -f ${MYDIR:-/}/libeufin-nexus.pid
+    if test -f ${MY_TMP_DIR:-/}/libeufin-nexus.pid
     then
-        PID=$(cat ${MYDIR}/libeufin-nexus.pid 2> /dev/null)
+        PID=$(cat ${MY_TMP_DIR}/libeufin-nexus.pid 2> /dev/null)
         echo "Killing libeufin nexus $PID"
-        rm "${MYDIR}/libeufin-nexus.pid"
+        rm "${MY_TMP_DIR}/libeufin-nexus.pid"
         kill "$PID" 2> /dev/null || true
         wait "$PID" || true
     fi
-    echo "Stopping libeufin DONE"
+    echo "DONE"
 }
 
 # Cleanup exchange and libeufin between runs.
@@ -119,20 +119,19 @@ function exit_cleanup()
 trap exit_cleanup EXIT
 
 function launch_libeufin () {
-    cd "$MYDIR"
 # shellcheck disable=SC2016
-    export LIBEUFIN_SANDBOX_DB_CONNECTION='jdbc:postgresql://localhost/auditor-basedb?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg=/var/run/postgresql/.s.PGSQL.5432'
+    export LIBEUFIN_SANDBOX_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
+    export MY_TMP_DIR
     libeufin-sandbox serve --no-auth --port 18082 \
-                     > "${MYDIR}/libeufin-sandbox-stdout.log" \
-                     2> "${MYDIR}/libeufin-sandbox-stderr.log" &
-    echo $! > "${MYDIR}/libeufin-sandbox.pid"
+                     > "${MY_TMP_DIR}/libeufin-sandbox-stdout.log" \
+                     2> "${MY_TMP_DIR}/libeufin-sandbox-stderr.log" &
+    echo $! > "${MY_TMP_DIR}/libeufin-sandbox.pid"
 # shellcheck disable=SC2016
-    export LIBEUFIN_NEXUS_DB_CONNECTION='jdbc:postgresql://localhost/auditor-basedb?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg=/var/run/postgresql/.s.PGSQL.5432'
+    export LIBEUFIN_NEXUS_DB_CONNECTION='jdbc:postgresql://localhost/'"${DB}"'?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$FactoryArg&socketFactoryArg='"$SOCKETDIR"'/.s.PGSQL.5432'
     libeufin-nexus serve --port 8082 \
-                   2> "${MYDIR}/libeufin-nexus-stderr.log" \
-                   > "${MYDIR}/libeufin-nexus-stdout.log" &
-    echo $! > "${MYDIR}/libeufin-nexus.pid"
-    cd "$ORIGIN"
+                   2> "${MY_TMP_DIR}/libeufin-nexus-stderr.log" \
+                   > "${MY_TMP_DIR}/libeufin-nexus-stdout.log" &
+    echo $! > "${MY_TMP_DIR}/libeufin-nexus.pid"
 }
 
 # Downloads new transactions from the bank.
@@ -140,12 +139,11 @@ function nexus_fetch_transactions () {
     export LIBEUFIN_NEXUS_USERNAME="exchange"
     export LIBEUFIN_NEXUS_PASSWORD="x"
     export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-    cd "$MY_TMP_DIR"
-    libeufin-cli accounts fetch-transactions \
+    libeufin-cli accounts \
+                 fetch-transactions \
                  --range-type since-last \
                  --level report \
                  exchange-nexus > /dev/null
-    cd "$ORIGIN"
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
@@ -158,10 +156,9 @@ function nexus_submit_to_sandbox () {
     export LIBEUFIN_NEXUS_USERNAME="exchange"
     export LIBEUFIN_NEXUS_PASSWORD="x"
     export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-    cd "$MY_TMP_DIR"
-    libeufin-cli accounts submit-payments\
+    libeufin-cli accounts \
+                 submit-payments\
                  exchange-nexus
-    cd "$ORIGIN"
     unset LIBEUFIN_NEXUS_USERNAME
     unset LIBEUFIN_NEXUS_PASSWORD
     unset LIBEUFIN_NEXUS_URL
@@ -212,7 +209,7 @@ function pre_audit () {
         echo -n "Running exchange aggregator ..."
         taler-exchange-aggregator \
             -y \
-            -L INFO \
+            -L "INFO" \
             -t \
             -c "$CONF" \
             2> "${MY_TMP_DIR}/aggregator.log" \
@@ -220,7 +217,7 @@ function pre_audit () {
         echo " DONE"
         echo -n "Running exchange closer ..."
         taler-exchange-closer \
-            -L INFO\
+            -L "INFO" \
             -t \
             -c "$CONF" \
             2> "${MY_TMP_DIR}/closer.log" \
@@ -228,7 +225,7 @@ function pre_audit () {
         echo " DONE"
         echo -n "Running exchange transfer ..."
         taler-exchange-transfer \
-            -L INFO \
+            -L "INFO" \
             -t \
             -c "$CONF" \
             2> "${MY_TMP_DIR}/transfer.log" \
@@ -390,7 +387,7 @@ function run_audit () {
         taler-exchange-httpd \
             -c "${CONF}" \
             -L INFO \
-            2> "${MYDIR}/exchange-httpd-drain.err" &
+            2> "${MY_TMP_DIR}/exchange-httpd-drain.err" &
         EPID=$!
 
         # Wait for all services to be available
@@ -444,7 +441,6 @@ function run_audit () {
         export LIBEUFIN_NEXUS_USERNAME="exchange"
         export LIBEUFIN_NEXUS_PASSWORD="x"
         export LIBEUFIN_NEXUS_URL="http://localhost:8082/"
-        cd "$MY_TMP_DIR"
         PAIN_UUID=$(libeufin-cli accounts list-payments exchange-nexus | jq .initiatedPayments[] | jq 'select(.submitted==false)' | jq -r .paymentInitiationId)
         if test -z "${PAIN_UUID}"
         then
@@ -467,7 +463,6 @@ function run_audit () {
                      --level report \
                      exchange-nexus
         echo " DONE"
-        cd "$ORIGIN"
     fi
     audit_only
     post_audit
@@ -477,7 +472,7 @@ function run_audit () {
 # Do a full reload of the (original) database
 function full_reload()
 {
-    echo "Doing full reload of the database ($BASEDB - $DB)... "
+    echo -n "Doing full reload of the database ($BASEDB - $DB)... "
     dropdb "$DB" 2> /dev/null || true
     createdb -T template0 "$DB" \
         || exit_skip "could not create database $DB (at $PGHOST)"
@@ -491,7 +486,6 @@ function full_reload()
     echo "DONE"
     # Technically, this call shouldn't be needed as libeufin should already be stopped here...
     stop_libeufin
-    echo "DONE"
 }
 
 
@@ -1031,7 +1025,6 @@ function test_8() {
     echo "===========8: wire-transfer-subject disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    cd "$MYDIR"
     OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}") \
         || exit_fail "Failed to SELECT FROM NexusBankTransactions nexus DB!"
     OLD_WTID=$(echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
@@ -1040,7 +1033,6 @@ function test_8() {
     echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" \
         | psql "${DB}" \
         || exit_fail "Failed to update TalerIncomingPayments"
-    cd "$ORIGIN"
 
     run_audit
 
@@ -1097,10 +1089,8 @@ function test_8() {
     echo "PASS"
 
     # Undo database modification
-    cd "$MYDIR"
     echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" \
         | psql "${DB}"
-    cd "$ORIGIN"
 
 }
 
@@ -2256,7 +2246,6 @@ function check_with_database()
     BASEDB="$1"
     CONF="$1.conf"
     ORIGIN=$(pwd)
-    MY_TMP_DIR=$(dirname "$1")
     echo "Running test suite with database $BASEDB using configuration $CONF"
     MASTER_PRIV_FILE="${BASEDB}.mpriv"
     taler-config \
@@ -2292,7 +2281,7 @@ function check_with_database()
 # *************** Main logic starts here **************
 
 # ####### Setup globals ######
-# Postgres database to use
+# Postgres database to use (must match configuration file)
 export DB="auditor-basedb"
 
 # test required commands exist
@@ -2321,19 +2310,21 @@ else
   INITDB_BIN=$(echo "$HAVE_INITDB" | grep bin/initdb | grep postgres | sort -n | tail -n1)
 fi
 POSTGRES_PATH=$(dirname "$INITDB_BIN")
-MYDIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
-echo "Using $MYDIR for logging and temporary data"
-TMPDIR="$MYDIR/postgres/"
+
+MY_TMP_DIR=$(mktemp -d /tmp/taler-auditor-basedbXXXXXX)
+echo "Using $MY_TMP_DIR for logging and temporary data"
+TMPDIR="$MY_TMP_DIR/postgres"
 mkdir -p "$TMPDIR"
 echo -n "Setting up Postgres DB at $TMPDIR ..."
 $INITDB_BIN \
     --no-sync \
     --auth=trust \
     -D "${TMPDIR}" \
-    > "${MYDIR}/postgres-dbinit.log" \
-    2> "${MYDIR}/postgres-dbinit.err"
+    > "${MY_TMP_DIR}/postgres-dbinit.log" \
+    2> "${MY_TMP_DIR}/postgres-dbinit.err"
 echo "DONE"
-mkdir "${TMPDIR}/sockets"
+SOCKETDIR="${TMPDIR}/sockets"
+mkdir "${SOCKETDIR}"
 echo -n "Launching Postgres service"
 cat - >> "$TMPDIR/postgresql.conf" <<EOF
 unix_socket_directories='${TMPDIR}/sockets'
@@ -2351,24 +2342,22 @@ mv "$TMPDIR/pg_hba.conf.new" "$TMPDIR/pg_hba.conf"
                 -D "$TMPDIR" \
                 -l /dev/null \
                 start \
-                > "${MYDIR}/postgres-start.log" \
-                2> "${MYDIR}/postgres-start.err"
+                > "${MY_TMP_DIR}/postgres-start.log" \
+                2> "${MY_TMP_DIR}/postgres-start.err"
 echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-# FIXME...
-MYDIR=bar/
-DB=foo
-# foo.sql
-# foo.conf
-# foo.mpriv
-check_with_database "$MYDIR/$DB"
+# FIXME: here for testing, avoids generation skip.
+# Should probably introduce getopt to make this
+# possible via CLI.
+check_with_database "bar/${DB}"
 
 
 exit 0
 
-
+MYDIR="${MY_TMP_DIR}/basedb"
+mkdir -p "${MYDIR}"
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-auditor-basedb.sh "$MYDIR/$DB"
 then
@@ -2376,9 +2365,6 @@ then
     if [ "$fail" != "0" ]
     then
         exit "$fail"
-    else
-        echo "Cleaning up $MYDIR..."
-        rm -rf "$MYDIR" || echo "Removing $MYDIR failed"
     fi
 else
     echo "Generation failed"
