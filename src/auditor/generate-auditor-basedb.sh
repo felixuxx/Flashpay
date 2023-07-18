@@ -75,6 +75,8 @@ mkdir -p "$(dirname "$BASEDB")"
 
 echo "Dumping database ${BASEDB}.sql"
 pg_dump -O "auditor-basedb" | sed -e '/AS integer/d' > "${BASEDB}.sql"
+cp "${CONF}.edited" "${BASEDB}.conf"
+cp "$(taler-config -c "${CONF}.edited" -s exchange-offline -o MASTER_PRIV_FILE -f)" "${BASEDB}.mpriv"
 
 # clean up
 echo -n "Final clean up ..."
