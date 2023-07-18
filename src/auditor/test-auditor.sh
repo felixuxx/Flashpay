@@ -1025,13 +1025,13 @@ function test_8() {
     echo "===========8: wire-transfer-subject disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}") \
+    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt) \
         || exit_fail "Failed to SELECT FROM NexusBankTransactions nexus DB!"
-    OLD_WTID=$(echo "SELECT reservePublicKey FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
-                   | pqsl "${DB}")
+    OLD_WTID=$(echo "SELECT 'reservePublicKey' FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
+                   | psql "${DB}" -Aqt)
     NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
-    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$NEW_WTID' WHERE payment='$OLD_ID';" \
-        | psql "${DB}" \
+    echo "UPDATE TalerIncomingPayments SET \"reservePublicKey\"='$NEW_WTID' WHERE payment='$OLD_ID';" \
+        | psql "${DB}" -q \
         || exit_fail "Failed to update TalerIncomingPayments"
 
     run_audit
@@ -1089,8 +1089,8 @@ function test_8() {
     echo "PASS"
 
     # Undo database modification
-    echo "UPDATE TalerIncomingPayments SET reservePublicKey='$OLD_WTID' WHERE payment='$OLD_ID';" \
-        | psql "${DB}"
+    echo "UPDATE TalerIncomingPayments SET \"reservePublicKey\"='$OLD_WTID' WHERE payment='$OLD_ID';" \
+        | psql "${DB}" -q
 
 }
 
@@ -1101,10 +1101,10 @@ function test_9() {
     echo "===========9: wire-origin disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}")
-    OLD_ACC=$(echo "SELECT incomingPaytoUri FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | psql "${DB}")
-    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" \
-        | psql "${DB}"
+    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
+    OLD_ACC=$(echo 'SELECT "incomingPaytoUri" FROM TalerIncomingPayments WHERE payment='"'$OLD_ID';" | psql "${DB}" -Aqt)
+    echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='payto://iban/SANDBOXX/DE144373?receiver-name=New+Exchange+Company' WHERE payment='$OLD_ID';" \
+        | psql "${DB}" -q
 
     run_audit
 
@@ -1122,8 +1122,8 @@ function test_9() {
     echo PASS
 
     # Undo database modification
-    echo "UPDATE TalerIncomingPayments SET incomingPaytoUri='$OLD_ACC' WHERE payment='$OLD_ID';" \
-        | psql "${DB}"
+    echo "UPDATE TalerIncomingPayments SET \"incomingPaytoUri\"='$OLD_ACC' WHERE payment='$OLD_ID';" \
+        | psql "${DB}" -q
 
 }
 
@@ -1134,9 +1134,9 @@ function test_10() {
     echo "===========10: wire-timestamp disagreement==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}")
-    OLD_DATE=$(echo "SELECT timestampMs FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | psql "${DB}")
-    echo "UPDATE TalerIncomingPayments SET timestampMs=$NOW_MS WHERE payment=$OLD_ID;" | psql "${DB}"
+    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
+    OLD_DATE=$(echo "SELECT \"timestampMs\" FROM TalerIncomingPayments WHERE payment='$OLD_ID';" | psql "${DB}" -Aqt)
+    echo "UPDATE TalerIncomingPayments SET \"timestampMs\"=$NOW_MS WHERE payment=$OLD_ID;" | psql "${DB}" -q
 
     run_audit
 
@@ -1151,10 +1151,10 @@ function test_10() {
     then
         exit_fail "Reported table wrong: $TABLE"
     fi
-    echo PASS
+    echo "PASS"
 
     # Undo database modification
-    echo "UPDATE TalerIncomingPayments SET timestampMs='$OLD_DATE' WHERE payment=$OLD_ID;" | psql "${DB}"
+    echo "UPDATE TalerIncomingPayments SET \"timestampMs\"='$OLD_DATE' WHERE payment=$OLD_ID;" | psql "${DB}" -q
 
 }
 
@@ -1166,28 +1166,28 @@ function test_11() {
     echo "===========11: spurious outgoing transfer ==========="
     # Technically, this call shouldn't be needed, as libeufin should already be stopped here.
     stop_libeufin
-    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}")
-    OLD_TX=$(echo "SELECT transactionJson FROM NexusBankTransactions WHERE id='$OLD_ID';" | psql "${DB}")
+    OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt)
+    OLD_TX=$(echo "SELECT \"transactionJson\" FROM NexusBankTransactions WHERE id='$OLD_ID';" | psql "${DB}" -Aqt)
     # Change wire transfer to be FROM the exchange (#2) to elsewhere!
     # (Note: this change also causes a missing incoming wire transfer, but
     #  this test is only concerned about the outgoing wire transfer
     #  being detected as such, and we simply ignore the other
     #  errors being reported.)
-    OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}")
+    OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}" -Aqt)
     NEW_TX=$(echo "$OLD_TX" | jq .batches[0].batchTransactions[0].details.creditDebitIndicator='"DBIT"' | jq 'del(.batches[0].batchTransactions[0].details.debtor)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAccount)' | jq 'del(.batches[0].batchTransactions[0].details.debtorAgent)' | jq '.batches[0].batchTransactions[0].details.creditor'='{"name": "Forty Two"}' | jq .batches[0].batchTransactions[0].details.creditorAccount='{"iban": "'"$OTHER_IBAN"'"}' | jq .batches[0].batchTransactions[0].details.creditorAgent='{"bic": "SANDBOXX"}' | jq .batches[0].batchTransactions[0].details.unstructuredRemittanceInformation='"CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/"')
-    echo -e "UPDATE NexusBankTransactions SET transactionJson='""$NEW_TX""' WHERE id=$OLD_ID" \
-        | psql "${DB}"
+    echo -e "UPDATE NexusBankTransactions SET \"transactionJson\"='""$NEW_TX""' WHERE id=$OLD_ID" \
+        | psql "${DB}" -q
     # Now fake that the exchange prepared this payment (= it POSTed to /transfer)
     # This step is necessary, because the TWG table that accounts for outgoing
     # payments needs it.  Worth noting here is the column 'rawConfirmation' that
     # points to the transaction from the main Nexus ledger; without that column set,
     # a prepared payment won't appear as actually outgoing.
     echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','""$OTHER_IBAN""','SANDBOXX','Forty Two','unused',1,$OLD_ID)" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     # Now populate the TWG table that accounts for outgoing payments, in
     # order to let /history/outgoing return one result.
     echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
-        | psql "${DB}"
+        | psql "${DB}" -q
 
     run_audit
 
@@ -1220,14 +1220,14 @@ function test_11() {
     echo "PASS"
 
     # Undo database modification
-    echo -e "UPDATE NexusBankTransactions SET transactionJson='$OLD_TX' WHERE id=$OLD_ID;" \
-        | psql "${DB}"
+    echo -e "UPDATE NexusBankTransactions SET \"transactionJson\"='$OLD_TX' WHERE id=$OLD_ID;" \
+        | psql "${DB}" -q
     # No other prepared payment should exist at this point,
     # so OK to remove the number 1.
     echo -e "DELETE FROM PaymentInitiations WHERE id=1" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" \
-        | psql "${DB}"
+        | psql "${DB}" -q
 }
 
 # Test for hanging/pending refresh.
@@ -1366,10 +1366,10 @@ function test_16() {
     pre_audit aggregator
 
     stop_libeufin
-    OLD_AMOUNT=$(echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | psql "${DB}")
+    OLD_AMOUNT=$(echo "SELECT amount FROM TalerRequestedPayments WHERE id='1';" | psql "${DB}" -Aqt)
     NEW_AMOUNT="TESTKUDOS:50"
     echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     launch_libeufin
     audit_only
 
@@ -1401,7 +1401,7 @@ function test_16() {
     echo "Second modification: wire nothing"
     NEW_AMOUNT="TESTKUDOS:0"
     echo "UPDATE TalerRequestedPayments SET amount='${NEW_AMOUNT}' WHERE id='1';" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     launch_libeufin
     audit_only
     stop_libeufin
@@ -1446,13 +1446,13 @@ function test_17() {
     pre_audit aggregator
     stop_libeufin
     OLD_ID=1
-    OLD_PREP=$(echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | psql "${DB}")
-    OLD_DATE=$(echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}")
+    OLD_PREP=$(echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
+    OLD_DATE=$(echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
     # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
     # (due to rounding, if this machine is fast...)
     NOW_1HR=$(( $(date +%s) - 3600))
     echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     launch_libeufin
     echo "DONE"
     audit_only
@@ -1484,7 +1484,7 @@ function test_18() {
     echo "===========18: emergency================="
 
     echo "DELETE FROM exchange.reserves_out;" \
-        | psql -Aqt "$DB"
+        | psql -Aqt "$DB" -q
 
     run_audit
 
@@ -1624,7 +1624,7 @@ function test_21() {
     # remove transaction from bank DB
     # Currently emulating this (to be deleted):
     echo "DELETE FROM TalerRequestedPayments WHERE amount='TESTKUDOS:${VAL_DELTA}'" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     launch_libeufin
     audit_only
     post_audit
@@ -1898,14 +1898,14 @@ function test_27() {
     pre_audit aggregator
     stop_libeufin
     # Obtain data to duplicate.
-    WTID=$(echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | psql "${DB}")
-    OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}")
+    WTID=$(echo SELECT wtid FROM TalerRequestedPayments WHERE id=1 | psql "${DB}" -Aqt)
+    OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}" -Aqt)
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
     echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" \
-        | psql "${DB}"
+        | psql "${DB}" -q
     launch_libeufin
     audit_only
     post_audit
@@ -2069,8 +2069,8 @@ function test_32() {
 
     echo "===========32: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
-    OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -At)
-    COIN_PUB=$(echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql "$DB" -At)
+    OLD_SIG=$(echo 'SELECT denom_sig FROM exchange.known_coins LIMIT 1;' | psql "$DB" -Aqt)
+    COIN_PUB=$(echo "SELECT coin_pub FROM exchange.known_coins WHERE denom_sig='$OLD_SIG';"  | psql "$DB" -Aqt)
 # shellcheck disable=SC2028
     echo "UPDATE exchange.known_coins SET denom_sig='\x0000000100000000287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" \
         | psql -Aqt "$DB"
