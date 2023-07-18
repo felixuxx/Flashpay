@@ -47,30 +47,9 @@ struct CoinCandidate
   struct TALER_PlanchetMasterSecretP secret;
 
   /**
-   * Age commitment for the coin candidates, calculated from the @e ps and a
-   * given maximum age
+   * The details derived form the master secrets
    */
-  struct TALER_AgeCommitmentProof age_commitment_proof;
-
-  /**
-   * Age commitment for the coin.
-   */
-  struct TALER_AgeCommitmentHash h_age_commitment;
-
-  /**
-   *  blinding secret
-   */
-  union TALER_DenominationBlindingKeyP blinding_key;
-
-  /**
-   * Private key of the coin we are withdrawing.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * Values of the @cipher selected
-   */
-  struct TALER_ExchangeWithdrawValues alg_values;
+  struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails details;
 
   /**
    * Hash of the public key of the coin we are signing.
@@ -340,11 +319,12 @@ reserve_age_withdraw_ok (
     .hr.http_status = MHD_HTTP_OK,
     .details.ok.h_commitment = awbh->h_commitment
   };
+  struct TALER_ExchangeSignatureP exchange_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint8 ("noreaveal_index",
                             &response.details.ok.noreveal_index),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig",
-                                 &response.details.ok.exchange_sig),
+                                 &exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                  &response.details.ok.exchange_pub)
   };
@@ -363,7 +343,7 @@ reserve_age_withdraw_ok (
         &awbh->h_commitment,
         response.details.ok.noreveal_index,
         &response.details.ok.exchange_pub,
-        &response.details.ok.exchange_sig))
+        &exchange_sig))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -785,21 +765,25 @@ copy_results (
 {
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh = cls;
   uint8_t idx =  awbr->details.ok.noreveal_index;
-  struct TALER_ExchangeWithdrawValues alg_values[awh->num_coins];
+  struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails coins[awh->num_coins];
+  struct TALER_BlindedCoinHashP blinded_coin_hs[awh->num_coins];
   struct TALER_EXCHANGE_AgeWithdrawResponse resp = {
     .hr = awbr->hr,
     .details = {
       .ok = { .noreveal_index = awbr->details.ok.noreveal_index,
               .h_commitment = awbr->details.ok.h_commitment,
               .exchange_pub = awbr->details.ok.exchange_pub,
-              .exchange_sig = awbr->details.ok.exchange_sig,
-              .num_alg_values = awh->num_coins,
-              .alg_values = alg_values},
+              .num_coins = awh->num_coins,
+              .coins = coins,
+              .blinded_coin_hs = blinded_coin_hs},
     },
   };
 
   for (size_t n = 0; n< awh->num_coins; n++)
-    alg_values[n] = awh->coin_data[n].coin_candidates[idx].alg_values;
+  {
+    coins[n] = awh->coin_data[n].coin_candidates[idx].details;
+    blinded_coin_hs[n] = awh->coin_data[n].coin_candidates[idx].blinded_coin_h;
+  }
 
   awh->callback (awh->callback_cls,
                  &resp);
@@ -915,22 +899,22 @@ csr_withdraw_done (
     {
       bool success = false;
       /* Complete the initialization of the coin with CS denomination */
-      can->alg_values = csrr->details.ok.alg_values;
+      can->details.alg_values = csrr->details.ok.alg_values;
       TALER_planchet_setup_coin_priv (&can->secret,
-                                      &can->alg_values,
-                                      &can->coin_priv);
+                                      &can->details.alg_values,
+                                      &can->details.coin_priv);
       TALER_planchet_blinding_secret_create (&can->secret,
-                                             &can->alg_values,
-                                             &can->blinding_key);
+                                             &can->details.alg_values,
+                                             &can->details.blinding_key);
       /* This initializes the 2nd half of the
          can->planchet_detail.blinded_planchet! */
       do {
         if (GNUNET_OK !=
             TALER_planchet_prepare (&csr->denom_pub->key,
-                                    &can->alg_values,
-                                    &can->blinding_key,
-                                    &can->coin_priv,
-                                    &can->h_age_commitment,
+                                    &can->details.alg_values,
+                                    &can->details.blinding_key,
+                                    &can->details.coin_priv,
+                                    &can->details.h_age_commitment,
                                     &can->h_coin_pub,
                                     planchet))
         {
@@ -1029,28 +1013,28 @@ prepare_coins (
                  &can->secret,
                  &input->denom_pub->key.age_mask,
                  awh->max_age,
-                 &can->age_commitment_proof));
+                 &can->details.age_commitment_proof));
 
-      TALER_age_commitment_hash (&can->age_commitment_proof.commitment,
-                                 &can->h_age_commitment);
+      TALER_age_commitment_hash (&can->details.age_commitment_proof.commitment,
+                                 &can->details.h_age_commitment);
 
       switch (input->denom_pub->key.cipher)
       {
       case TALER_DENOMINATION_RSA:
         {
-          can->alg_values.cipher = TALER_DENOMINATION_RSA;
+          can->details.alg_values.cipher = TALER_DENOMINATION_RSA;
           TALER_planchet_setup_coin_priv (&can->secret,
-                                          &can->alg_values,
-                                          &can->coin_priv);
+                                          &can->details.alg_values,
+                                          &can->details.coin_priv);
           TALER_planchet_blinding_secret_create (&can->secret,
-                                                 &can->alg_values,
-                                                 &can->blinding_key);
+                                                 &can->details.alg_values,
+                                                 &can->details.blinding_key);
           FAIL_IF (GNUNET_OK !=
                    TALER_planchet_prepare (&cd->denom_pub.key,
-                                           &can->alg_values,
-                                           &can->blinding_key,
-                                           &can->coin_priv,
-                                           &can->h_age_commitment,
+                                           &can->details.alg_values,
+                                           &can->details.blinding_key,
+                                           &can->details.coin_priv,
+                                           &can->details.h_age_commitment,
                                            &can->h_coin_pub,
                                            planchet));
           FAIL_IF (GNUNET_OK !=
