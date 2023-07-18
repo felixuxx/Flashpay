@@ -1027,7 +1027,7 @@ function test_8() {
     stop_libeufin
     OLD_ID=$(echo "SELECT id FROM NexusBankTransactions WHERE amount='10' AND currency='TESTKUDOS' ORDER BY id LIMIT 1;" | psql "${DB}" -Aqt) \
         || exit_fail "Failed to SELECT FROM NexusBankTransactions nexus DB!"
-    OLD_WTID=$(echo "SELECT 'reservePublicKey' FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
+    OLD_WTID=$(echo "SELECT \"reservePublicKey\" FROM TalerIncomingPayments WHERE payment='$OLD_ID';" \
                    | psql "${DB}" -Aqt)
     NEW_WTID="CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG"
     echo "UPDATE TalerIncomingPayments SET \"reservePublicKey\"='$NEW_WTID' WHERE payment='$OLD_ID';" \
@@ -1043,9 +1043,9 @@ function test_8() {
         exit_fail "Diagnostic wrong: $DIAG (0)"
     fi
     WTID=$(jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-audit-wire.json)
-    if [ "x$WTID" != x"$OLD_WTID" ] && [ "x$WTID" != "x$NEW_WTID" ]
+    if [ "$WTID" != "$OLD_WTID" ] && [ "$WTID" != "$NEW_WTID" ]
     then
-        exit_fail "WTID reported wrong: $WTID"
+        exit_fail "WTID reported wrong: $WTID (wanted $OLD_WTID or $NEW_WTID)"
     fi
     EX_A=$(jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json)
     if [ "$WTID" = "$OLD_WTID" ] && [ "$EX_A" != "TESTKUDOS:10" ]
