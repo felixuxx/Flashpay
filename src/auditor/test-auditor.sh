@@ -1182,11 +1182,11 @@ function test_11() {
     # payments needs it.  Worth noting here is the column 'rawConfirmation' that
     # points to the transaction from the main Nexus ledger; without that column set,
     # a prepared payment won't appear as actually outgoing.
-    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','""$OTHER_IBAN""','SANDBOXX','Forty Two','unused',1,$OLD_ID)" \
+    echo -e "INSERT INTO PaymentInitiations (\"bankAccount\",\"preparationDate\",\"submissionDate\",sum,currency,\"endToEndId\",\"paymentInformationId\",\"instructionId\",subject,\"creditorIban\",\"creditorBic\",\"creditorName\",submitted,\"messageId\",\"rawConfirmation\") VALUES (1,1,1,10,'TESTKUDOS','NOTGIVEN','unused','unused','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG http://exchange.example.com/','""$OTHER_IBAN""','SANDBOXX','Forty Two',false,1,$OLD_ID)" \
         | psql "${DB}" -q
     # Now populate the TWG table that accounts for outgoing payments, in
     # order to let /history/outgoing return one result.
-    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,1,'unused','TESTKUDOS:10','http://exchange.example.com/','CK9QBFY972KR32FVA1MW958JWACEB6XCMHHKVFMCH1A780Q12SVG','payto://iban/SANDBOXX/""$OTHER_IBAN""?receiver-name=Forty+Two')" \
         | psql "${DB}" -q
 
     run_audit
@@ -1219,16 +1219,9 @@ function test_11() {
     fi
     echo "PASS"
 
-    # Undo database modification
-    echo -e "UPDATE NexusBankTransactions SET \"transactionJson\"='$OLD_TX' WHERE id=$OLD_ID;" \
-        | psql "${DB}" -q
-    # No other prepared payment should exist at this point,
-    # so OK to remove the number 1.
-    echo -e "DELETE FROM PaymentInitiations WHERE id=1" \
-        | psql "${DB}" -q
-    echo -e "DELETE FROM TalerRequestedPayments WHERE id=1" \
-        | psql "${DB}" -q
+    full_reload
 }
+
 
 # Test for hanging/pending refresh.
 function test_12() {
@@ -1447,11 +1440,11 @@ function test_17() {
     stop_libeufin
     OLD_ID=1
     OLD_PREP=$(echo "SELECT payment FROM TalerRequestedPayments WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
-    OLD_DATE=$(echo "SELECT preparationDate FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
+    OLD_DATE=$(echo "SELECT \"preparationDate\" FROM PaymentInitiations WHERE id='${OLD_ID}';" | psql "${DB}" -Aqt)
     # Note: need - interval '1h' as "NOW()" may otherwise be exactly what is already in the DB
     # (due to rounding, if this machine is fast...)
     NOW_1HR=$(( $(date +%s) - 3600))
-    echo "UPDATE PaymentInitiations SET preparationDate='$NOW_1HR' WHERE id='${OLD_PREP}';" \
+    echo "UPDATE PaymentInitiations SET \"preparationDate\"='$NOW_1HR' WHERE id='${OLD_PREP}';" \
         | psql "${DB}" -q
     launch_libeufin
     echo "DONE"
@@ -1805,7 +1798,7 @@ function test_25() {
 
     # Drop refund, so coin history is bogus.
     echo "DELETE FROM exchange.refunds WHERE refund_serial_id=1;" \
-        | psql -Aqt "$DB"
+        | psql -At "$DB"
 
     run_audit aggregator
 
@@ -1902,9 +1895,9 @@ function test_27() {
     OTHER_IBAN=$(echo -e "SELECT iban FROM BankAccounts WHERE label='fortytwo'" | psql "${DB}" -Aqt)
     # 'rawConfirmation' is set to 2 here, that doesn't
     # point to any record.  That's only needed to set a non null value.
-    echo -e "INSERT INTO PaymentInitiations (bankAccount,preparationDate,submissionDate,sum,currency,endToEndId,paymentInformationId,instructionId,subject,creditorIban,creditorBic,creditorName,submitted,messageId,rawConfirmation) VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two','unused',1,2)" \
+    echo -e "INSERT INTO PaymentInitiations (\"bankAccount\",\"preparationDate\",\"submissionDate\",sum,currency,\"endToEndId\",\"paymentInformationId\",\"instructionId\",subject,\"creditorIban\",\"creditorBic\",\"creditorName\",submitted,\"messageId\",\"rawConfirmation\") VALUES (1,$(date +%s),$(( $(date +%s) + 2)),10,'TESTKUDOS','NOTGIVEN','unused','unused','$WTID http://exchange.example.com/','$OTHER_IBAN','SANDBOXX','Forty Two',false,1,2)" \
         | psql "${DB}" -q
-    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,requestUid,amount,exchangeBaseUrl,wtid,creditAccount) VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" \
+    echo -e "INSERT INTO TalerRequestedPayments (facade,payment,\"requestUid\",amount,\"exchangeBaseUrl\",wtid,\"creditAccount\") VALUES (1,2,'unused','TESTKUDOS:1','http://exchange.example.com/','$WTID','payto://iban/SANDBOXX/$OTHER_IBAN?receiver-name=Forty+Two')" \
         | psql "${DB}" -q
     launch_libeufin
     audit_only
