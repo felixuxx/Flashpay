@@ -39,6 +39,9 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
+Recommends:
+ python3-sphinx,
+ python3-sphinx-rtd-theme
 Description: Libraries to talk to a GNU Taler exchange.
   The package also contains various files fundamental
   to all GNU Taler installations, such as the

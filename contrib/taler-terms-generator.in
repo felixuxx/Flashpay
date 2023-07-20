@@ -143,6 +143,12 @@ while getopts ':a:C:hi:l:o:p:t:' OPTION; do
     esac
 done
 
+if ! which sphinx-build > /dev/null
+then
+    echo "Command 'sphinx-build' not found, but required. Please install sphinx."
+    exit 1
+fi
+
 BUILDDIR=$(mktemp -d /tmp/taler-terms-XXXXXX)
 if [ ! -f "${VERSION}.rst" ]
 then
