@@ -1514,6 +1514,11 @@ enum TALER_EXCHANGE_ReserveTransactionType
   TALER_EXCHANGE_RTT_WITHDRAWAL,
 
   /**
+   * Age-Withdrawal from the reserve.
+   */
+  TALER_EXCHANGE_RTT_AGEWITHDRAWAL,
+
+  /**
    * /recoup operation.
    */
   TALER_EXCHANGE_RTT_RECOUP,
@@ -1607,6 +1612,28 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
        */
       struct TALER_Amount fee;
     } withdraw;
+
+    /**
+     * Information about withdraw operation.
+     * @e type is #TALER_EXCHANGE_RTT_AGEWITHDRAWAL.
+     */
+    struct
+    {
+      /**
+       * Signature authorizing the withdrawal for outgoing transaction.
+       */
+      json_t *out_authorization_sig;
+
+      /**
+       * Maximum age commited
+       */
+      uint8_t max_age;
+
+      /**
+       * Fee that was charged for the withdrawal.
+       */
+      struct TALER_Amount fee;
+    } age_withdraw;
 
     /**
      * Information provided if the reserve was filled via /recoup.
@@ -2670,13 +2697,59 @@ struct TALER_EXCHANGE_AgeWithdrawCoinInput
    * The master secret from which we derive all other relevant values for
    * the coin: private key, nonces (if applicable) and age restriction
    */
-  const struct TALER_PlanchetMasterSecretP secrets[TALER_CNC_KAPPA];
+  struct TALER_PlanchetMasterSecretP secrets[TALER_CNC_KAPPA];
 
   /**
    * The denomination of the coin.  Must support age restriction, i.e
    * its .keys.age_mask MUST not be 0
    */
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+};
+
+
+/**
+ * All the details about a coin that are generated during age-withdrawal and
+ * that may be needed for future operations on the coin.
+ */
+struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Hash of the public key of the coin.
+   */
+  struct TALER_CoinPubHashP h_coin_pub;
+
+  /**
+   * Value used to blind the key for the signature.
+   * Needed for recoup operations.
+   */
+  union TALER_DenominationBlindingKeyP blinding_key;
+
+  /**
+   * The age commitment, proof for the coin, derived from the
+   * Master secret and maximum age in the originating request
+   */
+  struct TALER_AgeCommitmentProof age_commitment_proof;
+
+  /**
+   * The hash of the age commitment
+   */
+  struct TALER_AgeCommitmentHash h_age_commitment;
+
+  /**
+   * Values contributed from the exchange during the
+   * withdraw protocol.
+   */
+  struct TALER_ExchangeWithdrawValues alg_values;
+
+  /**
+   * The planchet constructed
+   */
+  struct TALER_PlanchetDetail planchet;
 };
 
 /**
@@ -2705,39 +2778,38 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
     struct
     {
       /**
-       * Index that should not be revealed during the age-withdraw reveal phase.
-       * The struct TALER_PlanchetMasterSecretP * from the request
-       * with this index are the ones to keep.
+       * Index that should not be revealed during the age-withdraw reveal
+       * phase.
        */
       uint8_t noreveal_index;
 
       /**
-       * The commitment of the call to /age-withdraw
+       * The commitment of the age-withdraw request, needed for the
+       * subsequent call to /age-withdraw/$ACH/reveal
        */
       struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
       /**
-       * The algorithm specific values (for CS) need for the coins that were
-       * retrieved from /csr-withdraw.
+       * The number of elements in @e coins, each referring to
+       * TALER_CNC_KAPPA elements
        */
-      struct TALER_ExchangeWithdrawValues *alg_values;
+      size_t num_coins;
 
       /**
-       * Number of elements in @e alg_values, same as number coin candidates.from
-       * the request.
+       * The computed details of the non-revealed @e num_coins coins to keep.
        */
-      size_t num_alg_values;
+      const struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails *coin_details;
 
       /**
-       * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
+       * The array of blinded hashes of the non-revealed
+       * @e num_coins coins, needed for the reveal step;
        */
-      struct TALER_ExchangeSignatureP exchange_sig;
+      const struct TALER_BlindedCoinHashP *blinded_coin_hs;
 
       /**
-       * Key used by the exchange for @e exchange_sig
+       * Key used by the exchange to sign the response.
        */
       struct TALER_ExchangePublicKeyP exchange_pub;
-
     } ok;
   } details;
 };
@@ -2809,7 +2881,6 @@ struct TALER_EXCHANGE_AgeWithdrawBlindedInput
    * Blinded Planchets
    */
   struct TALER_PlanchetDetail planchet_details[TALER_CNC_KAPPA];
-
 };
 
 /**
@@ -2840,19 +2911,16 @@ struct TALER_EXCHANGE_AgeWithdrawBlindedResponse
       uint8_t noreveal_index;
 
       /**
-       * The commitment of the call to /age-withdraw
+       * The commitment of the call to age-withdraw, needed for the subsequent
+       * call to /age-withdraw/$ACH/reveal.
        */
       struct TALER_AgeWithdrawCommitmentHashP h_commitment;
 
       /**
-       * Signature of the exchange over the origina TALER_AgeWithdrawRequestPS
-       */
-      struct TALER_ExchangeSignatureP exchange_sig;
-
-      /**
-       * Key used by the exchange for @e exchange_sig
+       * Key used by the exchange to sign the response.
        */
       struct TALER_ExchangePublicKeyP exchange_pub;
+
     } ok;
   } details;
 
@@ -2959,17 +3027,17 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
     struct
     {
       /**
-       * Number of coins returned.
+       * Number of signatures returned.
        */
-      unsigned int num_coins;
+      unsigned int num_sigs;
 
       /**
-       * Array of @e num_coins values about the coins obtained via the reveal
-       * operation.  The array give these coins in the same order (and should
-       * have the same length) in which the original age-withdraw request
-       * specified the respective denomination keys.
+       * Array of @e num_coins blinded denomination signatures, giving each
+       * coin its value and validity. The array give these coins in the same
+       * order (and should have the same length) in which the original
+       * age-withdraw request specified the respective denomination keys.
        */
-      const struct TALER_EXCHANGE_RevealedCoinInfo *revealed_coins;
+      const struct TALER_BlindedDenominationSignature *blinded_denom_sigs;
 
     } ok;
   } details;
@@ -2994,10 +3062,8 @@ typedef void
  * @param exchange_url The base url of the exchange
  * @param num_coins The number of elements in @e coin_inputs and @e alg_values
  * @param coin_inputs The input for the coins to withdraw, same as in the previous call to /age-withdraw
- * @param alg_values The algorithm specific parameters per coin, from the result to the previous call to /age-withdraw
  * @param noreveal_index The index into each of the kappa coin candidates, that should not be revealed to the exchange
  * @param h_commitment The commmitment from the previous call to /age-withdraw
- * @param max_age maximum age, as used in the to /age-withdraw
  * @param res_cb A callback for the result, maybe NULL
  * @param res_cb_cls A closure for @e res_cb, maybe NULL
  * @return a handle for this request; NULL if the argument was invalid.
@@ -3010,10 +3076,8 @@ TALER_EXCHANGE_age_withdraw_reveal (
   size_t num_coins,
   const struct TALER_EXCHANGE_AgeWithdrawCoinInput coin_inputs[static
                                                                num_coins],
-  const struct TALER_ExchangeWithdrawValues alg_values[static num_coins],
   uint8_t noreveal_index,
   const struct TALER_AgeWithdrawCommitmentHashP *h_commitment,
-  uint8_t max_age,
   TALER_EXCHANGE_AgeWithdrawRevealCallback res_cb,
   void *res_cb_cls);
 
@@ -3034,7 +3098,8 @@ TALER_EXCHANGE_age_withdraw_reveal_cancel (
 /**
  * Information needed to melt (partially spent) coins to obtain fresh coins
  * that are unlinkable to the original coin(s).  Note that melting more than
- * one coin in a single request will make those coins linkable, so we only melt one coin at a time.
+ * one coin in a single request will make those coins linkable, so we only melt
+ * one coin at a time.
  */
 struct TALER_EXCHANGE_RefreshData
 {

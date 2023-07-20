@@ -23,6 +23,7 @@
  * @author Marcello Stanisci
  */
 #include "platform.h"
+#include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include <microhttpd.h>
 #include <gnunet/gnunet_curl_lib.h>
@@ -217,7 +218,7 @@ reserve_batch_withdraw_cb (void *cls,
     /* nothing to check */
     break;
   case MHD_HTTP_CONFLICT:
-    /* nothing to check */
+    /* TODO[oec]: Check if age-requirement is the reason */
     break;
   case MHD_HTTP_GONE:
     /* theoretically could check that the key was actually */
@@ -250,6 +251,7 @@ batch_withdraw_run (void *cls,
                     struct TALER_TESTING_Interpreter *is)
 {
   struct BatchWithdrawState *ws = cls;
+  const struct TALER_EXCHANGE_Keys *keys =  TALER_TESTING_get_keys (is);
   const struct TALER_ReservePrivateKeyP *rp;
   const struct TALER_TESTING_Command *create_reserve;
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
@@ -292,7 +294,7 @@ batch_withdraw_run (void *cls,
     struct TALER_EXCHANGE_WithdrawCoinInput *wci = &wcis[i];
 
     TALER_planchet_master_setup_random (&cs->ps);
-    dpk = TALER_TESTING_find_pk (TALER_TESTING_get_keys (is),
+    dpk = TALER_TESTING_find_pk (keys,
                                  &cs->amount,
                                  ws->age > 0);
     if (NULL == dpk)
@@ -321,7 +323,7 @@ batch_withdraw_run (void *cls,
   ws->wsh = TALER_EXCHANGE_batch_withdraw (
     TALER_TESTING_interpreter_get_context (is),
     TALER_TESTING_get_exchange_url (is),
-    TALER_TESTING_get_keys (is),
+    keys,
     rp,
     ws->num_coins,
     wcis,

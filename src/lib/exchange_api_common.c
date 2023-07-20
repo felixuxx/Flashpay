@@ -765,6 +765,8 @@ TALER_EXCHANGE_free_reserve_history (
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:
       break;
+    case TALER_EXCHANGE_RTT_AGEWITHDRAWAL:
+      break;
     case TALER_EXCHANGE_RTT_RECOUP:
       break;
     case TALER_EXCHANGE_RTT_CLOSING:
