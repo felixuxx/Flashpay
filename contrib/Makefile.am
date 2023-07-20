@@ -13,11 +13,11 @@ dist_tmplpkgdata_DATA = \
   persona-kyc-failed.en.must \
   persona-provider-failure.en.must
 
-termsdir=$(datadir)/taler/exchange/
+termsdir=$(datadir)/taler/terms/
 terms_DATA = \
-  tos-v0.rst \
-  tos-bfh-v0.rst \
-  pp-v0.rst
+  exchange-tos-v0.rst \
+  exchange-tos-bfh-v0.rst \
+  exchange-pp-v0.rst
 
 install-exec-local:
 	pwd
@@ -44,7 +44,7 @@ CLEANFILES = \
   taler-terms-generator
 
 EXTRA_DIST = \
-  locale/de/LC_MESSAGES/tos-v0.po \
+  locale/de/LC_MESSAGES/exchange-tos-v0.po \
   taler-bank-manage-testing \
   taler-nexus-prepare \
   taler-terms-generator.in \

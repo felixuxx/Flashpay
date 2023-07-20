@@ -88,7 +88,7 @@ EOF
 
 # defaults
 AUTHOR="GNU Taler team"
-VERSION="tos-v0"
+VERSION="exchange-tos-v0"
 OUTPUT="%termsdir%"
 PAPER="a4"
 COPYRIGHT="2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)"
