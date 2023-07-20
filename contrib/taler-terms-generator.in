@@ -1,0 +1,260 @@
+#!/bin/bash
+# This file is part of GNU TALER.
+# Copyright (C) 2014-2023 Taler Systems SA
+#
+# TALER is free software; you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License as published by the Free Software
+# Foundation; either version 2.1, or (at your option) any later version.
+#
+# TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License along with
+# TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+#
+# @author Florian Dold
+# @author Benedikt Muller
+# @author Sree Harsha Totakura
+# @author Marcello Stanisci
+# @author Christian Grothoff
+#
+#
+# Error checking on
+set -eu
+
+# Call with target language as first argument.
+function make_config()
+{
+    XPWD=$(echo "$PWD" | sed -e "s/\//\\\\\\//g")
+    sed -e "s/%VERSION%/$VERSION/g" \
+        -e "s/%TITLE%/$TITLE/g" \
+        -e "s/%AUTHOR%/$AUTHOR/g" \
+        -e "s/%ORIGIN%/$XPWD/g" \
+        -e "s/%COPYRIGHT%/$COPYRIGHT/g" \
+        -e "s/%LANGUAGE%/$1/g" \
+        > "${BUILDDIR}/conf.py" <<EOF
+import sys
+import os
+sys.path.append(os.path.abspath('_exts'))
+needs_sphinx = '1.8.5'
+extensions = [
+    'sphinx.ext.todo',
+    'sphinx.ext.imgmath',
+]
+templates_path = ['_templates']
+source_suffix = {
+    '.rst': 'restructuredtext',
+}
+master_doc = '%VERSION%'
+project = u'%VERSION%'
+copyright = u'%COPYRIGHT%'
+version = '%VERSION%'
+release = '%VERSION%'
+language = "%LANGUAGE%"
+exclude_patterns = ['_build', '_exts', 'cf', 'prebuilt']
+locale_dirs = ['%ORIGIN%/locale/']
+gettext_compact = False
+pygments_style = 'sphinx'
+html_theme = 'epub'
+rst_epilog = ""
+html_show_sphinx = False
+html_theme_options = {
+    "relbar1": "false",
+    "footer": "false",
+}
+html_title = "%TITLE%"
+html_short_title = "%TITLE%"
+html_use_index = True
+html_show_sphinx = False
+latex_elements = {
+    # The paper size ('letterpaper' or 'a4paper').
+    #'papersize': 'letterpaper',
+
+    # The font size ('10pt', '11pt' or '12pt').
+    #'pointsize': '10pt',
+
+    # Additional stuff for the LaTeX preamble.
+    #'preamble': '',
+}
+latex_documents = [
+    ('%VERSION%', '%VERSION%.tex',
+     '%TITLE%', '%AUTHOR%', 'manual'),
+]
+epub_basename = "%VERSION%"
+epub_title = "%TITLE%"
+EOF
+}
+
+# defaults
+AUTHOR="GNU Taler team"
+VERSION="tos-v0"
+OUTPUT="%termsdir%"
+PAPER="a4"
+COPYRIGHT="2014-2023 Taler Systems SA (GPLv3+ or GFDL 1.3+)"
+
+# Parse command-line options
+while getopts ':a:C:hi:l:o:p:t:' OPTION; do
+    case "$OPTION" in
+        a)
+            AUTHOR="$OPTARG"
+            ;;
+        C)
+            COPYRIGHT="$OPTARG"
+            ;;
+        h)
+            echo 'Supported options:'
+            echo '  -a AUTHOR    -- set author header' "(default: $AUTHOR)"
+            echo '  -C COPYRIGHT -- set copyright header' "(default: $COPYRIGHT)"
+            echo '  -h           -- print this help'
+            echo '  -i INPUT     -- input file to convert' "(default: $VERSION)"
+            echo '  -l LANGUAGE  -- target language to add'
+            echo '  -o OUTPUT    -- output directory' "(default: $OUTPUT)"
+            echo '  -p PAPER     -- paper format' "(default: $PAPER)"
+            echo '  -t TITLE     -- title of the document to generate'
+            exit 0
+            ;;
+        l)
+            ADD_LANGUAGE="$OPTARG"
+            ;;
+        i)
+            VERSION="$OPTARG"
+            ;;
+        o)
+            OUTPUT="$OPTARG"
+            ;;
+        p)
+            PAPER="$OPTARG"
+            case "$PAPER" in
+                a4|letter)
+                ;;
+                *)
+                    echo "Error: Paper format '$PAPER' invalid (use 'a4' or 'letter')"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        t)
+            TITLE="$OPTARG"
+            ;;
+        ?)
+        exit_fail "Unrecognized command line option"
+        ;;
+    esac
+done
+
+BUILDDIR=$(mktemp -d /tmp/taler-terms-XXXXXX)
+if [ ! -f "${VERSION}.rst" ]
+then
+    echo "Error: File '${VERSION}.rst' not found. Please check '-i' option."
+    exit 1
+fi
+
+cp "${VERSION}.rst" "${BUILDDIR}/"
+
+if [ -z ${TITLE+x} ]
+then
+    TITLE=$(head -n1 "${VERSION}.rst")
+    echo "Title automatically set to '$TITLE'"
+fi
+
+if [ -n "${ADD_LANGUAGE+x}" ]
+then
+    if echo "${ADD_LANGUAGE}" | grep -e '..' > /dev/null
+    then
+        echo "Error: Invalid language '${ADD_LANGUAGE}'. Two characters (en, de, fr, ...) expected."
+        exit 1
+    fi
+    echo "Adding language files for translations to '${ADD_LANGUAGE}'"
+    make_config "${ADD_LANGUAGE}"
+    sphinx-build \
+        -b gettext \
+        -D language="${ADD_LANGUAGE}" \
+        -d "{BUILDDIR}/.doctrees" \
+        "${BUILDDIR}" \
+        "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/" \
+        &> "${BUILDDIR}/add-language.log"
+    if [ -f "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po" ]
+    then
+        msgmerge --lang="${ADD_LANGUAGE}" \
+                 --no-location \
+                 -o "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.mrg" \
+                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po" \
+                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
+        mv "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.mrg" \
+                 "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
+    else
+        mv "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot" \
+           "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.po"
+    fi
+    rm "${PWD}/locale/${ADD_LANGUAGE}/LC_MESSAGES/${VERSION}.pot"
+    echo "Done"
+    exit 0
+fi
+
+for d in en $(ls -d locale/?? 2> /dev/null || true)
+do
+    LANGUAGE=$(basename "$d")
+    echo "Generating files at '$OUTPUT' for ETag '$VERSION' and language '${LANGUAGE}' in '${BUILDDIR}':"
+
+    make_config "$LANGUAGE"
+    mkdir -p "${OUTPUT}/${LANGUAGE}/"
+
+    LBUILD="sphinx-build -D language=${LANGUAGE} -d ${BUILDDIR}/.doctrees"
+
+    echo "$VERSION XML ($LANGUAGE)..."
+# shellcheck disable=SC2090
+    $LBUILD \
+        -b xml \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/xml" \
+        &> "${BUILDDIR}/xml-sphinx.log"
+    mv "${BUILDDIR}/xml/${VERSION}.xml" "${OUTPUT}/${LANGUAGE}/${VERSION}.xml"
+
+    echo "$VERSION TXT ($LANGUAGE)..."
+# shellcheck disable=SC2090
+    $LBUILD \
+        -b text \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/txt" \
+        &> "${BUILDDIR}/txt-sphinx.log"
+    mv "${BUILDDIR}/txt/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.txt"
+    cp "${OUTPUT}/${LANGUAGE}/${VERSION}.txt" "${OUTPUT}/${LANGUAGE}/${VERSION}.md"
+
+    echo "$VERSION HTML ($LANGUAGE)..."
+# shellcheck disable=SC2090
+    $LBUILD \
+        -b html \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/html" \
+        &> "$BUILDDIR/html-sphinx.log"
+    htmlark \
+        -o "${OUTPUT}/${LANGUAGE}/${VERSION}.html" \
+        "${BUILDDIR}/html/${VERSION}.html"
+
+    echo "$VERSION EPUB ($LANGUAGE)..."
+# shellcheck disable=SC2090
+    $LBUILD \
+        -b epub \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/epub" \
+        &> "$BUILDDIR/epub-sphinx.log"
+    mv "${BUILDDIR}/epub/${VERSION}.epub" "${OUTPUT}/${LANGUAGE}/${VERSION}.epub"
+
+    echo "$VERSION PDF ($LANGUAGE)..."
+# shellcheck disable=SC2090
+    $LBUILD \
+        -b latex \
+        -D latex_paper_size="${PAPER}" \
+        "${BUILDDIR}" \
+        "${BUILDDIR}/pdf" \
+        &> "$BUILDDIR/pdf-sphinx.log"
+    make \
+        -C "${BUILDDIR}/pdf" \
+        all-pdf \
+        &> "$BUILDDIR/pdf-latex.log"
+    mv "${BUILDDIR}/pdf/${VERSION}.pdf" "${OUTPUT}/${LANGUAGE}/${VERSION}.pdf"
+done
+
+echo "Done"
+exit 0

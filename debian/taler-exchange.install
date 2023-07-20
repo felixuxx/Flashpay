@@ -35,5 +35,7 @@ usr/share/taler/exchange/templates/*.must
 # configuration files in /etc/taler
 debian/etc-taler-exchange/* etc/
 
-usr/share/taler/exchange/pp/*/*
-usr/share/taler/exchange/tos/*/*
+# Terms of service / privacy policy templates
+usr/share/taler/exchange/*.rst
+# Translations of ToS/PP
+usr/share/taler/exchange/locale/*/LC_MESSAGES/*.po
