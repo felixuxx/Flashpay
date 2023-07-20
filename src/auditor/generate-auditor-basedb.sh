@@ -24,9 +24,9 @@ echo " FOUND"
 CONF="generate-auditor-basedb.conf"
 
 # reset database
-echo -n "Reset 'auditor-basedb' database ..."
+echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
 dropdb "auditor-basedb" >/dev/null 2>/dev/null || true
-createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB'"
+createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
 echo " DONE"
 
 # Launch exchange, merchant and bank.
@@ -69,6 +69,9 @@ taler-wallet-cli \
     --arg BANK_URL "$BANK_URL/demobanks/default/access-api/"
   )" &> taler-wallet-cli.log
 echo " DONE"
+
+taler-wallet-cli --wallet-db="$WALLET_DB" run-until-done
+taler-wallet-cli --wallet-db="$WALLET_DB" advanced run-pending
 
 # Dump database
 mkdir -p "$(dirname "$BASEDB")"

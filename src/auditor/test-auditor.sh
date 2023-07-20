@@ -472,7 +472,7 @@ function run_audit () {
 # Do a full reload of the (original) database
 function full_reload()
 {
-    echo -n "Doing full reload of the database ($BASEDB - $DB)... "
+    echo -n "Doing full reload of the database (loading ${BASEDB}.sql into $DB at $PGHOST)... "
     dropdb "$DB" 2> /dev/null || true
     createdb -T template0 "$DB" \
         || exit_skip "could not create database $DB (at $PGHOST)"
@@ -2341,19 +2341,15 @@ echo " DONE"
 PGHOST="$TMPDIR/sockets"
 export PGHOST
 
-# FIXME: here for testing, avoids generation skip.
-# Should probably introduce getopt to make this
-# possible via CLI.
-check_with_database "bar/${DB}"
-
-
-exit 0
-
 MYDIR="${MY_TMP_DIR}/basedb"
 mkdir -p "${MYDIR}"
 echo "Generating fresh database at $MYDIR"
 if faketime -f '-1 d' ./generate-auditor-basedb.sh "$MYDIR/$DB"
 then
+    echo -n "Reset 'auditor-basedb' database at $PGHOST ..."
+    dropdb "auditor-basedb" >/dev/null 2>/dev/null || true
+    createdb "auditor-basedb" || exit_skip "Could not create database '$BASEDB' at $PGHOST"
+    echo " DONE"
     check_with_database "$MYDIR/$DB"
     if [ "$fail" != "0" ]
     then

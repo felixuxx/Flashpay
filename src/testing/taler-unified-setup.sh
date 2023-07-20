@@ -191,14 +191,10 @@ then
     echo " FOUND"
 fi
 
-# FIXME-MS: when run twice using
-# taler-unified-setup.sh -c test_bank_api_nexus.conf -ns
-# libeufin fails with a 502 failure (sandbox happy, nexus dies) below.
-# Work-around is to delete the database every time. Very unclean. => needs a fix!
-rm -f *.sqlite3
-
 EXCHANGE_URL=$(taler-config -c "$CONF" -s "EXCHANGE" -o "BASE_URL")
 CURRENCY=$(taler-config -c "$CONF" -s "TALER" -o "CURRENCY")
+
+echo "Setting up for $CURRENCY at $EXCHANGE_URL"
 
 register_sandbox_account() {
     export LIBEUFIN_SANDBOX_USERNAME="$1"
@@ -246,16 +242,25 @@ fi
 
 if [ "1" = "$START_SANDBOX" ]
 then
-    export LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
-
+    #
+    LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
+    if [ ! -z "$PGHOST" ]
+    then
+        EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
+        LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo $LIBEUFIN_SANDBOX_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
+        taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION" -V "$LIBEUFIN_SANDBOX_DB_CONNECTION"
+    fi
+    export LIBEUFIN_SANDBOX_DB_CONNECTION
     # Create the default demobank.
-    echo -n "Configuring sandbox "
+    echo -n "Configuring sandbox at ${LIBEUFIN_SANDBOX_DB_CONNECTION} "
+
     libeufin-sandbox config \
                      --currency "$CURRENCY" \
                      --users-debt-limit 99999999 \
                      --bank-debt-limit 99999999 \
        default &> libeufin-sandbox-config.log
     echo "DONE"
+    echo "sandbox uses DB at $LIBEUFIN_SANDBOX_DB_CONNECTION"
     echo -n "Launching sandbox ... "
     export LIBEUFIN_SANDBOX_ADMIN_PASSWORD="secret"
     libeufin-sandbox serve \
@@ -337,7 +342,15 @@ then
 
     # Prepare Nexus, which is the side actually talking
     # to the exchange.
-    export LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
+    LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
+
+    if [ ! -z "$PGHOST" ]
+    then
+        EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
+        LIBEUFIN_NEXUS_DB_CONNECTION=$(echo $LIBEUFIN_NEXUS_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
+        taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
+    fi
+    export LIBEUFIN_NEXUS_DB_CONNECTION
 
     # For convenience, username and password are
     # identical to those used at the Sandbox.

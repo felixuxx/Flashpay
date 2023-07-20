@@ -422,6 +422,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   const json_t *keys;
   json_t *key;
   unsigned int off;
+  unsigned int pos;
   const char *auditor_url;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
@@ -450,7 +451,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   auditor->denom_keys
     = GNUNET_new_array (json_array_size (keys),
                         struct TALER_EXCHANGE_AuditorDenominationInfo);
-
+  pos = 0;
   json_array_foreach (keys, off, key) {
     struct TALER_AuditorSignatureP auditor_sig;
     struct TALER_DenominationHashP denom_h;
@@ -509,10 +510,11 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
         return GNUNET_SYSERR;
       }
     }
-    auditor->denom_keys[off].denom_key_offset = dk_off;
-    auditor->denom_keys[off].auditor_sig = auditor_sig;
+    auditor->denom_keys[pos].denom_key_offset = dk_off;
+    auditor->denom_keys[pos].auditor_sig = auditor_sig;
+    pos++;
   }
-  auditor->num_denom_keys = off;
+  auditor->num_denom_keys = pos;
   return GNUNET_OK;
 }
 
@@ -2042,6 +2044,7 @@ TALER_EXCHANGE_keys_to_json (const struct TALER_EXCHANGE_Keys *kd)
         &kd->denom_keys[adi->denom_key_offset];
       json_t *k;
 
+      GNUNET_assert (adi->denom_key_offset < kd->num_denom_keys);
       if (GNUNET_TIME_timestamp_cmp (now,
                                      >,
                                      dk->expire_deposit))
