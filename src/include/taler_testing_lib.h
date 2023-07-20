@@ -948,7 +948,7 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
  *
  * @param label command label.
  * @param config_filename configuration filename.
- * @param account section to run wirewatch against
+ * @param account_section section to run wirewatch against
  * @return the command.
  */
 struct TALER_TESTING_Command

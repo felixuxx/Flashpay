@@ -166,7 +166,7 @@ struct AgeWithdrawState
  * code is expected and store the exchange signature in the state.
  *
  * @param cls Closure of type `struct AgeWithdrawState *`
- * @param awr Repsonse details
+ * @param response Repsonse details
  */
 static void
 age_withdraw_cb (
