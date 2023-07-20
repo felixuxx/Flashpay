@@ -31,6 +31,9 @@
 #include "taler_testing_lib.h"
 
 
+/**
+ * The interpreter and its state
+ */
 struct TALER_TESTING_Interpreter
 {
 

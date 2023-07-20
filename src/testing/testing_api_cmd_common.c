@@ -59,6 +59,20 @@ TALER_TESTING_history_entry_cmp (
          that should be good enough. */
       return 0;
     return 1;
+  case TALER_EXCHANGE_RTT_AGEWITHDRAWAL:
+    /* testing_api_cmd_age_withdraw doesn't set the out_authorization_sig,
+       so we cannot test for it here. but if the amount matches,
+       that should be good enough. */
+    if ( (0 ==
+          TALER_amount_cmp (&h1->amount,
+                            &h2->amount)) &&
+         (0 ==
+          TALER_amount_cmp (&h1->details.age_withdraw.fee,
+                            &h2->details.age_withdraw.fee)) &&
+         (h1->details.age_withdraw.max_age ==
+          h2->details.age_withdraw.max_age))
+      return 0;
+    return 1;
   case TALER_EXCHANGE_RTT_RECOUP:
     /* exchange_sig, exchange_pub and timestamp are NOT available
        from the original recoup response, hence here NOT check(able/ed) */

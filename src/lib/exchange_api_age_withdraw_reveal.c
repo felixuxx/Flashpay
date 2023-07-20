@@ -135,8 +135,8 @@ age_withdraw_reveal_ok (
       }
     }
 
-    response.details.ok.num_coins = awrh->num_coins;
-    response.details.ok.denom_sigs = denom_sigs;
+    response.details.ok.num_sigs = awrh->num_coins;
+    response.details.ok.blinded_denom_sigs = denom_sigs;
     awrh->callback (awrh->callback_cls,
                     &response);
     /* Make sure the callback isn't called again */

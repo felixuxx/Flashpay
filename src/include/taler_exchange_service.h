@@ -1514,6 +1514,11 @@ enum TALER_EXCHANGE_ReserveTransactionType
   TALER_EXCHANGE_RTT_WITHDRAWAL,
 
   /**
+   * Age-Withdrawal from the reserve.
+   */
+  TALER_EXCHANGE_RTT_AGEWITHDRAWAL,
+
+  /**
    * /recoup operation.
    */
   TALER_EXCHANGE_RTT_RECOUP,
@@ -1607,6 +1612,28 @@ struct TALER_EXCHANGE_ReserveHistoryEntry
        */
       struct TALER_Amount fee;
     } withdraw;
+
+    /**
+     * Information about withdraw operation.
+     * @e type is #TALER_EXCHANGE_RTT_AGEWITHDRAWAL.
+     */
+    struct
+    {
+      /**
+       * Signature authorizing the withdrawal for outgoing transaction.
+       */
+      json_t *out_authorization_sig;
+
+      /**
+       * Maximum age commited
+       */
+      uint8_t max_age;
+
+      /**
+       * Fee that was charged for the withdrawal.
+       */
+      struct TALER_Amount fee;
+    } age_withdraw;
 
     /**
      * Information provided if the reserve was filled via /recoup.
@@ -2676,7 +2703,7 @@ struct TALER_EXCHANGE_AgeWithdrawCoinInput
    * The denomination of the coin.  Must support age restriction, i.e
    * its .keys.age_mask MUST not be 0
    */
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
 };
 
 
@@ -2690,6 +2717,11 @@ struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails
    * Private key of the coin.
    */
   struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Hash of the public key of the coin.
+   */
+  struct TALER_CoinPubHashP h_coin_pub;
 
   /**
    * Value used to blind the key for the signature.
@@ -2713,6 +2745,11 @@ struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails
    * withdraw protocol.
    */
   struct TALER_ExchangeWithdrawValues alg_values;
+
+  /**
+   * The planchet constructed
+   */
+  struct TALER_PlanchetDetail planchet;
 };
 
 /**
@@ -2761,11 +2798,11 @@ struct TALER_EXCHANGE_AgeWithdrawResponse
       /**
        * The computed details of the non-revealed @e num_coins coins to keep.
        */
-      const struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails *coins;
+      const struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails *coin_details;
 
       /**
        * The array of blinded hashes of the non-revealed
-       * (kappa - 1)*@e num_coins coins, needed for the reveal step;
+       * @e num_coins coins, needed for the reveal step;
        */
       const struct TALER_BlindedCoinHashP *blinded_coin_hs;
 
@@ -2990,9 +3027,9 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
     struct
     {
       /**
-       * Number of coins returned.
+       * Number of signatures returned.
        */
-      unsigned int num_coins;
+      unsigned int num_sigs;
 
       /**
        * Array of @e num_coins blinded denomination signatures, giving each
@@ -3000,7 +3037,7 @@ struct TALER_EXCHANGE_AgeWithdrawRevealResponse
        * order (and should have the same length) in which the original
        * age-withdraw request specified the respective denomination keys.
        */
-      const struct TALER_BlindedDenominationSignature *denom_sigs;
+      const struct TALER_BlindedDenominationSignature *blinded_denom_sigs;
 
     } ok;
   } details;

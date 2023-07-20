@@ -52,12 +52,6 @@ struct CoinCandidate
   struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails details;
 
   /**
-   * Hash of the public key of the coin we are signing.
-   */
-  struct TALER_CoinPubHashP h_coin_pub;
-
-
-  /**
    * Blinded hash of the coin
    **/
   struct TALER_BlindedCoinHashP blinded_coin_h;
@@ -765,7 +759,7 @@ copy_results (
 {
   struct TALER_EXCHANGE_AgeWithdrawHandle *awh = cls;
   uint8_t idx =  awbr->details.ok.noreveal_index;
-  struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails coins[awh->num_coins];
+  struct TALER_EXCHANGE_AgeWithdrawCoinPrivateDetails details[awh->num_coins];
   struct TALER_BlindedCoinHashP blinded_coin_hs[awh->num_coins];
   struct TALER_EXCHANGE_AgeWithdrawResponse resp = {
     .hr = awbr->hr,
@@ -774,14 +768,15 @@ copy_results (
               .h_commitment = awbr->details.ok.h_commitment,
               .exchange_pub = awbr->details.ok.exchange_pub,
               .num_coins = awh->num_coins,
-              .coins = coins,
+              .coin_details = details,
               .blinded_coin_hs = blinded_coin_hs},
     },
   };
 
   for (size_t n = 0; n< awh->num_coins; n++)
   {
-    coins[n] = awh->coin_data[n].coin_candidates[idx].details;
+    details[n] = awh->coin_data[n].coin_candidates[idx].details;
+    details[n].planchet = awh->coin_data[n].planchet_details[idx];
     blinded_coin_hs[n] = awh->coin_data[n].coin_candidates[idx].blinded_coin_h;
   }
 
@@ -915,7 +910,7 @@ csr_withdraw_done (
                                     &can->details.blinding_key,
                                     &can->details.coin_priv,
                                     &can->details.h_age_commitment,
-                                    &can->h_coin_pub,
+                                    &can->details.h_coin_pub,
                                     planchet))
         {
           GNUNET_break (0);
@@ -1035,7 +1030,7 @@ prepare_coins (
                                            &can->details.blinding_key,
                                            &can->details.coin_priv,
                                            &can->details.h_age_commitment,
-                                           &can->h_coin_pub,
+                                           &can->details.h_coin_pub,
                                            planchet));
           FAIL_IF (GNUNET_OK !=
                    TALER_coin_ev_hash (&planchet->blinded_planchet,
