@@ -85,6 +85,7 @@ TALER_officer_aml_decision_sign (
   struct TALER_AmlDecisionPS ad = {
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
+    .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
     .h_payto = *h_payto,
     .new_state = htonl ((uint32_t) new_state)
   };
@@ -117,6 +118,7 @@ TALER_officer_aml_decision_verify (
   struct TALER_AmlDecisionPS ad = {
     .purpose.purpose = htonl (TALER_SIGNATURE_AML_DECISION),
     .purpose.size = htonl (sizeof (ad)),
+    .decision_time = GNUNET_TIME_timestamp_hton (decision_time),
     .h_payto = *h_payto,
     .new_state = htonl ((uint32_t) new_state)
   };
