@@ -1436,6 +1436,7 @@ check_exchange_wire_out (struct WireAccount *wa)
 {
   enum GNUNET_DB_QueryStatus qs;
 
+  GNUNET_assert (NULL == wa->dhh);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange's wire OUT table for account `%s'\n",
               wa->ai->section_name);
@@ -1615,7 +1616,7 @@ begin_debit_audit (void)
 {
   GNUNET_assert (NULL == out_map);
   out_map = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                  GNUNET_YES);
+                                                  true);
   process_debits (wa_head);
 }
 
@@ -1989,7 +1990,7 @@ history_credit_cb (void *cls,
 
       if (! analyze_credit (wa,
                             cd))
-        break;
+        return;
     }
     conclude_account (wa);
     return;
@@ -2089,6 +2090,7 @@ process_credits (void *cls)
 static void
 begin_credit_audit (void)
 {
+  GNUNET_assert (NULL == in_map);
   in_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                  GNUNET_YES);
   /* now go over all bank accounts and check delta with in_map */

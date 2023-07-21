@@ -426,8 +426,9 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),
-    TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
-                                      config_file_expire_reserve_now),
+    TALER_TESTING_cmd_exec_wirewatch2 ("short-lived-aggregation",
+                                       config_file_expire_reserve_now,
+                                       "exchange-account-2"),
     TALER_TESTING_cmd_exec_aggregator ("close-reserves",
                                        config_file_expire_reserve_now),
     /**
