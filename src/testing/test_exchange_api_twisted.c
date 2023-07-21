@@ -68,8 +68,9 @@ static struct GNUNET_OS_Process *twisterd;
 static struct TALER_TESTING_Command
 CMD_EXEC_WIREWATCH (const char *label)
 {
-  return TALER_TESTING_cmd_exec_wirewatch (label,
-                                           config_file);
+  return TALER_TESTING_cmd_exec_wirewatch2 (label,
+                                            config_file,
+                                            "exchange-account-2");
 }
 
 

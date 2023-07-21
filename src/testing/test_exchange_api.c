@@ -69,7 +69,7 @@ static bool uses_cs;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, config_file)
+  TALER_TESTING_cmd_exec_wirewatch2 (label, config_file, "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with

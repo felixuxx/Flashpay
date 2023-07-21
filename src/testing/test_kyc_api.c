@@ -53,7 +53,7 @@ struct TALER_TESTING_Credentials cred;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch2 (label, CONFIG_FILE, "exchange-account-2")
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with

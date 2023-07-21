@@ -86,8 +86,9 @@ run (void *cls,
     /**
      * Run wire-watch to trigger the reserve creation.
      */
-    TALER_TESTING_cmd_exec_wirewatch ("wirewatch-4",
-                                      config_file),
+    TALER_TESTING_cmd_exec_wirewatch2 ("wirewatch-4",
+                                       config_file,
+                                       "exchange-account-2"),
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
                                        "create-reserve-1",
