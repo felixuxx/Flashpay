@@ -1613,6 +1613,7 @@ process_debits (void *cls)
 static void
 begin_debit_audit (void)
 {
+  GNUNET_assert (NULL == out_map);
   out_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                   GNUNET_YES);
   process_debits (wa_head);

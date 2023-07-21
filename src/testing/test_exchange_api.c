@@ -988,8 +988,9 @@ run (void *cls,
                                                  cred.user42_payto,
                                                  cred.exchange_payto,
                                                  "short-lived-reserve"),
-    TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
-                                      config_file_expire_reserve_now),
+    TALER_TESTING_cmd_exec_wirewatch2 ("short-lived-aggregation",
+                                       config_file_expire_reserve_now,
+                                       "exchange-account-2"),
     TALER_TESTING_cmd_exec_closer ("close-reserves",
                                    config_file_expire_reserve_now,
                                    "EUR:5",
@@ -1192,8 +1193,9 @@ run (void *cls,
       = CMD_TRANSFER_TO_EXCHANGE ("reserve-open-close-key",
                                   "EUR:20");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
-      = TALER_TESTING_cmd_exec_wirewatch ("reserve-open-close-wirewatch",
-                                          config_file_expire_reserve_now);
+      = TALER_TESTING_cmd_exec_wirewatch2 ("reserve-open-close-wirewatch",
+                                           config_file_expire_reserve_now,
+                                           "exchange-account-2");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_closer ("reserve-open-close-aggregation",
                                        config_file_expire_reserve_now,
