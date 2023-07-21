@@ -8,6 +8,8 @@ test_taler_exchange_aggregator-postgres
 test_taler_exchange_wirewatch-postgres
 test_exchange_api_revocation_cs
 test_exchange_api_revocation_rsa
+test_exchange_api_age_restriction_cs
+test_exchange_api_age_restriction_rsa
 report*
 test_exchange_management_api_cs
 test_exchange_management_api_rsa
