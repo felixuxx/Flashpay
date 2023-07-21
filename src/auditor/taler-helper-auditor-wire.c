@@ -1629,8 +1629,11 @@ begin_debit_audit (void)
 static void
 conclude_credit_history (void)
 {
-  GNUNET_CONTAINER_multihashmap_destroy (in_map);
-  in_map = NULL;
+  if (NULL != in_map)
+  {
+    GNUNET_CONTAINER_multihashmap_destroy (in_map);
+    in_map = NULL;
+  }
   /* credit done, now check debits */
   begin_debit_audit ();
 }
