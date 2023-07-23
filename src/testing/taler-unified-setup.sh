@@ -244,7 +244,7 @@ if [ "1" = "$START_SANDBOX" ]
 then
     #
     LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
-    if [ ! -z "$PGHOST" ]
+    if [ ! -z "${PGHOST:+}" ]
     then
         EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
         LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo $LIBEUFIN_SANDBOX_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
