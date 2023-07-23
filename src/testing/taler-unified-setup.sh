@@ -244,7 +244,7 @@ if [ "1" = "$START_SANDBOX" ]
 then
     #
     LIBEUFIN_SANDBOX_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-sandbox" -o "DB_CONNECTION")
-    if [ ! -z "$PGHOST" ]
+    if [ ! -z "${PGHOST:+}" ]
     then
         EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
         LIBEUFIN_SANDBOX_DB_CONNECTION=$(echo $LIBEUFIN_SANDBOX_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
@@ -254,6 +254,8 @@ then
     # Create the default demobank.
     echo -n "Configuring sandbox at ${LIBEUFIN_SANDBOX_DB_CONNECTION} "
 
+#    libeufin-sandbox reset-tables \
+#        &> libeufin-sandbox-reset.log
     libeufin-sandbox config \
                      --currency "$CURRENCY" \
                      --users-debt-limit 99999999 \
@@ -344,13 +346,15 @@ then
     # to the exchange.
     LIBEUFIN_NEXUS_DB_CONNECTION=$(taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION")
 
-    if [ ! -z "$PGHOST" ]
+    if [ ! -z "${PGHOST:+}" ]
     then
         EHOST=$(echo $PGHOST | sed -e "s/\//\\\\\//g")
         LIBEUFIN_NEXUS_DB_CONNECTION=$(echo $LIBEUFIN_NEXUS_DB_CONNECTION | sed -e "s/\/var\/run\/postgresql/$EHOST/")
         taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
     fi
     export LIBEUFIN_NEXUS_DB_CONNECTION
+#    libeufin-nexus reset-tables \
+#        &> libeufin-nexus-reset.log
 
     # For convenience, username and password are
     # identical to those used at the Sandbox.
@@ -446,7 +450,13 @@ if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
     EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
-    EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
+    SERVE=$(taler-config -c "$CONF" -s EXCHANGE -o SERVE)
+    if [ "${SERVE}" = "unix" ]
+    then
+        EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
+    else
+        EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
+    fi
     MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
     MASTER_PRIV_DIR=$(dirname "$MASTER_PRIV_FILE")
     mkdir -p "${MASTER_PRIV_DIR}"
@@ -568,7 +578,7 @@ then
              --timeout=1 \
              --user admin \
              --password secret \
-             "http://localhost:8082/" \
+             "http://localhost:${BANK_PORT}/" \
              -o /dev/null \
              -O /dev/null >/dev/null || continue
         OK="1"
@@ -641,7 +651,7 @@ then
     echo -n "Wait for exchange /management/keys to be ready "
     OK="0"
     LAST_RESPONSE=$(mktemp tmp-last-response.XXXXXXXX)
-    for n in $(seq 1 50)
+    for n in $(seq 1 10)
     do
         echo -n "."
         sleep "$DEFAULT_SLEEP"
@@ -649,8 +659,8 @@ then
         wget \
             --tries=3 \
             --waitretry=0 \
-            --timeout=1 \
-            "http://localhost:8081/management/keys"\
+            --timeout=30 \
+            "${EXCHANGE_URL}management/keys"\
             -o /dev/null \
             -O "$LAST_RESPONSE" \
             >/dev/null || continue
@@ -704,7 +714,7 @@ then
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:8081/keys" \
+            "${EXCHANGE_URL}keys" \
             -o /dev/null \
             -O "$LAST_RESPONSE" \
              >/dev/null || continue
