@@ -649,7 +649,7 @@ then
     echo -n "Wait for exchange /management/keys to be ready "
     OK="0"
     LAST_RESPONSE=$(mktemp tmp-last-response.XXXXXXXX)
-    for n in $(seq 1 50)
+    for n in $(seq 1 10)
     do
         echo -n "."
         sleep "$DEFAULT_SLEEP"
@@ -657,8 +657,8 @@ then
         wget \
             --tries=3 \
             --waitretry=0 \
-            --timeout=1 \
-            "http://localhost:8081/management/keys"\
+            --timeout=30 \
+            "${EXCHANGE_URL}management/keys"\
             -o /dev/null \
             -O "$LAST_RESPONSE" \
             >/dev/null || continue
@@ -712,7 +712,7 @@ then
         wget \
             --tries=1 \
             --timeout=1 \
-            "http://localhost:8081/keys" \
+            "${EXCHANGE_URL}keys" \
             -o /dev/null \
             -O "$LAST_RESPONSE" \
              >/dev/null || continue
