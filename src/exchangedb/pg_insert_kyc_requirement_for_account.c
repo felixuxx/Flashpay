@@ -36,9 +36,9 @@ TEH_PG_insert_kyc_requirement_for_account (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_payto),
-    (NULL == reserve_pub)
-    ? GNUNET_PQ_query_param_null ()
-    : GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    (NULL ==  reserve_pub)
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_string (provider_section),
     GNUNET_PQ_query_param_end
   };
@@ -52,7 +52,7 @@ TEH_PG_insert_kyc_requirement_for_account (
            "insert_legitimization_requirement",
            "INSERT INTO legitimization_requirements"
            "  (h_payto"
-           "  ,reserve_pub"
+           "   ,reserve_pub"
            "  ,required_checks"
            "  ) VALUES "
            "  ($1, $2, $3)"

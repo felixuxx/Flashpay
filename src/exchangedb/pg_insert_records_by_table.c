@@ -229,7 +229,7 @@ irbt_cb_table_legitimization_processes (struct PostgresClosure *pg,
            ",provider_user_id"
            ",provider_legitimization_id"
            ") VALUES "
-           "($1, $2, $3, $4, $5, $6);");
+           "($1, $3, $4, $5, $6, %7);");
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_legitimization_processes",
                                              params);
@@ -251,6 +251,10 @@ irbt_cb_table_legitimization_requirements (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.legitimization_requirements.h_payto),
+    td->details.legitimization_requirements.no_reserve_pub
+      ? GNUNET_PQ_query_param_null ()
+      : GNUNET_PQ_query_param_auto_from_type (
+      &td->details.legitimization_requirements.reserve_pub),
     GNUNET_PQ_query_param_string (
       td->details.legitimization_requirements.required_checks),
     GNUNET_PQ_query_param_end
@@ -261,6 +265,7 @@ irbt_cb_table_legitimization_requirements (struct PostgresClosure *pg,
            "INSERT INTO legitimization_requirements"
            "(legitimization_requirement_serial_id"
            ",h_payto"
+           ",reserve_pub"
            ",required_checks"
            ") VALUES "
            "($1, $2, $3);");

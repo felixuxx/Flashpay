@@ -33,6 +33,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
    orig_reserve_pub BYTEA;
+   orig_reserve_found BOOLEAN;
 BEGIN
 
 INSERT INTO exchange.kyc_attributes
@@ -42,13 +43,15 @@ INSERT INTO exchange.kyc_attributes
   ,collection_time
   ,expiration_time
   ,encrypted_attributes
+  ,legitimization_serial
  ) VALUES
   (in_h_payto
   ,in_kyc_prox
   ,in_provider_section
   ,in_collection_time_ts
   ,in_expiration_time_ts
-  ,in_enc_attributes);
+  ,in_enc_attributes
+  ,in_process_row);
 
 UPDATE exchange.legitimization_processes
   SET provider_user_id=in_provider_account_id
@@ -56,11 +59,24 @@ UPDATE exchange.legitimization_processes
      ,expiration_time=GREATEST(expiration_time,in_expiration_time)
  WHERE h_payto=in_h_payto
    AND legitimization_process_serial_id=in_process_row
-   AND provider_section=in_provider_section
- RETURNING reserve_pub INTO orig_reserve_pub;
+   AND provider_section=in_provider_section;
 out_ok = FOUND;
 
-UPDATE exchange.reserves SET birthday=in_birthday WHERE reserve_pub=orig_reserve_pub;
+
+-- If the h_payto refers to a reserve in the original requirements
+-- update the originating reserve's birthday.
+SELECT reserve_pub
+  INTO orig_reserve_pub
+  FROM exchange.legitimization_requirements
+ WHERE h_payto=in_h_payto AND NOT reserve_pub IS NULL;
+orig_reserve_found = FOUND;
+
+IF orig_reserve_found
+THEN
+  UPDATE exchange.reserves
+     SET birthday=in_birthday
+   WHERE reserve_pub=orig_reserve_pub;
+END IF;
 
 IF in_require_aml
 THEN

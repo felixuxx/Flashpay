@@ -29,6 +29,7 @@
 #include "taler_pq_lib.h"
 #include "pg_lookup_records_by_table.h"
 #include "pg_helper.h"
+#include <gnunet/gnunet_pq_lib.h>
 
 
 /**
@@ -313,6 +314,11 @@ lrbt_cb_table_legitimization_requirements (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "h_payto",
         &td.details.legitimization_requirements.h_payto),
+      GNUNET_PQ_result_spec_allow_null (
+        GNUNET_PQ_result_spec_auto_from_type (
+          "reserve_pub",
+          &td.details.legitimization_requirements.reserve_pub),
+        &td.details.legitimization_requirements.no_reserve_pub),
       GNUNET_PQ_result_spec_string (
         "required_checks",
         &td.details.legitimization_requirements.required_checks),
@@ -2908,6 +2914,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               "SELECT"
               " legitimization_process_serial_id AS serial"
               ",h_payto"
+              ",reserve_pub"
               ",expiration_time"
               ",provider_section"
               ",provider_user_id"
@@ -2922,6 +2929,7 @@ TEH_PG_lookup_records_by_table (void *cls,
               "SELECT"
               " legitimization_requirement_serial_id AS serial"
               ",h_payto"
+              ",reserve_pub"
               ",required_checks"
               " FROM legitimization_requirements"
               " WHERE legitimization_requirement_serial_id > $1"
