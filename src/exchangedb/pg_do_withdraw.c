@@ -32,9 +32,12 @@ TEH_PG_do_withdraw (
   const struct TALER_CsNonce *nonce,
   const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
   struct GNUNET_TIME_Timestamp now,
+  bool do_age_check,
   bool *found,
   bool *balance_ok,
   bool *nonce_ok,
+  bool *age_ok,
+  uint16_t *allowed_maximum_age,
   uint64_t *ruuid)
 {
   struct PostgresClosure *pg = cls;
@@ -51,6 +54,7 @@ TEH_PG_do_withdraw (
     TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
     GNUNET_PQ_query_param_timestamp (&now),
     GNUNET_PQ_query_param_timestamp (&gc),
+    GNUNET_PQ_query_param_bool (do_age_check),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
@@ -60,6 +64,10 @@ TEH_PG_do_withdraw (
                                 balance_ok),
     GNUNET_PQ_result_spec_bool ("nonce_ok",
                                 nonce_ok),
+    GNUNET_PQ_result_spec_bool ("age_ok",
+                                age_ok),
+    GNUNET_PQ_result_spec_uint16 ("allowed_maximum_age",
+                                  allowed_maximum_age),
     GNUNET_PQ_result_spec_uint64 ("ruuid",
                                   ruuid),
     GNUNET_PQ_result_spec_end
@@ -71,9 +79,11 @@ TEH_PG_do_withdraw (
            " reserve_found"
            ",balance_ok"
            ",nonce_ok"
+           ",age_ok"
+           ",allowed_maximum_age"
            ",ruuid"
            " FROM exchange_do_withdraw"
-           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);");
+           " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);");
   gc = GNUNET_TIME_absolute_to_timestamp (
     GNUNET_TIME_absolute_add (now.abs_time,
                               pg->legal_reserve_expiration_time));

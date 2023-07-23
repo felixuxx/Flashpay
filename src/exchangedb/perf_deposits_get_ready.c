@@ -363,6 +363,8 @@ run (void *cls)
       bool found;
       bool nonce_ok;
       bool balance_ok;
+      bool age_ok;
+      uint16_t allowed_minimum_age;
       uint64_t ruuid;
       struct GNUNET_TIME_Timestamp now;
 
@@ -372,9 +374,12 @@ run (void *cls)
                                    NULL,
                                    &cbc,
                                    now,
+                                   false,
                                    &found,
                                    &balance_ok,
                                    &nonce_ok,
+                                   &age_ok,
+                                   &allowed_minimum_age,
                                    &ruuid));
     }
     {

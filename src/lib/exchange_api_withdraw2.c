@@ -285,6 +285,12 @@ handle_reserve_withdraw_finished (void *cls,
     w2r.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
+    w2r.hr.ec = TALER_JSON_get_error_code (j);
+    w2r.hr.hint = TALER_JSON_get_error_hint (j);
+
+    if (TALER_EC_EXCHANGE_RESERVES_AGE_RESTRICTION_REQUIRED == w2r.hr.ec)
+      break;
+
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
     if (GNUNET_OK !=
@@ -294,11 +300,6 @@ handle_reserve_withdraw_finished (void *cls,
       GNUNET_break_op (0);
       w2r.hr.http_status = 0;
       w2r.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-    }
-    else
-    {
-      w2r.hr.ec = TALER_JSON_get_error_code (j);
-      w2r.hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   case MHD_HTTP_GONE:

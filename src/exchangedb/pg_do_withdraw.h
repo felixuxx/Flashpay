@@ -33,9 +33,12 @@
  * @param nonce client-contributed input for CS denominations that must be checked for idempotency, or NULL for non-CS withdrawals
  * @param[in,out] collectable corresponding collectable coin (blind signature) if a coin is found; possibly updated if a (different) signature exists already
  * @param now current time (rounded)
+ * @param do_age_check set to true if age requirements must be verified
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] nonce_ok set to false if the nonce was reused
+ * @param[out] age_ok set to true if age requirements are met
+ * @param[out] allowed_maximum_age if @e age_ok is false, the maximum age (in years) that is allowed during age-withdraw
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
  * @return query execution status
  */
@@ -45,9 +48,12 @@ TEH_PG_do_withdraw (
   const struct TALER_CsNonce *nonce,
   const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
   struct GNUNET_TIME_Timestamp now,
+  bool do_age_check,
   bool *found,
   bool *balance_ok,
   bool *nonce_ok,
+  bool *age_ok,
+  uint16_t *allowed_maximum_age,
   uint64_t *ruuid);
 
 #endif

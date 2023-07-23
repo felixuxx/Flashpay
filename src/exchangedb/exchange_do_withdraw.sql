@@ -26,20 +26,22 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN denom_sig BYTEA,
   IN now INT8,
   IN min_reserve_gc INT8,
+  IN do_age_check BOOLEAN,
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT nonce_ok BOOLEAN,
+  OUT age_ok BOOLEAN,
+  OUT allowed_maximum_age INT2, -- in years
   OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
   reserve_gc INT8;
-DECLARE
   denom_serial INT8;
-DECLARE
   reserve_val INT8;
-DECLARE
   reserve_frac INT4;
+  reserve_birthday INT4;
+  not_before date;
 BEGIN
 -- Shards: reserves by reserve_pub (SELECT)
 --         reserves_out (INSERT, with CONFLICT detection) by wih
@@ -57,6 +59,8 @@ THEN
   -- denomination unknown, should be impossible!
   reserve_found=FALSE;
   balance_ok=FALSE;
+  age_ok=FALSE;
+  allowed_maximum_age=0;
   ruuid=0;
   ASSERT false, 'denomination unknown';
   RETURN;
@@ -67,11 +71,13 @@ SELECT
    current_balance_val
   ,current_balance_frac
   ,gc_date
+  ,birthday
   ,reserve_uuid
  INTO
    reserve_val
   ,reserve_frac
   ,reserve_gc
+  ,reserve_birthday
   ,ruuid
   FROM exchange.reserves
  WHERE reserves.reserve_pub=rpub;
@@ -82,7 +88,30 @@ THEN
   reserve_found=FALSE;
   balance_ok=FALSE;
   nonce_ok=TRUE;
+  age_ok=FALSE;
+  allowed_maximum_age=0;
   ruuid=2;
+  RETURN;
+END IF;
+
+-- Check if age requirements are present
+IF ((NOT do_age_check) OR (reserve_birthday = 0))
+THEN
+  age_ok = TRUE;
+  allowed_maximum_age = -1;
+ELSE
+  -- Age requirements are formally not met:  The exchange is setup to support
+  -- age restrictions (do_age_check == TRUE) and the reserve has a
+  -- birthday set (reserve_birthday != 0), but the client called the
+  -- batch-withdraw endpoint instead of the age-withdraw endpoint, which it
+  -- should have.
+  not_before=date '1970-01-01' + reserve_birthday;
+  allowed_maximum_age = extract(year from age(current_date, not_before));
+
+  reserve_found=TRUE;
+  nonce_ok=TRUE; -- we do not really know
+  balance_ok=TRUE;-- we do not really know
+  age_ok = FALSE;
   RETURN;
 END IF;
 
@@ -194,6 +223,6 @@ END IF;
 END $$;
 
 
-COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
-  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
+COMMENT ON FUNCTION exchange_do_withdraw(BYTEA, INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8, BOOLEAN)
+  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if the age requirements are formally met.  If so updates the database with the result';
 

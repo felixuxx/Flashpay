@@ -302,7 +302,7 @@ run (void *cls,
                                       true,
                                       true),
       TALER_TESTING_cmd_oauth_with_birthdate ("oauth-service-with-birthdate",
-                                              "2022-00-00", /* enough for a while */
+                                              "2015-00-00", /* enough for a while */
                                               6666),
       TALER_TESTING_cmd_batch ("withdraw-age",
                                withdraw_age),

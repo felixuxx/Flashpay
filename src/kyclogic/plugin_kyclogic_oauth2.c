@@ -922,9 +922,6 @@ data2attributes (const struct TALER_KYCLOGIC_ProviderDetails *pd,
                 JSON_INDENT (2));
     return NULL;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "XXXXXXXX plugin_kyc_logic SETTING ATTERIBUTES TO\n\t%s\n",
-              json_dumps (data, JSON_INDENT (2)));
   ret = json_loadb (attr_data,
                     attr_size,
                     JSON_REJECT_DUPLICATES,

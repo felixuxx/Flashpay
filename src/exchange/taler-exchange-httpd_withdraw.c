@@ -26,6 +26,7 @@
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
+#include "taler-exchange-httpd.h"
 #include "taler_json_lib.h"
 #include "taler_kyclogic_lib.h"
 #include "taler_mhd_lib.h"
@@ -180,6 +181,8 @@ withdraw_transaction (void *cls,
   bool found = false;
   bool balance_ok = false;
   bool nonce_ok = false;
+  bool age_ok = false;
+  uint16_t allowed_maximum_age = 0;
   uint64_t ruuid;
   const struct TALER_CsNonce *nonce;
   const struct TALER_BlindedPlanchet *bp;
@@ -342,9 +345,12 @@ withdraw_transaction (void *cls,
                                 nonce,
                                 &wc->collectable,
                                 wc->now,
+                                TEH_age_restriction_enabled,
                                 &found,
                                 &balance_ok,
                                 &nonce_ok,
+                                &age_ok,
+                                &allowed_maximum_age,
                                 &ruuid);
   if (0 > qs)
   {
@@ -364,6 +370,20 @@ withdraw_transaction (void *cls,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_EXCHANGE_GENERIC_RESERVE_UNKNOWN,
                                            NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (! age_ok)
+  {
+    /* We respond with the lowest age in the corresponding age group
+     * of the required age */
+    uint16_t lowest_age = TALER_get_lowest_age (
+      &TEH_age_restriction_config.mask,
+      allowed_maximum_age);
+
+    TEH_plugin->rollback (TEH_plugin->cls);
+    *mhd_ret = TEH_RESPONSE_reply_reserve_age_restriction_required (
+      connection,
+      lowest_age);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! balance_ok)
