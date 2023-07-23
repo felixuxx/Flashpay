@@ -522,6 +522,7 @@ kyc_satisfied (struct AggregationUnit *au_active)
     db_plugin->cls,
     requirement,
     &au_active->h_payto,
+    NULL, /* not a reserve */
     &au_active->requirement_row);
   if (qs < 0)
   {

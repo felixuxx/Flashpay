@@ -31,7 +31,8 @@ TEH_PG_lookup_kyc_requirement_by_row (
   uint64_t requirement_row,
   char **requirements,
   enum TALER_AmlDecisionState *aml_status,
-  struct TALER_PaytoHashP *h_payto)
+  struct TALER_PaytoHashP *h_payto,
+  struct TALER_ReservePublicKeyP **reserve_pub)
 {
   struct PostgresClosure *pg = cls;
   uint32_t status = TALER_AML_NORMAL;
@@ -39,11 +40,18 @@ TEH_PG_lookup_kyc_requirement_by_row (
     GNUNET_PQ_query_param_uint64 (&requirement_row),
     GNUNET_PQ_query_param_end
   };
+  bool no_reserve_pub;
+  struct TALER_ReservePublicKeyP *rp =
+    GNUNET_new (struct TALER_ReservePublicKeyP);
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_string ("required_checks",
                                   requirements),
     GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                           h_payto),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            rp),
+      &no_reserve_pub),
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_uint32 ("status",
                                     &status),
@@ -57,6 +65,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
            "SELECT "
            " lr.required_checks"
            ",lr.h_payto"
+           ",lr.reserve_pub"
            ",aml.status"
            " FROM legitimization_requirements lr"
            " LEFT JOIN aml_status aml USING (h_payto)"
@@ -67,5 +76,11 @@ TEH_PG_lookup_kyc_requirement_by_row (
     params,
     rs);
   *aml_status = (enum TALER_AmlDecisionState) status;
+  if (no_reserve_pub)
+  {
+    GNUNET_free (rp);
+    rp = NULL;
+  }
+  *reserve_pub = rp;
   return qs;
 }

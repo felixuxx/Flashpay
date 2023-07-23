@@ -319,6 +319,7 @@ withdraw_transaction (void *cls,
         TEH_plugin->cls,
         kyc_required,
         &wc->h_account_payto,
+        &wc->collectable.reserve_pub,
         &wc->kyc.requirement_row);
       GNUNET_free (kyc_required);
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)

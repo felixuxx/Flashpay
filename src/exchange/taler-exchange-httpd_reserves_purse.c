@@ -218,6 +218,7 @@ purse_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &rpc->h_payto,
+      rpc->reserve_pub,
       &rpc->kyc.requirement_row);
     GNUNET_free (required);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)

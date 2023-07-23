@@ -727,6 +727,7 @@ age_withdraw_transaction (void *cls,
         TEH_plugin->cls,
         kyc_required,
         &awc->h_payto,
+        &awc->commitment.reserve_pub,
         &awc->kyc.requirement_row);
     }
   }

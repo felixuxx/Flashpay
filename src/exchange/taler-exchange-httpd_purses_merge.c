@@ -308,6 +308,7 @@ merge_transaction (void *cls,
       TEH_plugin->cls,
       required,
       &pcc->h_payto,
+      &pcc->reserve_pub,
       &pcc->kyc.requirement_row);
     GNUNET_free (required);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)

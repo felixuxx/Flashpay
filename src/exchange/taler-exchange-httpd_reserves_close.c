@@ -272,6 +272,7 @@ reserve_close_transaction (void *cls,
         TEH_plugin->cls,
         kyc_needed,
         &rcc->kyc_payto,
+        rcc->reserve_pub,
         &rcc->kyc.requirement_row);
       GNUNET_free (kyc_needed);
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)

@@ -34,6 +34,7 @@
  * @param provider_section provider that must be checked
  * @param provider_account_id provider account ID
  * @param provider_legitimization_id provider legitimization ID
+ * @param reserve_pub if the processes is related to a reserve, the reserve's public key, NULL otherwise
  * @param[out] process_row row the process is stored under
  * @return database transaction status
  */
@@ -44,6 +45,7 @@ TEH_PG_insert_kyc_requirement_process (
   const char *provider_section,
   const char *provider_account_id,
   const char *provider_legitimization_id,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *process_row);
 
 #endif

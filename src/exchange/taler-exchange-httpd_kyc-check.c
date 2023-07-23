@@ -301,6 +301,7 @@ kyc_check (void *cls,
   struct TALER_KYCLOGIC_ProviderDetails *pd;
   enum GNUNET_GenericReturnValue ret;
   struct TALER_PaytoHashP h_payto;
+  struct TALER_ReservePublicKeyP *reserve_pub;
   char *requirements;
   bool satisfied;
 
@@ -309,7 +310,8 @@ kyc_check (void *cls,
     kyp->requirement_row,
     &requirements,
     &kyp->aml_status,
-    &h_payto);
+    &h_payto,
+    &reserve_pub);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -335,6 +337,7 @@ kyc_check (void *cls,
                                            TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
                                            "h_payto");
     GNUNET_free (requirements);
+    GNUNET_free (reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TALER_KYCLOGIC_check_satisfied (
@@ -354,6 +357,7 @@ kyc_check (void *cls,
                                            TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "kyc_test_required");
     GNUNET_free (requirements);
+    GNUNET_free (reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (satisfied)
@@ -362,6 +366,7 @@ kyc_check (void *cls,
                 "KYC requirements `%s' already satisfied\n",
                 requirements);
     GNUNET_free (requirements);
+    GNUNET_free (reserve_pub);
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
@@ -381,6 +386,7 @@ kyc_check (void *cls,
                                            TALER_EC_EXCHANGE_KYC_GENERIC_LOGIC_GONE,
                                            requirements);
     GNUNET_free (requirements);
+    GNUNET_free (reserve_pub);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_free (requirements);
@@ -394,7 +400,11 @@ kyc_check (void *cls,
     kyp->section_name,
     NULL,
     NULL,
+    reserve_pub,
     &kyp->process_row);
+
+  GNUNET_free (reserve_pub);
+
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

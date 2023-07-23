@@ -34,6 +34,7 @@
  * @param[out] requirements provider that must be checked
  * @param[out] aml_status set to the AML status of the account
  * @param[out] h_payto account that must be KYC'ed
+ * @param[out] reserve_pub if account is a reserve, its public key, NULL otherwise. Must be freed by caller
  * @return database transaction status
  */
 enum GNUNET_DB_QueryStatus
@@ -42,6 +43,7 @@ TEH_PG_lookup_kyc_requirement_by_row (
   uint64_t requirement_row,
   char **requirements,
   enum TALER_AmlDecisionState *aml_status,
-  struct TALER_PaytoHashP *h_payto);
+  struct TALER_PaytoHashP *h_payto,
+  struct TALER_ReservePublicKeyP **reserve_pub);
 
 #endif

@@ -42,6 +42,11 @@ struct KycRequestContext
   struct TALER_PaytoHashP h_payto;
 
   /**
+   * The reserve's public key
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
    * KYC status, with row with the legitimization requirement.
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
@@ -141,6 +146,7 @@ wallet_kyc_check (void *cls,
   qs = TEH_plugin->insert_kyc_requirement_for_account (TEH_plugin->cls,
                                                        krc->required,
                                                        &krc->h_payto,
+                                                       &krc->reserve_pub,
                                                        &krc->kyc.requirement_row);
   if (qs < 0)
   {
@@ -170,12 +176,11 @@ TEH_handler_kyc_wallet (
 {
   struct TALER_ReserveSignatureP reserve_sig;
   struct KycRequestContext krc;
-  struct TALER_ReservePublicKeyP reserve_pub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &reserve_pub),
+                                 &krc.reserve_pub),
     TALER_JSON_spec_amount ("balance",
                             TEH_currency,
                             &krc.balance),
@@ -195,7 +200,7 @@ TEH_handler_kyc_wallet (
 
   TEH_METRICS_num_verifications[TEH_MT_SIGNATURE_EDDSA]++;
   if (GNUNET_OK !=
-      TALER_wallet_account_setup_verify (&reserve_pub,
+      TALER_wallet_account_setup_verify (&krc.reserve_pub,
                                          &krc.balance,
                                          &reserve_sig))
   {
@@ -210,7 +215,7 @@ TEH_handler_kyc_wallet (
     char *payto_uri;
 
     payto_uri = TALER_reserve_make_payto (TEH_base_url,
-                                          &reserve_pub);
+                                          &krc.reserve_pub);
     TALER_payto_hash (payto_uri,
                       &krc.h_payto);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,

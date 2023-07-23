@@ -33,6 +33,7 @@ BEGIN
       ',collection_time INT8 NOT NULL'
       ',expiration_time INT8 NOT NULL'
       ',encrypted_attributes BYTEA NOT NULL'
+      ',legitimization_serial INT8 NOT NULL'
     ') %s ;'
     ,table_name
     ,'PARTITION BY HASH (h_payto)'
@@ -85,6 +86,12 @@ BEGIN
     ,table_name
     ,partition_suffix
   );
+  PERFORM comment_partitioned_column(
+     'Reference the legitimization process for which theses attributes are gathered for.'
+    ,'legitimization_serial'
+    ,table_name
+    ,partition_suffix
+  );
 END $$;
 
 COMMENT ON FUNCTION create_table_kyc_attributes
@@ -106,6 +113,15 @@ BEGIN
       ' ADD CONSTRAINT ' || table_name || '_serial_key '
         'UNIQUE (kyc_attributes_serial_id)'
   );
+  -- The legitimization_serial is a foreign key.
+  -- TODO: due to partitioning by h_payto, we can not simply reference
+  -- the serial id of the legitimization_processes
+  --  EXECUTE FORMAT (
+  --    'ALTER TABLE ' || table_name ||
+  --    ' ADD CONSTRAINT ' || table_name || '_foreign_legitimization_processes'
+  --    ' FOREIGN KEY (legitimization_serial) '
+  --    ' REFERENCES legitimization_processes (legitimization_process_serial_id)' -- ON DELETE CASCADE
+  --  );
   -- To search similar users (e.g. during AML checks)
   EXECUTE FORMAT (
     'CREATE INDEX ' || table_name || '_similarity_index '

@@ -165,6 +165,7 @@ make_aml_decision (void *cls,
         TEH_plugin->cls,
         res,
         &dc->h_payto,
+        NULL, /* not a reserve */
         &requirement_row);
       if (qs < 0)
       {

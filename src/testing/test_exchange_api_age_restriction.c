@@ -257,18 +257,18 @@ run (void *cls,
    * Test with age-withdraw, after kyc process has set a birthdate
    */
   struct TALER_TESTING_Command age_withdraw[] = {
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-kyc-1",
                               "EUR:20.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "check-create-reserve-1",
       "EUR:20.02",
       cred.user42_payto,
       cred.exchange_payto,
-      "create-reserve-1"),
+      "create-reserve-kyc-1"),
     CMD_EXEC_WIREWATCH ("wirewatch-age-withdraw-1"),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-lacking-kyc",
-                                       "create-reserve-1",
-                                       "EUR:5",
+                                       "create-reserve-kyc-1",
+                                       "EUR:10",
                                        0, /* age restriction off */
                                        MHD_HTTP_UNAVAILABLE_FOR_LEGAL_REASONS),
     TALER_TESTING_cmd_check_kyc_get ("check-kyc-withdraw",
@@ -280,16 +280,10 @@ run (void *cls,
                                         "pass",
                                         MHD_HTTP_SEE_OTHER),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-with-kyc",
-                                       "create-reserve-1",
-                                       "EUR:5",
+                                       "create-reserve-kyc-1",
+                                       "EUR:10",
                                        0, /* age restriction off */
-                                       MHD_HTTP_OK),
-    /* Attestations above are bound to the originating *bank* account,
-       not to the reserve (!). Hence, they are NOT found here! */
-    TALER_TESTING_cmd_reserve_get_attestable ("reserve-get-attestable",
-                                              "create-reserve-1",
-                                              MHD_HTTP_NOT_FOUND,
-                                              NULL),
+                                       MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end (),
   };
 

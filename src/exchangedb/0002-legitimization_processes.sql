@@ -29,6 +29,8 @@ BEGIN
       ',provider_section VARCHAR NOT NULL'
       ',provider_user_id VARCHAR DEFAULT NULL'
       ',provider_legitimization_id VARCHAR DEFAULT NULL'
+      ',finished BOOLEAN DEFAULT (FALSE)'
+      ',reserve_pub BYTEA'
       ',UNIQUE (h_payto, provider_section)'
     ') %s ;'
     ,'legitimization_processes'
@@ -73,6 +75,18 @@ BEGIN
   PERFORM comment_partitioned_column(
      'Identifier for the specific legitimization process at the provider. NULL if legitimization was not started.'
     ,'provider_legitimization_id'
+    ,'legitimization_processes'
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'Set to TRUE when the specific legitimization process is finished.'
+    ,'finished'
+    ,'legitimization_processes'
+    ,shard_suffix
+  );
+  PERFORM comment_partitioned_column(
+     'If h_payto refers to a reserve, this is its public key, otherwise NULL.'
+    ,'reserve_pub'
     ,'legitimization_processes'
     ,shard_suffix
   );

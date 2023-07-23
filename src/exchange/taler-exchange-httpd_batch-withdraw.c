@@ -456,6 +456,7 @@ batch_withdraw_transaction (void *cls,
       TEH_plugin->cls,
       kyc_required,
       &wc->h_payto,
+      wc->reserve_pub,
       &wc->kyc.requirement_row);
     GNUNET_free (kyc_required);
     if (qs < 0)

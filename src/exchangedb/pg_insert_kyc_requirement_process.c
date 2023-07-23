@@ -24,6 +24,7 @@
 #include "taler_pq_lib.h"
 #include "pg_insert_kyc_requirement_process.h"
 #include "pg_helper.h"
+#include <gnunet/gnunet_pq_lib.h>
 
 enum GNUNET_DB_QueryStatus
 TEH_PG_insert_kyc_requirement_process (
@@ -32,6 +33,7 @@ TEH_PG_insert_kyc_requirement_process (
   const char *provider_section,
   const char *provider_account_id,
   const char *provider_legitimization_id,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *process_row)
 {
   struct PostgresClosure *pg = cls;
@@ -43,6 +45,9 @@ TEH_PG_insert_kyc_requirement_process (
     : GNUNET_PQ_query_param_null (),
     (NULL != provider_legitimization_id)
     ? GNUNET_PQ_query_param_string (provider_legitimization_id)
+    : GNUNET_PQ_query_param_null (),
+    (NULL != reserve_pub)
+    ? GNUNET_PQ_query_param_auto_from_type (reserve_pub)
     : GNUNET_PQ_query_param_null (),
     GNUNET_PQ_query_param_end
   };
@@ -60,12 +65,14 @@ TEH_PG_insert_kyc_requirement_process (
            "  ,provider_section"
            "  ,provider_user_id"
            "  ,provider_legitimization_id"
+           "  ,reserve_pub"
            "  ) VALUES "
-           "  ($1, $2, $3, $4)"
+           "  ($1, $2, $3, $4, $5)"
            " ON CONFLICT (h_payto,provider_section) "
            "   DO UPDATE SET"
            "      provider_user_id=$3"
            "     ,provider_legitimization_id=$4"
+           "     ,reserve_pub=$5"
            " RETURNING legitimization_process_serial_id");
   return GNUNET_PQ_eval_prepared_singleton_select (
     pg->conn,

@@ -31,6 +31,8 @@ CREATE OR REPLACE FUNCTION exchange_do_insert_kyc_attributes(
   OUT out_ok BOOLEAN)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+   orig_reserve_pub BYTEA;
 BEGIN
 
 INSERT INTO exchange.kyc_attributes
@@ -48,20 +50,17 @@ INSERT INTO exchange.kyc_attributes
   ,in_expiration_time_ts
   ,in_enc_attributes);
 
--- FIXME-Oec: modify to 'return' the reserve_pub here
--- (requires of course to modify other code to store
--- the reserve pub in the right table in the first place)
 UPDATE exchange.legitimization_processes
   SET provider_user_id=in_provider_account_id
      ,provider_legitimization_id=in_provider_legitimization_id
      ,expiration_time=GREATEST(expiration_time,in_expiration_time)
  WHERE h_payto=in_h_payto
    AND legitimization_process_serial_id=in_process_row
-   AND provider_section=in_provider_section;
+   AND provider_section=in_provider_section
+ RETURNING reserve_pub INTO orig_reserve_pub;
 out_ok = FOUND;
 
--- FIXME-Oec: update exchange reserve table to store in_birthday here!
--- UPDATE exchange.reserves SET birthday=in_birthday WHERE reserve_pub=X;
+UPDATE exchange.reserves SET birthday=in_birthday WHERE reserve_pub=orig_reserve_pub;
 
 IF in_require_aml
 THEN

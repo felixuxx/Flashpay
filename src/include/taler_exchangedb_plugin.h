@@ -6536,6 +6536,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param requirements requirements that must be checked
    * @param h_payto account that must be KYC'ed
+   * @þaram reserve_pub if the account is a reserve, its public key, NULL otherwise
    * @param[out] requirement_row set to legitimization requirement row for this check
    * @return database transaction status
    */
@@ -6544,6 +6545,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const char *requirements,
     const struct TALER_PaytoHashP *h_payto,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
     uint64_t *requirement_row);
 
 
@@ -6555,6 +6557,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param provider_section provider that must be checked
    * @param provider_account_id provider account ID
    * @param provider_legitimization_id provider legitimization ID
+   * @param reserve_pub if the KYC process is related to a reserve, its public key, NULL otherwise
    * @param[out] process_row row the process is stored under
    * @return database transaction status
    */
@@ -6565,6 +6568,7 @@ struct TALER_EXCHANGEDB_Plugin
     const char *provider_section,
     const char *provider_account_id,
     const char *provider_legitimization_id,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
     uint64_t *process_row);
 
 
@@ -6600,6 +6604,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] requirements space-separated list of requirements
    * @param[out] aml_status set to the AML status of the account
    * @param[out] h_payto account that must be KYC'ed
+   * @param[out] reserve_pub if the account is a reserve, its public key, NULL otherwise.  Must be freed by caller.
    * @return database transaction status
    */
   enum GNUNET_DB_QueryStatus
@@ -6608,7 +6613,8 @@ struct TALER_EXCHANGEDB_Plugin
     uint64_t requirement_row,
     char **requirements,
     enum TALER_AmlDecisionState *aml_status,
-    struct TALER_PaytoHashP *h_payto);
+    struct TALER_PaytoHashP *h_payto,
+    struct TALER_ReservePublicKeyP **reserve_pub);
 
 
   /**

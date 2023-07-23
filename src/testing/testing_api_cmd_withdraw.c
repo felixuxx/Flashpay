@@ -283,9 +283,10 @@ reserve_withdraw_cb (void *cls,
         return;
       }
     }
-    TALER_TESTING_unexpected_status (is,
-                                     wr->hr.http_status,
-                                     ws->expected_response_code);
+    TALER_TESTING_unexpected_status_with_body (is,
+                                               wr->hr.http_status,
+                                               ws->expected_response_code,
+                                               wr->hr.reply);
     return;
   }
   switch (wr->hr.http_status)
