@@ -449,7 +449,7 @@ then
     echo -n "Starting exchange ..."
     EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
     SERVE=$(taler-config -c "$CONF" -s EXCHANGE -o SERVE)
-    if [ "${SERVE}"= "unix" ]
+    if [ "${SERVE}" = "unix" ]
     then
         EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
     else
