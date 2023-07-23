@@ -448,7 +448,13 @@ if [ "1" = "$START_EXCHANGE" ]
 then
     echo -n "Starting exchange ..."
     EXCHANGE_PORT=$(taler-config -c "$CONF" -s EXCHANGE -o PORT)
-    EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
+    SERVE=$(taler-config -c "$CONF" -s EXCHANGE -o SERVE)
+    if [ "${SERVE}"= "unix" ]
+    then
+        EXCHANGE_URL=$(taler-config -c "$CONF" -s EXCHANGE -o BASE_URL)
+    else
+        EXCHANGE_URL="http://localhost:${EXCHANGE_PORT}/"
+    fi
     MASTER_PRIV_FILE=$(taler-config -f -c "${CONF}" -s "EXCHANGE-OFFLINE" -o "MASTER_PRIV_FILE")
     MASTER_PRIV_DIR=$(dirname "$MASTER_PRIV_FILE")
     mkdir -p "${MASTER_PRIV_DIR}"
