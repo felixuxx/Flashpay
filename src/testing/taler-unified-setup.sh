@@ -254,7 +254,8 @@ then
     # Create the default demobank.
     echo -n "Configuring sandbox at ${LIBEUFIN_SANDBOX_DB_CONNECTION} "
 
-    libeufin-sandbox reset-tables
+    libeufin-sandbox reset-tables \
+        &> libeufin-sandbox-reset.log
     libeufin-sandbox config \
                      --currency "$CURRENCY" \
                      --users-debt-limit 99999999 \
@@ -352,7 +353,8 @@ then
         taler-config -c "$CONF" -s "libeufin-nexus" -o "DB_CONNECTION" -V "$LIBEUFIN_NEXUS_DB_CONNECTION"
     fi
     export LIBEUFIN_NEXUS_DB_CONNECTION
-    libeufin-nexus reset-tables
+    libeufin-nexus reset-tables \
+        &> libeufin-nexus-reset.log
 
     # For convenience, username and password are
     # identical to those used at the Sandbox.
