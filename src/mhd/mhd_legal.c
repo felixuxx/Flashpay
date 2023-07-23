@@ -658,6 +658,9 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
     if (lang[0] == '.')
       continue;
+    if (0 == strcmp (lang,
+                     "locale"))
+      continue;
     load_language (legal,
                    path,
                    lang);

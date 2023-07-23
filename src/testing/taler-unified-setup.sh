@@ -570,7 +570,7 @@ then
              --timeout=1 \
              --user admin \
              --password secret \
-             "http://localhost:8082/" \
+             "http://localhost:${BANK_PORT}/" \
              -o /dev/null \
              -O /dev/null >/dev/null || continue
         OK="1"
